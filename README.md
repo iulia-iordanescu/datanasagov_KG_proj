@@ -26,10 +26,14 @@ There are two phases to the building of this knowledge graph. Phase 1 turned the
 ## Terminology
 This is expected to change as the project progresses, and is necessary to state for best possible understanding of this documentation. Check back often for edits :)
 
-record: the metadata of one catalog entry; typically the catalog we work with is data.nasa.gov
-metadata field (a.k.a.: field; metadata field name; field name): a record's key
-populated content of metadata field: value associated with a record's key
-component: one of the three named pieces of a triple, i.e. one of the following--- subject, object, predicate
+record: the metadata of one catalog entry; typically the catalog we work with is data.nasa.gov  
+
+metadata field (a.k.a.: field; metadata field name; field name): a record's key  
+
+populated content of metadata field: value associated with a record's key  
+
+component: one of the three named pieces of a triple, i.e. one of the following--- subject, object, predicate  
+
 component class: the class of a component in a particular schema
 entity class: a collective name for subject classes and object classes (in a schema, the role of an entity class is: either a subject or an object; strictly a subject; strictly an object)
 slot: where a component sits in a triple
