@@ -18,6 +18,7 @@
   - [ ] We should enforce the following in our schema. Every record gets one structural triple that keeps a catalog entry separate from the thing it describes. The only piece code does not handle, i.e. the LLM's role, is deciding what type of thing the record is describing (a dataset, a publication, etc):
        <record id> (CatalogEntry) DESCRIBES <title> (its class)
   - [ ] Consider properties, since we are moving in the direction of an LPG
+  - [ ] Explore data.nasa.gov public-facing website for inspiration about entity classes to include and predicates, e.g. the filters a user can apply for a search
 
 - [ ] **Catalog cleaning.**
   - [ ] Enforce DCAT 3.0
