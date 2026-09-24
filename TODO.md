@@ -8,7 +8,7 @@
   - [ ] Add controlled keywords for entity classes and predicates if they exist. The "Mission" entity class should use: <https://www.nasa.gov/a-to-z-of-nasa-missions/>
 - [ ] **Make a script that drafts the ground truth triples.**
   - [x] Use texts the schema induction script never saw; draw the pool of records that can be used potentially ONCE so that you don't have to worry about this ever again.
-- [ ] **Make a script that compares ground truth triples to found triples for a set of texts.**
+- [ ] **Make a script that compares ground truth triples to found triples for a set of texts via precision and recall.**
   - [ ] Explore and research other quality metrics, e.g. coverage and partial accuracy
 - [ ] **Enhance script that induces the schema.**
   - [ ] Purview glossary
