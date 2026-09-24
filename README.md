@@ -4,19 +4,16 @@ Fall 2026 Pathways internship project: building a knowledge graph (KG) for [data
 
 ## Records and fields
 
-Throughout this project, a "record" is one dataset's metadata entry in the catalog. In JSON terms, each record is one object with 31 possible top-level key-value pairs, of which 24 are populated at least once across the catalog (title, description, maintainer, tags, and so on; the other 7 are empty on every record). The records describe the datasets; the actual scientific data lives in separate NASA data archives that each record links to, and is never downloaded here.
+Throughout this project, a "record" is the metadata of one catalog entry in <[data.nasa.gov](https://data.nasa.gov)>. In JSON terms, each record is one object with 31 possible top-level key-value pairs, of which 24 are populated at least once across the catalog (title, description, maintainer, tags, and so on; the other 7 are empty on every record). Being metadata, the records describe the catalog entries; any actual scientific data or content lives in separate NASA data archives that each record links to, and is never downloaded here. Most catalog entries of data.nasa.gov are datasets.
+The keys of these top-level key-value pairs are what we call metadata fields or just fields. Fields come from the raw JSON in which data.nasa.gov's public API returns each record. The API returns every record with the same metadata form provided by CKAN, a standard open-source catalog software, which data.nasa.gov runs on. The data.nasa.gov website renders each record as a readable page (headline, description text, tag buttons), but the harvest in this project comes from the API, which is why we know each the exact name (top-level key) and its exact associated populated content (associated value of the top-level key) of each field for a record, rather than guessing either from webpage text.
 
-The keys of these top-level key-value pairs are what we call fields. They come from the raw JSON in which data.nasa.gov's public API returns each record. The API returns every record with the same metadata form provided by CKAN, a standard open-source catalog software, which data.nasa.gov runs on. The data.nasa.gov website renders each record as a readable page (headline, description text, tag buttons), but the harvest in this project comes from the API, which is why we know each record's exact fields rather than guessing them from webpage text.
+An example of a real record can be seen by opening the following link in a browser (ticking off the pretty-print box at the top is advised):<https://data.nasa.gov/api/3/action/package_search?rows=1>. You can see field names that exist in every record, like `id`, `title`, `notes`, `maintainer`, `organization`, `tags`, `resources`, `extras`, etc., as well as the populated contents of each field, which are particular to this record. Several fields hold nested objects and arrays that have fields of their own: `organization` is an object with ~7 inner keys, `tags` is an array where each of its entries has ~4 inner keys, `resources` is an array where each of its entries has ~15 inner keys, and `extras` is a (currently unexplored!) array of extra key-value pairs. Our census counted at the top level, then reached one level deeper only where the design needed it (`tags[].name`, `resources[].format`, `organization.title`). The inner-key counts are approximate because we never censused the nested layers, only the three aforementioned inner keys the design actually reads.
 
-You can see an example of a real record by opening the following link in a browser: <https://data.nasa.gov/api/3/action/package_search?rows=1>
+**A note on timing:** the catalog itself is not static! A handful of records is added every week, so any harvest is a snapshot of a specific date. The phase 1 graph was built from a harvest taken 2026-08-30 (36,289 records); a re-harvest on 2026-09-02 returned 36,323. We take care to note the date on which a harvest was taken whenever counts are involved in this README.
 
-You can see fields that exist in every record, like `id`, `title`, `notes`, `maintainer`, `organization`, `tags`, `resources`, `extras`, etc., as well as the populated values of each field, which are particular to this record. Several of those fields hold nested objects and arrays that have fields of their own: `organization` is an object with ~7 inner keys, `tags` is an array where each of its entries has ~4 inner keys, `resources` is an array where each of its entries has ~15 inner keys, and `extras` is a (currently unexplored!) array of extra key-value pairs. Our census counted at the top level, then reached one level deeper only where the design needed it (`tags[].name`, `resources[].format`, `organization.title`). The inner-key counts are approximate because we never censused the nested layers, only the three aforementioned inner keys the design actually reads.
+## Project phases
 
-**A note on timing:** the catalog itself is not static. NASA adds a handful of records every week, so any harvest is a snapshot of a specific date. The phase 1 graph was built from a harvest taken 2026-08-30 (36,289 records); a re-harvest on 2026-09-02 returned 36,323. Counts in this README come from one of those two snapshots and will drift slightly as the catalog grows.
-
-## What's in the graph so far
-
-The build has two phases. Phase 1 turned the structured metadata fields of every record into a graph; phase 2, still in progress, extracts additional facts from the free-text descriptions. Phase 1 is complete, and its ontology and the resulting knowledge graph are summarized in the table below:
+There are two phases to the building of this knowledge graph. Phase 1 turned the structured fields, such as `maintainer`, of every record into a fact; phase 2, still in progress, extracts additional facts from the fields involving free-text descriptions such as `title` (title of catalog entry) and `notes` (explanation of catalog entry). Phase 1 is mostly complete, and its schema is summarized in the table below:
 
 | Node label | Count | From | Properties | Relationship to Dataset |
 |---|---:|---|---|---|
@@ -25,9 +22,10 @@ The build has two phases. Phase 1 turned the structured metadata fields of every
 | Keyword | 8,277 | `tags`, cleaned | name | `(Dataset)-[:TAGGED_WITH]->(Keyword)` |
 | Format | 63 | `resources[].format` | name | `(Dataset)-[:AVAILABLE_AS]->(Format)` |
 
+A schema...EDIT
 ## Phase 1: how the census decided the design
 
-A data census is what decided this design. It counted, for every field, how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the knowledge graph:
+A data census (nasa_census.py) is what decided this design. This script counted, for every field, how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the knowledge graph:
 
 - If many records share a field's values and those values are worth traversing through, the values become nodes. If a field fails that test but its values still answer some question by filtering or identifying (license, title, dates), the values become properties.
 - If a field's values answer no question anyone would ask the graph (`creator_user_id`, `isopen`), the field is ignored.
