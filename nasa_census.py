@@ -1,5 +1,7 @@
-# nasa_census.py — the attendance check: across ALL records, which fields are
-# actually filled in, and how many distinct values do the interesting ones hold?
+# nasa_census.py 
+# First pass attempt at understanding the setup of records...across ALL records, which fields are
+# actually filled in, and how many distinct values do the "interesting" (i.e. not structured, per 
+# the README's terminology) ones hold?
 import json
 from collections import Counter
 from pathlib import Path
