@@ -24,6 +24,7 @@
   - [ ] Consider properties, since we are moving in the direction of an LPG
   - [ ] Explore data.nasa.gov public-facing website for inspiration about entity classes to include and predicates, e.g. the filters a user can apply for a search
   - [ ] It's possible other fields (free-text description or structured alike) might be useful to include as the text by which schema is induced...so far, we've used just `title` and `notes`
+  - [ ] Break it apart into separate scripts, each handling its own job in the schema induction process. It'll be much easier to debug.
 
 - [ ] **Catalog cleaning.**
   - [ ] Enforce DCAT 3.0
