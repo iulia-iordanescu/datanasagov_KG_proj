@@ -22,7 +22,27 @@ There are two phases to the building of this knowledge graph. Phase 1 turned the
 | Keyword | 8,277 | `tags`, cleaned | name | `(Dataset)-[:TAGGED_WITH]->(Keyword)` |
 | Format | 63 | `resources[].format` | name | `(Dataset)-[:AVAILABLE_AS]->(Format)` |
 
-A schema...EDIT
+
+## Terminology
+This is expected to change as the project progresses, and is necessary to state for best possible understanding of this documentation. Check back often for edits :)
+
+component: one of the three named pieces of a triple, i.e. one of the following--- subject, object, predicate
+component class: the class of a component in a particular schema
+entity class: a collective name for subject classes and object classes
+slot: where a component sits in a triple
+component instance: a value filling a slot, e.g. "Rosetta" might fill a subject or object slot, "is mounted on" might fill a predicate slot
+triple instance: a triple with all three slots filled
+schema entry: an entity class, a predicate, or a pattern:
+#                         entity_class  from subject AND object instances
+#                                       together (one shared namespace, so a
+#                                       value in both roles is labelled once)
+#                         predicate     from predicate instances, in their
+#                                       own namespace
+#                         pattern       from whole triple instances, and
+#                                       only those with all three slots
+#                                       resolved to labels
+#
+
 ## Phase 1: how the census decided the design
 
 A data census (nasa_census.py) is what decided this design. This script counted, for every field, how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the knowledge graph:
