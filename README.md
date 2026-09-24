@@ -26,22 +26,18 @@ There are two phases to the building of this knowledge graph. Phase 1 turned the
 ## Terminology
 This is expected to change as the project progresses, and is necessary to state for best possible understanding of this documentation. Check back often for edits :)
 
+record: the metadata of one catalog entry; typically the catalog we work with is data.nasa.gov
+metadata field (a.k.a.: field; metadata field name; field name): a record's key
+populated content of metadata field: value associated with a record's key
 component: one of the three named pieces of a triple, i.e. one of the following--- subject, object, predicate
 component class: the class of a component in a particular schema
-entity class: a collective name for subject classes and object classes
+entity class: a collective name for subject classes and object classes (in a schema, the role of an entity class is: either a subject or an object; strictly a subject; strictly an object)
 slot: where a component sits in a triple
 component instance: a value filling a slot, e.g. "Rosetta" might fill a subject or object slot, "is mounted on" might fill a predicate slot
 triple instance: a triple with all three slots filled
-schema entry: an entity class, a predicate, or a pattern:
-#                         entity_class  from subject AND object instances
-#                                       together (one shared namespace, so a
-#                                       value in both roles is labelled once)
-#                         predicate     from predicate instances, in their
-#                                       own namespace
-#                         pattern       from whole triple instances, and
-#                                       only those with all three slots
-#                                       resolved to labels
-#
+schema: an object that describes the entity classes, the predicates, and the allowed relationships between predicates and entity classes. These allowed relationships between entity classes and predicates are what I call patterns.
+schema entry: an entity class, a predicate, or a pattern
+
 
 ## Phase 1: how the census decided the design
 
@@ -70,7 +66,7 @@ Each field's numbers then forced a decision:
 
 Only three nested fields got a deeper look: `tags[].name`, `resources[].format`, and `organization.title`. Digging into a nested field only pays off if it might contain values shared across records, since only shared values can become nodes, and these three are the only nested fields where that is possible. The other nested fields hold view counts (unique numbers per record) or are empty on every record, and `extras` was consciously deferred, as noted above. Within each of the three, we read the one inner key that names the thing (`name`, `format`, `title`) and skipped the keys that administer it (ids, states, sizes, timestamps).
 
-Phase 1 collected the triples that can be read directly from the structured fields: no interpretation is needed, code just copies each field value into its triple. Phase 2 extracts triples from the natural-language prose in each record's `notes` field, which requires actually reading the text, so a language model does the reading and our code checks its output.
+Phase 1 collected the facts that can be read directly from the structured fields as triples: once again, no interpretation is needed so code just copies each field value directly. Phase 2 extracts triples from the natural-language prose in each record's `notes` and `title` fields, which requires actually reading the text, so a large language model processes this text and code checks its output.
 
 ## Phase 2: extracting facts from text (work in progress)
 
