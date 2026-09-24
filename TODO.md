@@ -23,7 +23,7 @@
        <record id> (CatalogEntry) DESCRIBES <title> (its class)
   - [ ] Consider properties, since we are moving in the direction of an LPG
   - [ ] Explore data.nasa.gov public-facing website for inspiration about entity classes to include and predicates, e.g. the filters a user can apply for a search
-  - [ ] It's possible other fields (free-text description or structured alike) might be useful to include as the text by which schema is induced...so far, we've used just 'title' and 'notes'
+  - [ ] It's possible other fields (free-text description or structured alike) might be useful to include as the text by which schema is induced...so far, we've used just `title` and `notes`
 
 - [ ] **Catalog cleaning.**
   - [ ] Enforce DCAT 3.0
