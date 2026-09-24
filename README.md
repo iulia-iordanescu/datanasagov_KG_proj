@@ -34,13 +34,20 @@ populated content of metadata field: value associated with a record's key
 
 component: one of the three named pieces of a triple, i.e. one of the following--- subject, object, predicate  
 
-component class: the class of a component in a particular schema
-entity class: a collective name for subject classes and object classes (in a schema, the role of an entity class is: either a subject or an object; strictly a subject; strictly an object)
-slot: where a component sits in a triple
-component instance: a value filling a slot, e.g. "Rosetta" might fill a subject or object slot, "is mounted on" might fill a predicate slot
-triple instance: a triple with all three slots filled
-schema: an object that describes the entity classes, the predicates, and the allowed relationships between predicates and entity classes. These allowed relationships between entity classes and predicates are what I call patterns.
-schema entry: an entity class, a predicate, or a pattern
+component class: the class of a component in a particular schema  
+
+entity class: a collective name for subject classes and object classes (in a schema, the role of an entity class is: either a subject or an object; strictly a subject; strictly an object)  
+
+slot: where a component sits in a triple  
+
+component instance: a value filling a slot, e.g. "Rosetta" might fill a subject or object slot, "is mounted on" might fill a predicate slot  
+
+triple instance: a triple with all three slots filled  
+
+schema: an object that describes the entity classes, the predicates, and the allowed relationships between predicates and entity classes. These allowed relationships between entity classes and predicates are what I call patterns.  
+
+schema entry: an entity class, a predicate, or a pattern  
+
 
 
 ## Phase 1: how the census decided the design
