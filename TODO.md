@@ -17,6 +17,10 @@
   - [ ] Stage 2 accepts junk and nothing filters it, e.g. the extractor produces "dataset" as a bare subject and reads "VNP43D66 is the BSA" as a type statement, accumulating real support for an unhelpful fact. There's no cheap filter currently, like a stoplist for generic subjects which would cost nothing and remove a known noise source.
   - [ ] We should enforce the following in our schema. Every record gets one structural triple that keeps a catalog entry separate from the thing it describes. The only piece code does not handle, i.e. the LLM's role, is deciding what type of thing the record is describing (a dataset, a publication, etc):
        <record id> (CatalogEntry) DESCRIBES <title> (its class)
+  - [ ] Consider properties, since we are moving in the direction of an LPG
+
 - [ ] **Catalog cleaning.**
   - [ ] Enforce DCAT 3.0
   - [ ] The README table says 434 Maintainer nodes, but phase 2 merges maintainer spellings down to 422. Phase 1, once we finish Phase 2, will need to be revisited to use the cleaning script used in Phase 2.
+- [ ] **Return to Phase 1.**
+  - [ ] Deeper dive into other existing metadata fields to yield more "trivial triples" (triples that come from structured metadata fields)...these might become properties!
