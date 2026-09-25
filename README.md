@@ -1,6 +1,9 @@
 # data.nasa.gov Knowledge Graph
 
 Fall 2026 Pathways internship project: building a knowledge graph (KG) for [data.nasa.gov](https://data.nasa.gov).
+
+## Pipeline overview using scripts  
+
 Phase 1 pipeline: nasa_harvest.py-->nasa_census.py  
 
 Phase 2 pipeline: nasa_harvest.py-->build_inputs.py + note_cleaning.py --> ground_truth_sampler.py --> (best_)induce_schema.py --> draft_ground_truth_triples.py --> extract_triples.py --> scorer.py --> load_into_graph_database.py  
