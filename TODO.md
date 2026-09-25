@@ -31,3 +31,4 @@
   - [ ] The README table says 434 Maintainer nodes, but phase 2 merges maintainer spellings down to 422. Phase 1, once we finish Phase 2, will need to be revisited to use the cleaning script used in Phase 2.
 - [ ] **Return to Phase 1.**
   - [ ] Deeper dive into other existing metadata fields to yield more "trivial triples" (triples that come from structured metadata fields)...these might become properties!
+- [ ] **!!! Sections in inputs.json are guessed from labels.** Each record's text is one string of "label: value" paragraphs, so scripts find a section by a paragraph starting with "<label>:". A paragraph inside notes that happens to start with another section's label (e.g. "author:") is mistaken for that section. Fix in build_inputs.py: store each section under its own key instead of one labelled string, then update every script that reads inputs.json. Only matters once sections beyond title and notes are added.
