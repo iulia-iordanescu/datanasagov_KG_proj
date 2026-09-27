@@ -1,0 +1,6 @@
+SUBJECT	RELATIONSHIP	OBJECT
+Instrument	ABOARD	Spacecraft
+Instrument	MEASURES	PhysicalQuantity
+Dataset	HAS_MEASUREMENTS_OF	PhysicalQuantity
+Dataset	HAS_VERSION	Version
+Dataset	HAS_MISSION_PHASE	MissionPhase
