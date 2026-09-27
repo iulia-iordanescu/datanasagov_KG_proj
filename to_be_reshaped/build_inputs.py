@@ -5,19 +5,28 @@ collection_of_inputs (inputs.json) that the rest of the pipeline reads.
 
 WHO READS ITS OUTPUT
 --------------------
-    best_induce_schema.py    samples texts from it to induce the schema
-    extract_triples_for_kg.py  extracts triples following a schema from every text 
-    ground_truth_sampler.py  draws texts from it to be annotated by hand
+    best_induce_schema.py          samples texts to induce the schema
+    ground_truth_sampler.py        draws texts to be annotated by hand
+    draft_ground_truth_triples.py  drafts triples for them to correct
+    extract_triples_for_kg.py      extracts triples following a schema
+    validate_triples.py            checks triples against their texts
 
-All three load it with inputs_io.load_inputs(), so they see the same ids. Changing the output shape ("id", "group", "text") or the section
-format ("name: value" blocks separated by blank lines) affects all of
-them: if you add a field with --fields, pass the same name to
-extract_triples_for_kg.py --sections.
+All of them load it with inputs_io.load_inputs(), so they see the same ids.
+Changing the output shape ("id", "group", "text") or the section format
+("name: value" blocks separated by blank lines) affects all of them.
 
-    py build_inputs.py data                      -> inputs.json
+The section labels it wrote are recorded in its report ("text_order"),
+which the drafter, the extractor and the validator read to split each
+text, so a field added with --fields (say author) needs no other option to
+be split out correctly. Pass --sections title notes author to them only if
+the model should see it.
+
+    py build_inputs.py data                      -> inputs.json,
+                                                    inputs_report.json
     py build_inputs.py data --fields notes title author
     py build_inputs.py data --text-order notes title
     py build_inputs.py data --out lite.json --max-records 200
+                                                 -> lite.json, lite_report.json
 
 WHAT IT DOES
 ------------
@@ -81,14 +90,15 @@ Decision and reasons:
 
 WHAT IT RECORDS
 ---------------
-Alongside the output it writes build_inputs_report.json: how many records
+Beside the output it writes <output name>_report.json (inputs.json ->
+inputs_report.json): the section labels written, how many records
 were read, skipped and written; how each field was cleaned, counted by
 method (parsed / conservative / source); and the ids of every field that
 needed a fallback method, so an odd triple downstream can be traced back to
 a value that was hard to clean. Nothing is decided silently.
 
-REQUIRES note_cleaning.py beside this file (or on the Python path).
-Standard library otherwise.
+REQUIRES note_cleaning.py (cleaning) and inputs_io.py (the default section
+order) beside this file, or on the Python path. Standard library otherwise.
 """
 
 from __future__ import annotations
@@ -102,13 +112,16 @@ from pathlib import Path
 
 try:
     from note_cleaning import DEFAULT_FIELDS, clean_record
-except ImportError:                                     # pragma: no cover
+    from inputs_io import SECTIONS, report_path
+except ImportError as exc:                              # pragma: no cover
     raise SystemExit(
-        "This script needs note_cleaning.py, which should sit in the same\n"
-        "folder. Copy it there, or add its folder to PYTHONPATH.")
+        f"This script needs note_cleaning.py and inputs_io.py, which should\n"
+        f"sit in the same folder. Copy them there, or add their folder to\n"
+        f"PYTHONPATH. ({exc})")
 
-#: Record key holding the community label. induce_schema samples by it;
-#: extract_triples only carries it through to its output. For this
+#: Record key holding the community label. best_induce_schema.py and
+#: ground_truth_sampler.py sample by it; the drafter, the extractor and the
+#: validator ignore it. For this
 #: catalog that is the maintainer; change it here if you regroup by
 #: organization, tag or anything else.
 GROUP_FIELD = "maintainer"
@@ -120,8 +133,9 @@ ID_FIELD = "id"
 #: question from WHICH fields are cleaned (--fields). Title first reads as
 #: context for the description that follows. Override with --text-order; a
 #: cleaned field not named there is appended afterwards, in --fields order,
-#: so adding a field can never silently drop it from the text.
-DEFAULT_TEXT_ORDER = ("title", "notes")
+#: so adding a field can never silently drop it from the text. The same
+#: sections the drafter and the extractor send by default (inputs_io.py).
+DEFAULT_TEXT_ORDER = SECTIONS
 
 #: Used when GROUP_FIELD is missing or blank. "undefined" is also a literal
 #: maintainer value in this catalog, so blanks join that bucket rather than
@@ -255,8 +269,8 @@ def build_text(cleaned, order: list[str]) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="Build inputs.json (read by best_induce_schema.py "
-                    "and extract_triples_for_kg.py) from harvested CKAN batches.")
+        description="Build inputs.json, which the rest of the pipeline "
+                    "reads, from harvested CKAN batches.")
     ap.add_argument("input", type=Path,
                     help="folder holding the batch files")
     ap.add_argument("--pattern", default="batch_*.json",
@@ -274,10 +288,6 @@ def main() -> None:
                          "cleaned field not named here is appended after")
     ap.add_argument("--out", type=Path, default=Path("inputs.json"),
                     help="output path (default: inputs.json)")
-    ap.add_argument("--report", type=Path,
-                    default=Path("build_inputs_report.json"),
-                    help="where the cleaning audit is written "
-                         "(default: build_inputs_report.json)")
     ap.add_argument("--keep-group-spellings", action="store_true",
                     help=f"do not join {GROUP_FIELD} spellings that differ "
                          f"only in case, punctuation, word order or titles")
@@ -285,6 +295,8 @@ def main() -> None:
                     help="stop after this many written records "
                          "(0 = no limit); useful for a quick trial run")
     args = ap.parse_args()
+    # Always beside the output: later scripts find it there by name.
+    args.report = report_path(args.out)
 
     if args.max_records < 0:
         sys.exit(f"--max-records must be >= 0 (got {args.max_records}).")
@@ -329,9 +341,10 @@ def main() -> None:
             continue
 
         if record_id in seen_ids:
-            # induce_schema counts DISTINCT ids, so a repeat would silently
-            # merge two records' evidence; extract_triples would likewise
-            # merge their triples, and scoring matches texts by id. It de-duplicates too, but the
+            # Every later step tells texts apart by id: best_induce_schema.py
+            # counts DISTINCT ids as evidence, the drafter and the extractor
+            # save triples under it, and scoring matches texts by it.
+            # inputs_io.load_inputs also guards against repeats, but the
             # problem belongs here, where the id is assigned.
             duplicate_ids += 1
             record_id = f"{record_id}#{duplicate_ids}"

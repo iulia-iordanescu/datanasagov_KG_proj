@@ -245,7 +245,7 @@
 #   (pip install requests python-dotenv)
 #
 #     1) py list_models.py                        -> list available models
-#     2) set MODEL below to that name
+#     2) set MODEL in llm_client.py to that name
 #     3) py build_inputs.py data                  -> inputs.json
 #     4) py induce_schema.py inputs.json
 #
@@ -260,14 +260,10 @@
 import argparse
 import hashlib
 import json
-import os
 import re
 import random
-import time
 import sys
 
-import requests
-from dotenv import load_dotenv
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -277,7 +273,13 @@ from pathlib import Path
 # with itself. Nothing else changed - the function is the same code.
 from inputs_io import load_inputs
 
-MODEL = "google-claude-sonnet-5"      # for full list of options, run list_models.py
+# The Ask Sage client used to live here. It now sits in llm_client.py, so
+# every script that calls a model shares one client. Nothing else changed:
+# the functions are the same code, and MODEL keeps its value, so cached
+# stages stay valid. MODEL is read as llm.MODEL, never copied, so an
+# override made in llm_client is the one used everywhere.
+import llm_client as llm
+from llm_client import _as_dict, _as_list, call_llm, call_llm_json, fence_safe
 
 # Bump whenever the SHAPE of a cached stage result changes. _sig folds this
 # in, so a cache written under an older layout is recomputed instead of being
@@ -307,166 +309,6 @@ SYNONYM_BATCH = 120
 # so this bounds reply length the same way SYNONYM_BATCH does for stage 4.
 ASSEMBLE_BATCH = 40
 
-USER_BASE = "https://api.asksage.ai.nasa.gov/user"
-SERVER_BASE = "https://api.asksage.ai.nasa.gov/server"
-_token_cache = {}
-
-
-def _asksage_token():
-    if "token" not in _token_cache:
-        load_dotenv()
-        email, key = os.getenv("ASKSAGE_EMAIL"), os.getenv("ASKSAGE_API_KEY")
-        if not (email and key):
-            sys.exit("Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).")
-        login = requests.post(f"{USER_BASE}/get-token-with-api-key",
-                              json={"email": email, "api_key": key},
-                              timeout=(5, 60))
-        login.raise_for_status()
-        payload = login.json()["response"]
-        _token_cache["token"] = (payload["access_token"]
-                                 if isinstance(payload, dict) else payload)
-    return _token_cache["token"]
-
-# ------------------------------ LLM plumbing -------------------------------
-
-def _as_list(v):
-    """Model output shape guard. call_llm_json guarantees the TOP level is an
-    object, but nothing guarantees the type of a field inside it: a model can
-    answer {"triples": {...}} or {"entities": [...]}. Iterating the wrong type
-    raises AttributeError deep in a loop, so every field read from a reply is
-    coerced here and a wrong shape degrades to empty rather than crashing."""
-    return v if isinstance(v, list) else []
-
-
-def _as_dict(v):
-    return v if isinstance(v, dict) else {}
-
-
-class BadReply(ValueError):
-    """A reply that arrived but is not usable as the JSON object we asked
-    for. Kept separate from a transport error so it retries the PROMPT
-    rather than the connection."""
-
-
-class ApiError(Exception):
-    """The gateway accepted the request and answered HTTP 200, but the body
-    carries an error object instead of a completion.
-
-    Deliberately NOT in call_llm's retry tuple. The observed cases are
-    permission and validation failures (e.g. code "model_not_permitted",
-    http_status 400), which will fail identically on every retry; retrying
-    would burn four calls and then report the same thing. Only a 429 or a
-    5xx inside the body is worth another attempt, and that case is converted
-    to RuntimeError below so the normal backoff handles it."""
-
-
-def call_llm(prompt, attempts=4, read_timeout=180):
-    """Ask Sage gateway. Retries with exponential backoff on rate limits and
-    transient server errors.
-
-    dataset/limit_references are set deliberately. Per the Ask Sage API docs
-    dataset defaults to 'all' and limit_references defaults to None, meaning
-    every call retrieves from the tenant's datasets and prepends the results.
-    That is wrong here twice over: the extraction prompt orders the model to
-    use nothing but the text in front of it, and retrieved references are
-    billed input tokens on all N calls. There is no max-tokens parameter on
-    this endpoint, so output length cannot be capped from here."""
-    for attempt in range(attempts):
-        try:
-            # Fetched inside the loop, not once before it: a 401 clears the
-            # cache below, and the next attempt must log in again.
-            resp = requests.post(f"{SERVER_BASE}/query",
-                                 headers={"x-access-tokens": _asksage_token()},
-                                 json={"message": prompt, "model": MODEL,
-                                       "temperature": 0,
-                                       "dataset": "none",
-                                       "limit_references": 0},
-                                 timeout=(5, read_timeout))
-            if resp.status_code == 401:
-                # The token is cached for the whole run, so one expiry would
-                # otherwise fail every remaining call - and each failure still
-                # costs a request. Drop it and log in again on the next try.
-                _token_cache.pop("token", None)
-                raise RuntimeError("HTTP 401 - token dropped, will re-login")
-            if resp.status_code in (429, 500, 502, 503, 504):
-                raise RuntimeError(f"HTTP {resp.status_code}")
-            resp.raise_for_status()
-            body = resp.json()
-            # Ask Sage answers HTTP 200 with status 200 even when the request
-            # was refused, putting the real outcome in an "error" object and
-            # an apology in "message". Observed shape:
-            #   {"status": 200,
-            #    "error": {"code": "model_not_permitted", "http_status": 400,
-            #              "requested_model": "..."},
-            #    "message": "Sorry, this model is not authorized ..."}
-            # Without this check the apology reaches the JSON parser and the
-            # call fails as "Expecting value: line 1 column 1" - once per
-            # text, with nothing naming the real cause.
-            body = body if isinstance(body, dict) else {}
-            err = body.get("error")
-            if isinstance(err, dict) and (err.get("code")
-                                          or err.get("http_status")):
-                code = err.get("code") or "error"
-                inner = err.get("http_status")
-                detail = f"{code} (http_status {inner}): {body.get('message')}"
-                if inner in (429, 500, 502, 503, 504):
-                    raise RuntimeError(detail)      # worth retrying
-                raise ApiError(detail)              # will not fix itself
-            # A numeric top-level status of 400 or more is also a refusal.
-            status = body.get("status")
-            if isinstance(status, (int, str)) and str(status).isdigit() \
-                    and int(status) >= 400:
-                raise RuntimeError(f"API status {status}: "
-                                   f"{str(body.get('message'))[:200]}")
-            # .get("message") can be absent OR present-and-null; either way
-            # callers must never receive None and call .strip() on it.
-            return (body or {}).get("message") or ""
-        except (RuntimeError, ValueError,
-                requests.ConnectionError, requests.Timeout) as e:
-            if attempt == attempts - 1:
-                raise
-            wait = 2 ** attempt * 5          # 5s, 10s, 20s
-            print(f"    transient API error ({e}), retrying in {wait}s...")
-            time.sleep(wait)
-
-
-def _best_effort_json(text):
-    """Parse JSON from model output: strip fences, else take the largest
-    {...} substring (models sometimes wrap JSON in prose)."""
-    cleaned = re.sub(r"^```(json)?|```$", "", text.strip(),
-                     flags=re.MULTILINE).strip()
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        start, end = cleaned.find("{"), cleaned.rfind("}")
-        if start != -1 and end > start:
-            return json.loads(cleaned[start:end + 1])   # may raise; caller handles
-        raise
-
-
-def call_llm_json(prompt, retries=1, read_timeout=180):
-    """Return the JSON OBJECT the prompt asked for, or raise.
-
-    Every caller immediately does .get() on the result, so a reply that
-    parses into a list, a string or a number is as useless as one that does
-    not parse at all - and used to surface three frames away as an opaque
-    AttributeError. Both failures are treated the same way here: re-ask once
-    with a correction, then give up."""
-    for attempt in range(retries + 1):
-        try:
-            data = _best_effort_json(call_llm(prompt, read_timeout=read_timeout))
-            if not isinstance(data, dict):
-                raise BadReply(f"expected a JSON object, got "
-                               f"{type(data).__name__}")
-            return data
-        except (json.JSONDecodeError, BadReply) as e:
-            if attempt == retries:
-                raise
-            print(f"    unusable reply ({e}); re-asking once")
-            prompt += ("\n\nYour last reply was not a valid JSON object. "
-                       "Return ONLY the JSON object, no fences, no prose.")
-
-
 # ------------------------------ stage cache --------------------------------
 #
 # Stages 3, 4 and 6 are one-or-few calls each and cache as a unit here: the
@@ -485,7 +327,7 @@ def _sig(*parts):
     prompt - a wrong run that looks like a clean one. The cost is that
     editing a prompt's whitespace also invalidates it; that is the right way
     to be wrong."""
-    blob = json.dumps([MODEL, CACHE_VERSION, *parts], sort_keys=True,
+    blob = json.dumps([llm.MODEL, CACHE_VERSION, *parts], sort_keys=True,
                       default=str, ensure_ascii=False)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 
@@ -569,7 +411,7 @@ def _fence_safe(text):
     """A delimiter only delimits if the data cannot contain it. Defang any
     literal fence in the text so a record can never close the block early
     and have its remainder read as instructions."""
-    return text.replace("----- END TEXT -----", "- - - - - END TEXT - - - - -")
+    return fence_safe(text, "----- END TEXT -----")
 
 def extract(sampled, max_chars, cache_path=None, signature=None):
     """Extract triples, caching PER TEXT rather than per stage.
@@ -1751,10 +1593,11 @@ def main():
     print("Stage 0: preflight call...")
     try:
         probe = call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
-        print(f"  OK ({MODEL}): {probe[:60]!r}")
+        print(f"  OK ({llm.MODEL}): {probe[:60]!r}")
     except Exception as e:
-        sys.exit(f"Preflight call to {MODEL} failed: {e}\n"
-                 f"Check MODEL (run list_models.py) and the .env credentials "
+        sys.exit(f"Preflight call to {llm.MODEL} failed: {e}\n"
+                 f"Check MODEL in llm_client.py (run list_models.py) and the "
+                 f".env credentials "
                  f"before spending a full run.")
 
     print("Stage 2: schema-free extraction (LLM)...")
@@ -1838,7 +1681,7 @@ def main():
     Path("the_schema.json").write_text(json.dumps(schema, indent=2),
                                        encoding="utf-8")
     Path("induction_evidence.json").write_text(json.dumps(
-        {"run": {"model": MODEL, "cache_version": CACHE_VERSION,
+        {"run": {"model": llm.MODEL, "cache_version": CACHE_VERSION,
                  "args": vars(args), "groups_present": groups_present,
                  "groups_sampled": groups_sampled, "sampled": len(sampled),
                  "evidence_n": evidence_n},

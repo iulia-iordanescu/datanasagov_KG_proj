@@ -1,0 +1,264 @@
+36289 notes scanned
+
+A. NAMED TERMS, ranked by how many notes mention them (top 80)
+term                                     notes     %
+Science                                    6473   17.8%
+Rosetta                                    5708   15.7%
+NASA                                       5239   14.4%
+Global                                     4977   13.7%
+Radio                                      4328   11.9%
+Radio Science                              3953   10.9%
+Earth                                      3406    9.4%
+System                                     3190    8.8%
+67P                                        3081    8.5%
+Gravity                                    3073    8.5%
+Space                                      2838    7.8%
+Global Gravity                             2835    7.8%
+ESCORT                                     2757    7.6%
+COMET                                      2604    7.2%
+COMET ESCORT                               2582    7.1%
+Camera                                     2531    7.0%
+Imaging                                    2525    7.0%
+CODMAC                                     2503    6.9%
+10                                         2488    6.9%
+Rosetta Radio                              2442    6.7%
+Rosetta Radio Science                      2442    6.7%
+Center                                     2371    6.5%
+Experiment                                 2353    6.5%
+Angle                                      2267    6.2%
+30                                         2205    6.1%
+OSIRIS                                     2194    6.0%
+October                                    2185    6.0%
+National                                   2181    6.0%
+Infrared                                   2054    5.7%
+Mars                                       2003    5.5%
+Angle Camera                               1985    5.5%
+Land                                       1868    5.1%
+Research                                   1827    5.0%
+July                                       1785    4.9%
+16                                         1772    4.9%
+ROSETTA                                    1712    4.7%
+Resolution                                 1679    4.6%
+August                                     1664    4.6%
+20                                         1660    4.6%
+International                              1586    4.4%
+Quality                                    1557    4.3%
+Radiometer                                 1538    4.2%
+1969                                       1519    4.2%
+R1                                         1518    4.2%
+Satellite                                  1486    4.1%
+1969 R1                                    1481    4.1%
+15                                         1478    4.1%
+January                                    1454    4.0%
+2018                                       1451    4.0%
+Spectrometer                               1447    4.0%
+12                                         1424    3.9%
+V1                                         1405    3.9%
+Wide                                       1371    3.8%
+MODIS                                      1315    3.6%
+Solar                                      1295    3.6%
+Express                                    1286    3.5%
+Mars Express                               1281    3.5%
+Mission                                    1269    3.5%
+September                                  1257    3.5%
+February                                   1257    3.5%
+December                                   1218    3.4%
+Atmospheric                                1216    3.4%
+May                                        1212    3.3%
+Climate                                    1207    3.3%
+S                                          1205    3.3%
+Visible                                    1202    3.3%
+Radiation                                  1193    3.3%
+April                                      1178    3.2%
+June                                       1178    3.2%
+March                                      1169    3.2%
+Narrow                                     1155    3.2%
+Information                                1151    3.2%
+2014                                       1151    3.2%
+2016                                       1141    3.1%
+2015                                       1130    3.1%
+Surface                                    1128    3.1%
+11                                         1107    3.1%
+OSIRIS Narrow                              1104    3.0%
+Narrow Angle                               1097    3.0%
+Issues                                     1086    3.0%
+
+B. TOP 15 NAMED TERMS PER MAINTAINER (the 8 biggest)
+
+  Earthdata Forum  (10649 records)
+    NASA                                   2680
+    Earth                                  1931
+    System                                 1784
+    Imaging                                1664
+    Global                                 1559
+    Quality                                1451
+    Research                               1422
+    National                               1388
+    Infrared                               1337
+    Land                                   1318
+    Radiometer                             1259
+    Experiment                             1227
+    MODIS                                  1097
+    30                                     1091
+    16                                     1083
+
+  Thomas Morgan  (9595 records)
+    Rosetta                                2967
+    Science                                1931
+    Radio                                  1792
+    Radio Science                          1682
+    67P                                    1588
+    Gravity                                1474
+    Global                                 1417
+    ESCORT                                 1392
+    Global Gravity                         1350
+    COMET                                  1335
+    CODMAC                                 1323
+    COMET ESCORT                           1316
+    Camera                                 1224
+    Rosetta Radio                          1221
+    Rosetta Radio Science                  1221
+
+  Planetary Data System  (6214 records)
+    Rosetta                                2741
+    Science                                2395
+    Radio                                  2326
+    Radio Science                          2266
+    Gravity                                1556
+    Global                                 1515
+    67P                                    1493
+    Global Gravity                         1485
+    ESCORT                                 1365
+    COMET                                  1269
+    COMET ESCORT                           1266
+    Mars                                   1229
+    Rosetta Radio                          1221
+    Rosetta Radio Science                  1221
+    CODMAC                                 1180
+
+  NASA Space Physics Data Facility  (3082 records)
+    Space                                   749
+    Science                                 737
+    J                                       719
+    10                                      683
+    30                                      596
+    Center                                  549
+    Time                                    523
+    20                                      522
+    CDF                                     499
+    Mission                                 487
+    NASA                                    485
+    Radiation                               475
+    National                                471
+    Solar                                   465
+    90                                      465
+
+  undefined  (989 records)
+    Earth                                   257
+    International                           206
+    Center                                  200
+    Ocean                                   199
+    Information                             189
+    Science                                 179
+    Global                                  176
+    Network                                 174
+    University                              172
+    Earth Science                           172
+    CIESIN                                  167
+    International Earth                     166
+    Network CIESIN                          165
+    International Earth Science             165
+    Information Network CIESIN              165
+
+  HEASARC Help Desk  (976 records)
+    NASA                                    974
+    HEASARC                                 974
+    NASA HEASARC                            974
+    CDS                                     547
+    X-ray                                   543
+    Catalog                                 503
+    Survey                                  325
+    CDS Catalog                             312
+    Table                                   259
+    Chandra                                 238
+    10                                      218
+    Telescope                               188
+    Galactic                                185
+    Observatory                             153
+    April                                   152
+
+  NSIDC Services  (653 records)
+    Active                                  130
+    Passive                                 129
+    Moisture                                127
+    Soil                                    125
+    Soil Moisture                           125
+    Moisture Active Passive                 117
+    Active Passive                          117
+    Moisture Active                         117
+    Soil Moisture Active                    115
+    NASA                                    113
+    Ice                                      98
+    Level-3                                  95
+    Earth                                    91
+    System                                   85
+    Grid                                     84
+
+  IRSA Support  (419 records)
+    Spitzer                                 228
+    IRAC                                    198
+    Survey                                  167
+    Legacy                                  111
+    MIPS                                    104
+    Telescope                               102
+    Space                                    94
+    Space Telescope                          92
+    Spitzer Space Telescope                  88
+    Spitzer Space                            88
+    Catalog                                  87
+    Extragalactic                            87
+    24                                       75
+    Source                                   71
+    2MASS                                    66
+
+C. WORDS THAT SIT NEXT TO THE TOP 40 TERMS (hints for labels)
+  Science                        radio (3963), set (3573), collected (3524), rosetta (2442), mars (1135), express (1081)
+  Rosetta                        radio (2442), science (2442), during (1729), spacecraft (1677), camera (1513), mission (896)
+  NASA                           provided (1018), service (975), heasarc (974), aircraft (803), space (573), between (483)
+  Global                         measurement (2945), gravity (2835), survey (590), system (456), observations (239), satellite (231)
+  Radio                          science (3963), set (3537), rosetta (2442), mars (1084), express (1081), cassini (364)
+  Radio Science                  
+  Earth                          system (1462), observing (937), eos (705), science (495), radiation (291), nasa (277)
+  System                         earth (1385), observing (949), satellite (796), eos (648), global (551), planetary (414)
+  67P                            comet (2905), covers (2442), covering (344), period (344), vicinity (95), escort (45)
+  Gravity                        measurement (2844), global (2835), covers (402), science (321), radio (167), experiment (162)
+  Space                          center (813), station (655), international (644), nasa (560), science (549), et (534)
+  Global Gravity                 
+  ESCORT                         phase (2605), comet (2590), during (2486), mission (679), period (60), rosetta (22)
+  COMET                          escort (2590), during (2490), phase (1950), collected (1694), mission (596), spacecraft (524)
+  COMET ESCORT                   
+  Camera                         angle (2162), osiris (2094), rosetta (1565), wide (1245), narrow (1097), during (654)
+  Imaging                        spectroradiometer (939), infrared (926), radiometer (911), visible (844), modis (733), suite (728)
+  CODMAC                         contains (507), set (293), calibrated (111), experiment (104), edited (98), derived (98)
+  10                             will (376), barrel (373), release (206), km (180), albedo (120), orbits (115)
+  Rosetta Radio                  
+  Rosetta Radio Science          
+  Center                         space (812), research (621), nasa (437), located (392), esrange (373), kiruna (373)
+  Experiment                     raw (268), radiation (265), science (237), earth (214), budget (206), record (200)
+  Angle                          camera (2162), osiris (2094), narrow (1097), wide (1070), during (585), pitch (87)
+  30                             second (589), arc (588), about (411), altitudes (373), barrel (373), modis (136)
+  OSIRIS                         acquired (2154), angle (2094), camera (2094), narrow (1104), wide (1074), anglecamera (84)
+  October                        external (1045), after (808), corrected (673), july (304), through (213), satellite (136)
+  National                       suomi (898), polar-orbiting (610), partnership (605), south (385), located (382), african (376)
+  Infrared                       radiometer (1026), visible (944), imaging (913), suite (805), npp (273), suomi (269)
+  Mars                           express (1292), science (1135), radio (1085), exploration (173), rover (160), contains (148)
+  Angle Camera                   
+  Land                           assessment (883), quality (877), surface (330), temperature (164), global (106), cover (100)
+  Research                       center (621), nasa (428), langley (231), analysis (193), retrospective (188), applications (188)
+  July                           after (317), october (304), decommissioned (271), through (174), june (163), august (127)
+  16                             days (613), using (555), produced (552), daily (552), terra (154), consecutive (142)
+  ROSETTA                        during (1151), extension (825), mission (502), instrument (489), orbiter (425), spacecraft (396)
+  Resolution                     moderate (630), imaging (627), modis (589), spectroradiometer (584), high (513), time (312)
+  August                         during (823), occurred (771), flights (377), over (375), barrel (373), summing (373)
+  20                             approximately (400), small (380), kg (373), stratospheric (373), balloons (373), second (112)
+  International                  space (646), station (597), iss (416), center (259), information (253), earth (252)
