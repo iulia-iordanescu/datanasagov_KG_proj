@@ -9,7 +9,8 @@ returned the record, or a file kept in Git (annotations/), made by a person.
 Each hop shows the run that made it, with that run's report and log.
 
 A step's output files are the ones its _manifest.json lists. An item is
-found by its key (the "id" field, e.g. a CKAN record id) or by its position
+found by its key (its "id", e.g. a CKAN record id, else its "name", e.g. a
+schema class) or by its position
 in the file, counting from 0. A JSON file holding several lists, each under
 its own name ({"<name>": {"records": [...]}}), is searched in all of them.
 """
@@ -22,7 +23,13 @@ from pathlib import Path
 from common.audit import ORIGIN_COLUMN, ORIGIN_FIELD, ref_path, sha256
 from common.step import LOGS_DIR, MANIFEST_NAME, REPORTS_DIR, RESULTS_DIR, ROOT
 
-KEY_FIELD = "id"            # the field that names an item, in every step's output
+#: The fields that name an item, in order: a record's or triple's "id", else a
+#: schema entry's "name".
+KEY_FIELDS = ("id", "name")
+
+
+def _key(item: dict):
+    return next((item[k] for k in KEY_FIELDS if item.get(k) is not None), None)
 
 _items_cache, _hash_cache = {}, {}
 
@@ -68,11 +75,14 @@ def _read(path: Path):
             items = data["records"]
             header = {k: v for k, v in data.items() if k != "records"}
         elif isinstance(data, dict):
-            # Several lists in one file, each under its own name, e.g. the two
-            # samples in 030's splits.json: {"<name>": {"records": [...]}, ...}
+            # Several lists in one file, each under its own name: the two lists
+            # of 030's splits.json ({"<name>": {"records": [...]}}) or the
+            # classes, predicates and patterns of 040's schema ({"<name>": [...]}).
             for value in data.values():
                 if isinstance(value, dict) and isinstance(value.get("records"), list):
                     items.extend(value["records"])
+                elif isinstance(value, list):
+                    items.extend(v for v in value if isinstance(v, dict))
         elif isinstance(data, list):
             items = data
     _items_cache[path] = (header, items)
@@ -84,7 +94,7 @@ def _locate(path: Path, fragment: str):
     else, for a fragment of digits, its position."""
     _, items = _read(path)
     for position, item in enumerate(items):
-        if str(item.get(KEY_FIELD)) == fragment:
+        if str(_key(item)) == fragment:
             return position, item
     if fragment.isdigit() and int(fragment) < len(items):
         return int(fragment), items[int(fragment)]
@@ -121,7 +131,7 @@ def find(key=None, step=None, file=None, position=None) -> list:
                 continue
             _, items = _read(path)
             for pos, item in enumerate(items):
-                if key is not None and str(item.get(KEY_FIELD)) != str(key):
+                if key is not None and str(_key(item)) != str(key):
                     continue
                 if position is not None and pos != position:
                     continue
@@ -169,7 +179,7 @@ def trace(step: str, path: Path, position: int, item: dict, depth: int = 0, out=
     pad = "    " * depth
     folder = path.parent
     header, _ = _read(path)
-    key = item.get(KEY_FIELD)
+    key = _key(item)
     out(f"{pad}{step}  {path.name}#{key if key is not None else position}"
         + (f"  (item {position})" if key is not None else ""))
 

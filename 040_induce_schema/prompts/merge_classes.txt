@@ -1,0 +1,17 @@
+Below are the labels given to things named in texts from a catalog of NASA
+datasets, each with the names that most often got it. Some labels may name
+the same kind of thing under different words (e.g. "Instrument" and
+"Sensor"). Find each set of labels that name the SAME kind of thing and merge
+the set into one of its labels, the clearest.
+
+Merge only true synonyms. Labels that are merely related are NOT synonyms
+(e.g. "Instrument" and "Spacecraft"), nor is a broader label and a narrower one
+(e.g. "Organization" and "University").
+
+Return ONLY JSON, no prose, listing only the merges; a label with no synonym
+is left out:
+{"merges": [{"into": "<one of the labels>", "labels": ["<label>", "<label>"]}]}
+Return {"merges": []} if no labels are synonyms.
+
+LABELS:
+$labels

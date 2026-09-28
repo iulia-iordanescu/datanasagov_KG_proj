@@ -1,0 +1,14 @@
+Below are classes of things named in texts from a catalog of NASA datasets:
+each is a kind of thing, with example names and the number of texts it was
+found in. For each class, write ONE sentence defining it, general enough to
+cover its examples.
+
+If a class is too vague to tell anything apart (e.g. "Thing", "Entity",
+"Item"), do not define it: list it under "too_vague" with a one-line reason.
+
+Return ONLY JSON, no prose; every class below must appear exactly once, in
+"definitions" or in "too_vague":
+{"definitions": {"<class>": "<one sentence>"}, "too_vague": {"<class>": "<reason>"}}
+
+CLASSES:
+$entries

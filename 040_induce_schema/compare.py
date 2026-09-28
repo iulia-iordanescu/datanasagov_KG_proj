@@ -1,0 +1,69 @@
+"""
+compare.py -- the induced schema beside the hand-built one, for the report.
+
+The hand-built schema (annotations/schema_derived_from_manual_annotation.txt,
+read by common/schema_io.py) was written by a person while annotating ground
+truth. Putting the two side by side is a quick sanity check on what the data
+taught the model: which classes, predicates and patterns both have, which
+only the hand-built one has, and which only the induced one has.
+
+It is not a score. Names are matched when they are equal once case, spaces,
+underscores and punctuation are ignored ("PhysicalQuantity" = "Physical
+Quantity"); a concept named differently in the two ("Instrument", "Sensor")
+counts as unmatched here. Measuring how much of the ground truth the induced
+schema can express, across different names, is 070's job.
+"""
+from __future__ import annotations
+
+import re
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def _side_by_side(hand: list, induced: list) -> dict:
+    """{"both": [(hand name, induced name)], "only_hand": [...], "only_induced": [...]}"""
+    by_norm = {_norm(n): n for n in induced}
+    both, only_hand = [], []
+    for name in hand:
+        match = by_norm.get(_norm(name))
+        (both.append((name, match)) if match else only_hand.append(name))
+    matched = {_norm(h) for h, _ in both}
+    return {"both": both, "only_hand": only_hand,
+            "only_induced": [n for n in induced if _norm(n) not in matched]}
+
+
+def compare(hand: dict, schema) -> dict:
+    pattern = lambda p: " ".join(p)                       # noqa: E731
+    return {
+        "classes": _side_by_side(list(hand["classes"]), [c["name"] for c in schema.classes]),
+        "predicates": _side_by_side(list(hand["predicates"]), [p["name"] for p in schema.predicates]),
+        "patterns": _side_by_side([pattern(p) for p in hand["patterns"]],
+                                  [pattern(p["pattern"]) for p in schema.patterns]),
+    }
+
+
+def report_lines(comparison: dict, hand_path: str, show: int) -> list:
+    lines = ["### Compared with the hand-built schema", "",
+             f"`{hand_path}`, written while annotating ground truth. Names match when equal "
+             f"ignoring case, spaces and punctuation; a concept named differently in the two "
+             f"counts as unmatched. A sanity check, not a score (070 scores the schema).", "",
+             "| | In both | Only hand-built | Only induced |", "|---|---:|---:|---:|"]
+    for kind in ("classes", "predicates", "patterns"):
+        c = comparison[kind]
+        lines.append(f"| {kind.capitalize()} | {len(c['both'])} | {len(c['only_hand'])} | "
+                     f"{len(c['only_induced'])} |")
+    lines.append("")
+    for kind in ("classes", "predicates", "patterns"):
+        c = comparison[kind]
+        lines.append(f"- **{kind.capitalize()} in both:** "
+                     + (", ".join(h if h == i else f"{h} = {i}" for h, i in c["both"]) or "none"))
+        lines.append(f"- **{kind.capitalize()} only in the hand-built schema:** "
+                     + (", ".join(c["only_hand"]) or "none"))
+        shown = c["only_induced"][:show]
+        lines.append(f"- **{kind.capitalize()} only in the induced schema:** "
+                     + (", ".join(shown) or "none")
+                     + (f" … ({len(c['only_induced']) - show:,} more)" if len(c["only_induced"]) > show else ""))
+    lines.append("")
+    return lines

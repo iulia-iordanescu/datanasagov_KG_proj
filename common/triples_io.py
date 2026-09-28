@@ -92,6 +92,8 @@ import re
 import unicodedata
 from pathlib import Path
 
+from common.text_match import norm_text
+
 FORMAT = "triples/v1"
 
 REQUIRED = ("subject", "predicate", "object")
@@ -103,26 +105,11 @@ COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
 RENAMED = {"evidence": "source_text"}
 MATCH_MODES = ("exact", "normalized", "schema")
 
-_QUOTES = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201c": '"',
-                         "\u201d": '"', "\u2013": "-", "\u2014": "-",
-                         "\u2212": "-"})
-_EDGE = " \t\n.,;:!?\"'()[]{}"
-#: Words dropped from the START of a name before comparing, so "the MODIS
-#: instrument" and "MODIS instrument" match. English only; set to () to
-#: turn this off, or add the equivalents for another language.
-LEADING_WORDS = ("the", "a", "an")
-
-
 # ------------------------------ normalisation ------------------------------
-
-def norm_text(s) -> str:
-    """Normalise an entity name (or any free text) for comparison."""
-    s = unicodedata.normalize("NFKC", str(s or "")).translate(_QUOTES)
-    s = re.sub(r"\s+", " ", s.casefold()).strip(_EDGE)
-    if LEADING_WORDS:
-        s = re.sub(r"^(?:%s)\s+" % "|".join(map(re.escape, LEADING_WORDS)),
-                   "", s)
-    return s
+#
+# norm_text (a name or free text, evened out for comparison) is defined once,
+# in common/text_match.py, and shared with the fact checks in
+# common/validate.py, so "the same name" means one thing everywhere.
 
 
 def norm_predicate(s) -> str:

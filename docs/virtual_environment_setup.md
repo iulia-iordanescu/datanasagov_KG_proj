@@ -1,12 +1,12 @@
 # Setting up a local virtual environment
 
-These steps create an isolated Python environment for every script in this repo. The environment is a `.myvenv` folder in the repo root. It holds its own Python and packages, so nothing you install here affects the rest of your machine.
+These instructions create an isolated Python environment for every script in this repo. The environment is a `.myvenv` folder in the repo root. It holds its own Python and packages, so nothing you install here affects the rest of your machine.
 
 The commands are for Windows PowerShell. Where Git Bash differs, the Bash version is shown too.
 
 ## Quick version
 
-If you've done this before, these are all the commands, run from the repo root. Each step below explains them.
+If you've done this before, these are all the commands, run from the repo root. Each part below explains them.
 
 ```powershell
 py -3.14 -m venv .myvenv
@@ -16,7 +16,7 @@ python -m pip install requests python-dotenv
 python -m pip freeze | Out-File -Encoding utf8 requirements.txt
 ```
 
-Then add `.myvenv/` to `.gitignore` (step 2), create the `.env` file (step 6) and run the checks (step 7).
+Then add `.myvenv/` to `.gitignore` (part 2), create the `.env` file (part 6) and run the checks (part 7).
 
 ## What the repo needs
 
@@ -26,7 +26,7 @@ Then add `.myvenv/` to `.gitignore` (step 2), create the `.env` file (step 6) an
 | Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `llm_client.py` and `list_models.py`. Everything else comes with Python |
 | Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a model need it |
 
-## Step 1: Check that Python 3.14 is installed
+## Part 1: Check that Python 3.14 is installed
 
 ```powershell
 py -0
@@ -38,7 +38,7 @@ If it's missing, download the latest 3.14 installer from [python.org](https://ww
 
 Why 3.14: it's the newest stable version, so it gets bug and security fixes the longest. Don't use a 3.15 pre-release (alpha, beta or release candidate).
 
-## Step 2: Create the environment
+## Part 2: Create the environment
 
 ```powershell
 cd C:\repos\datanasagov_KG_proj
@@ -57,7 +57,7 @@ Without it, Git lists the thousands of files inside `.myvenv` as new files, and 
 
 Don't rename the folder later. A virtual environment records its own location, so a renamed one stops working. To use a different name, delete the folder and create it again.
 
-## Step 3: Activate the environment
+## Part 3: Activate the environment
 
 PowerShell:
 
@@ -73,7 +73,7 @@ source .myvenv/Scripts/activate
 
 Your prompt now starts with `(.myvenv)`. That means `python` and `pip` refer to the environment instead of the system Python.
 
-Activation lasts only as long as that terminal window, so repeat this step each time you open a new terminal.
+Activation lasts only as long as that terminal window, so repeat this part each time you open a new terminal.
 
 **If PowerShell says "running scripts is disabled on this system":** run this once to allow local scripts for your Windows account, then run the activate command again.
 
@@ -81,7 +81,7 @@ Activation lasts only as long as that terminal window, so repeat this step each 
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-## Step 4: Install the packages
+## Part 4: Install the packages
 
 With the environment active:
 
@@ -92,7 +92,7 @@ python -m pip install requests python-dotenv
 
 The first line updates pip, Python's package installer. The second installs the two packages the repo needs.
 
-## Step 5: Save the package list to `requirements.txt`
+## Part 5: Save the package list to `requirements.txt`
 
 This records the exact package versions so the environment can be rebuilt the same way later.
 
@@ -110,15 +110,15 @@ python -m pip freeze > requirements.txt
 
 In Windows PowerShell, use `Out-File -Encoding utf8` rather than `>`. A plain `>` can save the file as UTF-16, which Git treats as a binary file.
 
-Commit `requirements.txt`. From then on, anyone setting up the repo, including you on another machine, replaces the second command in step 4 with:
+Commit `requirements.txt`. From then on, anyone setting up the repo, including you on another machine, replaces the second command in part 4 with:
 
 ```powershell
 python -m pip install -r requirements.txt
 ```
 
-## Step 6: Add your Ask Sage credentials
+## Part 6: Add your Ask Sage credentials
 
-Skip this step if you only need the harvest and audit steps.
+Skip this part if you only need the pipeline steps that call no model (010 to 030) and the audit tool.
 
 Create a file named `.env` in the repo root, containing these two lines with your own values:
 
@@ -129,11 +129,11 @@ ASKSAGE_API_KEY=your-key-here
 
 Don't add quotes or spaces around the `=`.
 
-`.gitignore` excludes `.env`, so your key stays on your machine. The scripts search for `.env` starting in their own folder and then in each folder above it, so they find it in the repo root.
+`.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-These scripts need the file: `best_induce_schema.py`, `draft_ground_truth_triples.py`, `extract_triples_for_kg.py` and `list_models.py`.
+The pipeline steps that call the model need the file: today step 040 (`040_induce_schema.py`); later 050 and 060. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
-## Step 7: Check the setup
+## Part 7: Check the setup
 
 With the environment active:
 
@@ -149,9 +149,9 @@ You should see:
 2. A path ending in `datanasagov_KG_proj\.myvenv\Scripts\python.exe`
 3. `packages OK`
 
-If the path points somewhere else, the environment isn't active. Go back to step 3.
+If the path points somewhere else, the environment isn't active. Go back to part 3.
 
-## Step 8: Run the scripts
+## Part 8: Run the scripts
 
 The usage examples in the scripts and in `instructions/` use `py`, for example `py audit.py <key>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
 
@@ -163,13 +163,9 @@ py 010_harvest.py --max_records 2000
 py audit.py <record id>
 ```
 
-**Scripts in `to_be_reshaped/`.** These read and write paths such as `data\` relative to the folder you're in, so run them from inside `to_be_reshaped`:
+Each step's guide in `instructions/` says how to run it. `docs/running_on_nasa_laptop.md` gives the order to run them in.
 
-```powershell
-cd to_be_reshaped
-py build_inputs.py data
-py list_models.py
-```
+**Scripts in `to_be_reshaped/`** are the earlier scripts, kept for reference while the pipeline steps replace them. They aren't run.
 
 ## Day-to-day use
 
@@ -177,7 +173,7 @@ py list_models.py
 |---|---|
 | Start work in a new terminal | `.\.myvenv\Scripts\Activate.ps1` from the repo root |
 | Leave the environment | `deactivate` |
-| Add a package | `python -m pip install <package>`, then repeat step 5 and commit `requirements.txt` |
+| Add a package | `python -m pip install <package>`, then repeat part 5 and commit `requirements.txt` |
 
 To rebuild the environment from scratch, for example after upgrading Python:
 

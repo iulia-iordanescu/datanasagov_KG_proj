@@ -1,0 +1,16 @@
+Give each predicate below one normalized predicate label in UPPER_SNAKE_CASE,
+naming the relation it expresses, read from subject to object (e.g. "is
+mounted on" -> "ABOARD", "provides measurements of" -> "MEASURES"). Judge each
+predicate by its usage example, not by the words alone. Keep the direction:
+"measures" and "is measured by" are different relations.
+
+These labels are already in use. Reuse one whenever it fits; coin a new label
+only when none of them does:
+$vocabulary
+
+Label EVERY predicate below, exactly one label each. Return ONLY JSON, no
+prose:
+{"labels": {"<predicate>": "<LABEL>"}}
+
+PREDICATES (each with one usage example, "subject -- predicate -- object"):
+$items

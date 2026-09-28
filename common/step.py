@@ -364,6 +364,10 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         run["status"], error = "failed", RunError(str(exc))
     except KeyboardInterrupt:
         run["status"], error = "interrupted", RunError("stopped with Ctrl+C", traceback.format_exc())
+    except SystemExit as exc:
+        # A helper that stops the run on purpose (e.g. the person declined the
+        # paid calls) must still leave a report and a log.
+        run["status"], error = "stopped", RunError(str(exc.code or "stopped"))
     except Exception as exc:  # noqa: BLE001 -- any failure must still produce a report
         run["status"], error = "failed", RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:
@@ -393,4 +397,4 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
     log.info(f"  log:    {run['log']}")
     audit.stop_log()
     if error:
-        sys.exit(130 if run["status"] == "interrupted" else 1)
+        sys.exit({"interrupted": 130, "stopped": 2}.get(run["status"], 1))

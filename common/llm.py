@@ -1,9 +1,12 @@
 """
 common/llm.py -- the one place a model is called.
 
-Moved unchanged from to_be_reshaped/llm_client.py. The script names below
-are those of the earlier scripts; the steps that replace them (040, 050,
-060) will import it as `from common import llm`.
+Moved from to_be_reshaped/llm_client.py, with three changes: retries and
+re-asks are logged through common.audit's log (so they reach the step's log
+file) instead of printed; PaidCalls (below) asks once before a run's first
+paid call and counts the calls. The script names below are those of the
+earlier scripts; the steps that replace them (040, 050, 060) import it as
+`from common import llm`.
 
 Every script that asks a model something imports it from here:
 
@@ -45,11 +48,14 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from dotenv import load_dotenv
+
+from common.audit import log
 
 #: The model every call uses. For the full list of options, run
 #: list_models.py. A script may override it (llm.MODEL = ...) before its
@@ -176,7 +182,7 @@ def call_llm(prompt, attempts=4, read_timeout=180):
             if attempt == attempts - 1:
                 raise
             wait = 2 ** attempt * 5          # 5s, 10s, 20s
-            print(f"    transient API error ({e}), retrying in {wait}s...")
+            log.warning(f"transient API error ({e}), retrying in {wait}s")
             time.sleep(wait)
 
 
@@ -212,7 +218,7 @@ def call_llm_json(prompt, retries=1, read_timeout=180):
         except (json.JSONDecodeError, BadReply) as e:
             if attempt == retries:
                 raise
-            print(f"    unusable reply ({e}); re-asking once")
+            log.warning(f"unusable reply ({e}); re-asking once")
             prompt += ("\n\nYour last reply was not a valid JSON object. "
                        "Return ONLY the JSON object, no fences, no prose.")
 
@@ -248,6 +254,43 @@ def start_paid_calls(calls: int, skip_confirm: bool = False) -> None:
     except Exception as e:                              # noqa: BLE001
         sys.exit(f"Test call to {MODEL} failed, so nothing else was "
                  f"called: {e}")
+
+
+class PaidCalls:
+    """Asks once, just before a run's first paid call, and counts the calls.
+
+    A stage calls start(plan) before it makes any call a cache couldn't
+    answer, and made_call() for each call. The first start() logs the plan,
+    asks the person to press Enter (unless confirm is False, for runs with
+    nobody at the keyboard), and makes one tiny test call, so a wrong model
+    name or key fails once here instead of once per text. A run whose every
+    answer comes from the cache never asks and never pays. Declining exits
+    the run having spent nothing."""
+
+    def __init__(self, confirm: bool):
+        self.confirm = confirm
+        self.started = False
+        self.made = 0                       # calls made by the stages
+        self.test_calls = 0                 # 1 once the run has started paying
+        self._lock = threading.Lock()
+
+    def start(self, plan: str) -> None:
+        if self.started:
+            return
+        log.info(plan)
+        log.info(f"model: {MODEL}")
+        if self.confirm:
+            confirm("Press Enter to start (1 test call first), anything else to cancel:")
+        try:
+            call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
+        except Exception as e:                              # noqa: BLE001
+            sys.exit(f"Test call to {MODEL} failed, so nothing else was called: {e}")
+        self.started = True
+        self.test_calls = 1
+
+    def made_call(self) -> None:
+        with self._lock:                    # stages may call from several threads
+            self.made += 1
 
 
 def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:

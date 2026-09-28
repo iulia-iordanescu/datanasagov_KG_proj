@@ -45,8 +45,8 @@ outputs/                              everything a run produces, gitignored
 |---|---|---|---|
 | `010_harvest` | Downloads every catalog record, page by page | the CKAN API | `batch_*.json`: one file per page, holding the raw records and the request that returned them |
 | `020_clean` | Turns HTML in text fields into plain text and checks that no word, number or URL is lost; joins spellings of the same maintainer; keeps each field under its own key | 010 | `records.jsonl` |
-| `030_split` | Sets two disjoint samples: the **ground truth candidates pool** (1,000 records, stratified by maintainer, shuffled so any first *k* is a fair sample) and the **induction sample** (from the largest maintainers). Write-once | 020, `annotations/ground_truth_candidates.csv` | `splits.json` |
-| `040_induce_schema` | LLM extracts facts with no schema, labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps entries above a threshold. LLM writes definitions; code rechecks every number | 020, 030 | `the_schema.json`, `induction_evidence.json` |
+| `030_split` | Sets two disjoint lists, each in a fixed random order so any first *k* is a fair sample and taking more later keeps what was taken: the **ground truth candidates pool** (1,000 records, stratified by maintainer) and the **induction candidates** (every other record with text, shuffled per maintainer). Write-once | 020, `annotations/ground_truth_candidates.csv` | `splits.json` |
+| `040_induce_schema` | Takes the first `texts_per_maintainer` induction candidates of each of the `induction_maintainers` largest maintainers. LLM extracts facts with no schema, each with the passage stating it; code leaves out any fact whose passage isn't in the text (the same checks as 050/060, in `common/`). LLM labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps every entry with that evidence; a cutoff setting (default 1: keep everything) decides which enter the schema, and is chosen later from 070's scores. LLM writes definitions; code rechecks every number. The report compares the result with the hand-built schema | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `the_schema.json`, `induction_evidence.json` |
 | `050_annotate` | LLM drafts triples for the next records in the ground truth candidates pool; a person corrects them into `annotations/` | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `drafted_triples.csv` |
 | `060_extract` | LLM extracts triples that follow the schema, from **every** record once the schema is final (until then, only from the records that have ground truth, to limit cost); code checks each one and keeps or removes it, with a reason | 020, 040 | `extracted_triples.csv`, `extracted_triples_removed.csv` |
 | `070_evaluate` | Precision and recall on the records of the ground truth candidates pool that a person has corrected, overall and per maintainer | `annotations/ground_truth_triples.csv`, 060 | `metrics.json`, per-record diff |
@@ -65,7 +65,7 @@ flowchart TD
     API[(data.nasa.gov API)] --> H[010 harvest]
     H --> C[020 clean]
     C --> S[030 split]
-    S -->|induction sample| I[040 induce_schema]
+    S -->|induction candidates| I[040 induce_schema]
     S -->|ground truth candidates pool| A[050 annotate]
     C -->|all records| E[060 extract]
     C --> I & A
@@ -102,15 +102,16 @@ INPUTS = {
 }
 
 SETTINGS = {
-    "texts_per_maintainer": 15,  # texts sampled from each maintainer
-    "min_support":          3,   # an entry must appear in this many texts to be kept
-    "synonym_rounds":       1,   # extra passes to catch synonyms split across batches
+    "induction_maintainers": 10,  # learn from this many of the largest maintainers
+    "texts_per_maintainer":  15,  # the first this-many induction candidates of each
+    "min_support":           1,   # an entry must appear in this many texts to enter the schema
+    "synonym_rounds":        1,   # extra passes to catch synonyms split across batches
 }
 
 induce = helpers("040_induce_schema")
 
 def main(inputs, settings, output):
-    texts  = induce.pick_texts(inputs, settings)       # the induction split
+    texts  = induce.pick_texts(inputs, settings)       # first 15 candidates of the 10 largest maintainers
     facts  = induce.extract_facts(texts)               # LLM: "MODIS is aboard Aqua"
     labels = induce.label_names(facts)                 # LLM: MODIS → Instrument
     labels = induce.merge_synonyms(labels, settings)   # LLM: Sensor = Instrument

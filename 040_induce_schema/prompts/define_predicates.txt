@@ -1,0 +1,14 @@
+Below are predicates, relations stated in texts from a catalog of NASA
+datasets, each read from subject to object, with example phrases and the
+number of texts it was found in. For each predicate, write ONE sentence
+defining the relation, saying what the subject and the object are.
+
+If a predicate is too vague to tell anything apart (e.g. "RELATED_TO",
+"HAS"), do not define it: list it under "too_vague" with a one-line reason.
+
+Return ONLY JSON, no prose; every predicate below must appear exactly once,
+in "definitions" or in "too_vague":
+{"definitions": {"<PREDICATE>": "<one sentence>"}, "too_vague": {"<PREDICATE>": "<reason>"}}
+
+PREDICATES:
+$entries

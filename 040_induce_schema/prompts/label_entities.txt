@@ -1,0 +1,14 @@
+Give each name below one concept label: a short CamelCase noun for the KIND of
+thing it is (e.g. "Rosetta" -> "Spacecraft", "ozone" -> "PhysicalQuantity",
+"Goddard Space Flight Center" -> "Organization"). Judge each name by its usage
+example, not by the word alone.
+
+These labels are already in use. Reuse one whenever it fits; coin a new label
+only when none of them does:
+$vocabulary
+
+Label EVERY name below, exactly one label each. Return ONLY JSON, no prose:
+{"labels": {"<name>": "<Label>"}}
+
+NAMES (each with one usage example, "subject -- predicate -- object"):
+$items

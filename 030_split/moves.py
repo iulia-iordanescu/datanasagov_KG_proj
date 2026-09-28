@@ -5,11 +5,19 @@ moves.py -- the main moves of 030_split, as called by 030_split.py.
     ground_truth_candidates the ground truth candidates pool, read from
                             annotations/, in its order; ids no longer in the
                             catalog are dropped
-    induction_sample        texts_per_maintainer records from each of the
-                            induction_maintainers largest maintainers, never
-                            one from the pool, never one without text
-    check_disjoint          no record is in both samples
+    induction_candidates    for every maintainer, all its records that may be
+                            learned from (not in the pool, with text), in a
+                            fixed random order
+    check_disjoint          no record is in both
     results                 write splits.json, once; report numbers, warnings
+
+Both lists are ordered so that their first records are always a fair random
+sample: the pool was shuffled when it was drawn, and each maintainer's
+induction candidates are shuffled here. Later steps take from the top: 050
+annotates the pool in order; 040 learns the schema from the first
+texts_per_maintainer induction candidates of each of its largest maintainers.
+Taking more later (more texts, or more maintainers) keeps the records already
+taken, so model calls already paid for stay valid.
 
 splits.json, shortened:
 
@@ -17,19 +25,19 @@ splits.json, shortened:
         "records": [{"id": "3122be4c…", "position": 0, "maintainer": "Paul Gill",
                      "_origin": ["annotations/ground_truth_candidates.csv#3122be4c…",
                                  "020_clean/records.jsonl#3122be4c…"]}, …],
-        "dropped": [{"id": "d57e1e22…", "position": 412, "reason": "…"}]},
-     "induction_sample": {
-        "records": [{"id": "…", "maintainer": "Earthdata Forum",
-                     "_origin": ["020_clean/records.jsonl#…"]}, …],
-        "maintainers": [{"maintainer": "Earthdata Forum", "records": 10649,
-                         "eligible": 10356, "sampled": 15}, …]},
+        "dropped": [{"id": "d57e1e22…", "position": 946, "reason": "…"}]},
+     "induction_candidates": {
+        "maintainers": [{"maintainer": "Earthdata Forum", "rank": 1,
+                         "records": 10649, "eligible": 10356}, …],
+        "records": [{"id": "…", "maintainer": "Earthdata Forum", "position": 0,
+                     "_origin": ["020_clean/records.jsonl#…"]}, …]},
      "drawn": {"run_id": "030_split_…", "settings": {…}, "inputs": {…}}}
 
-WRITE-ONCE. The ground truth candidates pool is annotated in order, and the
-induction sample decides what the schema is learned from, so neither may
-change under work in progress. If splits.json already exists it is kept as
-it is; the run still draws, and warns if the new draw differs, which means
-the catalog or the pool file changed since.
+WRITE-ONCE. The pool is annotated in order, and the induction candidates'
+order decides what the schema is learned from, so neither may change under
+work in progress. If splits.json already exists it is kept as it is; the run
+still draws, and warns if the new draw differs, which means the catalog or the
+pool file changed since.
 """
 from __future__ import annotations
 
@@ -44,12 +52,12 @@ from pathlib import Path
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin
 from common.records_io import has_text, load_records as read_records
-from common.step import Results
+from common.step import Results, input_files
 
 OUTPUT_NAME = "splits.json"
-CANDIDATES = "ground_truth_candidates"      # the pool's name, in splits.json and messages
-INDUCTION = "induction_sample"
-SHOW = 20                                   # items listed in the report before "…"
+CANDIDATES = "ground_truth_candidates"      # the pool, in splits.json and messages
+INDUCTION = "induction_candidates"
+SHOW = 20                                   # rows listed in the report before "…"
 
 
 @dataclass
@@ -63,9 +71,10 @@ class Candidates:
 
 @dataclass
 class Induction:
-    records: list = field(default_factory=list)      # {"id", "maintainer", "_origin"}
-    maintainers: list = field(default_factory=list)  # {"maintainer", "records", "eligible", "sampled"}
-    catalog_share: float = 0.0                       # share of the catalog's records these maintainers hold
+    records: list = field(default_factory=list)      # {"id", "maintainer", "position", "_origin"}
+    maintainers: list = field(default_factory=list)  # {"maintainer", "rank", "records", "eligible"}
+    in_pool: int = 0                                 # records left out: ground truth candidates
+    without_text: int = 0                            # records left out: no title or notes
 
 
 # --------------------------------------------------------------------------
@@ -104,69 +113,66 @@ def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
     return pool
 
 
-def _check(settings: dict) -> None:
-    for name in ("texts_per_maintainer", "induction_maintainers"):
-        if settings[name] < 1:
-            raise ValueError(f"{name} must be at least 1 (got {settings[name]})")
-
-
-def induction_sample(records: dict, pool: Candidates, settings: dict) -> Induction:
-    _check(settings)
-    per, how_many = settings["texts_per_maintainer"], settings["induction_maintainers"]
-
-    # Largest maintainers by their records in the catalog; ties broken by
-    # name, so the choice never depends on the order of the file.
+def induction_candidates(records: dict, pool: Candidates, settings: dict) -> Induction:
+    # Maintainers ranked by their records in the catalog; ties broken by name,
+    # so the ranking never depends on the order of the file.
     size = collections.Counter(r["maintainer"] for r in records.values())
-    chosen = sorted(size, key=lambda m: (-size[m], m))[:how_many]
+    ranked = sorted(size, key=lambda m: (-size[m], m))
 
-    # Never a record of the pool (kept or dropped), never one with no text.
+    # Eligible: never a record of the pool (kept or dropped), never one with
+    # no title or notes, which gives the schema nothing to learn from.
     eligible = collections.defaultdict(list)
+    induction = Induction()
     for rid, r in records.items():
-        if r["maintainer"] in chosen and rid not in pool.pool_ids and has_text(r):
+        if rid in pool.pool_ids:
+            induction.in_pool += 1
+        elif not has_text(r):
+            induction.without_text += 1
+        else:
             eligible[r["maintainer"]].append(rid)
 
-    sample = Induction(catalog_share=sum(size[m] for m in chosen) / len(records))
-    rng = random.Random(settings["induction_seed"])
-    for m in chosen:
-        # Sorted ids: the same records and seed always give the same sample,
-        # whatever order the records file is in.
-        picked = rng.sample(sorted(eligible[m]), min(per, len(eligible[m])))
-        sample.records += [{"id": rid, "maintainer": m, ORIGIN_FIELD: [origin("records", rid)]}
-                           for rid in picked]
-        sample.maintainers.append({"maintainer": m, "records": size[m],
-                                   "eligible": len(eligible[m]), "sampled": len(picked)})
-    log.info(f"  {len(sample.records):,} induction texts from {len(chosen)} maintainers")
-    return sample
+    for rank, m in enumerate(ranked, 1):
+        # Each maintainer's order has its own random generator, seeded by the
+        # seed and the maintainer's name, so it never depends on any other
+        # maintainer. The ids are sorted first, so the same records and seed
+        # always give the same order, whatever the order of the file.
+        # random.sample returns its picks in selection order, "so that all
+        # sub-slices will also be valid random samples" (Python docs): the
+        # first k are a random sample of the maintainer for every k.
+        rng = random.Random(f"{settings['induction_seed']}/{m}")
+        order = rng.sample(sorted(eligible[m]), len(eligible[m]))
+        induction.records += [{"id": rid, "maintainer": m, "position": i,
+                               ORIGIN_FIELD: [origin("records", rid)]}
+                              for i, rid in enumerate(order)]
+        induction.maintainers.append({"maintainer": m, "rank": rank,
+                                      "records": size[m], "eligible": len(order)})
+    log.info(f"  {len(induction.records):,} induction candidates across {len(ranked):,} maintainers")
+    return induction
 
 
-def check_disjoint(pool: Candidates, sample: Induction) -> None:
-    shared = pool.pool_ids & {r["id"] for r in sample.records}
+def check_disjoint(pool: Candidates, induction: Induction) -> None:
+    shared = pool.pool_ids & {r["id"] for r in induction.records}
     if shared:
-        raise ValueError(f"{len(shared)} records are in both samples, e.g. {sorted(shared)[:3]}; "
-                         f"the induction sample must never contain a ground truth candidate")
+        raise ValueError(f"{len(shared)} records are both ground truth candidates and induction "
+                         f"candidates, e.g. {sorted(shared)[:3]}; the two must never overlap")
 
 
 # --------------------------------------------------------------------------
-
-def _listed(items: list) -> str:
-    shown = ", ".join(f"`{i}`" for i in items[:SHOW])
-    return shown + (f" … ({len(items) - SHOW:,} more)" if len(items) > SHOW else "")
-
 
 def _cell(value) -> str:
     return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
 
 
-def _samples(pool: Candidates, sample: Induction) -> dict:
-    """The part of splits.json that says which records are in each sample."""
+def _lists(pool: Candidates, induction: Induction) -> dict:
+    """The part of splits.json that says which records are in each list."""
     return {CANDIDATES: {"records": pool.records, "dropped": pool.dropped},
-            INDUCTION: {"records": sample.records, "maintainers": sample.maintainers}}
+            INDUCTION: {"maintainers": induction.maintainers, "records": induction.records}}
 
 
-def results(pool: Candidates, sample: Induction, inputs: dict, settings: dict,
+def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict,
             output: Path) -> Results:
     path = output / OUTPUT_NAME
-    drawn = _samples(pool, sample)
+    drawn = _lists(pool, induction)
     warnings = []
 
     kept, same = path.exists(), True
@@ -181,7 +187,6 @@ def results(pool: Candidates, sample: Induction, inputs: dict, settings: dict,
                             f"since it was written. Work in progress relies on the kept file; to "
                             f"replace it, delete it and rerun.")
     else:
-        from common.step import input_files
         document = {**drawn, "drawn": {
             "run_id": audit.current_run_id(), "settings": settings,
             "inputs": {name: audit.ref_path(input_files(Path(p))[0]) for name, p in inputs.items()}}}
@@ -192,20 +197,16 @@ def results(pool: Candidates, sample: Induction, inputs: dict, settings: dict,
         log.info(f"  wrote {OUTPUT_NAME}")
 
     if pool.dropped:
-        warnings.append(f"{len(pool.dropped)} ground truth candidate{'s are' if len(pool.dropped) != 1 else ' is'} "
-                        f"no longer in the catalog and {'were' if len(pool.dropped) != 1 else 'was'} dropped; "
-                        f"the others keep their positions. Listed in the report.")
+        n = len(pool.dropped)
+        warnings.append(f"{n} ground truth candidate{'s are' if n != 1 else ' is'} no longer in "
+                        f"the catalog and {'were' if n != 1 else 'was'} dropped; the others keep "
+                        f"their positions. Listed in the report.")
     if pool.renamed:
         warnings.append(f"{len(pool.renamed)} ground truth candidates have a different maintainer "
                         f"in 020's records than in the pool file (e.g. a spelling now joined "
                         f"differently); the records' maintainer is used. Listed in the report.")
-    short = [m for m in sample.maintainers if m["sampled"] < settings["texts_per_maintainer"]]
-    if short:
-        warnings.append(f"{len(short)} induction maintainer{'s have' if len(short) != 1 else ' has'} "
-                        f"fewer than {settings['texts_per_maintainer']} eligible records, so "
-                        f"{'they' if len(short) != 1 else 'it'} gave fewer: "
-                        f"{', '.join(m['maintainer'] for m in short)}.")
-    for items, what in ((pool.records, "ground truth candidates"), (sample.records, "induction texts")):
+    for items, what in ((pool.records, "ground truth candidates"),
+                        (induction.records, "induction candidates")):
         missing = check_origins(items, what)
         if missing:
             warnings.append(missing)
@@ -229,27 +230,36 @@ def results(pool: Candidates, sample: Induction, inputs: dict, settings: dict,
         lines += [f"| {d['position']} | {d['id']} | {d['reason']} |" for d in pool.dropped]
         lines.append("")
     if pool.renamed:
-        lines += ["Candidates whose maintainer changed:", "", "| Id | In the pool file | In 020's records |",
-                  "|---|---|---|"]
+        lines += ["Candidates whose maintainer changed:", "",
+                  "| Id | In the pool file | In 020's records |", "|---|---|---|"]
         lines += [f"| {r['id']} | {_cell(r['in_pool'])} | {_cell(r['now'])} |" for r in pool.renamed[:SHOW]]
         lines.append("")
     by_maintainer = collections.Counter(r["maintainer"] for r in pool.records).most_common(10)
     lines += ["Largest maintainers in the pool:", "", "| Maintainer | Candidates |", "|---|---:|"]
     lines += [f"| {_cell(m)} | {n:,} |" for m, n in by_maintainer]
+
+    total = len(induction.records) + induction.in_pool + induction.without_text
     lines += ["",
-              "### Induction sample", "",
-              f"{len(sample.records):,} records: up to {settings['texts_per_maintainer']} from each "
-              f"of the {settings['induction_maintainers']} largest maintainers, which hold "
-              f"{sample.catalog_share:.1%} of the catalog's records. *Eligible* excludes every "
-              f"ground truth candidate and every record without a title or notes.", "",
-              "| Maintainer | Records | Eligible | Sampled |", "|---|---:|---:|---:|"]
-    lines += [f"| {_cell(m['maintainer'])} | {m['records']:,} | {m['eligible']:,} | {m['sampled']} |"
-              for m in sample.maintainers]
-    lines += ["", f"Records in both samples: **0** (checked)."]
+              "### Induction candidates", "",
+              "Every maintainer's records that the schema may be learned from, each maintainer's "
+              "in a fixed random order. 040 takes the first `texts_per_maintainer` of each of its "
+              "`induction_maintainers` largest maintainers.", "",
+              "| | |", "|---|---:|",
+              f"| Records | {total:,} |",
+              f"| Left out: ground truth candidates | {induction.in_pool:,} |",
+              f"| Left out: no title or notes | {induction.without_text:,} |",
+              f"| **Induction candidates** | **{len(induction.records):,}** |",
+              f"| Maintainers | {len(induction.maintainers):,} |", "",
+              f"Largest maintainers (all {len(induction.maintainers):,} are in `{OUTPUT_NAME}`):", "",
+              "| Rank | Maintainer | Records | Induction candidates |", "|---:|---|---:|---:|"]
+    lines += [f"| {m['rank']} | {_cell(m['maintainer'])} | {m['records']:,} | {m['eligible']:,} |"
+              for m in induction.maintainers[:SHOW]]
+    lines += ["", "Records in both lists: **0** (checked)."]
 
     return Results(
         files=[path],
-        headline={"ground truth candidates": len(pool.records), "induction texts": len(sample.records)},
+        headline={"ground truth candidates": len(pool.records),
+                  "induction candidates": len(induction.records)},
         details="\n".join(lines),
         warnings=warnings,
     )
