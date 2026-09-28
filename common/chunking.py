@@ -6,8 +6,8 @@ short enough for one call each.
     for piece in pieces(record, max_chars=8000):
         ...                                   # one model call per piece
 
-A record's text is its text fields, each under its own label, in the order
-020 wrote them (title and notes, then any extra ones):
+A record's text is its chosen fields (title and notes, then any extra ones 020
+kept), joined in that order, each preceded by its field name:
 
     title: MODIS/Aqua Surface Reflectance
 
@@ -27,7 +27,7 @@ every step that sends records to a model (040, and later 050 and 060), so a
 long record is read the same way everywhere.
 
 Adapted from chunk_text in to_be_reshaped/inputs_io.py, which re-parsed the
-labels out of one string and cut the text into pieces without saying which
+field names out of one string and cut the text into pieces without saying which
 part a piece was.
 """
 from __future__ import annotations
@@ -51,7 +51,7 @@ def text_fields(record: dict) -> list:
 
 
 def full_text(record: dict) -> str:
-    """The record's whole text, each non-empty field under its label."""
+    """The record's whole text: each non-empty field, preceded by its field name."""
     return "\n\n".join(f"{name}: {record[name].strip()}" for name in text_fields(record)
                        if (record.get(name) or "").strip())
 
@@ -111,11 +111,11 @@ def pieces(record: dict, max_chars: int = MAX_CHARS) -> list:
     out = []
     for name in fields:
         value = record[name].strip()
-        # Room for the header, this field's label with "(part i of n)", and
+        # Room for the header, this field's name with "(part i of n)", and
         # the blank lines between them.
         budget = max_chars - len(header) - len(name) - 40
         parts = _parts(value, budget)
         for i, part in enumerate(parts, 1):
-            label = name if len(parts) == 1 else f"{name} (part {i} of {len(parts)})"
-            out.append("\n\n".join(x for x in (header, f"{label}: {part}") if x))
+            prefix = name if len(parts) == 1 else f"{name} (part {i} of {len(parts)})"
+            out.append("\n\n".join(x for x in (header, f"{prefix}: {part}") if x))
     return out

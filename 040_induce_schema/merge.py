@@ -1,24 +1,25 @@
 """
 merge.py -- stage 4: one last look at all the labels, to merge synonyms.
 
-Stage 3's running vocabulary prevents most synonyms, but a few can slip
-through (a label coined early, before its better-known synonym was in use).
-So the finished list of labels goes to the model in ONE call per kind (class
-labels, then predicate labels), each label with the names that most often got
-it (prompts/merge_classes.txt, merge_predicates.txt). Every label is seen
-beside every other, so no pair of synonyms is missed for being in different
-batches.
+Stage 3's running vocabulary prevents most synonymous labels, but a few can
+slip through (a label coined early, before its better-known synonym was in
+use). So the finished list of labels goes to the model in ONE call per kind
+(the labels of entity component instances, then the labels of predicate
+component instances), each label with the component instances that most
+often got it (prompts/merge_entity_classes.txt, merge_predicates.txt). Every
+label is seen beside every other, so no pair of synonyms is missed for being
+in different batches.
 
 The model lists only the merges it finds, {"into": "Instrument", "labels":
 ["Sensor", "Detector"]}, not every label, so its reply stays short however
 many labels there are.
 
 What code checks in the reply:
-  - "into" must be one of the labels sent (the model can't invent a name);
+  - "into" must be one of the labels sent (the model can't invent a label);
   - a label that wasn't sent is ignored;
   - a label merged into two different labels keeps the first;
   - chains (Sensor -> Detector, Detector -> Instrument) are followed to
-    their end, so each label maps straight to its final name.
+    their end, so each label maps straight to its final label.
 Every merge and every ignored item is listed in the report: a wrong merge
 (two different ideas made one) is the one mistake code can't catch, so it
 must be visible.
@@ -37,25 +38,26 @@ from cache import Cache, key
 from common import llm
 from common.audit import log
 from common.prompt_files import fill, load
+from label import KINDS
 
-PROMPTS = {"entities": load(Path(__file__).parent / "prompts" / "merge_classes.txt"),
-           "predicates": load(Path(__file__).parent / "prompts" / "merge_predicates.txt")}
+PROMPTS = {"entity": load(Path(__file__).parent / "prompts" / "merge_entity_classes.txt"),
+           "predicate": load(Path(__file__).parent / "prompts" / "merge_predicates.txt")}
 
 #: The most labels sent in one call. Each takes a few dozen characters with
-#: its example names, so this is far below what one call can read; the reply
-#: holds only the merges. Above it, the step stops (see the docstring).
+#: its example component instances, so this is far below what one call can
+#: read; the reply holds only the merges. Above it, the step stops.
 MAX_LABELS_ONE_CALL = 800
 
-#: Example names shown for each label.
+#: Example component instances shown for each label.
 EXAMPLES = 3
 
-#: What each kind of label is called in the report and the evidence file: the
-#: labels of entity names are class labels.
-KIND_NAME = {"entities": "classes", "predicates": "predicates"}
+#: What each kind of label becomes: the labels of entity component instances
+#: are entity classes; those of predicate component instances are predicates.
+BECOMES = {"entity": "entity class", "predicate": "predicate"}
 
 
 def _flatten(mapping: dict) -> dict:
-    """Follow chains so each label maps straight to its final name; a cycle
+    """Follow chains so each label maps straight to its final label; a cycle
     stops where it would repeat."""
     out = {}
     for label in mapping:
@@ -67,19 +69,19 @@ def _flatten(mapping: dict) -> dict:
     return out
 
 
-def merge_labels(labels, facts, calls):
+def merge_labels(labels, triples, calls):
     cache = Cache(calls.cache_dir, "merge")
     before = calls.paid.made
-    for kind in ("entities", "predicates"):
-        names_of = collections.defaultdict(collections.Counter)
-        texts_with = collections.defaultdict(set)
-        for t in facts.texts:
-            for f in t["triples"]:
-                for k2, name in (("entities", f["subject"]), ("entities", f["object"]),
-                                 ("predicates", f["predicate"])):
-                    if k2 == kind and name in labels.of[kind]:
-                        names_of[labels.of[kind][name]][name] += 1
-                        texts_with[labels.of[kind][name]].add(t["id"])
+    for kind in KINDS:
+        instances_of = collections.defaultdict(collections.Counter)   # {label: Counter of component instances}
+        texts_with = collections.defaultdict(set)                     # {label: text ids}
+        for t in triples.texts:
+            for ti in t["triple_instances"]:
+                for k2, value in (("entity", ti["subject"]), ("entity", ti["object"]),
+                                  ("predicate", ti["predicate"])):
+                    if k2 == kind and value in labels.of[kind]:
+                        instances_of[labels.of[kind][value]][value] += 1
+                        texts_with[labels.of[kind][value]].add(t["id"])
         sent = sorted(labels.vocabulary[kind])
         if len(sent) > MAX_LABELS_ONE_CALL:
             raise ValueError(f"{len(sent)} {kind} labels are more than one call takes "
@@ -90,7 +92,7 @@ def merge_labels(labels, facts, calls):
         mapping = {label: label for label in sent}
         if len(sent) > 1:
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
-                        "names": [n for n, _ in names_of[lbl].most_common(EXAMPLES)]} for lbl in sent]
+                        "examples": [v for v, _ in instances_of[lbl].most_common(EXAMPLES)]} for lbl in sent]
             k = key(PROMPTS[kind].template, kind, listing)
             reply = cache.get(k)
             if reply is None:
@@ -121,11 +123,12 @@ def merge_labels(labels, facts, calls):
             mapping = _flatten(mapping)
         for lbl, final in sorted(mapping.items()):
             if final != lbl:
-                labels.merges.append({"kind": KIND_NAME[kind], "label": lbl, "into": final,
-                                      "names": len(names_of[lbl]), "texts": len(texts_with[lbl])})
+                labels.merges.append({"kind": BECOMES[kind], "label": lbl, "into": final,
+                                      "component_instances": len(instances_of[lbl]),
+                                      "texts": len(texts_with[lbl])})
         labels.merged_into[kind] = mapping
         labels.merge_issues[kind] = issues
-        merged = sum(1 for m in labels.merges if m["kind"] == KIND_NAME[kind])
-        log.info(f"  {KIND_NAME[kind]}: {merged} of {len(sent)} labels merged into others")
+        merged = sum(1 for m in labels.merges if m["kind"] == BECOMES[kind])
+        log.info(f"  {BECOMES[kind]} labels: {merged} of {len(sent)} merged into others")
     labels.merge_calls = calls.paid.made - before
     return labels

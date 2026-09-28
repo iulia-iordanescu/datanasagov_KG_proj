@@ -1,16 +1,18 @@
 """
-define.py -- stage 6: one sentence defining each class and each predicate.
+define.py -- stage 6: one sentence defining each entity class and each
+predicate.
 
-Every class and predicate whose support reaches min_support is sent to the
-model, DEFINE_BATCH at a time, with its example names and support
-(prompts/define_classes.txt, define_predicates.txt). The model writes one
-sentence for each, or, for an entry too vague to tell anything apart
-("Thing", "RELATED_TO"), says so with a reason.
+Every entity class and predicate whose support reaches min_support is sent
+to the model, DEFINE_BATCH at a time, with its support (and, for an entity
+class, its example component instances) (prompts/define_entity_classes.txt,
+define_predicates.txt). The model writes one sentence for each, or, for a
+schema entry too vague to tell anything apart ("Thing", "RELATED_TO"), says
+so with a reason.
 
 This stage only writes words. It merges nothing (merging is stage 4's job,
 done once, over all labels at a time) and chooses nothing: the examples are
-picked by code, from the names that most often got each class (stage 5).
-Stage 7 checks what the model sent back.
+picked by code, from the component instances that most often got each
+entity class (stage 5). Stage 7 checks what the model sent back.
 
 Adapted from assemble() in to_be_reshaped/best_induce_schema.py, which also
 merged near-duplicates here, a second merge in batches of 40 where synonyms
@@ -27,32 +29,35 @@ from common import llm
 from common.audit import log
 from common.prompt_files import fill, load
 
-PROMPTS = {"classes": load(Path(__file__).parent / "prompts" / "define_classes.txt"),
+#: The two kinds of schema entry that get a definition.
+KINDS = ("entity_classes", "predicates")
+
+PROMPTS = {"entity_classes": load(Path(__file__).parent / "prompts" / "define_entity_classes.txt"),
            "predicates": load(Path(__file__).parent / "prompts" / "define_predicates.txt")}
 
-#: Entries per call. The reply holds one sentence per entry, so this bounds
-#: its length.
+#: Schema entries per call. The reply holds one sentence per entry, so this
+#: bounds its length.
 DEFINE_BATCH = 40
 
 
 @dataclass
 class Definitions:
-    of: dict = field(default_factory=dict)          # {"classes": {name: sentence}, "predicates": {...}}
-    too_vague: dict = field(default_factory=dict)   # {"classes": {name: reason}, ...}
-    unknown: list = field(default_factory=list)     # names in replies that weren't sent
-    calls: int = 0
+    of: dict = field(default_factory=dict)          # {"entity_classes": {name: sentence}, "predicates": {...}}
+    too_vague: dict = field(default_factory=dict)   # {"entity_classes": {name: reason}, ...}
+    unknown: list = field(default_factory=list)     # schema entries in replies that weren't sent
+    calls: int = 0                                  # model calls made by this stage
 
 
 def write_definitions(counts, settings: dict, calls) -> Definitions:
     cache = Cache(calls.cache_dir, "define")
     result = Definitions()
     before = calls.paid.made
-    for kind, entries in (("classes", counts.classes), ("predicates", counts.predicates)):
+    for kind in KINDS:
         result.of[kind], result.too_vague[kind] = {}, {}
-        wanted = [e for e in entries if e["support"] >= settings["min_support"]]
+        wanted = [e for e in getattr(counts, kind) if e["support"] >= settings["min_support"]]
         for start in range(0, len(wanted), DEFINE_BATCH):
             batch = [{"name": e["name"], "texts": e["support"],
-                      **({"examples": e["examples"]} if kind == "classes" else {})}
+                      **({"examples": e["examples"]} if kind == "entity_classes" else {})}
                      for e in wanted[start:start + DEFINE_BATCH]]
             k = key(PROMPTS[kind].template, kind, batch)
             reply = cache.get(k)
@@ -73,6 +78,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                     elif isinstance(text, str) and text.strip() and name not in result.of[kind] \
                             and name not in result.too_vague[kind]:
                         target[name] = " ".join(text.split())
-        log.info(f"  {kind}: {len(result.of[kind]):,} defined, {len(result.too_vague[kind])} too vague")
+        log.info(f"  {kind.replace('_', ' ')}: {len(result.of[kind]):,} defined, "
+                 f"{len(result.too_vague[kind])} too vague")
     result.calls = calls.paid.made - before
     return result

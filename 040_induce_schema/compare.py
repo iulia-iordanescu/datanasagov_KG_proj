@@ -4,8 +4,8 @@ compare.py -- the induced schema beside the hand-built one, for the report.
 The hand-built schema (annotations/schema_derived_from_manual_annotation.txt,
 read by common/schema_io.py) was written by a person while annotating ground
 truth. Putting the two side by side is a quick sanity check on what the data
-taught the model: which classes, predicates and patterns both have, which
-only the hand-built one has, and which only the induced one has.
+taught the model: which entity classes, predicates and patterns both have,
+which only the hand-built one has, and which only the induced one has.
 
 It is not a score. Names are matched when they are equal once case, spaces,
 underscores and punctuation are ignored ("PhysicalQuantity" = "Physical
@@ -37,7 +37,7 @@ def _side_by_side(hand: list, induced: list) -> dict:
 def compare(hand: dict, schema) -> dict:
     pattern = lambda p: " ".join(p)                       # noqa: E731
     return {
-        "classes": _side_by_side(list(hand["classes"]), [c["name"] for c in schema.classes]),
+        "entity_classes": _side_by_side(list(hand["entity_classes"]), [c["name"] for c in schema.entity_classes]),
         "predicates": _side_by_side(list(hand["predicates"]), [p["name"] for p in schema.predicates]),
         "patterns": _side_by_side([pattern(p) for p in hand["patterns"]],
                                   [pattern(p["pattern"]) for p in schema.patterns]),
@@ -50,19 +50,20 @@ def report_lines(comparison: dict, hand_path: str, show: int) -> list:
              f"ignoring case, spaces and punctuation; a concept named differently in the two "
              f"counts as unmatched. A sanity check, not a score (070 scores the schema).", "",
              "| | In both | Only hand-built | Only induced |", "|---|---:|---:|---:|"]
-    for kind in ("classes", "predicates", "patterns"):
+    for kind in ("entity_classes", "predicates", "patterns"):
         c = comparison[kind]
-        lines.append(f"| {kind.capitalize()} | {len(c['both'])} | {len(c['only_hand'])} | "
+        lines.append(f"| {kind.replace('_', ' ').capitalize()} | {len(c['both'])} | {len(c['only_hand'])} | "
                      f"{len(c['only_induced'])} |")
     lines.append("")
-    for kind in ("classes", "predicates", "patterns"):
+    for kind in ("entity_classes", "predicates", "patterns"):
         c = comparison[kind]
-        lines.append(f"- **{kind.capitalize()} in both:** "
+        what = kind.replace("_", " ").capitalize()
+        lines.append(f"- **{what} in both:** "
                      + (", ".join(h if h == i else f"{h} = {i}" for h, i in c["both"]) or "none"))
-        lines.append(f"- **{kind.capitalize()} only in the hand-built schema:** "
+        lines.append(f"- **{what} only in the hand-built schema:** "
                      + (", ".join(c["only_hand"]) or "none"))
         shown = c["only_induced"][:show]
-        lines.append(f"- **{kind.capitalize()} only in the induced schema:** "
+        lines.append(f"- **{what} only in the induced schema:** "
                      + (", ".join(shown) or "none")
                      + (f" … ({len(c['only_induced']) - show:,} more)" if len(c["only_induced"]) > show else ""))
     lines.append("")

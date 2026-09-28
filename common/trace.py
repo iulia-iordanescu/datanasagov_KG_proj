@@ -10,7 +10,7 @@ Each hop shows the run that made it, with that run's report and log.
 
 A step's output files are the ones its _manifest.json lists. An item is
 found by its key (its "id", e.g. a CKAN record id, else its "name", e.g. a
-schema class) or by its position
+schema entry such as an entity class) or by its position
 in the file, counting from 0. A JSON file holding several lists, each under
 its own name ({"<name>": {"records": [...]}}), is searched in all of them.
 """
@@ -77,7 +77,7 @@ def _read(path: Path):
         elif isinstance(data, dict):
             # Several lists in one file, each under its own name: the two lists
             # of 030's splits.json ({"<name>": {"records": [...]}}) or the
-            # classes, predicates and patterns of 040's schema ({"<name>": [...]}).
+            # entity classes, predicates and patterns of 040's schema ({"<name>": [...]}).
             for value in data.values():
                 if isinstance(value, dict) and isinstance(value.get("records"), list):
                     items.extend(value["records"])

@@ -21,15 +21,18 @@ Its layout:
     HAS_TIME_SPAN        covers the period
                          Dataset -> TimeSpan; MissionPhase -> TimeSpan
 
-An entry is a line starting with a name, followed by two or more spaces and
-its description. An indented line under a predicate lists the class pairs
-(subject -> object) it has been used with, separated by ";".
+A schema entry is a line starting with its name, followed by two or more
+spaces and its description. An indented line under a predicate lists the
+pairs of entity classes (subject -> object) it has been used with, separated
+by ";"; each pair is a pattern.
 
     from common.schema_io import read_hand_schema
     hand = read_hand_schema(path)
-    hand["classes"]      {"Instrument": "a device that takes measurements", …}
-    hand["predicates"]   {"ABOARD": "is carried on", …}
-    hand["patterns"]     [("Instrument", "ABOARD", "Spacecraft"), …]
+    hand["entity_classes"]  {"Instrument": "a device that takes measurements", …}
+    hand["predicates"]      {"ABOARD": "is carried on", …}
+    hand["patterns"]        [("Instrument", "ABOARD", "Spacecraft"), …]
+
+The file's CLASSES section holds entity classes.
 """
 from __future__ import annotations
 
@@ -41,12 +44,13 @@ PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
 
 
 def read_hand_schema(path) -> dict:
-    schema = {"classes": {}, "predicates": {}, "patterns": []}
+    schema = {"entity_classes": {}, "predicates": {}, "patterns": []}
+    sections = {"CLASSES": "entity_classes", "PREDICATES": "predicates"}
     section, predicate = None, None
     for line in Path(path).read_text(encoding="utf-8-sig").splitlines():
         head = line.strip()
-        if head in ("CLASSES", "PREDICATES"):
-            section, predicate = head.lower(), None
+        if head in sections:
+            section, predicate = sections[head], None
             continue
         if not head or set(head) == {"-"} or section is None:
             continue

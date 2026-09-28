@@ -78,7 +78,7 @@ Each step ends by printing where its report is (`outputs/reports/<run id>.md`). 
 
 Its first call is a one-line test that your key and the model name work, so a mistake costs one call, not hundreds.
 
-**Try a tiny run first.** This learns from 2 texts from each of 2 maintainers (4 texts, so about 4 calls to extract facts plus a few more to label, merge and define), which shows whether everything works and what a call costs:
+**Try a tiny run first.** This learns from 2 texts from each of 2 maintainers (4 texts, so about 4 model calls to extract triple instances plus a few more to label, merge and define), which shows whether everything works and what a call costs:
 
 ```powershell
 py 040_induce_schema.py --induction_maintainers 2 --texts_per_maintainer 2
@@ -106,7 +106,7 @@ The report's **Model calls** table counts each stage's calls exactly. Its **Merg
 
 ## 7. Tracing where something came from
 
-Any record, and later any fact or schema entry, can be traced back to the API request that first returned it:
+Any record, triple instance or schema entry can be traced back to the API request that first returned it:
 
 ```powershell
 py audit.py <record id>

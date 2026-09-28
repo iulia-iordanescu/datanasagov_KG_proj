@@ -46,11 +46,11 @@ outputs/                              everything a run produces, gitignored
 | `010_harvest` | Downloads every catalog record, page by page | the CKAN API | `batch_*.json`: one file per page, holding the raw records and the request that returned them |
 | `020_clean` | Turns HTML in text fields into plain text and checks that no word, number or URL is lost; joins spellings of the same maintainer; keeps each field under its own key | 010 | `records.jsonl` |
 | `030_split` | Sets two disjoint lists, each in a fixed random order so any first *k* is a fair sample and taking more later keeps what was taken: the **ground truth candidates pool** (1,000 records, stratified by maintainer) and the **induction candidates** (every other record with text, shuffled per maintainer). Write-once | 020, `annotations/ground_truth_candidates.csv` | `splits.json` |
-| `040_induce_schema` | Takes the first `texts_per_maintainer` induction candidates of each of the `induction_maintainers` largest maintainers. LLM extracts facts with no schema, each with the passage stating it; code leaves out any fact whose passage isn't in the text (the same checks as 050/060, in `common/`). LLM labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps every entry with that evidence; a cutoff setting (default 1: keep everything) decides which enter the schema, and is chosen later from 070's scores. LLM writes definitions; code rechecks every number. The report compares the result with the hand-built schema | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `the_schema.json`, `induction_evidence.json` |
+| `040_induce_schema` | Takes the first `texts_per_maintainer` induction candidates of each of the `induction_maintainers` largest maintainers. LLM extracts triple instances with no schema, each with its source text; code leaves out any triple instance whose source text isn't in the text (the same checks as 050/060, in `common/`). LLM labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps every entry with that evidence; a cutoff setting (default 1: keep everything) decides which enter the schema, and is chosen later from 070's scores. LLM writes definitions; code rechecks every number. The report compares the result with the hand-built schema | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `the_schema.json`, `induction_evidence.json` |
 | `050_annotate` | LLM drafts triples for the next records in the ground truth candidates pool; a person corrects them into `annotations/` | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `drafted_triples.csv` |
 | `060_extract` | LLM extracts triples that follow the schema, from **every** record once the schema is final (until then, only from the records that have ground truth, to limit cost); code checks each one and keeps or removes it, with a reason | 020, 040 | `extracted_triples.csv`, `extracted_triples_removed.csv` |
 | `070_evaluate` | Precision and recall on the records of the ground truth candidates pool that a person has corrected, overall and per maintainer | `annotations/ground_truth_triples.csv`, 060 | `metrics.json`, per-record diff |
-| `080_build_graph` | Builds the graph from the structured facts (maintainers, keywords, formats) and the extracted triples, in a store-neutral form | 020, 060 | `nodes.jsonl`, `edges.jsonl` |
+| `080_build_graph` | Builds the graph from the structured fields (maintainers, keywords, formats) and the extracted triple instances, in a store-neutral form | 020, 060 | `nodes.jsonl`, `edges.jsonl` |
 
 **Rule:** a step reads only from earlier steps' output folders (or `annotations/`), and writes only to its own.
 
@@ -97,28 +97,34 @@ Details: instructions/040_induce_schema.md
 from common.step import run_step, helpers
 
 INPUTS = {
-    "records": "020_clean/records.jsonl",
-    "splits":  "030_split/splits.json",
+    "records":     "020_clean/records.jsonl",
+    "splits":      "030_split/splits.json",
+    "hand_schema": "./annotations/schema_derived_from_manual_annotation.txt",
 }
 
 SETTINGS = {
-    "induction_maintainers": 10,  # learn from this many of the largest maintainers
-    "texts_per_maintainer":  15,  # the first this-many induction candidates of each
-    "min_support":           1,   # an entry must appear in this many texts to enter the schema
-    "synonym_rounds":        1,   # extra passes to catch synonyms split across batches
+    "induction_maintainers": 10,    # learn from this many of the largest maintainers
+    "texts_per_maintainer":  15,    # the first this-many induction candidates of each
+    "min_support":           1,     # a schema entry enters the schema if found in at least this many texts
+    "max_chars":             8000,  # a longer text is split into pieces, one call each
+    "workers":               4,     # model calls made at the same time
+    "confirm_paid_calls":    True,  # stop and ask before the first model call; false for unattended runs
 }
 
 induce = helpers("040_induce_schema")
 
+
 def main(inputs, settings, output):
-    texts  = induce.pick_texts(inputs, settings)       # first 15 candidates of the 10 largest maintainers
-    facts  = induce.extract_facts(texts)               # LLM: "MODIS is aboard Aqua"
-    labels = induce.label_names(facts)                 # LLM: MODIS → Instrument
-    labels = induce.merge_synonyms(labels, settings)   # LLM: Sensor = Instrument
-    counts = induce.count_support(facts, labels)       # code: texts behind each entry
-    schema = induce.write_schema(counts, settings)     # LLM: definitions, examples
-    induce.check_schema(schema, counts)                # code: recheck the LLM's numbers
-    return induce.results(schema, counts, output)      # save files; report numbers, warnings
+    texts   = induce.pick_texts(inputs, settings)                  # the first 15 candidates of the 10 largest maintainers
+    calls   = induce.paid_calls(settings, output)                  # asks before paying; keeps every answer in cache/
+    triples = induce.extract_triple_instances(texts, calls, settings)  # LLM: "MODIS" – "is aboard" – "Aqua", checked in the text
+    labels  = induce.label_component_instances(triples, calls)     # LLM, reusing labels chosen so far: "MODIS" → Instrument
+    labels  = induce.merge_labels(labels, triples, calls)          # LLM, one call over all labels: Sensor = Instrument
+    counts  = induce.count_support(triples, labels)                # code: the texts and maintainers behind each schema entry
+    words   = induce.write_definitions(counts, settings, calls)    # LLM: one sentence per entity class and predicate
+    schema  = induce.check_schema(counts, words, settings)         # code: what enters the schema, what's deferred
+    beside  = induce.compare_with_hand_schema(inputs, schema)      # code: in both / only yours / only induced
+    return induce.results(texts, triples, labels, counts, words, schema, beside, calls, settings, output)
 
 if __name__ == "__main__":
     run_step("040_induce_schema", INPUTS, SETTINGS, main)

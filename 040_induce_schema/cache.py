@@ -5,9 +5,9 @@ cache.py -- keeps every model answer 040 has paid for, so a rerun reuses it.
 
 Each file maps a KEY to an answer. The key is a fingerprint of everything
 that decides the answer: the model, the exact prompt text, and what was sent
-(a text piece, a batch of names and the labels in use before it, ...). Change
-any of them, e.g. edit a prompt file, and the key changes, so that answer is
-asked again; everything else is still reused. A call that failed is never
+(a text piece, a batch of component instances and the labels in use before
+it, ...). Change any of them, e.g. edit a prompt file, and the key changes,
+so that answer is asked again; everything else is still reused. A call that failed is never
 stored, so the next run asks it again.
 
 The cache holds paid work: deleting it (or all of outputs/) means paying for

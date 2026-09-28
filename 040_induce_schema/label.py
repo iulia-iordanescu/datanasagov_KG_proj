@@ -1,31 +1,34 @@
 """
-label.py -- stage 3: give every name one general label, with a running
+label.py -- stage 3: give every component instance a label, with a running
 vocabulary.
 
-Names are the subjects and objects of the facts ("MODIS", "Aqua"), labeled
-with a class ("Instrument", "Spacecraft"), and the facts' predicates ("is
-aboard"), labeled with a predicate label ("ABOARD"). Classes and predicates
-are two separate vocabularies, labeled in two separate passes.
+A label is the general name for a component instance: for one in a subject
+or object slot, the kind of thing it is ("MODIS" → `Instrument`), which
+becomes an entity class; for one in a predicate slot, the relation it
+expresses ("is aboard" → `ABOARD`), which becomes a predicate. The two kinds
+are labeled in two separate passes, each with its own vocabulary of labels.
 
-The names are sent in batches of LABEL_BATCH, and every batch is shown the
-labels chosen so far, with the instruction to reuse one whenever it fits and
-coin a new one only when none does. So one idea doesn't end up under several
-labels just because its names were in different batches ("Instrument" in one,
-"Sensor" in another). The most common names (found in the most texts) go
-first, so the main labels are set early and later batches reuse them.
+The component instances are sent in batches of LABEL_BATCH, and every batch
+is shown the labels chosen so far, with the instruction to reuse one whenever
+it fits and coin a new one only when none does. So one idea doesn't end up
+under several labels just because its component instances were in different
+batches (`Instrument` in one, `Sensor` in another). The most common
+component instances (found in the most texts) go first, so the main labels
+are set early and later batches reuse them.
 
-Each name is judged by one usage example: the shortest fact it appears in.
-A name the model leaves unlabeled is asked once more; if it is still
-unlabeled it is listed, and it counts toward no class or predicate.
+Each component instance is judged by one usage example: the shortest
+triple instance it appears in. One the model leaves unlabeled is asked once
+more; if it is still unlabeled it is listed, and it counts toward no schema
+entry.
 
 Each batch's answer is cached under a key that includes the labels in use
-before it, so a rerun reuses every batch whose names and preceding labels are
-unchanged.
+before it, so a rerun reuses every batch whose component instances and
+preceding labels are unchanged.
 
 Adapted from conceptualize() in to_be_reshaped/best_induce_schema.py, whose
 batches couldn't see each other's labels; a later stage then had to repair
-the drift, in alphabetical groups where synonyms like "Instrument" and
-"Sensor" rarely met.
+the drift, in alphabetical groups where synonyms like `Instrument` and
+`Sensor` rarely met.
 """
 from __future__ import annotations
 
@@ -39,81 +42,87 @@ from common import llm
 from common.audit import log
 from common.prompt_files import fill, load
 
-PROMPTS = {"entities": load(Path(__file__).parent / "prompts" / "label_entities.txt"),
-           "predicates": load(Path(__file__).parent / "prompts" / "label_predicates.txt")}
+#: The two kinds of component instance, by slot: "entity" for subject and
+#: object slots (labeled with entity classes), "predicate" for the predicate
+#: slot (labeled with predicates).
+KINDS = ("entity", "predicate")
 
-#: Names per call. A batch's reply lists every name it was sent, so this
-#: bounds the reply's length.
+PROMPTS = {"entity": load(Path(__file__).parent / "prompts" / "label_entity_instances.txt"),
+           "predicate": load(Path(__file__).parent / "prompts" / "label_predicate_instances.txt")}
+
+#: Component instances per call. A batch's reply lists every component
+#: instance it was sent, so this bounds the reply's length.
 LABEL_BATCH = 80
 
 
 @dataclass
 class Labels:
-    of: dict = field(default_factory=dict)          # {"entities": {name: label}, "predicates": {...}}
-    vocabulary: dict = field(default_factory=dict)  # {"entities": [labels, in order of first use], ...}
-    unlabeled: dict = field(default_factory=dict)   # {"entities": [names], ...}
-    batches: list = field(default_factory=list)     # {"kind", "names", "new_labels", "reused"}
-    merged_into: dict = field(default_factory=dict) # filled by stage 4: {"entities": {label: final}, ...}
+    of: dict = field(default_factory=dict)          # {"entity": {component instance: label}, "predicate": {...}}
+    vocabulary: dict = field(default_factory=dict)  # {"entity": [labels, in order of first use], ...}
+    unlabeled: dict = field(default_factory=dict)   # {"entity": [component instances], ...}
+    batches: list = field(default_factory=list)     # {"kind", "component_instances", "new_labels", "reused"}
+    merged_into: dict = field(default_factory=dict) # filled by stage 4: {"entity": {label: final label}, ...}
     merges: list = field(default_factory=list)      # filled by stage 4
     merge_issues: dict = field(default_factory=dict)
-    calls: int = 0                                  # paid calls made by stage 3
-    merge_calls: int = 0                            # paid calls made by stage 4
+    calls: int = 0                                  # model calls made by stage 3
+    merge_calls: int = 0                            # model calls made by stage 4
 
 
-def _names(facts) -> dict:
-    """{kind: {name: (texts it appears in, shortest usage example)}}"""
-    found = {"entities": {}, "predicates": {}}
-    for t in facts.texts:
-        for f in t["triples"]:
-            usage = f"{f['subject']} -- {f['predicate']} -- {f['object']}"
-            for kind, name in (("entities", f["subject"]), ("entities", f["object"]),
-                               ("predicates", f["predicate"])):
-                ids, example = found[kind].get(name, (set(), None))
+def component_instances(triples) -> dict:
+    """{kind: {component instance: (ids of the texts it appears in, its
+    shortest usage example)}}, from the verified triple instances."""
+    found = {kind: {} for kind in KINDS}
+    for t in triples.texts:
+        for ti in t["triple_instances"]:
+            usage = f"{ti['subject']} -- {ti['predicate']} -- {ti['object']}"
+            for kind, value in (("entity", ti["subject"]), ("entity", ti["object"]),
+                                ("predicate", ti["predicate"])):
+                ids, example = found[kind].get(value, (set(), None))
                 ids.add(t["id"])
                 if example is None or len(usage) < len(example):
                     example = usage
-                found[kind][name] = (ids, example)
+                found[kind][value] = (ids, example)
     return found
 
 
-def _loose(name: str) -> str:
+def _loose(value: str) -> str:
     """Case and spacing folded: absorbs differences a model introduces when
-    it echoes a name back."""
-    return re.sub(r"\s+", " ", str(name).strip().lower())
+    it echoes a component instance back."""
+    return re.sub(r"\s+", " ", str(value).strip().lower())
 
 
 def _match(sent: list, reply) -> tuple:
-    """Labels for the names SENT, keyed by the sent name: exact match first,
-    then a case- and spacing-insensitive one. A label must be non-empty text.
-    Returns (labels, names left unlabeled)."""
+    """Labels for the component instances SENT, keyed as sent: exact match
+    first, then a case- and spacing-insensitive one. A label must be
+    non-empty text. Returns (labels, component instances left unlabeled)."""
     reply = reply if isinstance(reply, dict) else {}
     loose = {}
     for k, v in reply.items():
         if isinstance(v, str) and v.strip():
             loose.setdefault(_loose(k), v.strip())
     labels, missing = {}, []
-    for name in sent:
-        v = reply.get(name)
+    for value in sent:
+        v = reply.get(value)
         if isinstance(v, str) and v.strip():
-            labels[name] = v.strip()
-        elif _loose(name) in loose:
-            labels[name] = loose[_loose(name)]
+            labels[value] = v.strip()
+        elif _loose(value) in loose:
+            labels[value] = loose[_loose(value)]
         else:
-            missing.append(name)
+            missing.append(value)
     return labels, missing
 
 
-def label_names(facts, calls) -> Labels:
+def label_component_instances(triples, calls) -> Labels:
     cache = Cache(calls.cache_dir, "label")
     result = Labels()
     before = calls.paid.made
-    found = _names(facts)
+    found = component_instances(triples)
 
-    for kind in ("entities", "predicates"):
+    for kind in KINDS:
         prompt = PROMPTS[kind]
-        # Most common first (found in the most texts); ties by name, so the
-        # order never depends on the order of the facts.
-        order = sorted(found[kind], key=lambda n: (-len(found[kind][n][0]), n))
+        # Most common first (found in the most texts); ties alphabetically,
+        # so the order never depends on the order of the triple instances.
+        order = sorted(found[kind], key=lambda v: (-len(found[kind][v][0]), v))
         vocabulary, labels, unlabeled = [], {}, []
 
         def ask(items: dict) -> dict:
@@ -121,7 +130,7 @@ def label_names(facts, calls) -> Labels:
             k = key(prompt.template, kind, items, vocabulary)
             reply = cache.get(k)
             if reply is None:
-                calls.paid.start("  040 needs model calls to label names")
+                calls.paid.start("  040 needs model calls to label component instances")
                 reply = llm.call_llm_json(fill(prompt, vocabulary=json.dumps(vocabulary, ensure_ascii=False),
                                                items=json.dumps(items, ensure_ascii=False, indent=0)))
                 calls.paid.made_call()
@@ -131,20 +140,20 @@ def label_names(facts, calls) -> Labels:
 
         for start in range(0, len(order), LABEL_BATCH):
             batch = order[start:start + LABEL_BATCH]
-            items = {name: found[kind][name][1] for name in batch}
+            items = {value: found[kind][value][1] for value in batch}
             got, missing = _match(batch, ask(items))
             if missing:
-                # One more try for the names left out, with the vocabulary as it is now.
-                more, missing = _match(missing, ask({n: items[n] for n in missing}))
+                # One more try for those left out, with the vocabulary as it is now.
+                more, missing = _match(missing, ask({v: items[v] for v in missing}))
                 got.update(more)
             new = [lbl for lbl in dict.fromkeys(got.values()) if lbl not in vocabulary]
             vocabulary += new
             labels.update(got)
             unlabeled += missing
-            result.batches.append({"kind": kind, "names": len(batch), "new_labels": new,
+            result.batches.append({"kind": kind, "component_instances": len(batch), "new_labels": new,
                                    "reused": len(set(got.values())) - len(new)})
         result.of[kind], result.vocabulary[kind], result.unlabeled[kind] = labels, vocabulary, unlabeled
-        log.info(f"  {kind}: {len(labels):,} names labeled with {len(vocabulary):,} labels"
+        log.info(f"  {kind} component instances: {len(labels):,} labeled with {len(vocabulary):,} labels"
                  + (f"; {len(unlabeled)} left unlabeled" if unlabeled else ""))
     result.calls = calls.paid.made - before
     return result
