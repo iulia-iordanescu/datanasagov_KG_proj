@@ -1,6 +1,6 @@
 # 040_induce_schema
 
-Terms (triple instance, component instance, label, support, …) are as defined in `README.md`, Terminology.
+Terms (triple instance, component instance, label, support, …) are as defined in [docs/terminology.md](../docs/terminology.md).
 
 ## Purpose
 

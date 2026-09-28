@@ -15,7 +15,7 @@ moves.py -- the main moves of 040_induce_schema, as called by
 
 Every model answer is cached in cache/ inside the step's output folder (see
 cache.py), so a rerun pays only for what changed. Terms are as defined in
-README.md's Terminology.
+docs/terminology.md.
 """
 from __future__ import annotations
 

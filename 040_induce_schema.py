@@ -7,8 +7,8 @@ Spacecraft). A model reads a sample of texts and lists the triple instances
 they state, with no schema imposed; code keeps only those it can verify in
 the text; the model gives every component instance a label and merges labels
 that mean the same thing; code counts how many texts and maintainers back
-each schema entry, and keeps them all with that evidence. Terms: README.md,
-Terminology.
+each schema entry, and keeps them all with that evidence. Terms:
+docs/terminology.md.
 
 Reads:   records.jsonl (020), splits.json (030), and, to compare with,
          annotations/schema_derived_from_manual_annotation.txt
