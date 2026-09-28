@@ -6,7 +6,8 @@ CKAN API. Each page is saved as it arrives, so an interrupted run loses at
 most one page, and a rerun keeps the pages already on disk.
 
 Reads:   nothing (the data.nasa.gov API)
-Writes:  batch_*.json, one file per page of raw records
+Writes:  batch_*.json, one file per page: the raw records, with the request
+         that returned them
 Details: instructions/010_harvest.md
 """
 from common.step import run_step, helpers

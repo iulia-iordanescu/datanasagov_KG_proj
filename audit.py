@@ -1,10 +1,10 @@
 """
 audit · Trace an item back to its source
 
-Finds an item (a catalog record, later a cleaned record or a triple) in the
-pipeline's lineage and follows it upstream, step by step, to the API request
-that first returned it. Each hop names the run that made it and that run's
-report and log.
+Finds an item (a catalog record, a cleaned record, later a triple) in the
+pipeline's outputs and follows its origin upstream, step by step, to the API
+request that first returned it. Each hop names the run that made it and that
+run's report and log.
 
     py audit.py <key>                        e.g. a CKAN record id
     py audit.py <key> --step 010_harvest     look in one step only
@@ -30,12 +30,12 @@ def main() -> int:
 
     hits = find(key=args.key, step=args.step, file=args.file, position=args.position)
     if not hits:
-        print("Not found in any step's lineage.")
+        print("Not found in any step's output.")
         return 1
     if len(hits) > 1:
         print(f"{len(hits)} items match; showing each.\n")
-    for step, row in hits[:20]:
-        trace(step, row)
+    for step, path, position, item in hits[:20]:
+        trace(step, path, position, item)
         print()
     if len(hits) > 20:
         print(f"... {len(hits) - 20} more not shown")

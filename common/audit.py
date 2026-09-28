@@ -8,49 +8,49 @@ by everything the run leaves behind:
     outputs/reports/<run id>.md              what came out, for people
     outputs/intermediate_results/<step>/_manifest.json      what came out, for code:
                                              input and output files with hashes
-    outputs/intermediate_results/<step>/_lineage.jsonl      which input produced each output item
 
-Helpers use two things from here:
+Helpers use these:
 
-    from common.audit import log, lineage, file_source
+    from common.audit import log, origin, check_origins
     log.info("saved batch_01000.json")               goes to the console and the log file
     log.debug("GET ... 200 in 1.3 s")                goes to the log file only
-    lineage().add("records.jsonl", 412, "abc-123",
-                  [file_source(batch_file, 17, "abc-123")])
+    record["_origin"] = [origin(batch_file, "abc-123")]
 
-LINEAGE ROWS. One JSON object per line, one line per output item:
+ORIGIN. The audit trail has two halves. The manifest is the per-file half:
+each input's hash and the run that produced it, recorded once per file. The
+origin is the per-item half: each output item names the input item(s) it
+came from, inside the output file itself. There is no separate lineage file.
 
-    {"run_id": "010_harvest_2026-09-27_1016",
-     "output": {"file": "batch_01000.json", "position": 17, "key": "abc-123"},
-     "sources": [ {...}, ... ]}
+    JSON output   an "_origin" field
+    CSV output    an "origin" column, references joined with "; "
 
-A source is where the item came from. Two kinds:
+A reference is "<step>/<file>#<key>", or "#<position>" (counting from 0)
+when the item has no key:
 
-    {"kind": "api",  "request": "GET https://...?rows=1000&start=1000",
-     "position": 17, "fetched_at": "2026-09-27T10:16:04-07:00", "http_status": 200}
+    "_origin": ["010_harvest/batch_00000.json#a1b2c3"]
 
-    {"kind": "file", "file": "outputs/intermediate_results/020_clean/records.jsonl",
-     "sha256": "...", "run_id": "020_clean_2026-09-27_1030",
-     "position": 412, "key": "abc-123"}
+Files kept in Git are referenced from the repo root instead, e.g.
+"annotations/ground_truth_triples.csv#17". Paths always use forward slashes.
 
-"position" counts from 0. "key" is the item's own identifier (a CKAN record
-id, a triple id); audit.py follows keys from step to step.
+010 is where origin starts: each batch file wraps its records with the
+request that returned them, so its records carry no _origin of their own.
 """
 from __future__ import annotations
 
 import datetime as dt
+import functools
 import hashlib
 import json
 import logging
 import sys
 import time
-from collections import OrderedDict
 from pathlib import Path
 
-LINEAGE_NAME = "_lineage.jsonl"
+ORIGIN_FIELD = "_origin"        # in JSON output
+ORIGIN_COLUMN = "origin"        # in CSV output
 
 log = logging.getLogger("pipeline")
-_current_lineage = None
+_run = {"run_id": None, "inputs": {}}       # the run in progress, set by run_step
 
 
 # --------------------------------------------------------------------------
@@ -165,126 +165,66 @@ class TimedMoves:
 
 
 # --------------------------------------------------------------------------
-# lineage
+# the run in progress
 # --------------------------------------------------------------------------
 
-class Lineage:
-    """Writes _lineage.jsonl in a step's output folder.
-
-    Rows are appended as they are produced, so a crash keeps the lineage of
-    everything already saved. When a step keeps an output file from an
-    earlier run (010 resuming), it calls keep(file) and that file's rows from
-    the earlier run are carried over. finish(files) rewrites the file with
-    exactly one run's rows per output file: the latest run that wrote it."""
-
-    def __init__(self, folder: Path, run_id: str):
-        self.path = folder / LINEAGE_NAME
-        self.run_id = run_id
-        self.kept, self.kept_without_lineage = [], []
-        self._rows_by_file = self._read_existing()
-        self._written = set()                    # files this run has written rows for
-        self.finished = False
-        self._fh = open(self.path, "a", encoding="utf-8")
-
-    def _read_existing(self) -> dict:
-        """{output file: rows of the latest run that wrote it}"""
-        latest = OrderedDict()
-        if not self.path.exists():
-            return latest
-        with open(self.path, encoding="utf-8") as fh:
-            for line in fh:
-                if not line.strip():
-                    continue
-                try:
-                    row = json.loads(line)
-                except ValueError:
-                    continue                    # a line cut short by a crash
-                name = row["output"]["file"]
-                run = row["run_id"]
-                if name not in latest or latest[name][0] != run:
-                    latest[name] = (run, [])
-                latest[name][1].append(row)
-        return OrderedDict((name, rows) for name, (_, rows) in latest.items())
-
-    def add(self, output_file: str, position: int, key, sources: list) -> None:
-        row = {"run_id": self.run_id,
-               "output": {"file": output_file, "position": position, "key": key},
-               "sources": sources}
-        self._fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-        if output_file not in self._written:     # this run rewrites the file: drop older rows
-            self._written.add(output_file)
-            self._rows_by_file[output_file] = []
-        self._rows_by_file[output_file].append(row)
-
-    def flush(self) -> None:
-        self._fh.flush()
-
-    def keep(self, output_file: str) -> None:
-        if self._rows_by_file.get(output_file):
-            self.kept.append(output_file)
-        else:
-            self.kept_without_lineage.append(output_file)
-
-    def finish(self, output_files: list) -> dict:
-        """Rewrite the lineage for exactly these output files. Returns
-        {file: number of rows} so a step can check every item is covered.
-        run_step calls this with the step's output files if the step didn't."""
-        self._fh.close()
-        self.finished = True
-        counts = {}
-        tmp = self.path.with_suffix(".jsonl.part")
-        with open(tmp, "w", encoding="utf-8") as fh:
-            for name in output_files:
-                rows = self._rows_by_file.get(name, [])
-                counts[name] = len(rows)
-                for row in rows:
-                    fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-        tmp.replace(self.path)
-        return counts
-
-    def close(self) -> None:
-        if not self._fh.closed:
-            self._fh.close()
+def begin_run(run_id: str, inputs: dict) -> None:
+    """Called by run_step before main(): the run id, and the step's inputs
+    as {name: path}, so helpers can write origin("records", key)."""
+    _run["run_id"], _run["inputs"] = run_id, dict(inputs)
 
 
-_source_cache = {}
+def end_run() -> None:
+    _run["run_id"], _run["inputs"] = None, {}
 
 
-def file_source(path, position: int, key=None) -> dict:
-    """A lineage source pointing at item <position> of an input file, with
-    the file's hash and the run that produced it (from the manifest beside
-    it). Hashes are cached, so calling this once per item is cheap."""
+def current_run_id() -> str | None:
+    return _run["run_id"]
+
+
+# --------------------------------------------------------------------------
+# origin
+# --------------------------------------------------------------------------
+
+@functools.lru_cache(maxsize=4096)
+def ref_path(path) -> str:
+    """How an origin reference names a file: "<step>/<file>" for a file in
+    outputs/intermediate_results/, else its path from the repo root, with
+    forward slashes either way. Cached: resolving a path is slow on Windows,
+    and origin() asks once per item."""
+    from common.step import RESULTS_DIR, ROOT
     path = Path(path).resolve()
-    if path not in _source_cache:
-        run_id = None
-        manifest = path.parent / "_manifest.json"
-        if manifest.exists():
-            try:
-                run_id = json.loads(manifest.read_text(encoding="utf-8")).get("run_id")
-            except ValueError:
-                pass
-        from common.step import ROOT
-        name = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else path.as_posix()
-        _source_cache[path] = {"kind": "file", "file": name, "sha256": sha256([path]),
-                               "run_id": run_id}
-    return {**_source_cache[path], "position": position, "key": key}
+    for base in (RESULTS_DIR, ROOT):
+        if path.is_relative_to(base.resolve()):
+            return path.relative_to(base.resolve()).as_posix()
+    return path.as_posix()
 
 
-def begin_lineage(folder: Path, run_id: str) -> Lineage:
-    global _current_lineage
-    _current_lineage = Lineage(folder, run_id)
-    return _current_lineage
+def origin(source, key_or_position) -> str:
+    """A reference to one item of an input: "<step>/<file>#<key>".
+
+    source is the name of one of the step's INPUTS, when that input is a
+    single file, or the path of the input file the item was read from (an
+    input like 010_harvest/batch_*.json has many files, so pass the file).
+    key_or_position is the item's own key (a record id), or its position in
+    the file, counting from 0, when it has none."""
+    if isinstance(source, str) and source in _run["inputs"]:
+        from common.step import input_files
+        files = input_files(Path(_run["inputs"][source]))
+        if len(files) != 1:
+            raise ValueError(f"input {source!r} has {len(files)} files; "
+                             f"pass the path of the file the item came from")
+        source = files[0]
+    return f"{ref_path(source)}#{key_or_position}"
 
 
-def lineage() -> Lineage:
-    """The lineage writer of the step that is running."""
-    if _current_lineage is None:
-        raise RuntimeError("lineage() is only available while a step runs under run_step")
-    return _current_lineage
-
-
-def end_lineage() -> None:
-    global _current_lineage
-    if _current_lineage is not None:
-        _current_lineage.close()
-    _current_lineage = None
+def check_origins(items, what: str) -> str | None:
+    """A warning if any item lacks an origin, else None. items are dicts
+    (JSON items or CSV rows); what names them in the message, e.g. "records"."""
+    items = list(items)
+    missing = sum(1 for item in items
+                  if not (item.get(ORIGIN_FIELD) or item.get(ORIGIN_COLUMN)))
+    if not missing:
+        return None
+    return (f"{missing:,} of {len(items):,} {what} have no origin, so they can't be "
+            f"traced to the input they came from.")

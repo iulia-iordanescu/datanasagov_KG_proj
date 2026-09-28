@@ -3,32 +3,31 @@ moves.py -- the main moves of 010_harvest, as called by 010_harvest.py.
 
     download_catalog   fetch every page of the catalog into batch files,
                        skipping pages already on disk
-    check_complete     compare what was saved with what the API reported, and
-                       check every saved record has a lineage row
+    check_complete     compare what was saved with what this run aimed for,
+                       count repeated and missing ids, and check every batch
+                       file has its request block
     results            package files, headline numbers, report text, warnings
 
-LINEAGE. Each saved record gets one row in _lineage.jsonl linking it to the
-API request that returned it:
-
-    output   {"file": "batch_01000.json", "position": 17, "key": <record id>}
-    sources  [{"kind": "api", "request": "GET https://...&start=1000",
-               "position": 17, "fetched_at": ..., "http_status": 200}]
-
-Rows are written just before their batch file, so a batch on disk always has
-its lineage. A batch kept from an earlier run keeps that run's rows.
+ORIGIN. 010 is where every item's origin starts. Each batch file wraps its
+records with the request that returned them (see batches.py), so the records
+themselves stay exactly as the API sent them. A batch kept from an earlier
+run keeps the request block, and the run id, of the run that fetched it.
 """
 from __future__ import annotations
 
 import datetime as dt
-import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import batches
 import ckan_client
-from common.audit import LINEAGE_NAME, lineage, log
+from common.audit import current_run_id, log
 from common.step import ROOT, Results
+
+# Written by versions of this step that kept a separate lineage file. The
+# request block in each batch file replaces it.
+OLD_LINEAGE_FILE = "_lineage.jsonl"
 
 
 @dataclass
@@ -53,8 +52,7 @@ class Check:
     duplicate_ids: int
     first_saved: dt.date
     last_saved: dt.date
-    lineage_rows: int             # records with a lineage row
-    kept_without_lineage: list    # kept batch files whose lineage is unknown
+    without_request: list         # batch files with no request block
 
 
 # --------------------------------------------------------------------------
@@ -66,6 +64,10 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
 
     for part in batches.leftover_parts(output):
         part.unlink()
+    old_lineage = output / OLD_LINEAGE_FILE
+    if old_lineage.exists():
+        old_lineage.unlink()
+        log.info(f"  removed {OLD_LINEAGE_FILE} (replaced by the request block in each batch file)")
 
     session = ckan_client.make_session()
     first, first_request = ckan_client.fetch_page(session, 0, page_size)
@@ -80,17 +82,23 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
         expected = min(page_size, target - start)
 
         if path.exists():
-            found = len(batches.load_batch(path))
-            if found == expected:
+            batch = batches.load_batch(path)
+            found = len(batch["records"])
+            if not batch.get("request"):
+                reason = "has no request block (old format)"
+            elif not ckan_client.same_page(batch["request"], start, page_size):
+                reason = "was requested differently (another page size or sort order)"
+            elif found != expected:
+                reason = f"holds {found} records, this run needs {expected}"
+            else:
                 harvest.files.append(path)
                 harvest.reused += 1
-                lineage().keep(path.name)
                 log.info(f"  {path.name} already on disk, kept")
                 continue
-            # Saved by a run with other settings (max_records, page_size): replace it.
+            # Saved by a run with other settings (max_records, page_size), by
+            # an older version of this step, or with another sort order.
             harvest.replaced += 1
-            log.info(f"  {path.name} holds {found} records, this run needs {expected}; "
-                     f"downloading it again")
+            log.info(f"  {path.name} {reason}; downloading it again")
 
         if start == 0:
             page, request = first, first_request
@@ -102,11 +110,8 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
             log.warning(f"empty page at start={start}; stopping")
             break
 
-        for position, record in enumerate(records):
-            lineage().add(path.name, position, record.get("id"),
-                          [{"kind": "api", **request, "position": position}])
-        lineage().flush()
-        batches.save_batch(path, records)
+        header = {**request, "catalog_count": page["count"], "run_id": current_run_id()}
+        batches.save_batch(path, header, records)
         harvest.files.append(path)
         harvest.new += 1
         log.info(f"  saved {path.name} ({len(records)} records, "
@@ -125,36 +130,29 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
 
 
 def check_complete(harvest: Harvest) -> Check:
-    seen, records, missing, per_file = set(), 0, 0, {}
+    seen, records, missing = set(), 0, 0
+    dates, without_request = set(), []
     for path in harvest.files:
         batch = batches.load_batch(path)
-        per_file[path.name] = len(batch)
-        for record in batch:
+        for record in batch["records"]:
             records += 1
             rid = record.get("id")
             if rid is None:
                 missing += 1
             else:
                 seen.add(rid)
-
-    rows = lineage().finish([p.name for p in harvest.files])
-    for name, n in per_file.items():
-        if rows.get(name, 0) != n:
-            log.debug(f"lineage: {name} has {rows.get(name, 0)} rows for {n} records")
-
-    # The harvest date comes from the lineage (when each page was fetched);
-    # the file's modification date stands in for pages with no lineage.
-    dates = set()
-    fetched = _fetch_dates(harvest.folder)
-    for path in harvest.files:
-        dates.add(fetched.get(path.name) or dt.date.fromtimestamp(path.stat().st_mtime))
+        # The harvest date is when each page was fetched, from its request block.
+        if batch.get("request") and batch.get("fetched_at"):
+            dates.add(dt.date.fromisoformat(batch["fetched_at"][:10]))
+        else:
+            without_request.append(path.name)
+            dates.add(dt.date.fromtimestamp(path.stat().st_mtime))
     dates = dates or {dt.date.today()}
 
     return Check(records=records, unique_ids=len(seen), missing_ids=missing,
                  duplicate_ids=records - missing - len(seen),
                  first_saved=min(dates), last_saved=max(dates),
-                 lineage_rows=sum(min(rows.get(name, 0), n) for name, n in per_file.items()),
-                 kept_without_lineage=list(lineage().kept_without_lineage))
+                 without_request=without_request)
 
 
 def _shown(folder: Path) -> str:
@@ -163,50 +161,38 @@ def _shown(folder: Path) -> str:
     return folder.relative_to(ROOT).as_posix() if folder.is_relative_to(ROOT) else folder.as_posix()
 
 
-def _fetch_dates(folder: Path) -> dict:
-    """{batch file: date its page was fetched}, read back from _lineage.jsonl."""
-    dates = {}
-    path = folder / LINEAGE_NAME
-    if path.exists():
-        with open(path, encoding="utf-8") as fh:
-            for line in fh:
-                row = json.loads(line)
-                name = row["output"]["file"]
-                if name not in dates and row["sources"]:
-                    dates[name] = dt.date.fromisoformat(row["sources"][0]["fetched_at"][:10])
-    return dates
-
-
 def results(harvest: Harvest, check: Check) -> Results:
     warnings = []
     if check.records < harvest.target:
-        warnings.append(f"Saved {check.records} records but expected {harvest.target}. "
-                        "Rerun to fetch the missing pages.")
+        warnings.append(f"Saved {check.records} records but expected {harvest.target}. Either "
+                        "some pages weren't fetched (rerun to fetch them), or records were deleted "
+                        "from the catalog during the harvest: each deletion shifts the later pages "
+                        "back by one, so one record is missed. For a complete snapshot, delete the "
+                        "folder and rerun.")
     if harvest.ran_dry:
         warnings.append("The API returned an empty page before the reported count was reached; "
                         "the catalog may have shrunk during the harvest.")
     if check.duplicate_ids:
         n = check.duplicate_ids
-        warnings.append(f"{n} record{'s' if n != 1 else ''} appear{'' if n != 1 else 's'} twice, "
-                        f"and probably as many were skipped: records added to the catalog "
-                        f"mid-harvest shift the pages. 020_clean must drop the repeats; only a fresh "
-                        f"harvest (delete the folder, rerun) fetches the skipped ones.")
+        warnings.append(f"{n} record{'s' if n != 1 else ''} appear{'' if n != 1 else 's'} twice. "
+                        f"Pages are requested oldest record first, so a new or edited record "
+                        f"shifts nothing; a repeat means a record reappeared in the middle of the "
+                        f"order during the harvest (e.g. one restored after deletion), or that "
+                        f"batch files kept from an earlier run overlap. 020_clean drops the "
+                        f"repeats; for a clean snapshot, delete the folder and rerun.")
     if check.missing_ids:
-        warnings.append(f"{check.missing_ids} records have no id.")
+        n = check.missing_ids
+        warnings.append(f"{n} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} no id.")
     if harvest.reused and check.first_saved != check.last_saved:
         warnings.append(f"{harvest.reused} of {len(harvest.files)} batch files were kept from an "
                         f"earlier run, so this harvest mixes pages saved between "
                         f"{check.first_saved} and {check.last_saved}. For a single-day snapshot, "
                         f"delete {_shown(harvest.folder)}/ and rerun.")
-    if check.lineage_rows < check.records:
-        missing_rows = check.records - check.lineage_rows
-        detail = (f" Kept from an earlier run without lineage: "
-                  f"{', '.join(check.kept_without_lineage[:5])}"
-                  f"{' …' if len(check.kept_without_lineage) > 5 else ''}."
-                  if check.kept_without_lineage else "")
-        warnings.append(f"{missing_rows:,} saved records have no lineage row, so the request that "
-                        f"returned them is not recorded.{detail} Delete those batch files and "
-                        f"rerun to fetch them again with lineage.")
+    if check.without_request:
+        shown = ", ".join(check.without_request[:5]) + (" …" if len(check.without_request) > 5 else "")
+        warnings.append(f"{len(check.without_request)} batch files have no request block, so the "
+                        f"request that returned their records is not recorded: {shown}. Rerun to "
+                        f"fetch them again.")
 
     if check.first_saved == check.last_saved:
         harvest_date = str(check.first_saved)
@@ -219,9 +205,11 @@ def results(harvest: Harvest, check: Check) -> Results:
         f"| Records aimed for this run | {harvest.target:,} |",
         f"| Records saved | {check.records:,} |",
         f"| Distinct record ids | {check.unique_ids:,} |",
-        f"| Records with lineage | {check.lineage_rows:,} |",
         f"| Batch files | {len(harvest.files)} ({harvest.new} downloaded, {harvest.reused} kept) |",
-        f"| Replaced from an earlier run | {harvest.replaced} (didn't fit this run's settings) |",
+        f"| Batch files with their request block | "
+        f"{len(harvest.files) - len(check.without_request)} of {len(harvest.files)} |",
+        f"| Replaced from an earlier run | {harvest.replaced} (didn't fit this run's settings, "
+        f"or had no request block) |",
         f"| Removed | {len(harvest.removed)} (outside this run's range) |",
         f"| Page size | {harvest.page_size} |",
         f"| Output folder | `{_shown(harvest.folder)}/` |",

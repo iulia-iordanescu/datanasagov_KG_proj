@@ -62,7 +62,6 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
               f"| Git commit | {run['git_commit']} |",
               f"| Harvest date | {run['harvest_date'] or 'unknown'} |",
               f"| Log | {_link(run['log'], path)} |",
-              f"| Lineage | {_link(run['lineage'], path)} (which input each output item came from) |",
               ""]
 
     lines += ["## Settings", ""]

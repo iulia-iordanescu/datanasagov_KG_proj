@@ -15,12 +15,13 @@ only has to show the step's main moves:
     3. log            outputs/logs/<run id>.log, from the first line to the last
     4. input check    every input file must exist; if one is missing the
                       step stops and says which step produces it
-    5. output folder  outputs/intermediate_results/<step>/, with _lineage.jsonl
-                      linking each output item to the input it came from
+    5. output folder  outputs/intermediate_results/<step>/
     6. main           calls main(inputs, settings, output); every move is
-                      timed and logged
-    7. bookkeeping    _manifest.json: input and output files with hashes;
-                      outputs/reports/<run id>.md for people
+                      timed and logged. The helpers give each output item
+                      its origin (see common/audit.py)
+    7. bookkeeping    _manifest.json: input and output files with hashes (each
+                      input file's own hash too, so audit.py can tell which
+                      one changed); outputs/reports/<run id>.md for people
     8. failure        on an error or Ctrl+C, the log gets the full traceback,
                       the report is marked failed or interrupted, and the
                       step exits with a non-zero code
@@ -195,7 +196,8 @@ def _describe_inputs(inputs: dict) -> tuple:
             warnings.append(f"Input `{key}` ({path}) has no readable manifest, so the run "
                             f"that produced it is not recorded.")
         row = {"name": key, "path": _rel(path), "files": len(files),
-               "sha256": audit.sha256(files), "run_id": run_id, "origin": origin}
+               "sha256": audit.sha256(files), "run_id": run_id, "origin": origin,
+               "file_hashes": {audit.ref_path(f): audit.sha256([f]) for f in files}}
         rows.append(row)
         log.info(f"input {key}: {row['path']} ({len(files)} file{'s' if len(files) != 1 else ''}), "
                  f"from {origin}")
@@ -228,9 +230,9 @@ def git_commit() -> str:
         return "unknown"
 
 
-def _describe_outputs(output: Path, results: Results, lineage_path: Path) -> list:
+def _describe_outputs(output: Path, results: Results) -> list:
     rows = []
-    for f in list(results.files) + [lineage_path]:
+    for f in results.files:
         f = Path(f)
         if not f.exists():
             continue
@@ -252,7 +254,6 @@ def _write_manifest(output: Path, run: dict, settings: dict, input_rows: list,
         "settings": settings,
         "inputs": input_rows,
         "outputs": output_rows,
-        "lineage": audit.LINEAGE_NAME,
         "headline": results.headline,
         "warnings": len(results.warnings),
         "report": run["report"],
@@ -293,7 +294,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
     run = {"run_id": run_id, "step": step_name, "started": _stamp(started), "finished": None,
            "duration_s": None, "git_commit": git_commit(), "harvest_date": None,
            "status": "running", "report": _rel(report), "log": _rel(log_file),
-           "lineage": _rel(output / audit.LINEAGE_NAME), "settings_changed": changed}
+           "settings_changed": changed}
 
     log.info(f"{step_name}: run {run_id} started")
     log.debug(f"command: {' '.join([f'py {step_name}.py'] + argv)}")
@@ -309,7 +310,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         # The old manifest no longer describes this folder once the run starts.
         (output / MANIFEST_NAME).unlink(missing_ok=True)
         log.debug(f"output folder: {_rel(output)}")
-        lineage = audit.begin_lineage(output, run_id)
+        audit.begin_run(run_id, chosen_inputs)
 
         results = main(chosen_inputs, chosen_settings, output)
         if not isinstance(results, Results):
@@ -317,9 +318,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         results.warnings = input_warnings + list(results.warnings)
         run["harvest_date"] = results.harvest_date or (
             ", ".join(sorted(harvest_dates)) if harvest_dates else None)
-        if not lineage.finished:
-            lineage.finish([_name_in(output, f) for f in results.files])
-        output_rows = _describe_outputs(output, results, lineage.path)
+        output_rows = _describe_outputs(output, results)
         run["status"] = "done"
     except InputMissing as exc:
         run["status"], error = "failed", RunError(str(exc))
@@ -328,7 +327,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
     except Exception as exc:  # noqa: BLE001 -- any failure must still produce a report
         run["status"], error = "failed", RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:
-        audit.end_lineage()
+        audit.end_run()
 
     finished = dt.datetime.now().astimezone()
     run["finished"] = _stamp(finished)
