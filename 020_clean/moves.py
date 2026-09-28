@@ -35,15 +35,16 @@ from pathlib import Path
 import maintainers
 import note_cleaning
 from common.audit import ORIGIN_FIELD, check_origins, log, origin
+from common.records_io import TEXT_FIELDS
 from common.step import Results, input_files
 
 OUTPUT_NAME = "records.jsonl"
 CLEANING_FIELD = "_cleaning"         # which method cleaned each text field
 SHOW = 20                            # items listed in the report before "…"
 
-#: The free-text fields every record gets, always cleaned and saved. The
-#: extra_text_fields setting can only add to them.
-TEXT_FIELDS = ("title", "notes")
+#: TEXT_FIELDS (from common/records_io.py, which every later step reads
+#: records with): the free-text fields every record gets, always cleaned and
+#: saved. The extra_text_fields setting can only add to them.
 
 #: The other fields keep_fields writes. An extra text field can't take one of
 #: these names, or it would overwrite that field.
@@ -199,7 +200,7 @@ def join_maintainers(catalog: Catalog, settings: dict) -> Catalog:
 
 def _write_jsonl(path: Path, records: list) -> None:
     tmp = path.with_suffix(".jsonl.part")
-    with open(tmp, "w", encoding="utf-8") as fh:
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
         for record in records:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
     os.replace(tmp, path)

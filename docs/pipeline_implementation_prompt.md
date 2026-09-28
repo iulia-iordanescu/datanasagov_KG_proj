@@ -7,7 +7,7 @@ Build a pipeline that turns the metadata of the [data.nasa.gov](https://data.nas
 3. sets aside two disjoint samples: one to induce the schema from, one to evaluate on;
 4. induces a schema from the data with an LLM;
 5. drafts ground-truth triples for a person to correct;
-6. extracts schema-guided triples from every record with an LLM;
+6. extracts schema-guided triples with an LLM (from every record once the schema is final; until then, only from the records that have ground truth);
 7. scores the extraction against the ground truth;
 8. builds the graph as nodes and edges, ready to load into a graph store (to be chosen; see step 080).
 
@@ -45,16 +45,18 @@ outputs/                              everything a run produces, gitignored
 |---|---|---|---|
 | `010_harvest` | Downloads every catalog record, page by page | the CKAN API | `batch_*.json`: one file per page, holding the raw records and the request that returned them |
 | `020_clean` | Turns HTML in text fields into plain text and checks that no word, number or URL is lost; joins spellings of the same maintainer; keeps each field under its own key | 010 | `records.jsonl` |
-| `030_split` | Draws two disjoint samples: the **evaluation pool** (1,000 records, stratified by maintainer, shuffled so any first *k* is a fair sample) and the **induction sample** (from the largest maintainers). Write-once | 020 | `splits.json` |
+| `030_split` | Sets two disjoint samples: the **ground truth candidates pool** (1,000 records, stratified by maintainer, shuffled so any first *k* is a fair sample) and the **induction sample** (from the largest maintainers). Write-once | 020, `annotations/ground_truth_candidates.csv` | `splits.json` |
 | `040_induce_schema` | LLM extracts facts with no schema, labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps entries above a threshold. LLM writes definitions; code rechecks every number | 020, 030 | `the_schema.json`, `induction_evidence.json` |
-| `050_annotate` | LLM drafts triples for the next records in the evaluation pool; a person corrects them into `annotations/` | 020, 030, `annotations/annotation_schema.txt` | `drafted_triples.csv` |
-| `060_extract` | LLM extracts triples that follow the schema, from **every** record; code checks each one and keeps or removes it, with a reason | 020, 040 | `extracted_triples.csv`, `extracted_triples_removed.csv` |
-| `070_evaluate` | Precision and recall on the evaluation-pool records a person has corrected, overall and per maintainer | `annotations/ground_truth_triples.csv`, 060 | `metrics.json`, per-record diff |
+| `050_annotate` | LLM drafts triples for the next records in the ground truth candidates pool; a person corrects them into `annotations/` | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `drafted_triples.csv` |
+| `060_extract` | LLM extracts triples that follow the schema, from **every** record once the schema is final (until then, only from the records that have ground truth, to limit cost); code checks each one and keeps or removes it, with a reason | 020, 040 | `extracted_triples.csv`, `extracted_triples_removed.csv` |
+| `070_evaluate` | Precision and recall on the records of the ground truth candidates pool that a person has corrected, overall and per maintainer | `annotations/ground_truth_triples.csv`, 060 | `metrics.json`, per-record diff |
 | `080_build_graph` | Builds the graph from the structured facts (maintainers, keywords, formats) and the extracted triples, in a store-neutral form | 020, 060 | `nodes.jsonl`, `edges.jsonl` |
 
 **Rule:** a step reads only from earlier steps' output folders (or `annotations/`), and writes only to its own.
 
-**Why the two samples must be disjoint.** 070 measures how well extraction works on text the schema was *not* learned from; scoring on induction texts would flatter the schema. Extraction itself runs on every record, because the graph needs every record, including the evaluation pool, whose triples are what 070 scores.
+**The ground truth candidates pool.** 1,000 records that are candidates for annotation: a person annotates them in pool order, and the annotated records become the ground truth. Only a subset of the pool is ever annotated, since verifying 1,000 records by hand is more than the time available; because the pool is shuffled, the first *k* records are a fair sample of the catalog for any *k*, so annotation can stop anywhere. The pool was drawn once, on 2026-09-21, and is kept in `annotations/ground_truth_candidates.csv`; 030 reads it and never redraws it.
+
+**Why the two samples must be disjoint.** 070 measures how well extraction works on text the schema was *not* learned from; scoring on induction texts would flatter the schema. Once the schema is final, extraction runs on every record, because the graph needs every record, including the ground truth candidates pool, whose annotated records are what 070 scores.
 
 **Graph store: open.** 080 writes nodes and edges as files, not into a database. Which store to load them into (a property graph such as Neo4j, an RDF triple store, an embedded graph database, or plain files and a dataframe library) is decided later by a spike that weighs scale (on the order of 100k nodes and 1M edges), query needs and cost. Loading becomes its own step once that's settled.
 
@@ -64,7 +66,7 @@ flowchart TD
     H --> C[020 clean]
     C --> S[030 split]
     S -->|induction sample| I[040 induce_schema]
-    S -->|evaluation pool| A[050 annotate]
+    S -->|ground truth candidates pool| A[050 annotate]
     C -->|all records| E[060 extract]
     C --> I & A
     I -->|schema| E
@@ -153,7 +155,7 @@ Keep it under about 40 lines.
 
 1. Reads the command line: `--<input> PATH` replaces an input, `--<setting> VALUE` changes a setting.
 2. Creates the run id and opens the log.
-3. Checks that every input file exists. If one is missing, it stops and names the file and the step that produces it. For each input, it records the hash and the run that produced it; a missing manifest beside an input is a warning, not a stop.
+3. Checks that every input file exists. If one is missing, it stops and names the file and the step that produces it. For each input, it records the hash and the run that produced it; a missing manifest beside an input is a warning, not a stop, except for a file kept in Git (e.g. in `annotations/`), which is made by a person and has none.
 4. Creates the output folder.
 5. Calls `main(inputs, settings, output)`.
 6. Writes the manifest and the report.
@@ -181,7 +183,7 @@ The master report reads headline numbers from each step's manifest, and never re
 
 ```
 py 060_extract.py                                         default inputs
-py 060_extract.py --schema annotations/annotation_schema.txt   one input swapped
+py 060_extract.py --schema annotations/schema_derived_from_manual_annotation.txt   one input swapped
 py 040_induce_schema.py --min_support 5                   one setting changed
 ```
 

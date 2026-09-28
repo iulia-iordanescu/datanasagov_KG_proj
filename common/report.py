@@ -127,4 +127,4 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
         lines.append("None.")
     lines.append("")
 
-    path.write_text("\n".join(lines), encoding="utf-8")
+    path.write_text("\n".join(lines), encoding="utf-8", newline="\n")

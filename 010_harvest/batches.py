@@ -34,7 +34,7 @@ def batch_path(folder: Path, start: int) -> Path:
 def save_batch(path: Path, header: dict, records: list) -> None:
     """header: request, fetched_at, http_status, catalog_count, run_id."""
     tmp = path.with_suffix(".json.part")
-    tmp.write_text(json.dumps({**header, "records": records}), encoding="utf-8")
+    tmp.write_text(json.dumps({**header, "records": records}), encoding="utf-8", newline="\n")
     os.replace(tmp, path)
 
 

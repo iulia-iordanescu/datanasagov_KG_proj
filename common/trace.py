@@ -4,13 +4,14 @@ common/trace.py -- follows an item back through the pipeline by its origin.
 Every output item names the input item(s) it came from, in its "_origin"
 field (JSON) or "origin" column (CSV); see common/audit.py. trace() starts
 from an item in one step and follows those references upstream until it
-reaches a 010 batch file, whose request block says which API call returned
-the record. Each hop shows the run that made it, with that run's report and
-log.
+reaches either a 010 batch file, whose request block says which API call
+returned the record, or a file kept in Git (annotations/), made by a person.
+Each hop shows the run that made it, with that run's report and log.
 
 A step's output files are the ones its _manifest.json lists. An item is
 found by its key (the "id" field, e.g. a CKAN record id) or by its position
-in the file, counting from 0.
+in the file, counting from 0. A JSON file holding several lists, each under
+its own name ({"<name>": {"records": [...]}}), is searched in all of them.
 """
 from __future__ import annotations
 
@@ -66,6 +67,12 @@ def _read(path: Path):
         if isinstance(data, dict) and isinstance(data.get("records"), list):
             items = data["records"]
             header = {k: v for k, v in data.items() if k != "records"}
+        elif isinstance(data, dict):
+            # Several lists in one file, each under its own name, e.g. the two
+            # samples in 030's splits.json: {"<name>": {"records": [...]}, ...}
+            for value in data.values():
+                if isinstance(value, dict) and isinstance(value.get("records"), list):
+                    items.extend(value["records"])
         elif isinstance(data, list):
             items = data
     _items_cache[path] = (header, items)
@@ -165,6 +172,11 @@ def trace(step: str, path: Path, position: int, item: dict, depth: int = 0, out=
     key = item.get(KEY_FIELD)
     out(f"{pad}{step}  {path.name}#{key if key is not None else position}"
         + (f"  (item {position})" if key is not None else ""))
+
+    if not path.resolve().is_relative_to(RESULTS_DIR.resolve()):
+        # A file kept in Git (annotations/): made by a person, not by a run.
+        out(f"{pad}    kept in Git, made by a person: {ref_path(path)}")
+        return
 
     # A kept 010 batch file names the run that fetched it; otherwise the
     # step's manifest names the run that wrote the file.

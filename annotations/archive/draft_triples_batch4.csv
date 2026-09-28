@@ -1,0 +1,29 @@
+id,subject,subject_class,predicate,object,object_class,source_text,all_facts_extracted,flags
+3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,CatalogEntry,DESCRIBES,NASA Standards and and Technical Assistance Resource Tool,X,(record structure),0,
+3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,NASA Technical Standards Program,Organization,PROVIDES_ACCESS_TO,NASA developed standards and handbooks,Document,The NASA Technical Standards Program provides access to NASA developed standards and handbooks.,0,
+3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,NASA Standards and Technical Assistance Resource Tool,WebTool,ALSO_KNOWN_AS,START,WebTool,"The NASA Standards and Technical Assistance Resource Tool, or START, is a Web tool",0,
+3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,NASA Standards and Technical Assistance Resource Tool,WebTool,SPONSORED_BY,NASA Technical Standards Program,Organization,is a Web tool sponsored by the NASA Technical Standards Program,0,
+3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,START,WebTool,HAS_PURPOSE,make it simpler for technical people to access NASA technical information quickly and conveniently,Purpose,The idea is to make it simpler for technical people to access great NASA technical information quickly and conveniently.,0,object_not_in_text
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,CatalogEntry,DESCRIBES,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,X,(record structure),0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,FROM_MISSION,Rosetta,Mission,This is a Rosetta Radio Science data set,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,HAS_DISCIPLINE,Radio Science,Discipline,This is a Rosetta Radio Science data set,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,HAS_MISSION_PHASE,COMET ESCORT 4,MissionPhase,collected during the COMET ESCORT 4 phase,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,COMET ESCORT 4,MissionPhase,HAS_TIME_SPAN,2015-10-22 to 2015-12-31,TimeSpan,COMET ESCORT 4 phase 2015-10-22 to 2015-12-31,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,HAS_MEASUREMENTS_OF,Global Gravity,PhysicalQuantity,It is a Global Gravity measurement,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,HAS_TARGET,67P,CelestialBody,at the comet 67P,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,HAS_TIME_SPAN,2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000,TimeSpan,covers the time 2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000,0,
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,Dataset,HAS_VERSION,V1.0,Version,V1.0,0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,6cfafd07-40f1-46da-9d92-36c2bb319f0b,CatalogEntry,DESCRIBES,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,X,(record structure),0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_PROCESSING_LEVEL,Level-2 (L2),ProcessingLevel,This global Level-2 (L2) data set,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_SPATIAL_COVERAGE,global,SpatialCoverage,This global Level-2 (L2) data set,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_MEASUREMENTS_OF,snow cover,PhysicalQuantity,provides daily snow cover detected using Normalized Difference Snow Index (NDSI),0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_MEASUREMENTS_OF,Normalized Difference Snow Index (NDSI),PhysicalQuantity,Normalized Difference Snow Index (NDSI),0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,USES_SCREENING_METHOD,a series of screens designed to alleviate errors and flag uncertain snow cover detections,Method,a series of screens designed to alleviate errors and flag uncertain snow cover detections,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,ACQUIRED_BY,MODIS,Instrument,The NDSI is derived from radiance data acquired by the Moderate Resolution Imaging Spectroradiometer (MODIS),0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS,Instrument,ABOARD,Aqua,Spacecraft,on board the Aqua satellite,0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,DERIVED_FROM,DOI:10.5067/MODIS/MYD02HKM.061,Dataset,DOI:10.5067/MODIS/MYD02HKM.061,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,DERIVED_FROM,DOI:10.5067/MODIS/MYD021KM.061,Dataset,DOI:10.5067/MODIS/MYD021KM.061,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_GRANULE_DURATION,5 minutes,Duration,Each data granule contains 5 minutes of swath data,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_SPATIAL_RESOLUTION,500 m,Resolution,observed at a resolution of 500 m,0,new_predicate
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_VERSION,V061,Version,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,0,
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,Version 61,Version,ALSO_KNOWN_AS,Collection 6.1,Version,"The terms ""Version 61"" and ""Collection 6.1"" are used interchangeably in reference to this release of MODIS data.",0,

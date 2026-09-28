@@ -107,7 +107,7 @@ The schema is derived from the catalog rather than written in advance. The data-
 
 ### Evaluation: an annotated pool
 
-None of the above says whether extraction is correct, and no query built on the graph is worth more than the extraction under it. Assessing quality needs ground-truth triples. So a fixed pool of 1,000 records was drawn, once, to be annotated by hand.
+None of the above says whether extraction is correct, and no query built on the graph is worth more than the extraction under it. Assessing quality needs ground-truth triples. So a fixed pool of 1,000 records, the *ground truth candidates pool*, was drawn, once, to be annotated by hand. They are candidates: only a subset will ever be annotated and used as ground truth, since verifying 1,000 records by hand is more than the time available.
 
 The pool is a stratified random sample: records are grouped by maintainer, each group gets places in proportion to its size, maintainers too small to earn two places are combined into one group, and the rows are shuffled so that the first k of them are a fair sample for any k. That last property is what makes partial annotation usable: annotation will stop long before 1,000, and wherever it stops, what has been annotated is still a fair sample rather than one biased by alphabetical or by-maintainer ordering.
 

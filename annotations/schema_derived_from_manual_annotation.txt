@@ -1,0 +1,49 @@
+﻿CLASSES
+-------
+Dataset           a set of observations, measurements or samples
+WebTool           a tool used over the web
+Document          a written publication
+Purpose           an aim something is meant to achieve
+Mission           a named spaceflight effort
+MissionPhase      a named phase of a mission
+Discipline        a field of science
+Organization      an institution or one of its parts; not a mission
+Instrument        a device that takes measurements
+Spacecraft        a craft that operates in space
+TimeSpan          a period with a start and an end
+PhysicalQuantity  a property that can be measured
+CelestialBody     a natural object in space
+Version           a label marking one release of something
+
+PREDICATES
+----------
+Each entry below reads subject -> object, and lists the class pairs used so far.
+Those pairs record where a predicate has been used, not the only place it
+may be used. Use a predicate wherever its meaning fits.
+
+ABOARD               is carried on
+                     Instrument -> Spacecraft
+ACQUIRED_BY          was collected by
+                     Dataset -> Instrument
+ALSO_KNOWN_AS        is the same thing under another name
+                     WebTool -> WebTool
+FROM_MISSION         came from
+                     Dataset -> Mission
+HAS_DISCIPLINE       belongs to the field
+                     Dataset -> Discipline
+HAS_MEASUREMENTS_OF  holds measurements of
+                     Dataset -> PhysicalQuantity
+HAS_MISSION_PHASE    was collected during
+                     Dataset -> MissionPhase
+HAS_PURPOSE          is meant to achieve
+                     WebTool -> Purpose
+HAS_TARGET           is about the body
+                     Dataset -> CelestialBody
+HAS_TIME_SPAN        covers the period
+                     Dataset -> TimeSpan; MissionPhase -> TimeSpan
+HAS_VERSION          carries the version label
+                     Dataset -> Version
+PROVIDES_ACCESS_TO   makes available
+                     Organization -> Document
+SPONSORED_BY         is sponsored by
+                     WebTool -> Organization

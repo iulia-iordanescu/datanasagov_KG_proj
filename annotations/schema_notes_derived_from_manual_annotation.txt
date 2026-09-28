@@ -1,0 +1,142 @@
+﻿SCHEMA NOTES - ground truth annotation
+Originally, kept beside ground_truth_triples.csv, where we would check here before naming anything new to reuse an existing class or predicate if it fit; a new one is added on purpose. Now, just an artifact. The schema here (sections CLASSES and PREDICATES in this text file) were the starting point of the ever-growing schema_derived_from_manual_extraction.txt file, which is used and updated actively by the drafter for ground truth triples.
+
+
+CSV COLUMNS
+-----------
+id                   record id from inputs.json
+subject              the thing the fact is about
+subject_class        class of the subject (X = not yet decided)
+predicate            the relationship
+object               the thing it connects to
+object_class         class of the object (X = not yet decided)
+source_text          exact passage the fact comes from, copied verbatim;
+                     "(record structure)" for DESCRIBES rows (rule 8)
+all_facts_extracted  1 = every fact in the text was written down
+                     0 = only some facts were written down
+
+
+RULES
+-----
+1. Only facts the text states. Nothing inferred, even when it seems obvious
+   (e.g. "RSI" and "1149" in a title are left out: the text never says
+   what they mean). The one exception is rule 8.
+2. The subject of a fact is the thing the sentence is about. For facts
+   about what the title names, the subject is the title, and its class is
+   what kind of thing the title names: Dataset, WebTool or Publication so far,
+   more as they appear. When a sentence is about something else, such as
+   the study behind a dataset, that thing is the subject, with its own
+   class.
+3. No "is a" rows. What kind of thing something is goes in its class. If
+   an "is a" sentence also states other facts (e.g. "a Rosetta Radio
+   Science data set" names a mission and a discipline), write those as
+   their own triples.
+4. The same entity carries the same class everywhere it appears,
+   including under its other names.
+5. Program is reserved for mission programs (a subclass of Mission).
+   Institutional offices named "... Program" are Organization.
+6. If a title has a typo, write the name correctly.
+7. Predicates are written in UPPER_SNAKE_CASE.
+8. Every record gets one structural row, following the W3C DCAT pattern of
+   keeping a catalog entry separate from the thing it describes:
+       <record id> (CatalogEntry) DESCRIBES <title> (its class)
+   No text states this, so source_text is "(record structure)". These rows
+   must be EXCLUDED when scoring an extractor, which can never produce them.
+9. Opinion words ("great") are left out of the object, but source_text
+   still quotes the passage exactly.
+10. One entity, one name across all records. If a text spells a known
+    entity differently (e.g. "Moderate-resolution" vs "Moderate
+    Resolution" Imaging Spectroradiometer), use the name already in the
+    CSV; source_text keeps the text's own spelling.
+
+
+CLASSES
+-------
+CatalogEntry      a record in the data.nasa.gov catalog; subject is its id
+Dataset           data: a set of observations, measurements or samples
+WebTool           a tool delivered through the web
+Document          a written publication such as a standard or handbook
+Purpose           what something is intended to achieve
+Mission           a space mission
+MissionPhase      a named phase of a mission
+Discipline        a field of science
+Organization      an office, program office or body; not a mission program
+Instrument        a device that takes measurements
+Spacecraft        a vehicle in space, such as a satellite
+TimeSpan          a period with a start and end
+PhysicalQuantity  a quantity that can be measured
+CelestialBody     a planet, moon, comet, asteroid or other natural body
+                  in space
+Version           a version label
+
+
+PREDICATES
+----------
+Each entry gives domain -> range: the class a predicate starts from, and
+the class it points to. A class's incoming and outgoing links are read off
+this list, so they are not repeated under CLASSES.
+
+DESCRIBES            a catalog entry describes the thing its title names
+                     CatalogEntry -> Dataset; CatalogEntry -> WebTool
+ABOARD               an instrument is carried on a spacecraft
+                     Instrument -> Spacecraft
+ACQUIRED_BY          data was collected by an instrument
+                     Dataset -> Instrument
+ALSO_KNOWN_AS        another name for the same thing
+                     WebTool -> WebTool
+FROM_MISSION         dataset comes from a mission
+                     Dataset -> Mission
+HAS_DISCIPLINE       dataset belongs to a field of science
+                     Dataset -> Discipline
+HAS_MEASUREMENTS_OF  dataset holds measurements of a quantity
+                     Dataset -> PhysicalQuantity
+HAS_MISSION_PHASE    dataset was collected during a mission phase
+                     Dataset -> MissionPhase
+HAS_PURPOSE          what the subject is intended to achieve
+                     WebTool -> Purpose
+HAS_TARGET           the body the data is about (the planetary archives'
+                     term: "the prime target is ...")
+                     Dataset -> CelestialBody
+HAS_TIME_SPAN        subject covers a period of time
+                     Dataset -> TimeSpan; MissionPhase -> TimeSpan
+HAS_VERSION          subject has a version label
+                     Dataset -> Version
+PROVIDES_ACCESS_TO   subject makes documents or resources available
+                     Organization -> Document
+SPONSORED_BY         subject is sponsored by an organization
+                     WebTool -> Organization
+
+
+OPEN QUESTIONS
+--------------
+- Values vs things (PARKED, decide when building the graph). Some objects
+  are things other facts can point at (MODIS, comet 67P); others are plain
+  values nothing points at (V1.0, 500 m, 2015-10-22). RDF calls the second
+  kind literals, and OWL calls the predicates leading to them datatype
+  properties. Version and TimeSpan are currently written as classes but
+  behave as values. Nothing needs to change in the CSV now; decide the
+  object_class convention (e.g. "Literal") before building the graph.
+- Measurement type vs quantity (OPEN). Six planetary records share the
+  template "It is a Global Gravity / Occultation / Solar Conjunction
+  measurement". Occultation and solar conjunction are observation
+  techniques, not quantities, so these may belong under a separate
+  predicate (HAS_MEASUREMENT_TYPE) rather than HAS_MEASUREMENTS_OF, which
+  would then cover only real quantities (snow cover, sea surface
+  temperature). Affects record 2.
+- Hierarchy: where Program sits under Mission; whether Comet becomes a
+  subclass of CelestialBody.
+- For the scorer: exclude DESCRIBES rows (rule 8); treat X as "not
+  decided"; decide whether a doubled word ("and and") still counts as a
+  match.
+- Record 3 (MODIS/Aqua Snow Cover...) is partial. Its dataset is not
+  linked to MODIS: the text connects them only through the radiance data.
+- Candidates seen repeatedly across 45 sampled records but not yet
+  adopted: HAS_PROCESSING_LEVEL (~22 records), DERIVED_FROM (~10),
+  PRODUCED_BY / LED_BY (~7), HAS_SHORT_NAME (~9), HAS_SPATIAL_RESOLUTION
+  (~9), HAS_TEMPORAL_RESOLUTION (~8), HAS_SPECTRAL_RANGE (~8),
+  USES_METHOD (~8), HAS_FORMAT (~5), HAS_UNITS (~5). Classes: Campaign
+  (SOLVE, FIRE, ARCTAS, BARREL), Aircraft (ER-2, DC-8), Algorithm,
+  Publication, Project, Catalog.
+
+
+

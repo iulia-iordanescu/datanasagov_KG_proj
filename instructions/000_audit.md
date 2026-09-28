@@ -10,7 +10,7 @@ Every run of a step has a run id, e.g. `020_clean_2026-09-27_1030`: the step nam
 |---|---|---|
 | `outputs/reports/<run id>.md` | What came out? Numbers, warnings, timeline, and links to the files below. | every run |
 | `outputs/logs/<run id>.log` | What happened, in what order? Why did it fail? | every run |
-| `outputs/intermediate_results/<step>/_manifest.json` | Exactly which files went in and came out: each with its sha256 hash, and the run that produced each input. | Deleted when a run starts, written when it finishes. So it describes the last run that finished, and a step whose last run failed has none. |
+| `outputs/intermediate_results/<step>/_manifest.json` | Exactly which files went in and came out: each with its sha256 hash, and the run that produced each input. | Removed when a run starts and written when it finishes, so it describes the last run that finished. If a run fails, the previous manifest is put back only if every file it lists still has the hash it recorded (e.g. a run stopped by a bad setting, which wrote nothing); otherwise the step has none until a run finishes. |
 | The item's **origin**, inside the output file itself | Where did this item come from? | as long as the output file |
 
 Start from the report: its **Run** section links to the log.
@@ -36,7 +36,7 @@ py audit.py <key> --step 010_harvest                      look in one step only
 py audit.py --step 010_harvest --file batch_01000.json --position 17
 ```
 
-`audit.py` finds the item in the latest step that has it (searching the output files each step's manifest lists, by the item's `id`), then follows its origin upstream, one step at a time, to the 010 batch file and the API request that first returned it. It shows at most 20 matches.
+`audit.py` finds the item in the latest step that has it (searching the output files each step's manifest lists, by the item's `id`), then follows its origin upstream, one step at a time, to the 010 batch file and the API request that first returned it. An origin can also point to a file kept in Git, such as the ground truth candidates pool in `annotations/`; the trace shows it as made by a person and goes no further up that branch. A JSON output holding several lists under their own names (030's `splits.json`) is searched in all of them. It shows at most 20 matches.
 
 Each hop names a run, with its report and log: for a 010 batch file, the run recorded in the file (the one that fetched it); for any other file, the run in its step's manifest (the last run that finished). A step folder without a manifest is not searched, and hops through it show `made by run unknown`.
 

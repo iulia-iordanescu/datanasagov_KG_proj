@@ -23,8 +23,9 @@ only has to show the step's main moves:
                       input file's own hash too, so audit.py can tell which
                       one changed); outputs/reports/<run id>.md for people
     8. failure        on an error or Ctrl+C, the log gets the full traceback,
-                      the report is marked failed or interrupted, and the
-                      step exits with a non-zero code
+                      the report is marked failed or interrupted, the
+                      previous manifest is put back if every file it lists
+                      is unchanged, and the step exits with a non-zero code
 
 Everything a run produces goes under outputs/, which is gitignored and can be
 deleted and rebuilt by rerunning the pipeline. Work that can't be rebuilt
@@ -183,7 +184,12 @@ def _describe_inputs(inputs: dict) -> tuple:
         files = input_files(path)
         manifest_path = files[0].parent / MANIFEST_NAME
         run_id, origin = None, "unknown (no manifest beside it)"
-        if manifest_path.exists():
+        in_git = not files[0].resolve().is_relative_to(RESULTS_DIR.resolve())
+        if in_git:
+            # A file kept in Git (e.g. annotations/) is made by a person, not by
+            # a run, so it has no manifest and none is expected.
+            origin = "kept in Git, made by a person"
+        elif manifest_path.exists():
             try:
                 m = json.loads(manifest_path.read_text(encoding="utf-8"))
                 run_id = m.get("run_id")
@@ -192,8 +198,8 @@ def _describe_inputs(inputs: dict) -> tuple:
                     harvest_dates.add(m["harvest_date"])
             except (ValueError, OSError):
                 origin = "unknown (manifest unreadable)"
-        if run_id is None:
-            warnings.append(f"Input `{key}` ({path}) has no readable manifest, so the run "
+        if run_id is None and not in_git:
+            warnings.append(f"Input `{key}` ({_rel(path)}) has no readable manifest, so the run "
                             f"that produced it is not recorded.")
         row = {"name": key, "path": _rel(path), "files": len(files),
                "sha256": audit.sha256(files), "run_id": run_id, "origin": origin,
@@ -259,7 +265,38 @@ def _write_manifest(output: Path, run: dict, settings: dict, input_rows: list,
         "report": run["report"],
         "log": run["log"],
     }
-    (output / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (output / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8", newline="\n")
+
+
+def _take_manifest(output: Path) -> str | None:
+    """Remove the step's manifest, returning its text (None if there was none)."""
+    path = output / MANIFEST_NAME
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8")
+    path.unlink()
+    return text
+
+
+def _restore_manifest(output: Path, text: str | None) -> None:
+    """After a failed run, put the previous manifest back if it still tells
+    the truth: every output file it lists exists with the hash it recorded.
+    A run that failed before writing anything (e.g. a bad setting) thus
+    leaves the step as it was; one that changed a file leaves no manifest."""
+    if text is None:
+        return
+    try:
+        manifest = json.loads(text)
+        unchanged = all((output / row["file"]).is_file()
+                        and audit.sha256([output / row["file"]]) == row["sha256"]
+                        for row in manifest.get("outputs", []))
+    except (ValueError, KeyError, TypeError, OSError):
+        unchanged = False
+    if unchanged:
+        (output / MANIFEST_NAME).write_text(text, encoding="utf-8", newline="\n")
+        log.debug("previous manifest restored: every file it lists is unchanged")
+    else:
+        log.debug("previous manifest not restored: files it lists changed or are gone")
 
 
 def _stamp(t: dt.datetime) -> str:
@@ -303,12 +340,15 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         log.debug(f"setting {key} = {value!r}" + (" (command line)" if key in changed else ""))
 
     input_rows, output_rows, results, error = [], [], None, None
+    old_manifest = None                  # nothing to restore if the run stops before taking it
     try:
         _check_inputs(chosen_inputs, inputs)
         input_rows, input_warnings, harvest_dates = _describe_inputs(chosen_inputs)
         output.mkdir(parents=True, exist_ok=True)
-        # The old manifest no longer describes this folder once the run starts.
-        (output / MANIFEST_NAME).unlink(missing_ok=True)
+        # The old manifest may no longer describe this folder once the run
+        # starts writing, so it is removed; if the run fails, it is put back
+        # only if every file it lists is still unchanged (see _restore_manifest).
+        old_manifest = _take_manifest(output)
         log.debug(f"output folder: {_rel(output)}")
         audit.begin_run(run_id, chosen_inputs)
 
@@ -343,6 +383,8 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
 
     if run["status"] == "done":
         _write_manifest(output, run, chosen_settings, input_rows, output_rows, results)
+    else:
+        _restore_manifest(output, old_manifest)
     write_step_report(report, run, chosen_settings, input_rows, output_rows,
                       audit.timeline(), results, error)
 
