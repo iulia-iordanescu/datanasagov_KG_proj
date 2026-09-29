@@ -47,14 +47,7 @@ Every new PowerShell window needs `.\.myvenv\Scripts\Activate.ps1` again; your p
 
 ## 3. Add your Ask Sage key
 
-Create a file named `.env` in the repository folder (part 6 of the setup guide), with your own values:
-
-```
-ASKSAGE_EMAIL=you@nasa.gov
-ASKSAGE_API_KEY=your-key-here
-```
-
-`.gitignore` keeps it out of Git.
+Create the file `.env` with your Ask Sage email and key: part 6 of `docs/virtual_environment_setup.md`.
 
 ## 4. Run the steps, in order
 
@@ -71,42 +64,40 @@ Each step reads what the one before it wrote, so run them in this order. From th
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`instructions/<step>.md`) says what every warning means and what to do.
 
-## 5. Step 040: the first run that costs money
+## 5. The steps that cost money: 040, 050, 060
 
-040 sends each text to the AI model; each request is a paid call. Before its first call it prints its plan (how many calls, which model) and waits:
+Each sends texts to the AI model, and each request is a paid call. Before its first call, each one prints its plan (how many calls, which model) and waits: **Enter** goes ahead, anything else stops, having spent nothing. If the run can't do exactly what you asked, it says so above that question. Its first call is a one-line test that your key and the model name work, so a mistake costs one call, not hundreds.
 
-- press **Enter** to go ahead;
-- type anything else to stop, having spent nothing.
-
-Its first call is a one-line test that your key and the model name work, so a mistake costs one call, not hundreds.
-
-**Try a tiny run first.** This learns from 2 texts from each of 2 maintainers (4 texts, so about 4 model calls to extract triple instances plus a few more to label, merge and define), which shows whether everything works and what a call costs:
+Try a tiny run of each first, to see that everything works and what a call costs:
 
 ```powershell
 py 040_induce_schema.py --induction_maintainers 2 --texts_per_maintainer 2
+py 050_annotate.py --records_per_batch 1
 ```
 
-Then the full run (150 texts):
+Every model answer is kept in the step's `cache/` folder under `outputs/`, so the full run reuses the tiny run's answers and a rerun pays only for what changed. **Don't delete `outputs/`** unless you mean to pay for those calls again.
+
+060 needs 040's schema, and by default extracts only from the ground truth records you've finished (next section). Everything else about each step, including what each warning means, is in its guide, `instructions/<step>.md`.
+
+## 6. Annotating ground truth (after 050, before 060)
 
 ```powershell
-py 040_induce_schema.py
+py annotate.py
 ```
 
-It reuses the tiny run's answers: every model answer is kept in `outputs/intermediate_results/040_induce_schema/cache/`, and a rerun pays only for what changed. **Don't delete `cache/`** (or `outputs/`) unless you mean to pay for those calls again.
+A page opens in your browser: pick the draft batch 050 wrote, correct it, tick *All facts extracted* on each finished record, stop with Ctrl+C, commit. How: `annotations/README.md`. It makes no model calls, so it also works on your personal laptop, if that laptop has run steps 010 to 030 and has the draft batch.
 
-The report's **Model calls** table counts each stage's calls exactly. Its **Merges** list is the one thing to check by eye: a wrong merge (two different ideas made one) is the one mistake code can't catch.
-
-## 6. If something goes wrong
+## 7. If something goes wrong
 
 | What you see | What it means | What to do |
 |---|---|---|
-| *Test call to … failed* (040 or 050 stops) | The key, the model name, or the connection is wrong. Nothing else was called. | Check `.env`, that you're on NASA's network (or VPN), and `MODEL` in `common/llm.py`. |
+| *Test call to … failed* (040, 050 or 060 stops) | The key, the model name, or the connection is wrong. Nothing else was called. | Check `.env`, that you're on NASA's network (or VPN), and `MODEL` in `common/llm.py`. |
 | *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY* | `.env` is missing or misspelled. | Section 3. |
 | *Failed to resolve 'api.asksage.ai.nasa.gov'* | The laptop can't reach Ask Sage. | Connect to NASA's network or VPN. |
 | *missing input files* | An earlier step hasn't run yet. | Run the steps in order (section 4). |
 | *running scripts is disabled* | PowerShell's script policy. | Part 3 of `docs/virtual_environment_setup.md`. |
 
-## 7. Tracing where something came from
+## 8. Tracing where something came from
 
 Any record, triple instance or schema entry can be traced back to the API request that first returned it:
 
@@ -118,20 +109,4 @@ See `instructions/000_audit.md`.
 
 ## Added later
 
-*(New items go here as steps are added.)*
-
-### Annotating ground truth (step 050)
-
-Each run of `py 050_annotate.py` drafts the next 10 records of the pool into one draft batch (`--records_per_batch 3` for fewer; `instructions/050_annotate.md` has the other settings). Like 040, it shows its plan and waits for Enter before paying, and if it can't do exactly what you asked (an id it can't find, fewer records than asked, …) it says so above that question. Try a tiny run first: `py 050_annotate.py --records_per_batch 1`.
-
-The ground truth is the folder `annotations/ground_truth/`: one file per corrected batch. After each run of step 050, correct its draft batch with the annotation tool:
-
-```powershell
-py annotate.py
-```
-
-It opens a page in your browser. Pick the batch at the top: the tool copies the draft into `annotations/ground_truth/` itself (e.g. `drafted_triples_batch1.csv` → `batch_001.csv`) and saves every change there straight away. When you're done, stop it with Ctrl+C and commit the file. It needs no model calls, so it also works on your personal laptop, as long as that laptop has run steps 010 to 030 (the tool shows each record's text from their outputs) and has the draft batch. The full steps are in `annotations/ground_truth/README.md`.
-
-### Extracting (step 060)
-
-`py 060_extract.py` needs 040's schema, so run 040 first. By default it extracts only from the ground truth records you've marked finished in the annotation tool, about one model call each; like 040 and 050, it shows its plan and waits for Enter before paying. `--extract_from all` extracts from every record (about 36,000 calls): only once the schema is final. To add entity classes or predicates by hand (e.g. from your mentor), write them in `annotations/schema_additions.txt`; how, in `instructions/060_extract.md`.
+*(New items go here.)*

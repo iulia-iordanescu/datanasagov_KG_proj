@@ -77,7 +77,7 @@ py 050_annotate.py --confirm_paid_calls false        don't ask (unattended runs)
 py annotate.py
 ```
 
-Pick the batch at the top of the page. The full steps are in [annotations/ground_truth/README.md](../annotations/ground_truth/README.md).
+Pick the batch at the top of the page. The full steps are in [annotations/README.md](../annotations/README.md).
 
 ## How it works
 

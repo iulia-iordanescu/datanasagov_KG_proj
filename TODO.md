@@ -1,6 +1,8 @@
 # TO-DO
 
 - [ ] **Missing README sections.** I need to add a "Repository structure" section (what each folder and script is) and a "How to reproduce" section (setup, harvest, build the graph)
+  - [x] Repository structure (done: README, "What's in this repository")
+  - [ ] How to reproduce (setup and running the steps: `docs/running_on_nasa_laptop.md`; building the graph: not yet, step 080)
 - [ ] **Make a script that extracts facts based off a particular schema.**
   - [ ] Use texts the schema induction script never saw
 - [ ] **Make a script that validates extracted facts for the full run.**

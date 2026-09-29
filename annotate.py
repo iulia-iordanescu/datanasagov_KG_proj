@@ -13,7 +13,7 @@ stop the tool.
 It runs only on this computer: no internet, no model calls, nothing to
 install. It isn't a pipeline step: it writes nothing but your ground truth
 files. How it works: annotator/server.py; how to use it:
-annotations/ground_truth/README.md.
+annotations/README.md.
 """
 import argparse
 import webbrowser
