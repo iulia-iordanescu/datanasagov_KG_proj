@@ -2,24 +2,22 @@
 common/triples_io.py -- the one place a triple is defined, read, written and
 normalised.
 
-Moved unchanged from to_be_reshaped/triple_io.py. The script names below are
-those of the earlier scripts; the steps that replace them (050, 060, 070)
-will import it as `from common import triples_io`.
-
-Everything that produces, checks or compares triples imports it: the
-drafter and the extractor (which PRODUCE triples), validate_triples.py
-(which checks them), and the evaluator, not yet written (which will COMPARE
-ground-truth triples against extracted ones). That is the whole point of
-it: precision and recall are only meaningful if both sides are parsed and
-normalised by the same code. If the extractor lowercased and the evaluator
-did not, every mismatch in case would count as a false positive AND a false
-negative, and the numbers would describe the bookkeeping rather than the
-extraction.
+Adapted from to_be_reshaped/triple_io.py; the DESCRIBES row (at the end)
+was added. Used today by common/extraction.py (050, and 060 when built),
+common/validate.py and the annotation tool: triple_key, label_key,
+clean_triple and the DESCRIBES row. The file-reading and -writing half
+(load_triples, write_triples, dedupe) is kept for 070, the evaluator, which
+will COMPARE ground truth with extracted triple instances. That is the
+whole point of one module: precision and recall are only meaningful if both
+sides are parsed and normalised by the same code. If the extractor
+lowercased and the evaluator did not, every mismatch in case would count as
+a false positive AND a false negative, and the numbers would describe the
+bookkeeping rather than the extraction.
 
 FILE FORMAT  (FORMAT = "triples/v1")
 -----------
-The canonical JSON form, written by write_triples (no script writes it at
-present; the drafter and extractor write the CSV form below):
+The canonical JSON form, written by write_triples (no step writes it at
+present; 050 writes the CSV form below):
 
     {"format": "triples/v1",
      "run": {... who/what produced this file ...},
@@ -45,12 +43,13 @@ matters for precision: anything predicted there is a false positive. A
 document with status "failed" was never extracted and should be EXCLUDED
 from scoring, not scored as zero recall.
 
-Two flat forms are accepted too. The CSV one is what extract_triples_for_kg.py
-and draft_ground_truth_triples.py write, and what ground truth is kept in:
+Two flat forms are accepted too. The CSV one is what step 050 writes
+(drafted_triples_batch<N>.csv) and what the ground truth is kept in
+(annotations/ground_truth/batch_<NNN>.csv, columns in
+common/ground_truth.COLUMNS):
 
   * CSV with a header row: id,subject,predicate,object
-    (subject_class, object_class, source_text columns optional; COLUMNS is
-    the order the drafter and extractor write them in)
+    (subject_class, object_class, source_text columns optional)
   * JSON list of rows: [{"id": ..., "subject": ..., ...}, ...]
 
 In both flat forms a row carrying an id but a blank subject, predicate AND
@@ -58,11 +57,11 @@ object declares "this document was annotated and has no facts". Without it
 a zero-fact document cannot be expressed, and false positives on it would go
 uncounted.
 
-Reading the drafter's or extractor's CSV back with load_triples:
+Reading a draft batch or ground truth CSV back with load_triples:
   * every row is read, errors included: to score only rows without errors,
     filter the CSV first
   * the DESCRIBES row is read like any triple
-  * other columns (errors, flags, all_facts_extracted) are ignored
+  * other columns (flags, all_facts_extracted, origin) are ignored
   * the flat forms have no "status": a record missing from the file was not
     extracted (not run yet, or its call failed) and is simply absent
 
@@ -98,7 +97,8 @@ FORMAT = "triples/v1"
 
 REQUIRED = ("subject", "predicate", "object")
 OPTIONAL = ("subject_class", "object_class", "source_text")
-#: A triple row's columns, in the order every CSV writes them.
+#: A triple row's columns. (The ground truth and draft batches add
+#: all_facts_extracted, flags and origin: common/ground_truth.COLUMNS.)
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
            "object_class", "source_text"]
 #: Older names still read, as {old: current}.
@@ -119,8 +119,10 @@ def norm_predicate(s) -> str:
 
 def label_key(s) -> str:
     """Loosest key, for looking up a SCHEMA name the model re-cased or
-    re-spaced ("physical quantity" -> "PhysicalQuantity"). Same rule as
-    induce_schema's consolidate(): letters and digits only, digits kept."""
+    re-spaced ("physical quantity" -> "PhysicalQuantity"): letters and
+    digits only, digits kept. Used wherever names are compared loosely
+    (040's spelling folds and its comparison with the hand-built schema,
+    the schema checks in common/validate.py)."""
     return re.sub(r"[^a-z0-9]", "", unicodedata.normalize(
         "NFKC", str(s or "")).casefold())
 
@@ -129,7 +131,7 @@ def triple_key(t: dict, mode: str = "normalized") -> tuple:
     """The tuple two triples must share to count as the same triple.
 
     exact and normalized ignore the classes: the same fact given twice with
-    different classes is ONE triple here. validate_triples.py flags that
+    different classes is ONE triple here. common/extraction.py flags that
     case (conflicting_classes); scoring does not see it."""
     if mode == "exact":
         return tuple(str(t.get(k) or "").strip() for k in REQUIRED)
@@ -274,35 +276,34 @@ def load_triples(path) -> dict:
 def write_triples(path, run: dict, documents: list[dict]) -> None:
     """Write the canonical form atomically (write, then rename), so a killed
     process never leaves a half-written file that a later step trusts."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".part")
-    tmp.write_text(json.dumps({"format": FORMAT, "run": run,
-                               "documents": documents},
-                              indent=1, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(path)
+    from common.files import write_json
+    write_json(path, {"format": FORMAT, "run": run, "documents": documents})
 
 
-def read_id_list(path: Path) -> list[str]:
-    """The ids listed in a file, for selecting or excluding texts.
+# ------------------------------ the DESCRIBES row --------------------------
+#
+# Every record's triple instances start with one row no text states, written
+# in code (050, 060):
+#
+#     <record id> (CatalogEntry) DESCRIBES <the record's title> (<entity class>)
+#
+# It keeps the catalog entry apart from the thing the entry is about, so
+# facts about one are not mistaken for facts about the other. The model's
+# only part in it is naming the entity class of what the title names;
+# UNDECIDED ("X") means it named none, for the person to fill in.
 
-    Accepts a triples file (the format above, JSON or CSV), induce_schema's
-    induction_evidence.json (the ids it sampled), or a plain text file with
-    one id per line, where # starts a comment. It lives here, beside the
-    triples format, so that every script can read an id file without
-    depending on anything that calls a model.
+ENTRY_CLASS = "CatalogEntry"
+ENTRY_PREDICATE = "DESCRIBES"
+ENTRY_SOURCE = "(record structure)"
+UNDECIDED = "X"
 
-    Files are read as utf-8-sig: a file saved by PowerShell or Excel may
-    start with an invisible byte-order mark, which would otherwise stick to
-    the first id and stop it from matching."""
-    if not path.exists():
-        raise FileNotFoundError(f"Id file not found: {path}")
-    if path.suffix.lower() == ".json":
-        blob = json.loads(path.read_text(encoding="utf-8-sig"))
-        if isinstance(blob, dict) and isinstance(blob.get("extractions"), list):
-            return [str(e["id"]) for e in blob["extractions"]
-                    if isinstance(e, dict) and e.get("id") is not None]
-    if path.suffix.lower() in (".json", ".csv"):
-        return list(load_triples(path)["documents"])
-    return [ln.strip() for ln in path.read_text(encoding="utf-8-sig").splitlines()
-            if ln.strip() and not ln.lstrip().startswith("#")]
+
+def describes_row(record_id: str, title: str, entity_class: str) -> dict:
+    return {"id": record_id, "subject": record_id, "subject_class": ENTRY_CLASS,
+            "predicate": ENTRY_PREDICATE, "object": title,
+            "object_class": entity_class or UNDECIDED, "source_text": ENTRY_SOURCE}
+
+
+def is_describes(row: dict) -> bool:
+    return label_key(row.get("subject_class")) == label_key(ENTRY_CLASS) and \
+        norm_predicate(row.get("predicate")) == norm_predicate(ENTRY_PREDICATE)

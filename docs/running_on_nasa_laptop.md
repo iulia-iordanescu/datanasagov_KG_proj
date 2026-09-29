@@ -66,6 +66,7 @@ Each step reads what the one before it wrote, so run them in this order. From th
 | 020 clean | `py 020_clean.py` | about 15 s | no |
 | 030 split | `py 030_split.py` | about 3 s | no |
 | 040 induce schema | `py 040_induce_schema.py` | not yet measured | **yes** |
+| 050 annotate | `py 050_annotate.py` | not yet measured | **yes** (about one call per record) |
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`instructions/<step>.md`) says what every warning means and what to do.
 
@@ -98,7 +99,7 @@ The report's **Model calls** table counts each stage's calls exactly. Its **Merg
 
 | What you see | What it means | What to do |
 |---|---|---|
-| *Test call to … failed* (040 stops) | The key, the model name, or the connection is wrong. Nothing else was called. | Check `.env`, that you're on NASA's network (or VPN), and `MODEL` in `common/llm.py`. |
+| *Test call to … failed* (040 or 050 stops) | The key, the model name, or the connection is wrong. Nothing else was called. | Check `.env`, that you're on NASA's network (or VPN), and `MODEL` in `common/llm.py`. |
 | *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY* | `.env` is missing or misspelled. | Section 3. |
 | *Failed to resolve 'api.asksage.ai.nasa.gov'* | The laptop can't reach Ask Sage. | Connect to NASA's network or VPN. |
 | *missing input files* | An earlier step hasn't run yet. | Run the steps in order (section 4). |
@@ -117,3 +118,15 @@ See `instructions/000_audit.md`.
 ## Added later
 
 *(New items go here as steps are added.)*
+
+### Annotating ground truth (step 050)
+
+Each run of `py 050_annotate.py` drafts the next 10 records of the pool into one draft batch (`--records_per_batch 3` for fewer; `instructions/050_annotate.md` has the other settings). Like 040, it shows its plan and waits for Enter before paying, and if it can't do exactly what you asked (an id it can't find, fewer records than asked, …) it says so above that question. Try a tiny run first: `py 050_annotate.py --records_per_batch 1`.
+
+The ground truth is the folder `annotations/ground_truth/`: one file per corrected batch. After each run of step 050, correct its draft batch with the annotation tool:
+
+```powershell
+py annotate.py
+```
+
+It opens a page in your browser. Pick the batch at the top: the tool copies the draft into `annotations/ground_truth/` itself (e.g. `drafted_triples_batch1.csv` → `batch_001.csv`) and saves every change there straight away. When you're done, stop it with Ctrl+C and commit the file. It needs no model calls, so it also works on your personal laptop, as long as that laptop has run steps 010 to 030 (the tool shows each record's text from their outputs) and has the draft batch. The full steps are in `annotations/ground_truth/README.md`.

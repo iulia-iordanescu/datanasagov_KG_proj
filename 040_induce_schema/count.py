@@ -35,10 +35,10 @@ Adapted from consolidate() in to_be_reshaped/best_induce_schema.py.
 from __future__ import annotations
 
 import collections
-import re
 from dataclasses import dataclass, field
 
 from common.audit import log
+from common.triples_io import label_key
 from merge import BECOMES
 
 #: Example component instances kept per entity class.
@@ -55,17 +55,13 @@ class Counts:
     texts_with_triple_instances: int = 0
 
 
-def _norm(label: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", label.lower())     # digits kept on purpose
-
-
 def _folding(finals: collections.Counter, kind: str, folds: list) -> dict:
     """{label: its spelling-folded label}: labels equal once case, spacing and
     punctuation are ignored become the most frequent spelling (ties
     alphabetically)."""
     groups = collections.defaultdict(collections.Counter)
     for label, n in finals.items():
-        groups[_norm(label)][label] += n
+        groups[label_key(label)][label] += n
     out = {}
     for spellings in groups.values():
         into = sorted(spellings.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]

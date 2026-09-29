@@ -79,7 +79,7 @@ py 040_induce_schema.py --confirm_paid_calls false       don't ask (unattended r
 py 040_induce_schema.py --help                           list inputs and settings
 ```
 
-**Paying.** Before its first model call, 040 logs its plan (how many extraction calls, the model) and waits: Enter starts, anything else stops the run having spent nothing. Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls made: about one per text to extract triple instances, plus a few dozen to label, merge and define; the report counts each stage's calls exactly.
+**Paying.** Before its first model call, 040 logs its plan (how many extraction calls, the model) and waits: Enter starts, anything else stops the run having spent nothing. If the texts differ from what the settings ask for (*Before you pay: this run can't do exactly what you asked*, then the reasons listed below), it says so first, above the question, so you can cancel and fix the settings before paying. Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls made: about one per text to extract triple instances, plus a few dozen to label, merge and define; the report counts each stage's calls exactly.
 
 **The cache.** Every model answer is kept in `cache/`, under a fingerprint of everything that decided it: the model, the prompt's exact text, and what was sent. A rerun reuses every answer whose fingerprint is unchanged:
 
@@ -108,7 +108,7 @@ The step has seven stages. Stages 2, 3, 4 and 6 ask the model; 1, 5 and 7 are co
 
 Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Names match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a score: 070 measures how much of the ground truth the schema can express.
 
-The code is in `040_induce_schema/`: `moves.py` (the moves, and writing the results), one file per stage (above), `compare.py`, `cache.py` (the answer cache), and `prompts/`. The hand-built schema is read by `common/schema_io.py`.
+The code is in `040_induce_schema/`: `moves.py` (the moves, and writing the results), one file per stage (above), `compare.py`, and `prompts/`. The hand-built schema is read by `common/schema_io.py`, and the answer cache is `common/cache.py`, shared with 050.
 
 ### Why "undefined" is one of the maintainers learned from
 
@@ -118,6 +118,8 @@ The code is in `040_induce_schema/`: `moves.py` (the moves, and writing the resu
 
 | Message | Meaning | What to do |
 |---|---|---|
+| *You asked for N texts from each maintainer (texts_per_maintainer), but M maintainer(s) don't have that many* | Those maintainers have fewer records to learn from (induction candidates) than asked for, so fewer texts are used (each one's count is in the report's Texts table). Shown before paying, and in the report. | Nothing, or lower `texts_per_maintainer`. |
+| *You asked for N maintainers (induction_maintainers), but only M have records to learn from* | Asked for more maintainers than there are; all of them are used. Shown before paying, and in the report. | Lower `induction_maintainers`. |
 | *N text pieces failed extraction* | Those model calls failed (after the model client's own retries); their triple instances are missing. | Rerun: only the failed pieces are asked again. |
 | *N texts gave no verified triple instance* | The model found none, or none it listed could be verified in the text. | Look at the texts and their `unverified` list in the evidence file; usually very short records. |
 | *N component instances were left unlabeled even after a second try* | The model skipped them twice. They count toward no schema entry. | Nothing, if few. Listed in `induction_evidence.json` under `unlabeled`. |

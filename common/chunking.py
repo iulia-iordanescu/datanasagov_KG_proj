@@ -23,7 +23,7 @@ about, and each piece of the other fields is marked "part i of n":
     notes (part 2 of 3): …
 
 Nothing is cut off: every character of the fields is in some piece. Shared by
-every step that sends records to a model (040, and later 050 and 060), so a
+every step that sends records to a model (040, 050, and 060 when built), so a
 long record is read the same way everywhere.
 
 Adapted from chunk_text in to_be_reshaped/inputs_io.py, which re-parsed the

@@ -2,13 +2,22 @@
 
 Fall 2026 Pathways internship project: building a knowledge graph (KG) for [data.nasa.gov](https://data.nasa.gov).
 
-## Pipeline overview using scripts  
+## Pipeline overview
 
-Phase 1 pipeline: nasa_harvest.py-->nasa_census.py  
+Phase 1 (done) was built by the scripts `nasa_harvest.py` and `nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from its own short script in the repository folder (`py 010_harvest.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Its guide, `instructions/<step>.md`, says what it does, every setting, and every warning.
 
-Phase 2 pipeline: nasa_harvest.py-->build_inputs.py + note_cleaning.py --> ground_truth_sampler.py --> (best_)induce_schema.py --> draft_ground_truth_triples.py --> extract_triples.py --> scorer.py --> load_into_graph_database.py  
+| Step | What it does | Reads | Writes | Status |
+|---|---|---|---|---|
+| `010_harvest` | Downloads every catalog record from data.nasa.gov's API | the API | `batch_*.json`, one per page | built |
+| `020_clean` | Turns HTML in the text into plain text; joins maintainer spellings | 010 | `records.jsonl` | built |
+| `030_split` | Keeps the ground truth candidates pool in its order; orders every other record with text, per maintainer, for 040 | 020, `annotations/ground_truth_candidates.csv` | `splits.json` | built |
+| `040_induce_schema` | Learns the schema from a sample of texts (model calls) | 020, 030, the hand-built schema | `the_schema.json`, `induction_evidence.json` | built; not yet run with the real model |
+| `050_annotate` | Drafts ground truth for a person to correct (model calls) | 020, 030, the hand-built schema, `annotations/ground_truth/` | `drafted_triples_batch<N>.csv`, `…_details.json` | built; not yet run with the real model |
+| `060_extract` | Extracts triple instances that follow the schema (model calls) | 020, 040 | | not built |
+| `070_evaluate` | Scores extraction against the ground truth | `annotations/ground_truth/`, 060 | | not built |
+| `080_build_graph` | Builds the graph | 020, 060 | | not built |
 
-
+Two helpers that aren't steps: `py annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches (see `annotations/ground_truth/README.md`); and `py audit.py <record id>`, which traces an item back to the API request that first returned it (see `instructions/000_audit.md`). Code shared by the steps is in `common/`; files made by a person are in `annotations/` (see `annotations/README.md`). Setting up Python: `docs/virtual_environment_setup.md`; running on the NASA laptop, where the model can be reached: `docs/running_on_nasa_laptop.md`.
 
 ## Records and fields
 
@@ -76,13 +85,13 @@ Where phase 1 merely copied field values into triples, phase 2 has to extract fa
 
 ### Cleaning
 
-The `notes` and `title` fields are cleaned before anything reads them. About 6% of records carry HTML markup baked into the text (escaped tags, sometimes escaped twice), which would otherwise produce triples about paragraph tags rather than about datasets. The cleaner verifies its own work: every word, number and URL fragment in the source must survive into the cleaned value, and a value that would lose content falls back to a cruder method or to the source text itself. Across the catalog we harvested on 2026-08-30, two values of 36,323 needed a fallback and none lost content. The cleaned title and notes are written to `inputs.json` as one labelled block per record, keyed by the record id.
+The `notes` and `title` fields are cleaned before anything reads them. In the harvest of 2026-09-27, 1,277 of 36,375 descriptions and 6 titles carried HTML markup baked into the text (escaped tags, sometimes escaped twice), which would otherwise produce triples about paragraph tags rather than about datasets. The cleaner verifies its own work: every word, number and URL fragment in the source must survive into the cleaned value, and a value that would lose content falls back to a cruder method or to the source text itself. In that harvest, 2 descriptions needed a fallback and none lost content. The cleaned records are written to `records.jsonl` (step 020), one per line, each field under its own key.
 
-The same step also joins maintainer spellings, e.g. "Kristan Morgan" and "KRISTAN MORGAN" are one person; left apart they count as two communities everywhere downstream. Names matching once case, punctuation, word order and titles (Dr., Ph.D.) are ignored are treated as one, which merged 10 maintainers and took the count from 435 to 422. Names differing by a middle initial are left apart, since merging those needs a rule nobody has chosen.
+The same step also joins maintainer spellings, e.g. "Kristan Morgan" and "KRISTAN MORGAN" are one person; left apart they count as two communities everywhere downstream. Names matching once case, punctuation, word order and titles (Dr., Ph.D.) are ignored are treated as one, which took the 434 spellings in the harvest of 2026-09-27 down to 422 maintainers. Names differing by a middle initial are left apart, since merging those needs a rule nobody has chosen.
 
 ### Schema induction
 
-The schema is derived from the catalog rather than written in advance. The data-driven method to induce the schema follows AutoSchemaKG ([arXiv:2505.23628](https://arxiv.org/abs/2505.23628)): take a sample of records (stratified by maintainer), extract facts with no schema imposed, give every extracted name a general label, merge the labels that mean one thing, count how many distinct records produced each candidate, and keep what recurs. Support is counted in distinct records and distinct maintainers, so a pattern backed by one maintainer's house style is visible as such rather than passing as a catalog-wide regularity. Everything the model is told to do that code can re-check afterwards is re-checked: the support arithmetic, the pattern endpoints, and whether quoted examples are real names.
+The schema is derived from the catalog rather than written in advance. The data-driven method to induce the schema follows AutoSchemaKG ([arXiv:2505.23628](https://arxiv.org/abs/2505.23628)): take a sample of records (the first 15, in a fixed random order, of each of the 10 largest maintainers), extract facts with no schema imposed, give every extracted name a general label, merge the labels that mean one thing, and count how many distinct records produced each candidate. Every candidate is kept with that evidence; a cutoff, to be chosen from step 070's scores, decides which enter the schema (today: all of them). Support is counted in distinct records and distinct maintainers, so a pattern backed by one maintainer's house style is visible as such rather than passing as a catalog-wide regularity. What code can check, it checks rather than trusting the model: each extracted fact's source text must really be in its record's text, or the fact isn't counted, and the counts, the patterns' entity classes and each entity class's examples are computed by code.
 
 ### Evaluation: an annotated pool
 
@@ -92,4 +101,4 @@ The pool is a stratified random sample: records are grouped by maintainer, each 
 
 Annotating is slow, and the rules had to be worked out on the records themselves. Each record gets one structural row, keeping the catalog entry separate from the thing it describes. The classes and predicates decided this way are kept in a schema file that grows as annotation proceeds; it is small and elementary, and it is expected to keep growing.
 
-Writing every triple by hand is the bottleneck, so a drafting step proposes triples for each record and a person corrects them. The draft is not ground truth: a human keeps, edits, deletes or adds, driven by the record's text. With enough annotated records, extraction can be scored: recall is how many of the hand-written facts the extractor found, and precision is how many of its answers were right. The point of the exercise is not a single number but a fixed measuring stick: the same annotated records can be run against a different prompt, a different model, or extraction with and without the induced schema, and the difference between those runs is what says whether any of them is worth its cost.
+Writing every triple by hand is the bottleneck, so a drafting step (050) proposes triples for each record and a person corrects them in the annotation tool. The draft is not ground truth: a human keeps, edits, deletes or adds, driven by the record's text. With enough annotated records, extraction can be scored: recall is how many of the hand-written facts the extractor found, and precision is how many of its answers were right. The point of the exercise is not a single number but a fixed measuring stick: the same annotated records can be run against a different prompt, a different model, or extraction with and without the induced schema, and the difference between those runs is what says whether any of them is worth its cost.

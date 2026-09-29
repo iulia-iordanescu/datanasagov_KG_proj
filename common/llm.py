@@ -1,18 +1,11 @@
 """
 common/llm.py -- the one place a model is called.
 
-Moved from to_be_reshaped/llm_client.py, with three changes: retries and
-re-asks are logged through common.audit's log (so they reach the step's log
-file) instead of printed; PaidCalls (below) asks once before a run's first
-paid call and counts the calls. The script names below are those of the
-earlier scripts; the steps that replace them (040, 050, 060) import it as
-`from common import llm`.
-
-Every script that asks a model something imports it from here:
-
-    best_induce_schema.py           induces the schema
-    draft_ground_truth_triples.py   drafts ground truth triples
-    extract_triples_for_kg.py       extracts triples that fit the schema
+Used by every step that asks a model something: 040 (inducing the schema),
+050 (drafting ground truth), and 060 when built. The Ask Sage client was
+moved from to_be_reshaped/llm_client.py, with its retries and re-asks now
+logged through common.audit's log (so they reach the step's log file)
+instead of printed.
 
 It holds, in this order:
 
@@ -24,24 +17,26 @@ It holds, in this order:
     PROMPT SAFETY
         fence_safe        keeps a record from ending its data block early
     A PAID RUN
-        start_paid_calls  the confirmation stop, then a one-line test call
+        PaidCalls         asks once before a run's first paid call (showing
+                          any notes about the run first), makes a one-line
+                          test call, and counts the calls
+        Calls, paid_calls what a step's stages share: PaidCalls and the
+                          folder its answers are cached in (common/cache.py)
         run_parallel      runs jobs a few at a time; Ctrl-C cancels those
                           not yet started
         confirm           the stop itself
 
-What the drafter and the extractor alone share (their prompt's rules, the
-BEGIN/END lines, one call per chunk) is in extraction_run.py.
+What the steps that extract triple instances with entity classes share
+(the prompt's rules, the reply format, the BEGIN/END lines) is in
+common/extraction.py and common/prompts/.
 
-The client was lifted unchanged out of best_induce_schema.py, which imports
-it from here. MODEL kept its value, so the schema inducer's cached stages,
-which fold MODEL into their signatures, stay valid.
+    from common import llm
+    calls = llm.paid_calls(settings, output, notes)   # once per run
+    calls.paid.start("plan in words")                 # before the first paid call
+    data = llm.call_llm_json(prompt)                  # a dict, or raises
 
-    import llm_client as llm
-    llm.MODEL = "..."                 # optional override, before any call
-    data = llm.call_llm_json(prompt)  # a dict, or raises
-
-Needs a .env beside it with ASKSAGE_EMAIL and ASKSAGE_API_KEY, and the
-packages requests and python-dotenv.
+Needs a .env in the repository folder with ASKSAGE_EMAIL and
+ASKSAGE_API_KEY, and the packages requests and python-dotenv.
 """
 
 import json
@@ -51,15 +46,16 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
 
 from common.audit import log
 
-#: The model every call uses. For the full list of options, run
-#: list_models.py. A script may override it (llm.MODEL = ...) before its
-#: first call.
+#: The model every call uses (Ask Sage lists the models it offers). It is
+#: part of every cache key (common/cache.py), so changing it asks again.
 MODEL = "google-claude-sonnet-5"
 
 # ------------------------------ the Ask Sage client -------------------------
@@ -239,23 +235,6 @@ def fence_safe(text: str, end_line: str) -> str:
 
 # ------------------------------ a paid run ---------------------------------
 
-def start_paid_calls(calls: int, skip_confirm: bool = False) -> None:
-    """The step between a run's free part and its paid part.
-
-    Stops for confirmation (unless skip_confirm, for --yes), then makes one
-    tiny test call, so a wrong model name or key fails once here instead of
-    once per record. Returns only if both pass; exits otherwise, having
-    spent at most the test call."""
-    if not skip_confirm:
-        confirm(f"Press Enter to start the {calls:,} call(s) plus 1 test "
-                f"call. Press anything else to cancel:")
-    try:
-        call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
-    except Exception as e:                              # noqa: BLE001
-        sys.exit(f"Test call to {MODEL} failed, so nothing else was "
-                 f"called: {e}")
-
-
 class PaidCalls:
     """Asks once, just before a run's first paid call, and counts the calls.
 
@@ -265,10 +244,18 @@ class PaidCalls:
     nobody at the keyboard), and makes one tiny test call, so a wrong model
     name or key fails once here instead of once per text. A run whose every
     answer comes from the cache never asks and never pays. Declining exits
-    the run having spent nothing."""
+    the run having spent nothing.
 
-    def __init__(self, confirm: bool):
+    notes: what the step found, BEFORE any call, that differs from what the
+    person asked for (an id that isn't in the catalog, fewer texts than
+    asked, …), one sentence each. start() shows them above the question, so
+    the person can cancel and fix the request before paying; the step also
+    puts them in its report's warnings, where they're read on runs that
+    needed no call or had nobody at the keyboard."""
+
+    def __init__(self, confirm: bool, notes: list = ()):
         self.confirm = confirm
+        self.notes = list(notes)
         self.started = False
         self.made = 0                       # calls made by the stages
         self.test_calls = 0                 # 1 once the run has started paying
@@ -279,8 +266,15 @@ class PaidCalls:
             return
         log.info(plan)
         log.info(f"model: {MODEL}")
+        if self.notes:
+            log.warning("Before you pay: this run can't do exactly what you asked:")
+            for n in self.notes:
+                log.warning(f"  - {n}")
         if self.confirm:
-            confirm("Press Enter to start (1 test call first), anything else to cancel:")
+            confirm("Press Enter to start (1 test call first), anything else to cancel:"
+                    if not self.notes else
+                    "Press Enter to go ahead anyway (1 test call first), anything else to cancel "
+                    "and fix the request:")
         try:
             call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
         except Exception as e:                              # noqa: BLE001
@@ -291,6 +285,21 @@ class PaidCalls:
     def made_call(self) -> None:
         with self._lock:                    # stages may call from several threads
             self.made += 1
+
+
+@dataclass
+class Calls:
+    """What a step's model-calling stages share: the confirmation-and-count
+    (PaidCalls) and the folder that keeps every answer (common/cache.py)."""
+    paid: PaidCalls
+    cache_dir: Path
+
+
+def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
+    """The Calls of one run: asks before paying (setting confirm_paid_calls),
+    showing notes first; answers kept in cache/ inside the step's output folder."""
+    return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes),
+                 cache_dir=Path(output) / "cache")
 
 
 def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:

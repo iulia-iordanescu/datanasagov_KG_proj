@@ -13,6 +13,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from common.files import write_text
+
 
 def _duration(seconds: float | None) -> str:
     if seconds is None:
@@ -29,8 +31,15 @@ def _duration(seconds: float | None) -> str:
     return f"{s} s"
 
 
-def _cell(value) -> str:
-    return str(value).replace("|", "\\|").replace("\n", " ")
+def cell(value) -> str:
+    """A value as a Markdown table cell: | escaped, line breaks as spaces,
+    nothing for None. Shared by every step's report details."""
+    return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def counted(counter: dict) -> str:
+    """{"a": 3, "b": 1} as "a 3, b 1", sorted by name; "none" when empty."""
+    return ", ".join(f"{k} {v:,}" for k, v in sorted(counter.items())) or "none"
 
 
 def _link(target: str, report: Path) -> str:
@@ -69,7 +78,7 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
         lines += ["| Setting | Value | |", "|---|---|---|"]
         for key, value in settings.items():
             note = "changed on the command line" if key in run.get("settings_changed", []) else "default"
-            lines.append(f"| `{key}` | {_cell(value)} | {note} |")
+            lines.append(f"| `{key}` | {cell(value)} | {note} |")
     else:
         lines.append("None.")
     lines.append("")
@@ -78,8 +87,8 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
     if input_rows:
         lines += ["| Input | Path | Files | Produced by run | sha256 |", "|---|---|---:|---|---|"]
         for row in input_rows:
-            lines.append(f"| `{row['name']}` | {_cell(row['path'])} | {row['files']} | "
-                         f"{_cell(row['origin'])} | `{row['sha256'][:12]}` |")
+            lines.append(f"| `{row['name']}` | {cell(row['path'])} | {row['files']} | "
+                         f"{cell(row['origin'])} | `{row['sha256'][:12]}` |")
     else:
         lines.append("None." if not error else "None read: the run stopped first.")
     lines.append("")
@@ -89,7 +98,7 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
         lines += [f"In `outputs/intermediate_results/{run['step']}/`. Full hashes in `_manifest.json`.", "",
                   "| File | Size | sha256 |", "|---|---:|---|"]
         for row in output_rows:
-            lines.append(f"| {_cell(row['file'])} | {_size(row['bytes'])} | `{row['sha256'][:12]}` |")
+            lines.append(f"| {cell(row['file'])} | {_size(row['bytes'])} | `{row['sha256'][:12]}` |")
     else:
         lines.append("None recorded: the run did not finish." if error else "None.")
     lines.append("")
@@ -127,4 +136,4 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
         lines.append("None.")
     lines.append("")
 
-    path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    write_text(path, "\n".join(lines))

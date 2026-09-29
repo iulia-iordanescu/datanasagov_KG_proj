@@ -21,8 +21,9 @@ finished one.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
+
+from common.files import write_text
 
 PATTERN = "batch_*.json"
 
@@ -33,9 +34,7 @@ def batch_path(folder: Path, start: int) -> Path:
 
 def save_batch(path: Path, header: dict, records: list) -> None:
     """header: request, fetched_at, http_status, catalog_count, run_id."""
-    tmp = path.with_suffix(".json.part")
-    tmp.write_text(json.dumps({**header, "records": records}), encoding="utf-8", newline="\n")
-    os.replace(tmp, path)
+    write_text(path, json.dumps({**header, "records": records}))   # compact, non-ASCII escaped, as always
 
 
 def load_batch(path: Path) -> dict:

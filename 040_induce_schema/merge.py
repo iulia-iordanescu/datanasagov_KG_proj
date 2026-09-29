@@ -34,7 +34,7 @@ import collections
 import json
 from pathlib import Path
 
-from cache import Cache, key
+from common.cache import Cache, key
 from common import llm
 from common.audit import log
 from common.prompt_files import fill, load

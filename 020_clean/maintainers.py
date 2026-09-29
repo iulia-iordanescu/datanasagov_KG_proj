@@ -19,9 +19,10 @@ people is worse than keeping one person's spellings apart.
 
 Joined spellings are written in "John Doe" form.
 
-This matters beyond looks: 030 will stratify its samples by maintainer, so a
-maintainer split across two spellings would count as two groups, and 080
-would make two nodes for one person.
+This matters beyond looks: 030 orders each maintainer's records apart and
+040 learns from the largest maintainers, so a maintainer split across two
+spellings would count as two smaller ones, and 080 would make two nodes for
+one person.
 
 Adapted from to_be_reshaped/build_inputs.py (group_key, group_display,
 join_groups). That version dropped the single words "ph" and "d" wherever

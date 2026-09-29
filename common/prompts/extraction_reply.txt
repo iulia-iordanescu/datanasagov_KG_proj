@@ -1,0 +1,5 @@
+Return ONLY JSON, no prose:
+{"describes_class": "...", "triples": [{"subject": "...",
+"subject_class": "...", "predicate": "...", "object": "...",
+"object_class": "...", "source_text": "..."}]}
+with "triples": [] if there are none to extract.

@@ -37,7 +37,7 @@ induce = helpers("040_induce_schema")
 
 def main(inputs, settings, output):
     texts   = induce.pick_texts(inputs, settings)                  # the first 15 candidates of the 10 largest maintainers
-    calls   = induce.paid_calls(settings, output)                  # asks before paying; keeps every answer in cache/
+    calls   = induce.paid_calls(texts, settings, output)           # asks before paying; keeps every answer in cache/
     triples = induce.extract_triple_instances(texts, calls, settings)  # LLM: "MODIS" – "is aboard" – "Aqua", checked in the text
     labels  = induce.label_component_instances(triples, calls)     # LLM, reusing labels chosen so far: "MODIS" → Instrument
     labels  = induce.merge_labels(labels, triples, calls)          # LLM, one call over all labels: Sensor = Instrument

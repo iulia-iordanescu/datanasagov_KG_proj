@@ -6,7 +6,7 @@ Turns the raw catalog records saved by 010 into clean records that every later s
 
 - **Each catalog entry is kept once.** A record whose id already appeared earlier in the harvest is dropped, keeping the first copy. This happens when the catalog changes during a harvest and CKAN's pages shift (see 010's warning about records that appear twice). The full harvest of 2026-09-27 had 12 such repeats, each identical to its first copy. A record with no id at all is dropped too; the 2026-09-27 harvest had none.
 - **Text is cleaned.** Some descriptions, and a few titles, carry HTML tags or escapes (`&lt;p&gt;`, `&amp;rsquo;`, `<sub>2</sub>`, links): in the 2026-09-27 harvest, 1,277 of 36,375 descriptions and 6 titles. Sent to a model as is, it would produce triple instances about `<p>` tags rather than about datasets. It becomes plain text, and each value is checked so that no word, number or URL is lost. Every text value also has its whitespace tidied.
-- **Maintainer spellings are joined.** "Kristan Morgan" and "KRISTAN MORGAN" become one maintainer. 030 will draw its samples by maintainer, and 080 will make one node per maintainer, so one person must not count as two.
+- **Maintainer spellings are joined.** "Kristan Morgan" and "KRISTAN MORGAN" become one maintainer. 030 orders each maintainer's records apart, 040 learns from the largest maintainers, and 080 will make one node per maintainer, so one person must not count as two.
 - **Each field gets its own key.** Title, notes, maintainer, tags, formats and the rest are stored separately, so no later step has to guess where a title ends and a description begins.
 
 Apart from records with no id and later copies of a repeated id, every record is kept, even one with no title or notes: the graph needs every catalog entry, and its structured fields still hold facts.
@@ -96,7 +96,7 @@ The code is in `020_clean/`: `moves.py` (the moves above), `note_cleaning.py` (t
 |---|---|---|
 | *N records have no id and were dropped* | The catalog returned records with no id. Every one is listed in the report under Records (batch file, position, CKAN name, title) and in the log (a DEBUG line each). | Look at them in the batch files. None were found on 2026-09-27. |
 | *N text values could not be cleaned without losing content* | Both cleaning methods lost content, so the value was kept as decoded, markup included (the *source* method). Their ids are in the report under Cleaning. | Look at those records. If the markup matters, add a case to `SELFTESTS` in `note_cleaning.py` and improve the cleaner. |
-| *Every record has the same maintainer* | 030's samples, stratified by maintainer, would have one group only. Checked only when `join_maintainers` is on. | Check the harvest: usually a sign of a broken or trial harvest. |
+| *Every record has the same maintainer* | 040 would learn the schema from one maintainer only. Checked only when `join_maintainers` is on. | Check the harvest: usually a sign of a broken or trial harvest. |
 | *N of M records have no origin* | Should never happen. | A code change broke `keep_fields`; fix it before using the output. |
 | *… is in the old batch format* (the step stops) | 010's files were saved by an older version, without a request block. | Rerun `py 010_harvest.py`, which downloads them again. |
 | *extra_text_fields names …, which 020 already writes as a field of its own* (the step stops) | An extra text field was given the name of a field 020 already writes, e.g. `maintainer`. | Remove that name from `extra_text_fields`. |

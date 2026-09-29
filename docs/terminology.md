@@ -43,7 +43,9 @@ notes: The MODIS instrument aboard Aqua …
 | **slot** | Where a component sits in a triple. |
 | **component instance** | A value filling a slot. "Rosetta" might fill a subject or object slot; "is mounted on" might fill a predicate slot. |
 | **triple instance** | A triple with all three slots filled: one fact stated as subject, predicate and object, e.g. "MODIS" – "is aboard" – "Aqua". |
-| **verified triple instance** | One whose source text is really in its record's text, checked in code. An **unverified** one (no source text, or a source text that isn't in the text) can't be trusted and is left out of what is counted. |
+| **verified triple instance** | One whose source text is really in its record's text, checked in code. An **unverified** one (no source text, or a source text that isn't in the text) can't be trusted: step 040 leaves it out of what it counts; step 050 keeps it, marked as an error, for the person to fix. |
+| **DESCRIBES row** | The one triple instance every record gets that no text states, written by code: `<record id>` (`CatalogEntry`) DESCRIBES `<the record's title>` (`<entity class>`). It keeps the catalog entry apart from the thing the entry is about. The model's only part in it is naming that entity class; `X` means none was named yet. |
+| **error** / **flag** | What a check of a triple instance can raise. An **error** is something code can prove wrong (e.g. its source text isn't in the text); a **flag** is often a sign of a mistake, often fine (e.g. a reworded name, or a name the schema doesn't have). Listed in `instructions/050_annotate.md`. |
 
 ---
 
@@ -57,6 +59,7 @@ notes: The MODIS instrument aboard Aqua …
 | **predicate** | A word with two senses, told apart by context (details below): **(1)** the component in the middle slot of a triple; **(2)** a schema entry: a kind of relation, e.g. `ABOARD`. |
 | **component class** | The class of a component in a particular schema. For a subject or an object, one of the schema's entity classes; for a predicate, one of the schema's predicates (examples below). |
 | **pattern** | One allowed combination of an entity class, a predicate and an entity class, read from subject to object, e.g. `Instrument ABOARD Spacecraft`. |
+| **hand-built schema** | The schema a person wrote while annotating the first records: `annotations/schema_derived_from_manual_annotation.txt`. Step 050 shows it to the model as the names to reuse; step 040 compares the schema it learns with it. |
 | **domain** (of a predicate) | The entity classes its subject may belong to. |
 | **range** (of a predicate) | The entity classes its object may belong to. |
 
@@ -83,8 +86,11 @@ The words *domain* and *range* were standardized in RDF Schema, another kind of 
 
 | Term | Meaning |
 |---|---|
-| **ground truth** | Triple instances a person has checked and corrected for a record, kept in `annotations/ground_truth_triples.csv`. |
+| **ground truth** | Triple instances a person has checked and corrected for a record. Kept in `annotations/ground_truth/`, one file per batch of records corrected together (`batch_000.csv` holds those annotated before the pipeline; `batch_001.csv` is corrected from step 050's draft batch 1, and so on); the ground truth is all the files together. |
 | **ground truth candidates pool** | 1,000 records drawn once (2026-09-21) as candidates for ground truth, in a shuffled order. A person annotates them in that order, and only a subset ever gets annotated, since 1,000 is more than there is time to check. |
+| **draft batch** | The triple instances a model drafted, in one run of step 050, for a few records (10 by default), waiting for a person to correct them: `drafted_triples_batch<N>.csv` in 050's output folder. Corrected with the annotation tool (`py annotate.py`), it becomes the ground truth file `batch_<NNN>.csv` with the same number. |
+| **annotation tool** | `py annotate.py`: a page in your browser, on your computer only, to read and correct triple instances (see `annotations/ground_truth/README.md`). Not a step. |
+| **fair sample** | Records taken from the start of the ground truth candidates pool, in its order, with none skipped. Since the pool is shuffled, those are a fair sample of the whole catalog, so results measured on them hold for the catalog. Step 050 says when the ground truth stops being one (e.g. after drafting hand-picked records). |
 | **induction candidates** | Every record that isn't in the ground truth candidates pool and has text, each maintainer's in a fixed random order. Step 040 learns the schema from the first few of the largest maintainers. |
 
 ---

@@ -1,7 +1,10 @@
 """
-cache.py -- keeps every model answer 040 has paid for, so a rerun reuses it.
+common/cache.py -- keeps every model answer a step has paid for, so a rerun
+reuses it.
 
-    outputs/intermediate_results/040_induce_schema/cache/<stage>.json
+    outputs/intermediate_results/<step>/cache/<stage>.json
+
+Shared by the steps that call a model (040, 050, and 060 when built).
 
 Each file maps a KEY to an answer. The key is a fingerprint of everything
 that decides the answer: the model, the exact prompt text, and what was sent
@@ -17,11 +20,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import threading
 from pathlib import Path
 
 from common import llm
+from common.files import write_json
 
 
 def key(*parts) -> str:
@@ -55,7 +58,4 @@ class Cache:
     def put(self, k: str, answer) -> None:
         with self._lock:                          # extraction stores from several threads
             self.answers[k] = answer
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.path.with_suffix(".json.part")
-            tmp.write_text(json.dumps(self.answers, ensure_ascii=False), encoding="utf-8", newline="\n")
-            os.replace(tmp, self.path)
+            write_json(self.path, self.answers, indent=None)

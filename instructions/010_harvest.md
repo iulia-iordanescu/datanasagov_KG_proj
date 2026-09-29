@@ -92,7 +92,7 @@ The code is in `010_harvest/`: `moves.py` (the three moves above), `ckan_client.
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, settings, git commit, every API request (URL, status, size, time), every retry, each move's duration, each output file's hash, and on failure the full traceback. The console shows the same run without the request-level detail.
 - **Origin.** Each batch file holds the request that returned its records: the URL, when it was fetched, the HTTP status, the catalog size the API reported, and the run that fetched it. A batch kept on a rerun keeps the request block of the run that fetched it. This is where every later item's origin chain ends. Harvests saved by an earlier version of this step, as a bare list with a separate `_lineage.jsonl`, are downloaded again on the next run, and the old `_lineage.jsonl` is deleted. (The harvest of 2026-09-27 was converted to this format in place, from its `_lineage.jsonl`, instead of being downloaded again. That older format didn't keep the catalog size per page, so in those files only `batch_00000.json` has a `catalog_count`.)
-- **Trace a record.** `py audit.py <record id>` starts from the latest step that has the record (today 020's `records.jsonl`) and follows it back to the batch file that holds it, the run that fetched it, and the request that returned it.
+- **Trace a record.** `py audit.py <record id>` starts from the latest step that has the record (for a record in the ground truth candidates pool, 030's `splits.json`, or 050's newest draft batch if it's in it; otherwise 020's `records.jsonl`) and follows it back to the batch file that holds it, the run that fetched it, and the request that returned it.
 
 ## Human work
 

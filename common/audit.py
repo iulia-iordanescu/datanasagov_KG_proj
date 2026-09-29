@@ -30,7 +30,7 @@ when the item has no key:
     "_origin": ["010_harvest/batch_00000.json#a1b2c3"]
 
 Files kept in Git are referenced from the repo root instead, e.g.
-"annotations/ground_truth_triples.csv#17". Paths always use forward slashes.
+"annotations/ground_truth/batch_000.csv#17". Paths always use forward slashes.
 
 010 is where origin starts: each batch file wraps its records with the
 request that returned them, so its records carry no _origin of their own.

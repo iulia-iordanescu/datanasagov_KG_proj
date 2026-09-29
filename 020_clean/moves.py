@@ -28,14 +28,15 @@ from __future__ import annotations
 
 import collections
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import maintainers
 import note_cleaning
 from common.audit import ORIGIN_FIELD, check_origins, log, origin
+from common.files import write_jsonl
 from common.records_io import TEXT_FIELDS
+from common.report import cell
 from common.step import Results, input_files
 
 OUTPUT_NAME = "records.jsonl"
@@ -198,19 +199,6 @@ def join_maintainers(catalog: Catalog, settings: dict) -> Catalog:
 
 # --------------------------------------------------------------------------
 
-def _write_jsonl(path: Path, records: list) -> None:
-    tmp = path.with_suffix(".jsonl.part")
-    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-        for record in records:
-            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
-    os.replace(tmp, path)
-
-
-def _cell(value) -> str:
-    """A value as a Markdown table cell."""
-    return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
-
-
 def _listed(items: list) -> str:
     shown = ", ".join(f"`{i}`" for i in items[:SHOW])
     return shown + (f" … ({len(items) - SHOW:,} more)" if len(items) > SHOW else "")
@@ -218,7 +206,7 @@ def _listed(items: list) -> str:
 
 def results(catalog: Catalog, output: Path) -> Results:
     path = output / OUTPUT_NAME
-    _write_jsonl(path, catalog.records)
+    write_jsonl(path, catalog.records)
     written = len(catalog.records)
     log.info(f"  wrote {written:,} records to {OUTPUT_NAME}")
 
@@ -235,8 +223,8 @@ def results(catalog: Catalog, output: Path) -> Results:
                         f"so they were kept as decoded, markup included. Their ids are listed "
                         f"in the report under Cleaning.")
     if catalog.joined and catalog.maintainers_after == 1 and written > 1:
-        warnings.append("Every record has the same maintainer, so 030's samples, which are "
-                        "stratified by maintainer, will have one group only.")
+        warnings.append("Every record has the same maintainer, so 040 would learn the schema "
+                        "from one maintainer only.")
     missing = check_origins(catalog.records, "records")
     if missing:
         warnings.append(missing)
@@ -254,7 +242,7 @@ def results(catalog: Catalog, output: Path) -> Results:
         lines += ["Records dropped for having no id (all of them):", "",
                   "| Batch file | Position | Name | Title |", "|---|---:|---|---|"]
         for d in catalog.dropped_no_id:
-            lines.append(f"| {d['file']} | {d['position']} | {_cell(d['name'])} | {_cell(d['title'])} |")
+            lines.append(f"| {d['file']} | {d['position']} | {cell(d['name'])} | {cell(d['title'])} |")
         lines.append("")
     if catalog.repeats:
         lines += [f"Repeated ids (first copy kept): {_listed(catalog.repeats)}", ""]

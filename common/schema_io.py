@@ -4,7 +4,9 @@ common/schema_io.py -- reads the hand-built schema.
     annotations/schema_derived_from_manual_annotation.txt
 
 written by a person while annotating ground truth. Several steps read it:
-040 compares the induced schema with it, and 050, 060 and 070 will use it.
+040 compares the induced schema with it, 050 shows it to the model and
+checks every drafted row against it (as does the annotation tool), and 060
+and 070 will use it.
 Its layout:
 
     CLASSES

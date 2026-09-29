@@ -44,14 +44,15 @@ from __future__ import annotations
 import collections
 import csv
 import json
-import os
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin
+from common.files import write_json
 from common.records_io import has_text, load_records as read_records
+from common.report import cell
 from common.step import Results, input_files
 
 OUTPUT_NAME = "splits.json"
@@ -159,10 +160,6 @@ def check_disjoint(pool: Candidates, induction: Induction) -> None:
 
 # --------------------------------------------------------------------------
 
-def _cell(value) -> str:
-    return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
-
-
 def _lists(pool: Candidates, induction: Induction) -> dict:
     """The part of splits.json that says which records are in each list."""
     return {CANDIDATES: {"records": pool.records, "dropped": pool.dropped},
@@ -190,10 +187,7 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
         document = {**drawn, "drawn": {
             "run_id": audit.current_run_id(), "settings": settings,
             "inputs": {name: audit.ref_path(input_files(Path(p))[0]) for name, p in inputs.items()}}}
-        tmp = path.with_suffix(".json.part")
-        tmp.write_text(json.dumps(document, indent=1, ensure_ascii=False), encoding="utf-8",
-                       newline="\n")
-        os.replace(tmp, path)
+        write_json(path, document)
         log.info(f"  wrote {OUTPUT_NAME}")
 
     if pool.dropped:
@@ -232,11 +226,11 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
     if pool.renamed:
         lines += ["Candidates whose maintainer changed:", "",
                   "| Id | In the pool file | In 020's records |", "|---|---|---|"]
-        lines += [f"| {r['id']} | {_cell(r['in_pool'])} | {_cell(r['now'])} |" for r in pool.renamed[:SHOW]]
+        lines += [f"| {r['id']} | {cell(r['in_pool'])} | {cell(r['now'])} |" for r in pool.renamed[:SHOW]]
         lines.append("")
     by_maintainer = collections.Counter(r["maintainer"] for r in pool.records).most_common(10)
     lines += ["Largest maintainers in the pool:", "", "| Maintainer | Candidates |", "|---|---:|"]
-    lines += [f"| {_cell(m)} | {n:,} |" for m, n in by_maintainer]
+    lines += [f"| {cell(m)} | {n:,} |" for m, n in by_maintainer]
 
     total = len(induction.records) + induction.in_pool + induction.without_text
     lines += ["",
@@ -252,7 +246,7 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
               f"| Maintainers | {len(induction.maintainers):,} |", "",
               f"Largest maintainers (all {len(induction.maintainers):,} are in `{OUTPUT_NAME}`):", "",
               "| Rank | Maintainer | Records | Induction candidates |", "|---:|---|---:|---:|"]
-    lines += [f"| {m['rank']} | {_cell(m['maintainer'])} | {m['records']:,} | {m['eligible']:,} |"
+    lines += [f"| {m['rank']} | {cell(m['maintainer'])} | {m['records']:,} | {m['eligible']:,} |"
               for m in induction.maintainers[:SHOW]]
     lines += ["", "Records in both lists: **0** (checked)."]
 

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotation tool</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #d9dde5;
+    --accent: #2457c5; --soft: #fff3b0; --strong: #ffd33d; --error: #b3261e; --flag: #8a5a00;
+    --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --input: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15181e; --panel: #1e222a; --ink: #e6e9ef; --muted: #9aa3b2; --line: #343a46;
+      --accent: #7aa2ff; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
+      --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --input: #15181e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 12px;
+           align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0 8px 0 0; }
+  select, input, textarea, button { font: inherit; color: var(--ink); }
+  select, input, textarea { background: var(--input); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  #status { margin-left: auto; color: var(--muted); font-size: 14px; }
+  #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
+  #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
+  #warnings:empty { display: none; }
+  main { display: grid; grid-template-columns: 290px 1fr; gap: 16px; padding: 16px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
+        max-height: calc(100vh - 90px); overflow: auto; position: sticky; top: 70px; align-self: start; }
+  nav button { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 6px 8px; margin: 1px 0; }
+  nav button.current { background: var(--bg); outline: 2px solid var(--accent); }
+  nav .badge { float: right; font-size: 13px; margin-left: 6px; }
+  nav .small { color: var(--muted); font-size: 12px; }
+  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; min-width: 0; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  h3 { font-size: 15px; margin: 0 0 8px; }
+  .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+  label.finished { font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  #text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 45vh; overflow: auto;
+          border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: var(--bg); }
+  mark { background: var(--soft); color: inherit; border-radius: 2px; cursor: pointer; }
+  mark.active { background: var(--strong); outline: 1px solid var(--flag); }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .row { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .row.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 8px; }
+  .triple label, .source label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); min-width: 0; }
+  .triple input { width: 100%; min-width: 0; }
+  .triple .cls { font-size: 13px; }
+  @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
+  .source { display: flex; gap: 8px; align-items: flex-end; margin-top: 6px; }
+  .source label { flex: 1; }
+  .source textarea { width: 100%; min-height: 44px; resize: vertical; }
+  .problems { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+  .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
+  .problems li.error { background: var(--error-bg); color: var(--error); }
+  .problems li.flag { background: var(--flag-bg); color: var(--flag); }
+  .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .describes input.title { flex: 1 1 280px; min-width: 0; }
+  .empty { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Annotation tool</h1>
+  <select id="batch" aria-label="Batch"></select>
+  <span id="status"></span>
+</header>
+<ul id="warnings"></ul>
+<main>
+  <nav id="records" aria-label="Records"></nav>
+  <div id="record"><section class="card"><p class="empty">Pick a batch at the top.</p></section></div>
+</main>
+<datalist id="entity_classes"></datalist>
+<datalist id="predicates"></datalist>
+
+<script>
+"use strict";
+// The whole state: the open batch, as the server sent it, edited in place.
+let batch = null, current = 0, activeRow = null, saveTimer = null, saving = false, dirty = false;
+
+const $ = (id) => document.getElementById(id);
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined && v !== false) node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()) if (c !== null && c !== undefined) node.append(c);
+  return node;
+}
+async function api(path, body) {
+  const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify(body) } : {});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+function status(text, kind) { const s = $("status"); s.textContent = text; s.className = kind || ""; }
+const isDescribes = (r) => r.subject_class.toLowerCase() === "catalogentry" && r.predicate.toUpperCase() === "DESCRIBES";
+const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.kind === "error").length, 0);
+
+// ---------------------------------------------------------------- batches
+async function loadBatches() {
+  const data = await api("/api/batches");
+  const pick = $("batch");
+  pick.replaceChildren(el("option", { value: "" }, "Choose a batch…"));
+  for (const b of data.batches) {
+    const what = b.ground_truth
+      ? `${b.ground_truth}: ${b.records} records, ${b.finished} finished`
+      : `draft ${b.draft}: not opened yet`;
+    pick.append(el("option", { value: b.n }, `Batch ${b.n} (${what})`));
+  }
+  const warnings = [...data.problems];
+  if (!data.records_found) warnings.unshift("records.jsonl wasn't found, so records' texts can't be shown or checked: run steps 010 and 020 first.");
+  $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
+  const wanted = new URLSearchParams(location.hash.slice(1));
+  if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
+    pick.value = wanted.get("b");
+    await openBatch(+wanted.get("b"), +(wanted.get("r") || 0));
+  }
+}
+async function openBatch(n, at) {
+  await flush();
+  status("Opening…");
+  batch = await api(`/api/batch?n=${n}`);
+  $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
+  $("predicates").replaceChildren(...batch.predicates.map(p => el("option", { value: p })));
+  status(`Editing annotations/ground_truth/${batch.file}`, "saved");
+  show(Math.min(at || 0, Math.max(batch.records.length - 1, 0)));
+  const opt = [...$("batch").options].find(o => o.value === String(n));
+  if (opt && opt.textContent.includes("not opened yet")) loadBatches();   // it now has its copy
+}
+$("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBatch(+e.target.value, 0).catch(fail); });
+
+// ---------------------------------------------------------------- saving
+function changed() {
+  dirty = true;
+  status("Unsaved changes…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 600);
+}
+async function save() {
+  clearTimeout(saveTimer);
+  if (!batch || !dirty) return;
+  if (saving) { saveTimer = setTimeout(save, 300); return; }
+  saving = true; dirty = false;
+  status("Saving…");
+  try {
+    const sent = batch.records;
+    const data = await api("/api/save", { n: batch.n, records: sent });
+    data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
+    status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
+    refreshProblems();
+  } catch (e) {
+    dirty = true;
+    status(`NOT SAVED: ${e.message}. Is the tool still running? Your edits stay on this page; saving is retried on your next change.`, "failed");
+  } finally { saving = false; }
+}
+async function flush() { if (dirty) await save(); }
+window.addEventListener("beforeunload", (e) => { if (dirty || saving) { save(); e.preventDefault(); e.returnValue = ""; } });
+function fail(e) { status(`Problem: ${e.message}`, "failed"); }
+
+// ---------------------------------------------------------------- the records list
+function drawList() {
+  $("records").replaceChildren(...batch.records.map((rec, i) => {
+    const errors = errorsIn(rec);
+    return el("button", { class: i === current ? "current" : "", onclick: () => show(i) },
+      el("span", { class: "badge", title: rec.finished ? "all facts extracted" : "not finished" },
+         (errors ? `⚠ ${errors} ` : "") + (rec.finished ? "✓" : "…")),
+      rec.position !== null && rec.position !== undefined ? `#${rec.position} ` : "",
+      rec.title || rec.id,
+      el("div", { class: "small" }, rec.maintainer || ""));
+  }));
+}
+
+// ---------------------------------------------------------------- one record
+function show(i) {
+  current = i; activeRow = null;
+  location.hash = `b=${batch.n}&r=${i}`;
+  drawList();
+  const rec = batch.records[i];
+  if (!rec) { $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" }, "This batch has no records."))); return; }
+
+  const head = el("section", { class: "card" },
+    el("h2", {}, rec.title || "(no title)"),
+    el("div", { class: "meta" },
+      `Pool position ${rec.position ?? "?"} · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
+    el("div", { class: "bar" },
+      el("label", { class: "finished" },
+        el("input", { type: "checkbox", checked: rec.finished,
+                      onchange: (e) => { rec.finished = e.target.checked; drawList(); changed(); } }),
+        "All facts extracted"),
+      el("span", { class: "meta" }, "Tick once every fact the text states is below."),
+      el("span", { style: "margin-left:auto" },
+        el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0 }, "← Previous"), " ",
+        el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
+                       disabled: current === batch.records.length - 1 }, "Next →"))));
+
+  const text = el("section", { class: "card" },
+    el("h3", {}, "The record's text"),
+    rec.text === null
+      ? el("p", { class: "empty" }, "This record isn't in records.jsonl, so its text can't be shown.")
+      : el("div", { id: "text" }),
+    el("p", { class: "hint" },
+      "Yellow: the source texts of the rows below; the row you're on is darker. Click one to go to its row. " +
+      "To set a row's source text, select a passage here and press “Use selection” on the row."));
+
+  const describes = rec.rows.findIndex(isDescribes);
+  const rows = el("section", { class: "card" },
+    el("h3", {}, "Triple instances"),
+    describes >= 0 ? describesRow(rec, describes) : null,
+    rec.rows.map((r, j) => isDescribes(r) ? null : tripleRow(rec, j)),
+    rec.rows.filter(r => !isDescribes(r)).length === 0
+      ? el("p", { class: "empty" }, "No triple instances: saved as “this record states no facts”.") : null,
+    el("button", { onclick: () => addRow(rec) }, "+ Add a triple instance"));
+
+  $("record").replaceChildren(head, text, rows);
+  drawText();
+}
+
+function field(rec, j, key, label, extra) {
+  const r = rec.rows[j];
+  return el("label", {}, label,
+    el("input", { value: r[key], ...extra, "data-row": j,
+                  oninput: (e) => { r[key] = e.target.value; if (key === "source_text") drawText(); changed(); },
+                  onfocus: () => setActive(j) }));
+}
+function problemList(r, j) {
+  return el("ul", { class: "problems", "data-problems": j },
+    r.problems.map(p => el("li", { class: p.kind }, (p.kind === "error" ? "✖ " : "⚑ ") + p.message)));
+}
+function describesRow(rec, j) {
+  const r = rec.rows[j];
+  return el("div", { class: "row", "data-row-box": j },
+    el("div", { class: "describes" },
+      el("strong", {}, "This record describes"),
+      el("input", { class: "title", value: r.object, "aria-label": "what the record describes", "data-row": j,
+                    oninput: (e) => { r.object = e.target.value; changed(); }, onfocus: () => setActive(j) }),
+      el("span", {}, "which is a"),
+      el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes",
+                    placeholder: "entity class", "aria-label": "its entity class", "data-row": j,
+                    oninput: (e) => { r.object_class = e.target.value; changed(); }, onfocus: () => setActive(j) })),
+    problemList(r, j));
+}
+function tripleRow(rec, j) {
+  const r = rec.rows[j];
+  return el("div", { class: "row", "data-row-box": j },
+    el("div", { class: "triple" },
+      field(rec, j, "subject", "Subject"),
+      field(rec, j, "predicate", "Predicate", { list: "predicates" }),
+      field(rec, j, "object", "Object"),
+      field(rec, j, "subject_class", "Subject's entity class", { list: "entity_classes", class: "cls" }),
+      el("span"),
+      field(rec, j, "object_class", "Object's entity class", { list: "entity_classes", class: "cls" })),
+    el("div", { class: "source" },
+      el("label", {}, "Source text (copied exactly from the text above)",
+        el("textarea", { "data-row": j, onfocus: () => setActive(j),
+                         oninput: (e) => { r.source_text = e.target.value; drawText(); changed(); } }, r.source_text)),
+      el("button", { title: "Put the passage selected in the text above here", onclick: () => useSelection(rec, j) }, "Use selection"),
+      el("button", { title: "Delete this triple instance", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
+    problemList(r, j));
+}
+
+function setActive(j) {
+  if (activeRow === j) return;
+  activeRow = j;
+  document.querySelectorAll("[data-row-box]").forEach(b => b.classList.toggle("active", +b.dataset.rowBox === j));
+  drawText();
+  const m = document.querySelector("#text mark.active");
+  if (m) { const box = $("text"); box.scrollTop = m.offsetTop - box.offsetTop - box.clientHeight / 3; }
+}
+function addRow(rec) {
+  rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
+                  source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
+                  problems: [{ kind: "error", code: "empty", message: "Subject, predicate and object must all be filled in." }] });
+  show(current);
+  const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);
+  if (inputs.length) inputs[0].focus();
+}
+function deleteRow(rec, j) {
+  const r = rec.rows[j];
+  if ((r.subject || r.object) && !confirm(`Delete “${r.subject} ${r.predicate} ${r.object}”?`)) return;
+  rec.rows.splice(j, 1);
+  show(current); changed();
+}
+function useSelection(rec, j) {
+  const sel = window.getSelection();
+  const box = $("text");
+  if (!sel || sel.isCollapsed || !box || !box.contains(sel.anchorNode)) {
+    alert("First select a passage in the record's text, then press “Use selection”."); return;
+  }
+  rec.rows[j].source_text = sel.toString().replace(/\s+/g, " ").trim();
+  const area = document.querySelector(`textarea[data-row="${j}"]`);
+  if (area) area.value = rec.rows[j].source_text;
+  drawText(); changed();
+}
+
+// ---------------------------------------------------------------- highlighting
+// Finds a source text in the text the forgiving way the checks do: only
+// letters and digits must match, in order; case, spacing, quotes and dashes
+// between them may differ. (Whether it's REALLY there is the server's check.)
+function findSpan(text, source) {
+  const words = (source || "").match(/[\p{L}\p{N}]+/gu);
+  if (!words) return null;
+  const esc = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const m = new RegExp(esc.join("[^\\p{L}\\p{N}]+"), "iu").exec(text);
+  return m ? [m.index, m.index + m[0].length] : null;
+}
+function drawText() {
+  const box = $("text"), rec = batch && batch.records[current];
+  if (!box || !rec || rec.text === null) return;
+  const owner = new Array(rec.text.length).fill(-1);   // which row's source text covers each character
+  rec.rows.forEach((r, j) => {
+    if (isDescribes(r)) return;
+    const span = findSpan(rec.text, r.source_text);
+    if (!span) return;
+    for (let k = span[0]; k < span[1]; k++) if (owner[k] === -1 || j === activeRow) owner[k] = j;
+  });
+  const parts = [];
+  for (let k = 0; k < rec.text.length;) {
+    let end = k + 1;
+    while (end < rec.text.length && owner[end] === owner[k]) end++;
+    const piece = rec.text.slice(k, end), j = owner[k];
+    parts.push(j === -1 ? piece : el("mark", { class: j === activeRow ? "active" : "",
+      title: "Go to this row", onclick: () => { const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus(); } }, piece));
+    k = end;
+  }
+  box.replaceChildren(...parts);
+}
+
+// After a save: new problems for every row, without redrawing the inputs (so typing isn't interrupted).
+function refreshProblems() {
+  const rec = batch.records[current];
+  document.querySelectorAll("[data-problems]").forEach(ul => {
+    const j = +ul.dataset.problems;
+    if (rec.rows[j]) ul.replaceWith(problemList(rec.rows[j], j));
+  });
+  drawList();
+}
+
+loadBatches().catch(fail);
+</script>
+</body>
+</html>

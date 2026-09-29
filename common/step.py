@@ -33,7 +33,8 @@ deleted and rebuilt by rerunning the pipeline. Work that can't be rebuilt
 
 Paths in INPUTS are relative to outputs/intermediate_results/, except paths
 that start with "./", which are relative to the repo root (for files kept in
-Git, e.g. "./annotations/ground_truth_triples.csv"). Paths given on the
+Git, e.g. "./annotations/ground_truth/batch_*.csv"; an input may be a
+pattern like this one, standing for every file it matches). Paths given on the
 command line are ordinary paths.
 """
 from __future__ import annotations
@@ -52,6 +53,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common import audit
+from common.files import write_text
 from common.audit import log
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,6 +73,20 @@ class Results:
     details: str = ""                               # Markdown for the report's Results section
     warnings: list = field(default_factory=list)    # one sentence each
     harvest_date: str | None = None                 # set by 010; later steps inherit it
+
+
+#: The lowest allowed value of settings several steps share, so a setting
+#: with one name is checked the same way everywhere.
+SHARED_MINIMUMS = {"workers": 1, "max_chars": 1000}
+
+
+def check_settings(settings: dict, minimums: dict) -> None:
+    """Stop with a plain message if a setting is below its minimum: the
+    step's own minimums, plus SHARED_MINIMUMS for the shared settings it has."""
+    wanted = {**{k: v for k, v in SHARED_MINIMUMS.items() if k in settings}, **minimums}
+    for name, lowest in wanted.items():
+        if settings[name] < lowest:
+            raise ValueError(f"{name} must be at least {lowest} (got {settings[name]})")
 
 
 class InputMissing(Exception):
@@ -265,7 +281,7 @@ def _write_manifest(output: Path, run: dict, settings: dict, input_rows: list,
         "report": run["report"],
         "log": run["log"],
     }
-    (output / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8", newline="\n")
+    write_text(output / MANIFEST_NAME, json.dumps(manifest, indent=2))
 
 
 def _take_manifest(output: Path) -> str | None:
@@ -293,7 +309,7 @@ def _restore_manifest(output: Path, text: str | None) -> None:
     except (ValueError, KeyError, TypeError, OSError):
         unchanged = False
     if unchanged:
-        (output / MANIFEST_NAME).write_text(text, encoding="utf-8", newline="\n")
+        write_text(output / MANIFEST_NAME, text)
         log.debug("previous manifest restored: every file it lists is unchanged")
     else:
         log.debug("previous manifest not restored: files it lists changed or are gone")

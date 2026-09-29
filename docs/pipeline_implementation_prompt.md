@@ -47,9 +47,9 @@ outputs/                              everything a run produces, gitignored
 | `020_clean` | Turns HTML in text fields into plain text and checks that no word, number or URL is lost; joins spellings of the same maintainer; keeps each field under its own key | 010 | `records.jsonl` |
 | `030_split` | Sets two disjoint lists, each in a fixed random order so any first *k* is a fair sample and taking more later keeps what was taken: the **ground truth candidates pool** (1,000 records, stratified by maintainer) and the **induction candidates** (every other record with text, shuffled per maintainer). Write-once | 020, `annotations/ground_truth_candidates.csv` | `splits.json` |
 | `040_induce_schema` | Takes the first `texts_per_maintainer` induction candidates of each of the `induction_maintainers` largest maintainers. LLM extracts triple instances with no schema, each with its source text; code leaves out any triple instance whose source text isn't in the text (the same checks as 050/060, in `common/`). LLM labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps every entry with that evidence; a cutoff setting (default 1: keep everything) decides which enter the schema, and is chosen later from 070's scores. LLM writes definitions; code rechecks every number. The report compares the result with the hand-built schema | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `the_schema.json`, `induction_evidence.json` |
-| `050_annotate` | LLM drafts triples for the next records in the ground truth candidates pool; a person corrects them into `annotations/` | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `drafted_triples.csv` |
+| `050_annotate` | LLM drafts triple instances for the next records in the ground truth candidates pool (settings `records_per_batch`, `start_position`, or exactly the records in `ids`), skipping records already in the ground truth or waiting in a draft batch, one numbered batch per annotation sitting. Anything that makes a batch differ from what was asked is shown before paying. Code adds the DESCRIBES row and checks every row (`common/extraction.py`, `common/prompts/`, shared with 060), and checks the ground truth files for typos on every run. A person corrects a batch with the annotation tool (`py annotate.py`, a local browser editor, not a step), which copies it into `annotations/ground_truth/` on first opening and saves every edit there; it stays as its own file: the ground truth is every file in that folder | 020, 030, `annotations/schema_derived_from_manual_annotation.txt`, `annotations/ground_truth/` | `drafted_triples_batch<N>.csv`, `drafted_triples_batch<N>_details.json` |
 | `060_extract` | LLM extracts triples that follow the schema, from **every** record once the schema is final (until then, only from the records that have ground truth, to limit cost); code checks each one and keeps or removes it, with a reason | 020, 040 | `extracted_triples.csv`, `extracted_triples_removed.csv` |
-| `070_evaluate` | Precision and recall on the records of the ground truth candidates pool that a person has corrected, overall and per maintainer | `annotations/ground_truth_triples.csv`, 060 | `metrics.json`, per-record diff |
+| `070_evaluate` | Precision and recall on the records of the ground truth candidates pool that a person has corrected, overall and per maintainer | `annotations/ground_truth/` (every batch file), 060 | `metrics.json`, per-record diff |
 | `080_build_graph` | Builds the graph from the structured fields (maintainers, keywords, formats) and the extracted triple instances, in a store-neutral form | 020, 060 | `nodes.jsonl`, `edges.jsonl` |
 
 **Rule:** a step reads only from earlier steps' output folders (or `annotations/`), and writes only to its own.
@@ -71,7 +71,7 @@ flowchart TD
     C --> I & A
     I -->|schema| E
     A -->|drafts| P((person))
-    P -->|corrected| GT[annotations/ground_truth_triples.csv]
+    P -->|corrected batch files| GT[annotations/ground_truth/]
     GT --> V[070 evaluate]
     E -->|triples| V
     C -->|structured fields| G[080 build_graph]
@@ -90,7 +90,8 @@ Anyone should understand a step in under a minute from its control panel alone, 
 Learns the graph's vocabulary (entity classes, predicates, patterns) from the
 catalog itself.
 
-Reads:   cleaned records (020), induction split (030)
+Reads:   records.jsonl (020), splits.json (030), and, to compare with,
+         annotations/schema_derived_from_manual_annotation.txt
 Writes:  the_schema.json, induction_evidence.json
 Details: instructions/040_induce_schema.md
 """
@@ -116,7 +117,7 @@ induce = helpers("040_induce_schema")
 
 def main(inputs, settings, output):
     texts   = induce.pick_texts(inputs, settings)                  # the first 15 candidates of the 10 largest maintainers
-    calls   = induce.paid_calls(settings, output)                  # asks before paying; keeps every answer in cache/
+    calls   = induce.paid_calls(texts, settings, output)           # asks before paying; keeps every answer in cache/
     triples = induce.extract_triple_instances(texts, calls, settings)  # LLM: "MODIS" – "is aboard" – "Aqua", checked in the text
     labels  = induce.label_component_instances(triples, calls)     # LLM, reusing labels chosen so far: "MODIS" → Instrument
     labels  = induce.merge_labels(labels, triples, calls)          # LLM, one call over all labels: Sensor = Instrument
@@ -137,7 +138,7 @@ if __name__ == "__main__":
 | `SETTINGS`: only knobs a person tunes, each with a comment | Constants nobody tunes (batch sizes, timeouts) |
 | `main()`: one line per move, named in project words, with an example comment | Imports from its helper folder other than `moves.py` |
 
-Keep it under about 40 lines.
+Keep it short: about 50 lines, docstring included.
 
 ### 3. Step helpers: `NNN_name/`
 
@@ -154,7 +155,17 @@ Keep it under about 40 lines.
 | `report.py` | the step report |
 | `audit.py` | run ids, logging, move timing, and `origin()`, which builds an item's origin reference |
 | `trace.py` | follows origin references upstream, for `audit.py` |
-| `llm.py`, `records_io.py`, `triples_io.py`, `chunking.py` | the LLM client and the I/O shared by several steps |
+| `files.py` | the one way a file is saved: under a temporary name, then renamed; UTF-8 with plain line endings |
+| `llm.py` | the model client, and the confirmation before paid calls (with notes shown first) |
+| `cache.py` | keeps every model answer, so a rerun pays only for what changed (040, 050) |
+| `prompt_files.py`, `prompts/` | reads prompt text files; the extraction rules and reply format shared by 050 and 060 |
+| `extraction.py` | turns a model's reply into checked rows with a DESCRIBES row (050, 060) |
+| `records_io.py` | reads 020's `records.jsonl`; reads an `ids` setting |
+| `chunking.py` | a record's text, and long texts split into pieces |
+| `text_match.py`, `validate.py` | "is it in the text", and every check of a triple instance (against its text, a schema, the DESCRIBES row) |
+| `triples_io.py` | the triple format, name normalisation, the DESCRIBES row |
+| `schema_io.py` | reads the hand-built schema |
+| `ground_truth.py` | reads the ground truth folder and checks it for typos |
 
 **Rules:** a file goes in `common/` only when two or more steps use it. `common/` never imports from a step, and no step imports from another step's folder.
 
@@ -175,7 +186,7 @@ Keep it under about 40 lines.
 - Runs each step in its own process and stops at the first failure.
 - Checks each step's inputs before starting it.
 - Keeps write-once outputs (030's splits), marking the step "kept".
-- Skips 070, with a note rather than a failure, until `annotations/ground_truth_triples.csv` exists.
+- Skips 070, with a note rather than a failure, until `annotations/ground_truth/` holds a finished record.
 - Writes `outputs/reports/000_pipeline_<datetime>.md` and its own log. The master report has three sections:
 
 | Section | Contents |
@@ -244,8 +255,8 @@ Every run answers three questions:
     ```
 
     ```
-    subject,predicate,object,record_id,origin
-    MODIS,ABOARD,Aqua,a1b2…,"020_clean/records.jsonl#a1b2…; 040_induce_schema/the_schema.json#ABOARD"
+    id,subject,predicate,object,origin
+    a1b2…,MODIS,ABOARD,Aqua,"020_clean/records.jsonl#a1b2…; 040_induce_schema/the_schema.json#ABOARD"
     ```
   - 010 is where origin starts: each batch file wraps its raw records with the request that returned them, and the records themselves are left exactly as the API sent them:
 

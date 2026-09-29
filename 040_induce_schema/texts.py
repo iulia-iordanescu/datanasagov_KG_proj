@@ -18,24 +18,18 @@ from pathlib import Path
 from common.audit import log
 from common.chunking import full_text, pieces
 from common.records_io import load_records
+from common.step import check_settings
 
 
 @dataclass
 class Texts:
     items: list = field(default_factory=list)        # {"id", "maintainer", "title", "text", "pieces"}
     maintainers: list = field(default_factory=list)  # {"maintainer", "rank", "records", "eligible", "taken"}
-
-
-def check_settings(settings: dict) -> None:
-    for name in ("induction_maintainers", "texts_per_maintainer", "min_support", "workers"):
-        if settings[name] < 1:
-            raise ValueError(f"{name} must be at least 1 (got {settings[name]})")
-    if settings["max_chars"] < 1000:
-        raise ValueError(f"max_chars must be at least 1000 (got {settings['max_chars']})")
+    notes: list = field(default_factory=list)        # where the texts differ from what the settings ask for
 
 
 def pick_texts(inputs: dict, settings: dict) -> Texts:
-    check_settings(settings)
+    check_settings(settings, {"induction_maintainers": 1, "texts_per_maintainer": 1, "min_support": 1})
     records = load_records(inputs["records"])
     splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
     induction = splits["induction_candidates"]
@@ -56,6 +50,16 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
                                 "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})
             taken[m] += 1
     texts.maintainers = [{**m, "taken": taken[m["maintainer"]]} for m in chosen]
+    if len(chosen) < settings["induction_maintainers"]:
+        texts.notes.append(f"You asked for {settings['induction_maintainers']} maintainers "
+                           f"(induction_maintainers), but only {len(chosen)} have records to learn from, "
+                           f"so all {len(chosen)} are used.")
+    short = [m for m in texts.maintainers if m["taken"] < per]
+    if short:
+        texts.notes.append(f"You asked for {per} texts from each maintainer (texts_per_maintainer), but "
+                           f"{len(short)} maintainer(s) don't have that many, so they give fewer: "
+                           + "; ".join(f"{m['maintainer']} gives {m['taken']}" for m in short[:5])
+                           + (f" and {len(short) - 5} more" if len(short) > 5 else "") + ".")
     split = sum(len(t["pieces"]) > 1 for t in texts.items)
     log.info(f"  {len(texts.items)} texts from {len(chosen)} maintainers"
              + (f"; {split} split into pieces" if split else ""))

@@ -14,13 +14,11 @@ moves.py -- the main moves of 040_induce_schema, as called by
     -        (here)      results                    writes the_schema.json, induction_evidence.json; report
 
 Every model answer is cached in cache/ inside the step's output folder (see
-cache.py), so a rerun pays only for what changed. Terms are as defined in
+common/cache.py), so a rerun pays only for what changed. Terms are as defined in
 docs/terminology.md.
 """
 from __future__ import annotations
 
-import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -34,18 +32,14 @@ import merge
 import texts as texts_stage
 from common import audit, llm
 from common.audit import check_origins, log, ref_path
+from common.files import write_json
 from common.schema_io import read_hand_schema
+from common.report import cell, counted
 from common.step import Results
 
 SCHEMA_NAME = "the_schema.json"
 EVIDENCE_NAME = "induction_evidence.json"
 SHOW = 20                        # rows listed in the report before "…"
-
-
-@dataclass
-class Calls:
-    paid: llm.PaidCalls          # asks before the first model call, counts the calls
-    cache_dir: Path              # where every answer is kept
 
 
 # --------------------------------------------------------------------------
@@ -54,8 +48,8 @@ def pick_texts(inputs, settings):
     return texts_stage.pick_texts(inputs, settings)
 
 
-def paid_calls(settings, output) -> Calls:
-    return Calls(paid=llm.PaidCalls(confirm=settings["confirm_paid_calls"]), cache_dir=output / "cache")
+def paid_calls(texts, settings, output) -> llm.Calls:
+    return llm.paid_calls(settings, output, notes=texts.notes)
 
 
 def extract_triple_instances(texts, calls, settings):
@@ -94,30 +88,16 @@ def compare_with_hand_schema(inputs, schema) -> dict:
 
 # --------------------------------------------------------------------------
 
-def _write_json(path: Path, data) -> None:
-    tmp = path.with_suffix(".json.part")
-    tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8", newline="\n")
-    os.replace(tmp, path)
-
-
-def _cell(value) -> str:
-    return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
-
-
-def _counted(counter: dict) -> str:
-    return ", ".join(f"{k} {v:,}" for k, v in sorted(counter.items())) or "none"
-
-
 def results(texts, triples, labels, counts, definitions, schema, comparison, calls, settings, output) -> Results:
     made = {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings,
             "texts": len(texts.items), "maintainers": [m["maintainer"] for m in texts.maintainers]}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
-    _write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,
+    write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,
                               "patterns": schema.patterns, "deferred": schema.deferred, "made": made})
     calls_made = {"extract": triples.calls, "label": labels.calls, "merge": labels.merge_calls,
                   "define": definitions.calls, "test": calls.paid.test_calls}
     pieces = {t["id"]: len(t["pieces"]) for t in texts.items}
-    _write_json(evidence_path, {
+    write_json(evidence_path, {
         "made": made,
         "texts": [{**t, "pieces": pieces[t["id"]]} for t in triples.texts],
         "labels": labels.of, "vocabulary": labels.vocabulary, "label_batches": labels.batches,
@@ -132,7 +112,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     })
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
-    warnings = []
+    warnings = list(calls.paid.notes)          # shown before paying too, if the run paid
     failed = [(t["id"], p) for t in triples.texts for p in t["failed_pieces"]]
     if failed:
         warnings.append(f"{len(failed)} text piece(s) failed extraction, so their triple instances are "
@@ -176,7 +156,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         f"each of the {len(texts.maintainers)} largest maintainers"
         + (f"; {split} were split into text pieces" if split else "") + ".", "",
         "| Maintainer | Records | Texts used |", "|---|---:|---:|"]
-    lines += [f"| {_cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
+    lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
     lines += ["", "### Model calls", "",
               "| Stage | Calls |", "|---|---:|",
               f"| 2 extract triple instances | {triples.calls} (+{triples.reused} answered from the cache) |",
@@ -188,9 +168,9 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               "### Triple instances and labels", "",
               f"- {n_verified:,} verified triple instances from {counts.texts_with_triple_instances} texts: "
               f"each one's source text is in its record's text (checked in code, `common/validate.py`).",
-              f"- Left out as unverified: {sum(triples.errors.values()):,} ({_counted(triples.errors)}); "
+              f"- Left out as unverified: {sum(triples.errors.values()):,} ({counted(triples.errors)}); "
               f"listed in `{EVIDENCE_NAME}` under each text's `unverified`.",
-              f"- Verified, with flags worth a look: {_counted(triples.flags)}.",
+              f"- Verified, with flags worth a look: {counted(triples.flags)}.",
               f"- {triples.malformed:,} item(s) in the replies weren't triple instances and were dropped.",
               f"- Labeled: {len(labels.of.get('entity', {})):,} component instances of subjects and objects "
               f"with {len(labels.vocabulary.get('entity', [])):,} entity class labels; "
@@ -201,7 +181,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     if labels.merges:
         lines += ["Merges (check these: a wrong merge makes two ideas one):", "",
                   "| Kind | Label | Merged into | Component instances | Texts |", "|---|---|---|---:|---:|"]
-        lines += [f"| {m['kind']} | {_cell(m['label'])} | {_cell(m['into'])} | {m['component_instances']} | "
+        lines += [f"| {m['kind']} | {cell(m['label'])} | {cell(m['into'])} | {m['component_instances']} | "
                   f"{m['texts']} |" for m in labels.merges]
         lines.append("")
     if counts.spelling_folds:
@@ -231,8 +211,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               f"{len(schema.single_maintainer):,}.", "",
               "Entity classes with the most support:", "",
               "| Entity class | Support | Maintainers | Examples |", "|---|---:|---:|---|"]
-    lines += [f"| {_cell(c['name'])} | {c['support']} | {len(c['maintainers'])} | "
-              f"{_cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
+    lines += [f"| {cell(c['name'])} | {c['support']} | {len(c['maintainers'])} | "
+              f"{cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
 
     return Results(
         files=[schema_path, evidence_path],

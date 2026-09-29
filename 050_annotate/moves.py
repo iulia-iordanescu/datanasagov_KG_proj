@@ -1,0 +1,174 @@
+"""
+moves.py -- the main moves of 050_annotate, as called by 050_annotate.py.
+
+    stage 1  records.py  pick_records        which records this batch drafts; notes to show before paying
+    -        (here)      paid_calls          asks before the first model call; the answer cache
+    stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
+    stage 3  (here)      build_rows          code: DESCRIBES row, duplicates out, every row checked
+    stage 4  (here)      check_ground_truth  code: typos in the ground truth files
+    -        (here)      results             writes the draft batch; report
+
+Every model answer is cached in cache/ inside the step's output folder
+(common/cache.py), so a rerun pays only for what it doesn't have. Terms are
+as defined in docs/terminology.md.
+"""
+from __future__ import annotations
+
+import collections
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import draft
+import records as records_stage
+from common import audit, extraction, llm
+from common.audit import ORIGIN_COLUMN, check_origins, log
+from common.files import write_csv, write_json
+from common.ground_truth import COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows
+from common.report import cell, counted
+from common.step import Results
+
+BATCH_NAME = "drafted_triples_batch{n}.csv"
+DETAILS_NAME = "drafted_triples_batch{n}_details.json"
+#: A draft batch's columns: the ground truth's, then the checks, then where each row came from.
+COLUMNS = GROUND_TRUTH_COLUMNS + ["flags", ORIGIN_COLUMN]
+SHOW = 20                        # rows listed in the report before "…"
+
+
+@dataclass
+class Drafts:
+    rows: dict = field(default_factory=dict)      # {id: [checked rows]}, in the batch's order
+    removed: dict = field(default_factory=dict)   # {id: [removed items]}
+    errors: dict = field(default_factory=dict)    # {check: rows}
+    flags: dict = field(default_factory=dict)     # {check: rows}
+
+
+# --------------------------------------------------------------------------
+
+def pick_records(inputs, settings, output):
+    return records_stage.pick_records(inputs, settings, output)
+
+
+def paid_calls(chosen, settings, output) -> llm.Calls:
+    return llm.paid_calls(settings, output, notes=chosen.notes)
+
+
+def ask_model(chosen, calls, settings):
+    return draft.ask_model(chosen, calls, settings)
+
+
+def build_rows(chosen, replies) -> Drafts:
+    drafts = Drafts()
+    errors, flags = collections.Counter(), collections.Counter()
+    for item in chosen.items:
+        if item["id"] not in replies.of:
+            continue
+        rows, removed = extraction.build_rows(item["id"], item["title"], item["text"],
+                                              replies.of[item["id"]], chosen.names)
+        drafts.rows[item["id"]], drafts.removed[item["id"]] = rows, removed
+        for r in rows:
+            errors.update(r["errors"])
+            flags.update(r["flags"])
+    drafts.errors, drafts.flags = dict(errors), dict(flags)
+    n = sum(len(r) for r in drafts.rows.values())
+    log.info(f"  {n:,} rows for {len(drafts.rows)} record(s); "
+             f"{sum(len(r) for r in drafts.removed.values())} removed (malformed or duplicate)")
+    return drafts
+
+
+def check_ground_truth(chosen) -> list:
+    typos = check_rows(chosen.ground_truth, chosen.records)
+    log.info(f"  ground truth: {len(chosen.ground_truth.records)} records in "
+             f"{len(chosen.ground_truth.files)} file(s); {len(typos)} row(s) to fix, "
+             f"{len(chosen.ground_truth.problems)} other problem(s)")
+    return typos
+
+
+# --------------------------------------------------------------------------
+
+def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
+    n = chosen.batch
+    batch_path, details_path = output / BATCH_NAME.format(n=n), output / DETAILS_NAME.format(n=n)
+    files, csv_rows = [], []
+    for item in chosen.items:
+        for r in drafts.rows.get(item["id"], []):
+            csv_rows.append({**{c: r.get(c, "") for c in GROUND_TRUTH_COLUMNS}, "all_facts_extracted": "0",
+                             "flags": " ".join(r["errors"] + r["flags"]),
+                             ORIGIN_COLUMN: audit.origin("records", item["id"])})
+    if csv_rows:
+        write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a draft batch is never overwritten
+        write_json(details_path, {
+            "batch": n, "run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings,
+            "chosen": chosen.how,
+            "records": [{"id": i["id"], "pool_position": i["position"], "title": i["title"],
+                         "pieces": len(i["pieces"]),
+                         "status": "drafted" if i["id"] in drafts.rows else "failed",
+                         "error": replies.failed.get(i["id"]),
+                         "rows": len(drafts.rows.get(i["id"], [])),
+                         "removed": drafts.removed.get(i["id"], [])} for i in chosen.items],
+            "skipped_while_choosing": chosen.skipped,
+            "fair_sample": chosen.fair,
+        }, new=True)
+        files = [batch_path, details_path]
+        log.info(f"  wrote {batch_path.name} and {details_path.name}")
+
+    warnings = list(chosen.notes)                  # shown before paying too, if the run paid
+    if replies.failed:
+        warnings.append(f"{len(replies.failed)} record(s) failed and are not in the batch: "
+                        f"{', '.join(list(replies.failed)[:3])}{' …' if len(replies.failed) > 3 else ''}. "
+                        f"The next run drafts them again, reusing every answer already paid for.")
+    if not csv_rows:
+        warnings.append("No record was drafted, so no batch was written.")
+    warnings += [f"Ground truth: {p}" for p in chosen.ground_truth.problems]
+    if typos:
+        warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix; listed in the "
+                        f"report under Your ground truth.")
+    missing = check_origins(csv_rows, "draft rows")
+    if missing:
+        warnings.append(missing)
+
+    gt = chosen.ground_truth
+    lines = ["### Batch", ""]
+    if csv_rows:
+        lines += [f"Batch {n}: `{batch_path.name}`, {len(csv_rows):,} rows for {len(drafts.rows)} record(s), "
+                  f"chosen as {chosen.how}. To correct it, run `py annotate.py` and pick batch {n}: it "
+                  f"copies it to `annotations/ground_truth/batch_{n:03d}.csv` and saves your changes there.", ""]
+    lines += ["| Pool position | Record | Rows | With an error | With a flag |", "|---:|---|---:|---:|---:|"]
+    for item in chosen.items:
+        rows = drafts.rows.get(item["id"])
+        if rows is None:
+            lines.append(f"| {item['position'] if item['position'] is not None else '–'} | "
+                         f"{cell(item['title'])} | failed | | |")
+        else:
+            lines.append(f"| {item['position'] if item['position'] is not None else '–'} | "
+                         f"{cell(item['title'])} | {len(rows)} | {sum(bool(r['errors']) for r in rows)} | "
+                         f"{sum(bool(r['flags']) for r in rows)} |")
+    removed = collections.Counter(x["reason"] for v in drafts.removed.values() for x in v)
+    lines += ["", f"- Errors (must be fixed): {counted(drafts.errors)}.",
+              f"- Flags (worth a look; a name not in the schema is often a good new one): {counted(drafts.flags)}.",
+              f"- Removed: {counted(removed)} (listed in `{details_path.name}`).",
+              "", "### Fair sample", "", records_stage.fair_words(chosen.fair, chosen.positions), ""]
+    if chosen.skipped:
+        lines += ["Passed over while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
+                  + ".", ""]
+    lines += ["### Model calls", "", "| | Calls |", "|---|---:|",
+              f"| draft triple instances | {replies.calls} (+{replies.reused} text pieces answered from the cache) |",
+              f"| test call | {calls.paid.test_calls} |",
+              f"| **total this run** | **{replies.calls + calls.paid.test_calls}** |", "",
+              f"Model: `{llm.MODEL}`. Answers are kept in `cache/`; a rerun pays only for what it doesn't have.",
+              "", "### Your ground truth", "",
+              f"{len(gt.records)} records in {len(gt.files)} file(s), {sum(r['finished'] for r in gt.records.values())} "
+              f"finished (all facts extracted). Rows with something to fix: {len(typos)}.", ""]
+    if typos:
+        lines += ["| Where | Record | To fix |", "|---|---|---|"]
+        lines += [f"| {t['where']} | {t['id']} | {'; '.join(ROW_ERRORS[e] for e in t['errors'])} |"
+                  for t in typos[:SHOW]]
+        if len(typos) > SHOW:
+            lines.append(f"| … {len(typos) - SHOW} more | | |")
+        lines.append("")
+
+    return Results(
+        files=files,
+        headline={"records drafted": len(drafts.rows), "rows": len(csv_rows)},
+        details="\n".join(lines),
+        warnings=warnings,
+    )

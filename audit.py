@@ -1,7 +1,7 @@
 """
 audit · Trace an item back to its source
 
-Finds an item (a catalog record, a cleaned record, later a triple) in the
+Finds an item (a catalog record, a cleaned record, a schema entry) in the
 pipeline's outputs and follows its origin upstream, step by step, to the API
 request that first returned it. Each hop names the run that made it and that
 run's report and log.

@@ -23,7 +23,7 @@ Then add `.myvenv/` to `.gitignore` (part 2), create the `.env` file (part 6) an
 | Need | Detail |
 |---|---|
 | Python | **3.14**, the newest stable release. It's already installed on this machine |
-| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `llm_client.py` and `list_models.py`. Everything else comes with Python |
+| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `common/llm.py` to read your Ask Sage key from `.env`. Everything else comes with Python |
 | Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a model need it |
 
 ## Part 1: Check that Python 3.14 is installed
@@ -131,7 +131,7 @@ Don't add quotes or spaces around the `=`.
 
 `.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-The pipeline steps that call the model need the file: today step 040 (`040_induce_schema.py`); later 050 and 060. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
+The pipeline steps that call the model need the file: today steps 040 (`040_induce_schema.py`) and 050 (`050_annotate.py`); later 060. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
 ## Part 7: Check the setup
 
