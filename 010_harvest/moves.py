@@ -23,6 +23,7 @@ from pathlib import Path
 import batches
 import ckan_client
 from common.audit import current_run_id, log
+from common.report import named
 from common.step import ROOT, Results
 
 # Written by versions of this step that kept a separate lineage file. The
@@ -189,7 +190,7 @@ def results(harvest: Harvest, check: Check) -> Results:
                         f"{check.first_saved} and {check.last_saved}. For a single-day snapshot, "
                         f"delete {_shown(harvest.folder)}/ and rerun.")
     if check.without_request:
-        shown = ", ".join(check.without_request[:5]) + (" …" if len(check.without_request) > 5 else "")
+        shown = named(check.without_request)
         warnings.append(f"{len(check.without_request)} batch files have no request block, so the "
                         f"request that returned their records is not recorded: {shown}. Rerun to "
                         f"fetch them again.")

@@ -129,6 +129,10 @@ def _parse_bool(text: str) -> bool:
 
 
 def _parse_command_line(step_name, inputs, settings, argv):
+    shared = sorted(set(inputs) & set(settings))
+    if shared:
+        raise ValueError(f"{step_name}: an input and a setting can't share a name, since both are given "
+                         f"on the command line as --<name>: {', '.join(shared)}")
     ap = argparse.ArgumentParser(
         prog=f"py {step_name}.py",
         description=f"Run {step_name}. Instructions: instructions/{step_name}.md",

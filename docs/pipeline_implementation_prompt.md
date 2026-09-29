@@ -48,7 +48,7 @@ outputs/                              everything a run produces, gitignored
 | `030_split` | Sets two disjoint lists, each in a fixed random order so any first *k* is a fair sample and taking more later keeps what was taken: the **ground truth candidates pool** (1,000 records, stratified by maintainer) and the **induction candidates** (every other record with text, shuffled per maintainer). Write-once | 020, `annotations/ground_truth_candidates.csv` | `splits.json` |
 | `040_induce_schema` | Takes the first `texts_per_maintainer` induction candidates of each of the `induction_maintainers` largest maintainers. LLM extracts triple instances with no schema, each with its source text; code leaves out any triple instance whose source text isn't in the text (the same checks as 050/060, in `common/`). LLM labels each name, merges synonymous labels. Code counts support in distinct texts and maintainers and keeps every entry with that evidence; a cutoff setting (default 1: keep everything) decides which enter the schema, and is chosen later from 070's scores. LLM writes definitions; code rechecks every number. The report compares the result with the hand-built schema | 020, 030, `annotations/schema_derived_from_manual_annotation.txt` | `the_schema.json`, `induction_evidence.json` |
 | `050_annotate` | LLM drafts triple instances for the next records in the ground truth candidates pool (settings `records_per_batch`, `start_position`, or exactly the records in `ids`), skipping records already in the ground truth or waiting in a draft batch, one numbered batch per annotation sitting. Anything that makes a batch differ from what was asked is shown before paying. Code adds the DESCRIBES row and checks every row (`common/extraction.py`, `common/prompts/`, shared with 060), and checks the ground truth files for typos on every run. A person corrects a batch with the annotation tool (`py annotate.py`, a local browser editor, not a step), which copies it into `annotations/ground_truth/` on first opening and saves every edit there; it stays as its own file: the ground truth is every file in that folder | 020, 030, `annotations/schema_derived_from_manual_annotation.txt`, `annotations/ground_truth/` | `drafted_triples_batch<N>.csv`, `drafted_triples_batch<N>_details.json` |
-| `060_extract` | LLM extracts triples that follow the schema, from **every** record once the schema is final (until then, only from the records that have ground truth, to limit cost); code checks each one and keeps or removes it, with a reason | 020, 040 | `extracted_triples.csv`, `extracted_triples_removed.csv` |
+| `060_extract` | LLM extracts triples that follow the schema, in only the schema's names, from the finished records of the ground truth by default (setting `extract_from`), from **every** record once the schema is final (`--extract_from all`), or from the records in `ids`. The schema is 040's by default (decided 2026-09-29; any schema in either shape `common/schema_io.py` reads can be given with `--schema`), plus the entries added by hand in `annotations/schema_additions.txt`. Code checks each triple instance and keeps it or removes it, with a reason: removed when its source text is missing or not in the record's text, or when it uses a name outside the schema; a pattern outside the schema is kept, flagged. The report lists the names outside the schema the model used | 020, 040, `annotations/schema_additions.txt`, `annotations/ground_truth/` | `extracted_triples.csv`, `extracted_triples_removed.csv`, `schema_used.json`, `extraction_details.json` |
 | `070_evaluate` | Precision and recall on the records of the ground truth candidates pool that a person has corrected, overall and per maintainer | `annotations/ground_truth/` (every batch file), 060 | `metrics.json`, per-record diff |
 | `080_build_graph` | Builds the graph from the structured fields (maintainers, keywords, formats) and the extracted triple instances, in a store-neutral form | 020, 060 | `nodes.jsonl`, `edges.jsonl` |
 
@@ -70,9 +70,11 @@ flowchart TD
     C -->|all records| E[060 extract]
     C --> I & A
     I -->|schema| E
+    X[annotations/schema_additions.txt] -->|added by hand| E
     A -->|drafts| P((person))
     P -->|corrected batch files| GT[annotations/ground_truth/]
     GT --> V[070 evaluate]
+    GT -->|finished records| E
     E -->|triples| V
     C -->|structured fields| G[080 build_graph]
     E -->|triples| G
@@ -152,19 +154,19 @@ Keep it short: about 50 lines, docstring included.
 | File | Holds |
 |---|---|
 | `step.py` | `run_step`, `helpers`, `Results`, and the folder locations |
-| `report.py` | the step report |
+| `report.py` | the step report, and small helpers for any step's report details (`cell`, `counted`, `named`) |
 | `audit.py` | run ids, logging, move timing, and `origin()`, which builds an item's origin reference |
 | `trace.py` | follows origin references upstream, for `audit.py` |
 | `files.py` | the one way a file is saved: under a temporary name, then renamed; UTF-8 with plain line endings |
 | `llm.py` | the model client, and the confirmation before paid calls (with notes shown first) |
 | `cache.py` | keeps every model answer, so a rerun pays only for what changed (040, 050) |
 | `prompt_files.py`, `prompts/` | reads prompt text files; the extraction rules and reply format shared by 050 and 060 |
-| `extraction.py` | turns a model's reply into checked rows with a DESCRIBES row (050, 060) |
+| `extraction.py` | asks the model once per text piece (cached), and turns its replies into checked rows with a DESCRIBES row (050, 060) |
 | `records_io.py` | reads 020's `records.jsonl`; reads an `ids` setting |
 | `chunking.py` | a record's text, and long texts split into pieces |
 | `text_match.py`, `validate.py` | "is it in the text", and every check of a triple instance (against its text, a schema, the DESCRIBES row) |
 | `triples_io.py` | the triple format, name normalisation, the DESCRIBES row |
-| `schema_io.py` | reads the hand-built schema |
+| `schema_io.py` | reads a schema in either shape (040's JSON, or the hand-built text layout), and writes one out for a model to read |
 | `ground_truth.py` | reads the ground truth folder and checks it for typos |
 
 **Rules:** a file goes in `common/` only when two or more steps use it. `common/` never imports from a step, and no step imports from another step's folder.
@@ -296,5 +298,5 @@ Every run answers three questions:
 1. Build `common/` and `010_harvest` first. Test them against a local stand-in API: a full run, a crash followed by a resume, a trial run followed by a full run, a smaller `max_records` than what's on disk, a `page_size` change, and `audit.py` tracing a record.
 2. Add the steps one at a time, in order. Each one is done when it has its control panel, helpers, origin on every output item, report results, instructions file, and a test run.
 3. Add `run_pipeline.py` last, and check that a full run matches running the steps one by one.
-4. Ask me before choosing anything the design leaves open: which schema 060 uses by default, and whether to commit `outputs/reports/`. The graph store is a separate spike, not part of this build.
+4. Ask me before choosing anything the design leaves open: which schema 060 uses by default (decided 2026-09-29: 040's induced schema, plus `annotations/schema_additions.txt`), and whether to commit `outputs/reports/`. The graph store is a separate spike, not part of this build.
 5. Never `git add`, commit or push without my review.

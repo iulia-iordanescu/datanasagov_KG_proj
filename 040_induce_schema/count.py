@@ -26,6 +26,10 @@ Before counting, labels that differ only in case, spacing or punctuation
 spelling. Digits are kept: "Level2" and "Level3" stay apart. Every fold is
 listed in the report.
 
+Each text's title also counts once toward its label (the describes_class
+of stage 2), as an entity class, whether or not the title is in a triple
+instance: so the kinds of thing records describe are always counted.
+
 Each quantity is counted independently: a component instance left
 unlabeled costs its own schema entry and every pattern through it, not its
 neighbors' entries.
@@ -53,6 +57,7 @@ class Counts:
     spelling_folds: list = field(default_factory=list)  # {"kind", "into", "folded"}
     unlabeled_slots: dict = field(default_factory=dict) # {slot: component instances without a label}
     texts_with_triple_instances: int = 0
+    texts_with_describes_class: int = 0             # texts whose title got a describes_class
 
 
 def _folding(finals: collections.Counter, kind: str, folds: list) -> dict:
@@ -116,6 +121,12 @@ def count_support(triples, labels) -> Counts:
             if sc and oc and p:
                 ids["pattern"][(sc, p, oc)].add(t["id"])
                 maint["pattern"][(sc, p, oc)].add(t["maintainer"])
+        described = final["entity"].get(t.get("title")) if t.get("describes_class") else None
+        if described:
+            counts.texts_with_describes_class += 1
+            ids["entity class"][described].add(t["id"])
+            maint["entity class"][described].add(t["maintainer"])
+            examples[described][t["title"]] += 1
 
     counts.entity_classes = _entries(ids["entity class"], maint["entity class"], "name", examples)
     counts.predicates = _entries(ids["predicate"], maint["predicate"], "name")

@@ -3,7 +3,7 @@ common/triples_io.py -- the one place a triple is defined, read, written and
 normalised.
 
 Adapted from to_be_reshaped/triple_io.py; the DESCRIBES row (at the end)
-was added. Used today by common/extraction.py (050, and 060 when built),
+was added. Used today by common/extraction.py (050 and 060),
 common/validate.py and the annotation tool: triple_key, label_key,
 clean_triple and the DESCRIBES row. The file-reading and -writing half
 (load_triples, write_triples, dedupe) is kept for 070, the evaluator, which
@@ -299,8 +299,11 @@ UNDECIDED = "X"
 
 
 def describes_row(record_id: str, title: str, entity_class: str) -> dict:
+    """The row, with the title's spacing tidied like every component
+    instance's (clean_triple): 9% of titles hold a line break or a run of
+    spaces inside (2026-09-27)."""
     return {"id": record_id, "subject": record_id, "subject_class": ENTRY_CLASS,
-            "predicate": ENTRY_PREDICATE, "object": title,
+            "predicate": ENTRY_PREDICATE, "object": " ".join(str(title or "").split()),
             "object_class": entity_class or UNDECIDED, "source_text": ENTRY_SOURCE}
 
 

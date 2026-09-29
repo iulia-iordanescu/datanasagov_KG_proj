@@ -67,6 +67,7 @@ Each step reads what the one before it wrote, so run them in this order. From th
 | 030 split | `py 030_split.py` | about 3 s | no |
 | 040 induce schema | `py 040_induce_schema.py` | not yet measured | **yes** |
 | 050 annotate | `py 050_annotate.py` | not yet measured | **yes** (about one call per record) |
+| 060 extract | `py 060_extract.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`instructions/<step>.md`) says what every warning means and what to do.
 
@@ -130,3 +131,7 @@ py annotate.py
 ```
 
 It opens a page in your browser. Pick the batch at the top: the tool copies the draft into `annotations/ground_truth/` itself (e.g. `drafted_triples_batch1.csv` → `batch_001.csv`) and saves every change there straight away. When you're done, stop it with Ctrl+C and commit the file. It needs no model calls, so it also works on your personal laptop, as long as that laptop has run steps 010 to 030 (the tool shows each record's text from their outputs) and has the draft batch. The full steps are in `annotations/ground_truth/README.md`.
+
+### Extracting (step 060)
+
+`py 060_extract.py` needs 040's schema, so run 040 first. By default it extracts only from the ground truth records you've marked finished in the annotation tool, about one model call each; like 040 and 050, it shows its plan and waits for Enter before paying. `--extract_from all` extracts from every record (about 36,000 calls): only once the schema is final. To add entity classes or predicates by hand (e.g. from your mentor), write them in `annotations/schema_additions.txt`; how, in `instructions/060_extract.md`.

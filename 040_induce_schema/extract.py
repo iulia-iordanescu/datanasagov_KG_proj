@@ -9,6 +9,12 @@ passage that states it. Nothing tells the model which kinds of things or
 relations to look for; that is what the later stages learn. (The prompt says
 "facts": it speaks plainly to the model.)
 
+The reply also names describes_class: the kind of thing the text's title
+names ("Dataset", "WebTool", …), judged from the whole text. The first piece
+of a text to name one decides it. Stage 3 uses it as the title's label, so
+the schema always has entity classes for what records describe, which the
+DESCRIBES row of 050 and 060 needs.
+
 Every triple instance is then checked in code against its record's whole
 text (common/validate.py). One that fails (no source text, or a source text
 that isn't in the text) is unverified: it may be invented, so it is left out
@@ -41,7 +47,8 @@ SLOTS = ("subject", "predicate", "object")
 
 @dataclass
 class TripleInstances:
-    texts: list = field(default_factory=list)     # {"id", "maintainer", "triple_instances", "unverified", "failed_pieces"}
+    texts: list = field(default_factory=list)     # {"id", "maintainer", "title", "describes_class",
+                                                  #  "triple_instances", "unverified", "failed_pieces"}
     malformed: int = 0                            # items in replies that weren't a triple instance
     errors: dict = field(default_factory=dict)    # {check: triple instances left out for it}
     flags: dict = field(default_factory=dict)     # {check: verified triple instances that raised it}
@@ -50,9 +57,10 @@ class TripleInstances:
 
 
 def _from_reply(reply: dict) -> tuple:
-    """The triple instances in a reply, and how many items weren't one: all
-    three slots must hold non-empty text. The source text is kept as given
-    ("" if missing); the checks judge it."""
+    """The triple instances in a reply, how many items weren't one (all
+    three slots must hold non-empty text), and its describes_class ("" if
+    none). The source text is kept as given ("" if missing); the checks
+    judge it."""
     items = reply.get("triples") if isinstance(reply.get("triples"), list) else []
     good = []
     for t in items:
@@ -60,7 +68,9 @@ def _from_reply(reply: dict) -> tuple:
             instance = {k: " ".join(t[k].split()) for k in SLOTS}
             instance["source_text"] = t["source_text"].strip() if isinstance(t.get("source_text"), str) else ""
             good.append(instance)
-    return good, len(items) - len(good)
+    describes = reply.get("describes_class")
+    describes = " ".join(describes.split()) if isinstance(describes, str) else ""
+    return good, len(items) - len(good), describes
 
 
 def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
@@ -91,8 +101,8 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
                 log.warning(f"extraction failed for {where[0]} piece {where[1] + 1}: {error}")
                 return
             k, reply = answer
-            instances, bad = _from_reply(reply)
-            answers[where] = {"triple_instances": instances, "malformed": bad}
+            instances, bad, describes = _from_reply(reply)
+            answers[where] = {"triple_instances": instances, "malformed": bad, "describes_class": describes}
             cache.put(k, answers[where])
             log.debug(f"extracted {where[0]} piece {where[1] + 1}: {len(instances)} triple instances "
                       f"({n}/{len(todo)})")
@@ -104,13 +114,14 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
     errors, flags = collections.Counter(), collections.Counter()
     for t in texts.items:
         whole = Text(t["text"])                    # checked against the whole record, every piece
-        verified, unverified, seen, pieces_failed = [], [], set(), []
+        verified, unverified, seen, pieces_failed, describes = [], [], set(), [], ""
         for i in range(len(t["pieces"])):
             answer = answers.get((t["id"], i))
             if answer is None:
                 pieces_failed.append(i)
                 continue
             result.malformed += answer.get("malformed", 0)
+            describes = describes or answer.get("describes_class", "")
             for instance in answer["triple_instances"]:
                 spo = tuple(instance[k] for k in SLOTS)
                 if spo in seen:                    # stated by two pieces of one text: counts once
@@ -123,7 +134,8 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
                     unverified.append({**instance, "errors": errs})
                 else:
                     verified.append(instance)
-        result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "triple_instances": verified,
+        result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "title": t["title"],
+                             "describes_class": describes, "triple_instances": verified,
                              "unverified": unverified, "failed_pieces": pieces_failed})
     result.errors, result.flags = dict(errors), dict(flags)
     n = sum(len(t["triple_instances"]) for t in result.texts)

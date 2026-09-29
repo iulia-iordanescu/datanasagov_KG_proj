@@ -1,0 +1,20 @@
+Extract the facts this record states that the schema below can express, as
+subject / predicate / object triples with a class for the subject and the
+object.
+
+Use ONLY the classes and predicates of the schema, spelled exactly as
+written, describes_class included. Leave out any fact they cannot express;
+do not invent names. If no class fits what the title names, leave
+describes_class empty.
+
+SCHEMA
+$schema
+
+RULES
+$rules
+
+$reply
+
+----- BEGIN RECORD -----
+$text
+----- END RECORD -----

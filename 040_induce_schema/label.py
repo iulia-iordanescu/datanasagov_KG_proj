@@ -21,6 +21,10 @@ triple instance it appears in. One the model leaves unlabeled is asked once
 more; if it is still unlabeled it is listed, and it counts toward no schema
 entry.
 
+A text's title is not sent: its label is the describes_class stage 2 got
+for it, judged from the whole text. Those labels also start the entity
+vocabulary (most common first), so other component instances reuse them.
+
 Each batch's answer is cached under a key that includes the labels in use
 before it, so a rerun reuses every batch whose component instances and
 preceding labels are unchanged.
@@ -32,6 +36,7 @@ the drift, in alphabetical groups where synonyms like `Instrument` and
 """
 from __future__ import annotations
 
+import collections
 import json
 import re
 from dataclasses import dataclass, field
@@ -85,6 +90,12 @@ def component_instances(triples) -> dict:
     return found
 
 
+def titles_labeled(triples) -> dict:
+    """{title: its describes_class} for every text whose reply named one."""
+    return {t["title"]: t["describes_class"] for t in triples.texts
+            if t.get("describes_class") and t.get("title")}
+
+
 def _loose(value: str) -> str:
     """Case and spacing folded: absorbs differences a model introduces when
     it echoes a component instance back."""
@@ -122,8 +133,13 @@ def label_component_instances(triples, calls) -> Labels:
         prompt = PROMPTS[kind]
         # Most common first (found in the most texts); ties alphabetically,
         # so the order never depends on the order of the triple instances.
-        order = sorted(found[kind], key=lambda v: (-len(found[kind][v][0]), v))
         vocabulary, labels, unlabeled = [], {}, []
+        if kind == "entity":
+            labels = titles_labeled(triples)
+            counted = collections.Counter(labels.values())
+            vocabulary = sorted(counted, key=lambda lbl: (-counted[lbl], lbl))
+        order = sorted((v for v in found[kind] if v not in labels),
+                       key=lambda v: (-len(found[kind][v][0]), v))
 
         def ask(items: dict) -> dict:
             """The labels for one batch: from the cache, else from the model."""

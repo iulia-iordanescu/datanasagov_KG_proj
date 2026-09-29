@@ -8,6 +8,8 @@ equal terms.
                                with the record's field names filled in
     REPLY                      the reply format (prompts/extraction_reply.txt)
     wrap(piece)                a text piece between BEGIN/END RECORD lines
+    ask_model(...)             one cached model call per text piece; a record
+                               with a failed call is left out whole
     build_rows(...)            a record's replies -> checked rows + removed items
 
 Each step keeps only what is its own: the top of its prompt and how it
@@ -35,9 +37,12 @@ the step (060) to decide. Terms: docs/terminology.md.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from common import llm
+from common.audit import log
+from common.cache import Cache, key
 from common.chunking import text_fields
 from common.prompt_files import fill, load
 from common.text_match import Text
@@ -103,3 +108,70 @@ def build_rows(record_id: str, title: str, text: str, replies: list, names: Sche
             seen[k] = (seen[k][0] or row, seen[k][1])
             rows.append(row)
     return rows, removed
+
+
+# --------------------------------------------------------------------------
+# asking the model, one call per text piece (050, 060)
+# --------------------------------------------------------------------------
+
+@dataclass
+class Replies:
+    of: dict = field(default_factory=dict)        # {id: [reply per piece]} for records fully answered
+    failed: dict = field(default_factory=dict)    # {id: why}
+    calls: int = 0                                # model calls made
+    reused: int = 0                               # pieces answered from the cache
+
+
+def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: str, verb: str) -> Replies:
+    """One model call per text piece of each item ({"id", "pieces", …}),
+    prompt_for(item, piece) giving the prompt. Every answer is kept in
+    cache/<stage>.json (common/cache.py) the moment it arrives, so a rerun
+    pays only for what it doesn't have. A record with any failed call is
+    left out of `of`, never half answered; the next run asks it again.
+    plan is the confirmation's first words ("050 will draft 10 record(s)
+    into batch 3"); verb names the work in the log ("drafting")."""
+    cache = Cache(calls.cache_dir, stage)
+    answers, todo = {}, {}
+    for item in items:
+        for i, piece in enumerate(item["pieces"]):
+            prompt = prompt_for(item, piece)
+            k = key(prompt)
+            stored = cache.get(k)
+            if stored is not None:
+                answers[(item["id"], i)] = stored
+            else:
+                todo[(item["id"], i)] = (k, prompt)
+
+    result = Replies(reused=len(answers))
+    if todo:
+        n_records = len({rid for rid, _ in todo})
+        calls.paid.start(f"  {plan}: {len(todo)} model call(s) for {n_records} record(s)"
+                         + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""))
+        before = calls.paid.made
+
+        def ask(k, prompt):
+            reply = llm.call_llm_json(prompt)
+            calls.paid.made_call()
+            return k, reply
+
+        def handle(n, where, answer, error):
+            if error is not None:
+                result.failed[where[0]] = f"piece {where[1] + 1}: {error}"
+                log.warning(f"{verb} failed for {where[0]} piece {where[1] + 1}: {error}")
+                return
+            k, reply = answer
+            answers[where] = reply
+            cache.put(k, reply)
+            log.debug(f"{verb} {where[0]} piece {where[1] + 1} ({n}/{len(todo)})")
+
+        llm.run_parallel(ask, dict(todo), workers, handle,
+                         "Answers already received are kept in the cache; nothing else was written.")
+        result.calls = calls.paid.made - before
+
+    for item in items:
+        replies = [answers.get((item["id"], i)) for i in range(len(item["pieces"]))]
+        if item["id"] not in result.failed and all(r is not None for r in replies):
+            result.of[item["id"]] = replies
+    log.info(f"  {len(result.of)} record(s) answered, {len(result.failed)} failed "
+             f"({result.calls} calls, {result.reused} text piece(s) from the cache)")
+    return result

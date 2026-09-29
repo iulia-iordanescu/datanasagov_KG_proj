@@ -9,7 +9,7 @@ instructions/020_clean.md.
 
     from common.records_io import load_records, has_text, read_ids
     records = load_records(inputs["records"])      # {id: record}, in file order
-    ids = read_ids(settings["ids"])                # a step's "ids" setting (050; 060 when built)
+    ids = read_ids(settings["ids"])                # a step's "ids" setting (050, 060)
 """
 from __future__ import annotations
 

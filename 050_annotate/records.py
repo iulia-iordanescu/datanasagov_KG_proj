@@ -35,13 +35,13 @@ from pathlib import Path
 from common.chunking import full_text, pieces
 from common.ground_truth import read_ground_truth
 from common.records_io import has_text, load_records, read_ids
+from common.report import named
 from common.schema_io import read_hand_schema
 from common.step import check_settings, input_files
 from common.validate import SchemaNames
 
 DRAFT_NAME = re.compile(r"drafted_triples_batch(\d+)\.csv")
 GROUND_TRUTH_NAME = re.compile(r"batch_(\d+)\.csv")
-SHOW = 5                                           # ids named in a note before "and N more"
 
 
 @dataclass
@@ -78,10 +78,6 @@ def _waiting(output: Path) -> tuple:
                 if rid:
                     waiting.setdefault(rid, n)
     return waiting, highest
-
-
-def _named(ids: list) -> str:
-    return ", ".join(ids[:SHOW]) + (f" and {len(ids) - SHOW} more" if len(ids) > SHOW else "")
 
 
 def fair_sample(pool: list, taken: set) -> dict:
@@ -139,7 +135,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
         if len(ok) > per:
             chosen.notes.append(f"You listed {len(ok)} records that can be drafted, but records_per_batch "
                                 f"is {per}: the first {per} are drafted now, and these {len(ok) - per} "
-                                f"wait for a later run: {_named(ok[per:])}.")
+                                f"wait for a later run: {named(ok[per:])}.")
     else:
         start = settings["start_position"]
         chosen.how = f"the next records of the pool from position {start}"
@@ -159,7 +155,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
             if reason == "waiting in a draft batch to be corrected":
                 where = " (" + ", ".join(sorted({f"batch {chosen.waiting[r]}" for r in rids})) + ")"
             chosen.notes.append(f"{len(rids)} record(s) you listed {'are' if len(rids) > 1 else 'is'} "
-                                f"{reason}{where}, so skipped: {_named(rids)}.")
+                                f"{reason}{where}, so skipped: {named(rids)}.")
 
     for rid in picked:
         record = chosen.records[rid]

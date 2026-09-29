@@ -131,7 +131,7 @@ Don't add quotes or spaces around the `=`.
 
 `.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-The pipeline steps that call the model need the file: today steps 040 (`040_induce_schema.py`) and 050 (`050_annotate.py`); later 060. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
+The pipeline steps that call the model need the file: steps 040 (`040_induce_schema.py`), 050 (`050_annotate.py`) and 060 (`060_extract.py`). Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
 ## Part 7: Check the setup
 

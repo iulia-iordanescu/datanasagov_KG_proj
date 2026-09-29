@@ -24,7 +24,7 @@ from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.ground_truth import COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows
-from common.report import cell, counted
+from common.report import cell, counted, named
 from common.step import Results
 
 BATCH_NAME = "drafted_triples_batch{n}.csv"
@@ -114,7 +114,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     warnings = list(chosen.notes)                  # shown before paying too, if the run paid
     if replies.failed:
         warnings.append(f"{len(replies.failed)} record(s) failed and are not in the batch: "
-                        f"{', '.join(list(replies.failed)[:3])}{' …' if len(replies.failed) > 3 else ''}. "
+                        f"{named(list(replies.failed), 3)}. "
                         f"The next run drafts them again, reusing every answer already paid for.")
     if not csv_rows:
         warnings.append("No record was drafted, so no batch was written.")

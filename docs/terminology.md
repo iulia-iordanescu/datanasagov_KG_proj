@@ -59,6 +59,7 @@ notes: The MODIS instrument aboard Aqua …
 | **predicate** | A word with two senses, told apart by context (details below): **(1)** the component in the middle slot of a triple; **(2)** a schema entry: a kind of relation, e.g. `ABOARD`. |
 | **component class** | The class of a component in a particular schema. For a subject or an object, one of the schema's entity classes; for a predicate, one of the schema's predicates (examples below). |
 | **pattern** | One allowed combination of an entity class, a predicate and an entity class, read from subject to object, e.g. `Instrument ABOARD Spacecraft`. |
+| **schema additions** | Entity classes and predicates a person adds by hand to the schema step 060 extracts with, in `annotations/schema_additions.txt`, each with where the idea came from (`source:`). They have no support. |
 | **hand-built schema** | The schema a person wrote while annotating the first records: `annotations/schema_derived_from_manual_annotation.txt`. Step 050 shows it to the model as the names to reuse; step 040 compares the schema it learns with it. |
 | **domain** (of a predicate) | The entity classes its subject may belong to. |
 | **range** (of a predicate) | The entity classes its object may belong to. |

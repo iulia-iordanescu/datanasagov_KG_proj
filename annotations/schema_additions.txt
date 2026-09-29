@@ -1,0 +1,29 @@
+# Schema additions: entity classes and predicates to add to the schema step 060
+# extracts with (040's induced schema by default), e.g. ones a mentor
+# suggested. Empty sections add nothing.
+#
+# Same layout as schema_derived_from_manual_annotation.txt: an entry is its
+# name, two or more spaces, and its definition. Under a predicate, an indented
+# line lists its patterns ("Subject -> Object", separated by ";"). Under any
+# entry, an indented "source:" line says where the idea came from (e.g.
+# "source: mentor", "source: NASA missions A-to-Z"); an entry without one is
+# pointed out before paying. Lines starting with # are comments.
+#
+# Example (remove the # to use it):
+#
+# CLASSES
+# -------
+# Mission           a named spaceflight effort
+#                   source: mentor
+#
+# PREDICATES
+# ----------
+# PART_OF_MISSION      belongs to the mission
+#                      Spacecraft -> Mission; Instrument -> Mission
+#                      source: mentor
+
+CLASSES
+-------
+
+PREDICATES
+----------

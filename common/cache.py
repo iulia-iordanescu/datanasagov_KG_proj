@@ -4,7 +4,7 @@ reuses it.
 
     outputs/intermediate_results/<step>/cache/<stage>.json
 
-Shared by the steps that call a model (040, 050, and 060 when built).
+Shared by the steps that call a model (040, 050 and 060).
 
 Each file maps a KEY to an answer. The key is a fingerprint of everything
 that decides the answer: the model, the exact prompt text, and what was sent

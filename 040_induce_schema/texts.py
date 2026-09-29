@@ -18,6 +18,7 @@ from pathlib import Path
 from common.audit import log
 from common.chunking import full_text, pieces
 from common.records_io import load_records
+from common.report import named
 from common.step import check_settings
 
 
@@ -46,7 +47,8 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
             if record is None:
                 raise ValueError(f"induction candidate {row['id']} is not in 020's records; "
                                  f"splits.json and records.jsonl are out of step (rerun 030)")
-            texts.items.append({"id": row["id"], "maintainer": m, "title": record.get("title") or "",
+            texts.items.append({"id": row["id"], "maintainer": m,
+                                "title": " ".join((record.get("title") or "").split()),   # as a component instance
                                 "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})
             taken[m] += 1
     texts.maintainers = [{**m, "taken": taken[m["maintainer"]]} for m in chosen]
@@ -58,8 +60,7 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
     if short:
         texts.notes.append(f"You asked for {per} texts from each maintainer (texts_per_maintainer), but "
                            f"{len(short)} maintainer(s) don't have that many, so they give fewer: "
-                           + "; ".join(f"{m['maintainer']} gives {m['taken']}" for m in short[:5])
-                           + (f" and {len(short) - 5} more" if len(short) > 5 else "") + ".")
+                           + named([f"{m['maintainer']} gives {m['taken']}" for m in short], 5, "; ") + ".")
     split = sum(len(t["pieces"]) > 1 for t in texts.items)
     log.info(f"  {len(texts.items)} texts from {len(chosen)} maintainers"
              + (f"; {split} split into pieces" if split else ""))

@@ -37,6 +37,13 @@ def cell(value) -> str:
     return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
 
 
+def named(items, show: int = 5, sep: str = ", ") -> str:
+    """The first `show` items, then "and N more": "a, b, c and 4 more".
+    Shared by every warning and note that names items."""
+    items = [str(i) for i in items]
+    return sep.join(items[:show]) + (f" and {len(items) - show} more" if len(items) > show else "")
+
+
 def counted(counter: dict) -> str:
     """{"a": 3, "b": 1} as "a 3, b 1", sorted by name; "none" when empty."""
     return ", ".join(f"{k} {v:,}" for k, v in sorted(counter.items())) or "none"

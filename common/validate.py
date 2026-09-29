@@ -30,8 +30,8 @@ long text is checked against all of it.
     from common.validate import check_triple_instance
     errors, flags = check_triple_instance(instance, text, title)   # text: common.text_match.Text
 
-Shared by every step that takes triple instances from texts (040, 050, and
-060 when built) and by the annotation tool. The checks against a schema and
+Shared by every step that takes triple instances from texts (040, 050 and
+060) and by the annotation tool. The checks against a schema and
 of the DESCRIBES row are at the end of this file; 040 has no schema to check
 against. Adapted from check_row in to_be_reshaped/validate_triples.py: the
 same checks and names.
@@ -104,6 +104,9 @@ class SchemaNames:
         self.key = label_key
         self.entity_classes = {label_key(n) for n in schema.get("entity_classes", {})}
         self.predicates = {label_key(n) for n in schema.get("predicates", {})}
+        #: {kind: {loose key: the schema's own spelling}}, to write a name the way the schema does
+        self.spelling = {kind: {label_key(n): n for n in schema.get(kind, {})}
+                         for kind in ("entity_classes", "predicates")}
         self.patterns = {tuple(label_key(x) for x in p) for p in schema.get("patterns", [])}
 
 

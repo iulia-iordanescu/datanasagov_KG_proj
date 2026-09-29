@@ -2,7 +2,7 @@
 common/llm.py -- the one place a model is called.
 
 Used by every step that asks a model something: 040 (inducing the schema),
-050 (drafting ground truth), and 060 when built. The Ask Sage client was
+050 (drafting ground truth) and 060 (extracting). The Ask Sage client was
 moved from to_be_reshaped/llm_client.py, with its retries and re-asks now
 logged through common.audit's log (so they reach the step's log file)
 instead of printed.

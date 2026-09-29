@@ -13,7 +13,7 @@ Phase 1 (done) was built by the scripts `nasa_harvest.py` and `nasa_census.py`. 
 | `030_split` | Keeps the ground truth candidates pool in its order; orders every other record with text, per maintainer, for 040 | 020, `annotations/ground_truth_candidates.csv` | `splits.json` | built |
 | `040_induce_schema` | Learns the schema from a sample of texts (model calls) | 020, 030, the hand-built schema | `the_schema.json`, `induction_evidence.json` | built; not yet run with the real model |
 | `050_annotate` | Drafts ground truth for a person to correct (model calls) | 020, 030, the hand-built schema, `annotations/ground_truth/` | `drafted_triples_batch<N>.csv`, `…_details.json` | built; not yet run with the real model |
-| `060_extract` | Extracts triple instances that follow the schema (model calls) | 020, 040 | | not built |
+| `060_extract` | Extracts the triple instances the schema can express (model calls); by default from the finished ground truth records | 020, 040, `annotations/schema_additions.txt`, `annotations/ground_truth/` | `extracted_triples.csv`, `extracted_triples_removed.csv`, `schema_used.json`, `extraction_details.json` | built; not yet run with the real model |
 | `070_evaluate` | Scores extraction against the ground truth | `annotations/ground_truth/`, 060 | | not built |
 | `080_build_graph` | Builds the graph | 020, 060 | | not built |
 

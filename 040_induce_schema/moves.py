@@ -34,7 +34,7 @@ from common import audit, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.schema_io import read_hand_schema
-from common.report import cell, counted
+from common.report import cell, counted, named
 from common.step import Results
 
 SCHEMA_NAME = "the_schema.json"
@@ -116,12 +116,11 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     failed = [(t["id"], p) for t in triples.texts for p in t["failed_pieces"]]
     if failed:
         warnings.append(f"{len(failed)} text piece(s) failed extraction, so their triple instances are "
-                        f"missing ({', '.join(f'{i} piece {p + 1}' for i, p in failed[:3])}"
-                        f"{' …' if len(failed) > 3 else ''}). Rerun: only those are asked again.")
+                        f"missing ({named([f'{i} piece {p + 1}' for i, p in failed], 3)}). "
+                        f"Rerun: only those are asked again.")
     empty = [t["id"] for t in triples.texts if not t["triple_instances"] and not t["failed_pieces"]]
     if empty:
-        warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {', '.join(empty[:3])}"
-                        f"{' …' if len(empty) > 3 else ''}.")
+        warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}.")
     unlabeled = sum(len(v) for v in labels.unlabeled.values())
     if unlabeled:
         warnings.append(f"{unlabeled} component instance(s) were left unlabeled even after a second try; "
@@ -168,6 +167,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               "### Triple instances and labels", "",
               f"- {n_verified:,} verified triple instances from {counts.texts_with_triple_instances} texts: "
               f"each one's source text is in its record's text (checked in code, `common/validate.py`).",
+              f"- What the record describes (`describes_class`, the title's entity class): named for "
+              f"{counts.texts_with_describes_class} of {len(triples.texts)} texts.",
               f"- Left out as unverified: {sum(triples.errors.values()):,} ({counted(triples.errors)}); "
               f"listed in `{EVIDENCE_NAME}` under each text's `unverified`.",
               f"- Verified, with flags worth a look: {counted(triples.flags)}.",
@@ -185,9 +186,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                   f"{m['texts']} |" for m in labels.merges]
         lines.append("")
     if counts.spelling_folds:
-        lines += ["Spelling folds: " + "; ".join(f"{' · '.join(f['folded'])} → {f['into']}"
-                                                  for f in counts.spelling_folds[:SHOW])
-                  + (" …" if len(counts.spelling_folds) > SHOW else ""), ""]
+        lines += ["Spelling folds: " + named([f"{' · '.join(f['folded'])} → {f['into']}"
+                                              for f in counts.spelling_folds], SHOW, "; ") + ".", ""]
     by_reason = {}
     for d in schema.deferred:
         reason = "too vague" if d["reason"].startswith("too vague") else \
