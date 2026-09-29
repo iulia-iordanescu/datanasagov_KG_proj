@@ -42,6 +42,11 @@ from common.step import Results, input_files
 OUTPUT_NAME = "records.jsonl"
 CLEANING_FIELD = "_cleaning"         # which method cleaned each text field
 SHOW = 20                            # items listed in the report before "…"
+#: Text fields that are one line by nature: every run of line breaks and
+#: spaces inside becomes one space. (notes keeps its line breaks: they
+#: separate paragraphs.) 3,283 of 36,375 titles had one on 2026-09-27, e.g.
+#: "ROSETTA-ORBITER 67P RSI 1/2/3" + a line break + 37 spaces + "COMET ESCORT …".
+ONE_LINE_FIELDS = ("title",)
 
 #: TEXT_FIELDS (from common/records_io.py, which every later step reads
 #: records with): the free-text fields every record gets, always cleaned and
@@ -69,6 +74,7 @@ class Catalog:
     with_html: collections.Counter = field(default_factory=collections.Counter)  # {field: values with tags or escapes}
     fallbacks: list = field(default_factory=list)       # {"id", "field", "method"}
     no_text: int = 0                                    # records with every text field empty
+    made_one_line: collections.Counter = field(default_factory=collections.Counter)  # {field: values joined into one line}
     joined: bool = False
     maintainers_before: int = 0
     maintainers_after: int = 0
@@ -167,6 +173,10 @@ def clean_text(catalog: Catalog) -> Catalog:
         for name in catalog.text_fields:
             note = note_cleaning.clean_note(record[name])
             record[name] = note.text
+            if name in ONE_LINE_FIELDS:
+                one_line = " ".join(note.text.split())
+                catalog.made_one_line[name] += one_line != note.text
+                record[name] = one_line
             methods[name] = note.tier
             catalog.tiers[name][note.tier] += 1
             catalog.with_html[name] += note.had_markup
@@ -263,6 +273,10 @@ def results(catalog: Catalog, output: Path) -> Results:
                      + " | ".join(f"{counts.get(m, 0):,}" for m in methods)
                      + f" | {catalog.missing_field.get(name, 0):,} |")
     lines.append("")
+    for name in ONE_LINE_FIELDS:
+        if name in catalog.text_fields:
+            lines += [f"`{name}` is one line by nature: {catalog.made_one_line[name]:,} values had line breaks "
+                      f"or runs of spaces inside, each now one space.", ""]
     if catalog.fallbacks:
         shown = [f"{f['id']} ({f['field']}, {f['method']})" for f in catalog.fallbacks]
         lines += [f"Values that needed a fallback method, worth a look: {_listed(shown)}", ""]

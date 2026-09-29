@@ -300,8 +300,8 @@ UNDECIDED = "X"
 
 def describes_row(record_id: str, title: str, entity_class: str) -> dict:
     """The row, with the title's spacing tidied like every component
-    instance's (clean_triple): 9% of titles hold a line break or a run of
-    spaces inside (2026-09-27)."""
+    instance's (clean_triple). 020 already makes titles one line; this keeps
+    the row right for a title from anywhere else."""
     return {"id": record_id, "subject": record_id, "subject_class": ENTRY_CLASS,
             "predicate": ENTRY_PREDICATE, "object": " ".join(str(title or "").split()),
             "object_class": entity_class or UNDECIDED, "source_text": ENTRY_SOURCE}
