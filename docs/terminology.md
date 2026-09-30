@@ -9,7 +9,8 @@ The words this project uses, and exactly what each one means. It is expected to 
 3. [Schemas](#3-schemas)
 4. [Ground truth and samples](#4-ground-truth-and-samples)
 5. [Learning the schema (step 040)](#5-learning-the-schema-step-040)
-6. [The pipeline](#6-the-pipeline)
+6. [Scoring extraction (step 070)](#6-scoring-extraction-step-070)
+7. [The pipeline](#7-the-pipeline)
 
 ---
 
@@ -107,7 +108,30 @@ The words *domain* and *range* were standardized in RDF Schema, another kind of 
 
 ---
 
-## 6. The pipeline
+## 6. Scoring extraction (step 070)
+
+Step 070 compares the triple instances step 060 extracted with the ground truth, which works as the answer key. An example: a record's text states 5 facts, all in the ground truth; 060 extracts 4, of which 3 match the ground truth and 1 is wrong (the text never says it); 2 facts of the ground truth are missed.
+
+| Term | Meaning |
+|---|---|
+| **match** | An extracted triple instance that counts as the same as a ground truth one, after its names are translated into yours. Two levels: **exact**, subject and object the same once evened out (case, spacing, quote marks, dashes and a leading "the" ignored) and the predicate the same; **partial**, the same except that a subject or object may contain the other as whole words ("MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)"). A match is **strict** when both entity classes agree too. |
+| **name translation** | The table `annotations/name_mapping.csv`, checked by a person: which of your names each name of the schema 060 used means, or `(none)`; `reversed` when it says the same relation the other way round ("A CARRIES B" is "B ABOARD A"). |
+| **precision** | When 060 says something, how often it is right: the extracted triple instances that match the ground truth, divided by all the triple instances 060 extracted. In the example, 3 ÷ 4 = 75%. Low precision means the graph gets **wrong** facts. |
+| **recall** | Of everything true in the text, how much 060 caught: the ground truth triple instances that 060's extraction matches, divided by all the ground truth triple instances. In the example, 3 ÷ 5 = 60%. Low recall means the graph is **missing** facts. |
+| **entity-class accuracy** | Of the facts matched, how many also have both entity classes right. |
+| **within reach** | A ground truth fact the schema 060 used can express at all: its predicate and both its entity classes are something the schema's names translate to. |
+| **schema ceiling** | The ground truth facts within reach, divided by all of them: the best recall any extractor could get with that schema. **Recall within reach** is the facts 060 matched among those within reach. A low ceiling points at the schema, a low recall within reach at the extraction. |
+| **fair part** | The pool's first records, with none skipped, that a person has finished and 060 extracted: the only records 070 scores, since only they are a fair sample of the catalog. |
+| **margin of error** | How shaky a number is: "precision 65%, likely between 45% and 88%". With few records a number could easily have come out quite different, so its margin is wide; with many, narrow. Without it, a real improvement can't be told from luck. |
+| **bootstrap** | How 070 computes a margin of error: it recomputes the number about 1,000 times, each time from records drawn at random from the scored ones, with repeats allowed, and takes the middle 95% of the results. It draws **whole records**, since the facts of one record succeed or fail together, and draws **within the pool's sampling groups**, the way the pool was drawn. It is only valid when the scored records are a random sample (the first records of the pool) and there are enough of them; step 070 checks both. A margin covers only which records happened to be picked: not mistakes in the ground truth, and not the model answering differently on another run. |
+| **tuning part** | The ground truth records whose scores may be looked at while improving the pipeline (a prompt, the schema, a setting): pool positions 0–5, and from position 6 on, two of every three records. Step 030 marks each ground truth candidate's part in `splits.json`. |
+| **held-out part** | The ground truth records kept aside: from pool position 6 on, every third record (8, 11, 14, …). Their scores are not looked at while improving the pipeline, only at the end; that is the number reported as how well the pipeline works. Otherwise the pipeline gets tuned to the records it is scored on, and its scores flatter it. |
+
+The two are reported together because each alone can be fooled: an extractor that states just one fact it is sure of has perfect precision and almost no recall; one that states everything it can think of has perfect recall and poor precision. They are counted over all the finished ground truth records, not one at a time.
+
+---
+
+## 7. The pipeline
 
 | Term | Meaning |
 |---|---|

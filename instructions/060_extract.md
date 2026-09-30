@@ -75,7 +75,7 @@ PART_OF_MISSION   belongs to the mission
 - They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts.
 - An addition whose name the schema already has is left out, and the schema's entry is kept. So is one differing only in capital letters: `dataset` vs `Dataset`.
 - Give each one a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
-- **Adding names seen in ground truth records needs care.** Step 070 scores extraction on those records, so a name added because it came up there flatters the score for exactly those records. This will be settled when 070 is built. Until then, prefer names from outside knowledge or from a run over every record (the report's list then leaves the ground truth records out).
+- **Adding names seen in ground truth records needs care.** Step 070 scores extraction on those records, so a name added because it came up there flatters the score for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth (tuning part)`. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
 ## Outputs
 

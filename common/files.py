@@ -14,6 +14,8 @@ was written on Windows (see .gitattributes).
     write_json(path, data, indent=None)        # one line, compact
     write_jsonl(path, items)                   # one JSON item per line
     write_csv(path, columns, rows)             # a header, then rows (dicts)
+    read_csv(path)                             # every row, as dicts
+    append_csv(path, columns, rows)            # add rows, never changing what is there
 
 new=True refuses to replace an existing file (e.g. a draft batch, which is
 never overwritten).
@@ -52,3 +54,26 @@ def write_csv(path, columns: list, rows, new: bool = False) -> None:
     writer.writeheader()
     writer.writerows(rows)
     write_text(path, buf.getvalue(), new=new)
+
+
+def read_csv(path) -> list:
+    """Every row of a CSV file, as a dict. utf-8-sig: a file saved by Excel
+    may start with an invisible byte-order mark, which would stick to the
+    first column's name."""
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def append_csv(path, columns: list, rows) -> None:
+    """Add rows at the end of a CSV file, leaving every byte already in it as
+    it is (the file is created with its header if missing). For the files a
+    step may only ADD to, never change: 070's annotations/name_mapping.csv
+    and annotations/held_out_looks.csv."""
+    path = Path(path)
+    if not path.exists():
+        write_csv(path, columns, [])
+    text = path.read_text(encoding="utf-8-sig")
+    with open(path, "a", encoding="utf-8", newline="") as fh:
+        if text and not text.endswith("\n"):
+            fh.write("\n")
+        csv.DictWriter(fh, columns, extrasaction="ignore", lineterminator="\n").writerows(rows)

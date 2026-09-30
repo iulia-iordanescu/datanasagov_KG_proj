@@ -10,8 +10,8 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 
 | File or folder | What it is | Explained in |
 |---|---|---|
-| `010_harvest.py` … `060_extract.py` | The pipeline steps, run in order, one short script each: its inputs, its settings, and its main moves | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step) |
-| `010_harvest/` … `060_extract/` | The code behind each step's script; for the steps that call the AI model (040, 050, 060), also the prompts it sends, as text files in `prompts/` | the step's guide, section *How it works* |
+| `010_harvest.py` … `070_evaluate.py` | The pipeline steps, run in order, one short script each: its inputs, its settings, and its main moves | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step) |
+| `010_harvest/` … `070_evaluate/` | The code behind each step's script; for the steps that call the AI model (040, 050, 060, 070), also the prompts it sends, as text files in `prompts/` | the step's guide, section *How it works* |
 | `annotate.py`, `annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth | [`annotations/README.md`](annotations/README.md) |
 | `audit.py` | Traces a record back to the download that first brought it in: `py audit.py <record id>` | [`instructions/000_audit.md`](instructions/000_audit.md) |
 | `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …) | the opening comment of each file, for people reading the code |
@@ -25,7 +25,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `docs/terminology.md` | What every word used here means | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
-| `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the ground truth candidates pool (`ground_truth_candidates.csv`, `.json`), the hand-built schema, the schema additions, and the notes and old drafts they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
+| `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the ground truth candidates pool (`ground_truth_candidates.csv`, `.json`), the hand-built schema, the schema additions, the translation of 060's names into yours and the log of held-out looks (both added to by 070), and the notes and old drafts they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
 | `TODO.md` | Your to-do list | — |
 | `requirements.txt` | The Python packages the pipeline needs, installed with `pip install -r requirements.txt` | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md) |
 
@@ -57,11 +57,11 @@ Phase 1 (done) was built by the scripts `nasa_harvest.py` and `nasa_census.py`. 
 |---|---|---|---|---|
 | `010_harvest` | Downloads every catalog record from data.nasa.gov's API | the API | `batch_*.json`, one per page | built |
 | `020_clean` | Turns HTML in the text into plain text; joins maintainer spellings | 010 | `records.jsonl` | built |
-| `030_split` | Keeps the ground truth candidates pool in its order; orders every other record with text, per maintainer, for 040 | 020, `annotations/ground_truth_candidates.csv` | `splits.json` | built |
+| `030_split` | Keeps the ground truth candidates pool in its order, each record marked tuning or held-out; orders every other record with text, per maintainer, for 040 | 020, `annotations/ground_truth_candidates.csv` | `splits.json` | built |
 | `040_induce_schema` | Learns the schema from a sample of texts (model calls) | 020, 030, the hand-built schema | `the_schema.json`, `induction_evidence.json` | built; not yet run with the real model |
 | `050_annotate` | Drafts ground truth for a person to correct (model calls) | 020, 030, the hand-built schema, `annotations/ground_truth/` | `drafted_triples_batch<N>.csv`, `…_details.json` | built; not yet run with the real model |
 | `060_extract` | Extracts the triple instances the schema can express (model calls); by default from the finished ground truth records | 020, 040, `annotations/schema_additions.txt`, `annotations/ground_truth/` | `extracted_triples.csv`, `extracted_triples_removed.csv`, `schema_used.json`, `extraction_details.json` | built; not yet run with the real model |
-| `070_evaluate` | Scores extraction against the ground truth | `annotations/ground_truth/`, 060 | | not built |
+| `070_evaluate` | Scores extraction against the ground truth: precision, recall, schema ceiling, each with its margin of error | 060, 030, 020, `annotations/` (ground truth, pool, hand-built schema, `name_mapping.csv`) | `scores.json`, `per_record.md`, `matches.csv` | built; tested on a hand-made 060 output |
 | `080_build_graph` | Builds the graph | 020, 060 | | not built |
 
 Two helpers aren't steps: `py annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches; and `py audit.py <record id>`, which traces a record back to the download that first brought it in. Code shared by the steps is in `common/`; files made by a person are in `annotations/`.
@@ -141,6 +141,8 @@ Two parts of the work need records to read: learning the schema, and the ground 
 
 Both orders are fixed, so taking more records later keeps the ones already taken, and any first *k* is a fair sample.
 
+030 also splits the pool into a **tuning part** and a **held-out part** for scoring (step 070). While improving the pipeline, only the tuning part's scores are looked at; the held-out part's scores are looked at only at the end, and that is the number reported. Otherwise the pipeline would get tuned to the very records it is scored on, and its scores would flatter it. From pool position 6 on, every third record is held out; positions 0–5, from which the hand-built schema was written, are tuning.
+
 Details: [`instructions/030_split.md`](instructions/030_split.md).
 
 ### Schema induction (step 040)
@@ -167,11 +169,15 @@ Step 060 extracts, from each record's text, only the facts the schema can expres
 
 Details: [`instructions/060_extract.md`](instructions/060_extract.md).
 
-### Evaluation (step 070, not built yet)
+### Evaluation (step 070)
 
-With enough annotated records, extraction can be scored: recall is how many of the hand-written facts the extractor found, and precision is how many of its answers were right. The point of the exercise is not a single number but a fixed measuring stick: the same annotated records can be run against a different prompt, a different model, or extraction with and without the induced schema, and the difference between those runs is what says whether any of them is worth its cost.
+With enough annotated records, extraction can be scored: **precision** is how often 060 is right when it says something, and **recall** is how many of the ground truth's facts it found. The point of the exercise is not a single number but a fixed measuring stick: the same annotated records can be run against a different prompt, a different model, or extraction with and without the induced schema, and the difference between those runs is what says whether any of them is worth its cost.
 
-Planned so far, to be settled when 070 is built: the induced schema's names are translated to the ground truth's names through a mapping a person checks; the *schema ceiling* (how much of the ground truth the schema can express at all) is reported apart from precision and recall; the DESCRIBES row is scored on its own, since code writes most of it; the ground truth is split into a tuning part, on which settings such as 040's cutoff may be chosen, and a held-out part scored once, so the reported scores don't flatter choices made by looking at them; and scores per maintainer group use the pool's own sampling groups.
+Step 070 first translates 060's names into the ground truth's, through a table a person checks (`annotations/name_mapping.csv`). It then compares facts at two levels, the names written exactly the same once evened out, and one name containing the other ("MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)"); and for facts alone and with their entity classes. Beside precision and recall it reports the **schema ceiling**, how much of the ground truth the schema can express at all, so a weak schema and a weak extraction can be told apart; and, on its own, how often 060 named the right kind of thing each record describes, next to what always guessing the most common kind would score.
+
+Every number comes with its **margin of error**, computed by redrawing whole records many times within the pool's sampling groups (the bootstrap), which is only valid for a fair sample of enough records: 070 scores only the pool's first records, with none skipped, and gives no margin below 20 of them. Only the **tuning part** of the ground truth is shown while the pipeline is being improved; the **held-out part** is looked at only at the end, and every look is logged, so the reported numbers don't flatter choices made by looking at them.
+
+Details: [`instructions/070_evaluate.md`](instructions/070_evaluate.md).
 
 ### Building the graph (step 080, not built yet)
 

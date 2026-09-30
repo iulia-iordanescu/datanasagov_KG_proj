@@ -120,7 +120,7 @@ Shown **before paying** (and in the report's warnings):
 | *N record(s) you listed is not in the catalog / without text / already in the ground truth / waiting in a draft batch to be corrected (batch K), so skipped* | With `ids`: those records can't or needn't be drafted. | Check for typos; a record waiting in a draft batch is drafted again only if you delete that draft batch (both its files) before correcting it. |
 | *You listed N records that can be drafted, but records_per_batch is M* | Only the first M are drafted now. | Raise `records_per_batch`, or run again for the rest. |
 | *start_position (N) is ignored, because ids names the records.* | The two settings can't both apply. | Drop one. |
-| *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose: 070 will use the fair part for results about the whole catalog. |
+| *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 scores only the fair part (the pool's first records, with none skipped), so records after the gap are not scored until the records before them are annotated too. |
 
 In the report only:
 

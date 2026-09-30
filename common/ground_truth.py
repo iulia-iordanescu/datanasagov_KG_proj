@@ -7,7 +7,8 @@ common/ground_truth.py -- reads the ground truth: every file in
 
 taken together. Each file is a batch of records a person has corrected; the
 ground truth is all of them. A file is added, never edited by a step: no
-step writes into annotations/.
+step writes into annotations/ground_truth/ (the annotation tool does, for the
+person).
 
 Every file has the columns
 
@@ -26,6 +27,7 @@ progress. A row with an id but an empty subject, predicate and object says
     gt.rows        [{..., "_origin": ["annotations/ground_truth/batch_000.csv#4"]}, …]
     gt.records     {record id: {"file", "rows", "finished"}}
     gt.problems    ["…"]: what a person must fix (see below)
+    fair_sample, fair_prefix  whether ids are the pool's first records (below)
     check_rows(gt, records)   rows with a typo to fix: an id not in the
                               catalog, a source text not in the record's
                               text, a DESCRIBES row with no entity class, …
@@ -38,7 +40,8 @@ Problems, each listed, none silently resolved:
   - a file missing one of the columns above.
 
 Shared by the steps that read ground truth (050, to know which records are
-done and to check the files; 070, to score against it) and by the annotation
+done and to check the files; 060, which records are finished; 070, to score
+against it) and by the annotation
 tool (annotate.py), which writes the files.
 """
 from __future__ import annotations
@@ -148,3 +151,49 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
             file, position = ref.rsplit("/", 1)[-1].split("#")
             out.append({"where": f"{file} line {int(position) + 2}", "id": rid, "errors": errors})
     return out
+
+
+# --------------------------------------------------------------------------
+# the fair sample (050, 070)
+# --------------------------------------------------------------------------
+#
+# The ground truth candidates pool is shuffled, so its first N records are a
+# fair sample of the catalog, for any N. Results about the whole catalog may
+# only be drawn from such a sample. pool is the pool's ids in order
+# (030's splits.json); taken is a set of ids.
+
+def fair_sample(pool: list, taken: set) -> dict:
+    """Whether the records taken are exactly the first N of the pool, and if
+    not, why."""
+    in_pool = [i for i in pool if i in taken]
+    n = len(in_pool)
+    first = set(pool[:n])
+    gaps = [i for i in pool[:max((pool.index(i) for i in in_pool), default=-1) + 1] if i not in taken]
+    outside = sorted(taken - set(pool))
+    return {"fair": first == set(in_pool) and not outside, "first_n": n,
+            "skipped_in_pool": len(gaps), "first_skipped": gaps[0] if gaps else None,
+            "outside_pool": len(outside)}
+
+
+def fair_prefix(pool: list, taken: set) -> list:
+    """The longest run of the pool's first records that are all taken: the
+    part of `taken` that is a fair sample."""
+    out = []
+    for rid in pool:
+        if rid not in taken:
+            break
+        out.append(rid)
+    return out
+
+
+def fair_words(fair: dict, positions: dict, what: str = "The ground truth and drafts") -> str:
+    """fair_sample()'s answer in words."""
+    if fair["fair"]:
+        return f"{what} are the first {fair['first_n']} records of the pool: a fair sample."
+    parts = []
+    if fair["skipped_in_pool"]:
+        parts.append(f"{fair['skipped_in_pool']} pool record(s) before the last one taken are not taken "
+                     f"(the first at pool position {positions.get(fair['first_skipped'])})")
+    if fair["outside_pool"]:
+        parts.append(f"{fair['outside_pool']} record(s) taken are not in the pool")
+    return "; ".join(parts) + "."

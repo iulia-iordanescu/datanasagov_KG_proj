@@ -7,7 +7,9 @@ Sets the two lists of records that later steps work on, and keeps them apart:
 - **The ground truth candidates pool**: 1,000 records that are candidates for annotation. A person annotates them in pool order, and the annotated records become the ground truth that 070 scores the extraction against. Only a subset of the pool is ever annotated, since verifying 1,000 records by hand is more than the time available. The pool was shuffled when it was drawn, so the first *k* records are a fair sample of the catalog for any *k*, and annotation can stop anywhere.
 - **The induction candidates**: for every maintainer, all of its records that the schema may be learned from, in a fixed random order. 040 learns the schema from the first few of each of the largest maintainers.
 
-No record is ever in both. 070 measures how well extraction works on text the schema was *not* learned from; scoring on records the schema was learned from would flatter it.
+Each ground truth candidate is also given its **part**, for scoring in 070: **tuning** (its scores may be looked at while improving the pipeline) or **held-out** (its scores are kept aside and looked at only at the end, as the number reported for how well the pipeline works). The rule is fixed here, before any scoring: pool positions 0–5 are tuning, since the hand-built schema was written while annotating them; from position 6 on, every third record is held-out (8, 11, 14, …) and the rest tuning. Both parts grow as annotation proceeds, and both stay fair samples. Of the 999 candidates on 2026-09-30: 668 tuning, 331 held-out.
+
+No record is ever in both lists. 070 measures how well extraction works on text the schema was *not* learned from; scoring on records the schema was learned from would flatter it.
 
 **Both lists are in a fixed random order, and later steps take from the top.** Taking more later keeps what was already taken: if 040 learns from 15 records per maintainer today and 30 tomorrow, the first 15 are the same records, so the model calls already paid for them stay valid. The same holds for adding maintainers.
 
@@ -33,7 +35,7 @@ In `outputs/intermediate_results/030_split/`:
 
 ```json
 {"ground_truth_candidates": {
-   "records": [{"id": "3122be4c…", "position": 0, "maintainer": "Paul Gill",
+   "records": [{"id": "3122be4c…", "position": 0, "maintainer": "Paul Gill", "part": "tuning",
                 "_origin": ["annotations/ground_truth_candidates.csv#3122be4c…",
                             "020_clean/records.jsonl#3122be4c…"]}, …],
    "dropped": [{"id": "d57e1e22…", "position": 946,
@@ -49,7 +51,7 @@ In `outputs/intermediate_results/030_split/`:
 
 | Field | Meaning |
 |---|---|
-| `ground_truth_candidates.records` | The pool's records that are still in the catalog, in pool order. `position` is the record's place in the pool file, counting from 0, kept even when an earlier record was dropped. `maintainer` is 020's (joined) maintainer. |
+| `ground_truth_candidates.records` | The pool's records that are still in the catalog, in pool order. `position` is the record's place in the pool file, counting from 0, kept even when an earlier record was dropped. `maintainer` is 020's (joined) maintainer. `part` is `tuning` or `held-out` (see Purpose); it depends only on `position`, so a dropped record changes no one's part. |
 | `ground_truth_candidates.dropped` | Pool records no longer in 020's records, with their position and why. |
 | `induction_candidates.maintainers` | Every maintainer, ranked by its records in the catalog (`rank` 1 is the largest; ties by name), with how many of them are induction candidates (`eligible`). |
 | `induction_candidates.records` | Every induction candidate, grouped by maintainer in rank order. `position` is the record's place in its maintainer's random order, counting from 0: a step taking *k* records from a maintainer takes positions 0 to *k*−1. |
@@ -81,7 +83,7 @@ It took 3 s on 2026-09-28.
 ## How it works
 
 1. **Load the records** that 020 wrote, by id (`common/records_io.py`, shared by every step that reads them).
-2. **Read the ground truth candidates pool** from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used.
+2. **Read the ground truth candidates pool** from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used. Each record gets its part by the rule in Purpose (`part_of()` in `moves.py`; the rule's numbers are named constants there, not settings, since changing them after scores have been looked at would defeat the held-out part).
 3. **Order the induction candidates.** A record is an induction candidate unless it is in the pool (kept or dropped) or has no title and no notes, which gives the schema nothing to learn from. Maintainers are ranked by how many records they hold in the catalog. Each maintainer's candidates are put in a random order of their own:
    - the generator is seeded by `induction_seed` and the maintainer's name, so one maintainer's order never depends on another's;
    - the ids are sorted before shuffling, so the same records and seed always give the same order, whatever the order of the records file;
@@ -91,7 +93,7 @@ It took 3 s on 2026-09-28.
 
 The code is in `030_split/moves.py`.
 
-On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for having no text; 35,376 induction candidates across 422 maintainers.
+On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for having no text; 35,376 induction candidates across 422 maintainers. On 2026-09-30 `splits.json` was rebuilt once to add each candidate's part: everything already in it came out identical.
 
 ### Why "undefined" counts as a maintainer
 

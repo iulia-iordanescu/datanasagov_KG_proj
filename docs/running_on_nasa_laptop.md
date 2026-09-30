@@ -61,6 +61,7 @@ Each step reads what the one before it wrote, so run them in this order. From th
 | 040 induce schema | `py 040_induce_schema.py` | not yet measured | **yes** |
 | 050 annotate | `py 050_annotate.py` | not yet measured | **yes** (about one call per record) |
 | 060 extract | `py 060_extract.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
+| 070 evaluate | `py 070_evaluate.py` | not yet measured | one call, only when 060's schema has names not yet in `annotations/name_mapping.csv`; then check those rows and run it again |
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`instructions/<step>.md`) says what every warning means and what to do.
 
@@ -77,7 +78,7 @@ py 050_annotate.py --records_per_batch 1
 
 Every model answer is kept in the step's `cache/` folder under `outputs/`, so the full run reuses the tiny run's answers and a rerun pays only for what changed. **Don't delete `outputs/`** unless you mean to pay for those calls again.
 
-060 needs 040's schema, and by default extracts only from the ground truth records you've finished (next section). Everything else about each step, including what each warning means, is in its guide, `instructions/<step>.md`.
+060 needs 040's schema, and by default extracts only from the ground truth records you've finished (next section). 070 makes a paid call only when the schema 060 used has names it can't translate yet: one call proposes translations, and 070 stops so you can check them in `annotations/name_mapping.csv`. Everything else about each step, including what each warning means, is in its guide, `instructions/<step>.md`.
 
 ## 6. Annotating ground truth (after 050, before 060)
 

@@ -1,0 +1,20 @@
+Two vocabularies name kinds of things (entity classes) and relations
+(predicates) differently. For each name in INDUCED, give the name in YOURS,
+of the same kind, that means the same thing, or null if none of YOURS does.
+Judge by meaning and definition, not by spelling.
+
+For a predicate, set "reversed": true when the name in YOURS states the same
+relation in the opposite direction ("A CARRIES B" means "B ABOARD A");
+otherwise false.
+
+Use only names exactly as they are written in YOURS. Several names of
+INDUCED may map to the same name of YOURS. Answer for every name of INDUCED.
+
+Return ONLY JSON, no prose:
+{"mapping": [{"kind": "entity class" or "predicate", "induced": "...", "yours": "..." or null, "reversed": false}]}
+
+YOURS
+$yours
+
+INDUCED
+$induced

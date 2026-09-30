@@ -23,7 +23,7 @@ import records as records_stage
 from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.ground_truth import COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows
+from common.ground_truth import COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows, fair_words
 from common.report import cell, counted, named
 from common.step import Results
 
@@ -146,7 +146,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     lines += ["", f"- Errors (must be fixed): {counted(drafts.errors)}.",
               f"- Flags (worth a look; a name not in the schema is often a good new one): {counted(drafts.flags)}.",
               f"- Removed: {counted(removed)} (listed in `{details_path.name}`).",
-              "", "### Fair sample", "", records_stage.fair_words(chosen.fair, chosen.positions), ""]
+              "", "### Fair sample", "", fair_words(chosen.fair, chosen.positions), ""]
     if chosen.skipped:
         lines += ["Passed over while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
                   + ".", ""]

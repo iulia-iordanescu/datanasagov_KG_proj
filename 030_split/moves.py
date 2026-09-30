@@ -11,6 +11,19 @@ moves.py -- the main moves of 030_split, as called by 030_split.py.
     check_disjoint          no record is in both
     results                 write splits.json, once; report numbers, warnings
 
+Each ground truth candidate also gets its part, for scoring (070):
+
+    tuning     its scores may be looked at while improving the pipeline
+    held-out   its scores are kept aside, looked at only at the end: the
+               number reported as how well the pipeline works
+
+by a rule fixed here, before any scoring: pool positions 0-5 are tuning (the
+hand-built schema was written while annotating them, so they're not unseen);
+from position 6 on, every third record is held-out (8, 11, 14, ...) and the
+rest tuning. Both parts grow as annotation proceeds in pool order, and both
+stay fair samples, since the pool is shuffled. A position is the record's
+row in the pool file, so a dropped candidate changes no one's part.
+
 Both lists are ordered so that their first records are always a fair random
 sample: the pool was shuffled when it was drawn, and each maintainer's
 induction candidates are shuffled here. Later steps take from the top: 050
@@ -22,7 +35,7 @@ taken, so model calls already paid for stay valid.
 splits.json, shortened:
 
     {"ground_truth_candidates": {
-        "records": [{"id": "3122be4c…", "position": 0, "maintainer": "Paul Gill",
+        "records": [{"id": "3122be4c…", "position": 0, "maintainer": "Paul Gill", "part": "tuning",
                      "_origin": ["annotations/ground_truth_candidates.csv#3122be4c…",
                                  "020_clean/records.jsonl#3122be4c…"]}, …],
         "dropped": [{"id": "d57e1e22…", "position": 946, "reason": "…"}]},
@@ -59,11 +72,22 @@ OUTPUT_NAME = "splits.json"
 CANDIDATES = "ground_truth_candidates"      # the pool, in splits.json and messages
 INDUCTION = "induction_candidates"
 SHOW = 20                                   # rows listed in the report before "…"
+#: The tuning / held-out rule (see above). Fixed, not settings: changing them
+#: after scores have been looked at would defeat the held-out part.
+ALL_TUNING_BEFORE = 6                       # positions 0-5: tuning
+HELD_OUT_EVERY = 3                          # from there on, every third position is held-out
+
+
+def part_of(position: int) -> str:
+    """ "tuning" or "held-out", by the rule above: 8, 11, 14, … are held-out."""
+    if position < ALL_TUNING_BEFORE:
+        return "tuning"
+    return "held-out" if (position - ALL_TUNING_BEFORE) % HELD_OUT_EVERY == HELD_OUT_EVERY - 1 else "tuning"
 
 
 @dataclass
 class Candidates:
-    records: list = field(default_factory=list)   # {"id", "position", "maintainer", "_origin"}
+    records: list = field(default_factory=list)   # {"id", "position", "maintainer", "part", "_origin"}
     dropped: list = field(default_factory=list)   # {"id", "position", "reason"}
     in_file: int = 0
     renamed: list = field(default_factory=list)   # {"id", "in_pool", "now"}: maintainer differs from 020's
@@ -109,6 +133,7 @@ def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
         if row["maintainer"] != record["maintainer"]:
             pool.renamed.append({"id": rid, "in_pool": row["maintainer"], "now": record["maintainer"]})
         pool.records.append({"id": rid, "position": position, "maintainer": record["maintainer"],
+                             "part": part_of(position),
                              ORIGIN_FIELD: [origin("candidates", rid), origin("records", rid)]})
     log.info(f"  {len(pool.records):,} of {pool.in_file:,} ground truth candidates are in the records")
     return pool
@@ -218,6 +243,9 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
         f"| In `{audit.ref_path(Path(inputs['candidates']))}` | {pool.in_file:,} |",
         f"| Dropped: no longer in the catalog | {len(pool.dropped):,} |",
         f"| **Kept, in pool order** | **{len(pool.records):,}** |",
+        f"| of which tuning | {sum(r['part'] == 'tuning' for r in pool.records):,} |",
+        f"| of which held-out (from position {ALL_TUNING_BEFORE} on, every {HELD_OUT_EVERY}rd) | "
+        f"{sum(r['part'] == 'held-out' for r in pool.records):,} |",
         f"| Maintainer differs from 020's | {len(pool.renamed):,} |", ""]
     if pool.dropped:
         lines += ["Dropped candidates:", "", "| Position | Id | Reason |", "|---:|---|---|"]

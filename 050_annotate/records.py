@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import read_ground_truth
+from common.ground_truth import fair_sample, fair_words, read_ground_truth
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
@@ -57,7 +57,7 @@ class Chosen:
     positions: dict = field(default_factory=dict)  # {id: pool position}
     schema_text: str = ""                          # the hand-built schema, as the prompt shows it
     names: object = None                           # its names, as the checks compare them
-    fair: dict = field(default_factory=dict)       # see fair_sample()
+    fair: dict = field(default_factory=dict)       # see common/ground_truth.fair_sample()
     how: str = ""                                  # the choice in words, for the report
     skipped: dict = field(default_factory=dict)    # {reason: [ids]} passed over while choosing
 
@@ -78,19 +78,6 @@ def _waiting(output: Path) -> tuple:
                 if rid:
                     waiting.setdefault(rid, n)
     return waiting, highest
-
-
-def fair_sample(pool: list, taken: set) -> dict:
-    """Whether the records taken (ground truth, drafts, this batch) are
-    exactly the first N of the pool, and if not, why."""
-    in_pool = [i for i in pool if i in taken]
-    n = len(in_pool)
-    first = set(pool[:n])
-    gaps = [i for i in pool[:max((pool.index(i) for i in in_pool), default=-1) + 1] if i not in taken]
-    outside = sorted(taken - set(pool))
-    return {"fair": first == set(in_pool) and not outside, "first_n": n,
-            "skipped_in_pool": len(gaps), "first_skipped": gaps[0] if gaps else None,
-            "outside_pool": len(outside)}
 
 
 def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
@@ -167,21 +154,8 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     if before["fair"] and not chosen.fair["fair"] and picked:
         chosen.notes.append("With this batch, the ground truth is no longer the first records of the pool "
                             "(a fair sample of the catalog): " + fair_words(chosen.fair, chosen.positions) +
-                            " Fine for a closer look at chosen records; step 070 will know which part "
-                            "is the fair sample.")
+                            " Fine for a closer look at chosen records, but step 070 scores only the fair "
+                            "part, so they won't be scored until the records before them are annotated.")
     if not chosen.items:
         raise SystemExit("Nothing to draft. " + " ".join(chosen.notes))
     return chosen
-
-
-def fair_words(fair: dict, positions: dict) -> str:
-    """fair_sample()'s answer in words."""
-    if fair["fair"]:
-        return f"The ground truth and drafts are the first {fair['first_n']} records of the pool: a fair sample."
-    parts = []
-    if fair["skipped_in_pool"]:
-        parts.append(f"{fair['skipped_in_pool']} pool record(s) before the last one taken are not taken "
-                     f"(the first at pool position {positions.get(fair['first_skipped'])})")
-    if fair["outside_pool"]:
-        parts.append(f"{fair['outside_pool']} record(s) taken are not in the pool")
-    return "; ".join(parts) + "."
