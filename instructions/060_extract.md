@@ -104,6 +104,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `ids` | empty | Exactly these records instead: ids separated by commas, or the path of a text file with one id per line (a CSV whose first column is the id works too; a header line `id`, blank lines and lines starting with `#` are skipped). | To extract from records you choose. |
 | `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/chunking.py`). | Rarely. |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
+| `model` | google-claude-sonnet-5 | The AI model to ask. `py models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call. | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 ## How to run
@@ -192,7 +193,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *extract_from must be one of ground_truth, all* | A typo in the setting. | Use `ground_truth` or `all`. |
 | *Nothing to extract. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *… must be at least N* | A setting is out of range (`max_chars` under 1,000). | Fix the setting. |
-| *Test call to … failed* | The model name or the key is wrong, or Ask Sage can't be reached. Nothing else was called. | Check `.env`, `MODEL` in `common/llm.py`, and the network. |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
 ## Audit trail

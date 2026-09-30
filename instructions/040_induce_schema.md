@@ -68,6 +68,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `min_support` | 1 | A schema entry enters the schema if its support is at least this. 1 keeps everything found. | Once 070's scores can compare values; see Known limits. |
 | `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/chunking.py`). | Rarely. No text of the default sample is that long (the longest is 5,797 characters). |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
+| `model` | google-claude-sonnet-5 | The AI model to ask. `py models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call. | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 ## How to run
@@ -152,7 +153,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *… labels are more than one call takes* | Over 800 labels of one kind: too many to merge in one call. | See Known limits. |
 | *missing input files … (run 020_clean or 030_split first, or pass --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A setting is out of range (`max_chars` under 1,000). | Fix the setting. |
-| *Test call to … failed* | The model name or the key is wrong, or Ask Sage can't be reached. Nothing else was called. | Check `.env`, `MODEL` in `common/llm.py`, and the network. |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
 ## Audit trail

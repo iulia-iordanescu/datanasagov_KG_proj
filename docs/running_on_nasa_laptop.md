@@ -67,19 +67,44 @@ Each step ends by printing where its report is (`outputs/reports/<run id>.md`). 
 
 ## 5. The steps that cost money: 040, 050, 060, 070
 
-Each sends texts to the AI model, and each request is a paid call. Before its first call, each one prints its plan (how many calls, which model) and waits: **Enter** goes ahead, anything else stops, having spent nothing. If the run can't do exactly what you asked, it says so above that question. Its first call is a one-line test that your key and the model name work, so a mistake costs one call, not hundreds.
+Each sends texts to the AI model, and each request is a paid call. Before its first call, each one prints its plan (how many calls, which model) and waits: **Enter** goes ahead, anything else stops, having spent nothing. If the run can't do exactly what you asked, it says so above that question. Its first call is a one-line test that your key and the model work, so a mistake costs one call, not hundreds.
 
-Try a tiny run of each first, to see that everything works and what a call costs:
+Every model answer is kept in the step's `cache/` folder under `outputs/`, so a rerun pays only for what isn't there yet. **Don't delete `outputs/`** unless you mean to pay for those calls again.
+
+### Test run first
+
+The cheapest way to check that everything works, about 20 paid calls in all:
+
+1. **010, 020, 030: run them for real** (section 4). They cost nothing. Don't make a "quick trial" harvest (`--max_records`): 030 writes its file only once, so a trial catalog would stay in it until you delete `outputs/intermediate_results/030_split/splits.json`.
+2. **040–070: tiny runs**, in order:
+
+   | Step | Command | Paid calls, roughly |
+   |---|---|---|
+   | 040 | `py 040_induce_schema.py --induction_maintainers 2 --texts_per_maintainer 2` | 10–15 (4 texts, then labeling, merging, defining) |
+   | 050 | `py 050_annotate.py --records_per_batch 1` | 2 (one record, and the test call) |
+   | 060 | `py 060_extract.py` | 3 (the finished ground truth records, 2 today, and the test call) |
+   | 070 | `py 070_evaluate.py` | 2 the first time (name translations, and the test call); it then stops so you can check the rows it added to `annotations/name_mapping.csv`. Run it again: 0 calls. |
+
+3. **Check you're charged properly.** For each run, compare the plan it prints before you press Enter ("… will make N model call(s) …") with its report's *Model calls* table (`outputs/reports/<run id>.md`): calls per stage, the test call, and the total paid. Running the same command again should show 0 paid calls: the cache works, and nothing is paid twice.
+
+Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's record is real work (correct it in `py annotate.py`); 060 and 070 simply run again after the real 040.
+
+### Choosing a model
+
+Each of 040–070 has a `model` setting (default `google-claude-sonnet-5`). To see which models Ask Sage lists for your account (free):
 
 ```powershell
-py 040_induce_schema.py --induction_maintainers 2 --texts_per_maintainer 2
-py 050_annotate.py --records_per_batch 1
-py 060_extract.py --ids <one finished ground truth record id>
+py models.py
 ```
 
-Every model answer is kept in the step's `cache/` folder under `outputs/`, so the full run reuses the tiny run's answers and a rerun pays only for what changed. **Don't delete `outputs/`** unless you mean to pay for those calls again.
+A listed model may still refuse you. To find out, just use it in a tiny run, e.g. `py 050_annotate.py --model <name> --records_per_batch 1`: if it refuses, the step stops at its one-line test call, having spent that call only, and says why. Try the next one.
 
-060 needs 040's schema, and by default extracts only from the ground truth records you've finished (next section). 070 makes a paid call only when the schema 060 used has names it can't translate yet: one call proposes translations, and 070 stops so you can check them in `annotations/name_mapping.csv`. Everything else about each step, including what each warning means, is in its guide, `instructions/<step>.md`.
+Which model where:
+
+- **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the schema, 050 decides how much you correct by hand, 070's translations decide the scores.
+- **050 and 060: two different models, from different makers if you can** (e.g. a Claude model for one, a Gemini or GPT model for the other). The ground truth starts as 050's draft; if 060 used the same model, the facts that model misses would be missing from both, and recall would look better than it is.
+- **060 on every record (about 36,000 calls): measure before choosing.** Once 20 or more ground truth records are finished, run 060 on them with two or three models, score each with 070, and use the cheapest whose scores are within the margin of error of the best.
+- **Decide before the real runs:** every cached answer is tied to its model, so changing models later means paying for those calls again.
 
 ## 6. Annotating ground truth (after 050, before 060)
 
@@ -93,7 +118,7 @@ A page opens in your browser: pick the draft batch 050 wrote, correct it, tick *
 
 | What you see | What it means | What to do |
 |---|---|---|
-| *Test call to … failed* (040, 050, 060 or 070 stops) | The key, the model name, or the connection is wrong. Nothing else was called. | Check `.env`, that you're on NASA's network (or VPN), and `MODEL` in `common/llm.py`. |
+| *Test call to … failed* (040, 050, 060 or 070 stops) | The key or the connection is wrong, or Ask Sage refuses you that model. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; see *Choosing a model*). Otherwise check `.env`, and that you're on NASA's network (or VPN). |
 | *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY* | `.env` is missing or misspelled. | Section 3. |
 | *Failed to resolve 'api.asksage.ai.nasa.gov'* | The laptop can't reach Ask Sage. | Connect to NASA's network or VPN. |
 | *missing input files* | An earlier step hasn't run yet. | Run the steps in order (section 4). |

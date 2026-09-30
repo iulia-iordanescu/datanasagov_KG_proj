@@ -61,6 +61,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | Setting | Default | What it does | When to change it |
 |---|---|---|---|
 | `score_held_out` | false | Also show the held-out part's numbers, and log the look in `annotations/held_out_looks.csv`. | Only at the end, for the numbers you report. Each look is a chance to tune on the held-out part without meaning to. |
+| `model` | google-claude-sonnet-5 | The AI model to ask. `py models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only to propose translations for names it has no row for). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 The numbers that are fixed on purpose (in `070_evaluate/stats.py`): `MIN_RECORDS = 20` (fewer scored records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*).
@@ -178,7 +179,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Nothing to score yet* | No finished ground truth record that 060 extracted is in the fair part. | Finish records in `py annotate.py`, then run 060. |
 | *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split.py`. |
 | *missing input files … run 060_extract first* | 060 hasn't run. | Run it. |
-| *Test call to … failed* | The model name or the key is wrong, or Ask Sage can't be reached. Nothing else was called. | Check `.env`, `MODEL` in `common/llm.py`, and the network. |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
 ## Audit trail

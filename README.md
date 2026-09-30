@@ -14,6 +14,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `010_harvest/` … `070_evaluate/` | The code behind each step's script, one file per stage where a stage is big enough | the step's guide, section *How it works* |
 | `040_induce_schema/prompts/` … `070_evaluate/prompts/`, `common/prompts/` | Every prompt the steps send to the AI model, each a plain text file you can open and read (12 in all; `common/prompts/` holds the two shared by 050 and 060) | the step's guide, section *Prompts* |
 | `annotate.py`, `annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth | [`annotations/README.md`](annotations/README.md) |
+| `models.py` | Lists the AI models Ask Sage shows your account: `py models.py`. Free; a listed model may still refuse you. Give a model's name to a step's `model` setting | [`docs/running_on_nasa_laptop.md`](docs/running_on_nasa_laptop.md), *Choosing a model* |
 | `audit.py` | Answers "where did this come from?": `py audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`instructions/000_audit.md`](instructions/000_audit.md) |
 | `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …) | the opening comment of each file, for people reading the code |
 

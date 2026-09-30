@@ -17,6 +17,7 @@ It holds, in this order:
     PROMPT SAFETY
         fence_safe        keeps a record from ending its data block early
     A PAID RUN
+        list_models       the model names Ask Sage lists (free; see py models.py)
         PaidCalls         asks once before a run's first paid call (showing
                           any notes about the run first), makes a one-line
                           test call, and counts the calls
@@ -54,8 +55,11 @@ from dotenv import load_dotenv
 
 from common.audit import log
 
-#: The model every call uses (Ask Sage lists the models it offers). It is
-#: part of every cache key (common/cache.py), so changing it asks again.
+#: The model the calls use: the default of every step's `model` setting,
+#: which paid_calls() puts here for the run. `py models.py` lists the models
+#: Ask Sage shows your account (a listed model may still refuse you: the
+#: run's first call, a one-line test, finds out for the price of that call).
+#: It is part of every cache key (common/cache.py), so changing it asks again.
 MODEL = "google-claude-sonnet-5"
 
 # ------------------------------ the Ask Sage client -------------------------
@@ -79,6 +83,29 @@ def _asksage_token():
         _token_cache["token"] = (payload["access_token"]
                                  if isinstance(payload, dict) else payload)
     return _token_cache["token"]
+
+
+def list_models() -> list:
+    """The model names Ask Sage lists for your account. Free: listing is not a
+    model call. Being listed doesn't guarantee access."""
+    resp = requests.post(f"{SERVER_BASE}/get-models", headers={"x-access-tokens": _asksage_token()},
+                         timeout=(5, 60))
+    resp.raise_for_status()
+    body = resp.json()
+    items = body.get("response", body.get("models", body)) if isinstance(body, dict) else body
+    if isinstance(items, dict):
+        items = items.get("data", list(items))
+    names = []
+    for item in items if isinstance(items, list) else []:
+        if isinstance(item, str):
+            names.append(item)
+        elif isinstance(item, dict):
+            name = item.get("name") or item.get("id") or item.get("model")
+            if name:
+                names.append(str(name))
+    if not names:
+        raise ValueError(f"Ask Sage's model list came in a shape this code doesn't read: {str(body)[:300]}")
+    return sorted(set(names))
 
 
 def _as_list(v):
@@ -296,8 +323,14 @@ class Calls:
 
 
 def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
-    """The Calls of one run: asks before paying (setting confirm_paid_calls),
-    showing notes first; answers kept in cache/ inside the step's output folder."""
+    """The Calls of one run: uses the model the setting `model` names; asks
+    before paying (setting confirm_paid_calls), showing notes first; answers
+    kept in cache/ inside the step's output folder."""
+    global MODEL
+    name = str(settings.get("model") or "").strip()
+    if not name:
+        raise ValueError("model must name a model (py models.py lists them)")
+    MODEL = name
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes),
                  cache_dir=Path(output) / "cache")
 

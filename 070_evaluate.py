@@ -19,6 +19,7 @@ Writes:  scores.json, per_record.md, matches.csv; adds rows to
          to annotations/held_out_looks.csv (never changing an existing one)
 Details: instructions/070_evaluate.md
 """
+from common.llm import MODEL
 from common.step import run_step, helpers
 
 INPUTS = {
@@ -35,6 +36,7 @@ INPUTS = {
 
 SETTINGS = {
     "score_held_out":     False,  # also show the held-out part's numbers (for the end; each look is logged)
+    "model":              MODEL,  # the AI model to ask (py models.py lists them)
     "confirm_paid_calls": True,   # stop and ask before the first model call; false for unattended runs
 }
 

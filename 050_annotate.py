@@ -16,6 +16,7 @@ Reads:   records.jsonl (020), splits.json (030),
 Writes:  drafted_triples_batch<N>.csv, drafted_triples_batch<N>_details.json
 Details: instructions/050_annotate.md
 """
+from common.llm import MODEL
 from common.step import run_step, helpers
 
 INPUTS = {
@@ -29,8 +30,9 @@ SETTINGS = {
     "records_per_batch":  10,    # how many records to draft this run
     "start_position":     0,     # the pool position to start from (records already done are skipped)
     "ids":                "",    # or exactly these records: ids separated by commas, or a file with one per line
-    "max_chars":          8000,  # a longer text is split into pieces, one call each
+    "max_chars":          8000,  # a longer text is split into text pieces, one call each
     "workers":            4,     # model calls made at the same time
+    "model":              MODEL, # the AI model to ask (py models.py lists them)
     "confirm_paid_calls": True,  # stop and ask before the first model call; false for unattended runs
 }
 

@@ -15,6 +15,7 @@ Reads:   records.jsonl (020), splits.json (030), and, to compare with,
 Writes:  the_schema.json, induction_evidence.json
 Details: instructions/040_induce_schema.md
 """
+from common.llm import MODEL
 from common.step import run_step, helpers
 
 INPUTS = {
@@ -27,8 +28,9 @@ SETTINGS = {
     "induction_maintainers": 10,    # learn from this many of the largest maintainers
     "texts_per_maintainer":  15,    # the first this-many induction candidates of each
     "min_support":           1,     # a schema entry enters the schema if found in at least this many texts
-    "max_chars":             8000,  # a longer text is split into pieces, one call each
+    "max_chars":             8000,  # a longer text is split into text pieces, one call each
     "workers":               4,     # model calls made at the same time
+    "model":                 MODEL, # the AI model to ask (py models.py lists them)
     "confirm_paid_calls":    True,  # stop and ask before the first model call; false for unattended runs
 }
 
