@@ -1,17 +1,16 @@
 """
 moves.py -- the main moves of 060_extract, as called by 060_extract.py.
 
-    stage 1  records.py  pick_records   which records this run extracts from; notes to show before paying
-    stage 2  schema.py   load_schema    the schema input plus the additions, merged; notes
+    stage 1  records.py  pick_records   code: which records this run extracts from; notes to show before paying
+    stage 2  schema.py   load_schema    code: the schema input plus the additions, merged; notes
     -        (here)      paid_calls     asks before the first model call; the answer cache
     stage 3  extract.py  ask_model      LLM: the facts each record states that the schema can express
     stage 4  extract.py  sort_rows      code: every row checked; kept, or removed with its reason
-    -        (here)      results        writes the triple instances, the removed ones, the schema used; report
+    -        (here)      results        writes the kept and removed triple instances, the schema used; the report
 
 Every model answer is cached in cache/ inside the step's output folder
-(common/cache.py), so a rerun pays only for what it doesn't have. Every
-file is rewritten by each run: it holds that run's records only. Terms are
-as defined in docs/terminology.md.
+(common/cache.py), so a rerun pays only for what isn't there yet. Every file is
+rewritten by each run: it holds that run's records only. Terms are as defined in docs/terminology.md.
 """
 from __future__ import annotations
 
@@ -21,14 +20,14 @@ import schema as schema_stage
 from common import audit, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.report import cell, counted, named
+from common.report import cell, counted, model_calls, named
 from common.step import Results
-from common.triples_io import COLUMNS as TRIPLE_COLUMNS
+from common.triples_io import COLUMNS as TRIPLE_COLUMNS, ENTRY_PREDICATE
 
 KEPT_NAME = "extracted_triples.csv"
 REMOVED_NAME = "extracted_triples_removed.csv"
 SCHEMA_NAME = "schema_used.json"
-DETAILS_NAME = "extraction_details.json"
+DETAILS_NAME = "extracted_triples_details.json"
 KEPT_COLUMNS = TRIPLE_COLUMNS + ["flags", ORIGIN_COLUMN]
 REMOVED_COLUMNS = ["reason"] + TRIPLE_COLUMNS + ["flags", "raw", ORIGIN_COLUMN]
 SHOW = 20                        # rows listed in the report before "…"
@@ -110,7 +109,8 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
     write_csv(paths[REMOVED_NAME], REMOVED_COLUMNS, removed)
     write_json(paths[SCHEMA_NAME], _schema_used(schema))
     write_json(paths[DETAILS_NAME], {
-        "run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings, "chosen": chosen.how,
+        "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings},
+        "chosen": chosen.how,
         "records": [{"id": i["id"], "pieces": len(i["pieces"]),
                      "status": "extracted" if i["id"] in rows.kept else "failed",
                      "error": replies.failed.get(i["id"]),
@@ -125,17 +125,17 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
     if replies.failed:
         warnings.append(f"{len(replies.failed)} record(s) failed and are not in the output: "
                         f"{named(list(replies.failed), 3)}. "
-                        f"Run again: only they are asked again.")
+                        f"Run the step again: only those are asked again; every answer already paid for is reused.")
     missing = check_origins(kept + removed, "rows")
     if missing:
         warnings.append(missing)
 
-    n_kept_facts = sum(1 for r in kept if r["predicate"] != "DESCRIBES")
+    n_kept_facts = sum(1 for r in kept if r["predicate"] != ENTRY_PREDICATE)
     only_describes = sum(1 for rid, rs in rows.kept.items() if len(rs) == 1)
     added = {k: sum(v == "additions" for v in schema.came_from[k].values())
              for k in ("entity_classes", "predicates", "patterns")}
     c = schema.content
-    lines = ["### Records", "",
+    lines = ["### What this run worked on", "",
              f"Chosen: {chosen.how}. Extracted: {len(rows.kept)}; failed: {len(replies.failed)}"
              + ("; skipped while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
                 if chosen.skipped else "") + ".",
@@ -161,11 +161,8 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         if len(new_names) > SHOW:
             lines.append(f"| … {len(new_names) - SHOW} more, in `{DETAILS_NAME}` | | |")
         lines.append("")
-    lines += ["### Model calls", "", "| | Calls |", "|---|---:|",
-              f"| extract triple instances | {replies.calls} (+{replies.reused} text pieces answered from the cache) |",
-              f"| test call | {calls.paid.test_calls} |",
-              f"| **total this run** | **{replies.calls + calls.paid.test_calls}** |", "",
-              f"Model: `{llm.MODEL}`. Answers are kept in `cache/`; a rerun pays only for what it doesn't have."]
+    lines += model_calls([("extract triple instances (one per text piece)", replies.calls, replies.reused)],
+                         calls.paid.test_calls, llm.MODEL)
 
     return Results(
         files=list(paths.values()),

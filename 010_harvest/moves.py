@@ -1,12 +1,12 @@
 """
 moves.py -- the main moves of 010_harvest, as called by 010_harvest.py.
 
-    download_catalog   fetch every page of the catalog into batch files,
-                       skipping pages already on disk
-    check_complete     compare what was saved with what this run aimed for,
-                       count repeated and missing ids, and check every batch
-                       file has its request block
-    results            package files, headline numbers, report text, warnings
+    stage 1  (here)  download_catalog  code: every page of the catalog into batch files, skipping pages on disk
+    stage 2  (here)  check_complete    code: saved vs aimed for; repeated and missing ids; every file's request block
+    -        (here)  results           writes the batch files (already on disk); the report
+
+The API requests are in ckan_client.py, the batch files in batches.py.
+Terms are as defined in docs/terminology.md.
 
 ORIGIN. 010 is where every item's origin starts. Each batch file wraps its
 records with the request that returned them (see batches.py), so the records
@@ -24,7 +24,7 @@ import batches
 import ckan_client
 from common.audit import current_run_id, log
 from common.report import named
-from common.step import ROOT, Results
+from common.step import ROOT, Results, check_settings
 
 # Written by versions of this step that kept a separate lineage file. The
 # request block in each batch file replaces it.
@@ -59,6 +59,7 @@ class Check:
 # --------------------------------------------------------------------------
 
 def download_catalog(settings: dict, output: Path) -> Harvest:
+    check_settings(settings, {"page_size": 1, "max_records": 0, "pause_seconds": 0})
     page_size = settings["page_size"]
     max_records = settings["max_records"]
     pause = settings["pause_seconds"]
@@ -201,6 +202,7 @@ def results(harvest: Harvest, check: Check) -> Results:
         harvest_date = f"{check.first_saved} to {check.last_saved}"
 
     details = "\n".join([
+        "### What this run worked on", "",
         "| | |", "|---|---|",
         f"| Records the catalog reports | {harvest.reported:,} |",
         f"| Records aimed for this run | {harvest.target:,} |",

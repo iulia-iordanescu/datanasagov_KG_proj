@@ -1,8 +1,8 @@
 """
 moves.py -- the main moves of 040_induce_schema, as called by
-040_induce_schema.py. Each stage lives in its own file:
+040_induce_schema.py.
 
-    stage 1  texts.py    pick_texts                 the texts to learn from (030's induction candidates)
+    stage 1  texts.py    pick_texts                 code: the texts to learn from (030's induction candidates)
     -        (here)      paid_calls                 asks before the first model call; the answer cache
     stage 2  extract.py  extract_triple_instances   LLM: the triple instances each text states, checked
     stage 3  label.py    label_component_instances  LLM: a label for each component instance, reusing labels
@@ -11,11 +11,11 @@ moves.py -- the main moves of 040_induce_schema, as called by
     stage 6  define.py   write_definitions          LLM: one sentence per entity class and predicate
     stage 7  check.py    check_schema               code: builds the schema from the evidence
     -        compare.py  compare_with_hand_schema   code: beside the hand-built schema, for the report
-    -        (here)      results                    writes the_schema.json, induction_evidence.json; report
+    -        (here)      results                    writes the_schema.json and induction_evidence.json; the report
 
-Every model answer is cached in cache/ inside the step's output folder (see
-common/cache.py), so a rerun pays only for what changed. Terms are as defined in
-docs/terminology.md.
+Every model answer is cached in cache/ inside the step's output folder
+(common/cache.py), so a rerun pays only for what isn't there yet.
+Terms are as defined in docs/terminology.md.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from common import audit, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.schema_io import read_hand_schema
-from common.report import cell, counted, named
+from common.report import cell, counted, model_calls, named
 from common.step import Results
 
 SCHEMA_NAME = "the_schema.json"
@@ -117,7 +117,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     if failed:
         warnings.append(f"{len(failed)} text piece(s) failed extraction, so their triple instances are "
                         f"missing ({named([f'{i} piece {p + 1}' for i, p in failed], 3)}). "
-                        f"Rerun: only those are asked again.")
+                        f"Run the step again: only those are asked again; every answer already paid for is reused.")
     empty = [t["id"] for t in triples.texts if not t["triple_instances"] and not t["failed_pieces"]]
     if empty:
         warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}.")
@@ -146,25 +146,16 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         if missing:
             warnings.append(missing)
 
-    total_calls = sum(calls_made.values())
     n_verified = sum(len(t["triple_instances"]) for t in triples.texts)
     split = sum(n > 1 for n in pieces.values())
     lines = [
-        "### Texts", "",
+        "### What this run worked on", "",
         f"{len(texts.items)} texts: the first {settings['texts_per_maintainer']} induction candidates of "
         f"each of the {len(texts.maintainers)} largest maintainers"
         + (f"; {split} were split into text pieces" if split else "") + ".", "",
         "| Maintainer | Records | Texts used |", "|---|---:|---:|"]
     lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
-    lines += ["", "### Model calls", "",
-              "| Stage | Calls |", "|---|---:|",
-              f"| 2 extract triple instances | {triples.calls} (+{triples.reused} answered from the cache) |",
-              f"| 3 label component instances | {labels.calls} |",
-              f"| 4 merge labels | {labels.merge_calls} |",
-              f"| 6 write definitions | {definitions.calls} |", f"| test call | {calls.paid.test_calls} |",
-              f"| **total this run** | **{total_calls}** |", "",
-              f"Model: `{llm.MODEL}`. Answers are kept in `cache/`; a rerun pays only for what changed.", "",
-              "### Triple instances and labels", "",
+    lines += ["", "### Triple instances and labels", "",
               f"- {n_verified:,} verified triple instances from {counts.texts_with_triple_instances} texts: "
               f"each one's source text is in its record's text (checked in code, `common/validate.py`).",
               f"- What the record describes (`describes_class`, the title's entity class): named for "
@@ -213,6 +204,11 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               "| Entity class | Support | Maintainers | Examples |", "|---|---:|---:|---|"]
     lines += [f"| {cell(c['name'])} | {c['support']} | {len(c['maintainers'])} | "
               f"{cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
+    lines += [""] + model_calls([("stage 2: extract triple instances", triples.calls, triples.reused),
+                                 ("stage 3: label component instances", labels.calls, None),
+                                 ("stage 4: merge labels", labels.merge_calls, None),
+                                 ("stage 6: write definitions", definitions.calls, None)],
+                                calls.paid.test_calls, llm.MODEL)
 
     return Results(
         files=[schema_path, evidence_path],

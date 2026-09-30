@@ -1,6 +1,6 @@
 """
 match.py -- stage 3: compare, record by record, what 060 extracted with the
-ground truth. Code only.
+ground truth. Code only, no model.
 
 Each extracted fact is first TRANSLATED into your names (names.py): its
 predicate and entity classes; a reversed predicate also swaps subject and
@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import re
 
+from common.audit import log
 from common.text_match import norm_text
 from common.triples_io import UNDECIDED, label_key
 
@@ -119,4 +120,5 @@ def compare_record(record: dict, names) -> dict:
 def compare_all(scored, names):
     for record in scored.records:
         compare_record(record, names)
+    log.info(f"  compared {len(scored.records)} record(s)")
     return scored

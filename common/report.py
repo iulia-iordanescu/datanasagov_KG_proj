@@ -144,3 +144,18 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
     lines.append("")
 
     write_text(path, "\n".join(lines))
+
+
+def model_calls(stages: list, test_calls: int, model: str) -> list:
+    """The "### Model calls" section every step that calls the model ends its
+    report details with, worded the same everywhere. stages: [(what the
+    calls did, calls made, text pieces or batches answered from the cache
+    or None)]."""
+    lines = ["### Model calls", "", "| Calls to | Made | Answered from the cache |", "|---|---:|---:|"]
+    lines += [f"| {what} | {made:,} | {'–' if reused is None else f'{reused:,}'} |" for what, made, reused in stages]
+    total = sum(made for _, made, _ in stages) + test_calls
+    lines += [f"| the one-line test (first paid call of a run) | {test_calls} | – |",
+              f"| **total paid this run** | **{total:,}** | |", "",
+              f"Model: `{model}`. Every answer is kept in the step's `cache/`, so a rerun pays only for "
+              f"what isn't there yet.", ""]
+    return lines

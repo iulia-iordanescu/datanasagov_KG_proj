@@ -1,5 +1,5 @@
 """
-stats.py -- stage 4: the numbers, each with its margin of error. Code only.
+stats.py -- stage 4: the numbers, each with its margin of error. Code only, no model.
 
 Every number is a ratio of sums over the scored records (e.g. precision =
 facts matched in all records / facts extracted in all records), so a record
@@ -149,3 +149,19 @@ def describes_confusion(records: list) -> dict:
         if d["truth"]:
             c[(d["truth"], d["said"] or "(none named)")] += 1
     return dict(c)
+
+
+def score(scored, settings: dict) -> dict:
+    """Every number, per part: the tuning part always; the held-out part only
+    with the setting score_held_out. {part: {"numbers", "groups", "confusion"},
+    "kept_aside": {part: records not shown}}."""
+    parts = by_part(scored)
+    shown = ["tuning"] + (["held-out"] if settings["score_held_out"] else [])
+    result = {}
+    for part in shown:
+        recs = parts[part]
+        result[part] = {"numbers": with_margins(recs) if recs else None,
+                        "groups": group_table(recs, scored.pool_groups) if recs else [],
+                        "confusion": describes_confusion(recs)}
+    result["kept_aside"] = {p: len(parts[p]) for p in ("tuning", "held-out") if p not in shown}
+    return result

@@ -11,9 +11,10 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is | Explained in |
 |---|---|---|
 | `010_harvest.py` … `070_evaluate.py` | The pipeline steps, run in order, one short script each: its inputs, its settings, and its main moves | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step) |
-| `010_harvest/` … `070_evaluate/` | The code behind each step's script; for the steps that call the AI model (040, 050, 060, 070), also the prompts it sends, as text files in `prompts/` | the step's guide, section *How it works* |
+| `010_harvest/` … `070_evaluate/` | The code behind each step's script, one file per stage where a stage is big enough | the step's guide, section *How it works* |
+| `040_induce_schema/prompts/` … `070_evaluate/prompts/`, `common/prompts/` | Every prompt the steps send to the AI model, each a plain text file you can open and read (12 in all; `common/prompts/` holds the two shared by 050 and 060) | the step's guide, section *Prompts* |
 | `annotate.py`, `annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth | [`annotations/README.md`](annotations/README.md) |
-| `audit.py` | Traces a record back to the download that first brought it in: `py audit.py <record id>` | [`instructions/000_audit.md`](instructions/000_audit.md) |
+| `audit.py` | Answers "where did this come from?": `py audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`instructions/000_audit.md`](instructions/000_audit.md) |
 | `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …) | the opening comment of each file, for people reading the code |
 
 **What you read or edit**
@@ -21,7 +22,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is | Explained in |
 |---|---|---|
 | `README.md` | This page: what's where, and why the pipeline is built the way it is | — |
-| `instructions/` | One guide per step (`010_harvest.md` … `060_extract.md`), plus `000_audit.md`: reading a run's report and log, and tracing records | — |
+| `instructions/` | One guide per step (`010_harvest.md` … `070_evaluate.md`), each with the same sections in the same order: Purpose, Inputs, Outputs, Settings, How to run, How it works, Prompts, Checks and warnings, Audit trail, Human work, Known limits (a section that doesn't apply says so in one line). Plus `000_audit.md`: reading a run's report and log, and tracing records | — |
 | `docs/terminology.md` | What every word used here means | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
@@ -60,8 +61,8 @@ Phase 1 (done) was built by the scripts `nasa_harvest.py` and `nasa_census.py`. 
 | `030_split` | Keeps the ground truth candidates pool in its order, each record marked tuning or held-out; orders every other record with text, per maintainer, for 040 | 020, `annotations/ground_truth_candidates.csv` | `splits.json` | built |
 | `040_induce_schema` | Learns the schema from a sample of texts (model calls) | 020, 030, the hand-built schema | `the_schema.json`, `induction_evidence.json` | built; not yet run with the real model |
 | `050_annotate` | Drafts ground truth for a person to correct (model calls) | 020, 030, the hand-built schema, `annotations/ground_truth/` | `drafted_triples_batch<N>.csv`, `…_details.json` | built; not yet run with the real model |
-| `060_extract` | Extracts the triple instances the schema can express (model calls); by default from the finished ground truth records | 020, 040, `annotations/schema_additions.txt`, `annotations/ground_truth/` | `extracted_triples.csv`, `extracted_triples_removed.csv`, `schema_used.json`, `extraction_details.json` | built; not yet run with the real model |
-| `070_evaluate` | Scores extraction against the ground truth: precision, recall, schema ceiling, each with its margin of error | 060, 030, 020, `annotations/` (ground truth, pool, hand-built schema, `name_mapping.csv`) | `scores.json`, `per_record.md`, `matches.csv` | built; tested on a hand-made 060 output |
+| `060_extract` | Extracts the triple instances the schema can express (model calls); by default from the finished ground truth records | 020, 040, `annotations/schema_additions.txt`, `annotations/ground_truth/` | `extracted_triples.csv`, `extracted_triples_removed.csv`, `schema_used.json`, `extracted_triples_details.json` | built; not yet run with the real model |
+| `070_evaluate` | Scores extraction against the ground truth: precision, recall, schema ceiling, each with its margin of error | 020, 030, 060, `annotations/` (the pool, the hand-built schema, the ground truth, `name_mapping.csv`) | `scores.json`, `per_record.md`, `matches.csv`; adds lines to `annotations/name_mapping.csv` and `held_out_looks.csv` | built; tested on a hand-made 060 output |
 | `080_build_graph` | Builds the graph | 020, 060 | | not built |
 
 Two helpers aren't steps: `py annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches; and `py audit.py <record id>`, which traces a record back to the download that first brought it in. Code shared by the steps is in `common/`; files made by a person are in `annotations/`.
@@ -124,6 +125,12 @@ Phase 2 mines the free-text `notes` and `title` fields of each record, which is 
 
 Where phase 1 merely copied field values into triples, phase 2 has to extract facts from prose, so the work splits into three questions: what vocabulary (schema) should the triples use, how do we get the triples out, and how do we know whether they are right.
 
+### Harvest (step 010)
+
+Everything starts from one download of the whole catalog through data.nasa.gov's public API: the metadata only (titles, descriptions, maintainers, tags, formats, links), never the scientific data the records point to. A harvest is a snapshot of the catalog on the day it was taken, and the date travels with every later result. Pages are fetched in a fixed order (oldest record first), so records added or edited during the harvest can't shift the pages; each page is saved as it arrives, so an interrupted harvest resumes where it stopped; and each page keeps the request that returned it, which is where every record's history starts.
+
+Details: [`instructions/010_harvest.md`](instructions/010_harvest.md).
+
 ### Cleaning (step 020)
 
 The `notes` and `title` fields are cleaned before anything reads them. In the harvest of 2026-09-27, 1,277 of 36,375 descriptions and 6 titles carried HTML markup baked into the text (escaped tags, sometimes escaped twice), which would otherwise produce triples about paragraph tags rather than about datasets. The cleaner verifies its own work: every word, number and URL fragment in the source must survive into the cleaned value, and a value that would lose content falls back to a cruder method or to the source text itself. In that harvest, 2 descriptions needed a fallback and none lost content. Titles are also made one line: 3,356 had line breaks or runs of spaces inside, which the website hides but a file keeps. The cleaned records are written to `records.jsonl` (step 020), one per line, each field under its own key.
@@ -132,7 +139,7 @@ The same step also joins maintainer spellings, e.g. "Kristan Morgan" and "KRISTA
 
 Details: [`instructions/020_clean.md`](instructions/020_clean.md).
 
-### Two samples that never overlap (step 030)
+### Splitting (step 030): two samples that never overlap
 
 Two parts of the work need records to read: learning the schema, and the ground truth that judges extraction. They must never share a record. If the schema were learned from the same records it is later judged on, it would have seen the exam questions before the exam, and its scores would look better than it is. So step 030 keeps them apart:
 
@@ -151,7 +158,7 @@ The schema is derived from the catalog rather than written in advance. The data-
 
 Details: [`instructions/040_induce_schema.md`](instructions/040_induce_schema.md).
 
-### Ground truth: an annotated pool (step 050 and the annotation tool)
+### Annotation (step 050): the ground truth
 
 None of the above says whether extraction is correct, and no query built on the graph is worth more than the extraction under it. Assessing quality needs ground truth: triple instances a person has checked, record by record. The ground truth candidates pool is where they come from. They are candidates: only a subset will ever be annotated and used as ground truth, since verifying 1,000 records by hand is more than the time available.
 
@@ -179,6 +186,6 @@ Every number comes with its **margin of error**, computed by redrawing whole rec
 
 Details: [`instructions/070_evaluate.md`](instructions/070_evaluate.md).
 
-### Building the graph (step 080, not built yet)
+### Graph building (step 080, not built yet)
 
 Step 080 will build the graph from the structured fields (maintainers, keywords, formats, as in phase 1) and the triple instances 060 kept, as plain files of nodes and edges. Which graph database to load them into (a labeled property graph such as Neo4j is the plan) is decided separately.

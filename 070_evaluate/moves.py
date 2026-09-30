@@ -1,14 +1,16 @@
 """
 moves.py -- the main moves of 070_evaluate, as called by 070_evaluate.py.
 
-    stage 1  records.py  pick_records     which records are scored (finished, extracted, in the fair part)
-    -        (here)      paid_calls       asks before the first model call (only to propose translations)
-    stage 2  names.py    translate_names  060's names -> yours, through annotations/name_mapping.csv
-    stage 3  match.py    compare          record by record: exact and partial matches, strict, within reach
-    stage 4  stats.py    score            the numbers, each with its margin of error, per part and group
-    -        (here)      results          writes scores.json, per_record.md, matches.csv; report
+    stage 1  records.py  pick_records     code: which records are scored (finished, extracted, in the fair part)
+    -        (here)      paid_calls       asks before the first model call; the answer cache
+    stage 2  names.py    translate_names  LLM (new names only), you check: 060's names → yours
+    stage 3  match.py    compare          code: record by record, exact and partial matches, strict, within reach
+    stage 4  stats.py    score            code: the numbers, each with its margin of error, per part and group
+    -        (here)      results          writes scores.json, per_record.md and matches.csv; the report
 
-Terms are as defined in docs/terminology.md (section "Scoring extraction").
+Every model answer is cached in cache/ inside the step's output folder
+(common/cache.py), so a rerun pays only for what isn't there yet.
+Terms are as defined in docs/terminology.md.
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ import stats
 from common import audit, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
-from common.report import cell, named
+from common.report import cell, model_calls, named
 from common.step import ANNOTATIONS_DIR, Results
 
 SCORES_NAME = "scores.json"
@@ -39,7 +41,7 @@ MATCH_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_cl
 # --------------------------------------------------------------------------
 
 def pick_records(inputs, settings):
-    return records_stage.pick_records(inputs)
+    return records_stage.pick_records(inputs, settings)
 
 
 def paid_calls(scored, settings, output) -> llm.Calls:
@@ -51,22 +53,11 @@ def translate_names(inputs, scored, calls):
 
 
 def compare(scored, names):
-    scored = match.compare_all(scored, names)
-    log.info(f"  compared {len(scored.records)} record(s)")
-    return scored
+    return match.compare_all(scored, names)
 
 
 def score(scored, settings) -> dict:
-    parts = stats.by_part(scored)
-    shown = ["tuning"] + (["held-out"] if settings["score_held_out"] else [])
-    result = {}
-    for part in shown:
-        recs = parts[part]
-        result[part] = {"numbers": stats.with_margins(recs) if recs else None,
-                        "groups": stats.group_table(recs, scored.pool_groups) if recs else [],
-                        "confusion": stats.describes_confusion(recs)}
-    result["kept_aside"] = {p: len(parts[p]) for p in ("tuning", "held-out") if p not in shown}
-    return result
+    return stats.score(scored, settings)
 
 
 # --------------------------------------------------------------------------
@@ -136,7 +127,7 @@ def _per_record(scored) -> str:
     return "\n".join(lines)
 
 
-def _match_rows(scored, inputs) -> list:
+def _match_rows(scored) -> list:
     rows = []
     for r in scored.records:
         c = r["compared"]
@@ -149,7 +140,7 @@ def _match_rows(scored, inputs) -> list:
                 raw = r["extracted"][ei]
                 out.update({f"extracted_{k}": raw[k] for k in FACT})
                 out.update({f"translated_{k}": ex[ei][k] for k in FACT})
-                out[ORIGIN_COLUMN] = audit.origin("extracted", raw["_position"])
+                out[ORIGIN_COLUMN] = audit.origin("extracted_triples", raw["_position"])
             if gi is not None:
                 out.update({f"ground_truth_{k}": gt[gi][k] for k in FACT})
                 out["within_reach"] = "yes" if c["within_reach"][gi] else "no"
@@ -166,16 +157,16 @@ def _match_rows(scored, inputs) -> list:
     return rows
 
 
-def results(scored, names, scores, calls, settings, inputs, output) -> Results:
+def results(scored, names, scores, calls, settings, output) -> Results:
     schema_file = scored.schema_used.get("made", {}).get("schema", "?")
     looks = _log_look(scored, schema_file) if settings["score_held_out"] else None
     per_record_path, matches_path, scores_path = (output / PER_RECORD_NAME, output / MATCHES_NAME,
                                                   output / SCORES_NAME)
-    match_rows = _match_rows(scored, inputs)
+    match_rows = _match_rows(scored)
     write_text(per_record_path, _per_record(scored))
     write_csv(matches_path, MATCH_COLUMNS, match_rows)
     write_json(scores_path, {
-        "made": {"run_id": audit.current_run_id(), "schema": schema_file, "settings": settings,
+        "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "schema": schema_file, "settings": settings,
                  "min_records_for_margin": stats.MIN_RECORDS, "reshuffles": stats.RESHUFFLES, "seed": stats.SEED},
         "scored": {p: [r["id"] for r in scored.records if r["part"] == p] for p in ("tuning", "held-out")},
         "left_out": scored.left_out,
@@ -207,7 +198,7 @@ def results(scored, names, scores, calls, settings, inputs, output) -> Results:
     if missing:
         warnings.append(missing)
 
-    lines = ["### What was scored", "",
+    lines = ["### What this run worked on", "",
              f"Schema 060 used: `{schema_file}`, translated to your names through `annotations/name_mapping.csv` "
              f"({names.rows_used} names; {names.reversed_used} predicate(s) reversed).", "",
              "| Part | Records scored |", "|---|---:|"]
@@ -267,7 +258,8 @@ def results(scored, names, scores, calls, settings, inputs, output) -> Results:
               "ground truth was drafted by a model and corrected by a person, not written from scratch; a fact "
               "both missed is counted nowhere, so recall may be overstated.", "",
               f"Every record's facts, side by side: `{PER_RECORD_NAME}`; one row per fact: `{MATCHES_NAME}`; "
-              f"every number: `{SCORES_NAME}`."]
+              f"every number: `{SCORES_NAME}`.", ""]
+    lines += model_calls([("propose name translations", names.calls, None)], calls.paid.test_calls, llm.MODEL)
 
     tuning = scores.get("tuning", {}).get("numbers")
     headline = {}

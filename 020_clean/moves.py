@@ -1,15 +1,14 @@
 """
 moves.py -- the main moves of 020_clean, as called by 020_clean.py.
 
-    load_raw           check the extra_text_fields setting, then read every
-                       010 batch file; drop records with no id, and later
-                       copies of a repeated id
-    keep_fields        one record per catalog entry, each field under its
-                       own key, with its origin
-    clean_text         HTML in the text fields -> plain text, each value
-                       checked so no word, number or URL is lost
-    join_maintainers   one name per maintainer, however it was spelled
-    results            write records.jsonl; report numbers, warnings
+    stage 1  (here)  load_raw          code: check extra_text_fields, read every 010 batch file; drop records
+                                       with no id, and later copies of a repeated id
+    stage 2  (here)  keep_fields       code: one record per catalog entry, each field under its own key, with its origin
+    stage 3  (here)  clean_text        code: HTML in the text fields → plain text, nothing lost (note_cleaning.py)
+    stage 4  (here)  join_maintainers  code: one name per maintainer, however it was spelled (maintainers.py)
+    -        (here)  results           writes records.jsonl; the report
+
+Terms are as defined in docs/terminology.md.
 
 One line of records.jsonl, shortened:
 
@@ -226,7 +225,7 @@ def results(catalog: Catalog, output: Path) -> Results:
         warnings.append(f"{n:,} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} "
                         f"no id and {'were' if n != 1 else 'was'} dropped; every later step "
                         f"tells records apart by id. All are listed in the report under "
-                        f"Records, and in the log.")
+                        f"What this run worked on, and in the log.")
     uncleaned = sum(c[note_cleaning.TIER_SOURCE] for c in catalog.tiers.values())
     if uncleaned:
         warnings.append(f"{uncleaned:,} text values could not be cleaned without losing content, "
@@ -240,6 +239,7 @@ def results(catalog: Catalog, output: Path) -> Results:
         warnings.append(missing)
 
     lines = [
+        "### What this run worked on", "",
         "| Records | |", "|---|---:|",
         f"| Read from {catalog.files} batch files | {catalog.read:,} |",
         f"| Dropped: no id | {len(catalog.dropped_no_id):,} |",

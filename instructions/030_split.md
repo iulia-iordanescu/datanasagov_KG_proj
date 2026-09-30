@@ -1,5 +1,7 @@
 # 030_split
 
+Terms (ground truth candidates pool, induction candidates, tuning part, held-out part, …) are as defined in [docs/terminology.md](../docs/terminology.md), especially section *Ground truth and samples*.
+
 ## Purpose
 
 Sets the two lists of records that later steps work on, and keeps them apart:
@@ -7,7 +9,7 @@ Sets the two lists of records that later steps work on, and keeps them apart:
 - **The ground truth candidates pool**: 1,000 records that are candidates for annotation. A person annotates them in pool order, and the annotated records become the ground truth that 070 scores the extraction against. Only a subset of the pool is ever annotated, since verifying 1,000 records by hand is more than the time available. The pool was shuffled when it was drawn, so the first *k* records are a fair sample of the catalog for any *k*, and annotation can stop anywhere.
 - **The induction candidates**: for every maintainer, all of its records that the schema may be learned from, in a fixed random order. 040 learns the schema from the first few of each of the largest maintainers.
 
-Each ground truth candidate is also given its **part**, for scoring in 070: **tuning** (its scores may be looked at while improving the pipeline) or **held-out** (its scores are kept aside and looked at only at the end, as the number reported for how well the pipeline works). The rule is fixed here, before any scoring: pool positions 0–5 are tuning, since the hand-built schema was written while annotating them; from position 6 on, every third record is held-out (8, 11, 14, …) and the rest tuning. Both parts grow as annotation proceeds, and both stay fair samples. Of the 999 candidates on 2026-09-30: 668 tuning, 331 held-out.
+Each ground truth candidate is also given its **part**, for scoring in 070: **tuning** (its scores may be looked at while improving the pipeline) or **held-out** (its scores are kept aside and looked at only at the end, as the number reported for how well the pipeline works). The rule is fixed here, before any scoring: pool positions 0–5 are tuning, since the hand-built schema was written while annotating them; from position 6 on, every third record is held-out (8, 11, 14, …) and the rest tuning. Both parts grow as annotation proceeds, and both stay fair samples. Of the 999 candidates on 2026-09-29: 668 tuning, 331 held-out.
 
 No record is ever in both lists. 070 measures how well extraction works on text the schema was *not* learned from; scoring on records the schema was learned from would flatter it.
 
@@ -26,10 +28,12 @@ No record is ever in both lists. 070 measures how well extraction works on text 
 
 In `outputs/intermediate_results/030_split/`:
 
+**On a rerun:** `splits.json` is written once, then kept as it is: a rerun only compares its own draw with it (see *How to run*).
+
 | File | Contents |
 |---|---|
 | `splits.json` | The two lists, and how they were made. **Written once** (see How to run). |
-| `_manifest.json` | Run id, settings, input files and their hashes, output hash, headline numbers. Written when a run finishes. |
+| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers. Written when a run finishes. |
 
 `splits.json`, shortened:
 
@@ -57,11 +61,11 @@ In `outputs/intermediate_results/030_split/`:
 | `induction_candidates.records` | Every induction candidate, grouped by maintainer in rank order. `position` is the record's place in its maintainer's random order, counting from 0: a step taking *k* records from a maintainer takes positions 0 to *k*−1. |
 | `drawn` | The run that wrote the file, its settings and its inputs. |
 
-Each run also leaves `outputs/reports/<run id>.md` and `outputs/logs/<run id>.log`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`.
 
 ## Settings
 
-| Setting | Default | Meaning | When to change it |
+| Setting | Default | What it does | When to change it |
 |---|---|---|---|
 | `induction_seed` | 7 | Fixes the random order of the induction candidates: the same records and seed always give the same order. | Only to draw a different order on purpose; everything learned from the old order is then out of date. |
 
@@ -69,31 +73,35 @@ The setting only takes effect when `splits.json` is written, i.e. when it doesn'
 
 ## How to run
 
-From the repo root, with the environment active:
+From the repository folder, with the environment active (`docs/virtual_environment_setup.md`):
 
 ```
+py 030_split.py --help       every input and setting, with its default
 py 030_split.py              reads 020's records and the pool in annotations/
-py 030_split.py --help       list inputs and settings
 ```
 
-It took 3 s on 2026-09-28.
+**Paying.** This step makes no model calls: it costs nothing, and keeps no cache.
+
+It took 3–4 s (2026-09-28 and 2026-09-29).
 
 **Written once.** The pool is annotated in order, and the order of the induction candidates decides what the schema is learned from, so `splits.json` must not change under work in progress. If it already exists, 030 keeps it as it is. The run still draws, and compares: if its draw differs from the kept file, because the records, the pool file or the setting changed since, it warns. To draw again on purpose, delete `outputs/intermediate_results/030_split/splits.json` and rerun, knowing that work relying on the old one (a schema learned from the old order) is then out of date.
 
 ## How it works
 
-1. **Load the records** that 020 wrote, by id (`common/records_io.py`, shared by every step that reads them).
-2. **Read the ground truth candidates pool** from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used. Each record gets its part by the rule in Purpose (`part_of()` in `moves.py`; the rule's numbers are named constants there, not settings, since changing them after scores have been looked at would defeat the held-out part).
-3. **Order the induction candidates.** A record is an induction candidate unless it is in the pool (kept or dropped) or has no title and no notes, which gives the schema nothing to learn from. Maintainers are ranked by how many records they hold in the catalog. Each maintainer's candidates are put in a random order of their own:
+Four stages, in `030_split.py`'s `main()`, all code:
+
+1. **Load the records** (`load_records`) that 020 wrote, by id (`common/records_io.py`, shared by every step that reads them).
+2. **Read the ground truth candidates pool** (`ground_truth_candidates`) from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used. Each record gets its part by the rule in Purpose (`part_of()` in `moves.py`; the rule's numbers are named constants there, not settings, since changing them after scores have been looked at would defeat the held-out part).
+3. **Order the induction candidates** (`induction_candidates`). A record is an induction candidate unless it is in the pool (kept or dropped) or has no title and no notes, which gives the schema nothing to learn from. Maintainers are ranked by how many records they hold in the catalog. Each maintainer's candidates are put in a random order of their own:
    - the generator is seeded by `induction_seed` and the maintainer's name, so one maintainer's order never depends on another's;
    - the ids are sorted before shuffling, so the same records and seed always give the same order, whatever the order of the records file;
    - the shuffle is Python's `random.sample`, which returns its picks in selection order "so that all sub-slices will also be valid random samples" (Python documentation): the first *k* records of a maintainer are a random sample of its candidates, for every *k*.
-4. **Check the lists are disjoint.** A record in both stops the step.
-5. **Write `splits.json`** (under a temporary name, renamed when complete), or keep the existing one, and report.
+4. **Check the lists are disjoint** (`check_disjoint`). A record in both stops the step.
+**Then the results** (`results`): `splits.json` is written (under a temporary name, renamed when complete), or the existing one kept; the report.
 
-The code is in `030_split/moves.py`.
+The code: `030_split/` holds `moves.py` (the moves, and writing the results). Shared with other steps: `common/records_io.py` (reading records), `common/files.py` (saving files).
 
-On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for having no text; 35,376 induction candidates across 422 maintainers. On 2026-09-30 `splits.json` was rebuilt once to add each candidate's part: everything already in it came out identical.
+On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for having no text; 35,376 induction candidates across 422 maintainers. On 2026-09-29 `splits.json` was rebuilt once to add each candidate's part: everything already in it came out identical.
 
 ### Why "undefined" counts as a maintainer
 
@@ -102,21 +110,40 @@ On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for ha
 - Learning from each large maintainer separately is meant to show the schema step the vocabulary of as much of the catalog as possible, so that the largest maintainers don't drown the others. That purpose doesn't need each group to share one writing style. (That property matters for the ground truth candidates pool, which estimates catalog-wide scores, not for schema induction.)
 - Replacing `undefined` with the next largest maintainer, Christopher Rumsey (178 records), would cover 0.5% of the catalog instead of 2.7%: the 10 maintainers would hold 89.4% of the catalog's records instead of 91.6%.
 
+## Prompts
+
+None: this step makes no model calls.
+
 ## Checks and warnings
+
+**Shown before paying:** none, since this step makes no model calls.
+
+**In the report**, under *Warnings*:
 
 | Message | Meaning | What to do |
 |---|---|---|
 | *N ground truth candidates are no longer in the catalog and were dropped* | Pool records that left the catalog since the pool was drawn. Listed in the report. 1 on 2026-09-28 (position 946). | Nothing: the others keep their positions. If a dropped record was already annotated, its ground truth no longer has a text to score against. |
 | *N ground truth candidates have a different maintainer in 020's records than in the pool file* | A maintainer's spelling is joined differently now, or the record's maintainer changed. Listed in the report. 0 on 2026-09-28. | Usually nothing; 020's maintainer is used. |
 | *splits.json already exists and was kept, but this run's draw differs from it* | The records, the pool file or the setting changed since `splits.json` was written. | Usually nothing: the kept file is what work in progress relies on. To take the change, delete `splits.json` and rerun. |
-| *… lists these ids more than once* (the step stops) | The pool file repeats an id. | Fix `annotations/ground_truth_candidates.csv`. |
-| *… needs the columns id and maintainer* (the step stops) | The pool file isn't in the expected form. | Check the file. |
-| *missing input files: candidates …* (the step stops) | The pool file isn't there. 030 never draws a pool. | Put the pool in `annotations/ground_truth_candidates.csv`, or pass `--candidates`. |
-| *N records are both ground truth candidates and induction candidates* (the step stops) | Should never happen: induction candidates exclude the pool by construction. | A code change broke `induction_candidates`; fix it. |
+
+**The step stops** with:
+
+| Message | Meaning | What to do |
+|---|---|---|
+| *… lists these ids more than once* | The pool file repeats an id. | Fix `annotations/ground_truth_candidates.csv`. |
+| *… needs the columns id and maintainer* | The pool file isn't in the expected form. | Check the file. |
+| *missing input files: candidates …* | The pool file isn't there. 030 never draws a pool. | Put the pool in `annotations/ground_truth_candidates.csv`, or pass `--candidates`. |
+| *N records are both ground truth candidates and induction candidates* | Should never happen: induction candidates exclude the pool by construction. | A code change broke `induction_candidates`; fix it. |
+
+## Audit trail
+
+- **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
+- **Origin.** Each ground truth candidate's `_origin` names its row in `annotations/ground_truth_candidates.csv` (made by a person, so the trace stops there) and its record in 020's `records.jsonl`; each induction candidate's names its 020 record.
+- **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 
 ## Human work
 
-None in this step. The pool it reads is human work: never edit or reorder `annotations/ground_truth_candidates.csv` while annotation is in progress.
+None. The pool this step reads is human work: never edit or reorder `annotations/ground_truth_candidates.csv` while annotation is in progress.
 
 ## Known limits
 

@@ -24,7 +24,7 @@ from common.files import read_csv
 from common.ground_truth import fair_prefix, read_ground_truth
 from common.records_io import load_records
 from common.report import named
-from common.step import input_files
+from common.step import check_settings, input_files
 from common.triples_io import is_describes
 
 PARTS = ("tuning", "held-out")
@@ -55,7 +55,8 @@ def _facts(rows: list) -> tuple:
     return facts, describes
 
 
-def pick_records(inputs: dict) -> Scored:
+def pick_records(inputs: dict, settings: dict) -> Scored:
+    check_settings(settings, {})
     scored = Scored()
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = scored.ground_truth = read_ground_truth(gt_files[0].parent)        # run_step made sure there is one
@@ -70,11 +71,11 @@ def pick_records(inputs: dict) -> Scored:
     for r in pool_rows:
         g = groups.get(r["id"], "")
         scored.pool_groups[g] = scored.pool_groups.get(g, 0) + 1
-    details = json.loads(Path(inputs["extraction_details"]).read_text(encoding="utf-8"))
+    details = json.loads(Path(inputs["extracted_triples_details"]).read_text(encoding="utf-8"))
     extracted_ids = {r["id"] for r in details["records"] if r["status"] == "extracted"}
     scored.schema_used = json.loads(Path(inputs["schema_used"]).read_text(encoding="utf-8"))
     extracted = {}
-    for position, row in enumerate(read_csv(Path(inputs["extracted"]))):
+    for position, row in enumerate(read_csv(Path(inputs["extracted_triples"]))):
         extracted.setdefault(row["id"], []).append({**row, "_position": position})
     titles = {rid: (r.get("title") or "") for rid, r in load_records(inputs["records"]).items()}
 

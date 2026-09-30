@@ -69,7 +69,7 @@ MANIFEST_NAME = "_manifest.json"
 class Results:
     """What a step's main() returns."""
     files: list = field(default_factory=list)       # files the step wrote
-    headline: dict = field(default_factory=dict)    # 1-2 numbers for the master report
+    headline: dict = field(default_factory=dict)    # the run's few key numbers, at the top of its report
     details: str = ""                               # Markdown for the report's Results section
     warnings: list = field(default_factory=list)    # one sentence each
     harvest_date: str | None = None                 # set by 010; later steps inherit it

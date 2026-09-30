@@ -1,15 +1,15 @@
 """
 moves.py -- the main moves of 030_split, as called by 030_split.py.
 
-    load_records            020's cleaned records, by id
-    ground_truth_candidates the ground truth candidates pool, read from
-                            annotations/, in its order; ids no longer in the
-                            catalog are dropped
-    induction_candidates    for every maintainer, all its records that may be
-                            learned from (not in the pool, with text), in a
-                            fixed random order
-    check_disjoint          no record is in both
-    results                 write splits.json, once; report numbers, warnings
+    stage 1  (here)  load_records             code: 020's cleaned records, by id
+    stage 2  (here)  ground_truth_candidates  code: the pool, read from annotations/, in its order; ids no longer
+                                              in the catalog dropped; each record's part (tuning or held-out)
+    stage 3  (here)  induction_candidates     code: every maintainer's records that may be learned from (not in
+                                              the pool, with text), in a fixed random order
+    stage 4  (here)  check_disjoint           code: no record is in both
+    -        (here)  results                  writes splits.json, once; the report
+
+Terms are as defined in docs/terminology.md.
 
 Each ground truth candidate also gets its part, for scoring (070):
 
@@ -230,7 +230,9 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
         if missing:
             warnings.append(missing)
 
-    lines = []
+    lines = ["### What this run worked on", "",
+             f"{len(induction.records) + induction.in_pool + induction.without_text:,} cleaned records from 020, and the {pool.in_file:,} records of "
+             f"`{audit.ref_path(Path(inputs['candidates']))}`.", ""]
     if kept:
         lines += [f"**{OUTPUT_NAME} already existed and was kept as it is** (write-once). "
                   + ("This run's draw is identical to it, so the numbers below describe the kept file."

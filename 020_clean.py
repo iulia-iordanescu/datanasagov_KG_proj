@@ -7,10 +7,10 @@ its first copy; a record with no id is dropped); HTML in the text fields
 becomes plain text, checked so that no word, number or URL is lost; the
 spellings of one maintainer are joined into one name; and each field is kept
 under its own key, so later steps never have to guess where a title ends and
-a description begins.
+a description begins. Terms: docs/terminology.md.
 
 Reads:   batch_*.json (010)
-Writes:  records.jsonl, one cleaned record per line
+Writes:  records.jsonl
 Details: instructions/020_clean.md
 """
 from common.step import run_step, helpers
@@ -28,11 +28,12 @@ clean = helpers("020_clean")
 
 
 def main(inputs, settings, output):
-    records = clean.load_raw(inputs, settings)           # batch files -> one list; id-less and repeated records dropped
-    records = clean.keep_fields(records)                 # each field under its own key: title, notes, maintainer, tags…
-    records = clean.clean_text(records)                  # "&lt;b&gt;Aqua&lt;/b&gt;" -> "Aqua", nothing lost
-    records = clean.join_maintainers(records, settings)  # "KRISTAN MORGAN" = "Kristan Morgan"
-    return clean.results(records, output)                # records.jsonl; report numbers, warnings
+    records = clean.load_raw(inputs, settings)           # code: batch files → one list; id-less and repeated records dropped
+    records = clean.keep_fields(records)                 # code: each field under its own key: title, notes, maintainer, tags…
+    records = clean.clean_text(records)                  # code: "&lt;b&gt;Aqua&lt;/b&gt;" → "Aqua", nothing lost
+    records = clean.join_maintainers(records, settings)  # code: "KRISTAN MORGAN" = "Kristan Morgan"
+    # writes records.jsonl; the report
+    return clean.results(records, output)
 
 
 if __name__ == "__main__":

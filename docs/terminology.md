@@ -9,8 +9,9 @@ The words this project uses, and exactly what each one means. It is expected to 
 3. [Schemas](#3-schemas)
 4. [Ground truth and samples](#4-ground-truth-and-samples)
 5. [Learning the schema (step 040)](#5-learning-the-schema-step-040)
-6. [Scoring extraction (step 070)](#6-scoring-extraction-step-070)
-7. [The pipeline](#7-the-pipeline)
+6. [Extracting with a schema (step 060)](#6-extracting-with-a-schema-step-060)
+7. [Scoring extraction (step 070)](#7-scoring-extraction-step-070)
+8. [The pipeline](#8-the-pipeline)
 
 ---
 
@@ -44,7 +45,7 @@ notes: The MODIS instrument aboard Aqua …
 | **slot** | Where a component sits in a triple. |
 | **component instance** | A value filling a slot. "Rosetta" might fill a subject or object slot; "is mounted on" might fill a predicate slot. |
 | **triple instance** | A triple with all three slots filled: one fact stated as subject, predicate and object, e.g. "MODIS" – "is aboard" – "Aqua". |
-| **verified triple instance** | One whose source text is really in its record's text, checked in code. An **unverified** one (no source text, or a source text that isn't in the text) can't be trusted: step 040 leaves it out of what it counts; step 050 keeps it, marked as an error, for the person to fix. |
+| **verified triple instance** | One whose source text is really in its record's text, checked in code. An **unverified** one (no source text, or a source text that isn't in the text) can't be trusted: step 040 leaves it out of what it counts; step 050 keeps it, marked as an error, for the person to fix; step 060 removes it (reason `source_text`). |
 | **DESCRIBES row** | The one triple instance every record gets that no text states, written by code: `<record id>` (`CatalogEntry`) DESCRIBES `<the record's title>` (`<entity class>`). It keeps the catalog entry apart from the thing the entry is about. The model's only part in it is naming that entity class; `X` means none was named yet. |
 | **error** / **flag** | What a check of a triple instance can raise. An **error** is something code can prove wrong (e.g. its source text isn't in the text); a **flag** is often a sign of a mistake, often fine (e.g. a reworded name, or a name the schema doesn't have). Listed in `instructions/050_annotate.md`. |
 
@@ -89,7 +90,8 @@ The words *domain* and *range* were standardized in RDF Schema, another kind of 
 | Term | Meaning |
 |---|---|
 | **ground truth** | Triple instances a person has checked and corrected for a record. Kept in `annotations/ground_truth/`, one file per batch of records corrected together (`batch_000.csv` holds those annotated before the pipeline; `batch_001.csv` is corrected from step 050's draft batch 1, and so on); the ground truth is all the files together. |
-| **ground truth candidates pool** | 1,000 records drawn once (2026-09-21) as candidates for ground truth, in a shuffled order. A person annotates them in that order, and only a subset ever gets annotated, since 1,000 is more than there is time to check. |
+| **ground truth candidates pool** (the **pool** for short) | 1,000 records drawn once (2026-09-21) as candidates for ground truth, in a shuffled order. A person annotates them in that order, and only a subset ever gets annotated, since 1,000 is more than there is time to check. Each record's place in that order is its **pool position** (0, 1, 2, …). |
+| **sampling group** | One of the groups the pool was drawn by: a large maintainer on its own, or "(small maintainers)" for the 404 maintainers too small to earn two of the 1,000 places. Each group got places in proportion to its size; `annotations/ground_truth_candidates.csv` names each record's group. Margins of error and per-group numbers in step 070 follow these groups. |
 | **draft batch** | The triple instances a model drafted, in one run of step 050, for a few records (10 by default), waiting for a person to correct them: `drafted_triples_batch<N>.csv` in 050's output folder. Corrected with the annotation tool (`py annotate.py`), it becomes the ground truth file `batch_<NNN>.csv` with the same number. |
 | **annotation tool** | `py annotate.py`: a page in your browser, on your computer only, to read and correct triple instances (see `annotations/README.md`). Not a step. |
 | **fair sample** | Records taken from the start of the ground truth candidates pool, in its order, with none skipped. Since the pool is shuffled, those are a fair sample of the whole catalog, so results measured on them hold for the catalog. Step 050 says when the ground truth stops being one (e.g. after drafting hand-picked records). |
@@ -104,18 +106,29 @@ The words *domain* and *range* were standardized in RDF Schema, another kind of 
 | **label** | The general name a model gives a component instance in step 040. For one in a subject or object slot, the kind of thing it is ("MODIS" → `Instrument`), which becomes an entity class. For one in a predicate slot, the relation it expresses ("is aboard" → `ABOARD`), which becomes a predicate. Not the same as a *node label* in a graph database (section 3), though an entity class does become one. |
 | **support** | How many different texts a schema entry was found in. A text stating it twice counts once. |
 | **deferred** | A schema entry that was found but isn't in the schema, with the reason: support below `min_support`, judged too vague, or a pattern through a schema entry that isn't in the schema. |
-| **model call** | One request to the AI model, paid for. Every answer is kept in a cache, so a rerun pays only for what changed. |
+| **model call** (also **paid call**) | One request to the AI model, paid for. Every answer is kept in a cache, so a rerun pays only for what isn't there yet. Before a run's first one, the step stops and asks (setting `confirm_paid_calls`). |
 
 ---
 
-## 6. Scoring extraction (step 070)
+## 6. Extracting with a schema (step 060)
+
+| Term | Meaning |
+|---|---|
+| **schema used** | The schema step 060 extracted with: its schema input (040's by default, or any given with `--schema`) plus the schema additions, merged, written to `schema_used.json`. Steps 070 and 080 read it, so they use exactly what 060 used. |
+| **kept** / **removed** | What 060 does with each triple instance after checking it. **Kept** ones go to `extracted_triples.csv`, the graph's facts and what 070 scores. **Removed** ones go to `extracted_triples_removed.csv` with the reason: `source_text` (its source text is missing or isn't in the record's text), `name_not_in_schema`, `duplicate` or `malformed`. Removed is not deleted: the file keeps them for a person to look at. |
+| **name outside the schema** | An entity class or predicate the model used though the schema doesn't have it (e.g. `Satellite` when the schema says `Spacecraft`). Such a triple instance is removed; the report lists these names, most used first, as candidates for the schema additions. A name that differs only in case, spaces or punctuation (`Space craft`) is not outside the schema: it's accepted and written in the schema's spelling. |
+
+---
+
+## 7. Scoring extraction (step 070)
 
 Step 070 compares the triple instances step 060 extracted with the ground truth, which works as the answer key. An example: a record's text states 5 facts, all in the ground truth; 060 extracts 4, of which 3 match the ground truth and 1 is wrong (the text never says it); 2 facts of the ground truth are missed.
 
 | Term | Meaning |
 |---|---|
-| **match** | An extracted triple instance that counts as the same as a ground truth one, after its names are translated into yours. Two levels: **exact**, subject and object the same once evened out (case, spacing, quote marks, dashes and a leading "the" ignored) and the predicate the same; **partial**, the same except that a subject or object may contain the other as whole words ("MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)"). A match is **strict** when both entity classes agree too. |
+| **match** | An extracted triple instance that counts as the same as a ground truth one, after its names are translated into yours. Two levels: **exact**, subject and object the same once evened out (case, spacing, quote marks, dashes, punctuation at either end and a leading "the/a/an" ignored) and the predicate the same; **partial**, the same except that a subject or object may contain the other as whole words ("MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)"). A match is **strict** when both entity classes agree too. |
 | **name translation** | The table `annotations/name_mapping.csv`, checked by a person: which of your names each name of the schema 060 used means, or `(none)`; `reversed` when it says the same relation the other way round ("A CARRIES B" is "B ABOARD A"). |
+| **your names** | The entity classes and predicates the ground truth uses: the hand-built schema's, plus any a person coined while annotating. The names of the schema 060 used are translated into these before comparing. |
 | **precision** | When 060 says something, how often it is right: the extracted triple instances that match the ground truth, divided by all the triple instances 060 extracted. In the example, 3 ÷ 4 = 75%. Low precision means the graph gets **wrong** facts. |
 | **recall** | Of everything true in the text, how much 060 caught: the ground truth triple instances that 060's extraction matches, divided by all the ground truth triple instances. In the example, 3 ÷ 5 = 60%. Low recall means the graph is **missing** facts. |
 | **entity-class accuracy** | Of the facts matched, how many also have both entity classes right. |
@@ -131,12 +144,14 @@ The two are reported together because each alone can be fooled: an extractor tha
 
 ---
 
-## 7. The pipeline
+## 8. The pipeline
 
 | Term | Meaning |
 |---|---|
 | **step** | One of the 8 numbered parts of the pipeline, `010_harvest` to `080_build_graph`. Each step reads what earlier steps wrote and writes its own output. |
 | **stage** | One part of a step's work, in order; e.g. step 040 has 7 stages. Never called a step. |
+| **move** | One line of a step's `main()` in its control panel, e.g. `records = clean.clean_text(records)`: a stage, or a step's bookkeeping (`paid_calls`, `results`). The **main moves** are those lines; each is timed in the report. |
+| **model** (**LLM**) | The AI model the steps ask, a large language model reached through NASA's Ask Sage service (`MODEL` in `common/llm.py`). In code comments, `LLM:` marks a move that asks it and `code:` one that doesn't. |
 | **control panel** | A step's short script, e.g. `040_induce_schema.py`: its settings and its main moves, one line each. The code behind it is in the step's folder. |
 | **parameter** | Any value that decides how code behaves, e.g. how many texts to learn from, or how many component instances go in one model call. |
 | **setting** | A parameter of a step that its control panel shows for a person to change, e.g. `texts_per_maintainer`, given on the command line as `--texts_per_maintainer 30`. A parameter nobody tunes (e.g. 80 component instances per labeling call) isn't a setting: it's fixed in the step's code, as a named constant (`LABEL_BATCH`). |

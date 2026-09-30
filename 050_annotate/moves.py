@@ -1,16 +1,16 @@
 """
 moves.py -- the main moves of 050_annotate, as called by 050_annotate.py.
 
-    stage 1  records.py  pick_records        which records this batch drafts; notes to show before paying
+    stage 1  records.py  pick_records        code: which records this batch drafts; notes to show before paying
     -        (here)      paid_calls          asks before the first model call; the answer cache
     stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
     stage 3  (here)      build_rows          code: DESCRIBES row, duplicates out, every row checked
     stage 4  (here)      check_ground_truth  code: typos in the ground truth files
-    -        (here)      results             writes the draft batch; report
+    -        (here)      results             writes the draft batch; the report
 
 Every model answer is cached in cache/ inside the step's output folder
-(common/cache.py), so a rerun pays only for what it doesn't have. Terms are
-as defined in docs/terminology.md.
+(common/cache.py), so a rerun pays only for what isn't there yet.
+Terms are as defined in docs/terminology.md.
 """
 from __future__ import annotations
 
@@ -24,8 +24,9 @@ from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.ground_truth import COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows, fair_words
-from common.report import cell, counted, named
+from common.report import cell, counted, model_calls, named
 from common.step import Results
+from common.triples_io import ENTRY_PREDICATE
 
 BATCH_NAME = "drafted_triples_batch{n}.csv"
 DETAILS_NAME = "drafted_triples_batch{n}_details.json"
@@ -97,8 +98,8 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if csv_rows:
         write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a draft batch is never overwritten
         write_json(details_path, {
-            "batch": n, "run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings,
-            "chosen": chosen.how,
+            "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings},
+            "batch": n, "chosen": chosen.how,
             "records": [{"id": i["id"], "pool_position": i["position"], "title": i["title"],
                          "pieces": len(i["pieces"]),
                          "status": "drafted" if i["id"] in drafts.rows else "failed",
@@ -115,7 +116,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if replies.failed:
         warnings.append(f"{len(replies.failed)} record(s) failed and are not in the batch: "
                         f"{named(list(replies.failed), 3)}. "
-                        f"The next run drafts them again, reusing every answer already paid for.")
+                        f"Run the step again: only those are asked again; every answer already paid for is reused.")
     if not csv_rows:
         warnings.append("No record was drafted, so no batch was written.")
     warnings += [f"Ground truth: {p}" for p in chosen.ground_truth.problems]
@@ -127,7 +128,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         warnings.append(missing)
 
     gt = chosen.ground_truth
-    lines = ["### Batch", ""]
+    lines = ["### What this run worked on", ""]
     if csv_rows:
         lines += [f"Batch {n}: `{batch_path.name}`, {len(csv_rows):,} rows for {len(drafts.rows)} record(s), "
                   f"chosen as {chosen.how}. To correct it, run `py annotate.py` and pick batch {n}: it "
@@ -150,12 +151,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if chosen.skipped:
         lines += ["Passed over while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
                   + ".", ""]
-    lines += ["### Model calls", "", "| | Calls |", "|---|---:|",
-              f"| draft triple instances | {replies.calls} (+{replies.reused} text pieces answered from the cache) |",
-              f"| test call | {calls.paid.test_calls} |",
-              f"| **total this run** | **{replies.calls + calls.paid.test_calls}** |", "",
-              f"Model: `{llm.MODEL}`. Answers are kept in `cache/`; a rerun pays only for what it doesn't have.",
-              "", "### Your ground truth", "",
+    lines += ["### Your ground truth", "",
               f"{len(gt.records)} records in {len(gt.files)} file(s), {sum(r['finished'] for r in gt.records.values())} "
               f"finished (all facts extracted). Rows with something to fix: {len(typos)}.", ""]
     if typos:
@@ -165,10 +161,13 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         if len(typos) > SHOW:
             lines.append(f"| … {len(typos) - SHOW} more | | |")
         lines.append("")
+    lines += model_calls([("draft triple instances (one per text piece)", replies.calls, replies.reused)],
+                         calls.paid.test_calls, llm.MODEL)
 
     return Results(
         files=files,
-        headline={"records drafted": len(drafts.rows), "rows": len(csv_rows)},
+        headline={"records drafted": len(drafts.rows),
+                  "triple instances drafted": sum(1 for r in csv_rows if r["predicate"] != ENTRY_PREDICATE)},
         details="\n".join(lines),
         warnings=warnings,
     )
