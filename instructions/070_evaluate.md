@@ -29,7 +29,7 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 | `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is not scored, not scored as zero). |
 | `schema_used` | `060_extract/schema_used.json` | The schema 060 used: the names to translate. |
 | `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's sampling group. |
-| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | Your names, with their definitions. Your names also include any used in the ground truth. |
+| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the names coined in the ground truth, the ground truth vocabulary ("your names" here), built by `common/ground_truth.vocabulary` as in 050 and the annotation tool. |
 | `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | The answer key. Only records you've finished (*All facts extracted*) are scored. |
 | `name_mapping` | `./annotations/name_mapping.csv` (in Git) | The translation table (below). |
 

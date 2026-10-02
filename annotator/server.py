@@ -11,7 +11,7 @@ What it reads
     annotations/ground_truth/batch_<NNN>.csv                                  the ground truth files
     outputs/intermediate_results/020_clean/records.jsonl                     each record's text
     outputs/intermediate_results/030_split/splits.json                       each record's pool position
-    annotations/schema_derived_from_manual_annotation.txt                   the vocabulary offered
+    annotations/schema_derived_from_manual_annotation.txt                   the hand-built schema
 
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv.
     - Opening draft batch N for the first time copies it to
@@ -24,7 +24,12 @@ What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv.
 
 The checks are step 050's own, all from common/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate and pattern
-is in the hand-built schema), shown in plain words (MESSAGES).
+is in the hand-built schema), shown in plain words (MESSAGES). The names
+suggested as you type are the ground truth vocabulary
+(common/ground_truth.vocabulary): the hand-built schema's, plus those
+coined in the ground truth, so a coined name is offered for reuse. A coined
+name stays flagged until it is added to the hand-built schema, since it
+could be a typo, and the page lists every coined name as a reminder.
 """
 from __future__ import annotations
 
@@ -37,7 +42,7 @@ from urllib.parse import parse_qs, urlsplit
 from common.chunking import full_text
 from common.files import write_csv
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
-                                 draft_name, file_name, read_ground_truth)
+                                 draft_name, file_name, read_ground_truth, vocabulary)
 from common.records_io import load_records
 from common.schema_io import read_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -62,17 +67,21 @@ MESSAGES = {
     "object_not_in_source": "The object isn't in its source text.",
     "subject_equals_object": "The subject and the object are the same.",
     "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the hand-built schema: a new one, "
-                                   "or a typo. Keep it only if none of the schema's fits.",
+                                   "or a typo. Keep it only if none of the schema's fits. "
+                                   "If it's new, add it, with a definition, to the hand-built schema.",
     "object_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new one, "
-                                  "or a typo. Keep it only if none of the schema's fits.",
+                                  "or a typo. Keep it only if none of the schema's fits. "
+                                  "If it's new, add it, with a definition, to the hand-built schema.",
     "predicate_not_in_schema": "\"{predicate}\" isn't a predicate of the hand-built schema: a new one, or a typo. "
-                               "Keep it only if none of the schema's fits.",
+                               "Keep it only if none of the schema's fits. "
+                               "If it's new, add it, with a definition, to the hand-built schema.",
     "pattern_not_in_schema": "The hand-built schema never uses {predicate} between {subject_class} and "
                              "{object_class}: a new pattern, or a wrong entity class.",
     "empty": "Subject, predicate and object must all be filled in.",
     "describes_undecided": "Choose the entity class of what the title names.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new "
-                                     "one, or a typo. Keep it only if none of the schema's fits.",
+                                     "one, or a typo. Keep it only if none of the schema's fits. "
+                                     "If it's new, add it, with a definition, to the hand-built schema.",
     "describes_subject_not_id": "This row's subject should be the record's id.",
 }
 
@@ -159,8 +168,21 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
     records = [record_view(data, rid, [r for r in rows if not _is_blank(r)],
                            all(r["all_facts_extracted"] == "1" for r in rows))
                for rid, rows in _group(_read_rows(path))]
+    vocab = vocabulary(data.hand, read_ground_truth())
     return {"n": n, "file": path.name, "records": records,
-            "entity_classes": sorted(data.hand["entity_classes"]), "predicates": sorted(data.hand["predicates"])}
+            "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"])}
+
+
+def coined_reminder(data: Data, gt) -> list:
+    """A line naming the names used in the ground truth but not in the
+    hand-built schema, or none."""
+    coined = vocabulary(data.hand, gt)["coined"]
+    names = coined["entity_classes"] + coined["predicates"]
+    if not names:
+        return []
+    return [f"{len(names)} name(s) used in the ground truth aren't in the hand-built schema "
+            f"({HAND_SCHEMA.name}): {', '.join(names)}. Add each one you mean to keep, with a one-line "
+            f"definition; fix any typo where it's used."]
 
 
 def list_batches() -> list:
@@ -243,8 +265,9 @@ def make_handler(data: Data):
                 if url.path == "/":
                     self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
                 elif url.path == "/api/batches":
+                    gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
-                                "problems": read_ground_truth().problems})
+                                "problems": gt.problems, "reminders": coined_reminder(data, gt)})
                 elif url.path == "/api/batch":
                     n = int(q["n"][0])
                     self._json(batch_view(data, n, open_batch(n)))

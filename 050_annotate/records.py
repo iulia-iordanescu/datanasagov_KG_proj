@@ -23,6 +23,12 @@ Fair sample: the pool is shuffled, so its first N records are a fair sample
 of the catalog, and step 070 can only claim results for the whole catalog
 from such a sample. `fair` says whether the ground truth, the waiting drafts
 and this batch together are still exactly the first N of the pool.
+
+The vocabulary the model is shown is the ground truth vocabulary
+(common/ground_truth.vocabulary): the hand-built schema, plus the names a
+person coined in the ground truth, so a coined name is reused from the next
+batch on. The checks still compare with the hand-built schema alone, so a
+coined name (or a typo) stays flagged until it is added there.
 """
 from __future__ import annotations
 
@@ -32,7 +38,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, read_ground_truth
+from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, read_ground_truth,
+                                 vocabulary)
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
@@ -51,11 +58,24 @@ class Chosen:
     waiting: dict = field(default_factory=dict)    # {id: draft batch number} not yet corrected
     pool: list = field(default_factory=list)       # the pool's ids, in order
     positions: dict = field(default_factory=dict)  # {id: pool position}
-    schema_text: str = ""                          # the hand-built schema, as the prompt shows it
-    names: object = None                           # its names, as the checks compare them
+    schema_text: str = ""                          # the ground truth vocabulary, as the prompt shows it
+    names: object = None                           # the hand-built schema's names, as the checks compare them
+    coined: dict = field(default_factory=dict)     # {kind: [names]} used in the ground truth, not in the hand-built schema
     fair: dict = field(default_factory=dict)       # see common/ground_truth.fair_sample()
     how: str = ""                                  # the choice in words, for the report
     skipped: dict = field(default_factory=dict)    # {reason: [ids]} passed over while choosing
+
+
+def vocabulary_text(hand_text: str, coined: dict) -> str:
+    """The ground truth vocabulary as the model sees it: the hand-built
+    schema's text as written, then the names coined in the ground truth,
+    which have no definition yet. With nothing coined, just the schema's
+    text, so earlier answers stay in the cache."""
+    lines = [f"{label}: {', '.join(coined[kind])}"
+             for kind, label in (("entity_classes", "Entity classes"), ("predicates", "Predicates")) if coined[kind]]
+    if not lines:
+        return hand_text
+    return hand_text + "\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n" + "\n".join(lines)
 
 
 def _waiting(output: Path) -> tuple:
@@ -84,11 +104,13 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     pool_rows = splits["ground_truth_candidates"]["records"]
     chosen.pool = [r["id"] for r in pool_rows]
     chosen.positions = {r["id"]: r["position"] for r in pool_rows}
-    chosen.schema_text = Path(inputs["hand_schema"]).read_text(encoding="utf-8-sig").strip()
-    chosen.names = SchemaNames(read_hand_schema(inputs["hand_schema"]))
-
     gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.ground_truth = read_ground_truth(gt_files[0].parent)     # run_step made sure there is one
+    hand = read_hand_schema(inputs["hand_schema"])
+    chosen.names = SchemaNames(hand)
+    chosen.coined = vocabulary(hand, chosen.ground_truth)["coined"]
+    chosen.schema_text = vocabulary_text(Path(inputs["hand_schema"]).read_text(encoding="utf-8-sig").strip(),
+                                         chosen.coined)
     chosen.notes += [f"Ground truth: {p}" for p in chosen.ground_truth.problems]
     chosen.done = {r["id"] for r in chosen.ground_truth.rows}
     chosen.waiting, highest = _waiting(output)

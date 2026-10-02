@@ -4,7 +4,7 @@ Terms (triple instance, entity class, ground truth, draft batch, fair sample, â€
 
 ## Purpose
 
-Drafts ground truth for you to correct. A model reads the next records of the ground truth candidates pool and lists **every fact each record states**, as triple instances with an entity class for the subject and the object. It uses the hand-built schema's names where they fit and coins new ones where they don't: leaving a fact out is worse than a new name. Code adds each record's DESCRIBES row, removes repeats and replies that aren't triple instances, and checks every row against the record's text and the schema.
+Drafts ground truth for you to correct. A model reads the next records of the ground truth candidates pool and lists **every fact each record states**, as triple instances with an entity class for the subject and the object. It uses the names of the ground truth vocabulary where they fit (the hand-built schema's, plus any you coined while annotating) and coins new ones where they don't: leaving a fact out is worse than a new name. Code adds each record's DESCRIBES row, removes repeats and replies that aren't triple instances, and checks every row against the record's text and the schema.
 
 Each run writes one numbered **draft batch**. You correct it with the annotation tool (`py annotate.py`), which saves it into `annotations/ground_truth/` as the ground truth file with the same number. No step ever writes there.
 
@@ -16,8 +16,8 @@ Each run also checks your ground truth files for typos (see *Your ground truth* 
 |---|---|---|
 | `records` | `020_clean/records.jsonl` | 020's cleaned records: the texts. |
 | `splits` | `030_split/splits.json` | 030's ground truth candidates: the pool's 999 records still in the catalog, in the pool's order. |
-| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema. Shown to the model as the names to reuse, and the names every row is checked against. |
-| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Your ground truth: records in it are never drafted again, and every run checks it. |
+| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema. Shown to the model as the names to reuse, together with the names coined in the ground truth; every row is checked against the hand-built schema alone, so a coined name stays flagged until you add it there. |
+| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Your ground truth: records in it are never drafted again, every run checks it, and the names you coined in it are shown to the model for reuse. |
 
 Draft batches already in 050's output folder are read too: their records are waiting to be corrected, so they're not drafted again.
 
@@ -124,7 +124,7 @@ Run against the record's **whole** text, including rows from one piece of a long
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `050_annotate/prompts/draft.txt` | stage 2, one call per text piece | list **every** fact the record states (completeness first), naming the entity classes and predicates with the hand-built schema's names where one fits and a new name otherwise; the hand-built schema is shown in the prompt |
+| `050_annotate/prompts/draft.txt` | stage 2, one call per text piece | list **every** fact the record states (completeness first), naming the entity classes and predicates with the hand-built schema's names where one fits and a new name otherwise; the prompt shows the ground truth vocabulary: the hand-built schema as written, then, under *ALSO USED IN THE GROUND TRUTH (no definition yet)*, any names coined in the ground truth (with nothing coined, the prompt is unchanged) |
 | `common/prompts/extraction_rules.txt` | inside `draft.txt` (`$rules`) | follow the rules shared with 060: names as written, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
 | `common/prompts/extraction_reply.txt` | inside `draft.txt` (`$reply`) | reply in the JSON form shared with 060 |
 
@@ -151,6 +151,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *N record(s) failed and are not in the batch* | Their model calls failed (after the model client's own retries). | Run the step again: only those are asked again, and every answer already paid for is reused. The next run drafts them first. |
 | *No record was drafted, so no batch was written.* | Every call failed. | Check the connection; run again. |
+| *N name(s) used in the ground truth aren't in the hand-built schema, so the model saw them without a definition* | Names you coined while annotating (or typos). The model was shown them to reuse, but with only the name to go on. | Add each one you mean to keep, with a one-line definition, to the hand-built schema; fix any typo in the ground truth. |
 | *N row(s) of the ground truth have something to fix* | Typos, listed under *Your ground truth* with file and line: an id that isn't in the catalog, a subject, predicate or object partly empty, no source text or one not in the record's text, a DESCRIBES row without an entity class or whose subject isn't the record's id. | Fix them with the tool or any editor. |
 
 **The step stops** with:
@@ -177,6 +178,8 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 - accepting a wrong row is easy: reading the text first, then the rows, limits it;
 - a fact the model missed is unlikely to be added by hand, and if the extractor (060) misses it too, nothing counts it as missed: recall comes out higher than it should. Adding what's missing matters more than polishing what's there.
+
+**When you coin a name**, add it with a one-line definition to the hand-built schema. Until then the next drafts reuse it but the model sees only the name, and the tool keeps flagging it (it could be a typo); the tool's page and this step's report list every such name.
 
 Report any score against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
 

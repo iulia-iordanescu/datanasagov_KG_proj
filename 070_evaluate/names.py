@@ -35,10 +35,11 @@ from pathlib import Path
 from common import llm
 from common.cache import Cache, key
 from common.files import append_csv
+from common.ground_truth import vocabulary
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_hand_schema
-from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, label_key
+from common.triples_io import label_key
 
 PROMPT = load(Path(__file__).parent / "prompts" / "map_names.txt")
 COLUMNS = ["kind", "schema_name", "your_name", "reversed", "checked"]
@@ -61,17 +62,13 @@ class Names:
 
 
 def your_vocabulary(hand_schema_path, ground_truth) -> dict:
-    """Your names: the hand-built schema's, plus any used in the ground truth."""
-    hand = read_hand_schema(hand_schema_path)
-    yours = {"entity class": dict(hand["entity_classes"]), "predicate": dict(hand["predicates"])}
-    known = {k: {label_key(n) for n in v} for k, v in yours.items()}
-    for r in ground_truth.rows:
-        for kind, name in (("entity class", r["subject_class"]), ("entity class", r["object_class"]),
-                           ("predicate", r["predicate"])):
-            if name and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) and label_key(name) not in known[kind]:
-                yours[kind][name] = "(used in the ground truth; not in the hand-built schema)"
-                known[kind].add(label_key(name))
-    return yours
+    """Your names: the ground truth vocabulary (common/ground_truth.py), by
+    kind, each with its definition; a coined name has none, so it gets a
+    note saying so, for the model."""
+    vocab = vocabulary(read_hand_schema(hand_schema_path), ground_truth)
+    return {kind: {name: definition or "(used in the ground truth; not in the hand-built schema)"
+                   for name, definition in vocab[key].items()}
+            for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
 
 
 def _read(path: Path) -> list:

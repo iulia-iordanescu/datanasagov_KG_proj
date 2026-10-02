@@ -118,6 +118,11 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"Run the step again: only those are asked again; every answer already paid for is reused.")
     if not csv_rows:
         warnings.append("No record was drafted, so no batch was written.")
+    coined = [n for kind in ("entity_classes", "predicates") for n in chosen.coined[kind]]
+    if coined:
+        warnings.append(f"{len(coined)} name(s) used in the ground truth aren't in the hand-built schema, so the model "
+                        f"saw them without a definition: {named(coined)}. Add each one you mean to keep, with a "
+                        f"one-line definition, to the hand-built schema; fix any typo in the ground truth.")
     if typos:
         warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix; listed in the "
                         f"report under Your ground truth.")

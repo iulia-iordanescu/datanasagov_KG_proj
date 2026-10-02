@@ -122,7 +122,7 @@ async function loadBatches() {
       : `draft ${b.draft}: not opened yet`;
     pick.append(el("option", { value: b.n }, `Batch ${b.n} (${what})`));
   }
-  const warnings = [...data.problems];
+  const warnings = [...data.problems, ...data.reminders];
   if (!data.records_found) warnings.unshift("records.jsonl wasn't found, so records' texts can't be shown or checked: run steps 010 and 020 first.");
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
   const wanted = new URLSearchParams(location.hash.slice(1));

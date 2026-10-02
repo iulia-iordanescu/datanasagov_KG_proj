@@ -28,6 +28,8 @@ progress. A row with an id but an empty subject, predicate and object says
     gt.records     {record id: {"file", "rows", "finished"}}
     gt.problems    ["…"]: what a person must fix (see below)
     fair_sample, fair_prefix  whether ids are the pool's first records (below)
+    vocabulary(hand_schema, gt)  the ground truth vocabulary: the hand-built
+                              schema's names plus those coined in the ground truth
     check_rows(gt, records)   rows with a typo to fix: an id not in the
                               catalog, a source text not in the record's
                               text, a DESCRIBES row with no entity class, …
@@ -167,6 +169,38 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
             ref = row[ORIGIN_FIELD][0]
             file, position = ref.rsplit("/", 1)[-1].split("#")
             out.append({"where": f"{file} line {int(position) + 2}", "id": rid, "errors": errors})
+    return out
+
+
+# --------------------------------------------------------------------------
+# the ground truth vocabulary (050, the annotation tool, 070)
+# --------------------------------------------------------------------------
+
+def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
+    """The ground truth vocabulary: the hand-built schema's entity classes and
+    predicates (hand_schema, as common.schema_io.read_hand_schema reads it),
+    plus every one the ground truth triples use that it lacks. Names are
+    compared as common.triples_io.label_key does (ignoring case and
+    punctuation), keeping the first spelling met; the DESCRIBES row's own
+    names (CatalogEntry, DESCRIBES) and the undecided X are not names.
+
+    Returned in the schema shape, plus "coined": {"entity_classes": [...],
+    "predicates": [...]}, the names used in the ground truth but not in the
+    hand-built schema, in the order first used. A coined name has an empty
+    definition: only the hand-built schema has definitions."""
+    from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, label_key
+
+    out = {"entity_classes": dict(hand_schema["entity_classes"]), "predicates": dict(hand_schema["predicates"]),
+           "patterns": list(hand_schema.get("patterns", [])),
+           "coined": {"entity_classes": [], "predicates": []}}
+    known = {kind: {label_key(n) for n in out[kind]} for kind in ("entity_classes", "predicates")}
+    for row in gt.rows:
+        for kind, name in (("entity_classes", row["subject_class"]), ("entity_classes", row["object_class"]),
+                           ("predicates", row["predicate"])):
+            if name and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) and label_key(name) not in known[kind]:
+                out[kind][name] = ""
+                out["coined"][kind].append(name)
+                known[kind].add(label_key(name))
     return out
 
 
