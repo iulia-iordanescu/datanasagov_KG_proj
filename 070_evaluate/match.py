@@ -4,8 +4,12 @@ ground truth. Code only, no model.
 
 Each extracted fact is first TRANSLATED into your names (names.py): its
 predicate and entity classes; a reversed predicate also swaps subject and
-object (and their entity classes). Then, per record, facts are paired one to
-one, in two passes:
+object (and their entity classes). Then, per record, the ground truth's
+facts and the extracted facts are PAIRED: every fact, in either list, ends
+with zero or one partner, always from the other list (so a fact stated twice
+earns one match, not two). Two passes, each finding the largest possible set
+of pairs (maximum matching: a pairing may switch to free a partner for
+another fact), not just each fact's first match:
 
   1. exact   subject and object equal once evened out (common/text_match
              norm_text: case, spacing, quote marks, dashes, edge punctuation
@@ -82,6 +86,30 @@ def _within_reach(g: dict, names) -> bool:
         label_key(g["object_class"]) in names.reachable["entity class"]
 
 
+def _max_pairs(can: dict) -> dict:
+    """The largest pairing {gt index: extracted index}, each fact in either
+    list with zero or one partner from the other, each gt fact paired with
+    one of the extracted facts it matches (can[gi]): the
+    standard augmenting-path method (Kuhn's algorithm). Taking each gt
+    fact's first free match instead can leave a fact unpaired that another
+    pairing would have matched. Deterministic: facts are tried in order."""
+    owner = {}                                        # extracted index -> gt index
+
+    def place(gi, seen) -> bool:
+        for ei in can[gi]:
+            if ei in seen:
+                continue
+            seen.add(ei)
+            if ei not in owner or place(owner[ei], seen):
+                owner[ei] = gi
+                return True
+        return False
+
+    for gi in can:
+        place(gi, set())
+    return {gi: ei for ei, gi in owner.items()}
+
+
 def compare_record(record: dict, names) -> dict:
     """The record's pairs and counts: record["compared"]."""
     gt = record["gt"]
@@ -89,13 +117,11 @@ def compare_record(record: dict, names) -> dict:
     pairs = []                                        # (gt index, extracted index, "exact" | "partial")
     free_g, free_e = set(range(len(gt))), set(range(len(ex)))
     for level in LEVELS:
-        for gi in sorted(free_g):
-            for ei in sorted(free_e):
-                if _same_fact(gt[gi], ex[ei], level):
-                    pairs.append((gi, ei, level))
-                    free_g.discard(gi)
-                    free_e.discard(ei)
-                    break
+        can = {gi: [ei for ei in sorted(free_e) if _same_fact(gt[gi], ex[ei], level)] for gi in sorted(free_g)}
+        for gi, ei in sorted(_max_pairs(can).items()):
+            pairs.append((gi, ei, level))
+            free_g.discard(gi)
+            free_e.discard(ei)
     reach = [_within_reach(g, names) for g in gt]
     counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach)}
     for level in LEVELS:

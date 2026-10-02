@@ -87,13 +87,16 @@ def _log_look(scored, schema_file: str) -> int:
     return len(read_csv(LOOKS))
 
 
-def _per_record(scored) -> str:
+def _per_record(records: list, hidden: int) -> str:
     lines = ["# Per record", "",
              "Each scored record: its facts matched (✓ exact / ≈ partial, with both versions), extracted but not "
              "in the ground truth (count against precision), and in the ground truth but not extracted (count "
              "against recall). Extracted facts are shown translated into your names. Terms: "
              "docs/terminology.md, section *Scoring extraction*.", ""]
-    for r in scored.records:
+    if hidden:
+        lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
+                  f"(`--score_held_out true` lists them, and logs the look).", ""]
+    for r in records:
         c = r["compared"]
         gt, ex = r["gt"], c["translated"]
         lines += [f"## {r['title'] or r['id']}", "",
@@ -127,9 +130,9 @@ def _per_record(scored) -> str:
     return "\n".join(lines)
 
 
-def _match_rows(scored) -> list:
+def _match_rows(records: list) -> list:
     rows = []
-    for r in scored.records:
+    for r in records:
         c = r["compared"]
         gt, ex = r["gt"], c["translated"]
         base = {"record_id": r["id"], "position": r["position"], "part": r["part"], "group": r["group"]}
@@ -162,8 +165,11 @@ def results(scored, names, scores, calls, settings, output) -> Results:
     looks = _log_look(scored, schema_file) if settings["score_held_out"] else None
     per_record_path, matches_path, scores_path = (output / PER_RECORD_NAME, output / MATCHES_NAME,
                                                   output / SCORES_NAME)
-    match_rows = _match_rows(scored)
-    write_text(per_record_path, _per_record(scored))
+    # Only the parts whose numbers are shown: the held-out records' facts stay
+    # unseen too, unless --score_held_out true.
+    shown = [r for r in scored.records if r["part"] in scores]
+    match_rows = _match_rows(shown)
+    write_text(per_record_path, _per_record(shown, len(scored.records) - len(shown)))
     write_csv(matches_path, MATCH_COLUMNS, match_rows)
     write_json(scores_path, {
         "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "schema": schema_file, "settings": settings,
