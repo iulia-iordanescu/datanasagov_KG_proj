@@ -2,8 +2,8 @@
 moves.py -- the main moves of 070_evaluate, as called by 070_evaluate.py.
 
     stage 1  records.py  pick_records     code: which records are scored (finished, extracted, in the fair part)
-    -        (here)      paid_calls       asks before the first model call; the answer cache
-    stage 2  names.py    translate_names  LLM (new names only), you check: 060's names → yours
+    -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
+    stage 2  names.py    translate_names  LLM: 060's names → yours, new names only; you check
     stage 3  match.py    compare          code: record by record, exact and partial matches, strict, within reach
     stage 4  stats.py    score            code: the numbers, each with its margin of error, per part and group
     -        (here)      results          writes scores.json, per_record.md and matches.csv; the report
@@ -15,7 +15,6 @@ Terms are as defined in docs/terminology.md.
 from __future__ import annotations
 
 import datetime as dt
-from pathlib import Path
 
 import match
 import names as names_stage
@@ -110,7 +109,7 @@ def _per_record(records: list, hidden: int) -> str:
             lines.append("**Matched**")
             lines.append("")
             for gi, ei, level in c["pairs"]:
-                strict = match._strict(gt[gi], ex[ei])
+                strict = match.classes_agree(gt[gi], ex[ei])
                 lines.append(f"- {'✓ exact' if level == 'exact' else '≈ partial'}"
                              f"{'' if strict else ', entity classes differ'}: {_fact(ex[ei])}")
                 if level == "partial" or not strict:
@@ -150,7 +149,7 @@ def _match_rows(records: list) -> list:
                 origins = gt[gi].get(audit.ORIGIN_FIELD) or []
                 out[ORIGIN_COLUMN] = "; ".join(filter(None, [out.get(ORIGIN_COLUMN), *origins]))
             if gi is not None and ei is not None:
-                out["entity_classes_right"] = "yes" if match._strict(gt[gi], ex[ei]) else "no"
+                out["entity_classes_right"] = "yes" if match.classes_agree(gt[gi], ex[ei]) else "no"
             return out
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
@@ -210,12 +209,18 @@ def results(scored, names, scores, calls, settings, output) -> Results:
              "| Part | Records scored |", "|---|---:|"]
     for part in ("tuning", "held-out"):
         count = sum(r["part"] == part for r in scored.records)
-        shown = part in scores
-        lines.append(f"| {part} | {count}{'' if shown else ' (numbers not shown: see below)'} |")
+        lines.append(f"| {part} | {count}{'' if part in scores else ' (numbers not shown: see below)'} |")
     lines.append("")
     if scores["kept_aside"]:
         lines += ["The held-out part's numbers are not shown: they are kept for the end, so the pipeline isn't "
                   "tuned on them. `--score_held_out true` shows them (and logs the look).", ""]
+    lines += ["### The translation table", "",
+              "Rows of `annotations/name_mapping.csv` that say `(none)`, and your names that no row translates to. "
+              "Your names grow as you annotate: if a `(none)` row should now point to one of yours, fix that row.", "",
+              "| Kind | 060's names translated to (none) | Your names nothing translates to |", "|---|---|---|"]
+    lines += [f"| {kind} | {cell(named(names.to_none[kind], 20)) or '–'} | {cell(named(names.untranslated[kind], 20)) or '–'} |"
+              for kind in ("entity class", "predicate")]
+    lines.append("")
     if scored.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in scored.left_out.items())
                   + f". Not finished yet in the ground truth: {scored.unfinished}.", ""]

@@ -3,7 +3,7 @@ moves.py -- the main moves of 060_extract, as called by 060_extract.py.
 
     stage 1  records.py  pick_records   code: which records this run extracts from; notes to show before paying
     stage 2  schema.py   load_schema    code: the schema input plus the additions, merged; notes
-    -        (here)      paid_calls     asks before the first model call; the answer cache
+    -        (here)      paid_calls     code: asks before paying; keeps every answer in cache/
     stage 3  extract.py  ask_model      LLM: the facts each record states that the schema can express
     stage 4  extract.py  sort_rows      code: every row checked; kept, or removed with its reason
     -        (here)      results        writes the kept and removed triple instances, the schema used; the report

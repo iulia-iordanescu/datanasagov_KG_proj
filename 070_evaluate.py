@@ -45,8 +45,8 @@ evaluate = helpers("070_evaluate")
 
 def main(inputs, settings, output):
     scored = evaluate.pick_records(inputs, settings)                  # code: finished, extracted, in the fair part
-    calls  = evaluate.paid_calls(scored, settings, output)            # asks before paying; keeps every answer in cache/
-    names  = evaluate.translate_names(inputs, scored, calls)          # LLM (new names only), you check: Satellite → Spacecraft
+    calls  = evaluate.paid_calls(scored, settings, output)            # code: asks before paying; keeps every answer in cache/
+    names  = evaluate.translate_names(inputs, scored, calls)          # LLM: Satellite → Spacecraft, new names only; you check
     scored = evaluate.compare(scored, names)                          # code: per record, exact / partial / wrong / missed
     scores = evaluate.score(scored, settings)                         # code: the numbers, with margins, per part and group
     # writes scores.json, per_record.md, matches.csv; the report

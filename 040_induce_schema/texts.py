@@ -46,7 +46,7 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
             record = records.get(row["id"])
             if record is None:
                 raise ValueError(f"induction candidate {row['id']} is not in 020's records; "
-                                 f"splits.json and records.jsonl are out of step (rerun 030)")
+                                 f"splits.json and records.jsonl are out of step (delete 030's splits.json, then run py 030_split.py)")
             texts.items.append({"id": row["id"], "maintainer": m,
                                 "title": " ".join((record.get("title") or "").split()),   # as a component instance
                                 "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})

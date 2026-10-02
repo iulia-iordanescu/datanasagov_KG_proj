@@ -6,13 +6,18 @@ The schema input (040's the_schema.json by default, or any file given with
 (annotations/schema_additions.txt): entity classes and predicates a person
 added, e.g. on a mentor's advice. They are merged into one schema, and each
 entry remembers where it came from: "schema" (the schema input) or
-"additions". An addition whose name the schema already has is left out (the
-schema's entry is kept); an addition without a "source:" line, and an entry
-without a definition, become notes shown before paying.
+"additions". An addition whose name the schema (or an earlier addition)
+already has, ignoring case and punctuation, is left out (the entry already
+there is kept). Pattern names are written in the merged schema's spelling,
+compared the same loose way, so a left-out addition's patterns still apply
+to the entry kept. A left-out addition, a line of the additions file that
+isn't read, an addition without a "source:" line, an entry without a
+definition and a pattern name the schema doesn't have become notes shown
+before paying.
 
 The merged schema is what the model is shown, what every row is checked
-against, and what is written to schema_used.json, so 070 and 080 read
-exactly the schema this run used.
+against, and what is written to schema_used.json, so 070 (and 080, once
+built) read exactly the schema this run used.
 """
 from __future__ import annotations
 
@@ -22,6 +27,7 @@ from pathlib import Path
 from common.audit import log, ref_path
 from common.report import named
 from common.schema_io import read_schema, schema_text
+from common.triples_io import label_key
 from common.validate import SchemaNames
 
 KINDS = ("entity_classes", "predicates")
@@ -36,7 +42,7 @@ class Schema:
     names: object = None                           # common.validate.SchemaNames
     files: dict = field(default_factory=dict)      # {"schema": path, "additions": path}
     notes: list = field(default_factory=list)      # shown before paying, and in the report
-    left_out: list = field(default_factory=list)   # additions whose name the schema has
+    left_out: list = field(default_factory=list)   # {"kind", "name", "kept"}: additions whose name is already there
 
 
 def load_schema(inputs: dict) -> Schema:
@@ -51,11 +57,12 @@ def load_schema(inputs: dict) -> Schema:
     result.sources = {kind: {} for kind in KINDS}
     no_source = []
     for kind in KINDS:
-        have = {n.casefold(): n for n in merged[kind]}
+        have = {label_key(n): n for n in merged[kind]}
         for name, definition in extra[kind].items():
-            if name.casefold() in have:
-                result.left_out.append({"kind": kind, "name": name, "schema_has": have[name.casefold()]})
+            if label_key(name) in have:
+                result.left_out.append({"kind": kind, "name": name, "kept": have[label_key(name)]})
                 continue
+            have[label_key(name)] = name
             merged[kind][name] = definition
             result.came_from[kind][name] = "additions"
             source = extra["sources"][kind].get(name)
@@ -63,9 +70,15 @@ def load_schema(inputs: dict) -> Schema:
                 result.sources[kind][name] = source
             else:
                 no_source.append(name)
-    patterns = list(dict.fromkeys(base["patterns"] + extra["patterns"]))
+    spelling = {kind: {label_key(n): n for n in merged[kind]} for kind in KINDS}
+
+    def spelled(pattern: tuple) -> tuple:
+        return tuple(spelling[kind].get(label_key(x), x)
+                     for x, kind in zip(pattern, ("entity_classes", "predicates", "entity_classes")))
+
+    in_base = {spelled(p) for p in base["patterns"]}
+    patterns = list(dict.fromkeys(spelled(p) for p in base["patterns"] + extra["patterns"]))
     merged["patterns"] = patterns
-    in_base = set(base["patterns"])
     result.came_from["patterns"] = {p: "schema" if p in in_base else "additions" for p in patterns}
     result.content = merged
     result.text = schema_text(merged)
@@ -73,8 +86,14 @@ def load_schema(inputs: dict) -> Schema:
 
     if result.left_out:
         result.notes.append(f"{len(result.left_out)} addition(s) in {Path(inputs['additions']).name} "
-                            f"have a name the schema already has, so the schema's entry is kept: "
+                            f"have a name already there (in the schema, or an earlier addition), so that entry "
+                            f"is kept: "
                             + named([x["name"] for x in result.left_out]) + ".")
+    if extra["unread"]:
+        result.notes.append(f"{len(extra['unread'])} line(s) of {Path(inputs['additions']).name} aren't read as an "
+                            f"entry, a source or patterns (a name can't contain a space; two or more spaces go "
+                            f"before the definition; patterns are \"Subject -> Object\" separated by \";\"): "
+                            + named(extra["unread"], 5, "; ") + ".")
     if no_source:
         result.notes.append(f"{len(no_source)} addition(s) have no \"source:\" line saying where the idea "
                             f"came from: {named(no_source)}.")

@@ -33,7 +33,7 @@ In `outputs/intermediate_results/030_split/`:
 | File | Contents |
 |---|---|
 | `splits.json` | The two lists, and how they were made. **Written once** (see How to run). |
-| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers. Written when a run finishes. |
+| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
 `splits.json`, shortened:
 
@@ -97,6 +97,7 @@ Four stages, in `030_split.py`'s `main()`, all code:
    - the ids are sorted before shuffling, so the same records and seed always give the same order, whatever the order of the records file;
    - the shuffle is Python's `random.sample`, which returns its picks in selection order "so that all sub-slices will also be valid random samples" (Python documentation): the first *k* records of a maintainer are a random sample of its candidates, for every *k*.
 4. **Check the lists are disjoint** (`check_disjoint`). A record in both stops the step.
+
 **Then the results** (`results`): `splits.json` is written (under a temporary name, renamed when complete), or the existing one kept; the report.
 
 The code: `030_split/` holds `moves.py` (the moves, and writing the results). Shared with other steps: `common/records_io.py` (reading records), `common/files.py` (saving files).

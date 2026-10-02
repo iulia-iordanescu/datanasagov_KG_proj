@@ -9,8 +9,8 @@ Work made by a person, kept in Git because it can't be rebuilt by rerunning the 
 | `ground_truth_candidates.json` | How the pool was drawn: stratified by maintainer, seed 1000, 1,000 of 36,323 records, and each group's size and places. | nothing (a record of the draw) |
 | `schema_derived_from_manual_annotation.txt` | The hand-built schema: entity classes and predicates with a description each, and the patterns each predicate has been used in. Updated by hand as annotation goes. | 040 (to compare with), 050 (shown to the model; every row is checked against it), the annotation tool; 060 with `--schema`; 070 (your names) |
 | `schema_additions.txt` | Entity classes and predicates to add to the schema step 060 extracts with (e.g. a mentor's suggestions), each with a `source:` line saying where the idea came from. Starts empty. Its layout: [instructions/060_extract.md](../instructions/060_extract.md). | 060 |
-| `name_mapping.csv` | The translation of the names of the schema 060 used into yours: one row per name (`kind`, `induced_name`, `your_name`, `reversed`, `checked`). 070 adds rows for new names (proposed by the model, `checked` = `no`); you check them. How: [instructions/070_evaluate.md](../instructions/070_evaluate.md). | 070 |
-| `held_out_looks.csv` | One line per time the held-out part's numbers were looked at (date, run, schema). 070 adds a line with `--score_held_out true`; commit it. | 070 |
+| `name_mapping.csv` | The translation of the names of the schema 060 used into yours: one row per name (`kind`, `schema_name`, `your_name`, `reversed`, `checked`). 070 adds rows for new names (proposed by the model, `checked` = `no`); you check them. How: [instructions/070_evaluate.md](../instructions/070_evaluate.md). | 070 |
+| `held_out_looks.csv` | One line per time the held-out part's numbers were looked at (`date`, `run_id`, `schema`, `held_out_records`: how many held-out records were scored). 070 adds a line with `--score_held_out true`; commit it. | 070 |
 | `schema_notes_derived_from_manual_annotation.txt` | The notes the hand-built schema started from. Kept as a record only. | nothing |
 | `archive/` | The five draft batches made before the pipeline existed (`draft_triples_batch1–5`, each a CSV and its settings), drafts of 3 of the 6 records in `ground_truth/batch_000.csv`. Kept as a record only. | nothing |
 
@@ -43,7 +43,7 @@ Their columns:
 
 ### What the pipeline checks
 
-Every step that reads `ground_truth/` (`common/ground_truth.py`) reports, and never silently fixes:
+Every step that reads `ground_truth/` (050, 060 and 070, through `common/ground_truth.py`) lists these in its report's warnings, and the annotation tool shows them on its page; none is ever silently fixed:
 
 - a record in two files (annotated twice): keep it in one file;
 - a record whose rows disagree on `all_facts_extracted`: set it the same on every row;

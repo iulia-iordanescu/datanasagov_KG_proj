@@ -25,7 +25,8 @@ both sides first, and nothing else:
     norm_text("  The MODIS  ")          # "modis": the key two component instances share if they are the same
 
 Shared by every step that checks triple instances against texts (040, 050,
-060) and by common/triples_io.py, so "the same" means one thing everywhere.
+060), by 070's matching and by common/triples_io.py, so "the same" means
+one thing everywhere.
 
 Adapted from norm_text in to_be_reshaped/triple_io.py and _flat/_in in
 to_be_reshaped/validate_triples.py, which evened out four quotes and two

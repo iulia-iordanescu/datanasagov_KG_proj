@@ -40,6 +40,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `outputs/logs/<run id>.log` | Everything a run did, line by line, and why it failed if it did | [`instructions/000_audit.md`](instructions/000_audit.md) |
 | `.env` | Your Ask Sage email and key | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md), part 6 |
 | `.myvenv/` | The project's Python environment | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md) |
+| `__pycache__/` (in several folders) | Python's compiled copies of the code, made automatically when it runs; safe to delete | — |
 
 **Background and settings, rarely needed**
 
@@ -48,12 +49,11 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `to_be_reshaped/` | The scripts from before the pipeline, kept as reference while their work moves into the steps. Never run. |
 | `docs/pipeline_redesign_plan.md` | An earlier write-up of the pipeline's design, kept as background. |
 | `docs/v0_schema.txt` | An early version of the schema. Nothing reads it. |
-| `docs/pipeline_implementation_prompt.md` | (only on your laptop, not in Git) The hand-off note Claude builds from. |
 | `.gitattributes`, `.gitignore` | Git settings: plain line endings on every computer, and the files Git leaves out (`outputs/`, `.env`, `.myvenv/`, …). |
 
 ## Pipeline overview
 
-Phase 1 (done) was built by the scripts `nasa_harvest.py` and `nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from its own short script in the repository folder (`py 010_harvest.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Details of each step are in its guide, `instructions/<step>.md`.
+Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from its own short script in the repository folder (`py 010_harvest.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Details of each step are in its guide, `instructions/<step>.md`.
 
 | Step | What it does | Reads | Writes | Status |
 |---|---|---|---|---|
@@ -70,8 +70,8 @@ Two helpers aren't steps: `py annotate.py`, the annotation tool, a page in your 
 
 ## Records and fields
 
-Throughout this project, a "record" is the metadata of one catalog entry in <[data.nasa.gov](https://data.nasa.gov)>. In JSON terms, each record is one object with 31 possible top-level key-value pairs, of which 24 are populated at least once across the catalog (title, description, maintainer, tags, and so on; the other 7 are empty on every record). Being metadata, the records describe the catalog entries; any actual scientific data or content lives in separate NASA data archives that each record links to, and is never downloaded here. Most catalog entries of data.nasa.gov are datasets.
-The keys of these top-level key-value pairs are what we call metadata fields or just fields. Fields come from the raw JSON in which data.nasa.gov's public API returns each record. The API returns every record with the same metadata form provided by CKAN, a standard open-source catalog software, which data.nasa.gov runs on. The data.nasa.gov website renders each record as a readable page (headline, description text, tag buttons), but the harvest in this project comes from the API, which is why we know each the exact name (top-level key) and its exact associated populated content (associated value of the top-level key) of each field for a record, rather than guessing either from webpage text.
+Throughout this project, a "record" is the metadata of one catalog entry in <[data.nasa.gov](https://data.nasa.gov)>. In JSON terms, each record is one object with 31 possible top-level key-value pairs, of which 24 are populated at least once across the catalog (in the harvest of 2026-09-27; title, description, maintainer, tags, and so on; the other 7 are empty on every record). Being metadata, the records describe the catalog entries; any actual scientific data or content lives in separate NASA data archives that each record links to, and is never downloaded here. Most catalog entries of data.nasa.gov are datasets.
+The keys of these top-level key-value pairs are what we call metadata fields or just fields. Fields come from the raw JSON in which data.nasa.gov's public API returns each record. The API returns every record with the same metadata form provided by CKAN, a standard open-source catalog software, which data.nasa.gov runs on. The data.nasa.gov website renders each record as a readable page (headline, description text, tag buttons), but the harvest in this project comes from the API, which is why we know the exact name (top-level key) and the exact populated content (the value of that key) of each field of a record, rather than guessing either from webpage text.
 
 An example of a real record can be seen by opening the following link in a browser (ticking off the pretty-print box at the top is advised):<https://data.nasa.gov/api/3/action/package_search?rows=1>. You can see field names that exist in every record, like `id`, `title`, `notes`, `maintainer`, `organization`, `tags`, `resources`, `extras`, etc., as well as the populated contents of each field, which are particular to this record. Several fields hold nested objects and arrays that have fields of their own: `organization` is an object with ~7 inner keys, `tags` is an array where each of its entries has ~4 inner keys, `resources` is an array where each of its entries has ~15 inner keys, and `extras` is a (currently unexplored!) array of extra key-value pairs. Our census counted at the top level, then reached one level deeper only where the design needed it (`tags[].name`, `resources[].format`, `organization.title`). The inner-key counts are approximate because we never censused the nested layers, only the three aforementioned inner keys the design actually reads.
 
@@ -91,7 +91,7 @@ There are two phases to the building of this knowledge graph. Phase 1 turned the
 
 ## Phase 1: how the census decided the design
 
-A data census (nasa_census.py) is what decided this design. This script counted, for every field, how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the knowledge graph:
+A data census (`to_be_reshaped/nasa_census.py`) is what decided this design. This script counted, for every field, how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the knowledge graph:
 
 - If many records share a field's values and those values are worth traversing through, the values become nodes. If a field fails that test but its values still answer some question by filtering or identifying (license, title, dates), the values become properties.
 - If a field's values answer no question anyone would ask the graph (`creator_user_id`, `isopen`), the field is ignored.
@@ -144,7 +144,7 @@ Details: [`instructions/020_clean.md`](instructions/020_clean.md).
 
 Two parts of the work need records to read: learning the schema, and the ground truth that judges extraction. They must never share a record. If the schema were learned from the same records it is later judged on, it would have seen the exam questions before the exam, and its scores would look better than it is. So step 030 keeps them apart:
 
-- the **ground truth candidates pool**: 1,000 records drawn once, on 2026-09-21, in a shuffled order (below); 999 are still in the catalog;
+- the **ground truth candidates pool**: 1,000 records drawn once, on 2026-09-21, in a shuffled order (below); 999 were still in the catalog in the harvest of 2026-09-27;
 - the **induction candidates**: every other record with text (35,376 on 2026-09-28), each maintainer's in a fixed random order.
 
 Both orders are fixed, so taking more records later keeps the ones already taken, and any first *k* is a fair sample.
@@ -155,7 +155,7 @@ Details: [`instructions/030_split.md`](instructions/030_split.md).
 
 ### Schema induction (step 040)
 
-The schema is derived from the catalog rather than written in advance. The data-driven method to induce the schema follows AutoSchemaKG ([arXiv:2505.23628](https://arxiv.org/abs/2505.23628)): take a sample of records (the first 15 induction candidates of each of the 10 largest maintainers, who together hold 91.6% of the catalog's records), extract facts with no schema imposed, give every extracted name a general label, merge the labels that mean one thing, and count how many distinct records produced each candidate. The model also says what kind of thing each record describes (a dataset, a web tool, a document), so the schema always has entity classes for that. Every candidate is kept with its evidence; a cutoff, to be chosen from step 070's scores, decides which enter the schema (today: all of them). Support is counted in distinct records and distinct maintainers, so a pattern backed by one maintainer's house style is visible as such rather than passing as a catalog-wide regularity. What code can check, it checks rather than trusting the model: each extracted fact's source text must really be in its record's text, or the fact isn't counted, and the counts, the patterns' entity classes and each entity class's examples are computed by code.
+The schema is derived from the catalog rather than written in advance. The data-driven method to induce the schema follows AutoSchemaKG ([arXiv:2505.23628](https://arxiv.org/abs/2505.23628)): take a sample of records (the first 15 induction candidates of each of the 10 largest maintainers, who together held 91.6% of the catalog's records in the harvest of 2026-09-27), extract facts with no schema imposed, give every extracted name a general label, merge the labels that mean one thing, and count how many distinct records produced each candidate. The model also says what kind of thing each record describes (a dataset, a web tool, a document), so the schema always has entity classes for that. Every candidate is kept with its evidence; a cutoff, to be chosen from step 070's scores, decides which enter the schema (today the cutoff is 1 record, so every candidate enters except those the model finds too vague to define, and the patterns that use them). Support is counted in distinct records and distinct maintainers, so a pattern backed by one maintainer's house style is visible as such rather than passing as a catalog-wide regularity. What code can check, it checks rather than trusting the model: each extracted fact's source text must really be in its record's text, or the fact isn't counted, and the counts, the patterns' entity classes and each entity class's examples are computed by code.
 
 Details: [`instructions/040_induce_schema.md`](instructions/040_induce_schema.md).
 

@@ -39,12 +39,12 @@ extract = helpers("060_extract")
 
 
 def main(inputs, settings, output):
-    chosen  = extract.pick_records(inputs, settings)                 # code: the finished ground truth records
+    chosen  = extract.pick_records(inputs, settings)                 # code: the finished ground truth records, by default
     schema  = extract.load_schema(inputs)                            # code: 040's schema plus your additions
-    calls   = extract.paid_calls(chosen, schema, settings, output)   # asks before paying; keeps every answer in cache/
+    calls   = extract.paid_calls(chosen, schema, settings, output)   # code: asks before paying; keeps every answer in cache/
     replies = extract.ask_model(chosen, schema, calls, settings)     # LLM: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft)
     rows    = extract.sort_rows(chosen, schema, replies)             # code: checked; kept, or removed with a reason
-    # writes the kept and removed rows, the schema used; the report
+    # writes the kept and removed rows, the schema used, the details; the report
     return extract.results(chosen, schema, replies, rows, calls, settings, output)
 
 

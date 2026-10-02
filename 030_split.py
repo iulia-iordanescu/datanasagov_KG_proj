@@ -35,7 +35,7 @@ split = helpers("030_split")
 
 
 def main(inputs, settings, output):
-    records   = split.load_records(inputs)                            # code: 36,375 cleaned records, by id
+    records   = split.load_records(inputs)                            # code: 020's cleaned records, by id
     pool      = split.ground_truth_candidates(inputs, records)        # code: the 1,000 candidates, in order, tuning or held-out
     induction = split.induction_candidates(records, pool, settings)   # code: each maintainer's other records, shuffled
     split.check_disjoint(pool, induction)                             # code: no record in both

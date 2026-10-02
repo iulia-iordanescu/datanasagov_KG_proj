@@ -8,7 +8,7 @@ coined while annotating. 060 uses the names of the schema it was given
 predicates is translated to one of yours, through the table a person checks:
 
     annotations/name_mapping.csv
-    kind,induced_name,your_name,reversed,checked
+    kind,schema_name,your_name,reversed,checked
     entity class,Satellite,Spacecraft,no,yes
     predicate,CARRIES,ABOARD,yes,yes        <- "A CARRIES B" is "B ABOARD A"
     entity class,Gadget,(none),no,yes        <- nothing of yours means this
@@ -41,7 +41,7 @@ from common.schema_io import read_hand_schema
 from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, label_key
 
 PROMPT = load(Path(__file__).parent / "prompts" / "map_names.txt")
-COLUMNS = ["kind", "induced_name", "your_name", "reversed", "checked"]
+COLUMNS = ["kind", "schema_name", "your_name", "reversed", "checked"]
 KINDS = {"entity class": "entity_classes", "predicate": "predicates"}
 NONE = "(none)"
 CHECKED = ("yes", "same name")
@@ -49,11 +49,13 @@ CHECKED = ("yes", "same name")
 
 @dataclass
 class Names:
-    entity: dict = field(default_factory=dict)      # {label_key(induced): your name or None}
-    predicate: dict = field(default_factory=dict)   # {label_key(induced): (your name or None, reversed)}
+    entity: dict = field(default_factory=dict)      # {label_key(schema name): your name or None}
+    predicate: dict = field(default_factory=dict)   # {label_key(schema name): (your name or None, reversed)}
     reachable: dict = field(default_factory=dict)   # {"entity class": {label_key(yours)}, "predicate": {...}}
     yours: dict = field(default_factory=dict)       # {"entity class": {name: definition}, "predicate": {...}}
     rows_used: int = 0
+    to_none: dict = field(default_factory=dict)     # {kind: [060's names whose row says (none)]}
+    untranslated: dict = field(default_factory=dict)  # {kind: [your names no row translates to]}
     reversed_used: int = 0
     calls: int = 0
 
@@ -78,17 +80,17 @@ def _read(path: Path) -> list:
         missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
         if missing:
             raise ValueError(f"{path.name} lacks the column(s) {', '.join(missing)}")
-        return [{c: (r.get(c) or "").strip() for c in COLUMNS} for r in reader if (r.get("induced_name") or "").strip()]
+        return [{c: (r.get(c) or "").strip() for c in COLUMNS} for r in reader if (r.get("schema_name") or "").strip()]
 
 
 def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
     """Rows proposed by the model for (kind, name) pairs, and notes."""
     definitions = {("entity class", e["name"]): e.get("definition", "") for e in schema_used["entity_classes"]}
     definitions.update({("predicate", e["name"]): e.get("definition", "") for e in schema_used["predicates"]})
-    induced = [{"kind": k, "name": n, "definition": definitions.get((k, n), "")} for k, n in missing]
+    asked = [{"kind": k, "name": n, "definition": definitions.get((k, n), "")} for k, n in missing]
     prompt = fill(PROMPT, yours=json.dumps({k: [{"name": n, "definition": d} for n, d in v.items()]
                                             for k, v in yours.items()}, ensure_ascii=False, indent=0),
-                  induced=json.dumps(induced, ensure_ascii=False, indent=0))
+                  schema=json.dumps(asked, ensure_ascii=False, indent=0))
     cache = Cache(calls.cache_dir, "map_names")
     k = key(prompt)
     reply = cache.get(k)
@@ -102,8 +104,8 @@ def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
         cache.put(k, reply)
     answers = {}
     for item in reply.get("mapping", []) if isinstance(reply, dict) else []:
-        if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("induced"), str):
-            answers[(item["kind"], label_key(item["induced"]))] = item
+        if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("schema"), str):
+            answers[(item["kind"], label_key(item["schema"]))] = item
     by_key = {k: {label_key(n): n for n in v} for k, v in yours.items()}
     rows, strays = [], []
     for kind, name in missing:
@@ -112,7 +114,7 @@ def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
         your_name = by_key[kind].get(label_key(mine)) if mine else None
         if mine and your_name is None:
             strays.append(f"{name} → {mine}")
-        rows.append({"kind": kind, "induced_name": name, "your_name": your_name or NONE,
+        rows.append({"kind": kind, "schema_name": name, "your_name": your_name or NONE,
                      "reversed": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
     notes = [f"The model proposed {len(strays)} name(s) that aren't yours, written as (none): {named(strays)}."] \
@@ -124,8 +126,8 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     path = Path(inputs["name_mapping"])
     names = Names(yours=your_vocabulary(inputs["hand_schema"], scored.ground_truth))
     rows = _read(path)
-    have = {(r["kind"], label_key(r["induced_name"])): r for r in rows}
-    bad_kind = [r["induced_name"] for r in rows if r["kind"] not in KINDS]
+    have = {(r["kind"], label_key(r["schema_name"])): r for r in rows}
+    bad_kind = [r["schema_name"] for r in rows if r["kind"] not in KINDS]
     if bad_kind:
         raise SystemExit(f"{path.name}: kind must be 'entity class' or 'predicate' for: {named(bad_kind)}.")
 
@@ -138,7 +140,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
             continue
         mine = yours_key[kind].get(label_key(name))
         if mine:
-            same.append({"kind": kind, "induced_name": name, "your_name": mine, "reversed": "no",
+            same.append({"kind": kind, "schema_name": name, "your_name": mine, "reversed": "no",
                          "checked": "same name"})
         else:
             missing.append((kind, name))
@@ -179,4 +181,15 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         if mine:
             names.reachable[kind].add(label_key(mine))
     names.rows_used = len(needed)
+    # Your names grow as you annotate: a row checked as (none) may since have
+    # gained a counterpart. Both lists go in the report, so such a row can be
+    # spotted and fixed (rows are never changed by the step).
+    def translates_to_none(kind: str, name: str) -> bool:
+        if kind == "entity class":
+            return names.entity.get(label_key(name), "") is None
+        return names.predicate.get(label_key(name), ("", False))[0] is None
+
+    for kind in KINDS:
+        names.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))
+        names.untranslated[kind] = sorted(n for n in names.yours[kind] if label_key(n) not in names.reachable[kind])
     return names

@@ -90,11 +90,6 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
 # case ignored), so "physical quantity" is PhysicalQuantity and has_version
 # is HAS_VERSION. The schema is a dict as common/schema_io.py reads it.
 
-SCHEMA_FLAGS = ("subject_class_not_in_schema", "object_class_not_in_schema",
-                "predicate_not_in_schema", "pattern_not_in_schema")
-DESCRIBES_ERRORS = ("describes_undecided", "describes_subject_not_id")
-DESCRIBES_FLAGS = ("describes_class_not_in_schema",)
-
 
 class SchemaNames:
     """A schema's names as they are compared (see above)."""

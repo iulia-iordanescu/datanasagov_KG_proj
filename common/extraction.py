@@ -52,7 +52,7 @@ from common.validate import SchemaNames, check_against_schema, check_describes, 
 PROMPTS = Path(__file__).parent / "prompts"
 RULES = load(PROMPTS / "extraction_rules.txt")
 REPLY = load(PROMPTS / "extraction_reply.txt")
-BEGIN_LINE, END_LINE = "----- BEGIN RECORD -----", "----- END RECORD -----"
+END_LINE = "----- END RECORD -----"
 ROW_KEYS = ("subject", "subject_class", "predicate", "object", "object_class", "source_text")
 
 

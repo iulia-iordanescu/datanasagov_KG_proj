@@ -38,15 +38,18 @@ Problems, each listed, none silently resolved:
     which is right (both are kept out of gt.records until fixed);
   - a record whose rows disagree on all_facts_extracted (some 1, some 0);
   - a file missing one of the columns above.
+050, 060 and 070 list them in their report's warnings (and before paying);
+the annotation tool shows them on its page.
 
 Shared by the steps that read ground truth (050, to know which records are
 done and to check the files; 060, which records are finished; 070, to score
-against it) and by the annotation
-tool (annotate.py), which writes the files.
+against it) and by the annotation tool (annotate.py), which writes the
+files.
 """
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -55,6 +58,20 @@ from common.step import ANNOTATIONS_DIR
 
 GROUND_TRUTH_DIR = ANNOTATIONS_DIR / "ground_truth"
 PATTERN = "batch_*.csv"
+#: The files' names, by batch number: the ground truth's batch_<NNN>.csv, and
+#: step 050's draft batches, drafted_triples_batch<N>.csv, which the
+#: annotation tool copies to the ground truth file of the same number.
+NUMBERED = re.compile(r"batch_(\d{3,})\.csv")
+DRAFT_PATTERN = "drafted_triples_batch*.csv"
+DRAFT_NUMBERED = re.compile(r"drafted_triples_batch(\d+)\.csv")
+
+
+def file_name(n: int) -> str:
+    return f"batch_{n:03d}.csv"
+
+
+def draft_name(n: int) -> str:
+    return f"drafted_triples_batch{n}.csv"
 
 #: The columns every ground truth file has, in this order.
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class",
@@ -106,7 +123,7 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
 
 
 # --------------------------------------------------------------------------
-# checking the rows against the records' texts (050 on every run; 070)
+# checking the rows against the records' texts (050, on every run)
 # --------------------------------------------------------------------------
 
 #: What check_rows reports: things a person must fix, i.e. typos, never

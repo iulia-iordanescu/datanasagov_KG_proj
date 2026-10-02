@@ -31,7 +31,7 @@ In `outputs/intermediate_results/040_induce_schema/`:
 | `the_schema.json` | The schema: entity classes, predicates and patterns, each with its evidence; and every schema entry deferred, with why. |
 | `induction_evidence.json` | Everything the schema was built from: each text's `describes_class`, its verified triple instances and the ones left out as unverified (with why), every component instance's label, the labeling batches, every merge and spelling fold, all counts (including schema entries not in the schema), the definitions, the model calls made, and the comparison with the hand-built schema. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
-| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers. Written when a run finishes. |
+| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
 `the_schema.json`, shortened:
 
@@ -44,7 +44,7 @@ In `outputs/intermediate_results/040_induce_schema/`:
                  "texts": ["…"], "_origin": ["…"]}, …],
  "patterns": [{"pattern": ["Instrument", "ABOARD", "Spacecraft"], "support": 19,
                "maintainers": ["…"], "texts": ["…"], "_origin": ["…"]}, …],
- "deferred": [{"kind": "entity_classes", "candidate": "Thing", "support": 40, "reason": "too vague: …"}, …],
+ "deferred": [{"kind": "entity_classes", "name": "Thing", "support": 40, "reason": "too vague: …"}, …],
  "made": {"run_id": "040_induce_schema_…", "model": "…", "settings": {…}, "texts": 150,
           "maintainers": ["…"]}}
 ```
@@ -98,7 +98,7 @@ Seven stages, in `040_induce_schema.py`'s `main()`; stages 2, 3, 4 and 6 ask the
    "In the text" ignores case, spacing, quote marks, dash styles and a leading "the"/"a"/"an" (`common/text_match.py`). A triple instance two pieces of one text both state counts once; an item that isn't a triple instance is dropped and counted.
 3. **Label every component instance, with a running vocabulary** (`label.py`, `label_component_instances`). A component instance in a subject or object slot gets an entity class label ("MODIS" → `Instrument`); one in a predicate slot gets a predicate label ("is aboard" → `ABOARD`). Each is judged by the shortest triple instance it appears in. A text's title isn't sent: its label is its `describes_class` from stage 2, and those labels start the entity vocabulary (most common first), so other component instances reuse them. The component instances go to the model in batches of 80, most common first, and every batch is shown the labels chosen so far, with the instruction to reuse one whenever it fits and coin a new one only when none does. So one idea doesn't end up under several labels because its component instances were in different batches. One left unlabeled is asked once more; if still unlabeled, it's listed and counts toward no schema entry.
 4. **Merge synonymous labels** (`merge.py`, `merge_labels`). A few synonyms can still slip through stage 3, so the finished list of labels goes to the model in one call per kind (entity class labels, predicate labels), each label with the component instances that most often got it. Every label is seen beside every other. The model lists only the merges it finds (`Sensor` → `Instrument`); predicates pointing in opposite directions are never merged. Code checks the reply: a merge must go into a label that was sent; labels that weren't sent are ignored; a label merged twice keeps the first merge; chains are followed to their end. Every merge is listed in the report.
-5. **Count the evidence** (`count.py`, `count_support`). Each verified triple instance becomes, through the labels of its component instances, an entity class for its subject and its object, a predicate, and, if all three are labeled, a pattern. Each text's title also counts once toward its label, as an entity class, whether or not it is in a triple instance. For every schema entry: its support, which texts, and which maintainers. Labels that differ only in case, spacing or punctuation are folded into one first (digits are kept: `Level2` and `Level3` stay apart); every fold is listed.
+5. **Count the evidence** (`count.py`, `count_support`). Each verified triple instance becomes, through the labels of its component instances, an entity class for its subject and its object, a predicate, and, if all three are labeled, a pattern. Each text's title also counts once toward its label, as an entity class, whether or not it is in a triple instance. For every schema entry: its support, which texts, and which maintainers. Labels that differ only in case, spacing or punctuation are folded into one first (digits are kept: `Level2` and `Level3` stay apart); every fold is listed in `induction_evidence.json` (the report shows the first 20).
 6. **Write definitions** (`define.py`, `write_definitions`). Every entity class and predicate whose support reaches `min_support` goes to the model, 40 at a time, for one defining sentence each, or a reason if it's too vague to tell anything apart ("Thing"). This stage only writes words; it merges and chooses nothing.
 7. **Build the schema** (`check.py`, `check_schema`). The schema is built from stage 5's counts, never from the model's replies: an entity class or predicate is in it if its support reaches `min_support` and it isn't too vague; a pattern is in it if its support reaches `min_support` and its two entity classes and its predicate are in it. Every other schema entry is deferred, with its reason. A schema entry missing its definition stays in, marked, and is listed.
 
@@ -142,7 +142,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N text pieces failed extraction* | Those model calls failed (after the model client's own retries); their triple instances are missing. | Run the step again: only those are asked again, and every answer already paid for is reused. |
 | *N texts gave no verified triple instance* | The model found none, or none it listed could be verified in the text. | Look at the texts and their `unverified` list in the evidence file; usually very short records. |
 | *N component instances were left unlabeled even after a second try* | The model skipped them twice. They count toward no schema entry. | Nothing, if few. Listed in `induction_evidence.json` under `unlabeled`. |
-| *The merge reply had items code ignored* | The model proposed a merge into something that isn't a label, or named labels it wasn't sent. | Nothing: they were ignored. Listed under `merge_issues`. |
+| *The merge reply had items code ignored* | The model proposed a merge into something that isn't a label, named labels it wasn't sent, or merged a label twice (the first merge is kept). | Nothing: they were ignored. Listed in `induction_evidence.json` under `merge_issues`. |
 | *N schema entries have no definition* | The model didn't define them. They stay in the schema, marked. | Delete `cache/define.json` and rerun to ask again. |
 | *The definition replies named N schema entries that weren't sent* | Ignored. | Nothing. Listed under `unknown_schema_entries`. |
 
@@ -152,7 +152,9 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *… labels are more than one call takes* | Over 800 labels of one kind: too many to merge in one call. | See Known limits. |
 | *missing input files … (run 020_clean or 030_split first, or pass --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
-| *… must be at least N* | A setting is out of range (`max_chars` under 1,000). | Fix the setting. |
+| *… must be at least N* | A setting is out of range: `induction_maintainers`, `texts_per_maintainer`, `min_support` or `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
+| *induction candidate … is not in 020's records; splits.json and records.jsonl are out of step* | 020 was rerun on a different harvest after 030 wrote `splits.json`. | Delete 030's `splits.json`, then run `py 030_split.py` (it writes the file only once). |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
@@ -164,7 +166,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 ## Human work
 
-**Review the merges** listed in the report (and every spelling fold). A wrong merge, two different ideas made one, is the one mistake code can't catch: it just looks like a single entity class with high support.
+**Review the merges** listed in the report (and the spelling folds, all in `induction_evidence.json`). A wrong merge, two different ideas made one, is the one mistake code can't catch: it just looks like a single entity class with high support.
 
 ## Known limits
 

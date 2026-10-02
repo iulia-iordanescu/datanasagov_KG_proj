@@ -24,7 +24,7 @@ component instances that most often got them.
 Before counting, labels that differ only in case, spacing or punctuation
 ("Space craft", "Spacecraft") are folded into one, the most frequent
 spelling. Digits are kept: "Level2" and "Level3" stay apart. Every fold is
-listed in the report.
+listed in induction_evidence.json (the report shows the first 20).
 
 Each text's title also counts once toward its label (the describes_class
 of stage 2), as an entity class, whether or not the title is in a triple

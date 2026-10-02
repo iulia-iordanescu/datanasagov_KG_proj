@@ -75,6 +75,7 @@ Two stages, in `010_harvest.py`'s `main()`, both code:
    - Each request waits up to 5 s to connect and up to 120 s for the response's data. On data.nasa.gov a page of 1,000 records took 23–52 s to arrive (2026-09-27).
    - An empty page before the target is reached ends the download early, with a warning.
 2. **Check it's complete** (`check_complete`). Every saved record is counted and its `id` collected: the number saved is compared with the number the run aimed for; ids that appear twice and records with no id are counted; and every batch file must have its request block.
+
 **Then the results** (`results`): the batch files are already on disk; the report gives record counts, batch files downloaded vs. kept, batch files with their request block, the harvest date, and any warnings.
 
 The code: `010_harvest/` holds `moves.py` (the moves, and writing the results), `ckan_client.py` (the API requests) and `batches.py` (the batch files). Shared with other steps: `common/files.py` (saving files).
@@ -121,4 +122,4 @@ None.
 
 - **Paging by position.** CKAN has no snapshot cursor. The fixed sort order stops new and edited records from shifting the pages, but a record deleted during the harvest still shifts every later page back by one, and the record that moves onto an already-fetched page is missed. A full harvest takes about 20–25 minutes (22 min 50 s on 2026-09-27, 37 pages). The catalog does change within hours: it reported 36,387 records at 17:00 on 2026-09-27 and 36,178 four hours later.
 - **`extras` and nested fields are saved but unexplored.** The files keep every field as the API returns it; deciding what to use is left to later steps.
-- **What has run against data.nasa.gov.** The full harvest of 2026-09-27 (36,387 records) was made by an earlier version of this step, in CKAN's default order and with a separate lineage file. The current version, with its fixed sort order, has run only against a stand-in API; one 3-record request confirmed that data.nasa.gov accepts the sort order and returns records oldest first. No harvest has been compared with one made by `nasa_harvest.py`.
+- **What has run against data.nasa.gov.** The full harvest of 2026-09-27 (36,387 records) was made by an earlier version of this step, in CKAN's default order and with a separate lineage file. The current version, with its fixed sort order, has run only against a stand-in API; one 3-record request confirmed that data.nasa.gov accepts the sort order and returns records oldest first. No harvest has been compared with one made by `to_be_reshaped/nasa_harvest.py`.

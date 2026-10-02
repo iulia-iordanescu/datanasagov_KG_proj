@@ -271,11 +271,6 @@ class CleanedNote:
     token_verified: bool = True
 
     @property
-    def is_clean_parse(self) -> bool:
-        """True if the normal, best-quality path was used."""
-        return self.tier == TIER_PARSED
-
-    @property
     def needs_review(self) -> bool:
         """True if the markup defeated the normal path.
 

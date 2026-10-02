@@ -108,19 +108,6 @@ def list_models() -> list:
     return sorted(set(names))
 
 
-def _as_list(v):
-    """Model output shape guard. call_llm_json guarantees the TOP level is an
-    object, but nothing guarantees the type of a field inside it: a model can
-    answer {"triples": {...}} or {"entities": [...]}. Iterating the wrong type
-    raises AttributeError deep in a loop, so every field read from a reply is
-    coerced here and a wrong shape degrades to empty rather than crashing."""
-    return v if isinstance(v, list) else []
-
-
-def _as_dict(v):
-    return v if isinstance(v, dict) else {}
-
-
 class BadReply(ValueError):
     """A reply that arrived but is not usable as the JSON object we asked
     for. Kept separate from a transport error so it retries the PROMPT

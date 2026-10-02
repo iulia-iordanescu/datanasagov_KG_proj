@@ -30,14 +30,14 @@ from __future__ import annotations
 
 import csv
 import json
-import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from common.chunking import full_text
 from common.files import write_csv
-from common.ground_truth import COLUMNS, GROUND_TRUTH_DIR, read_ground_truth
+from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
+                                 draft_name, file_name, read_ground_truth)
 from common.records_io import load_records
 from common.schema_io import read_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -46,8 +46,6 @@ from common.triples_io import ENTRY_SOURCE, is_describes
 from common.validate import SchemaNames, check_against_schema, check_describes, check_triple_instance
 
 DRAFTS_DIR = RESULTS_DIR / "050_annotate"
-DRAFT_NAME = re.compile(r"drafted_triples_batch(\d+)\.csv")
-GT_NAME = re.compile(r"batch_(\d{3})\.csv")
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
@@ -167,10 +165,10 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 
 def list_batches() -> list:
     """Every draft batch and ground truth file, newest draft first."""
-    out, gt_files = [], {int(m.group(1)): p for p in sorted(GROUND_TRUTH_DIR.glob("batch_*.csv"))
-                         if (m := GT_NAME.fullmatch(p.name))}
-    drafts = {int(m.group(1)): p for p in DRAFTS_DIR.glob("drafted_triples_batch*.csv")
-              if (m := DRAFT_NAME.fullmatch(p.name))} if DRAFTS_DIR.exists() else {}
+    out, gt_files = [], {int(m.group(1)): p for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN))
+                         if (m := NUMBERED.fullmatch(p.name))}
+    drafts = {int(m.group(1)): p for p in DRAFTS_DIR.glob(DRAFT_PATTERN)
+              if (m := DRAFT_NUMBERED.fullmatch(p.name))} if DRAFTS_DIR.exists() else {}
     for n in sorted(set(gt_files) | set(drafts), reverse=True):
         gt = gt_files.get(n)
         rows = _read_rows(gt) if gt else []
@@ -184,9 +182,9 @@ def list_batches() -> list:
 
 def open_batch(n: int) -> Path:
     """The ground truth file of batch n, copied from its draft the first time."""
-    gt = GROUND_TRUTH_DIR / f"batch_{n:03d}.csv"
+    gt = GROUND_TRUTH_DIR / file_name(n)
     if not gt.exists():
-        draft = DRAFTS_DIR / f"drafted_triples_batch{n}.csv"
+        draft = DRAFTS_DIR / draft_name(n)
         if not draft.exists():
             raise FileNotFoundError(f"no draft batch {n} and no {gt.name}")
         write_csv(gt, COLUMNS, _read_rows(draft))
@@ -214,7 +212,7 @@ def save_batch(data: Data, n: int, records: list) -> list:
                 written.append(row)
         out.extend(written or [{c: "" for c in COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
-    write_csv(GROUND_TRUTH_DIR / f"batch_{n:03d}.csv", COLUMNS, out)
+    write_csv(GROUND_TRUTH_DIR / file_name(n), COLUMNS, out)
     return problems
 
 

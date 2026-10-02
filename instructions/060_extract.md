@@ -48,10 +48,10 @@ ABOARD            is carried on
                   Instrument -> Spacecraft; Instrument -> Aircraft
 ```
 
-- An entry is its name, then **two or more spaces**, then its definition, on one line.
+- An entry is its name (no spaces in it), then **two or more spaces**, then its definition, on one line. If a name appears twice, the first entry is kept.
 - Under a predicate, an indented line lists its patterns as `Subject -> Object` pairs separated by `;`.
 - Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file).
-- Lines starting with `#`, and any other prose, are ignored.
+- Lines starting with `#` are comments. Any other line is not read: in a schema given with `--schema` it's ignored as prose (like the explanation in the hand-built schema); in the additions file, where it's usually a mistake, it's pointed out before paying.
 
 So `py 060_extract.py --schema annotations/schema_derived_from_manual_annotation.txt` extracts with your hand-built schema.
 
@@ -73,7 +73,7 @@ PART_OF_MISSION   belongs to the mission
 ```
 
 - They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts.
-- An addition whose name the schema already has is left out, and the schema's entry is kept. So is one differing only in capital letters: `dataset` vs `Dataset`.
+- An addition whose name the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked that loosely too (see *name outside the schema* in the terminology), and so is a second addition with the name of an earlier one. Its patterns still apply, to the entry kept.
 - Give each one a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
 - **Adding names seen in ground truth records needs care.** Step 070 scores extraction on those records, so a name added because it came up there flatters the score for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth (tuning part)`. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
@@ -87,10 +87,10 @@ In `outputs/intermediate_results/060_extract/`:
 |---|---|
 | `extracted_triples.csv` | The triple instances kept: for each record extracted, its DESCRIBES row first, then its triple instances. Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
 | `extracted_triples_removed.csv` | Every triple instance removed, with `reason` (below; both, if both apply); `raw` holds what the model returned when it wasn't a triple instance at all. |
-| `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), and the additions left out for a clash (`left_out_additions`). 070 and 080 read this, so they use exactly what 060 used. |
+| `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), and the additions left out for a clash (`left_out_additions`). 070 reads this (and 080 will), so they use exactly what 060 used. |
 | `extracted_triples_details.json` | Each record chosen, with its status (`extracted`, or `failed` with the error), text pieces, rows kept and removed; the records passed over while choosing; and the names outside the schema the model used (see the report). |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
-| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers. Written when a run finishes. |
+| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
 For scoring: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not scored as zero. A record with **only its DESCRIBES row** was extracted and states no fact the schema can express.
 
@@ -170,9 +170,13 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | Message | Meaning | What to do |
 |---|---|---|
 | *N record(s) of the ground truth aren't finished yet … so skipped* | Only finished records can be scored. | Finish them in `py annotate.py`, or ignore. |
+| *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
+| *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 | *N record(s) you listed is/are not in the catalog / without text, so skipped* | With `ids`. | Check for typos. |
 | *extract_from (…) is ignored, because ids names the records.* | Both were given. | Drop one. |
-| *N addition(s) … have a name the schema already has, so the schema's entry is kept* | A clash, ignoring capital letters. | Remove or rename the addition. |
+| *N addition(s) … have a name already there (in the schema, or an earlier addition), so that entry is kept* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
+| *N line(s) of schema_additions.txt aren't read as an entry, a source or patterns …* | The first 5 are listed with their line numbers: usually a name with a space in it, one space before the definition, a pattern line not in the `Subject -> Object; …` form, or a repeated entry (the first is kept; the repeat and the lines under it are listed). Such a line adds nothing. | Fix the line (see *The shape of a schema*). |
 | *N addition(s) have no "source:" line …* | Where the idea came from isn't recorded. | Add a `source:` line under each. |
 | *N schema entries have no definition …* | The model will see only the name. | Add definitions. |
 | *N name(s) used in patterns aren't entity classes or predicates of the schema* | A pattern names something the schema doesn't have (often a typo). | Fix the pattern, or add the name. |
@@ -192,7 +196,8 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *"entity_classes" must be a list …* / *… entry N has no "name"* / *patterns entry N must be …* | A JSON schema that doesn't follow the shape above. | Fix the file (see *The shape of a schema*). |
 | *extract_from must be one of ground_truth, all* | A typo in the setting. | Use `ground_truth` or `all`. |
 | *Nothing to extract. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
-| *… must be at least N* | A setting is out of range (`max_chars` under 1,000). | Fix the setting. |
+| *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 

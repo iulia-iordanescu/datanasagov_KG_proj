@@ -12,17 +12,16 @@ If you've done this before, these are all the commands, run from the repo root. 
 py -3.14 -m venv .myvenv
 .\.myvenv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install requests python-dotenv
-python -m pip freeze | Out-File -Encoding utf8 requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-Then add `.myvenv/` to `.gitignore` (part 2), create the `.env` file (part 6) and run the checks (part 7).
+Then create the `.env` file (part 6) and run the checks (part 7).
 
 ## What the repo needs
 
 | Need | Detail |
 |---|---|
-| Python | **3.14**, the newest stable release. It's already installed on this machine |
+| Python | **3.14** (part 1 checks for it) |
 | Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `common/llm.py` to read your Ask Sage key from `.env`. Everything else comes with Python |
 | Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a model need it |
 
@@ -36,7 +35,7 @@ This lists the Python versions on the machine. Look for a line containing `3.14`
 
 If it's missing, download the latest 3.14 installer from [python.org](https://www.python.org/downloads/windows/), run it, and keep the **py launcher** option ticked.
 
-Why 3.14: it's the newest stable version, so it gets bug and security fixes the longest. Don't use a 3.15 pre-release (alpha, beta or release candidate).
+Why 3.14: it's the version the pipeline is run and tested with. A later version will probably work, but hasn't been tried; never use a pre-release (alpha, beta or release candidate).
 
 ## Part 2: Create the environment
 
@@ -45,15 +44,7 @@ cd C:\repos\datanasagov_KG_proj
 py -3.14 -m venv .myvenv
 ```
 
-This creates the `.myvenv` folder in the repo root. You only do this once.
-
-Then keep the folder out of Git: open `.gitignore` in the repo root and add this line at the end.
-
-```
-.myvenv/
-```
-
-Without it, Git lists the thousands of files inside `.myvenv` as new files, and they could be committed by accident.
+This creates the `.myvenv` folder in the repo root. You only do this once. `.gitignore` already leaves `.myvenv/` out of Git, so its thousands of files can't be committed by accident.
 
 Don't rename the folder later. A virtual environment records its own location, so a renamed one stops working. To use a different name, delete the folder and create it again.
 
@@ -87,14 +78,14 @@ With the environment active:
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install requests python-dotenv
+python -m pip install -r requirements.txt
 ```
 
-The first line updates pip, Python's package installer. The second installs the two packages the repo needs.
+The first line updates pip, Python's package installer. The second installs the packages listed in `requirements.txt` (in Git), at the exact versions recorded there: `requests`, `python-dotenv`, and the packages they need.
 
-## Part 5: Save the package list to `requirements.txt`
+## Part 5: If you add a package
 
-This records the exact package versions so the environment can be rebuilt the same way later.
+Only when the code starts using a new package: install it (`python -m pip install <name>`), then record the exact versions again, so the environment can be rebuilt the same way on another computer.
 
 PowerShell:
 
@@ -110,11 +101,7 @@ python -m pip freeze > requirements.txt
 
 In Windows PowerShell, use `Out-File -Encoding utf8` rather than `>`. A plain `>` can save the file as UTF-16, which Git treats as a binary file.
 
-Commit `requirements.txt`. From then on, anyone setting up the repo, including you on another machine, replaces the second command in part 4 with:
-
-```powershell
-python -m pip install -r requirements.txt
-```
+Then commit `requirements.txt`.
 
 ## Part 6: Add your Ask Sage credentials
 
@@ -153,13 +140,13 @@ If the path points somewhere else, the environment isn't active. Go back to part
 
 ## Part 8: Run the scripts
 
-The usage examples in the scripts and in `instructions/` use `py`, for example `py audit.py <key>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
+The usage examples in the scripts and in `instructions/` use `py`, for example `py audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
 
 **Pipeline steps in the repo root.** These find their files relative to the repo, so the folder you run them from doesn't matter. Running them from the repo root is simplest:
 
 ```powershell
 py 010_harvest.py --help
-py 010_harvest.py --max_records 2000
+py 010_harvest.py
 py audit.py <record id>
 ```
 

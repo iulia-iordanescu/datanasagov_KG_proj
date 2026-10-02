@@ -2,7 +2,7 @@
 moves.py -- the main moves of 050_annotate, as called by 050_annotate.py.
 
     stage 1  records.py  pick_records        code: which records this batch drafts; notes to show before paying
-    -        (here)      paid_calls          asks before the first model call; the answer cache
+    -        (here)      paid_calls          code: asks before paying; keeps every answer in cache/
     stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
     stage 3  (here)      build_rows          code: DESCRIBES row, duplicates out, every row checked
     stage 4  (here)      check_ground_truth  code: typos in the ground truth files
@@ -16,20 +16,18 @@ from __future__ import annotations
 
 import collections
 from dataclasses import dataclass, field
-from pathlib import Path
 
 import draft
 import records as records_stage
 from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.ground_truth import COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows, fair_words
+from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows, draft_name, fair_words,
+                                 file_name)
 from common.report import cell, counted, model_calls, named
 from common.step import Results
 from common.triples_io import ENTRY_PREDICATE
 
-BATCH_NAME = "drafted_triples_batch{n}.csv"
-DETAILS_NAME = "drafted_triples_batch{n}_details.json"
 #: A draft batch's columns: the ground truth's, then the checks, then where each row came from.
 COLUMNS = GROUND_TRUTH_COLUMNS + ["flags", ORIGIN_COLUMN]
 SHOW = 20                        # rows listed in the report before "…"
@@ -88,7 +86,8 @@ def check_ground_truth(chosen) -> list:
 
 def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     n = chosen.batch
-    batch_path, details_path = output / BATCH_NAME.format(n=n), output / DETAILS_NAME.format(n=n)
+    batch_path = output / draft_name(n)
+    details_path = batch_path.with_name(f"{batch_path.stem}_details.json")
     files, csv_rows = [], []
     for item in chosen.items:
         for r in drafts.rows.get(item["id"], []):
@@ -119,7 +118,6 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"Run the step again: only those are asked again; every answer already paid for is reused.")
     if not csv_rows:
         warnings.append("No record was drafted, so no batch was written.")
-    warnings += [f"Ground truth: {p}" for p in chosen.ground_truth.problems]
     if typos:
         warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix; listed in the "
                         f"report under Your ground truth.")
@@ -132,7 +130,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if csv_rows:
         lines += [f"Batch {n}: `{batch_path.name}`, {len(csv_rows):,} rows for {len(drafts.rows)} record(s), "
                   f"chosen as {chosen.how}. To correct it, run `py annotate.py` and pick batch {n}: it "
-                  f"copies it to `annotations/ground_truth/batch_{n:03d}.csv` and saves your changes there.", ""]
+                  f"copies it to `annotations/ground_truth/{file_name(n)}` and saves your changes there.", ""]
     lines += ["| Pool position | Record | Rows | With an error | With a flag |", "|---:|---|---:|---:|---:|"]
     for item in chosen.items:
         rows = drafts.rows.get(item["id"])

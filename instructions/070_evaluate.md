@@ -45,7 +45,7 @@ In `outputs/intermediate_results/070_evaluate/`:
 | `matches.csv` | For sorting and filtering, e.g. in Excel. One row per fact of the parts shown: record, pool position, part, group, `status` (`exact`, `partial`, `wrong`, `missed`), `entity_classes_right`, `within_reach`, then the fact as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
 | `scores.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were scored and which left out, and why; the settings. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
-| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers. Written when a run finishes. |
+| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
 Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`. The report shows the numbers, the group table and every warning: read it first.
 
@@ -91,7 +91,7 @@ Four stages, in `070_evaluate.py`'s `main()`; stage 2 asks the model (only for n
 2. **Translate names** (`names.py`, `translate_names`), through `annotations/name_mapping.csv`:
 
    ```
-   kind,induced_name,your_name,reversed,checked
+   kind,schema_name,your_name,reversed,checked
    entity class,Satellite,Spacecraft,no,yes
    predicate,CARRIES,ABOARD,yes,yes          "A CARRIES B" is "B ABOARD A"
    entity class,Gadget,(none),no,yes         nothing of yours means this
@@ -159,6 +159,9 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N finished ground truth record(s) weren't extracted by 060's last run* | They can't be scored. | Run `py 060_extract.py`. |
 | *N record(s) are left out because they aren't in the fair part* | A pool record before them isn't finished or extracted, or they're outside the pool. | Finish (or extract) the records before them. |
 | *N scored record(s) have no sampling group* | Not in the pool file. | Normally impossible for pool records. |
+| *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
+| *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 
 **In the report**, under *Warnings*:
 
@@ -175,10 +178,12 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no`, then run again. |
 | *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them (fix `your_name` and `reversed` where wrong, then set `checked` to `yes`), then run again. |
 | *N checked row(s) … name something that isn't one of your names* | A typo in `your_name`. | Use one of your names, or `(none)`. |
+| *name_mapping.csv lacks the column(s) …* | The file's header was changed. | Restore the header: `kind,schema_name,your_name,reversed,checked`. |
 | *kind must be 'entity class' or 'predicate'* | A typo in `kind`. | Fix it. |
 | *Nothing to score yet* | No finished ground truth record that 060 extracted is in the fair part. | Finish records in `py annotate.py`, then run 060. |
 | *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split.py`. |
 | *missing input files … run 060_extract first* | 060 hasn't run. | Run it. |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
@@ -192,6 +197,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 ## Human work
 
 - **Check the translation table** (`annotations/name_mapping.csv`) whenever 070 adds rows. A wrong translation silently turns right facts into wrong ones, or the reverse.
+- **After adding names to your schema**, look at the report's *The translation table*: rows that say `(none)` beside your names that nothing translates to. A row checked as `(none)` before you added a matching name of yours stays `(none)` until you fix it (070 never changes a row).
 - **Read `per_record.md`**, especially the partial matches (could be fooled) and the "extracted but not in the ground truth" facts: some may be real facts you missed while annotating, which means the ground truth undercounts.
 - **Look at the held-out part only at the end**, and commit `annotations/held_out_looks.csv` after each look.
 - **Add schema names only from the tuning part** (or outside knowledge): adding names because of what the held-out records need is tuning on them.

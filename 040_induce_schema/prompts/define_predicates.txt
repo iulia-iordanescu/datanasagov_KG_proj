@@ -1,6 +1,6 @@
 Below are predicates, relations stated in texts from a catalog of NASA
-datasets, each read from subject to object, with example phrases and the
-number of texts it was found in. For each predicate, write ONE sentence
+datasets, each read from subject to object, with the number of texts it was
+found in. For each predicate, write ONE sentence
 defining the relation, saying what the subject and the object are.
 
 If a predicate is too vague to tell anything apart (e.g. "RELATED_TO",

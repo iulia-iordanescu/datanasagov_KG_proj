@@ -20,9 +20,10 @@ What code checks in the reply:
   - a label merged into two different labels keeps the first;
   - chains (Sensor -> Detector, Detector -> Instrument) are followed to
     their end, so each label maps straight to its final label.
-Every merge and every ignored item is listed in the report: a wrong merge
-(two different ideas made one) is the one mistake code can't catch, so it
-must be visible.
+Every merge is listed in the report, and every ignored item in
+induction_evidence.json (the report counts them): a wrong merge (two
+different ideas made one) is the one mistake code can't catch, so it must
+be visible.
 
 If a list is too long for one call (over MAX_LABELS_ONE_CALL), the step
 stops and says so, rather than splitting it into groups where synonyms could

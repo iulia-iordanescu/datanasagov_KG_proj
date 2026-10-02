@@ -43,7 +43,7 @@ class Schema:
     entity_classes: list = field(default_factory=list)
     predicates: list = field(default_factory=list)
     patterns: list = field(default_factory=list)
-    deferred: list = field(default_factory=list)            # {"kind", "candidate", "reason", "support"}
+    deferred: list = field(default_factory=list)            # {"kind", "name", "reason", "support"}
     missing_definitions: list = field(default_factory=list) # {"kind", "name"}
     single_maintainer: list = field(default_factory=list)   # {"kind", "name"}
 
@@ -60,11 +60,11 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
         target = getattr(schema, kind)
         for e in getattr(counts, kind):
             if e["support"] < cut:
-                schema.deferred.append({"kind": kind, "candidate": e["name"], "support": e["support"],
+                schema.deferred.append({"kind": kind, "name": e["name"], "support": e["support"],
                                         "reason": f"support {e['support']} < min_support {cut}"})
                 continue
             if e["name"] in vague:
-                schema.deferred.append({"kind": kind, "candidate": e["name"], "support": e["support"],
+                schema.deferred.append({"kind": kind, "name": e["name"], "support": e["support"],
                                         "reason": f"too vague: {vague[e['name']]}"})
                 continue
             definition = definitions.of.get(kind, {}).get(e["name"])
@@ -94,7 +94,7 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
                                     "maintainers": e["maintainers"], "texts": e["texts"],
                                     ORIGIN_FIELD: _origin(e["texts"])})
             continue
-        schema.deferred.append({"kind": "patterns", "candidate": " ".join(e["pattern"]),
+        schema.deferred.append({"kind": "patterns", "name": " ".join(e["pattern"]),
                                 "support": e["support"], "reason": reason})
     log.info(f"  schema: {len(schema.entity_classes):,} entity classes, {len(schema.predicates):,} "
              f"predicates, {len(schema.patterns):,} patterns; {len(schema.deferred):,} deferred")

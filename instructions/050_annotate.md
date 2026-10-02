@@ -32,7 +32,7 @@ In `outputs/intermediate_results/050_annotate/`:
 | `drafted_triples_batch<N>.csv` | The draft batch: one row per triple instance, grouped by record, each record's DESCRIBES row first. |
 | `drafted_triples_batch<N>_details.json` | How the batch was made: the run id, model and settings; each record's pool position, number of text pieces, status (`drafted` or `failed`, with the error), rows, and every item removed (with why); the records passed over while choosing; whether it's still a fair sample. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
-| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers. Written when a run finishes. |
+| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
 N is one more than the highest batch number used so far, by a draft batch or a ground truth file (`batch_000.csv` is 0, so the first draft batch is 1).
 
@@ -141,6 +141,9 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *You listed N records that can be drafted, but records_per_batch is M* | Only the first M are drafted now. | Raise `records_per_batch`, or run again for the rest. |
 | *start_position (N) is ignored, because ids names the records.* | The two settings can't both apply. | Drop one. |
 | *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 scores only the fair part (the pool's first records, with none skipped), so records after the gap are not scored until the records before them are annotated too. |
+| *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
+| *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 
 **In the report**, under *Warnings*:
 
@@ -148,8 +151,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *N record(s) failed and are not in the batch* | Their model calls failed (after the model client's own retries). | Run the step again: only those are asked again, and every answer already paid for is reused. The next run drafts them first. |
 | *No record was drafted, so no batch was written.* | Every call failed. | Check the connection; run again. |
-| *Ground truth: record … is in batch_… and batch_…* | A record is annotated twice. | Keep it in one file. |
-| *Ground truth: record … all_facts_extracted is 1 on some rows, 0 on others* | Mixed. | Set it the same on every row (the tool's box does). |
 | *N row(s) of the ground truth have something to fix* | Typos, listed under *Your ground truth* with file and line: an id that isn't in the catalog, a subject, predicate or object partly empty, no source text or one not in the record's text, a DESCRIBES row without an entity class or whose subject isn't the record's id. | Fix them with the tool or any editor. |
 
 **The step stops** with:
@@ -159,7 +160,8 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Nothing to draft. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *ids names the file …, which doesn't exist* | A typo in the file name. | Fix the file name. |
 | *missing input files … (run 020_clean or 030_split first, or pass --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
-| *… must be at least N* | A setting is out of range (`max_chars` under 1,000). | Fix the setting. |
+| *… must be at least N* | A setting is out of range: `records_per_batch` or `workers` under 1, `start_position` under 0, or `max_chars` under 1,000. | Fix the setting. |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 

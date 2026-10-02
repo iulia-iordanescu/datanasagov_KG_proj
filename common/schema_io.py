@@ -54,6 +54,9 @@ hand-built one.
     schema["predicates"]      {"ABOARD": "is carried on", …}
     schema["patterns"]        [("Instrument", "ABOARD", "Spacecraft"), …]
     schema["sources"]         {"entity_classes": {name: source}, "predicates": {…}}  (text shape only)
+    schema["unread"]          ["line 12: …"]: lines of a section that are neither an entry, a
+                              source nor patterns, e.g. prose, or a repeated entry (the first
+                              is kept) and the lines under it (text shape only)
     schema_text(schema)       the text shape, for a prompt
 
 read_hand_schema(path) is read_schema for the hand-built text file.
@@ -70,14 +73,14 @@ PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
 
 def _empty() -> dict:
     return {"entity_classes": {}, "predicates": {}, "patterns": [],
-            "sources": {"entity_classes": {}, "predicates": {}}}
+            "sources": {"entity_classes": {}, "predicates": {}}, "unread": []}
 
 
 def _read_text(path) -> dict:
     schema = _empty()
     sections = {"CLASSES": "entity_classes", "PREDICATES": "predicates"}
     section, entry_name = None, None
-    for line in Path(path).read_text(encoding="utf-8-sig").splitlines():
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8-sig").splitlines(), 1):
         head = line.strip()
         if head in sections:
             section, entry_name = sections[head], None
@@ -87,6 +90,10 @@ def _read_text(path) -> dict:
         entry = ENTRY.match(line)
         if entry:
             name, definition = entry.groups()
+            if name in schema[section]:            # a repeat: the first entry is kept
+                schema["unread"].append(f"line {number}: {head} (repeats an earlier entry; the first is kept)")
+                entry_name = None
+                continue
             schema[section][name] = definition.strip()
             entry_name = name
             continue
@@ -98,7 +105,11 @@ def _read_text(path) -> dict:
                 pairs = [PAIR.match(p) for p in head.split(";")]
                 if pairs and all(pairs):
                     schema["patterns"] += [(s, entry_name, o) for s, o in (p.groups() for p in pairs)]
-        # Anything else (the explanation under PREDICATES) is prose, not an entry.
+                    continue
+        # Anything else is not an entry: prose (the hand-built schema's
+        # explanation under PREDICATES), or a mistake, e.g. a name with a
+        # space in it. Kept, so a reader that expects no prose can say so.
+        schema["unread"].append(f"line {number}: {head}")
     return schema
 
 

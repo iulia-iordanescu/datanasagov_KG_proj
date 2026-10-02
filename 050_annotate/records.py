@@ -28,27 +28,23 @@ from __future__ import annotations
 
 import csv
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import fair_sample, fair_words, read_ground_truth
+from common.ground_truth import DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, read_ground_truth
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
 from common.step import check_settings, input_files
 from common.validate import SchemaNames
 
-DRAFT_NAME = re.compile(r"drafted_triples_batch(\d+)\.csv")
-GROUND_TRUTH_NAME = re.compile(r"batch_(\d+)\.csv")
-
 
 @dataclass
 class Chosen:
     items: list = field(default_factory=list)      # {"id", "position", "title", "text", "pieces"}
     batch: int = 1                                 # this batch's number
-    notes: list = field(default_factory=list)      # where the batch differs from what was asked
+    notes: list = field(default_factory=list)      # shown before paying: where the batch differs from what was asked
     records: dict = field(default_factory=dict)    # every record, {id: record}
     ground_truth: object = None                    # common.ground_truth.GroundTruth
     done: set = field(default_factory=set)         # ids in the ground truth
@@ -66,8 +62,8 @@ def _waiting(output: Path) -> tuple:
     """({id: batch number} of every draft batch in the output folder, the
     highest draft batch number)."""
     waiting, highest = {}, 0
-    for path in sorted(Path(output).glob("drafted_triples_batch*.csv")):
-        m = DRAFT_NAME.fullmatch(path.name)
+    for path in sorted(Path(output).glob(DRAFT_PATTERN)):
+        m = DRAFT_NUMBERED.fullmatch(path.name)
         if not m:
             continue
         n = int(m.group(1))
@@ -93,9 +89,10 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
 
     gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.ground_truth = read_ground_truth(gt_files[0].parent)     # run_step made sure there is one
+    chosen.notes += [f"Ground truth: {p}" for p in chosen.ground_truth.problems]
     chosen.done = {r["id"] for r in chosen.ground_truth.rows}
     chosen.waiting, highest = _waiting(output)
-    gt_numbers = [int(m.group(1)) for f in gt_files if (m := GROUND_TRUTH_NAME.fullmatch(f.name))]
+    gt_numbers = [int(m.group(1)) for f in gt_files if (m := NUMBERED.fullmatch(f.name))]
     chosen.batch = max([highest, *gt_numbers]) + 1
 
     per, ids = settings["records_per_batch"], read_ids(settings["ids"])

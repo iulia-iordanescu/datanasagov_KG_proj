@@ -75,7 +75,8 @@ def _same_fact(g: dict, t: dict, level: str) -> bool:
     return _contains(g["subject"], t["subject"]) and _contains(g["object"], t["object"])
 
 
-def _strict(g: dict, t: dict) -> bool:
+def classes_agree(g: dict, t: dict) -> bool:
+    """Both facts name the same entity classes (what "strict" counts)."""
     return label_key(g["subject_class"]) == label_key(t["subject_class"]) and \
         label_key(g["object_class"]) == label_key(t["object_class"])
 
@@ -127,7 +128,7 @@ def compare_record(record: dict, names) -> dict:
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
         counts[f"{level}_matched"] = len(used)
-        counts[f"{level}_strict"] = sum(_strict(gt[gi], ex[ei]) for gi, ei in used)
+        counts[f"{level}_strict"] = sum(classes_agree(gt[gi], ex[ei]) for gi, ei in used)
         counts[f"{level}_matched_within_reach"] = sum(reach[gi] for gi, _ in used)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]

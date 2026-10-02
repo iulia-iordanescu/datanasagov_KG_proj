@@ -40,8 +40,8 @@ annotate = helpers("050_annotate")
 
 
 def main(inputs, settings, output):
-    chosen  = annotate.pick_records(inputs, settings, output)     # code: the next 10 of the pool, skipping done ones
-    calls   = annotate.paid_calls(chosen, settings, output)       # asks before paying; keeps every answer in cache/
+    chosen  = annotate.pick_records(inputs, settings, output)     # code: the next records of the pool, skipping done ones
+    calls   = annotate.paid_calls(chosen, settings, output)       # code: asks before paying; keeps every answer in cache/
     replies = annotate.ask_model(chosen, calls, settings)         # LLM: every fact each record states
     drafts  = annotate.build_rows(chosen, replies)                # code: DESCRIBES row, duplicates out, checks
     typos   = annotate.check_ground_truth(chosen)                 # code: rows of your ground truth to fix

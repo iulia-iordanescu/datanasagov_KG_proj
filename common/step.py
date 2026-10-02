@@ -22,8 +22,10 @@ only has to show the step's main moves:
     7. bookkeeping    _manifest.json: input and output files with hashes (each
                       input file's own hash too, so audit.py can tell which
                       one changed); outputs/reports/<run id>.md for people
-    8. failure        on an error or Ctrl+C, the log gets the full traceback,
-                      the report is marked failed or interrupted, the
+    8. failure        on an error, Ctrl+C or a stop on purpose (e.g. paid
+                      calls declined), the log says why (with the full
+                      traceback on an error), the report is marked failed,
+                      interrupted or stopped, the
                       previous manifest is put back if every file it lists
                       is unchanged, and the step exits with a non-zero code
 

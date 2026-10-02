@@ -114,7 +114,7 @@ The words *domain* and *range* were standardized in RDF Schema, another kind of 
 
 | Term | Meaning |
 |---|---|
-| **schema used** | The schema step 060 extracted with: its schema input (040's by default, or any given with `--schema`) plus the schema additions, merged, written to `schema_used.json`. Steps 070 and 080 read it, so they use exactly what 060 used. |
+| **schema used** | The schema step 060 extracted with: its schema input (040's by default, or any given with `--schema`) plus the schema additions, merged, written to `schema_used.json`. Step 070 reads it (and 080 will), so they use exactly what 060 used. |
 | **kept** / **removed** | What 060 does with each triple instance after checking it. **Kept** ones go to `extracted_triples.csv`, the graph's facts and what 070 scores. **Removed** ones go to `extracted_triples_removed.csv` with the reason: `source_text` (its source text is missing or isn't in the record's text), `name_not_in_schema`, `duplicate` or `malformed`. Removed is not deleted: the file keeps them for a person to look at. |
 | **name outside the schema** | An entity class or predicate the model used though the schema doesn't have it (e.g. `Satellite` when the schema says `Spacecraft`). Such a triple instance is removed; the report lists these names, most used first, as candidates for the schema additions. A name that differs only in case, spaces or punctuation (`Space craft`) is not outside the schema: it's accepted and written in the schema's spelling. |
 
@@ -141,7 +141,7 @@ Step 070 compares the triple instances step 060 extracted with the ground truth,
 | **tuning part** | The ground truth records whose scores may be looked at while improving the pipeline (a prompt, the schema, a setting): pool positions 0–5, and from position 6 on, two of every three records. Step 030 marks each ground truth candidate's part in `splits.json`. |
 | **held-out part** | The ground truth records kept aside: from pool position 6 on, every third record (8, 11, 14, …). Their scores are not looked at while improving the pipeline, only at the end; that is the number reported as how well the pipeline works. Otherwise the pipeline gets tuned to the records it is scored on, and its scores flatter it. |
 
-The two are reported together because each alone can be fooled: an extractor that states just one fact it is sure of has perfect precision and almost no recall; one that states everything it can think of has perfect recall and poor precision. They are counted over all the finished ground truth records, not one at a time.
+The two are reported together because each alone can be fooled: an extractor that states just one fact it is sure of has perfect precision and almost no recall; one that states everything it can think of has perfect recall and poor precision. They are counted over all the scored records of a part (tuning or held-out) together, not one record at a time.
 
 ---
 

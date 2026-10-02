@@ -27,8 +27,6 @@ from common.report import named
 from common.step import check_settings, input_files
 from common.triples_io import is_describes
 
-PARTS = ("tuning", "held-out")
-
 
 @dataclass
 class Scored:
@@ -60,6 +58,7 @@ def pick_records(inputs: dict, settings: dict) -> Scored:
     scored = Scored()
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = scored.ground_truth = read_ground_truth(gt_files[0].parent)        # run_step made sure there is one
+    scored.notes += [f"Ground truth: {p}" for p in gt.problems]
     splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
     pool_rows = splits["ground_truth_candidates"]["records"]
     if any("part" not in r for r in pool_rows):

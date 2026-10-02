@@ -46,6 +46,7 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = read_ground_truth(gt_files[0].parent)                  # run_step made sure there is one
     chosen.ground_truth = {r["id"] for r in gt.rows}
+    chosen.notes += [f"Ground truth: {p}" for p in gt.problems]
     ids = read_ids(settings["ids"])
     skipped = {"not in the catalog": [], "without text": [], "not finished in the ground truth": []}
 

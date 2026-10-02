@@ -3,7 +3,7 @@ moves.py -- the main moves of 040_induce_schema, as called by
 040_induce_schema.py.
 
     stage 1  texts.py    pick_texts                 code: the texts to learn from (030's induction candidates)
-    -        (here)      paid_calls                 asks before the first model call; the answer cache
+    -        (here)      paid_calls                 code: asks before paying; keeps every answer in cache/
     stage 2  extract.py  extract_triple_instances   LLM: the triple instances each text states, checked
     stage 3  label.py    label_component_instances  LLM: a label for each component instance, reusing labels
     stage 4  merge.py    merge_labels               LLM: one call over all labels, merging synonyms
@@ -18,9 +18,6 @@ Every model answer is cached in cache/ inside the step's output folder
 Terms are as defined in docs/terminology.md.
 """
 from __future__ import annotations
-
-from dataclasses import dataclass
-from pathlib import Path
 
 import check
 import compare
