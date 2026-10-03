@@ -370,7 +370,7 @@ function refreshProblems() {
 // of the ground truth vocabulary it means. Only name_in_gtt,
 // swap_subject_and_object and checked can be changed here.
 let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false;
-const toCheck = (r) => r.checked !== "yes" && r.checked !== "same name";
+const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same name");
 
 async function openMapping() {
   await flush();
@@ -378,6 +378,9 @@ async function openMapping() {
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
+  // A stale row (checked against another definition of its name) counts as
+  // unchecked until ticked again; ticking stores the current definition.
+  for (const r of mapping.rows) if (r.stale) r.checked = "no";
   location.hash = "m";
   if (!mapping.found) {
     $("records").replaceChildren();
@@ -446,6 +449,10 @@ function mappingRow(r, i) {
     el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_in_crt_schema),
     el("div", { class: "meta" }, "In the current schema: ",
        r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
+    r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
+       "⚑ This row was checked when the name was defined as: “" +
+       (r.definition_in_crt_schema_when_checked || "(no definition)") +
+       "”. Its meaning may have changed: check the translation again.")) : null,
     el("div", { class: "means" },
       el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
       el("select", { id: `m${i}`, disabled: same, onchange: (e) => update("name_in_gtt", e.target.value) }, options)),
@@ -462,7 +469,7 @@ function mappingRow(r, i) {
       ? el("span", { class: "meta" }, "Same name in both: nothing to check.")
       : el("label", { class: "finished" },
           el("input", { type: "checkbox", checked: r.checked === "yes",
-                        onchange: (e) => update("checked", e.target.checked ? "yes" : "no") }),
+                        onchange: (e) => { r.stale = false; update("checked", e.target.checked ? "yes" : "no"); } }),
           "Checked: this translation is right")));
 }
 

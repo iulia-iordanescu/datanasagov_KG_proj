@@ -8,10 +8,12 @@ coined while annotating. 060 uses the names of the schema it was given
 predicates is translated to one of yours, through the table a person checks:
 
     annotations/name_mapping.csv
-    kind,name_in_crt_schema,name_in_gtt,swap_subject_and_object,checked
-    entity class,Satellite,Spacecraft,no,yes
-    predicate,CARRIES,ABOARD,yes,yes        <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes        <- nothing of yours means this
+    kind,name_in_crt_schema,name_in_gtt,swap_subject_and_object,checked,definition_in_crt_schema_when_checked
+    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.
+    predicate,CARRIES,ABOARD,yes,yes,Has on board.   <- "A CARRIES B" is "B ABOARD A"
+    entity class,Gadget,(none),no,yes,A small device. <- nothing of yours means this
+
+(columns: common/name_mapping.py)
 
 For every name of schema_used.json without a row:
   - a name equal to one of yours (ignoring case, spaces and punctuation)
@@ -22,8 +24,9 @@ The new rows are ADDED at the end of the file; a row already there is never
 changed or deleted. This is one of two narrow exceptions to "no step writes
 into annotations/" (the other is held_out_looks.csv). After adding rows the
 step stops, so the person can look at them; it scores only when every row it
-needs is checked ("yes" or "same name") and names one of your names or
-(none).
+needs is checked ("yes" or "same name"), was checked against the current
+schema's definition of its name (else it is stale: a later schema may mean
+something else by it), and names one of your names or (none).
 """
 from __future__ import annotations
 
@@ -35,7 +38,7 @@ from common import llm
 from common.cache import Cache, key
 from common.files import append_csv
 from common.ground_truth import vocabulary
-from common.name_mapping import CHECKED, COLUMNS, KINDS, NONE, read_mapping
+from common.name_mapping import CHECKED, COLUMNS, KINDS, NONE, crt_definitions, is_stale, read_mapping
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_hand_schema
@@ -99,6 +102,7 @@ def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
         if mine and gtt_name is None:
             strays.append(f"{name} → {mine}")
         rows.append({"kind": kind, "name_in_crt_schema": name, "name_in_gtt": gtt_name or NONE,
+                     "definition_in_crt_schema_when_checked": definitions.get((kind, name), ""),
                      "swap_subject_and_object": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
     notes = [f"The model proposed {len(strays)} name(s) that aren't yours, written as (none): {named(strays)}."] \
@@ -118,6 +122,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     needed = [("entity class", e["name"]) for e in scored.schema_used["entity_classes"]] + \
              [("predicate", e["name"]) for e in scored.schema_used["predicates"]]
     yours_key = {k: {label_key(n): n for n in v} for k, v in names.yours.items()}
+    now = crt_definitions(scored.schema_used)
     same, missing = [], []
     for kind, name in needed:
         if (kind, label_key(name)) in have:
@@ -125,7 +130,8 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         mine = yours_key[kind].get(label_key(name))
         if mine:
             same.append({"kind": kind, "name_in_crt_schema": name, "name_in_gtt": mine, "swap_subject_and_object": "no",
-                         "checked": "same name"})
+                         "checked": "same name",
+                         "definition_in_crt_schema_when_checked": now[kind].get(label_key(name), "")})
         else:
             missing.append((kind, name))
     proposed, notes = [], []
@@ -138,16 +144,22 @@ def translate_names(inputs: dict, scored, calls) -> Names:
                          f"(checked = no). Check those rows (fix name_in_gtt and swap_subject_and_object where wrong, then set "
                          f"checked to yes), then run 070 again. " + " ".join(notes))
 
-    unchecked, unknown = [], []
+    unchecked, stale, unknown = [], [], []
     for kind, name in needed:
         r = have[(kind, label_key(name))]
         if r["checked"].lower() not in CHECKED:
             unchecked.append(name)
+        elif is_stale(r, now):
+            stale.append(name)
         elif r["name_in_gtt"] != NONE and label_key(r["name_in_gtt"]) not in yours_key[kind]:
             unknown.append(f"{name} → {r['name_in_gtt']}")
     if unchecked:
         raise SystemExit(f"{len(unchecked)} row(s) of {path.name} still need checking (set checked to yes once "
                          f"right): {named(unchecked)}. Scoring waits until all are checked.")
+    if stale:
+        raise SystemExit(f"{len(stale)} checked row(s) of {path.name} were checked when the current schema defined "
+                         f"the name differently, so they may no longer be right: {named(stale)}. Check them again "
+                         f"(py annotate.py, Translation table, shows both definitions), then run 070 again.")
     if unknown:
         raise SystemExit(f"{len(unknown)} checked row(s) of {path.name} name something that isn't one of your "
                          f"names (a typo?): {named(unknown)}. Use one of your names, or (none).")

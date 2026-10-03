@@ -55,7 +55,8 @@ from common.chunking import full_text
 from common.files import write_csv
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, vocabulary)
-from common.name_mapping import COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, read_mapping
+from common.name_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
+                                 is_stale, read_mapping)
 from common.records_io import load_records
 from common.schema_io import read_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -263,17 +264,22 @@ def _gtt(data: Data) -> dict:
     return {"entity class": vocab["entity_classes"], "predicate": vocab["predicates"]}
 
 
+def _crt() -> dict | None:
+    """The current schema's definitions (common/name_mapping.crt_definitions),
+    or None if extraction's schema_used.json isn't there."""
+    if not SCHEMA_USED.exists():
+        return None
+    return crt_definitions(json.loads(SCHEMA_USED.read_text(encoding="utf-8")))
+
+
 def mapping_view(data: Data) -> dict:
     """The table as the page shows it: every row, with the current schema's
-    definition, an example triple for a predicate (the first one extraction
+    definition, whether the row is stale (checked against another
+    definition), an example triple for a predicate (the first one extraction
     kept with it), and the ground truth vocabulary to choose from."""
     if not MAPPING_PATH.exists():
         return {"found": False, "rows": [], "gtt": {}}
-    crt = {"entity class": {}, "predicate": {}}
-    if SCHEMA_USED.exists():
-        used = json.loads(SCHEMA_USED.read_text(encoding="utf-8"))
-        for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates")):
-            crt[kind] = {label_key(e["name"]): e.get("definition") or "" for e in used.get(key, [])}
+    crt = _crt()
     examples = {}
     if EXTRACTED.exists():
         with open(EXTRACTED, encoding="utf-8-sig", newline="") as fh:
@@ -282,7 +288,8 @@ def mapping_view(data: Data) -> dict:
                     examples.setdefault(label_key(r.get("predicate")),
                                         {"subject": r.get("subject") or "", "object": r.get("object") or ""})
     gtt = _gtt(data)
-    rows = [{**r, "crt_definition": crt.get(r["kind"], {}).get(label_key(r["name_in_crt_schema"])),
+    rows = [{**r, "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_in_crt_schema"])),
+             "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
              "example": examples.get(label_key(r["name_in_crt_schema"])) if r["kind"] == "predicate" else None}
             for r in read_mapping(MAPPING_PATH)]
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
@@ -294,9 +301,13 @@ def mapping_view(data: Data) -> dict:
 def save_mapping(data: Data, sent: list) -> None:
     """Write the person's choices for the rows the page showed. The rows'
     kinds and current-schema names must still be the file's first rows, in
-    order; rows added after them (by step 070) are kept as they are."""
+    order; rows added after them (by step 070) are kept as they are. A row
+    saved as checked stores the current schema's definition of its name
+    (the page sends a stale row as unchecked until the person ticks it)."""
     rows = read_mapping(MAPPING_PATH)
-    if [(r["kind"], r["name_in_crt_schema"]) for r in rows[:len(sent)]] !=             [(r.get("kind"), r.get("name_in_crt_schema")) for r in sent]:
+    crt = _crt()
+    if [(r["kind"], r["name_in_crt_schema"]) for r in rows[:len(sent)]] != \
+            [(r.get("kind"), r.get("name_in_crt_schema")) for r in sent]:
         raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
     gtt = {kind: {label_key(n): n for n in names} for kind, names in _gtt(data).items()}
     for row, s in zip(rows, sent):
@@ -311,6 +322,9 @@ def save_mapping(data: Data, sent: list) -> None:
         row["swap_subject_and_object"] = "yes" if swap else "no"
         checked = str(s.get("checked") or "no")
         row["checked"] = checked if checked in ("yes", "no", "same name") else "no"
+        if row["checked"] in CHECKED and crt is not None:
+            row["definition_in_crt_schema_when_checked"] = \
+                crt.get(row["kind"], {}).get(label_key(row["name_in_crt_schema"]), "")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
 
 
