@@ -421,10 +421,15 @@ function drawMappingSummary() {
 function drawMapping() {
   drawMappingSummary();
   const cards = [];
+  if (mapping.repeats.length)
+    cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
+      "✖ One name, one row: " + mapping.repeats.map(r => `${r.kind} ${r.name} (lines ${r.lines.join(", ")})`).join("; ") +
+      " has more than one. Keep the right row (usually the one whose stored definition matches the current " +
+      "schema's) and delete the others below. Evaluation won't score until then."))));
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       "Extraction's schema_used.json wasn't found, so the current schema's definitions can't be shown.")));
-  mapping.rows.forEach((r, i) => { if (!onlyToCheck || toCheck(r)) cards.push(mappingRow(r, i)); });
+  mapping.rows.forEach((r, i) => { if (!onlyToCheck || toCheck(r) || r.repeated) cards.push(mappingRow(r, i)); });
   if (cards.length === 0)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       mapping.rows.length ? "Every row is checked." : "The table has no rows yet: evaluation adds them.")));
@@ -455,8 +460,12 @@ function mappingRow(r, i) {
   const same = r.checked === "same name";
   const update = (key, value) => { r[key] = value; mapChanged(); drawMapping(); };
 
-  return el("section", { class: "card maprow" + (toCheck(r) ? " todo" : "") },
-    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_from_past_or_crt_schema),
+  return el("section", { class: "card maprow" + (toCheck(r) || r.repeated ? " todo" : "") },
+    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_from_past_or_crt_schema,
+       r.repeated ? el("span", { class: "meta" }, `  (line ${r._line}, repeated) `) : null,
+       r.repeated ? el("button", { onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
+    r.repeated ? el("div", { class: "meta" }, "Stored definition (when this row was checked): ",
+       r.definition_from_past_or_crt_schema || el("i", {}, "none")) : null,
     el("div", { class: "meta" }, "In the current schema: ",
        r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
     r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
@@ -481,6 +490,16 @@ function mappingRow(r, i) {
           el("input", { type: "checkbox", checked: r.checked === "yes",
                         onchange: (e) => { r.stale = false; update("checked", e.target.checked ? "yes" : "no"); } }),
           "Checked: this translation is right")));
+}
+
+async function deleteMappingRow(r) {
+  if (!confirm(`Delete line ${r._line} (${r.kind} ${r.name_from_past_or_crt_schema} → ${r.name_in_gtt})?`)) return;
+  await flush();
+  try {
+    await api("/api/mapping/delete", { line: r._line, kind: r.kind, name: r.name_from_past_or_crt_schema });
+    await openMapping();
+    status(`Deleted line ${r._line} of ${mapping.file}`, "saved");
+  } catch (e) { fail(e); }
 }
 
 function mapChanged() {

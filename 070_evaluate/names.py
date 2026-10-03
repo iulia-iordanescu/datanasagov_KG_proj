@@ -38,7 +38,7 @@ from common import llm
 from common.cache import Cache, key
 from common.files import append_csv
 from common.ground_truth import vocabulary
-from common.name_mapping import CHECKED, COLUMNS, KINDS, NONE, crt_definitions, is_stale, read_mapping
+from common.name_mapping import CHECKED, COLUMNS, KINDS, NONE, crt_definitions, is_stale, read_mapping, repeats
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_hand_schema
@@ -114,6 +114,13 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     path = Path(inputs["name_mapping"])
     names = Names(yours=your_vocabulary(inputs["hand_schema"], scored.ground_truth))
     rows = read_mapping(path)
+    repeated = repeats(rows)
+    if repeated:
+        raise SystemExit(f"{path.name} has {len(repeated)} name(s) with more than one row: "
+                         + named([f"{r['kind']} {r['name']} (lines {', '.join(map(str, r['lines']))})"
+                                  for r in repeated], 5, "; ")
+                         + ". Keep one row per name (py annotate.py, Translation table, can delete the extra "
+                           "ones), then run 070 again.")
     have = {(r["kind"], label_key(r["name_from_past_or_crt_schema"])): r for r in rows}
     bad_kind = [r["name_from_past_or_crt_schema"] for r in rows if r["kind"] not in KINDS]
     if bad_kind:
@@ -124,9 +131,11 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     yours_key = {k: {label_key(n): n for n in v} for k, v in names.yours.items()}
     now = crt_definitions(scored.schema_used)
     same, missing = [], []
+    handled = set(have)                     # a name spelled two ways in the schema gets one row
     for kind, name in needed:
-        if (kind, label_key(name)) in have:
+        if (kind, label_key(name)) in handled:
             continue
+        handled.add((kind, label_key(name)))
         mine = yours_key[kind].get(label_key(name))
         if mine:
             same.append({"kind": kind, "name_from_past_or_crt_schema": name, "name_in_gtt": mine, "swap_subject_and_object": "no",

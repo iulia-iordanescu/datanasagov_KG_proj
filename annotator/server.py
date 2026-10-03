@@ -29,8 +29,9 @@ annotations/name_mapping.csv.
 The translation table (step 070's, common/name_mapping.py) is shown row by
 row, each name with its definition, and a person's choices are saved to it
 at once: name_in_gtt (a name of the ground truth vocabulary, or (none)),
-swap_subject_and_object (predicates only) and checked. Rows can't be added,
-removed or reordered here, and a save keeps any rows step 070 added since
+swap_subject_and_object (predicates only) and checked. Rows can't be added
+or reordered here, and the only rows that can be removed are a name's
+repeated ones (common/name_mapping.repeats), and a save keeps any rows step 070 added since
 the page was loaded; if the rows the page shows have changed in the file, the
 save is refused, so nothing is overwritten.
 
@@ -56,7 +57,7 @@ from common.files import write_csv
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, vocabulary)
 from common.name_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
-                                 is_stale, read_mapping)
+                                 is_stale, read_mapping, repeats)
 from common.records_io import load_records
 from common.schema_io import read_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -291,12 +292,15 @@ def mapping_view(data: Data) -> dict:
                     examples.setdefault(label_key(r.get("predicate")),
                                         {"subject": r.get("subject") or "", "object": r.get("object") or ""})
     gtt = _gtt(data)
-    rows = [{**r, "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
+    table = read_mapping(MAPPING_PATH)
+    repeated = repeats(table)
+    extra = {line for r in repeated for line in r["lines"]}
+    rows = [{**r, "repeated": r["_line"] in extra, "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
              "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
              "example": examples.get(label_key(r["name_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
-            for r in read_mapping(MAPPING_PATH)]
+            for r in table]
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
-            "rows": rows, "none": NONE,
+            "rows": rows, "none": NONE, "repeats": repeated,
             "gtt": {kind: [{"name": n, "definition": d} for n, d in sorted(names.items())]
                     for kind, names in gtt.items()}}
 
@@ -329,6 +333,18 @@ def save_mapping(data: Data, sent: list) -> None:
             row["definition_from_past_or_crt_schema"] = \
                 crt.get(row["kind"], {}).get(label_key(row["name_from_past_or_crt_schema"]), "")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
+
+
+def delete_mapping_row(line: int, kind: str, name: str) -> None:
+    """Delete one row, only if it is one of a name's repeated rows and is
+    still at that line (so nothing else can be deleted, even by mistake)."""
+    rows = read_mapping(MAPPING_PATH)
+    target = next((r for r in rows if r["_line"] == line), None)
+    if target is None or (target["kind"], target["name_from_past_or_crt_schema"]) != (kind, name):
+        raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
+    if not any(line in r["lines"] for r in repeats(rows)):
+        raise ValueError("only a name's extra rows can be deleted here")
+    write_csv(MAPPING_PATH, MAPPING_COLUMNS, [r for r in rows if r is not target])
 
 
 # --------------------------------------------------------------------------
@@ -380,6 +396,9 @@ def make_handler(data: Data):
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
                     self._json({"saved": True})
+                elif url.path == "/api/mapping/delete":
+                    delete_mapping_row(int(body["line"]), body["kind"], body["name"])
+                    self._json({"deleted": True})
                 else:
                     self._json({"error": "not found"}, 404)
             except Exception as e:                          # noqa: BLE001 -- shown on the page

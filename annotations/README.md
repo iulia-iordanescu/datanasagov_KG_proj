@@ -41,7 +41,7 @@ Press **Translation table** at the top of the page. It shows `name_mapping.csv` 
 - **Checked**: tick it once the translation is right; that also stores the current schema's definition of the name in the row. A row whose two names are the same says so and needs nothing.
 - **⚑ stale**: a row checked when the current schema's name had another definition. It shows that old definition, counts as unchecked, and needs ticking again once you've confirmed (or fixed) the translation.
 
-Every change is saved to `name_mapping.csv` at once. The tool can't add, remove or reorder rows (step 070 adds them). If step 070 adds rows while the page is open, a save keeps them; if the rows on the page no longer match the file, the save is refused and the page asks you to reload.
+Every change is saved to `name_mapping.csv` at once. The tool can't add or reorder rows (step 070 adds them), and the only rows it can delete are repeats: one name, one row, so if a hand edit left two rows for the same name, the page says so and shows a **Delete this row** button on each (keep the right one, usually the one whose stored definition matches the current schema's). If step 070 adds rows while the page is open, a save keeps them; if the rows on the page no longer match the file, the save is refused and the page asks you to reload.
 
 **Without the tool**, the same result by hand: copy the draft batch into `ground_truth/` under its new name, correct it in any editor (the `flags` column can stay; it's ignored), set `all_facts_extracted` to `1` on every row of each finished record, and commit. Never correct the file in `outputs/`: it can be deleted and rebuilt, and your corrections would go with it.
 

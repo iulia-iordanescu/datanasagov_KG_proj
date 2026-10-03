@@ -30,6 +30,13 @@ definition differs from the current schema's (spacing aside) is STALE:
 step 070 won't score until a person checks it again, and the annotation tool
 shows both definitions. Checking it again stores the current definition.
 
+One name, one row: two rows with the same kind and the same
+name_from_past_or_crt_schema (compared like every name, ignoring case and
+punctuation) would leave it open which translation counts. Step 070 never
+writes such a pair; a hand edit can. repeats() finds them: step 070 stops
+until they're gone, and the annotation tool lets a person delete the extra
+ones (the only rows it can delete).
+
 Step 070 adds rows and reads them; the annotation tool shows them and saves
 a person's changes. Both use the definitions here.
 """
@@ -63,13 +70,28 @@ def is_stale(row: dict, definitions: dict) -> bool:
     return " ".join(row["definition_from_past_or_crt_schema"].split()) != " ".join(now.split())
 
 
+def repeats(rows: list) -> list:
+    """Names with more than one row: [{"kind", "name", "lines": [file line
+    numbers]}], in the order first met."""
+    found = {}
+    for r in rows:
+        key = (r["kind"], label_key(r["name_from_past_or_crt_schema"]))
+        found.setdefault(key, {"kind": r["kind"], "name": r["name_from_past_or_crt_schema"], "lines": []})
+        found[key]["lines"].append(r["_line"])
+    return [v for v in found.values() if len(v["lines"]) > 1]
+
+
 def read_mapping(path: Path = MAPPING_PATH) -> list:
-    """Every row with a name_from_past_or_crt_schema, in the file's order, each value
-    trimmed. Stops if a column is missing."""
+    """Every row with a name_from_past_or_crt_schema, in the file's order, each
+    value trimmed, plus "_line": its line in the file (the header is line 1;
+    never written back). Stops if a column is missing."""
     with open(path, encoding="utf-8-sig", newline="") as fh:
         reader = csv.DictReader(fh)
         missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
         if missing:
             raise ValueError(f"{Path(path).name} lacks the column(s) {', '.join(missing)}")
-        return [{c: (r.get(c) or "").strip() for c in COLUMNS} for r in reader
-                if (r.get("name_from_past_or_crt_schema") or "").strip()]
+        rows = []
+        for r in reader:
+            if (r.get("name_from_past_or_crt_schema") or "").strip():
+                rows.append({**{c: (r.get(c) or "").strip() for c in COLUMNS}, "_line": reader.line_num})
+        return rows
