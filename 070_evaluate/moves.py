@@ -215,12 +215,25 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         lines += ["The held-out part's numbers are not shown: they are kept for the end, so the pipeline isn't "
                   "tuned on them. `--score_held_out true` shows them (and logs the look).", ""]
     lines += ["### The translation table", "",
-              "Rows of `annotations/name_mapping.csv` that say `(none)`, and your names that no row translates to. "
-              "Your names grow as you annotate: if a `(none)` row should now point to one of yours, fix that row.", "",
-              "| Kind | 060's names translated to (none) | Your names nothing translates to |", "|---|---|---|"]
+              "Rows of `annotations/name_mapping.csv` that say `(none)`, and names of the ground truth vocabulary "
+              "that no row translates to. The ground truth vocabulary grows as you annotate: if a `(none)` row "
+              "should now point to one of its names, fix that row.", "",
+              "| Kind | Current schema's names translated to (none) | Ground truth vocabulary's names nothing "
+              "translates to |", "|---|---|---|"]
     lines += [f"| {kind} | {cell(named(names.to_none[kind], 20)) or '–'} | {cell(named(names.untranslated[kind], 20)) or '–'} |"
               for kind in ("entity class", "predicate")]
     lines.append("")
+    merged = [(kind, mine, theirs) for kind in ("entity class", "predicate")
+              for mine, theirs in names.merged[kind].items()]
+    if merged:
+        lines += ["Names of the ground truth vocabulary that two or more of the current schema's names translate "
+                  "to: the ground truth doesn't tell those current-schema names apart, so neither can these scores "
+                  "(a mix-up between them costs extraction nothing). If the difference matters, make it in the "
+                  "ground truth.", "",
+                  "| Kind | Name in the ground truth vocabulary | Current schema's names that translate to it |",
+                  "|---|---|---|"]
+        lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
+        lines.append("")
     if scored.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in scored.left_out.items())
                   + f". Not finished yet in the ground truth: {scored.unfinished}.", ""]

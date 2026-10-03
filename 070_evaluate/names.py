@@ -56,6 +56,7 @@ class Names:
     rows_used: int = 0
     to_none: dict = field(default_factory=dict)     # {kind: [060's names whose row says (none)]}
     untranslated: dict = field(default_factory=dict)  # {kind: [your names no row translates to]}
+    merged: dict = field(default_factory=dict)      # {kind: {your name: [060's names translated to it]}}, 2+ only
     reversed_used: int = 0
     calls: int = 0
 
@@ -193,6 +194,20 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         if kind == "entity class":
             return names.entity.get(label_key(name), "") is None
         return names.predicate.get(label_key(name), ("", False))[0] is None
+
+    # Two or more of 060's names translated to one of yours: evaluation can't
+    # tell them apart (a mix-up between them costs nothing), so they're listed.
+    def translated(kind: str, name: str):
+        if kind == "entity class":
+            return names.entity.get(label_key(name))
+        return names.predicate.get(label_key(name), (None, False))[0]
+
+    for kind in KINDS:
+        into = {}
+        for k, n in needed:
+            if k == kind and translated(kind, n):
+                into.setdefault(translated(kind, n), []).append(n)
+        names.merged[kind] = {mine: sorted(theirs) for mine, theirs in sorted(into.items()) if len(theirs) > 1}
 
     for kind in KINDS:
         names.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))

@@ -295,7 +295,8 @@ def mapping_view(data: Data) -> dict:
     table = read_mapping(MAPPING_PATH)
     repeated = repeats(table)
     extra = {line for r in repeated for line in r["lines"]}
-    rows = [{**r, "repeated": r["_line"] in extra, "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
+    rows = [{**r, "repeated": r["_line"] in extra,
+             "in_crt": crt is not None and label_key(r["name_from_past_or_crt_schema"]) in crt.get(r["kind"], {}), "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
              "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
              "example": examples.get(label_key(r["name_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
             for r in table]
