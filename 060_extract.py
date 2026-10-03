@@ -10,7 +10,7 @@ annotations/schema_additions.txt. By default only the finished records of
 the ground truth are extracted from, which is what 070 scores; every record
 once the schema is final. Terms: docs/terminology.md.
 
-Reads:   records.jsonl (020), the_schema.json (040),
+Reads:   records.jsonl (020), splits.json (030), the_schema.json (040),
          annotations/schema_additions.txt, annotations/ground_truth/
 Writes:  extracted_triples.csv, extracted_triples_removed.csv,
          schema_used.json, extracted_triples_details.json
@@ -21,6 +21,7 @@ from common.step import run_step, helpers
 
 INPUTS = {
     "records":      "020_clean/records.jsonl",
+    "splits":       "030_split/splits.json",
     "schema":       "040_induce_schema/the_schema.json",
     "additions":    "./annotations/schema_additions.txt",
     "ground_truth": "./annotations/ground_truth/batch_*.csv",
@@ -40,7 +41,7 @@ extract = helpers("060_extract")
 
 def main(inputs, settings, output):
     chosen  = extract.pick_records(inputs, settings)                 # code: the finished ground truth records, by default
-    schema  = extract.load_schema(inputs)                            # code: 040's schema plus your additions
+    schema  = extract.load_schema(inputs)                            # code: 040's schema plus your additions (none from held-out)
     calls   = extract.paid_calls(chosen, schema, settings, output)   # code: asks before paying; keeps every answer in cache/
     replies = extract.ask_model(chosen, schema, calls, settings)     # LLM: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft)
     rows    = extract.sort_rows(chosen, schema, replies)             # code: checked; kept, or removed with a reason

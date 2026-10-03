@@ -10,7 +10,7 @@ What it reads
     outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv   step 050's draft batches
     annotations/ground_truth/batch_<NNN>.csv                                  the ground truth files
     outputs/intermediate_results/020_clean/records.jsonl                     each record's text
-    outputs/intermediate_results/030_split/splits.json                       each record's pool position
+    outputs/intermediate_results/030_split/splits.json                       each record's pool position and part
     annotations/schema_derived_from_manual_annotation.txt                   the hand-built schema
     annotations/name_mapping.csv                                             the translation table
     outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
@@ -111,10 +111,12 @@ class Data:
 
     def __init__(self):
         self.records = load_records(RECORDS) if RECORDS.exists() else {}
-        self.positions = {}
+        self.positions, self.parts = {}, {}
         if SPLITS.exists():
             splits = json.loads(SPLITS.read_text(encoding="utf-8"))
-            self.positions = {r["id"]: r["position"] for r in splits["ground_truth_candidates"]["records"]}
+            pool = splits["ground_truth_candidates"]["records"]
+            self.positions = {r["id"]: r["position"] for r in pool}
+            self.parts = {r["id"]: r.get("part") for r in pool}            # "tuning" or "held-out"
         self.hand = read_hand_schema(HAND_SCHEMA) if HAND_SCHEMA.exists() else \
             {"entity_classes": {}, "predicates": {}, "patterns": []}
         self.names = SchemaNames(self.hand)
@@ -172,6 +174,7 @@ def record_view(data: Data, rid: str, rows: list, finished: bool) -> dict:
         "id": rid,
         "maintainer": record.get("maintainer"),
         "position": data.positions.get(rid),
+        "part": data.parts.get(rid),
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
@@ -288,9 +291,9 @@ def mapping_view(data: Data) -> dict:
                     examples.setdefault(label_key(r.get("predicate")),
                                         {"subject": r.get("subject") or "", "object": r.get("object") or ""})
     gtt = _gtt(data)
-    rows = [{**r, "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_in_crt_schema"])),
+    rows = [{**r, "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
              "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
-             "example": examples.get(label_key(r["name_in_crt_schema"])) if r["kind"] == "predicate" else None}
+             "example": examples.get(label_key(r["name_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
             for r in read_mapping(MAPPING_PATH)]
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
             "rows": rows, "none": NONE,
@@ -306,8 +309,8 @@ def save_mapping(data: Data, sent: list) -> None:
     (the page sends a stale row as unchecked until the person ticks it)."""
     rows = read_mapping(MAPPING_PATH)
     crt = _crt()
-    if [(r["kind"], r["name_in_crt_schema"]) for r in rows[:len(sent)]] != \
-            [(r.get("kind"), r.get("name_in_crt_schema")) for r in sent]:
+    if [(r["kind"], r["name_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
+            [(r.get("kind"), r.get("name_from_past_or_crt_schema")) for r in sent]:
         raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
     gtt = {kind: {label_key(n): n for n in names} for kind, names in _gtt(data).items()}
     for row, s in zip(rows, sent):
@@ -323,8 +326,8 @@ def save_mapping(data: Data, sent: list) -> None:
         checked = str(s.get("checked") or "no")
         row["checked"] = checked if checked in ("yes", "no", "same name") else "no"
         if row["checked"] in CHECKED and crt is not None:
-            row["definition_in_crt_schema_when_checked"] = \
-                crt.get(row["kind"], {}).get(label_key(row["name_in_crt_schema"]), "")
+            row["definition_from_past_or_crt_schema"] = \
+                crt.get(row["kind"], {}).get(label_key(row["name_from_past_or_crt_schema"]), "")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
 
 

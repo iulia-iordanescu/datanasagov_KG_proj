@@ -15,12 +15,25 @@ isn't read, an addition without a "source:" line, an entry without a
 definition and a pattern name the schema doesn't have become notes shown
 before paying.
 
+An addition learned from the ground truth must come from TUNING records only
+(a name learned from a held-out record would let the schema see the final
+exam). Its source line says so and names the records by pool position, as the
+annotation tool shows them:
+
+    source: ground truth #12, #15
+
+Any source mentioning "ground truth" is checked against splits.json (030):
+an addition naming a held-out record, a position not in the pool, or no
+record at all is left out, with a note shown before paying.
+
 The merged schema is what the model is shown, what every row is checked
 against, and what is written to schema_used.json, so 070 (and 080, once
 built) read exactly the schema this run used.
 """
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,6 +56,25 @@ class Schema:
     files: dict = field(default_factory=dict)      # {"schema": path, "additions": path}
     notes: list = field(default_factory=list)      # shown before paying, and in the report
     left_out: list = field(default_factory=list)   # {"kind", "name", "kept"}: additions whose name is already there
+    not_tuning: list = field(default_factory=list) # {"kind", "name", "source", "why"}: from ground truth, not tuning only
+
+
+def _not_tuning(source: str, parts: dict) -> str | None:
+    """Why an addition whose source mentions the ground truth can't be used,
+    or None if every record it names is in the tuning part. parts is
+    {pool position: "tuning" | "held-out"}."""
+    if "ground truth" not in source.lower():
+        return None
+    positions = [int(n) for n in re.findall(r"#(\d+)", source)]
+    if not positions:
+        return "says ground truth but names no record (write the pool positions, e.g. #12)"
+    unknown = [p for p in positions if p not in parts]
+    held = [p for p in positions if parts.get(p) == "held-out"]
+    if unknown:
+        return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position"
+    if held:
+        return "comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
+    return None
 
 
 def load_schema(inputs: dict) -> Schema:
@@ -52,6 +84,9 @@ def load_schema(inputs: dict) -> Schema:
         raise ValueError(f"{Path(inputs['schema']).name} has no entity classes or no predicates: "
                          f"is it a schema? (see instructions/060_extract.md for the shapes it can have)")
 
+    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
+    parts = {r["position"]: r.get("part") for r in splits["ground_truth_candidates"]["records"]}
+
     merged = {kind: dict(base[kind]) for kind in KINDS}
     result.came_from = {kind: {name: "schema" for name in base[kind]} for kind in KINDS}
     result.sources = {kind: {} for kind in KINDS}
@@ -59,6 +94,11 @@ def load_schema(inputs: dict) -> Schema:
     for kind in KINDS:
         have = {label_key(n): n for n in merged[kind]}
         for name, definition in extra[kind].items():
+            why = _not_tuning(extra["sources"][kind].get(name, ""), parts)
+            if why:
+                result.not_tuning.append({"kind": kind, "name": name,
+                                          "source": extra["sources"][kind][name], "why": why})
+                continue
             if label_key(name) in have:
                 result.left_out.append({"kind": kind, "name": name, "kept": have[label_key(name)]})
                 continue
@@ -84,6 +124,11 @@ def load_schema(inputs: dict) -> Schema:
     result.text = schema_text(merged)
     result.names = SchemaNames(merged)
 
+    if result.not_tuning:
+        result.notes.append(f"{len(result.not_tuning)} addition(s) in {Path(inputs['additions']).name} say they come "
+                            f"from the ground truth but don't show they come from tuning records only, so they are "
+                            f"left out (a name from a held-out record would let the schema see the final exam): "
+                            + named([f"{x['name']} ({x['why']})" for x in result.not_tuning], 5, "; ") + ".")
     if result.left_out:
         result.notes.append(f"{len(result.left_out)} addition(s) in {Path(inputs['additions']).name} "
                             f"have a name already there (in the schema, or an earlier addition), so that entry "

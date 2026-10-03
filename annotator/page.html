@@ -68,6 +68,8 @@
   .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .describes input.title { flex: 1 1 280px; min-width: 0; }
   .empty { color: var(--muted); font-style: italic; }
+  .part { font-size: 12px; border-radius: 10px; padding: 0 7px; border: 1px solid var(--line); }
+  .part.held-out { color: var(--flag); background: var(--flag-bg); border-color: var(--flag); }
   .kind { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
           border-radius: 10px; padding: 0 7px; margin-right: 6px; vertical-align: middle; }
   .maprow.todo { border-left: 4px solid var(--flag); }
@@ -196,7 +198,8 @@ function drawList() {
          (errors ? `⚠ ${errors} ` : "") + (rec.finished ? "✓" : "…")),
       rec.position !== null && rec.position !== undefined ? `#${rec.position} ` : "",
       rec.title || rec.id,
-      el("div", { class: "small" }, rec.maintainer || ""));
+      el("div", { class: "small" }, rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
+         rec.part ? " " : "", rec.maintainer || ""));
   }));
 }
 
@@ -211,7 +214,14 @@ function show(i) {
   const head = el("section", { class: "card" },
     el("h2", {}, rec.title || "(no title)"),
     el("div", { class: "meta" },
-      `Pool position ${rec.position ?? "?"} · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
+      `Pool position ${rec.position ?? "?"} `,
+      rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
+      ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
+    el("div", { class: "meta" }, rec.part === "held-out"
+      ? "Held-out record: names you learn here must not go into schema_additions.txt (the schema mustn't see the final exam)."
+      : rec.part === "tuning"
+        ? `Tuning record: a name you learn here may go into schema_additions.txt, with “source: ground truth #${rec.position}”.`
+        : "Not in the pool: names learned here can't go into schema_additions.txt as coming from the ground truth."),
     el("div", { class: "bar" },
       el("label", { class: "finished" },
         el("input", { type: "checkbox", checked: rec.finished,
@@ -424,7 +434,7 @@ function drawMapping() {
 function exampleLine(r) {
   if (r.kind !== "predicate") return null;
   const ex = r.example || { subject: "A", object: "B" };
-  const before = `${ex.subject}  ${r.name_in_crt_schema}  ${ex.object}`;
+  const before = `${ex.subject}  ${r.name_from_past_or_crt_schema}  ${ex.object}`;
   const after = r.name_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
     : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.name_in_gtt}  ${ex.subject}`
     : `${ex.subject}  ${r.name_in_gtt}  ${ex.object}`;
@@ -446,12 +456,12 @@ function mappingRow(r, i) {
   const update = (key, value) => { r[key] = value; mapChanged(); drawMapping(); };
 
   return el("section", { class: "card maprow" + (toCheck(r) ? " todo" : "") },
-    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_in_crt_schema),
+    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_from_past_or_crt_schema),
     el("div", { class: "meta" }, "In the current schema: ",
        r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
     r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
        "⚑ This row was checked when the name was defined as: “" +
-       (r.definition_in_crt_schema_when_checked || "(no definition)") +
+       (r.definition_from_past_or_crt_schema || "(no definition)") +
        "”. Its meaning may have changed: check the translation again.")) : null,
     el("div", { class: "means" },
       el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
@@ -487,7 +497,7 @@ async function saveMapping() {
   status("Saving…");
   try {
     await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
-      name_in_crt_schema: r.name_in_crt_schema, name_in_gtt: r.name_in_gtt,
+      name_from_past_or_crt_schema: r.name_from_past_or_crt_schema, name_in_gtt: r.name_in_gtt,
       swap_subject_and_object: r.swap_subject_and_object, checked: r.checked })) });
     status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
   } catch (e) {

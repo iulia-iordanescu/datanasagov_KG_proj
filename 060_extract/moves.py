@@ -71,6 +71,7 @@ def _schema_used(schema) -> dict:
     return {"entity_classes": entries("entity_classes"), "predicates": entries("predicates"),
             "patterns": [{"pattern": list(p), "from": came_from["patterns"][p]} for p in content["patterns"]],
             "left_out_additions": schema.left_out,
+            "left_out_not_tuning": schema.not_tuning,
             "made": {"run_id": audit.current_run_id(), "schema": schema.files["schema"],
                      "additions": schema.files["additions"]}}
 

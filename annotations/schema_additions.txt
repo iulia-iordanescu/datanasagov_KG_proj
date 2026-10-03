@@ -9,6 +9,11 @@
 # "source: mentor", "source: NASA missions A-to-Z"); an entry without one is
 # pointed out before paying. Lines starting with # are comments.
 #
+# A name learned from the ground truth must come from TUNING records only:
+# write "source: ground truth" and the records' pool positions, as the
+# annotation tool shows them (e.g. "source: ground truth #12, #15"). Step 060
+# leaves out an addition that names a held-out record, or no record.
+#
 # Example (remove the # to use it):
 #
 # CLASSES

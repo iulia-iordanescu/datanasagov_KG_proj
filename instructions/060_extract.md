@@ -13,6 +13,7 @@ The schema is 040's induced schema by default, plus the entity classes and predi
 | Input | Default | Contents |
 |---|---|---|
 | `records` | `020_clean/records.jsonl` | 020's cleaned records: the texts. |
+| `splits` | `030_split/splits.json` | Which pool records are tuning and which held-out: an addition learned from the ground truth is used only if it names tuning records. |
 | `schema` | `040_induce_schema/the_schema.json` | The schema to extract with. Any schema in one of the two shapes below can be given instead: `--schema <file>`. |
 | `additions` | `./annotations/schema_additions.txt` (in Git) | Entity classes and predicates added by hand to whichever schema is used. Starts empty. |
 | `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Which records have ground truth, and which are finished. |
@@ -75,7 +76,7 @@ PART_OF_MISSION   belongs to the mission
 - They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts.
 - An addition whose name the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked that loosely too (see *name outside the schema* in the terminology), and so is a second addition with the name of an earlier one. Its patterns still apply, to the entry kept.
 - Give each one a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
-- **Adding names seen in ground truth records needs care.** Step 070 scores extraction on those records, so a name added because it came up there flatters the score for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth (tuning part)`. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
+- **Adding names seen in ground truth records needs care.** Step 070 scores extraction on those records, so a name added because it came up there flatters the score for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
 ## Outputs
 
@@ -87,7 +88,7 @@ In `outputs/intermediate_results/060_extract/`:
 |---|---|
 | `extracted_triples.csv` | The triple instances kept: for each record extracted, its DESCRIBES row first, then its triple instances. Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
 | `extracted_triples_removed.csv` | Every triple instance removed, with `reason` (below; both, if both apply); `raw` holds what the model returned when it wasn't a triple instance at all. |
-| `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), and the additions left out for a clash (`left_out_additions`). 070 reads this (and 080 will), so they use exactly what 060 used. |
+| `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), the additions left out for a clash (`left_out_additions`), and those left out for not coming from tuning records only (`left_out_not_tuning`). 070 reads this (and 080 will), so they use exactly what 060 used. |
 | `extracted_triples_details.json` | Each record chosen, with its status (`extracted`, or `failed` with the error), text pieces, rows kept and removed; the records passed over while choosing; and the names outside the schema the model used (see the report). |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
@@ -131,7 +132,7 @@ py 060_extract.py --confirm_paid_calls false              don't ask (unattended 
 Four stages, in `060_extract.py`'s `main()`; stage 3 asks the model, the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). By `extract_from` or `ids` (above). Anything that differs from what was asked becomes a note shown before paying: a listed id not in the catalog or without text, ground truth records not yet finished.
-2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions that clash with the schema, additions with no `source:` line, entries with no definition, pattern names that aren't entity classes or predicates of the schema.
+2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), additions that clash with the schema, additions with no `source:` line, entries with no definition, pattern names that aren't entity classes or predicates of the schema.
 3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `prompts/extract.txt`: extract only the facts the schema can express, in only the schema's names, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
 4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/extraction.py` builds each record's rows (the DESCRIBES row first) and checks every one against the record's **whole** text and the schema (`common/validate.py`). Then:
 
@@ -177,6 +178,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *extract_from (…) is ignored, because ids names the records.* | Both were given. | Drop one. |
 | *N addition(s) … have a name already there (in the schema, or an earlier addition), so that entry is kept* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
 | *N line(s) of schema_additions.txt aren't read as an entry, a source or patterns …* | The first 5 are listed with their line numbers: usually a name with a space in it, one space before the definition, a pattern line not in the `Subject -> Object; …` form, or a repeated entry (the first is kept; the repeat and the lines under it are listed). Such a line adds nothing. | Fix the line (see *The shape of a schema*). |
+| *N addition(s) … say they come from the ground truth but don't show they come from tuning records only, so they are left out* | Each is listed with why: it names a held-out record, a position not in the pool, or no record. | Take the name out, or (if it really came from tuning records) list their pool positions: `source: ground truth #12`. |
 | *N addition(s) have no "source:" line …* | Where the idea came from isn't recorded. | Add a `source:` line under each. |
 | *N schema entries have no definition …* | The model will see only the name. | Add definitions. |
 | *N name(s) used in patterns aren't entity classes or predicates of the schema* | A pattern names something the schema doesn't have (often a typo). | Fix the pattern, or add the name. |

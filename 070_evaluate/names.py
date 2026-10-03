@@ -8,7 +8,7 @@ coined while annotating. 060 uses the names of the schema it was given
 predicates is translated to one of yours, through the table a person checks:
 
     annotations/name_mapping.csv
-    kind,name_in_crt_schema,name_in_gtt,swap_subject_and_object,checked,definition_in_crt_schema_when_checked
+    kind,name_from_past_or_crt_schema,name_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema
     entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.
     predicate,CARRIES,ABOARD,yes,yes,Has on board.   <- "A CARRIES B" is "B ABOARD A"
     entity class,Gadget,(none),no,yes,A small device. <- nothing of yours means this
@@ -101,8 +101,8 @@ def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
         gtt_name = by_key[kind].get(label_key(mine)) if mine else None
         if mine and gtt_name is None:
             strays.append(f"{name} → {mine}")
-        rows.append({"kind": kind, "name_in_crt_schema": name, "name_in_gtt": gtt_name or NONE,
-                     "definition_in_crt_schema_when_checked": definitions.get((kind, name), ""),
+        rows.append({"kind": kind, "name_from_past_or_crt_schema": name, "name_in_gtt": gtt_name or NONE,
+                     "definition_from_past_or_crt_schema": definitions.get((kind, name), ""),
                      "swap_subject_and_object": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
     notes = [f"The model proposed {len(strays)} name(s) that aren't yours, written as (none): {named(strays)}."] \
@@ -114,8 +114,8 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     path = Path(inputs["name_mapping"])
     names = Names(yours=your_vocabulary(inputs["hand_schema"], scored.ground_truth))
     rows = read_mapping(path)
-    have = {(r["kind"], label_key(r["name_in_crt_schema"])): r for r in rows}
-    bad_kind = [r["name_in_crt_schema"] for r in rows if r["kind"] not in KINDS]
+    have = {(r["kind"], label_key(r["name_from_past_or_crt_schema"])): r for r in rows}
+    bad_kind = [r["name_from_past_or_crt_schema"] for r in rows if r["kind"] not in KINDS]
     if bad_kind:
         raise SystemExit(f"{path.name}: kind must be 'entity class' or 'predicate' for: {named(bad_kind)}.")
 
@@ -129,9 +129,9 @@ def translate_names(inputs: dict, scored, calls) -> Names:
             continue
         mine = yours_key[kind].get(label_key(name))
         if mine:
-            same.append({"kind": kind, "name_in_crt_schema": name, "name_in_gtt": mine, "swap_subject_and_object": "no",
+            same.append({"kind": kind, "name_from_past_or_crt_schema": name, "name_in_gtt": mine, "swap_subject_and_object": "no",
                          "checked": "same name",
-                         "definition_in_crt_schema_when_checked": now[kind].get(label_key(name), "")})
+                         "definition_from_past_or_crt_schema": now[kind].get(label_key(name), "")})
         else:
             missing.append((kind, name))
     proposed, notes = [], []
