@@ -91,14 +91,14 @@ Four stages, in `070_evaluate.py`'s `main()`; stage 2 asks the model (only for n
 2. **Translate names** (`names.py`, `translate_names`), through `annotations/name_mapping.csv`:
 
    ```
-   kind,schema_name,your_name,reversed,checked
+   kind,name_in_crt_schema,name_in_gtt,swap_subject_and_object,checked
    entity class,Satellite,Spacecraft,no,yes
    predicate,CARRIES,ABOARD,yes,yes          "A CARRIES B" is "B ABOARD A"
    entity class,Gadget,(none),no,yes         nothing of yours means this
    entity class,Dataset,Dataset,no,same name
    ```
 
-   For each name of 060's schema without a row: one equal to one of yours (ignoring case, spaces and punctuation) gets a row at once, `checked` = `same name`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `your_name` (one of your names, or `(none)`) and `reversed` where wrong, then set `checked` to `yes`. Scoring runs only once every row it needs is checked. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
+   For each name of 060's schema without a row: one equal to one of yours (ignoring case, spaces and punctuation) gets a row at once, `checked` = `same name`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `name_in_gtt` (one of your names, or `(none)`) and `swap_subject_and_object` where wrong, then set `checked` to `yes`. Scoring runs only once every row it needs is checked. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
 3. **Compare, record by record** (`match.py`, `compare`). Each extracted fact is translated into your names; a reversed predicate also swaps subject and object. Then the ground truth's facts and the extracted facts are **paired**: every fact, in either list, ends with **zero or one partner**, always from the other list (so a fact stated twice earns one match, not two; the two lists can have any lengths). Two rounds, each finding the largest possible set of pairs (*maximum matching*: a pairing may switch to another partner to free one for a fact that would otherwise have none; taking each fact's first match in list order could lose a real match, and make the score depend on the order facts were written in):
    - **exact**: subject and object the same once evened out (case, spacing, quote marks, dashes, edge punctuation and a leading "the/a/an" ignored, as everywhere in the pipeline), predicate the same;
    - **partial**, among the facts still unpaired: the same, except that a subject or object may be contained in the other as whole words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)". This can be fooled ("MODIS" in "MODIS Terra"), which is why every partial pair is listed in `per_record.md`.
@@ -175,10 +175,10 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no`, then run again. |
-| *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them (fix `your_name` and `reversed` where wrong, then set `checked` to `yes`), then run again. |
-| *N checked row(s) … name something that isn't one of your names* | A typo in `your_name`. | Use one of your names, or `(none)`. |
-| *name_mapping.csv lacks the column(s) …* | The file's header was changed. | Restore the header: `kind,schema_name,your_name,reversed,checked`. |
+| *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no` (easiest in `py annotate.py`, *Translation table*), then run again. |
+| *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them in `py annotate.py`, *Translation table* (or in the CSV: fix `name_in_gtt` and `swap_subject_and_object` where wrong, then set `checked` to `yes`), then run again. |
+| *N checked row(s) … name something that isn't one of your names* | A typo in `name_in_gtt`. | Use one of your names, or `(none)`. |
+| *name_mapping.csv lacks the column(s) …* | The file's header was changed. | Restore the header: `kind,name_in_crt_schema,name_in_gtt,swap_subject_and_object,checked`. |
 | *kind must be 'entity class' or 'predicate'* | A typo in `kind`. | Fix it. |
 | *Nothing to score yet* | No finished ground truth record that 060 extracted is in the fair part. | Finish records in `py annotate.py`, then run 060. |
 | *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split.py`. |
@@ -196,7 +196,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 ## Human work
 
-- **Check the translation table** (`annotations/name_mapping.csv`) whenever 070 adds rows. A wrong translation silently turns right facts into wrong ones, or the reverse.
+- **Check the translation table** (`annotations/name_mapping.csv`) whenever 070 adds rows: `py annotate.py`, button *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse.
 - **After adding names to your schema**, look at the report's *The translation table*: rows that say `(none)` beside your names that nothing translates to. A row checked as `(none)` before you added a matching name of yours stays `(none)` until you fix it (070 never changes a row).
 - **Read `per_record.md`**, especially the partial matches (could be fooled) and the "extracted but not in the ground truth" facts: some may be real facts you missed while annotating, which means the ground truth undercounts.
 - **Look at the held-out part only at the end**, and commit `annotations/held_out_looks.csv` after each look.

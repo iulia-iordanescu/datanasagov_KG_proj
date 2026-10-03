@@ -7,12 +7,14 @@ browser.
 
 Pick a batch at the top of the page. Opening one of step 050's draft batches
 for the first time copies it to annotations/ground_truth/batch_<NNN>.csv, and
-every change you make is saved to that copy at once. Press Ctrl+C here to
-stop the tool.
+every change you make is saved to that copy at once. The "Translation
+table" button opens annotations/name_mapping.csv (step 070's table of which
+ground truth name each name of the current schema means), row by row, to
+check. Press Ctrl+C here to stop the tool.
 
 It runs only on this computer: no internet, no model calls, nothing to
 install. It isn't a pipeline step: it writes nothing but your ground truth
-files. How it works: annotator/server.py; how to use it:
+files and the translation table. How it works: annotator/server.py; how to use it:
 annotations/README.md.
 """
 import argparse

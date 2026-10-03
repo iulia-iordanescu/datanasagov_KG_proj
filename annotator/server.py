@@ -12,8 +12,12 @@ What it reads
     outputs/intermediate_results/020_clean/records.jsonl                     each record's text
     outputs/intermediate_results/030_split/splits.json                       each record's pool position
     annotations/schema_derived_from_manual_annotation.txt                   the hand-built schema
+    annotations/name_mapping.csv                                             the translation table
+    outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
+    outputs/intermediate_results/060_extract/extracted_triples.csv           an example triple per predicate
 
-What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv.
+What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv and
+annotations/name_mapping.csv.
     - Opening draft batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
       then on that copy is what's shown and edited. The draft in outputs/ is
@@ -21,6 +25,14 @@ What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv.
     - Every edit is saved to that file at once (the page sends the batch, the
       server writes it under a temporary name and renames it).
     - The draft's flags column isn't kept: the checks are recomputed live.
+
+The translation table (step 070's, common/name_mapping.py) is shown row by
+row, each name with its definition, and a person's choices are saved to it
+at once: name_in_gtt (a name of the ground truth vocabulary, or (none)),
+swap_subject_and_object (predicates only) and checked. Rows can't be added,
+removed or reordered here, and a save keeps any rows step 070 added since
+the page was loaded; if the rows the page shows have changed in the file, the
+save is refused, so nothing is overwritten.
 
 The checks are step 050's own, all from common/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate and pattern
@@ -43,15 +55,18 @@ from common.chunking import full_text
 from common.files import write_csv
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, vocabulary)
+from common.name_mapping import COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, read_mapping
 from common.records_io import load_records
 from common.schema_io import read_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
 from common.text_match import Text
-from common.triples_io import ENTRY_SOURCE, is_describes
+from common.triples_io import ENTRY_SOURCE, is_describes, label_key
 from common.validate import SchemaNames, check_against_schema, check_describes, check_triple_instance
 
 DRAFTS_DIR = RESULTS_DIR / "050_annotate"
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
+SCHEMA_USED = RESULTS_DIR / "060_extract" / "schema_used.json"
+EXTRACTED = RESULTS_DIR / "060_extract" / "extracted_triples.csv"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
 PAGE = Path(__file__).with_name("page.html")
@@ -239,6 +254,67 @@ def save_batch(data: Data, n: int, records: list) -> list:
 
 
 # --------------------------------------------------------------------------
+# the translation table
+# --------------------------------------------------------------------------
+
+def _gtt(data: Data) -> dict:
+    """The ground truth vocabulary by kind: {kind: {name: definition}}."""
+    vocab = vocabulary(data.hand, read_ground_truth())
+    return {"entity class": vocab["entity_classes"], "predicate": vocab["predicates"]}
+
+
+def mapping_view(data: Data) -> dict:
+    """The table as the page shows it: every row, with the current schema's
+    definition, an example triple for a predicate (the first one extraction
+    kept with it), and the ground truth vocabulary to choose from."""
+    if not MAPPING_PATH.exists():
+        return {"found": False, "rows": [], "gtt": {}}
+    crt = {"entity class": {}, "predicate": {}}
+    if SCHEMA_USED.exists():
+        used = json.loads(SCHEMA_USED.read_text(encoding="utf-8"))
+        for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates")):
+            crt[kind] = {label_key(e["name"]): e.get("definition") or "" for e in used.get(key, [])}
+    examples = {}
+    if EXTRACTED.exists():
+        with open(EXTRACTED, encoding="utf-8-sig", newline="") as fh:
+            for r in csv.DictReader(fh):
+                if not is_describes(r):
+                    examples.setdefault(label_key(r.get("predicate")),
+                                        {"subject": r.get("subject") or "", "object": r.get("object") or ""})
+    gtt = _gtt(data)
+    rows = [{**r, "crt_definition": crt.get(r["kind"], {}).get(label_key(r["name_in_crt_schema"])),
+             "example": examples.get(label_key(r["name_in_crt_schema"])) if r["kind"] == "predicate" else None}
+            for r in read_mapping(MAPPING_PATH)]
+    return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
+            "rows": rows, "none": NONE,
+            "gtt": {kind: [{"name": n, "definition": d} for n, d in sorted(names.items())]
+                    for kind, names in gtt.items()}}
+
+
+def save_mapping(data: Data, sent: list) -> None:
+    """Write the person's choices for the rows the page showed. The rows'
+    kinds and current-schema names must still be the file's first rows, in
+    order; rows added after them (by step 070) are kept as they are."""
+    rows = read_mapping(MAPPING_PATH)
+    if [(r["kind"], r["name_in_crt_schema"]) for r in rows[:len(sent)]] !=             [(r.get("kind"), r.get("name_in_crt_schema")) for r in sent]:
+        raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
+    gtt = {kind: {label_key(n): n for n in names} for kind, names in _gtt(data).items()}
+    for row, s in zip(rows, sent):
+        name = str(s.get("name_in_gtt") or "").strip()
+        if name != NONE:
+            if label_key(name) not in gtt.get(row["kind"], {}):
+                raise ValueError(f"\"{name}\" isn't {'an' if row['kind'] == 'entity class' else 'a'} {row['kind']} "
+                                 f"of the ground truth vocabulary")
+            name = gtt[row["kind"]][label_key(name)]
+        row["name_in_gtt"] = name
+        swap = row["kind"] == "predicate" and s.get("swap_subject_and_object") == "yes"
+        row["swap_subject_and_object"] = "yes" if swap else "no"
+        checked = str(s.get("checked") or "no")
+        row["checked"] = checked if checked in ("yes", "no", "same name") else "no"
+    write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
+
+
+# --------------------------------------------------------------------------
 # the server
 # --------------------------------------------------------------------------
 
@@ -268,6 +344,8 @@ def make_handler(data: Data):
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
                                 "problems": gt.problems, "reminders": coined_reminder(data, gt)})
+                elif url.path == "/api/mapping":
+                    self._json(mapping_view(data))
                 elif url.path == "/api/batch":
                     n = int(q["n"][0])
                     self._json(batch_view(data, n, open_batch(n)))
@@ -282,6 +360,9 @@ def make_handler(data: Data):
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if url.path == "/api/save":
                     self._json({"problems": save_batch(data, int(body["n"]), body["records"])})
+                elif url.path == "/api/mapping/save":
+                    save_mapping(data, body["rows"])
+                    self._json({"saved": True})
                 else:
                     self._json({"error": "not found"}, 404)
             except Exception as e:                          # noqa: BLE001 -- shown on the page

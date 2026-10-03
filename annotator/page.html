@@ -68,12 +68,20 @@
   .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .describes input.title { flex: 1 1 280px; min-width: 0; }
   .empty { color: var(--muted); font-style: italic; }
+  .kind { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
+          border-radius: 10px; padding: 0 7px; margin-right: 6px; vertical-align: middle; }
+  .maprow.todo { border-left: 4px solid var(--flag); }
+  .maprow .means { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .maprow select { max-width: 100%; }
+  .example { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg);
+             border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
 </style>
 </head>
 <body>
 <header>
   <h1>Annotation tool</h1>
   <select id="batch" aria-label="Batch"></select>
+  <button id="mapping" title="annotations/name_mapping.csv">Translation table</button>
   <span id="status"></span>
 </header>
 <ul id="warnings"></ul>
@@ -126,6 +134,7 @@ async function loadBatches() {
   if (!data.records_found) warnings.unshift("records.jsonl wasn't found, so records' texts can't be shown or checked: run steps 010 and 020 first.");
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
   const wanted = new URLSearchParams(location.hash.slice(1));
+  if (wanted.has("m")) { await openMapping(); return; }
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0));
@@ -133,6 +142,7 @@ async function loadBatches() {
 }
 async function openBatch(n, at) {
   await flush();
+  mapping = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
   $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
@@ -143,6 +153,7 @@ async function openBatch(n, at) {
   if (opt && opt.textContent.includes("not opened yet")) loadBatches();   // it now has its copy
 }
 $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBatch(+e.target.value, 0).catch(fail); });
+$("mapping").addEventListener("click", () => openMapping().catch(fail));
 
 // ---------------------------------------------------------------- saving
 function changed() {
@@ -168,8 +179,12 @@ async function save() {
     status(`NOT SAVED: ${e.message}. Is the tool still running? Your edits stay on this page; saving is retried on your next change.`, "failed");
   } finally { saving = false; }
 }
-async function flush() { if (dirty) await save(); }
-window.addEventListener("beforeunload", (e) => { if (dirty || saving) { save(); e.preventDefault(); e.returnValue = ""; } });
+async function flush() { if (dirty) await save(); if (mapDirty) await saveMapping(); }
+window.addEventListener("beforeunload", (e) => {
+  if (dirty || saving) save();
+  if (mapDirty || mapSaving) saveMapping();
+  if (dirty || saving || mapDirty || mapSaving) { e.preventDefault(); e.returnValue = ""; }
+});
 function fail(e) { status(`Problem: ${e.message}`, "failed"); }
 
 // ---------------------------------------------------------------- the records list
@@ -348,6 +363,130 @@ function refreshProblems() {
     if (rec.rows[j]) ul.replaceWith(problemList(rec.rows[j], j));
   });
   drawList();
+}
+
+// ---------------------------------------------------------------- the translation table
+// One row per name of the current schema (the one extraction used): which name
+// of the ground truth vocabulary it means. Only name_in_gtt,
+// swap_subject_and_object and checked can be changed here.
+let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false;
+const toCheck = (r) => r.checked !== "yes" && r.checked !== "same name";
+
+async function openMapping() {
+  await flush();
+  batch = null;
+  $("batch").value = "";
+  status("Opening…");
+  mapping = await api("/api/mapping");
+  location.hash = "m";
+  if (!mapping.found) {
+    $("records").replaceChildren();
+    $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
+      "annotations/name_mapping.csv wasn't found.")));
+    status("");
+    return;
+  }
+  status(`Editing ${mapping.file}`, "saved");
+  onlyToCheck = mapping.rows.some(toCheck);          // open on the rows that need you
+  drawMapping();
+}
+
+function drawMappingSummary() {
+  const left = mapping.rows.filter(toCheck).length;
+  $("records").replaceChildren(
+    el("div", { style: "padding:6px 8px" },
+      el("h3", {}, "Translation table"),
+      el("p", { class: "meta" }, `${mapping.rows.length} row(s); ${left} still to check.`),
+      el("p", { class: "meta" }, "Evaluation scores only when every row it needs is checked. " +
+                                  "It adds rows itself; it never changes one."),
+      el("label", { class: "meta" },
+        el("input", { type: "checkbox", checked: onlyToCheck,
+                      onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
+        " Show only rows to check")));
+}
+
+function drawMapping() {
+  drawMappingSummary();
+  const cards = [];
+  if (!mapping.schema_found)
+    cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
+      "Extraction's schema_used.json wasn't found, so the current schema's definitions can't be shown.")));
+  mapping.rows.forEach((r, i) => { if (!onlyToCheck || toCheck(r)) cards.push(mappingRow(r, i)); });
+  if (cards.length === 0)
+    cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
+      mapping.rows.length ? "Every row is checked." : "The table has no rows yet: evaluation adds them.")));
+  $("record").replaceChildren(...cards);
+}
+
+function exampleLine(r) {
+  if (r.kind !== "predicate") return null;
+  const ex = r.example || { subject: "A", object: "B" };
+  const before = `${ex.subject}  ${r.name_in_crt_schema}  ${ex.object}`;
+  const after = r.name_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
+    : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.name_in_gtt}  ${ex.subject}`
+    : `${ex.subject}  ${r.name_in_gtt}  ${ex.object}`;
+  return el("div", { class: "example", title: r.example ? "the first such triple extraction kept" : "a made-up example" },
+    `${before}   →   ${after}`);
+}
+
+function mappingRow(r, i) {
+  const vocab = mapping.gtt[r.kind] || [];
+  const known = vocab.some(v => v.name === r.name_in_gtt);
+  const options = [el("option", { value: mapping.none, selected: r.name_in_gtt === mapping.none },
+                      `${mapping.none}: nothing in the ground truth means this`)];
+  if (!known && r.name_in_gtt !== mapping.none)
+    options.push(el("option", { value: r.name_in_gtt, selected: true },
+                    `⚠ ${r.name_in_gtt} (not in the ground truth vocabulary: pick another)`));
+  for (const v of vocab) options.push(el("option", { value: v.name, selected: v.name === r.name_in_gtt }, v.name));
+  const chosen = vocab.find(v => v.name === r.name_in_gtt);
+  const same = r.checked === "same name";
+  const update = (key, value) => { r[key] = value; mapChanged(); drawMapping(); };
+
+  return el("section", { class: "card maprow" + (toCheck(r) ? " todo" : "") },
+    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_in_crt_schema),
+    el("div", { class: "meta" }, "In the current schema: ",
+       r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
+    el("div", { class: "means" },
+      el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
+      el("select", { id: `m${i}`, disabled: same, onchange: (e) => update("name_in_gtt", e.target.value) }, options)),
+    chosen ? el("div", { class: "meta" }, "In the ground truth: ",
+                chosen.definition ? chosen.definition
+                  : el("i", {}, "coined while annotating; no definition yet (add one to the hand-built schema)")) : null,
+    r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
+      el("input", { type: "checkbox", disabled: same || r.name_in_gtt === mapping.none,
+                    checked: r.swap_subject_and_object === "yes",
+                    onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
+      " Swap subject and object (the ground truth's name states the relation the other way round)") : null,
+    exampleLine(r),
+    el("div", { class: "bar" }, same
+      ? el("span", { class: "meta" }, "Same name in both: nothing to check.")
+      : el("label", { class: "finished" },
+          el("input", { type: "checkbox", checked: r.checked === "yes",
+                        onchange: (e) => update("checked", e.target.checked ? "yes" : "no") }),
+          "Checked: this translation is right")));
+}
+
+function mapChanged() {
+  mapDirty = true;
+  status("Unsaved changes…");
+  clearTimeout(mapTimer);
+  mapTimer = setTimeout(saveMapping, 600);
+}
+async function saveMapping() {
+  clearTimeout(mapTimer);
+  if (!mapping || !mapDirty) return;
+  if (mapSaving) { mapTimer = setTimeout(saveMapping, 300); return; }
+  mapSaving = true; mapDirty = false;
+  status("Saving…");
+  try {
+    await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
+      name_in_crt_schema: r.name_in_crt_schema, name_in_gtt: r.name_in_gtt,
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked })) });
+    status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
+  } catch (e) {
+    mapDirty = true;
+    status(`NOT SAVED: ${e.message}`, "failed");
+  } finally { mapSaving = false; }
 }
 
 loadBatches().catch(fail);

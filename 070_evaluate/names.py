@@ -8,7 +8,7 @@ coined while annotating. 060 uses the names of the schema it was given
 predicates is translated to one of yours, through the table a person checks:
 
     annotations/name_mapping.csv
-    kind,schema_name,your_name,reversed,checked
+    kind,name_in_crt_schema,name_in_gtt,swap_subject_and_object,checked
     entity class,Satellite,Spacecraft,no,yes
     predicate,CARRIES,ABOARD,yes,yes        <- "A CARRIES B" is "B ABOARD A"
     entity class,Gadget,(none),no,yes        <- nothing of yours means this
@@ -27,7 +27,6 @@ needs is checked ("yes" or "same name") and names one of your names or
 """
 from __future__ import annotations
 
-import csv
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,16 +35,13 @@ from common import llm
 from common.cache import Cache, key
 from common.files import append_csv
 from common.ground_truth import vocabulary
+from common.name_mapping import CHECKED, COLUMNS, KINDS, NONE, read_mapping
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_hand_schema
 from common.triples_io import label_key
 
 PROMPT = load(Path(__file__).parent / "prompts" / "map_names.txt")
-COLUMNS = ["kind", "schema_name", "your_name", "reversed", "checked"]
-KINDS = {"entity class": "entity_classes", "predicate": "predicates"}
-NONE = "(none)"
-CHECKED = ("yes", "same name")
 
 
 @dataclass
@@ -69,15 +65,6 @@ def your_vocabulary(hand_schema_path, ground_truth) -> dict:
     return {kind: {name: definition or "(used in the ground truth; not in the hand-built schema)"
                    for name, definition in vocab[key].items()}
             for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
-
-
-def _read(path: Path) -> list:
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        reader = csv.DictReader(fh)
-        missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
-        if missing:
-            raise ValueError(f"{path.name} lacks the column(s) {', '.join(missing)}")
-        return [{c: (r.get(c) or "").strip() for c in COLUMNS} for r in reader if (r.get("schema_name") or "").strip()]
 
 
 def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
@@ -108,11 +95,11 @@ def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
     for kind, name in missing:
         item = answers.get((kind, label_key(name)), {})
         mine = item.get("yours") if isinstance(item.get("yours"), str) else None
-        your_name = by_key[kind].get(label_key(mine)) if mine else None
-        if mine and your_name is None:
+        gtt_name = by_key[kind].get(label_key(mine)) if mine else None
+        if mine and gtt_name is None:
             strays.append(f"{name} → {mine}")
-        rows.append({"kind": kind, "schema_name": name, "your_name": your_name or NONE,
-                     "reversed": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
+        rows.append({"kind": kind, "name_in_crt_schema": name, "name_in_gtt": gtt_name or NONE,
+                     "swap_subject_and_object": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
     notes = [f"The model proposed {len(strays)} name(s) that aren't yours, written as (none): {named(strays)}."] \
         if strays else []
@@ -122,9 +109,9 @@ def _propose(missing: list, yours: dict, schema_used: dict, calls) -> tuple:
 def translate_names(inputs: dict, scored, calls) -> Names:
     path = Path(inputs["name_mapping"])
     names = Names(yours=your_vocabulary(inputs["hand_schema"], scored.ground_truth))
-    rows = _read(path)
-    have = {(r["kind"], label_key(r["schema_name"])): r for r in rows}
-    bad_kind = [r["schema_name"] for r in rows if r["kind"] not in KINDS]
+    rows = read_mapping(path)
+    have = {(r["kind"], label_key(r["name_in_crt_schema"])): r for r in rows}
+    bad_kind = [r["name_in_crt_schema"] for r in rows if r["kind"] not in KINDS]
     if bad_kind:
         raise SystemExit(f"{path.name}: kind must be 'entity class' or 'predicate' for: {named(bad_kind)}.")
 
@@ -137,7 +124,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
             continue
         mine = yours_key[kind].get(label_key(name))
         if mine:
-            same.append({"kind": kind, "schema_name": name, "your_name": mine, "reversed": "no",
+            same.append({"kind": kind, "name_in_crt_schema": name, "name_in_gtt": mine, "swap_subject_and_object": "no",
                          "checked": "same name"})
         else:
             missing.append((kind, name))
@@ -148,7 +135,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         append_csv(path, COLUMNS, same + proposed)
         raise SystemExit(f"Added {len(same) + len(proposed)} row(s) to {path.name}: {len(same)} with the same "
                          f"name as one of yours (nothing to check), {len(proposed)} proposed by the model "
-                         f"(checked = no). Check those rows (fix your_name and reversed where wrong, then set "
+                         f"(checked = no). Check those rows (fix name_in_gtt and swap_subject_and_object where wrong, then set "
                          f"checked to yes), then run 070 again. " + " ".join(notes))
 
     unchecked, unknown = [], []
@@ -156,8 +143,8 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         r = have[(kind, label_key(name))]
         if r["checked"].lower() not in CHECKED:
             unchecked.append(name)
-        elif r["your_name"] != NONE and label_key(r["your_name"]) not in yours_key[kind]:
-            unknown.append(f"{name} → {r['your_name']}")
+        elif r["name_in_gtt"] != NONE and label_key(r["name_in_gtt"]) not in yours_key[kind]:
+            unknown.append(f"{name} → {r['name_in_gtt']}")
     if unchecked:
         raise SystemExit(f"{len(unchecked)} row(s) of {path.name} still need checking (set checked to yes once "
                          f"right): {named(unchecked)}. Scoring waits until all are checked.")
@@ -168,11 +155,11 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     names.reachable = {"entity class": set(), "predicate": set()}
     for kind, name in needed:
         r = have[(kind, label_key(name))]
-        mine = None if r["your_name"] == NONE else yours_key[kind][label_key(r["your_name"])]
+        mine = None if r["name_in_gtt"] == NONE else yours_key[kind][label_key(r["name_in_gtt"])]
         if kind == "entity class":
             names.entity[label_key(name)] = mine
         else:
-            flipped = r["reversed"].lower() == "yes"
+            flipped = r["swap_subject_and_object"].lower() == "yes"
             names.predicate[label_key(name)] = (mine, flipped)
             names.reversed_used += flipped
         if mine:

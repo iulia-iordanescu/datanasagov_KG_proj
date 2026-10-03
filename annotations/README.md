@@ -9,7 +9,7 @@ Work made by a person, kept in Git because it can't be rebuilt by rerunning the 
 | `ground_truth_candidates.json` | How the pool was drawn: stratified by maintainer, seed 1000, 1,000 of 36,323 records, and each group's size and places. | nothing (a record of the draw) |
 | `schema_derived_from_manual_annotation.txt` | The hand-built schema: entity classes and predicates with a description each, and the patterns each predicate has been used in. Updated by hand as annotation goes: add each name you coin while annotating, with a definition (the annotation tool and step 050's report list the ones still missing). | 040 (to compare with), 050 (shown to the model; every row is checked against it), the annotation tool; 060 with `--schema`; 070 (your names) |
 | `schema_additions.txt` | Entity classes and predicates to add to the schema step 060 extracts with (e.g. a mentor's suggestions), each with a `source:` line saying where the idea came from. Starts empty. Its layout: [instructions/060_extract.md](../instructions/060_extract.md). | 060 |
-| `name_mapping.csv` | The translation of the names of the schema 060 used into yours: one row per name (`kind`, `schema_name`, `your_name`, `reversed`, `checked`). 070 adds rows for new names (proposed by the model, `checked` = `no`); you check them. How: [instructions/070_evaluate.md](../instructions/070_evaluate.md). | 070 |
+| `name_mapping.csv` | The translation of the names of the schema 060 used into yours: one row per name (`kind`, `name_in_crt_schema`, `name_in_gtt`, `swap_subject_and_object`, `checked`). 070 adds rows for new names (proposed by the model, `checked` = `no`); you check them. How: [instructions/070_evaluate.md](../instructions/070_evaluate.md). | 070 |
 | `held_out_looks.csv` | One line per time the held-out part's numbers were looked at (`date`, `run_id`, `schema`, `held_out_records`: how many held-out records were scored). 070 adds a line with `--score_held_out true`; commit it. | 070 |
 | `schema_notes_derived_from_manual_annotation.txt` | The notes the hand-built schema started from. Kept as a record only. | nothing |
 | `archive/` | The five draft batches made before the pipeline existed (`draft_triples_batch1–5`, each a CSV and its settings), drafts of 3 of the 6 records in `ground_truth/batch_000.csv`. Kept as a record only. | nothing |
@@ -30,6 +30,17 @@ It opens a page in your browser (Ctrl+C in the terminal stops it). It runs only 
 4. **Commit** the file to Git, so the work is safe.
 
 The tool also opens the files already in `ground_truth/`, like `batch_000.csv`. The first time it saves a file, it rewrites it in its own plain format: the same rows and values, but the CSV quoting may change, so Git can show more lines changed than you edited. Deleting every row of a record keeps one row holding only its id, which means "annotated, states no facts". The draft's `flags` column isn't kept, since the tool recomputes the checks.
+
+### Checking the translation table
+
+Press **Translation table** at the top of the page. It shows `name_mapping.csv` one row per name of the current schema (the one step 060 used), and opens on the rows still to check (untick *Show only rows to check* to see them all). Each row shows:
+
+- the name and its definition in the current schema;
+- **Means, in the ground truth vocabulary**: a list of the ground truth vocabulary's names (and `(none)`), with the chosen name's definition below it;
+- for a predicate, **Swap subject and object**, with an example: the first triple extraction kept with that predicate, before and after translation (`Aqua CARRIES MODIS → MODIS ABOARD Aqua`), so you can read whether it says the same thing;
+- **Checked**: tick it once the translation is right. A row whose two names are the same says so and needs nothing.
+
+Every change is saved to `name_mapping.csv` at once. The tool can't add, remove or reorder rows (step 070 adds them). If step 070 adds rows while the page is open, a save keeps them; if the rows on the page no longer match the file, the save is refused and the page asks you to reload.
 
 **Without the tool**, the same result by hand: copy the draft batch into `ground_truth/` under its new name, correct it in any editor (the `flags` column can stay; it's ignored), set `all_facts_extracted` to `1` on every row of each finished record, and commit. Never correct the file in `outputs/`: it can be deleted and rebuilt, and your corrections would go with it.
 
