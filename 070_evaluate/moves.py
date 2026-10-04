@@ -164,10 +164,26 @@ def _match_rows(records: list) -> list:
 def _clue_lines(clues: list) -> list:
     """The report's list of name clues (match.name_clues)."""
     lines = ["### Possible translation errors", "",
-             "Where extraction found the fact but a name differed: a paired fact with another entity class, or "
-             "unpaired facts with the same subject and object but another predicate. Frequent pairs point at a row "
-             "of `annotations/name_mapping.csv` to check (`py annotate.py`, Translation table); a single one may "
-             "just be extraction choosing the wrong name.", ""]
+             "Where extraction found the fact but a name didn't line up with the ground truth's. A row of the "
+             "table below seen often means a row of the translation table (`annotations/name_mapping.csv`) is "
+             "likely wrong: check that row (`py annotate.py`, Translation table). Seen once, it may just be "
+             "extraction choosing the wrong name.", "",
+             "How to read a row of the table below, e.g. *entity class | Body | Spacecraft | CelestialBody | 9*: "
+             "these events, "
+             "counted together, happened 9 times:", "",
+             "- **entity class, subject:** extraction used `Body` (current schema) as the entity class of a "
+             "triple's subject, translated to `Spacecraft` (ground truth vocabulary), while the ground truth triple paired with it (a match, "
+             "exact or partial) had `CelestialBody` (ground truth vocabulary) as its subject's entity class;",
+             "- **entity class, object:** the same, for the object's entity class. One triple can count twice, "
+             "once per slot;",
+             "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject and "
+             "object, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
+             "predicate (ground truth vocabulary). With subject and object the other way round, the "
+             "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
+             "Names are compared after translation. All 9 events share one cause: the translation table's row "
+             "`Body` (current schema) --> `Spacecraft` (ground truth vocabulary). Had that row said `Body` --> `CelestialBody` (ground truth "
+             "vocabulary), none of the 9 would have happened. So that row of the translation table is the "
+             "likely mistake, and the one to check.", ""]
     if not clues:
         return lines + ["None.", ""]
     lines += ["| Kind | Name in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
