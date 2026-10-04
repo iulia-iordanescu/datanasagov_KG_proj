@@ -27,7 +27,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `docs/terminology.md` | What every word used here means | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
-| `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the ground truth candidates pool (`ground_truth_candidates.csv`, `.json`), the hand-built schema, the schema additions, the translation of 060's names into yours and the log of held-out looks (both added to by 070), and the notes and old drafts they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
+| `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the ground truth candidates pool (`ground_truth_candidates.csv`, `.json`), the hand-built schema, the schema additions, the translation of 060's names into the ground truth vocabulary and the log of held-out looks (both added to by 070), and the notes and old drafts they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
 | `TODO.md` | Your to-do list | — |
 | `requirements.txt` | The Python packages the pipeline needs, installed with `pip install -r requirements.txt` | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md) |
 

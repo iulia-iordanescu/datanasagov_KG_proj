@@ -201,7 +201,8 @@ def coined_reminder(data: Data, gt) -> list:
     if not names:
         return []
     return [f"{len(names)} name(s) used in the ground truth aren't in the hand-built schema "
-            f"({HAND_SCHEMA.name}): {', '.join(names)}. Add each one you mean to keep, with a one-line "
+            f"({HAND_SCHEMA.name}): {'; '.join(f'{n} (ground truth vocabulary)' for n in names)}. "
+            f"Add each one you mean to keep, with a one-line "
             f"definition; fix any typo where it's used."]
 
 

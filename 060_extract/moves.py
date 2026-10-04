@@ -153,11 +153,12 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"`source_text`: its source text is missing or isn't in the record's text; "
              f"`name_not_in_schema`: it uses an entity class or predicate the schema doesn't have.", ""]
     if new_names:
-        lines += [f"Names outside the schema the model used, counted over {where}, most used first. A name "
+        lines += [f"Names outside the schema (the current schema: the schema input plus the additions file) the "
+                  f"model used, counted over {where}, most used first. A name "
                   f"that keeps coming back may belong in `annotations/schema_additions.txt`"
                   + (" (names seen in ground truth records: see instructions/060_extract.md before adding "
                      "them)" if where != "records outside the ground truth" else "") + ":", "",
-                  "| Kind | Name | Records |", "|---|---|---:|"]
+                  "| Kind | Name (used by the model; not in the current schema) | Records |", "|---|---|---:|"]
         lines += [f"| {x['kind']} | {cell(x['name'])} | {x['records']} |" for x in new_names[:SHOW]]
         if len(new_names) > SHOW:
             lines.append(f"| … {len(new_names) - SHOW} more, in `{DETAILS_NAME}` | | |")

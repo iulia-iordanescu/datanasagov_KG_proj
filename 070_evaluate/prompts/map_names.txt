@@ -1,20 +1,21 @@
 Two vocabularies name kinds of things (entity classes) and relations
-(predicates) differently. For each name in SCHEMA, give the name in YOURS,
-of the same kind, that means the same thing, or null if none of YOURS does.
-Judge by meaning and definition, not by spelling.
+(predicates) differently. For each name in SCHEMA, give the name in
+GROUND_TRUTH, of the same kind, that means the same thing, or null if none
+of GROUND_TRUTH does. Judge by meaning and definition, not by spelling.
 
-For a predicate, set "reversed": true when the name in YOURS states the same
-relation in the opposite direction ("A CARRIES B" means "B ABOARD A");
-otherwise false.
+For a predicate, set "reversed": true when the name in GROUND_TRUTH states
+the same relation in the opposite direction ("A CARRIES B" means "B ABOARD
+A"); otherwise false.
 
-Use only names exactly as they are written in YOURS. Several names of
-SCHEMA may map to the same name of YOURS. Answer for every name of SCHEMA.
+Use only names exactly as they are written in GROUND_TRUTH. Several names of
+SCHEMA may map to the same name of GROUND_TRUTH. Answer for every name of
+SCHEMA.
 
 Return ONLY JSON, no prose:
-{"mapping": [{"kind": "entity class" or "predicate", "schema": "...", "yours": "..." or null, "reversed": false}]}
+{"mapping": [{"kind": "entity class" or "predicate", "schema": "...", "ground_truth": "..." or null, "reversed": false}]}
 
-YOURS
-$yours
+GROUND_TRUTH
+$ground_truth
 
 SCHEMA
 $schema

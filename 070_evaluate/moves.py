@@ -3,7 +3,7 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate.py.
 
     stage 1  records.py  pick_records     code: which records are scored (finished, extracted, in the fair part)
     -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
-    stage 2  names.py    translate_names  LLM: 060's names → yours, new names only; you check
+    stage 2  names.py    translate_names  LLM: current schema's names → ground truth vocabulary, new names only; you check
     stage 3  match.py    compare          code: record by record, exact and partial matches, strict, within reach
     stage 4  stats.py    score            code: the numbers, each with its margin of error, per part and group
     -        (here)      results          writes scores.json, per_record.md and matches.csv; the report
@@ -32,6 +32,7 @@ MATCHES_NAME = "matches.csv"
 LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records"]
 FACT = ("subject", "subject_class", "predicate", "object", "object_class")
+SHOW = 20                        # rows listed in the report before "…"
 MATCH_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_classes_right", "within_reach"]
                  + [f"extracted_{c}" for c in FACT] + [f"translated_{c}" for c in FACT]
                  + [f"ground_truth_{c}" for c in FACT] + [ORIGIN_COLUMN])
@@ -90,7 +91,7 @@ def _per_record(records: list, hidden: int) -> str:
     lines = ["# Per record", "",
              "Each scored record: its facts matched (✓ exact / ≈ partial, with both versions), extracted but not "
              "in the ground truth (count against precision), and in the ground truth but not extracted (count "
-             "against recall). Extracted facts are shown translated into your names. Terms: "
+             "against recall). Extracted facts are shown translated into the ground truth vocabulary. Terms: "
              "docs/terminology.md, section *Scoring extraction*.", ""]
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
@@ -102,7 +103,8 @@ def _per_record(records: list, hidden: int) -> str:
                   f"Pool position {r['position']} · {r['part']} · group {r['group'] or '(none)'} · id `{r['id']}`", ""]
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
-        lines += [f"Describes: {mark} `{d['said'] or '(none named)'}` (ground truth: `{d['truth'] or '(none)'}`)", ""]
+        lines += [f"Describes: {mark} extraction said `{d['said'] or '(none named)'}` (translated into the ground truth "
+                  f"vocabulary); the ground truth says `{d['truth'] or '(none)'}` (ground truth vocabulary)", ""]
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         if c["pairs"]:
@@ -159,6 +161,29 @@ def _match_rows(records: list) -> list:
     return rows
 
 
+def _clue_lines(clues: list) -> list:
+    """The report's list of name clues (match.name_clues)."""
+    lines = ["### Possible translation errors", "",
+             "Where extraction found the fact but a name differed: a paired fact with another entity class, or "
+             "unpaired facts with the same subject and object but another predicate. Frequent pairs point at a row "
+             "of `annotations/name_mapping.csv` to check (`py annotate.py`, Translation table); a single one may "
+             "just be extraction choosing the wrong name.", ""]
+    if not clues:
+        return lines + ["None.", ""]
+    lines += ["| Kind | Name in the current schema | Its translation (ground truth vocabulary) | Name in the ground "
+              "truth vocabulary it met instead | Times | Check |", "|---|---|---|---|---:|---|"]
+    for c in clues[:SHOW]:
+        to = "(none)" if c["translated_to"].endswith(match.NO_TRANSLATION) else c["translated_to"]
+        check = (f"swap_subject_and_object of {c['crt_name']} (current schema): subject and object were the "
+                 f"other way round" if c["swapped"] else
+                 f"should {c['crt_name']} (current schema) translate to {c['gtt_name']} (ground truth vocabulary)?")
+        lines.append(f"| {c['kind']} | {cell(c['crt_name'])} | {cell(to)} | {cell(c['gtt_name'])} | {c['count']} "
+                     f"| {cell(check)} |")
+    if len(clues) > SHOW:
+        lines.append(f"| … {len(clues) - SHOW} more, in `{SCORES_NAME}` | | | | | |")
+    return lines + [""]
+
+
 def results(scored, names, scores, calls, settings, output) -> Results:
     schema_file = scored.schema_used.get("made", {}).get("schema", "?")
     looks = _log_look(scored, schema_file) if settings["score_held_out"] else None
@@ -167,6 +192,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
     # Only the parts whose numbers are shown: the held-out records' facts stay
     # unseen too, unless --score_held_out true.
     shown = [r for r in scored.records if r["part"] in scores]
+    clues = match.name_clues(shown)
     match_rows = _match_rows(shown)
     write_text(per_record_path, _per_record(shown, len(scored.records) - len(shown)))
     write_csv(matches_path, MATCH_COLUMNS, match_rows)
@@ -180,6 +206,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                                               for (t, s), n in v["confusion"].items()]}
                   for p, v in scores.items() if p != "kept_aside"},
         "held_out_looks": looks,
+        "name_clues": clues,
     })
     log.info(f"  wrote {SCORES_NAME}, {PER_RECORD_NAME}, {MATCHES_NAME}")
 
@@ -196,6 +223,11 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                  for g in v["groups"]):
             warnings.append(f"{part}: some sampling group's share of the scored records differs from its share "
                             f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the group table.")
+    frequent = [c for c in clues if c["count"] >= match.CLUE_WARN]
+    if frequent:
+        warnings.append(f"{len(frequent)} pair(s) of names met {match.CLUE_WARN} or more times where extraction "
+                        f"found the fact but a name differed: a translation in name_mapping.csv may be wrong or "
+                        f"missing. See Possible translation errors.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
                         f"(annotations/held_out_looks.csv; commit it). Each look is a chance to tune on it.")
@@ -204,7 +236,8 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         warnings.append(missing)
 
     lines = ["### What this run worked on", "",
-             f"Schema 060 used: `{schema_file}`, translated to your names through `annotations/name_mapping.csv` "
+             f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth vocabulary "
+             f"through `annotations/name_mapping.csv` "
              f"({names.rows_used} names; {names.reversed_used} predicate(s) reversed).", "",
              "| Part | Records scored |", "|---|---:|"]
     for part in ("tuning", "held-out"):
@@ -234,6 +267,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                   "|---|---|---|"]
         lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
         lines.append("")
+    lines += _clue_lines(clues)
     if scored.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in scored.left_out.items())
                   + f". Not finished yet in the ground truth: {scored.unfinished}.", ""]
@@ -264,7 +298,8 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                   f"record(s). Always guessing the most common kind would score {_pct(d['majority_baseline'])}; "
                   f"averaged per kind: {_pct(d['per_kind_average'])}.", ""]
         if v["confusion"]:
-            lines += ["| Ground truth kind | 060 said | Records |", "|---|---|---:|"]
+            lines += ["| The ground truth says (ground truth vocabulary) | Extraction said (translated into the ground "
+                      "truth vocabulary) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
         lines += [f"Per sampling group (numbers once a group has {stats.MIN_RECORDS} records; with many groups, "

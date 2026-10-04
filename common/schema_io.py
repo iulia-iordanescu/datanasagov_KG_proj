@@ -45,8 +45,8 @@ shapes:
 Several steps read it: 040 compares the induced schema with the hand-built
 one; 050 shows the hand-built one to the model and checks every drafted row
 against it (as does the annotation tool); 060 extracts with 040's schema, or
-another given with --schema, plus the additions; 070 reads your names from the
-hand-built one.
+another given with --schema, plus the additions; 070 builds the ground truth
+vocabulary from the hand-built one and the ground truth.
 
     from common.schema_io import read_schema, schema_text
     schema = read_schema(path)          # either shape, by the file's suffix

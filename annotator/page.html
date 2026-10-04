@@ -379,7 +379,10 @@ function refreshProblems() {
 // One row per name of the current schema (the one extraction used): which name
 // of the ground truth vocabulary it means. Only name_in_gtt,
 // swap_subject_and_object and checked can be changed here.
-let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false;
+let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
+// A row "of the current schema": its name is in the schema extraction used
+// last (schema_used.json). Without that file, every row counts as current.
+const isCurrent = (r) => !mapping.schema_found || r.in_crt;
 const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same name");
 
 async function openMapping() {
@@ -400,22 +403,30 @@ async function openMapping() {
     return;
   }
   status(`Editing ${mapping.file}`, "saved");
-  onlyToCheck = mapping.rows.some(toCheck);          // open on the rows that need you
+  onlyToCheck = mapping.rows.some(r => isCurrent(r) && toCheck(r));   // open on the rows that need you
   drawMapping();
 }
 
 function drawMappingSummary() {
-  const left = mapping.rows.filter(toCheck).length;
+  const current = mapping.rows.filter(isCurrent);
+  const past = mapping.rows.length - current.length;
+  const left = current.filter(toCheck).length;
   $("records").replaceChildren(
     el("div", { style: "padding:6px 8px" },
       el("h3", {}, "Translation table"),
-      el("p", { class: "meta" }, `${mapping.rows.length} row(s); ${left} still to check.`),
-      el("p", { class: "meta" }, "Evaluation scores only when every row it needs is checked. " +
+      el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the one extraction used last); ` +
+                                  `${left} still to check.`),
+      el("p", { class: "meta" }, "Evaluation scores only when every row of the current schema is checked. " +
                                   "It adds rows itself; it never changes one."),
-      el("label", { class: "meta" },
+      el("label", { class: "meta", style: "display:block" },
         el("input", { type: "checkbox", checked: onlyToCheck,
                       onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
-        " Show only rows to check")));
+        " Show only rows to check"),
+      past ? el("label", { class: "meta", style: "display:block" },
+        el("input", { type: "checkbox", checked: showPast,
+                      onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
+        ` Show the ${past} row(s) only past schemas use (kept, so a name that comes back needn't be checked again)`)
+        : null));
 }
 
 function drawMapping() {
@@ -423,13 +434,15 @@ function drawMapping() {
   const cards = [];
   if (mapping.repeats.length)
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
-      "✖ One name, one row: " + mapping.repeats.map(r => `${r.kind} ${r.name} (lines ${r.lines.join(", ")})`).join("; ") +
+      "✖ One name, one row: " + mapping.repeats.map(r => `${r.kind} ${r.name} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
       " has more than one. Keep the right row (usually the one whose stored definition matches the current " +
       "schema's) and delete the others below. Evaluation won't score until then."))));
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       "Extraction's schema_used.json wasn't found, so the current schema's definitions can't be shown.")));
-  mapping.rows.forEach((r, i) => { if (!onlyToCheck || toCheck(r) || r.repeated) cards.push(mappingRow(r, i)); });
+  mapping.rows.forEach((r, i) => {
+    if (r.repeated || ((isCurrent(r) || showPast) && (!onlyToCheck || toCheck(r)))) cards.push(mappingRow(r, i));
+  });
   if (cards.length === 0)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       mapping.rows.length ? "Every row is checked." : "The table has no rows yet: evaluation adds them.")));
@@ -444,7 +457,7 @@ function exampleLine(r) {
     : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.name_in_gtt}  ${ex.subject}`
     : `${ex.subject}  ${r.name_in_gtt}  ${ex.object}`;
   return el("div", { class: "example", title: r.example ? "the first such triple extraction kept" : "a made-up example" },
-    `${before}   →   ${after}`);
+    `${before}   -->   ${after}`);
 }
 
 function mappingRow(r, i) {
@@ -467,6 +480,7 @@ function mappingRow(r, i) {
 
   return el("section", { class: "card maprow" + (toCheck(r) || r.repeated ? " todo" : "") },
     el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_from_past_or_crt_schema,
+       el("span", { class: "meta" }, isCurrent(r) ? "  (current schema)" : "  (past schema only)"),
        r.repeated ? el("span", { class: "meta" }, `  (line ${r._line}, repeated) `) : null,
        r.repeated ? el("button", { onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
     r.repeated ? el("div", { class: "meta" }, "Stored definition (when this row was checked): ",
@@ -503,7 +517,7 @@ function mappingRow(r, i) {
 }
 
 async function deleteMappingRow(r) {
-  if (!confirm(`Delete line ${r._line} (${r.kind} ${r.name_from_past_or_crt_schema} → ${r.name_in_gtt})?`)) return;
+  if (!confirm(`Delete line ${r._line} (${r.kind} ${r.name_from_past_or_crt_schema} --> ${r.name_in_gtt})?`)) return;
   await flush();
   try {
     await api("/api/mapping/delete", { line: r._line, kind: r.kind, name: r.name_from_past_or_crt_schema });

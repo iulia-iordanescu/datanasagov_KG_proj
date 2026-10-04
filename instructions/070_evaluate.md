@@ -15,7 +15,7 @@ each with its **margin of error**, so a real improvement can be told from luck. 
 - **schema ceiling**: how much of the ground truth the schema can express at all, and **recall within reach**: how well 060 did on what it could do. A low ceiling means the schema needs work; a high ceiling with low recall within reach means the extraction does;
 - **what each record describes**: how often 060 named the right kind of thing for the DESCRIBES row, next to what always guessing the most common kind would score.
 
-Before comparing, 060's names are translated into the ground truth's names (yours), through a table you check. Only the **fair part** of the ground truth is scored (a fair sample of the catalog), and by default only its **tuning part**: the held-out part is kept for the end.
+Before comparing, the names of 060's schema (the current schema) are translated into the ground truth vocabulary, through a table you check. Only the **fair part** of the ground truth is scored (a fair sample of the catalog), and by default only its **tuning part**: the held-out part is kept for the end.
 
 The ground truth was drafted by a model (050) and corrected by a person, not written from scratch; a fact both missed is counted nowhere, so recall may come out higher than it is. The report says so.
 
@@ -29,7 +29,7 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 | `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is not scored, not scored as zero). |
 | `schema_used` | `060_extract/schema_used.json` | The schema 060 used: the names to translate. |
 | `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's sampling group. |
-| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the names coined in the ground truth, the ground truth vocabulary ("your names" here), built by `common/ground_truth.vocabulary` as in 050 and the annotation tool. |
+| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the names coined in the ground truth, the ground truth vocabulary, built by `common/ground_truth.vocabulary` as in 050 and the annotation tool. |
 | `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | The answer key. Only records you've finished (*All facts extracted*) are scored. |
 | `name_mapping` | `./annotations/name_mapping.csv` (in Git) | The translation table (below). |
 
@@ -41,9 +41,9 @@ In `outputs/intermediate_results/070_evaluate/`:
 
 | File | Contents |
 |---|---|
-| `per_record.md` | For reading. Each scored record of the parts shown (the tuning part; the held-out part too with `--score_held_out true`, so its facts stay unseen until then): what it describes (✓/✗), its facts **matched** (✓ exact or ≈ partial, with the ground truth's version when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted facts are shown translated into your names. Opens well in VS Code or on GitHub. |
+| `per_record.md` | For reading. Each scored record of the parts shown (the tuning part; the held-out part too with `--score_held_out true`, so its facts stay unseen until then): what it describes (✓/✗), its facts **matched** (✓ exact or ≈ partial, with the ground truth's version when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted facts are shown translated into the ground truth vocabulary. Opens well in VS Code or on GitHub. |
 | `matches.csv` | For sorting and filtering, e.g. in Excel. One row per fact of the parts shown: record, pool position, part, group, `status` (`exact`, `partial`, `wrong`, `missed`), `entity_classes_right`, `within_reach`, then the fact as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
-| `scores.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were scored and which left out, and why; the settings. |
+| `scores.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were scored and which left out, and why; the possible translation errors (`name_clues`, see *Then the results*); the settings. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
@@ -94,12 +94,12 @@ Four stages, in `070_evaluate.py`'s `main()`; stage 2 asks the model (only for n
    kind,name_from_past_or_crt_schema,name_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema
    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.
    predicate,CARRIES,ABOARD,yes,yes,Has on board.         "A CARRIES B" is "B ABOARD A"
-   entity class,Gadget,(none),no,yes,A small device.      nothing of yours means this
+   entity class,Gadget,(none),no,yes,A small device.      nothing in the ground truth means this
    entity class,Dataset,Dataset,no,same name,A set of data.
    ```
 
-   For each name of 060's schema without a row: one equal to one of yours (ignoring case, spaces and punctuation) gets a row at once, `checked` = `same name`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `name_in_gtt` (one of your names, or `(none)`) and `swap_subject_and_object` where wrong, then set `checked` to `yes`. Scoring runs only once every row it needs is checked. Each row also keeps the current schema's definition of its name from when it was written or last checked (`definition_from_past_or_crt_schema`): if a later schema defines that name differently, the row is **stale** (it may no longer be right) and the step stops until you check it again; checking it again stores the new definition. So the one table can serve every schema: a name keeps its row while its meaning stays the same. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
-3. **Compare, record by record** (`match.py`, `compare`). Each extracted fact is translated into your names; a reversed predicate also swaps subject and object. Then the ground truth's facts and the extracted facts are **paired**: every fact, in either list, ends with **zero or one partner**, always from the other list (so a fact stated twice earns one match, not two; the two lists can have any lengths). Two rounds, each finding the largest possible set of pairs (*maximum matching*: a pairing may switch to another partner to free one for a fact that would otherwise have none; taking each fact's first match in list order could lose a real match, and make the score depend on the order facts were written in):
+   For each name of 060's schema without a row: one equal to a name of the ground truth vocabulary (ignoring case and punctuation) gets a row at once, `checked` = `same name`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `name_in_gtt` (a name of the ground truth vocabulary, or `(none)`) and `swap_subject_and_object` where wrong, then set `checked` to `yes`. Scoring runs only once every row it needs is checked. Each row also keeps the current schema's definition of its name from when it was written or last checked (`definition_from_past_or_crt_schema`): if a later schema defines that name differently, the row is **stale** (it may no longer be right) and the step stops until you check it again; checking it again stores the new definition. So the one table can serve every schema: a name keeps its row while its meaning stays the same. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
+3. **Compare, record by record** (`match.py`, `compare`). Each extracted fact is translated into the ground truth vocabulary; a reversed predicate also swaps subject and object. Then the ground truth's facts and the extracted facts are **paired**: every fact, in either list, ends with **zero or one partner**, always from the other list (so a fact stated twice earns one match, not two; the two lists can have any lengths). Two rounds, each finding the largest possible set of pairs (*maximum matching*: a pairing may switch to another partner to free one for a fact that would otherwise have none; taking each fact's first match in list order could lose a real match, and make the score depend on the order facts were written in):
    - **exact**: subject and object the same once evened out (case, spacing, quote marks, dashes, edge punctuation and a leading "the/a/an" ignored, as everywhere in the pipeline), predicate the same;
    - **partial**, among the facts still unpaired: the same, except that a subject or object may be contained in the other as whole words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)". This can be fooled ("MODIS" in "MODIS Terra"), which is why every partial pair is listed in `per_record.md`.
 
@@ -120,7 +120,7 @@ Four stages, in `070_evaluate.py`'s `main()`; stage 2 asks the model (only for n
 
    Each is given at both name levels (**exact**, and **partial**, which counts exact and partial pairs), with its **margin of error** by the **bootstrap** (below), for the tuning part, for the held-out part when asked, and per sampling group. The report adds a table of what 060 said each record describes versus what it is.
 
-**Then the results** (`results`): `scores.json`, `per_record.md` and `matches.csv` are written, replacing the last run's; with `--score_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report.
+**Then the results** (`results`): `scores.json`, `per_record.md` and `matches.csv` are written, replacing the last run's; with `--score_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **possible translation errors** (`match.py`, `name_clues`), found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the fact but a name differs. A paired fact whose entity class differs from the ground truth's points at the current schema's entity class (its row may say `(none)`, or the wrong name); an unpaired extracted fact and an unpaired ground truth fact with the same subject and object (or the two swapped) but different predicates point at the predicate's row (or its `swap_subject_and_object`). Each pair of names is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong name, a frequent one is a row to check.
 
 The code: `070_evaluate/` holds `moves.py` (the moves, and writing the results), `records.py`, `names.py`, `match.py`, `stats.py` and `prompts/`. Shared with other steps: `common/ground_truth.py` (reading the ground truth; the fair part), `common/text_match.py`, `common/triples_io.py`, `common/files.py` (adding lines without changing any), `common/cache.py`, `common/llm.py`.
 
@@ -146,7 +146,7 @@ A margin covers only **which records happened to be scored**: not mistakes in th
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `070_evaluate/prompts/map_names.txt` | stage 2, one call, only for names of 060's schema without a row | for each of those names, give the one of yours that means the same thing (or none), and say whether a predicate states the relation in the opposite direction; your names and their definitions are shown in the prompt |
+| `070_evaluate/prompts/map_names.txt` | stage 2, one call, only for names of 060's schema without a row | for each of those names, give the name of the ground truth vocabulary that means the same thing (or none), and say whether a predicate states the relation in the opposite direction; the ground truth vocabulary's names and definitions are shown in the prompt |
 
 Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. Its answers are only proposals: you check every row before scoring uses it.
 
@@ -169,6 +169,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *only N record(s) scored, fewer than 20* | No margin of error; don't draw conclusions yet. | Annotate more; until then, read `per_record.md` rather than the numbers. |
 | *some sampling group's share … differs from its share of the pool* | The scored records don't mirror the pool. | Look at the group table; usually hand-picked or skipped records. |
+| *N pair(s) of names met 2 or more times where extraction found the fact but a name differed* | A row of `name_mapping.csv` may translate a current-schema name to the wrong ground truth name, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py annotate.py`, *Translation table*). |
 | *The held-out part was looked at: N time(s) so far* | After `--score_held_out true`: each look is logged and counted. | Commit `annotations/held_out_looks.csv`. |
 
 **The step stops** with:
@@ -178,7 +179,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no` (easiest in `py annotate.py`, *Translation table*), then run again. |
 | *N checked row(s) of name_mapping.csv were checked when the current schema defined the name differently* | A later schema uses the name, but defines it differently from when the row was checked: the translation may no longer be right. | Check those rows again in `py annotate.py`, *Translation table* (it shows both definitions), then run again. |
 | *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them in `py annotate.py`, *Translation table* (or in the CSV: fix `name_in_gtt` and `swap_subject_and_object` where wrong, then set `checked` to `yes`), then run again. |
-| *N checked row(s) … name something that isn't one of your names* | A typo in `name_in_gtt`. | Use one of your names, or `(none)`. |
+| *N checked row(s) … translate to a name that isn't in the ground truth vocabulary* | A typo in `name_in_gtt`, or a ground truth name since renamed; each is listed as *name (current schema) --> name (not in the ground truth vocabulary)*. | Choose a name of the ground truth vocabulary, or `(none)`. |
 | *name_mapping.csv has N name(s) with more than one row: … (lines …)* | Two rows for one name (usually from a hand edit), so which translation counts is unclear. | Keep one row per name: `py annotate.py`, *Translation table*, shows a *Delete this row* button on each repeated row. |
 | *name_mapping.csv lacks the column(s) …* | The file's header was changed. | Restore the header: `kind,name_from_past_or_crt_schema,name_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema`. |
 | *kind must be 'entity class' or 'predicate'* | A typo in `kind`. | Fix it. |
@@ -199,8 +200,9 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 ## Human work
 
 - **Check the translation table** (`annotations/name_mapping.csv`) whenever 070 adds rows: `py annotate.py`, button *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse.
-- **After adding names to your schema**, look at the report's *The translation table*: rows that say `(none)` beside your names that nothing translates to. A row checked as `(none)` before you added a matching name of yours stays `(none)` until you fix it (070 never changes a row).
-- **Names that share a translation.** The same report section lists each of your names that two or more of the current schema's names translate to (e.g. both `Satellite` and `Spacecraft` → `Spacecraft`). The scores can't tell those apart, since the ground truth doesn't: a mix-up between them costs extraction nothing. That's right if the distinction doesn't matter to you; if it does, make it in the ground truth (annotate with both names), not in the table.
+- **After the ground truth vocabulary grows** (names added to the hand-built schema, or coined while annotating), look at the report's *The translation table*: rows that say `(none)` beside the ground truth vocabulary's names that nothing translates to. A row checked as `(none)` before a matching name joined the ground truth vocabulary stays `(none)` until you fix it (070 never changes a row).
+- **Read *Possible translation errors*** in each report: it's how a wrong row of the translation table shows up, even one you checked.
+- **Names that share a translation.** The same report section lists each name of the ground truth vocabulary that two or more of the current schema's names translate to (e.g. both `Satellite` and `Spacecraft` → `Spacecraft`). The scores can't tell those apart, since the ground truth doesn't: a mix-up between them costs extraction nothing. That's right if the distinction doesn't matter to you; if it does, make it in the ground truth (annotate with both names), not in the table.
 - **Read `per_record.md`**, especially the partial matches (could be fooled) and the "extracted but not in the ground truth" facts: some may be real facts you missed while annotating, which means the ground truth undercounts.
 - **Look at the held-out part only at the end**, and commit `annotations/held_out_looks.csv` after each look.
 - **Add schema names only from the tuning part** (or outside knowledge): adding names because of what the held-out records need is tuning on them.
@@ -208,7 +210,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 ## Known limits
 
 - **Not yet run with the real model.** As of 2026-09-29, 070 has been tested only with a hand-made 060 output whose right answers were worked out in advance (all 16 numbers matched), and with synthetic records for the margins; 060 itself hasn't run with the real model yet, because Ask Sage can't be reached from the laptop it was built on. The numbers in this guide come from those tests, not from a real run.
-- **One translation per name.** A name of 060's schema translates to one of yours at most; if it covers two of yours (e.g. `Instrument` for your `Instrument` and `Sensor`), pick the closer one.
+- **One translation per name.** A name of the current schema translates to at most one name of the ground truth vocabulary; if it covers two (e.g. `Instrument` (current schema) for both `Instrument` and `Sensor` (ground truth vocabulary)), pick the closer one.
 - **Partial matching can be fooled**, and doesn't catch synonyms ("the satellite" for "Aqua"). Every partial pair is listed so you can see it.
 - **The ground truth started as a model's draft**: recall may be overstated (see Purpose).
 - **The threshold of 20 records** for a margin is a rule of thumb.

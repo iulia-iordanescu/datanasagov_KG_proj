@@ -77,6 +77,11 @@ def _not_tuning(source: str, parts: dict) -> str | None:
     return None
 
 
+def _source(came_from: str | None) -> str:
+    """Where a schema entry came from, for messages."""
+    return "additions file" if came_from == "additions" else "schema input"
+
+
 def load_schema(inputs: dict) -> Schema:
     base, extra = read_schema(inputs["schema"]), read_schema(inputs["additions"])
     result = Schema(files={"schema": ref_path(inputs["schema"]), "additions": ref_path(inputs["additions"])})
@@ -128,12 +133,15 @@ def load_schema(inputs: dict) -> Schema:
         result.notes.append(f"{len(result.not_tuning)} addition(s) in {Path(inputs['additions']).name} say they come "
                             f"from the ground truth but don't show they come from tuning records only, so they are "
                             f"left out (a name from a held-out record would let the schema see the final exam): "
-                            + named([f"{x['name']} ({x['why']})" for x in result.not_tuning], 5, "; ") + ".")
+                            + named([f"{x['name']} (additions file; {x['why']})" for x in result.not_tuning], 5, "; ")
+                            + ".")
     if result.left_out:
         result.notes.append(f"{len(result.left_out)} addition(s) in {Path(inputs['additions']).name} "
                             f"have a name already there (in the schema, or an earlier addition), so that entry "
                             f"is kept: "
-                            + named([x["name"] for x in result.left_out]) + ".")
+                            + named([f"{x['name']} (additions file) = {x['kept']} "
+                                     f"({_source(result.came_from[x['kind']].get(x['kept']))})"
+                                     for x in result.left_out], 5, "; ") + ".")
     if extra["unread"]:
         result.notes.append(f"{len(extra['unread'])} line(s) of {Path(inputs['additions']).name} aren't read as an "
                             f"entry, a source or patterns (a name can't contain a space; two or more spaces go "
@@ -141,17 +149,18 @@ def load_schema(inputs: dict) -> Schema:
                             + named(extra["unread"], 5, "; ") + ".")
     if no_source:
         result.notes.append(f"{len(no_source)} addition(s) have no \"source:\" line saying where the idea "
-                            f"came from: {named(no_source)}.")
-    undefined = [n for kind in KINDS for n, d in merged[kind].items() if not d]
+                            f"came from: {named([f'{n} (additions file)' for n in no_source], 5, '; ')}.")
+    undefined = [f"{n} ({_source(result.came_from[kind].get(n))})"
+                 for kind in KINDS for n, d in merged[kind].items() if not d]
     if undefined:
         result.notes.append(f"{len(undefined)} schema entr{'ies have' if len(undefined) > 1 else 'y has'} "
-                            f"no definition, so the model sees only the name: {named(undefined)}.")
+                            f"no definition, so the model sees only the name: {named(undefined, 5, '; ')}.")
     unknown = sorted({x for s, p, o in patterns for x, kind in ((s, "entity_classes"), (p, "predicates"),
                                                               (o, "entity_classes"))
                       if x not in merged[kind]})
     if unknown:
         result.notes.append(f"{len(unknown)} name(s) used in patterns aren't entity classes or predicates "
-                            f"of the schema: {named(unknown)}.")
+                            f"of the schema: {named([f'{n} (in a pattern; not in the schema)' for n in unknown], 5, '; ')}.")
     added = sum(v == "additions" for kind in KINDS for v in result.came_from[kind].values())
     log.info(f"  schema: {len(merged['entity_classes'])} entity classes, {len(merged['predicates'])} "
              f"predicates, {len(patterns)} patterns ({added} added from {Path(inputs['additions']).name})")

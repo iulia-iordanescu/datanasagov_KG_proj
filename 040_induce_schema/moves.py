@@ -174,7 +174,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                   f"{m['texts']} |" for m in labels.merges]
         lines.append("")
     if counts.spelling_folds:
-        lines += ["Spelling folds: " + named([f"{' · '.join(f['folded'])} → {f['into']}"
+        lines += ["Spelling folds: " + named([f"{' · '.join(f['folded'])} --> {f['into']}"
                                               for f in counts.spelling_folds], SHOW, "; ") + ".", ""]
     by_reason = {}
     for d in schema.deferred:
