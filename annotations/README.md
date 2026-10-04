@@ -38,6 +38,8 @@ Press **Translation table** at the top of the page. It shows `name_mapping.csv` 
 - the name and its definition in the current schema;
 - **Means, in the ground truth vocabulary**: a list of the ground truth vocabulary's names (and `(none)`), with the chosen name's definition below it;
 - for a predicate, **Swap subject and object**, with an example: the first triple extraction kept with that predicate, before and after translation (`Aqua CARRIES MODIS --> MODIS ABOARD Aqua`), so you can read whether it says the same thing;
+- **⚑ suggested**: a row that says `(none)`, for which the model, at evaluation's last run, suggested a ground truth name gained since (a different spelling, e.g. `Gadget` --> `Device`). Pick it if right.
+- **⚑ now exists**: a row that says `(none)`, though the ground truth vocabulary now has a name spelled the same (you coined it since, or added it to the hand-built schema). Probably out of date: change it, unless the ground truth's name means something else.
 - **⚑ shared**: if another name of the current schema already translates to the name you chose, the row says so: evaluation won't be able to tell those names apart. Fine if your ground truth doesn't make that distinction.
 - **Checked**: tick it once the translation is right; that also stores the current schema's definition of the name in the row. A row whose two names are the same says so and needs nothing.
 - **⚑ stale**: a row checked when the current schema's name had another definition. It shows that old definition, counts as unchecked, and needs ticking again once you've confirmed (or fixed) the translation.

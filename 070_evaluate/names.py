@@ -52,6 +52,7 @@ from common.schema_io import read_hand_schema
 from common.triples_io import label_key
 
 PROMPT = load(Path(__file__).parent / "prompts" / "map_names.txt")
+SUGGEST_PROMPT = load(Path(__file__).parent / "prompts" / "suggest_names.txt")
 
 
 @dataclass
@@ -64,6 +65,11 @@ class Names:
     to_none: dict = field(default_factory=dict)     # {kind: [060's names whose row says (none)]}
     untranslated: dict = field(default_factory=dict)  # {kind: [ground truth vocabulary names nothing translates to]}
     merged: dict = field(default_factory=dict)      # {kind: {gtt name: [current schema's names that translate to it]}}, 2+ only
+    outdated: list = field(default_factory=list)    # current schema's names whose row says (none), though the
+                                                    # ground truth vocabulary has the same name
+    suggested: list = field(default_factory=list)   # {"kind", "name_from_past_or_crt_schema", "name_in_gtt"}: the
+                                                    # model thinks a (none) row may now have a counterpart
+    suggest_calls: int = 0
     reversed_used: int = 0
     calls: int = 0
 
@@ -202,6 +208,12 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         if mine:
             names.reachable[kind].add(label_key(mine))
     names.rows_used = len(needed)
+    # A row checked as (none) before the same name joined the ground truth
+    # vocabulary is almost surely out of date. Warned about (not a stop: (none)
+    # may still be right if the ground truth's name means something else).
+    names.outdated = [f"{name} (current schema) --> (none), but {gtt_key[kind][label_key(name)]} (ground truth "
+                      f"vocabulary) now exists" for kind, name in needed
+                      if have[(kind, label_key(name))]["name_in_gtt"] == NONE and label_key(name) in gtt_key[kind]]
     # The ground truth vocabulary grows as you annotate: a row checked as (none) may since have
     # gained a counterpart. Both lists go in the report, so such a row can be
     # spotted and fixed (rows are never changed by the step).
@@ -228,4 +240,52 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     for kind in KINDS:
         names.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))
         names.untranslated[kind] = sorted(n for n in names.gtt[kind] if label_key(n) not in names.reachable[kind])
+    names.suggested, names.suggest_calls = _suggest(names, scored.schema_used, calls)
     return names
+
+
+def _suggest(names: Names, schema_used: dict, calls) -> tuple:
+    """Rows that say (none) whose name may since have gained a counterpart in
+    the ground truth vocabulary under ANOTHER name (the same name is caught
+    by `outdated`, free). One model call, only when there are both (none)
+    rows of the current schema and ground truth names nothing translates
+    to; the answer is cached by the lists asked about, so the same lists are
+    never paid for twice. Rows are never changed: these are suggestions for
+    the person (report warnings; the annotation tool reads them from
+    scores.json). Returns (suggestions, calls made)."""
+    same = {kind: {label_key(n) for n in names.gtt[kind]} for kind in KINDS}
+    schema_side = [(k, n) for k in KINDS for n in names.to_none[k] if label_key(n) not in same[k]]
+    gtt_side = {k: [n for n in names.untranslated[k]] for k in KINDS}
+    kinds = {k for k, _ in schema_side if gtt_side[k]}
+    schema_side = [(k, n) for k, n in schema_side if k in kinds]
+    if not schema_side:
+        return [], 0
+    now = crt_definitions(schema_used)
+    prompt = fill(SUGGEST_PROMPT,
+                  ground_truth=json.dumps({k: [{"name": n, "definition": names.gtt[k][n]} for n in gtt_side[k]]
+                                           for k in kinds}, ensure_ascii=False, indent=0),
+                  schema=json.dumps([{"kind": k, "name": n, "definition": now[k].get(label_key(n), "")}
+                                     for k, n in schema_side], ensure_ascii=False, indent=0))
+    cache = Cache(calls.cache_dir, "suggest_names")
+    k = key(prompt)
+    reply = cache.get(k)
+    made = 0
+    if reply is None:
+        calls.paid.start(f"  070 will ask the model whether {len(schema_side)} name(s) of the current schema "
+                         f"translated to (none) now have a counterpart in the ground truth vocabulary: 1 model call")
+        reply = llm.call_llm_json(prompt)
+        calls.paid.made_call()
+        made = 1
+        cache.put(k, reply)
+    asked = {(kind, label_key(n)): n for kind, n in schema_side}
+    offered = {kind: {label_key(n): n for n in gtt_side[kind]} for kind in kinds}
+    out = []
+    for item in reply.get("suggestions", []) if isinstance(reply, dict) else []:
+        if not isinstance(item, dict) or item.get("kind") not in kinds:
+            continue
+        kind = item["kind"]
+        crt = asked.get((kind, label_key(item.get("schema"))))
+        gtt = offered[kind].get(label_key(item.get("ground_truth")))
+        if crt and gtt:                                   # only names that were asked about
+            out.append({"kind": kind, "name_from_past_or_crt_schema": crt, "name_in_gtt": gtt})
+    return out, made

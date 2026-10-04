@@ -1,0 +1,17 @@
+Two vocabularies name kinds of things (entity classes) and relations
+(predicates). The names in SCHEMA were each judged earlier to have no
+counterpart in GROUND_TRUTH; GROUND_TRUTH has since gained names. For each
+name in SCHEMA, say whether a name in GROUND_TRUTH, of the same kind, means
+the same thing. Judge by meaning and definition, not by spelling. Suggest a
+pair only if you are confident; leave a name out otherwise.
+
+Use only names exactly as they are written in the two lists.
+
+Return ONLY JSON, no prose:
+{"suggestions": [{"kind": "entity class" or "predicate", "schema": "...", "ground_truth": "..."}]}
+
+GROUND_TRUTH
+$ground_truth
+
+SCHEMA
+$schema

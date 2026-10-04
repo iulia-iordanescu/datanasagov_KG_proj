@@ -170,8 +170,8 @@ def _clue_lines(clues: list) -> list:
              "just be extraction choosing the wrong name.", ""]
     if not clues:
         return lines + ["None.", ""]
-    lines += ["| Kind | Name in the current schema | Its translation (ground truth vocabulary) | Name in the ground "
-              "truth vocabulary it met instead | Times | Check |", "|---|---|---|---|---:|---|"]
+    lines += ["| Kind | Name in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
+              "triple says instead (ground truth vocabulary) | Times | Check |", "|---|---|---|---|---:|---|"]
     for c in clues[:SHOW]:
         to = "(none)" if c["translated_to"].endswith(match.NO_TRANSLATION) else c["translated_to"]
         check = (f"swap_subject_and_object of {c['crt_name']} (current schema): subject and object were the "
@@ -207,6 +207,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                   for p, v in scores.items() if p != "kept_aside"},
         "held_out_looks": looks,
         "name_clues": clues,
+        "translation_suggestions": names.suggested,
     })
     log.info(f"  wrote {SCORES_NAME}, {PER_RECORD_NAME}, {MATCHES_NAME}")
 
@@ -223,6 +224,18 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                  for g in v["groups"]):
             warnings.append(f"{part}: some sampling group's share of the scored records differs from its share "
                             f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the group table.")
+    if names.suggested:
+        warnings.append(f"The model suggests {len(names.suggested)} row(s) of name_mapping.csv that say (none) may "
+                        f"now have a counterpart in the ground truth vocabulary: "
+                        + named([f"{s['name_from_past_or_crt_schema']} (current schema) --> {s['name_in_gtt']} "
+                                 f"(ground truth vocabulary)" for s in names.suggested], 5, "; ")
+                        + ". Rows aren't changed: check them (py annotate.py, Translation table, shows the "
+                          "suggestion).")
+    if names.outdated:
+        warnings.append(f"{len(names.outdated)} row(s) of name_mapping.csv translate to (none) though the ground "
+                        f"truth vocabulary now has the same name: {named(names.outdated, 5, '; ')}. Probably out of "
+                        f"date: check them (py annotate.py, Translation table); keep (none) only if the ground "
+                        f"truth's name means something else.")
     frequent = [c for c in clues if c["count"] >= match.CLUE_WARN]
     if frequent:
         warnings.append(f"{len(frequent)} pair(s) of names met {match.CLUE_WARN} or more times where extraction "
@@ -318,7 +331,9 @@ def results(scored, names, scores, calls, settings, output) -> Results:
               "both missed is counted nowhere, so recall may be overstated.", "",
               f"Every record's facts, side by side: `{PER_RECORD_NAME}`; one row per fact: `{MATCHES_NAME}`; "
               f"every number: `{SCORES_NAME}`.", ""]
-    lines += model_calls([("propose name translations", names.calls, None)], calls.paid.test_calls, llm.MODEL)
+    lines += model_calls([("propose name translations", names.calls, None),
+                          ("suggest counterparts for (none) rows", names.suggest_calls, None)],
+                         calls.paid.test_calls, llm.MODEL)
 
     tuning = scores.get("tuning", {}).get("numbers")
     headline = {}
