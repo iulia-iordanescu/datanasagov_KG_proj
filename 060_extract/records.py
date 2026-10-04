@@ -15,6 +15,8 @@ shown before the paid-call question and in the report.
 """
 from __future__ import annotations
 
+import json
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -35,6 +37,7 @@ class Chosen:
     how: str = ""                                  # the choice in words, for the report
     notes: list = field(default_factory=list)      # where the run differs from what was asked
     skipped: dict = field(default_factory=dict)    # {reason: [ids]}
+    pool: dict = field(default_factory=dict)       # {id: (pool position, "tuning" | "held-out")} (030's splits.json)
 
 
 def pick_records(inputs: dict, settings: dict) -> Chosen:
@@ -43,6 +46,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
         raise ValueError(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}); "
                          f"to name records, use ids")
     chosen = Chosen(records=load_records(inputs["records"]))
+    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
+    chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in splits["ground_truth_candidates"]["records"]}
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = read_ground_truth(gt_files[0].parent)                  # run_step made sure there is one
     chosen.ground_truth = {r["id"] for r in gt.rows}

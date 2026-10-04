@@ -17,6 +17,20 @@ No record is ever in both lists. 070 measures how well extraction works on text 
 
 **The pool is not drawn here.** It was drawn once, on 2026-09-21, by the earlier `ground_truth_sampler.py`, and annotation has started on it, so it must never change. It is kept in `annotations/ground_truth_candidates.csv`, in Git; 030 reads it. The induction candidates are ordered here.
 
+## To do
+
+### Every step
+
+- **Run it** after the steps before it, and again whenever their outputs change (see *How to run*).
+- **Before a step pays for model calls,** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no model don't ask.)
+- **Read the report's Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
+- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+
+### This step
+
+- **Never edit or reorder `annotations/ground_truth_candidates.csv`** (the pool) while annotation is in progress: the order is what makes the ground truth a fair sample.
+- `outputs/intermediate_results/030_split/splits.json` is written once and then kept. Delete it and rerun only if you mean to rebuild it (e.g. after a new harvest); the pool's order and parts stay the same.
+
 ## Inputs
 
 | Input | Default | Contents |
@@ -141,10 +155,6 @@ None: this step makes no model calls.
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each ground truth candidate's `_origin` names its row in `annotations/ground_truth_candidates.csv` (made by a person, so the trace stops there) and its record in 020's `records.jsonl`; each induction candidate's names its 020 record.
 - **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
-
-## Human work
-
-None. The pool this step reads is human work: never edit or reorder `annotations/ground_truth_candidates.csv` while annotation is in progress.
 
 ## Known limits
 

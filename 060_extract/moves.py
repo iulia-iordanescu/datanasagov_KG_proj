@@ -78,19 +78,28 @@ def _schema_used(schema) -> dict:
 
 def _new_names(chosen, rows, settings) -> tuple:
     """The names outside the schema the model used, most used first, and in
-    words where they come from. On a run over every record, records of the
-    ground truth are left out of the counts: names seen only there would be
-    learned from the records 070 scores (see instructions/060_extract.md)."""
+    words where they come from: names it is fair to add to
+    annotations/schema_additions.txt. Never counted: a HELD-OUT record (a name
+    learned there would let the schema see the final exam). On a run over
+    every record, no ground truth record at all (names learned from records
+    outside it are fair as they are). Otherwise, tuning records are counted
+    and named by pool position, for the "source: ground truth #N" line an
+    addition from them needs."""
     all_records = settings["extract_from"] == "all" and not settings["ids"].strip()
     listed = []
     for (kind, name), v in rows.new_names.items():
-        recs = [r for r in v["records"] if not (all_records and r in chosen.ground_truth)]
-        if recs and name:
-            listed.append({"kind": kind, "name": name, "records": len(recs)})
+        part = {r: chosen.pool.get(r, (None, None))[1] for r in v["records"]}
+        recs = [r for r in v["records"] if part[r] != "held-out" and not (all_records and r in chosen.ground_truth)]
+        if not (recs and name):
+            continue
+        tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == "tuning")
+        source = ("ground truth " + ", ".join(f"#{p}" for p in tuning) if tuning else
+                  "extraction over records outside the ground truth")
+        listed.append({"kind": kind, "name": name, "records": len(recs), "source": source})
     listed.sort(key=lambda x: (-x["records"], x["kind"], x["name"]))
     where = ("records outside the ground truth" if all_records else
-             "the ground truth records" if settings["extract_from"] == "ground_truth" and not settings["ids"].strip()
-             else "the records listed in ids")
+             "the tuning records of the ground truth" if settings["extract_from"] == "ground_truth"
+             and not settings["ids"].strip() else "the records listed in ids, held-out ones left out")
     return listed, where
 
 
@@ -153,15 +162,18 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"`source_text`: its source text is missing or isn't in the record's text; "
              f"`name_not_in_schema`: it uses an entity class or predicate the schema doesn't have.", ""]
     if new_names:
-        lines += [f"Names outside the schema (the current schema: the schema input plus the additions file) the "
-                  f"model used, counted over {where}, most used first. A name "
-                  f"that keeps coming back may belong in `annotations/schema_additions.txt`"
-                  + (" (names seen in ground truth records: see instructions/060_extract.md before adding "
-                     "them)" if where != "records outside the ground truth" else "") + ":", "",
-                  "| Kind | Name (used by the model; not in the current schema) | Records |", "|---|---|---:|"]
-        lines += [f"| {x['kind']} | {cell(x['name'])} | {x['records']} |" for x in new_names[:SHOW]]
+        lines += ["### Names outside the schema", "",
+                  f"Names outside the schema (the current schema: the schema input plus the additions file) the "
+                  f"model used, counted over {where}, most used first (held-out records are never counted). A name "
+                  f"that keeps coming back, and that names a real kind of thing or relation, may be added to "
+                  f"`annotations/schema_additions.txt`, with a one-line definition and the `source:` line given "
+                  f"here: every name listed is fair to add.", "",
+                  "| Kind | Name (used by the model; not in the current schema) | Records | source: line for "
+                  "`annotations/schema_additions.txt` |", "|---|---|---:|---|"]
+        lines += [f"| {x['kind']} | {cell(x['name'])} | {x['records']} | `source: {cell(x['source'])}` |"
+                  for x in new_names[:SHOW]]
         if len(new_names) > SHOW:
-            lines.append(f"| … {len(new_names) - SHOW} more, in `{DETAILS_NAME}` | | |")
+            lines.append(f"| … {len(new_names) - SHOW} more, in `{DETAILS_NAME}` | | | |")
         lines.append("")
     lines += model_calls([("extract triple instances (one per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.MODEL)

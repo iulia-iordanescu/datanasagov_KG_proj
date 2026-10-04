@@ -12,6 +12,20 @@ Learns the schema from the catalog itself, instead of writing it in advance:
 
 A model reads a sample of texts and lists the triple instances they state, with no schema imposed; code keeps only those it can verify in the text. The model gives every component instance a label and merges labels that mean the same thing. Code counts the support of each schema entry (how many texts, and how many maintainers, back it), and keeps every schema entry with that evidence. The schema is judged downstream: 070 measures how much of the ground truth it can express (its schema ceiling) and how well extraction does with it.
 
+## To do
+
+### Every step
+
+- **Run it** after the steps before it, and again whenever their outputs change (see *How to run*).
+- **Before a step pays for model calls,** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no model don't ask.)
+- **Read the report's Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
+- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+
+### This step
+
+- **Before the real run, choose the model:** the strongest one Ask Sage lets you use (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
+- **Review the merges** listed in the report (`outputs/reports/040_induce_schema_<date>_<time>.md`, section *Triple instances and labels*), and the spelling folds in `outputs/intermediate_results/040_induce_schema/induction_evidence.json` (under `spelling_folds`). A wrong merge (two different ideas made one) is the one mistake code can't catch: it just looks like a single entity class with high support.
+
 ## Inputs
 
 | Input | Default | Contents |
@@ -163,10 +177,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each schema entry's `_origin` names the 020 records whose texts it was found in, e.g. `020_clean/records.jsonl#a1b2…`; `induction_evidence.json` keeps every text's triple instances and labels.
 - **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`). A schema entry can be traced by its name: `py audit.py Instrument`.
-
-## Human work
-
-**Review the merges** listed in the report (and the spelling folds, all in `induction_evidence.json`). A wrong merge, two different ideas made one, is the one mistake code can't catch: it just looks like a single entity class with high support.
 
 ## Known limits
 

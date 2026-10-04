@@ -8,6 +8,23 @@ Extracts, from each record's text, the facts a schema can express. A model lists
 
 The schema is 040's induced schema by default, plus the entity classes and predicates you add by hand in `annotations/schema_additions.txt` (e.g. on a mentor's advice). By default, 060 extracts only from the records of the ground truth you've finished, the ones 070 can score. Once the schema is final, `--extract_from all` extracts from every record.
 
+## To do
+
+### Every step
+
+- **Run it** after the steps before it, and again whenever their outputs change (see *How to run*).
+- **Before a step pays for model calls,** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no model don't ask.)
+- **Read the report's Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
+- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+
+### This step
+
+- **Before the real runs, choose the model:** from a different maker than annotation's, so the two don't share blind spots; for the run over every record, the cheapest whose scores are within the margin of error of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
+- **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can score only what it extracted.
+- **Read the report's table *Names outside the schema*** (`outputs/reports/060_extract_<date>_<time>.md`): names the model used that the current schema doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For a name that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth #0, #12`). Every name listed is fair to add.
+- **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A name learned from the ground truth must come from tuning records only, named by pool position (`source: ground truth #12`); the step leaves out any other.
+- **Now and then, read the removed triples** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good facts is a sign the schema, or the prompt, needs work.
+
 ## Inputs
 
 | Input | Default | Contents |
@@ -148,7 +165,7 @@ Four stages, in `060_extract.py`'s `main()`; stage 3 asks the model, the others 
 
 The flag names are listed in `instructions/050_annotate.md` (*Checks on each row*).
 
-**Names outside the schema.** The report lists the entity classes and predicates the model used that the schema doesn't have, most used first. A name that keeps coming back may belong in `schema_additions.txt`. On a run over every record, the ground truth records are left out of that count, so names learned there don't come from the records 070 scores.
+**Names outside the schema.** The report's table *Names outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only names it is fair to add are counted: **held-out records are never counted** (a name learned there would let the schema see the final exam); tuning records are, and are named by pool position (`source: ground truth #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_names`.
 
 **Then the results** (`results`): the four files are written, replacing the last run's; the report.
 
@@ -208,11 +225,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each kept or removed row has an `origin` column naming its record in 020's `records.jsonl`; `schema_used.json` names the schema file and additions file it was built from.
 - **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
-
-## Human work
-
-- **Read the removed file and the list of names outside the schema** now and then. A rule that removes good facts, or a name the model keeps reaching for, is a sign the schema (or the prompt) needs work.
-- **Keep `schema_additions.txt` sourced.** Every addition gets a `source:` line.
 
 ## Known limits
 

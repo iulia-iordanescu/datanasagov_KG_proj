@@ -19,6 +19,26 @@ Before comparing, the names of 060's schema (the current schema) are translated 
 
 The ground truth was drafted by a model (050) and corrected by a person, not written from scratch; a fact both missed is counted nowhere, so recall may come out higher than it is. The report says so.
 
+## To do
+
+### Every step
+
+- **Run it** after the steps before it, and again whenever their outputs change (see *How to run*).
+- **Before a step pays for model calls,** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no model don't ask.)
+- **Read the report's Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
+- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+
+### This step
+
+- **Check the translation table (`annotations/name_mapping.csv`) whenever this step adds rows:** `py annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse. Then **rerun** this step.
+- **Act on the table's flags** there and in the report (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are stale (the name's definition changed), out of date or suggested (the ground truth vocabulary gained a counterpart), or repeated.
+- **Review the partial pairs** of the tuning part: `py annotate.py`, *Partial pairs* (your verdicts go to `annotations/partial_pair_reviews.csv`). Mark each `same fact` or `not the same fact`, with the record's text at hand.
+- **Read the report's *Possible translation errors*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: names that share a translation are ones the scores can't tell apart; if that distinction matters to you, make it in the ground truth.
+- **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the partial matches and the facts "extracted, but not in the ground truth": some may be real facts you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favours extraction).
+- **Margins of error need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
+- **Look at the held-out part only at the end** (`--score_held_out true`), and commit `annotations/held_out_looks.csv` after each look.
+- **Add schema names (`annotations/schema_additions.txt`) only from the tuning part**, or from outside knowledge: adding names because of what held-out records need is tuning on them.
+
 ## Inputs
 
 | Input | Default | Contents |
@@ -201,17 +221,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **Origin.** Each row of `matches.csv` has an `origin` column naming the 060 row it compares (`060_extract/extracted_triples.csv#<position>`) and the ground truth row (`annotations/ground_truth/batch_000.csv#<position>`); the ground truth is made by a person, so a trace stops there.
 - **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 - **Held-out looks.** `annotations/held_out_looks.csv` keeps one line per look at the held-out part, in Git.
-
-## Human work
-
-- **Check the translation table** (`annotations/name_mapping.csv`) whenever 070 adds rows: `py annotate.py`, button *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse.
-- **After the ground truth vocabulary grows** (names added to the hand-built schema, or coined while annotating), look at the report's *The translation table*: rows that say `(none)` beside the ground truth vocabulary's names that nothing translates to. A row checked as `(none)` before a matching name joined the ground truth vocabulary stays `(none)` until you fix it (070 never changes a row).
-- **Review the partial pairs** of the tuning part in `py annotate.py`, *Partial pairs*: mark each `same fact` or `not the same fact` (with the record's text at hand). Under each part's scores the report says how many are still unreviewed. Held-out pairs are never reviewed: that would mean looking at held-out results, so the held-out part's partial level stays unreviewed.
-- **Read *Possible translation errors*** in each report: it's how a wrong row of the translation table shows up, even one you checked.
-- **Names that share a translation.** The same report section lists each name of the ground truth vocabulary that two or more of the current schema's names translate to (e.g. both `Satellite` and `Spacecraft` → `Spacecraft`). The scores can't tell those apart, since the ground truth doesn't: a mix-up between them costs extraction nothing. That's right if the distinction doesn't matter to you; if it does, make it in the ground truth (annotate with both names), not in the table.
-- **Read `per_record.md`**, especially the partial matches (could be fooled) and the "extracted but not in the ground truth" facts: some may be real facts you missed while annotating, which means the ground truth undercounts.
-- **Look at the held-out part only at the end**, and commit `annotations/held_out_looks.csv` after each look.
-- **Add schema names only from the tuning part** (or outside knowledge): adding names because of what the held-out records need is tuning on them.
 
 ## Known limits
 

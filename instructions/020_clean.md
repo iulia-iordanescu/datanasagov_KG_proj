@@ -13,6 +13,19 @@ Turns the raw catalog records saved by 010 into clean records that every later s
 
 Apart from records with no id and later copies of a repeated id, every record is kept, even one with no title or notes: the graph needs every catalog entry, and its structured fields still hold facts.
 
+## To do
+
+### Every step
+
+- **Run it** after the steps before it, and again whenever their outputs change (see *How to run*).
+- **Before a step pays for model calls,** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no model don't ask.)
+- **Read the report's Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
+- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+
+### This step
+
+- Nothing else: the step runs on its own.
+
 ## Inputs
 
 | Input | Default | Contents |
@@ -134,10 +147,6 @@ Values cleaned by the *conservative* method are complete but may read less well;
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each record's `_origin` names the 010 batch file and the record's id there, e.g. `010_harvest/batch_00000.json#a1b2…`.
 - **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
-
-## Human work
-
-None.
 
 ## Known limits
 

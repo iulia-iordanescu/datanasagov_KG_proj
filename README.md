@@ -23,7 +23,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is | Explained in |
 |---|---|---|
 | `README.md` | This page: what's where, and why the pipeline is built the way it is | — |
-| `instructions/` | One guide per step (`010_harvest.md` … `070_evaluate.md`), each with the same sections in the same order: Purpose, Inputs, Outputs, Settings, How to run, How it works, Prompts, Checks and warnings, Audit trail, Human work, Known limits (a section that doesn't apply says so in one line). Plus `000_audit.md`: reading a run's report and log, and tracing records | — |
+| `instructions/` | One guide per step (`010_harvest.md` … `070_evaluate.md`), each with the same sections in the same order: Purpose, To do (everything you have to do for that step: what every step needs, then what this one needs), Inputs, Outputs, Settings, How to run, How it works, Prompts, Checks and warnings, Audit trail, Known limits (a section that doesn't apply says so in one line). Plus `000_audit.md`: reading a run's report and log, and tracing records | — |
 | `docs/terminology.md` | What every word used here means | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |

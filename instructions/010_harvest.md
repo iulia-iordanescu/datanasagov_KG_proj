@@ -8,6 +8,20 @@ Downloads the metadata of every catalog entry on [data.nasa.gov](https://data.na
 
 Only metadata is downloaded (titles, descriptions, maintainers, tags, formats, links). The scientific data the records point to is never fetched.
 
+## To do
+
+### Every step
+
+- **Run it** after the steps before it, and again whenever their outputs change (see *How to run*).
+- **Before a step pays for model calls,** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no model don't ask.)
+- **Read the report's Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
+- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+
+### This step
+
+- **Don't make a small trial harvest first** (`--max_records`): splitting writes its file (`outputs/intermediate_results/030_split/splits.json`) only once, so a trial catalog would stay in it.
+- Nothing else: the step runs on its own (a full harvest takes about 23 minutes).
+
 ## Inputs
 
 None: the step reads no input files. It downloads from `https://data.nasa.gov/api/3/action/package_search`.
@@ -113,10 +127,6 @@ None: this step makes no model calls.
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every API request (URL, status, size, time), every retry, each move's duration, each output file's hash and, on failure, the full traceback. The console shows the same run without the request-level detail.
 - **Origin.** Each batch file holds the request that returned its records: the URL, when it was fetched, the HTTP status, the catalog size the API reported, and the run that fetched it. A batch kept on a rerun keeps the request block of the run that fetched it. This is where every later item's origin chain ends. Harvests saved by an earlier version of this step, as a bare list with a separate `_lineage.jsonl`, are downloaded again on the next run, and the old `_lineage.jsonl` is deleted. (The harvest of 2026-09-27 was converted to this format in place, from its `_lineage.jsonl`, instead of being downloaded again. That older format didn't keep the catalog size per page, so in those files only `batch_00000.json` has a `catalog_count`.)
 - **Trace a record.** `py audit.py <record id>` starts from the latest step that has the record (the highest-numbered step whose last run's output holds it: for a ground truth record, e.g. 060's `extracted_triples.csv`, 050's newest draft batch or 030's `splits.json`; otherwise 020's `records.jsonl`) and follows it back to the batch file that holds it, the run that fetched it, and the request that returned it.
-
-## Human work
-
-None.
 
 ## Known limits
 
