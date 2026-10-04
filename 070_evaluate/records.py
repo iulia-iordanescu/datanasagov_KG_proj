@@ -22,6 +22,7 @@ from pathlib import Path
 
 from common.files import read_csv
 from common.ground_truth import fair_prefix, read_ground_truth
+from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
 from common.step import check_settings, input_files
@@ -38,6 +39,7 @@ class Scored:
     ground_truth: object = None                    # common.ground_truth.GroundTruth
     schema_used: dict = field(default_factory=dict)  # 060's schema_used.json
     unfinished: int = 0                            # ground truth records not finished yet
+    reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/partial_reviews)
 
 
 def _facts(rows: list) -> tuple:
@@ -116,4 +118,5 @@ def pick_records(inputs: dict, settings: dict) -> Scored:
     if not scored.records:
         raise SystemExit("Nothing to score yet: no finished ground truth record that 060 extracted is in the "
                          "fair part. " + " ".join(scored.notes))
+    scored.reviews = read_reviews(Path(inputs["partial_reviews"]))
     return scored

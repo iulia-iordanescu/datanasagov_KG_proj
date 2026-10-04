@@ -16,9 +16,11 @@ What it reads
     outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
     outputs/intermediate_results/060_extract/extracted_triples.csv           an example triple per predicate
     outputs/intermediate_results/070_evaluate/scores.json                    evaluation's suggestions for (none) rows
+    outputs/intermediate_results/070_evaluate/matches.csv                    evaluation's partial pairs
+    annotations/partial_pair_reviews.csv                                     your verdicts on them
 
-What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv and
-annotations/name_mapping.csv.
+What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
+annotations/name_mapping.csv and annotations/partial_pair_reviews.csv.
     - Opening draft batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
       then on that copy is what's shown and edited. The draft in outputs/ is
@@ -35,6 +37,12 @@ or reordered here, and the only rows that can be removed are a name's
 repeated ones (common/name_mapping.repeats), and a save keeps any rows step 070 added since
 the page was loaded; if the rows the page shows have changed in the file, the
 save is refused, so nothing is overwritten.
+
+Partial pairs (common/partial_reviews.py): evaluation's last run's partial
+pairs of TUNING records, each with both triples and the record's text, for a
+person to mark "same fact" or "not the same fact"; pairs ruled out earlier
+are shown too, so a verdict can be changed. Held-out records are never
+shown or accepted (reviewing them would mean looking at held-out results).
 
 The checks are step 050's own, all from common/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate and pattern
@@ -59,6 +67,7 @@ from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_
                                  draft_name, file_name, read_ground_truth, vocabulary)
 from common.name_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  is_stale, read_mapping, repeats)
+from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
 from common.schema_io import read_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -71,6 +80,7 @@ RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
 SCHEMA_USED = RESULTS_DIR / "060_extract" / "schema_used.json"
 EXTRACTED = RESULTS_DIR / "060_extract" / "extracted_triples.csv"
 SCORES = RESULTS_DIR / "070_evaluate" / "scores.json"
+MATCHES = RESULTS_DIR / "070_evaluate" / "matches.csv"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
 PAGE = Path(__file__).with_name("page.html")
@@ -359,6 +369,61 @@ def delete_mapping_row(line: int, kind: str, name: str) -> None:
 
 
 # --------------------------------------------------------------------------
+# partial pairs
+# --------------------------------------------------------------------------
+
+def _read_reviews_rows() -> list:
+    if not REVIEWS_PATH.exists():
+        return []
+    with open(REVIEWS_PATH, encoding="utf-8-sig", newline="") as fh:
+        return [{c: (r.get(c) or "").strip() for c in REVIEW_COLUMNS} for r in csv.DictReader(fh)]
+
+
+def partial_view(data: Data) -> dict:
+    """Evaluation's last run's partial pairs of tuning records, plus pairs
+    ruled out by an earlier review (no longer paired, so not in matches.csv),
+    each with the verdict so far and the record's title, position and text."""
+    reviews = {row_key(r): r["verdict"] for r in _read_reviews_rows()}
+    items, seen = [], set()
+
+    def add(row: dict, verdict):
+        rid = row["record_id"]
+        if data.parts.get(rid) != "tuning" or row_key(row) in seen:
+            return
+        seen.add(row_key(row))
+        record = data.records.get(rid) or {}
+        items.append({**{c: row.get(c, "") for c in REVIEW_COLUMNS if c != "verdict"},
+                      "verdict": verdict, "position": data.positions.get(rid),
+                      "title": record.get("title") or rid,
+                      "text": full_text(record) if record else None})
+
+    if MATCHES.exists():
+        with open(MATCHES, encoding="utf-8-sig", newline="") as fh:
+            for r in csv.DictReader(fh):
+                if r.get("status") == "partial":
+                    add(r, reviews.get(row_key(r)))
+    for r in _read_reviews_rows():
+        if r["verdict"] == NOT_SAME:
+            add(r, NOT_SAME)
+    return {"found": MATCHES.exists(), "file": f"annotations/{REVIEWS_PATH.name}", "items": items}
+
+
+def save_review(data: Data, item: dict) -> None:
+    """File a verdict ("same fact", "not the same fact", or "" to take one
+    back) for one pair of a tuning record, replacing any earlier one."""
+    if data.parts.get(item.get("record_id")) != "tuning":
+        raise ValueError("only tuning records' pairs can be reviewed (held-out results stay unseen)")
+    verdict = item.get("verdict") or ""
+    if verdict not in (SAME, NOT_SAME, ""):
+        raise ValueError(f"verdict must be '{SAME}' or '{NOT_SAME}'")
+    row = {c: str(item.get(c) or "").strip() for c in REVIEW_COLUMNS}
+    rows = [r for r in _read_reviews_rows() if row_key(r) != row_key(row)]
+    if verdict:
+        rows.append(row)
+    write_csv(REVIEWS_PATH, REVIEW_COLUMNS, rows)
+
+
+# --------------------------------------------------------------------------
 # the server
 # --------------------------------------------------------------------------
 
@@ -390,6 +455,8 @@ def make_handler(data: Data):
                                 "problems": gt.problems, "reminders": coined_reminder(data, gt)})
                 elif url.path == "/api/mapping":
                     self._json(mapping_view(data))
+                elif url.path == "/api/partial":
+                    self._json(partial_view(data))
                 elif url.path == "/api/batch":
                     n = int(q["n"][0])
                     self._json(batch_view(data, n, open_batch(n)))
@@ -406,6 +473,9 @@ def make_handler(data: Data):
                     self._json({"problems": save_batch(data, int(body["n"]), body["records"])})
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
+                    self._json({"saved": True})
+                elif url.path == "/api/partial/review":
+                    save_review(data, body)
                     self._json({"saved": True})
                 elif url.path == "/api/mapping/delete":
                     delete_mapping_row(int(body["line"]), body["kind"], body["name"])

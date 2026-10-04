@@ -28,6 +28,7 @@
   input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
   button:hover { border-color: var(--accent); }
+  .bar button.current { outline: 2px solid var(--accent); font-weight: 600; }
   #status { margin-left: auto; color: var(--muted); font-size: 14px; }
   #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
   #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
@@ -84,6 +85,7 @@
   <h1>Annotation tool</h1>
   <select id="batch" aria-label="Batch"></select>
   <button id="mapping" title="annotations/name_mapping.csv">Translation table</button>
+  <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
   <span id="status"></span>
 </header>
 <ul id="warnings"></ul>
@@ -137,6 +139,7 @@ async function loadBatches() {
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
   const wanted = new URLSearchParams(location.hash.slice(1));
   if (wanted.has("m")) { await openMapping(); return; }
+  if (wanted.has("p")) { await openPartial(); return; }
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0));
@@ -144,7 +147,7 @@ async function loadBatches() {
 }
 async function openBatch(n, at) {
   await flush();
-  mapping = null;
+  mapping = null; partial = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
   $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
@@ -156,6 +159,7 @@ async function openBatch(n, at) {
 }
 $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBatch(+e.target.value, 0).catch(fail); });
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
+$("partial").addEventListener("click", () => openPartial().catch(fail));
 
 // ---------------------------------------------------------------- saving
 function changed() {
@@ -387,7 +391,7 @@ const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same na
 
 async function openMapping() {
   await flush();
-  batch = null;
+  batch = null; partial = null;
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
@@ -556,6 +560,76 @@ async function saveMapping() {
     mapDirty = true;
     status(`NOT SAVED: ${e.message}`, "failed");
   } finally { mapSaving = false; }
+}
+
+// ---------------------------------------------------------------- partial pairs
+// Evaluation's partial pairs of tuning records (one subject or object only
+// contained in the other), to mark "same fact" or "not the same fact".
+let partial = null, onlyUnreviewed = true;
+
+async function openPartial() {
+  await flush();
+  batch = null; mapping = null;
+  $("batch").value = "";
+  status("Opening…");
+  partial = await api("/api/partial");
+  location.hash = "p";
+  if (!partial.found) {
+    $("records").replaceChildren();
+    $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
+      "Evaluation's matches.csv wasn't found: run py 070_evaluate.py first.")));
+    status("");
+    return;
+  }
+  onlyUnreviewed = partial.items.some(i => !i.verdict);
+  status(`Saving verdicts to ${partial.file}`, "saved");
+  drawPartial();
+}
+
+function drawPartial() {
+  const left = partial.items.filter(i => !i.verdict).length;
+  $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+    el("h3", {}, "Partial pairs"),
+    el("p", { class: "meta" }, `${partial.items.length} pair(s) of tuning records; ${left} not reviewed yet.`),
+    el("p", { class: "meta" }, "A partial pair: the predicates agree, and each subject and object is the same " +
+      "or contained in the other as whole words. That can be wrong (MODIS vs MODIS Terra). A pair you mark " +
+      "“not the same fact” is never paired again: evaluation counts it as missed and extra."),
+    el("label", { class: "meta" },
+      el("input", { type: "checkbox", checked: onlyUnreviewed,
+                    onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
+      " Show only pairs not reviewed yet")));
+  const shown = partial.items.filter(i => !onlyUnreviewed || !i.verdict);
+  $("record").replaceChildren(...(shown.length ? shown.map(partialCard) : [el("section", { class: "card" },
+    el("p", { class: "empty" }, partial.items.length ? "Every pair is reviewed." :
+      "No partial pairs in evaluation's last run."))]));
+}
+
+function partialCard(i) {
+  const triple = (who, s, p, o) => el("div", { class: "example" }, `${who}:  ${s}  ${p}  ${o}`);
+  const pick = async (verdict) => {
+    try {
+      await api("/api/partial/review", { ...i, verdict });
+      i.verdict = verdict || null;
+      status(`Saved to ${partial.file} at ${new Date().toLocaleTimeString()}`, "saved");
+      drawPartial();
+    } catch (e) { fail(e); }
+  };
+  return el("section", { class: "card maprow" + (i.verdict ? "" : " todo") },
+    el("h3", {}, `#${i.position ?? "?"} `, el("span", { class: "part tuning" }, "tuning"), " ", i.title),
+    triple("Ground truth (ground truth vocabulary)", i.ground_truth_subject, i.ground_truth_predicate,
+           i.ground_truth_object),
+    triple("Extracted (translated into the ground truth vocabulary)", i.translated_subject,
+           i.translated_predicate, i.translated_object),
+    i.text ? el("details", {}, el("summary", { class: "meta" }, "The record's text"),
+                el("div", { class: "meta", style: "white-space:pre-wrap" }, i.text)) : null,
+    el("div", { class: "bar" },
+      el("button", { onclick: () => pick("same fact"), class: i.verdict === "same fact" ? "current" : "" },
+         (i.verdict === "same fact" ? "✓ " : "") + "Same fact"),
+      el("button", { onclick: () => pick("not the same fact"),
+                     class: i.verdict === "not the same fact" ? "current" : "" },
+         (i.verdict === "not the same fact" ? "✓ " : "") + "Not the same fact"),
+      i.verdict ? el("button", { onclick: () => pick("") }, "Take back") : null,
+      el("span", { class: "meta" }, i.verdict ? `Your verdict: ${i.verdict}` : "Not reviewed yet")));
 }
 
 loadBatches().catch(fail);

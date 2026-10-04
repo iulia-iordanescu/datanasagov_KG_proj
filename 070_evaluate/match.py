@@ -16,9 +16,11 @@ another fact), not just each fact's first match:
              and a leading "the/a/an" ignored), predicate the same name
   2. partial among the facts still unpaired: the same, except that the
              subject (or object) may be CONTAINED in the other one as whole
-             words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer
-             (MODIS)". It can be fooled ("MODIS" in "MODIS Terra"), which is
-             why every partial pair is listed for a person to see.
+             words, either way round: "MODIS" in "Moderate Resolution Imaging
+             Spectroradiometer (MODIS)". It can be fooled ("MODIS" in "MODIS
+             Terra"), so a person can review partial pairs (annotation tool,
+             Partial pairs; common/partial_reviews.py): two facts marked "not
+             the same fact" are never paired.
 
 The "exact" level counts pass 1's pairs; the "partial" level counts both
 passes'. At each level a pair is STRICT when both entity classes are also
@@ -45,6 +47,7 @@ from __future__ import annotations
 import re
 
 from common.audit import log
+from common.partial_reviews import NOT_SAME, pair_key
 from common.text_match import norm_text
 from common.triples_io import UNDECIDED, label_key
 
@@ -132,14 +135,22 @@ def _max_pairs(can: dict) -> dict:
     return {gi: ei for ei, gi in owner.items()}
 
 
-def compare_record(record: dict, names) -> dict:
-    """The record's pairs and counts: record["compared"]."""
+def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
+    """The record's pairs and counts: record["compared"]. reviews: a person's
+    verdicts on partial pairs ({pair_key: verdict}); a pair marked "not the
+    same fact" is never made."""
+    reviews = reviews or {}
     gt = record["gt"]
     ex = [translate(f, names) for f in record["extracted"]]
+
+    def allowed(gi, ei) -> bool:
+        return reviews.get(pair_key(record["id"], gt[gi], ex[ei])) != NOT_SAME
+
     pairs = []                                        # (gt index, extracted index, "exact" | "partial")
     free_g, free_e = set(range(len(gt))), set(range(len(ex)))
     for level in LEVELS:
-        can = {gi: [ei for ei in sorted(free_e) if _same_fact(gt[gi], ex[ei], level)] for gi in sorted(free_g)}
+        can = {gi: [ei for ei in sorted(free_e) if _same_fact(gt[gi], ex[ei], level) and allowed(gi, ei)]
+               for gi in sorted(free_g)}
         for gi, ei in sorted(_max_pairs(can).items()):
             pairs.append((gi, ei, level))
             free_g.discard(gi)
@@ -157,8 +168,13 @@ def compare_record(record: dict, names) -> dict:
     said = None
     if ed and ed["object_class"] not in ("", UNDECIDED):
         said = names.entity.get(label_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
+    rejected = sum(1 for gi in range(len(gt)) for ei in range(len(ex))
+                   if not allowed(gi, ei) and _same_fact(gt[gi], ex[ei], "partial"))
+    unreviewed = sum(1 for gi, ei, lv in pairs
+                     if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
         "translated": ex, "pairs": pairs, "within_reach": reach, "counts": counts,
+        "partial_review": {"rejected": rejected, "unreviewed": unreviewed},
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and label_key(truth) == label_key(said))},
     }
@@ -206,6 +222,6 @@ def name_clues(records: list) -> list:
 
 def compare_all(scored, names):
     for record in scored.records:
-        compare_record(record, names)
+        compare_record(record, names, scored.reviews)
     log.info(f"  compared {len(scored.records)} record(s)")
     return scored

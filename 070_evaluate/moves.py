@@ -209,6 +209,9 @@ def results(scored, names, scores, calls, settings, output) -> Results:
     # unseen too, unless --score_held_out true.
     shown = [r for r in scored.records if r["part"] in scores]
     clues = match.name_clues(shown)
+    tuning = [r for r in shown if r["part"] == "tuning"]
+    unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
+    rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
     match_rows = _match_rows(shown)
     write_text(per_record_path, _per_record(shown, len(scored.records) - len(shown)))
     write_csv(matches_path, MATCH_COLUMNS, match_rows)
@@ -224,6 +227,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         "held_out_looks": looks,
         "name_clues": clues,
         "translation_suggestions": names.suggested,
+        "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
     log.info(f"  wrote {SCORES_NAME}, {PER_RECORD_NAME}, {MATCHES_NAME}")
 
@@ -252,6 +256,10 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                         f"truth vocabulary now has the same name: {named(names.outdated, 5, '; ')}. Probably out of "
                         f"date: check them (py annotate.py, Translation table); keep (none) only if the ground "
                         f"truth's name means something else.")
+    if unreviewed:
+        warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, so the partial "
+                        f"level may count pairs that aren't the same fact (e.g. MODIS vs MODIS Terra). Review "
+                        f"them: py annotate.py, Partial pairs.")
     frequent = [c for c in clues if c["count"] >= match.CLUE_WARN]
     if frequent:
         warnings.append(f"{len(frequent)} pair(s) of names met {match.CLUE_WARN} or more times where extraction "
@@ -317,6 +325,12 @@ def results(scored, names, scores, calls, settings, output) -> Results:
             lines.append(f"| {level} | facts | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} |")
             lines.append(f"| {level} | facts with entity classes (strict) | {_with_margin(L['strict_precision'])} "
                          f"| {_with_margin(L['strict_recall'])} |")
+        recs = [r for r in scored.records if r["part"] == part]
+        pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
+        lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; ruled out by your "
+                       f"review (counted as missed and extra): {pr['rejected']}." if part == "tuning" else
+                       "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
+                       "so its partial level may count pairs that aren't the same fact.")]
         lines += ["", "| Names compared | Entity-class accuracy | Recall within reach |", "|---|---:|---:|"]
         lines += [f"| {level} | {_with_margin(n[level]['entity_class_accuracy'])} | "
                   f"{_with_margin(n[level]['recall_within_reach'])} |" for level in match.LEVELS]

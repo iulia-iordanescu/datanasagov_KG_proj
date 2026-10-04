@@ -13,7 +13,8 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          extracted_triples_details.json and schema_used.json (060),
          annotations/ground_truth_candidates.csv,
          annotations/schema_derived_from_manual_annotation.txt,
-         annotations/ground_truth/, annotations/name_mapping.csv
+         annotations/ground_truth/, annotations/name_mapping.csv,
+         annotations/partial_pair_reviews.csv
 Writes:  scores.json, per_record.md, matches.csv; adds rows to
          annotations/name_mapping.csv and, with --score_held_out true, a line
          to annotations/held_out_looks.csv (never changing an existing one)
@@ -32,6 +33,7 @@ INPUTS = {
     "hand_schema":        "./annotations/schema_derived_from_manual_annotation.txt",
     "ground_truth":       "./annotations/ground_truth/batch_*.csv",
     "name_mapping":       "./annotations/name_mapping.csv",
+    "partial_reviews":    "./annotations/partial_pair_reviews.csv",
 }
 
 SETTINGS = {
