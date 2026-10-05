@@ -10,7 +10,7 @@ Learns the schema from the catalog itself, instead of writing it in advance:
 - **predicates**: the relations between them, e.g. `ABOARD`;
 - **patterns**: which entity classes each predicate joins, e.g. `Instrument ABOARD Spacecraft`.
 
-A model reads a sample of texts and lists the triple instances they state, with no schema imposed; code keeps only those it can verify in the text. The model gives every component instance a label and merges labels that mean the same thing. Code counts the support of each schema entry (how many texts, and how many maintainers, back it), and keeps every schema entry with that evidence. The schema is judged downstream: 070 measures how much of the ground truth it can express (its schema ceiling) and how well extraction does with it.
+A model reads a sample of texts and lists the triple instances they state, with no schema imposed; code keeps only those it can verify in the text. The model gives every component instance a label and merges labels that mean the same thing. Code counts the support of each schema entry (how many texts, and how many maintainers, back it), and keeps every schema entry with that evidence. The schema is judged downstream: 070 measures how much of the ground truth it can express (its recall upper bound) and how well extraction does with it.
 
 ## To do
 
@@ -187,6 +187,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **Adding texts relabels.** Taking more texts reuses every extraction already made, but labeling (stage 3), merging (4) and definitions (6) are asked again when the set of component instances changes: each labeling batch depends on the labels chosen before it. That's a few dozen model calls, not one per text.
 - **The labels depend a little on the order component instances are labeled in.** Most common first, so the order is meaningful, not arbitrary, but a different order could coin a different first label for an idea.
 - **One call per kind to merge labels.** Up to 800 labels of one kind; above that the step stops rather than merging in groups where synonyms could miss each other. At that size, labels would first need grouping by meaning (e.g. a local embedding model), which isn't built.
-- **What the sample can see.** 150 texts from the 10 largest maintainers (91.6% of the catalog's records). An entity class used by 1% of the catalog's records is found in the sample with probability 78%; by 0.5%, 53%. 070's schema ceiling shows whether what was missed matters for the ground truth.
+- **What the sample can see.** 150 texts from the 10 largest maintainers (91.6% of the catalog's records). An entity class used by 1% of the catalog's records is found in the sample with probability 78%; by 0.5%, 53%. 070's recall upper bound shows whether what was missed matters for the ground truth.
 - **min_support is not yet chosen.** It is 1 (keep everything). To choose it: run 040, 060 and 070 with other values and compare the **tuning part's** metrics, never the held-out part's (see `070_evaluate/070_evaluate.md`). How to weigh precision against recall when choosing is still open.
 - **The model varies.** Rerunning with an empty cache can give different triple instances, labels and definitions; the cache is what makes a rerun reproducible.

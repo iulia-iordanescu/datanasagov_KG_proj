@@ -75,5 +75,6 @@ Their columns:
 Every step that reads `ground_truth/` (050, 060 and 070, through `common/common_helpers/ground_truth.py`) lists these in its report's warnings, and the annotation tool shows them on its page; none is ever silently fixed:
 
 - a record in two files (annotated twice): keep it in one file;
+- the same triple twice in one record: delete one of the two rows;
 - a record whose rows disagree on `all_facts_extracted`: set it the same on every row;
 - a file missing one of the columns above.

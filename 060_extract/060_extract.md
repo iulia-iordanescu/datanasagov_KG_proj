@@ -190,6 +190,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N record(s) of the ground truth aren't finished yet … so skipped* | Only finished records can be evaluated. | Finish them in `py helpers/annotate.py`, or ignore. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth: record … in batch_…: lines … and … are the same triple (…)* | The same subject, predicate and object twice in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as missed. | Delete one of the two rows. |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 | *N record(s) you listed is/are not in the catalog / without text, so skipped* | With `ids`. | Check for typos. |
 | *N ground truth record(s) is/are not in the catalog / without text, so skipped* | With `extract_from` = `ground_truth` (the default): a ground truth id that isn't in 020's records, or a record with no text to read. | Check the id in `annotations/ground_truth/` for typos; a record without text can't be extracted. |

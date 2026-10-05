@@ -34,7 +34,7 @@ LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records"]
 TRIPLE = ("subject", "subject_class", "predicate", "object", "object_class")
 SHOW = 20                        # rows listed in the report before "…"
-COMPARED_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_classes_right", "within_reach"]
+COMPARED_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_classes_right", "within_reach", "within_strict_reach"]
                  + [f"extracted_{c}" for c in TRIPLE] + [f"translated_{c}" for c in TRIPLE]
                  + [f"ground_truth_{c}" for c in TRIPLE] + [ORIGIN_COLUMN])
 
@@ -121,7 +121,7 @@ def _per_record(records: list, hidden: int) -> str:
         missed = [(gt[i], c["within_reach"][i]) for i in range(len(gt)) if i not in paired_g]
         if missed:
             lines += ["**In the ground truth, but not extracted** (against recall)", ""]
-            lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: the schema can't say it")
+            lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: the schema has no name for its predicate")
                       for f, reach in missed] + [""]
         if not (c["pairs"] or extra or missed):
             lines += ["No triples in the ground truth, and none extracted.", ""]
@@ -145,6 +145,7 @@ def _compared_rows(records: list) -> list:
             if gi is not None:
                 out.update({f"ground_truth_{k}": gt[gi][k] for k in TRIPLE})
                 out["within_reach"] = "yes" if c["within_reach"][gi] else "no"
+                out["within_strict_reach"] = "yes" if c["within_strict_reach"][gi] else "no"
                 origins = gt[gi].get(audit.ORIGIN_FIELD) or []
                 out[ORIGIN_COLUMN] = "; ".join(filter(None, [out.get(ORIGIN_COLUMN), *origins]))
             if gi is not None and ei is not None:
@@ -316,24 +317,28 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
                       f"error: these numbers could easily have come out very differently. Don't draw "
                       f"conclusions from them yet.**", ""]
-        lines += ["| Names compared | | Precision | Recall |", "|---|---|---:|---:|"]
+        lines += ["| Names compared | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
         for level in pairing.LEVELS:
             L = n[level]
-            lines.append(f"| {level} | triples | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} |")
+            lines.append(f"| {level} | triples | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} "
+                         f"| {_with_margin(L['f1'])} |")
             lines.append(f"| {level} | triples with entity classes (strict) | {_with_margin(L['strict_precision'])} "
-                         f"| {_with_margin(L['strict_recall'])} |")
+                         f"| {_with_margin(L['strict_recall'])} | {_with_margin(L['strict_f1'])} |")
         recs = [r for r in evaluated.records if r["part"] == part]
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
         lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; ruled out by your "
                        f"review (counted as extracted only and ground truth only): {pr['rejected']}." if part == "tuning" else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
-        lines += ["", "| Names compared | Entity-class accuracy | Recall within reach |", "|---|---:|---:|"]
+        lines += ["", "| Names compared | Entity-class accuracy | Recall within reach | Strict recall within "
+                      "strict reach |", "|---|---:|---:|---:|"]
         lines += [f"| {level} | {_with_margin(n[level]['entity_class_accuracy'])} | "
-                  f"{_with_margin(n[level]['recall_within_reach'])} |" for level in pairing.LEVELS]
+                  f"{_with_margin(n[level]['recall_within_reach'])} | "
+                  f"{_with_margin(n[level]['strict_recall_within_reach'])} |" for level in pairing.LEVELS]
         d = n["describes"]
-        lines += ["", f"- **Schema ceiling** (ground truth triples the schema can express at all): "
-                      f"{_with_margin(n['schema_ceiling'])}.",
+        lines += ["", f"- **Recall upper bound** (ground truth triples whose predicate the schema has, the most recall "
+                      f"can be): {_with_margin(n['recall_upper_bound'])}. **Strict recall upper bound** (predicate and both "
+                      f"entity classes, the most strict recall can be): {_with_margin(n['strict_recall_upper_bound'])}.",
                   f"- **What the record describes**: right for {_with_margin(d['accuracy'])} of {d['records']} "
                   f"record(s). Always guessing the most common kind would get {readings.pct(d['majority_baseline'])}; "
                   f"averaged per kind: {readings.pct(d['per_kind_average'])}.", ""]

@@ -40,6 +40,9 @@ Problems, each listed, none silently resolved:
   - a record in more than one file: annotated twice, and code can't tell
     which is right (both are kept out of gt.records until fixed);
   - a record whose rows disagree on all_facts_extracted (some 1, some 0);
+  - the same triple twice in a record (same subject, predicate and object,
+    compared as common/common_helpers/triples_io.triple_key does): only one
+    copy can be paired, so 070 would count the other as missed;
   - a file missing one of the columns above.
 050, 060 and 070 list them in their report's warnings (and before paying);
 the annotation tool shows them on its page.
@@ -59,6 +62,7 @@ from pathlib import Path
 
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
+from common.triples_io import is_describes, triple_key
 
 GROUND_TRUTH_DIR = ANNOTATIONS_DIR / "ground_truth"
 PATTERN = "batch_*.csv"
@@ -123,6 +127,18 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
             gt.problems.append(f"record {rid} in {in_files[rid][0]}: all_facts_extracted is "
                                f"{' on some rows, '.join(sorted(marks))} on others; set it the same on every row")
         gt.records[rid] = {"file": in_files[rid][0], "rows": len(rows), "finished": marks == {"1"}}
+        first = {}                                 # triple key -> its first row's line
+        for row in rows:
+            if not (row["subject"] and row["predicate"] and row["object"]) or is_describes(row):
+                continue
+            line = int(row[ORIGIN_FIELD][0].rsplit("#", 1)[1]) + 2
+            k = triple_key(row)
+            if k in first:
+                gt.problems.append(f"record {rid} in {in_files[rid][0]}: lines {first[k]} and {line} are the "
+                                   f"same triple ({row['subject']} {row['predicate']} {row['object']}): only one "
+                                   f"can be paired, so the other would count as missed; delete one")
+            else:
+                first[k] = line
     return gt
 
 

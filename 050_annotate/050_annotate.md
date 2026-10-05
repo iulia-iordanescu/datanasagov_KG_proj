@@ -163,6 +163,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 evaluates only the fair part (the pool's first records, with none skipped), so records after the gap are not evaluated until the records before them are annotated too. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth: record … in batch_…: lines … and … are the same triple (…)* | The same subject, predicate and object twice in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as missed. | Delete one of the two rows. |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 
 **In the report**, under *Warnings*:

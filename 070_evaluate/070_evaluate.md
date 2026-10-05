@@ -12,7 +12,8 @@ Evaluates what step 060 extracted against the ground truth, the answer key:
 each with its **margin of error**, so a real improvement can be told from luck. Around them:
 
 - **entity-class accuracy**: of the triples 060 got right, how often it also named the kinds of things right;
-- **schema ceiling**: how much of the ground truth the schema can express at all, and **recall within reach**: how well 060 did on what it could do. A low ceiling means the schema needs work; a high ceiling with low recall within reach means the extraction does;
+- **F1**: precision and recall in one number, the usual headline for comparing runs or models;
+- **recall upper bound**: how much of the ground truth the schema can express at all (the most recall can be), and **recall within reach**: how well 060 did on what it could do; each also in a strict version, with the entity classes. A low upper bound means the schema needs work; a high upper bound with low recall within reach means the extraction does;
 - **what each record describes**: how often 060 named the right kind of thing for the DESCRIBES row, next to what always guessing the most common kind would get.
 
 Before comparing, the names of 060's schema (the current schema) are translated into the ground truth vocabulary, through a table you check. Only the **fair part** of the ground truth is evaluated (a fair sample of the catalog), and by default only its **tuning part**: the held-out part is kept for the end.
@@ -63,7 +64,7 @@ In `outputs/intermediate_results/070_evaluate/`:
 | File | Contents |
 |---|---|
 | `per_record.md` | For reading. Each evaluated record of the parts shown (the tuning part; the held-out part too with `--evaluate_held_out true`, so its triples stay unseen until then): what it describes (✓/✗), its **pairs** (✓ exact or ≈ partial, with the ground truth's triple when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted triples are shown translated into the ground truth vocabulary. Opens well in VS Code or on GitHub. |
-| `compared_triples.csv` | For sorting and filtering, e.g. in Excel. One row per pair, and one per triple left without a partner, of the parts shown: record, pool position, part, group, `status` (`exact pair`, `partial pair`, `extracted only`: no partner, counts against precision; `ground truth only`: no partner, counts against recall), `entity_classes_right`, `within_reach`, then the triple as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
+| `compared_triples.csv` | For sorting and filtering, e.g. in Excel. One row per pair, and one per triple left without a partner, of the parts shown: record, pool position, part, group, `status` (`exact pair`, `partial pair`, `extracted only`: no partner, counts against precision; `ground truth only`: no partner, counts against recall), `entity_classes_right`, `within_reach`, `within_strict_reach`, then the triple as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
 | `metrics.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were evaluated and which left out, and why; the possible translation errors (`name_clues`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the tuning part's partial pairs not yet reviewed and ruled out by your review (`partial_pairs_tuning`); the settings. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
@@ -124,17 +125,20 @@ Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for
    - **exact**: subject and object the same once evened out (case, spacing, quote marks, dashes, edge punctuation and a leading "the/a/an" ignored, as everywhere in the pipeline), predicate the same;
    - **partial**, among the triples still unpaired: the same, except that a subject or object may be contained in the other as whole words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)". This can be fooled ("MODIS" in "MODIS Terra"), which is why every partial pair is listed in `per_record.md`, and why you review the tuning part's partial pairs in `py helpers/annotate.py`, *Partial pairs*: two triples you mark `not the same fact` are never paired.
 
-   A pair is **strict** when both entity classes also agree. A ground truth triple is **within reach** when its predicate and both its entity classes are names some checked row translates to. The DESCRIBES rows are compared only on their entity class, apart from the triples, since code writes the rest of them.
+   A pair is **strict** when both entity classes also agree. A ground truth triple is **within reach** when its predicate is a name some checked row translates to: that's all a pair needs, since a pair doesn't need the entity classes to agree. It's **within strict reach** when both its entity classes are too: all a strict pair needs. The DESCRIBES rows are compared only on their entity class, apart from the triples, since code writes the rest of them.
 4. **Compute the metrics** (`stats.py`, `compute_metrics`). Every number is summed over the records before dividing (a triple is an answer, whichever record it's in):
 
    | Number | Is |
    |---|---|
    | precision | pairs ÷ extracted triples |
    | recall | pairs ÷ ground truth triples |
-   | strict precision, strict recall | the same, counting only strict pairs |
+   | F1 | 2 × precision × recall ÷ (precision + recall), the same as 2 × pairs ÷ (extracted triples + ground truth triples): high only when both are |
+   | strict precision, strict recall, strict F1 | the same, counting only strict pairs |
    | entity-class accuracy | strict pairs ÷ pairs |
-   | schema ceiling | ground truth triples within reach ÷ all ground truth triples |
+   | recall upper bound | ground truth triples within reach ÷ all ground truth triples: the most recall can be |
+   | strict recall upper bound | ground truth triples within strict reach ÷ all ground truth triples: the most strict recall can be |
    | recall within reach | pairs whose ground truth triple is within reach ÷ ground truth triples within reach |
+   | strict recall within reach | strict pairs ÷ ground truth triples within strict reach |
    | describes: accuracy | records whose DESCRIBES entity class is right ÷ records whose ground truth names one |
    | describes: baseline | the share of the most common kind: what always guessing it would get |
    | describes: per-kind average | each kind's accuracy, averaged, so rare kinds count as much as common ones |
@@ -158,7 +162,7 @@ Then, per metric, the readings that hold for it, such as:
 - what it assumes, e.g. that the ground truth lists every fact the records state;
 - where needed, what it can't see, e.g. entity-class accuracy can't see mix-ups between current-schema names that translate to the same ground truth name.
 
-A metric gets only the readings that apply to it: the schema ceiling, for instance, has no "chance" reading, and *what each record describes* is read against what always guessing the most common kind would get.
+A metric gets only the readings that apply to it: the recall upper bound, for instance, has no "chance" reading, and *what each record describes* is read against what always guessing the most common kind would get.
 
 ### The margin of error, and the checks it needs
 
@@ -198,6 +202,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N evaluated record(s) have no sampling group* | Not in the pool file. | Normally impossible for pool records. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth: record … in batch_…: lines … and … are the same triple (…)* | The same subject, predicate and object twice in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as missed. | Delete one of the two rows. |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 
 **In the report**, under *Warnings*:

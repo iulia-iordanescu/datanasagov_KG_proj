@@ -108,6 +108,16 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
             "- Assumes the ground truth lists every fact these records state: a fact missing from it is not "
             "counted at all.", ""]
 
+    # F1
+    out += [f"#### F1: {pct(ex['f1']['value'])} (exact pairs), {pct(pa['f1']['value'])} (exact and partial pairs)",
+            "",
+            f"- Precision and recall in one number: 2 × precision × recall ÷ (precision + recall), here "
+            f"2 × {ex['pairs']} pairs ÷ ({E} extracted + {G} ground truth triples). It's high only when both are.",
+            "- The usual headline number for comparing runs or models, and with published results. It weighs "
+            "precision and recall equally; read them too when one matters more (for a knowledge graph, a wrong "
+            "statement is often worse than a missing one).",
+            _sure(n, ex["f1"], "exact F1"), ""]
+
     # strict
     out += [f"#### Strict precision and strict recall: {pct(ex['strict_precision']['value'])} and "
             f"{pct(ex['strict_recall']['value'])} (exact pairs)", "",
@@ -117,6 +127,7 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
             f"- Strict precision: {ex['strict_pairs']} of the {E} extracted triples "
             f"({pct(ex['strict_precision']['value'])}); strict recall: {ex['strict_pairs']} of the {G} ground "
             f"truth triples ({pct(ex['strict_recall']['value'])}).",
+            f"- Strict F1: {pct(ex['strict_f1']['value'])} (exact pairs).",
             "- For a knowledge graph: a strict pair is a statement whose two nodes would also get the right "
             "entity classes (node labels).",
             _sure(n, ex["strict_precision"], "exact strict precision"), ""]
@@ -136,19 +147,24 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
                    + "; ".join(shared) + ".")
     out.append("")
 
-    # schema ceiling and recall within reach
-    W = n["within_reach"]
-    out += [f"#### Schema ceiling: {pct(n['schema_ceiling']['value'])}", "",
-            f"- Of the {G} ground truth triples, {_of(W, G)} are within reach: their predicate and both entity "
-            f"classes have a counterpart in the current schema, through the translation table.",
-            f"- It's the best recall any extraction could get with this schema and translation table: "
-            f"{G - W} ground truth triple(s) say something the schema has no names for.",
-            _sure(n, n["schema_ceiling"], "the schema ceiling"), ""]
+    # recall upper bound and recall within reach
+    W, SW = n["within_reach"], n["within_strict_reach"]
+    out += [f"#### Recall upper bound: {pct(n['recall_upper_bound']['value'])}; strict: "
+            f"{pct(n['strict_recall_upper_bound']['value'])}", "",
+            f"- Of the {G} ground truth triples, {_of(W, G)} are within reach: their predicate has a counterpart "
+            f"in the current schema, through the translation table. That's all a pair needs, so it's the most "
+            f"recall any extraction could get with this schema and translation table: {G - W} ground truth "
+            f"triple(s) have a predicate the schema has no name for.",
+            f"- {_of(SW, G)} are within strict reach: their two entity classes have a counterpart too. That's "
+            f"the most strict recall could be.",
+            _sure(n, n["recall_upper_bound"], "the recall upper bound"), ""]
     out += [f"#### Recall within reach: {pct(ex['recall_within_reach']['value'])} (exact pairs), "
             f"{pct(pa['recall_within_reach']['value'])} (exact and partial pairs)", "",
             f"- Of the {W} ground truth triples within reach, {_of(ex['pairs_within_reach'], W)} have an exact "
             f"pair; counting partial pairs too, {_of(pa['pairs_within_reach'], W)}.",
-            "- Read with the schema ceiling: a low ceiling points at the schema; a low recall within reach points "
+            f"- Strict: of the {SW} within strict reach, {_of(ex['strict_pairs_within_reach'], SW)} have a strict "
+            f"exact pair.",
+            "- Read with the recall upper bound: a low upper bound points at the schema; a low recall within reach points "
             "at extraction (its model, prompt or checks), since those triples could have been found.",
             _sure(n, ex["recall_within_reach"], "exact recall within reach"), ""]
 

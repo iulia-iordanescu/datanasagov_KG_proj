@@ -7,12 +7,20 @@ many triples weighs more than one with few, as each triple is one answer.
 
   precision        pairs / extracted triples
   recall           pairs / ground truth triples
-  (both at the two name levels, exact and partial, and for all pairs and
-   STRICT pairs, i.e. with both entity classes right too)
+  F1               2 x precision x recall / (precision + recall), the same as
+                   2 x pairs / (extracted triples + ground truth triples)
+  (all three at the two name levels, exact and partial, and for all pairs
+   and STRICT pairs, i.e. with both entity classes right too)
   entity-class accuracy   strict pairs / pairs
-  schema ceiling          ground truth triples within reach / all of them
+  recall upper bound          ground truth triples within reach (their predicate
+                          has a name in the schema: all a pair needs) / all
+                          of them: the most recall can be
+  strict recall upper bound   the same, within strict reach (predicate and both
+                          entity classes): the most strict recall can be
   recall within reach     pairs whose ground truth triple is within reach /
-                          ground truth triples within reach
+                          ground truth triples within reach; strict recall
+                          within reach likewise, with strict pairs and
+                          strict reach
   describes accuracy      records whose DESCRIBES entity class is right /
                           records where the ground truth names one; with
                           the MAJORITY BASELINE (the share of the most common
@@ -58,15 +66,21 @@ def numbers(records: list) -> dict:
     for r in records:
         total.update(r["compared"]["counts"])
     out = {"records": len(records), "extracted": total["extracted"], "gt_triples": total["gt"],
-           "within_reach": total["within_reach"],
-           "schema_ceiling": _ratio(total["within_reach"], total["gt"])}
+           "within_reach": total["within_reach"], "within_strict_reach": total["within_strict_reach"],
+           "recall_upper_bound": _ratio(total["within_reach"], total["gt"]),
+           "strict_recall_upper_bound": _ratio(total["within_strict_reach"], total["gt"])}
     for level in LEVELS:
         m, s = total[f"{level}_pairs"], total[f"{level}_strict_pairs"]
+        sw = total[f"{level}_strict_pairs_within_strict_reach"]
         out[level] = {"precision": _ratio(m, total["extracted"]), "recall": _ratio(m, total["gt"]),
+                      "f1": _ratio(2 * m, total["extracted"] + total["gt"]),
                       "strict_precision": _ratio(s, total["extracted"]), "strict_recall": _ratio(s, total["gt"]),
+                      "strict_f1": _ratio(2 * s, total["extracted"] + total["gt"]),
                       "entity_class_accuracy": _ratio(s, m),
                       "recall_within_reach": _ratio(total[f"{level}_pairs_within_reach"], total["within_reach"]),
-                      "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"]}
+                      "strict_recall_within_reach": _ratio(sw, total["within_strict_reach"]),
+                      "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"],
+                      "strict_pairs_within_reach": sw}
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     kinds = collections.Counter(label_key(d["truth"]) for d in known)
     per_kind = {k: _ratio(sum(d["right"] for d in known if label_key(d["truth"]) == k), n) for k, n in kinds.items()}
@@ -78,9 +92,10 @@ def numbers(records: list) -> dict:
 
 #: The numbers that get a margin: (path in numbers(), label).
 WITH_MARGIN = [((level, key), f"{level}: {key}") for level in LEVELS
-               for key in ("precision", "recall", "strict_precision", "strict_recall",
-                           "entity_class_accuracy", "recall_within_reach")] + \
-              [(("schema_ceiling",), "schema ceiling"), (("describes", "accuracy"), "describes accuracy")]
+               for key in ("precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
+                           "entity_class_accuracy", "recall_within_reach", "strict_recall_within_reach")] + \
+              [(("recall_upper_bound",), "recall upper bound"), (("strict_recall_upper_bound",), "strict recall upper bound"),
+               (("describes", "accuracy"), "describes accuracy")]
 
 
 def _get(d: dict, path: tuple):

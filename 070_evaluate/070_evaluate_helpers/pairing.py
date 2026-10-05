@@ -106,8 +106,14 @@ def classes_agree(g: dict, t: dict) -> bool:
 
 
 def _within_reach(g: dict, names) -> bool:
-    return label_key(g["predicate"]) in names.reachable["predicate"] and \
-        label_key(g["subject_class"]) in names.reachable["entity class"] and \
+    """Its predicate is something 060's schema could say: all a pair needs
+    (a pair doesn't need the entity classes to agree)."""
+    return label_key(g["predicate"]) in names.reachable["predicate"]
+
+
+def _within_strict_reach(g: dict, names) -> bool:
+    """Its predicate and both its entity classes are: all a strict pair needs."""
+    return _within_reach(g, names) and label_key(g["subject_class"]) in names.reachable["entity class"] and \
         label_key(g["object_class"]) in names.reachable["entity class"]
 
 
@@ -156,12 +162,16 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
             free_g.discard(gi)
             free_e.discard(ei)
     reach = [_within_reach(g, names) for g in gt]
-    counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach)}
+    strict_reach = [_within_strict_reach(g, names) for g in gt]
+    counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach),
+              "within_strict_reach": sum(strict_reach)}
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
         counts[f"{level}_pairs"] = len(used)
-        counts[f"{level}_strict_pairs"] = sum(classes_agree(gt[gi], ex[ei]) for gi, ei in used)
+        strict = [(gi, ei) for gi, ei in used if classes_agree(gt[gi], ex[ei])]
+        counts[f"{level}_strict_pairs"] = len(strict)
         counts[f"{level}_pairs_within_reach"] = sum(reach[gi] for gi, _ in used)
+        counts[f"{level}_strict_pairs_within_strict_reach"] = sum(strict_reach[gi] for gi, _ in strict)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]
     truth = gd["object_class"] if gd and gd["object_class"] not in ("", UNDECIDED) else None
@@ -173,7 +183,7 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
-        "translated": ex, "pairs": pairs, "within_reach": reach, "counts": counts,
+        "translated": ex, "pairs": pairs, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed},
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and label_key(truth) == label_key(said))},
