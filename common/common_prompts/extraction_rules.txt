@@ -1,5 +1,5 @@
-- subject and object: names as written in the record. Do not paraphrase
-  them or expand acronyms. Where the record states a fact about what its
+- subject and object: the record's own words for them, as written. Do not
+  paraphrase them or expand acronyms. Where the record states a fact about what its
   title names, use the title as the subject.
 - The subject of a fact is whatever the sentence is about, which is not
   always the title.

@@ -50,15 +50,15 @@ In `outputs/intermediate_results/040_induce_schema/`:
 `the_schema.json`, shortened:
 
 ```json
-{"entity_classes": [{"name": "Instrument", "definition": "A device that takes measurements.",
+{"entity_classes": [{"component_class": "Instrument", "definition": "A device that takes measurements.",
                      "examples": ["MODIS", "AIRS", "CERES"], "support": 34,
                      "maintainers": ["Earthdata Forum", "…"], "texts": ["…"],
                      "_origin": ["020_clean/records.jsonl#…", "…"]}, …],
- "predicates": [{"name": "ABOARD", "definition": "…", "support": 21, "maintainers": ["…"],
+ "predicates": [{"component_class": "ABOARD", "definition": "…", "support": 21, "maintainers": ["…"],
                  "texts": ["…"], "_origin": ["…"]}, …],
  "patterns": [{"pattern": ["Instrument", "ABOARD", "Spacecraft"], "support": 19,
                "maintainers": ["…"], "texts": ["…"], "_origin": ["…"]}, …],
- "deferred": [{"kind": "entity_classes", "name": "Thing", "support": 40, "reason": "too vague: …"}, …],
+ "deferred": [{"kind": "entity_classes", "schema_entry": "Thing", "support": 40, "reason": "too vague: …"}, …],
  "made": {"run_id": "040_induce_schema_…", "model": "…", "settings": {…}, "texts": 150,
           "maintainers": ["…"]}}
 ```
@@ -116,7 +116,7 @@ Seven stages, in `040_induce_schema/run.py`'s `main()`; stages 2, 3, 4 and 6 ask
 6. **Write definitions** (`define.py`, `write_definitions`). Every entity class and predicate whose support reaches `min_support` goes to the model, 40 at a time, for one defining sentence each, or a reason if it's too vague to tell anything apart ("Thing"). This stage only writes words; it merges and chooses nothing.
 7. **Build the schema** (`check.py`, `check_schema`). The schema is built from stage 5's counts, never from the model's replies: an entity class or predicate is in it if its support reaches `min_support` and it isn't too vague; a pattern is in it if its support reaches `min_support` and its two entity classes and its predicate are in it. Every other schema entry is deferred, with its reason. A schema entry missing its definition stays in, marked, and is listed.
 
-Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code, comparing names with `common/common_helpers/triples_io.label_key`): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Names match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a metric: 070 measures how much of the ground truth the schema can express.
+Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code, comparing component classes with `common/common_helpers/triples_io.label_key`): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Component classes match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a metric: 070 measures how much of the ground truth the schema can express.
 
 **Then the results** (`results`): `the_schema.json` and `induction_evidence.json` are written; the report.
 
@@ -138,7 +138,7 @@ In `040_induce_schema/040_induce_schema_prompts/`:
 | `define_entity_classes.txt` | stage 6, 40 per call | write one defining sentence per entity class, or say it's too vague |
 | `define_predicates.txt` | stage 6, 40 per call | write one defining sentence per predicate, or say it's too vague |
 
-Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them.
+Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "subjects and objects", "classes"), explaining any term they use. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them.
 
 ## Checks and warnings
 
@@ -179,7 +179,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **Prompts.** The report's *Prompts* section lists every prompt the run filled in, each with a fingerprint (sha256) of its exact text, so the prompt behind any answer is known even if the prompt file was edited later (`_manifest.json` keeps the full fingerprints).
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each schema entry's `_origin` names the 020 records whose texts it was found in, e.g. `020_clean/records.jsonl#a1b2…`; `induction_evidence.json` keeps every text's triple instances and labels.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`). A schema entry can be traced by its name: `py helpers/audit.py Instrument`.
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`). An entity class or a predicate of the schema can be traced too: `py helpers/audit.py Instrument`.
 
 ## Known limits
 

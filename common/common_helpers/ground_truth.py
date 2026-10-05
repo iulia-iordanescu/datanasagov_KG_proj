@@ -30,7 +30,8 @@ progress. A row with an id but an empty subject, predicate and object says
     fair_sample, fair_prefix  whether ids are the pool's first records (below)
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
     vocabulary(hand_schema, gt)  the ground truth vocabulary: the hand-built
-                              schema's names plus those coined in the ground truth
+                              schema's component classes plus those coined in the
+                              ground truth
     check_rows(gt, records)   rows with a typo to fix: an id not in the
                               catalog, a source text not in the record's
                               text, a DESCRIBES row with no entity class, …
@@ -147,7 +148,8 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
 # --------------------------------------------------------------------------
 
 #: What check_rows reports: things a person must fix, i.e. typos, never
-#: matters of judgement (a reworded name is fine in ground truth).
+#: matters of judgement (a reworded subject or object instance is fine in
+#: ground truth).
 ROW_ERRORS = {
     "id_not_in_records": "its id isn't a record of the catalog (a typo, or a record since removed)",
     "incomplete": "subject, predicate or object is empty, but not all three",
@@ -197,15 +199,16 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
 def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
     """The ground truth vocabulary: the hand-built schema's entity classes and
     predicates (hand_schema, as common.schema_io.read_hand_schema reads it),
-    plus every one the ground truth triples use that it lacks. Names are
-    compared as common.triples_io.label_key does (ignoring case and
+    plus every one the ground truth triples use that it lacks. Component
+    classes are compared as common.triples_io.label_key does (ignoring case and
     punctuation), keeping the first spelling met; the DESCRIBES row's own
-    names (CatalogEntry, DESCRIBES), the undecided X and anything without a
-    letter or digit (e.g. "-") are not names.
+    component classes (CatalogEntry, DESCRIBES), the undecided X and anything
+    without a letter or digit (e.g. "-") are not counted.
 
     Returned in the schema shape, plus "coined": {"entity_classes": [...],
-    "predicates": [...]}, the names used in the ground truth but not in the
-    hand-built schema, in the order first used. A coined name has an empty
+    "predicates": [...]}, the component classes used in the ground truth but
+    not in the hand-built schema, in the order first used. A coined component
+    class has an empty
     definition: only the hand-built schema has definitions."""
     from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, label_key
 

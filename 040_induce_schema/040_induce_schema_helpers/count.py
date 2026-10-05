@@ -51,8 +51,8 @@ EXAMPLES = 5
 
 @dataclass
 class Counts:
-    entity_classes: list = field(default_factory=list)  # {"name", "support", "texts", "maintainers", "examples"}
-    predicates: list = field(default_factory=list)      # {"name", "support", "texts", "maintainers"}
+    entity_classes: list = field(default_factory=list)  # {"component_class", "support", "texts", "maintainers", "examples"}
+    predicates: list = field(default_factory=list)      # {"component_class", "support", "texts", "maintainers"}
     patterns: list = field(default_factory=list)        # {"pattern", "support", "texts", "maintainers"}
     spelling_folds: list = field(default_factory=list)  # {"kind", "into", "folded"}
     unlabeled_slots: dict = field(default_factory=dict) # {slot: component instances without a label}
@@ -128,8 +128,8 @@ def count_support(triples, labels) -> Counts:
             maint["entity class"][described].add(t["maintainer"])
             examples[described][t["title"]] += 1
 
-    counts.entity_classes = _entries(ids["entity class"], maint["entity class"], "name", examples)
-    counts.predicates = _entries(ids["predicate"], maint["predicate"], "name")
+    counts.entity_classes = _entries(ids["entity class"], maint["entity class"], "component_class", examples)
+    counts.predicates = _entries(ids["predicate"], maint["predicate"], "component_class")
     counts.patterns = _entries(ids["pattern"], maint["pattern"], "pattern")
     counts.unlabeled_slots = dict(unlabeled)
     log.info(f"  found {len(counts.entity_classes):,} entity classes, {len(counts.predicates):,} "

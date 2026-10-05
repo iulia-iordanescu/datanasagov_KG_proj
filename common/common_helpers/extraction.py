@@ -29,7 +29,8 @@ What build_rows does with a record's replies (one per text piece):
      conflicting_classes;
   4. every row checked (common/common_helpers/validate.py) against the record's WHOLE
      text: errors (no_source_text, source_not_in_text, describes_*) and
-     flags (reworded names, names not in the schema, …).
+     flags (reworded subject or object instances, component classes not in
+     the schema, …).
 
 Nothing is dropped for an error or a flag: that's for the person (050) or
 the step (060) to decide. Terms: docs/terminology.md.
@@ -47,7 +48,7 @@ from common.chunking import text_fields
 from common.prompt_files import fill, load, text as prompt_text
 from common.text_match import Text
 from common.triples_io import (clean_triple, describes_row, label_key, triple_key)
-from common.validate import SchemaNames, check_against_schema, check_describes, check_triple_instance
+from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
 RULES = load(PROMPTS / "extraction_rules.txt")
@@ -74,14 +75,14 @@ def wrap(piece: str) -> str:
     return llm.fence_safe(piece, END_LINE)
 
 
-def build_rows(record_id: str, title: str, text: str, replies: list, names: SchemaNames) -> tuple:
+def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
     """(rows, removed). rows: the DESCRIBES row, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
     removed: {"reason": "malformed" | "duplicate", "raw" or the row}."""
     removed = []
     named = [str(r.get("describes_class") or "").strip() for r in replies if isinstance(r, dict)]
     head = describes_row(record_id, title, next((c for c in named if c), ""))
-    errors, flags = check_describes(head, record_id, names)
+    errors, flags = check_describes(head, record_id, schema_entries)
     rows = [{**head, "errors": errors, "flags": flags}]
 
     whole = Text(text)
@@ -103,7 +104,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, names: Sche
                 removed.append({"reason": "duplicate", **row})
                 continue
             errors, flags = check_triple_instance(row, whole, title)
-            flags = flags + check_against_schema(row, names)
+            flags = flags + check_against_schema(row, schema_entries)
             if k in seen:                       # same triple instance, other entity classes
                 flags.append("conflicting_classes")
                 first = seen[k][0]

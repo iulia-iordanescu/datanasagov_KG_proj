@@ -4,7 +4,7 @@ Terms (triple instance, entity class, ground truth, draft batch, fair sample, â€
 
 ## Purpose
 
-Drafts ground truth for you to correct. A model reads the next records of the ground truth candidates pool and lists **every fact each record states**, as triple instances with an entity class for the subject and the object. It uses the names of the ground truth vocabulary where they fit (the hand-built schema's, plus any you coined while annotating) and coins new ones where they don't: leaving a fact out is worse than a new name. Code adds each record's DESCRIBES row, removes repeats and replies that aren't triple instances, and checks every row against the record's text and the schema.
+Drafts ground truth for you to correct. A model reads the next records of the ground truth candidates pool and lists **every fact each record states**, as triple instances with an entity class for the subject and the object. It uses the component classes of the ground truth vocabulary where they fit (the hand-built schema's, plus any you coined while annotating) and coins new ones where they don't: leaving a fact out is worse than a new entity class or predicate. Code adds each record's DESCRIBES row, removes repeats and replies that aren't triple instances, and checks every row against the record's text and the schema.
 
 Each run writes one numbered **draft batch**. You correct it with the annotation tool (`py helpers/annotate.py`), which saves it into `annotations/ground_truth/` as the ground truth file with the same number. No step ever writes there.
 
@@ -25,8 +25,8 @@ Each run also checks your ground truth files for typos (see *Your ground truth* 
 - **Draft and correct batches in pool order, without skipping:** a record after a gap falls out of the fair part, the only records evaluation evaluates.
 - **Correct every draft batch** with `py helpers/annotate.py`: read each record's text first, then fix, delete or add rows until every fact it states is there, and tick *All facts extracted*. The tool saves your corrections to `annotations/ground_truth/batch_<NNN>.csv`; never correct the draft itself (`outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv`): it can be deleted and rebuilt. Commit each corrected batch.
 - **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: recall comes out higher than it should.
-- **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for names you'd add to the schema (see extraction's *To do*).
-- **When you coin a name**, add it with a one-line definition to the hand-built schema (`annotations/schema_derived_from_manual_annotation.txt`): in the tool, press the button under its flag. Until then the next drafts reuse it, but the model sees only the name, and the tool keeps flagging it (it could be a typo); the tool's page and this step's report list every such name.
+- **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for component classes you'd add to the schema (see extraction's *To do*).
+- **When you coin an entity class or predicate**, add it with a one-line definition to the hand-built schema (`annotations/schema_derived_from_manual_annotation.txt`): in the tool, press the button under its flag. Until then the next drafts reuse it, but the model sees it without a definition, and the tool keeps flagging it (it could be a typo); the tool's page and this step's report list every such component class.
 - **Fix the typos and problems** the tool and this step's report flag in the ground truth (`annotations/ground_truth/`).
 - **Report any metric** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
 
@@ -36,8 +36,8 @@ Each run also checks your ground truth files for typos (see *Your ground truth* 
 |---|---|---|
 | `records` | `020_clean/records.jsonl` | 020's cleaned records: the texts. |
 | `splits` | `030_split/splits.json` | 030's ground truth candidates: the pool's 999 records still in the catalog, in the pool's order. |
-| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema. Shown to the model as the names to reuse, together with the names coined in the ground truth; every row is checked against the hand-built schema alone, so a coined name stays flagged until you add it there. |
-| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Your ground truth: records in it are never drafted again, every run checks it, and the names you coined in it are shown to the model for reuse. |
+| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema. Shown to the model as the component classes to reuse, together with the component classes coined in the ground truth; every row is checked against the hand-built schema alone, so a coined component class stays flagged until you add it there. |
+| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Your ground truth: records in it are never drafted again, every run checks it, and the component classes you coined in it are shown to the model for reuse. |
 
 Draft batches already in 050's output folder are read too: their records are waiting to be corrected, so they're not drafted again.
 
@@ -112,7 +112,7 @@ Pick the batch at the top of the page. The full steps are in [annotations/README
 Four stages, in `050_annotate/run.py`'s `main()`; stage 2 asks the model, the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). By default, the pool's records in its order, from `start_position` on, skipping those already in the ground truth, those waiting in a draft batch, and those with no text, until there are `records_per_batch`. With `ids`, those records, skipping the same ones. Anything that makes the batch differ from what you asked becomes a note shown before paying. It also works out whether the ground truth, the waiting drafts and this batch together are still exactly the first records of the pool: a fair sample.
-2. **Ask the model** (`draft.py`, `ask_model`). One call per text piece, with the prompt `050_annotate/050_annotate_prompts/draft.txt`: *completeness first* (every fact, whether or not the schema can express it), then *naming* (the schema's names when one fits; otherwise a new one in the same style: entity classes in CamelCase, predicates in UPPER_SNAKE_CASE). Its rules and reply format are in `common/common_prompts/` and shared with step 060, so the ground truth and what 060 extracts are asked for the same way. Every answer goes into `cache/` the moment it arrives. A record with any failed call is left out of the batch, never half drafted.
+2. **Ask the model** (`draft.py`, `ask_model`). One call per text piece, with the prompt `050_annotate/050_annotate_prompts/draft.txt`: *completeness first* (every fact, whether or not the schema can express it), then *naming* (the schema's component classes when one fits; otherwise a new one in the same style: entity classes in CamelCase, predicates in UPPER_SNAKE_CASE). Its rules and reply format are in `common/common_prompts/` and shared with step 060, so the ground truth and what 060 extracts are asked for the same way. Every answer goes into `cache/` the moment it arrives. A record with any failed call is left out of the batch, never half drafted.
 3. **Build the rows** (`build_rows`, with `common/common_helpers/extraction.py`, shared with 060). The DESCRIBES row first, with the entity class the model named for what the title names (`X` if none). Then each triple instance: an item that can't be one (a missing subject, predicate or object, a list where text belongs, â€¦) is removed as *malformed*; the same subject, predicate, object and entity classes again (e.g. from two pieces of a long text) is removed as a *duplicate*. Every row is checked (below). Nothing is removed for failing a check: that's for you to decide.
 4. **Check your ground truth** (`check_ground_truth`, with `common/common_helpers/ground_truth.py`). Every row of every ground truth file, for typos (below).
 
@@ -138,17 +138,17 @@ Run against the record's **whole** text, including rows from one piece of a long
 | `pattern_not_in_schema` | flag | The predicate is in the schema, but never between these two entity classes. |
 | `conflicting_classes` | flag | The same triple instance appears again with other entity classes; both rows are flagged. |
 
-"In the text" ignores case, spacing, quote marks, dash variants, edge punctuation and a leading "the/a/an" (`common/common_helpers/text_match.py`). Names are compared with the schema's loosely: letters and digits only, case ignored, so `has version` is `HAS_VERSION`.
+"In the text" ignores case, spacing, quote marks, dash variants, edge punctuation and a leading "the/a/an" (`common/common_helpers/text_match.py`). Entity classes and predicates are compared with the schema's loosely: letters and digits only, case ignored, so `has version` is `HAS_VERSION`.
 
 ## Prompts
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `050_annotate/050_annotate_prompts/draft.txt` | stage 2, one call per text piece | list **every** fact the record states (completeness first), naming the entity classes and predicates with the hand-built schema's names where one fits and a new name otherwise; the prompt shows the ground truth vocabulary: the hand-built schema as written, then, under *ALSO USED IN THE GROUND TRUTH (no definition yet)*, any names coined in the ground truth (with nothing coined, the prompt is unchanged) |
-| `common/common_prompts/extraction_rules.txt` | inside `draft.txt` (`$rules`) | follow the rules shared with 060: names as written, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
+| `050_annotate/050_annotate_prompts/draft.txt` | stage 2, one call per text piece | list **every** fact the record states (completeness first), using the hand-built schema's entity classes and predicates where one fits and coining a new one otherwise; the prompt shows the ground truth vocabulary: the hand-built schema as written, then, under *ALSO USED IN THE GROUND TRUTH (no definition yet)*, any component classes coined in the ground truth (with nothing coined, the prompt is unchanged) |
+| `common/common_prompts/extraction_rules.txt` | inside `draft.txt` (`$rules`) | follow the rules shared with 060: subject and object in the record's own words, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
 | `common/common_prompts/extraction_reply.txt` | inside `draft.txt` (`$reply`) | reply in the JSON form shared with 060 |
 
-Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 060: editing them changes both steps.
+Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "classes", "predicates"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 060: editing them changes both steps.
 
 ## Checks and warnings
 
@@ -172,7 +172,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *N record(s) failed and are not in the batch* | Their model calls failed (after the model client's own retries). | Run the step again: only those are asked again, and every answer already paid for is reused. The next run drafts them first. |
 | *No record was drafted, so no batch was written.* | Every call failed. | Check the connection; run again. |
-| *N name(s) used in the ground truth aren't in the hand-built schema, so the model saw them without a definition* | Names you coined while annotating (or typos). The model was shown them to reuse, but with only the name to go on. | Add each one you mean to keep, with a one-line definition, to the hand-built schema (the annotation tool's buttons do it); fix any typo in the ground truth. |
+| *N component class(es) used in the ground truth aren't in the hand-built schema, so the model saw them without a definition* | Entity classes or predicates you coined while annotating (or typos). The model was shown them to reuse, but with no definition to go on. | Add each one you mean to keep, with a one-line definition, to the hand-built schema (the annotation tool's buttons do it); fix any typo in the ground truth. |
 | *N row(s) of the ground truth have something to fix* | Typos, listed under *Your ground truth* with file and line: an id that isn't in the catalog, a subject, predicate or object partly empty, no source text or one not in the record's text, a DESCRIBES row without an entity class or whose subject isn't the record's id. | Fix them with the tool or any editor. |
 | *N of M draft rows have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
@@ -199,6 +199,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 ## Known limits
 
 - **Not yet run with the real model.** As of 2026-09-29, 050 has been tested only with a stand-in for the model, because Ask Sage can't be reached from the laptop it was built on. Numbers in this guide come from the catalog, the code or the stand-in, not from a real run.
-- **The schema in the prompt is the hand-built one**, whichever schema 060 ends up using: the ground truth should record every fact in stable names, not only what one schema can express.
+- **The schema in the prompt is the hand-built one**, whichever schema 060 ends up using: the ground truth should record every fact in stable component classes, not only what one schema can express.
 - **A record deleted from a corrected batch is not drafted again**: it's still in its draft batch, which is how 050 knows it was seen. To redraft it, list it with `ids` after removing it from that draft batch file.
 - **The model varies.** Rerunning with an empty cache can draft different rows; the cache makes a rerun reproducible.

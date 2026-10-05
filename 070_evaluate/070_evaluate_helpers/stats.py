@@ -9,11 +9,11 @@ many triples weighs more than one with few, as each triple is one answer.
   recall           pairs / ground truth triples
   F1               2 x precision x recall / (precision + recall), the same as
                    2 x pairs / (extracted triples + ground truth triples)
-  (all three at the two name levels, exact and partial, and for all pairs
+  (all three at the two pair levels, exact and partial, and for all pairs
    and STRICT pairs, i.e. with both entity classes right too)
   entity-class accuracy   strict pairs / pairs
   recall upper bound          ground truth triples within reach (their predicate
-                          has a name in the schema: all a pair needs) / all
+                          has a counterpart in the schema: all a pair needs) / all
                           of them: the most recall can be
   strict recall upper bound   the same, within strict reach (predicate and both
                           entity classes): the most strict recall can be

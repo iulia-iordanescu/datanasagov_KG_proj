@@ -12,7 +12,7 @@ What it reads
     outputs/intermediate_results/020_clean/records.jsonl                     each record's text
     outputs/intermediate_results/030_split/splits.json                       each record's pool position and part
     annotations/schema_derived_from_manual_annotation.txt                   the hand-built schema
-    annotations/name_mapping.csv                                             the translation table
+    annotations/component_class_mapping.csv                                             the translation table
     outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
     outputs/intermediate_results/060_extract/extracted_triples.csv           an example triple per predicate
     outputs/intermediate_results/070_evaluate/metrics.json                    evaluation's suggestions for (none) rows
@@ -20,10 +20,10 @@ What it reads
     annotations/partial_pair_reviews.csv                                     your verdicts on them
     annotations/schema_additions.txt                                         the schema additions
     annotations/README.md                                                    the Help shown on the page
-    outputs/intermediate_results/060_extract/extracted_triples_details.json  extraction's names outside the schema
+    outputs/intermediate_results/060_extract/extracted_triples_details.json  extraction's component classes outside the schema
 
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
-annotations/name_mapping.csv, annotations/partial_pair_reviews.csv,
+annotations/component_class_mapping.csv, annotations/partial_pair_reviews.csv,
 annotations/schema_additions.txt, and additions to
 annotations/schema_derived_from_manual_annotation.txt (nothing else in it
 changes).
@@ -35,12 +35,12 @@ changes).
       server writes it under a temporary name and renames it).
     - The draft's flags column isn't kept: the checks are recomputed live.
 
-The translation table (step 070's, common/common_helpers/name_mapping.py) is shown row by
-row, each name with its definition, and a person's choices are saved to it
-at once: name_in_gtt (a name of the ground truth vocabulary, or (none)),
+The translation table (step 070's, common/common_helpers/component_class_mapping.py) is shown row by
+row, each component class with its definition, and a person's choices are saved to it
+at once: component_class_in_gtt (a component class of the ground truth vocabulary, or (none)),
 swap_subject_and_object (predicates only) and checked. Rows can't be added
-or reordered here, and the only rows that can be removed are a name's
-repeated ones (common/common_helpers/name_mapping.repeats), and a save keeps any rows step 070 added since
+or reordered here, and the only rows that can be removed are a component class's
+repeated ones (common/common_helpers/component_class_mapping.repeats), and a save keeps any rows step 070 added since
 the page was loaded; if the rows the page shows have changed in the file, the
 save is refused, so nothing is overwritten.
 
@@ -50,8 +50,8 @@ comments at its top are kept. Every entry needs a definition and a source;
 a source naming the ground truth must say "tuning" and name tuning records
 only (common/common_helpers/schema_io.ground_truth_source_problem, the same check step 060
 applies). A file with lines the layout can't read is not rewritten (fix it
-by hand first). Extraction's last list of names outside the schema is shown
-alongside, each name ready to add with its source.
+by hand first). Extraction's last list of component classes outside the schema is shown
+alongside, each ready to add with its source.
 
 Help: the page's Help button shows the section of annotations/README.md
 about the view you're on (HELP_SECTIONS), so the tool's explanation lives in
@@ -65,24 +65,24 @@ shown or accepted (reviewing them would mean looking at held-out results).
 
 The checks are step 050's own, all from common/common_helpers/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate and pattern
-is in the hand-built schema), shown in plain words (MESSAGES). The names
+is in the hand-built schema), shown in plain words (MESSAGES). The component classes
 suggested as you type are the ground truth vocabulary
 (common/common_helpers/ground_truth.vocabulary): the hand-built schema's, plus those
-coined in the ground truth, so a coined name is offered for reuse. A coined
-name stays flagged until it is added to the hand-built schema, since it
+coined in the ground truth, so a coined component class is offered for reuse. A coined
+component class stays flagged until it is added to the hand-built schema, since it
 could be a typo.
 
 Adding to the hand-built schema: each flag "not in the hand-built schema" on
-a row has a button that adds the name, with the one-line definition the
+a row has a button that adds the entity class or predicate, with the one-line definition the
 person types, or the pattern; so does the list, above every view, of what
 the ground truth uses that the hand-built schema lacks (hand_schema_gaps). A
 pattern is offered only once its entity classes are in the schema. The file
 is changed by common/common_helpers/schema_io.add_to_hand_schema and
 add_pattern_to_hand_schema, which add one entry or pattern, check that
-nothing else changed, and otherwise put the file back. A name gets a
+nothing else changed, and otherwise put the file back. A component class gets a
 "source:" line naming the ground truth records using it, by part ("ground
 truth tuning #3; held-out #8"), so it can be told whether held-out records
-shaped its names (patterns get no source line: the layout has none for
+shaped its component classes (patterns get no source line: the layout has none for
 them).
 """
 from __future__ import annotations
@@ -98,7 +98,7 @@ from common.chunking import full_text
 from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, read_pool, vocabulary)
-from common.name_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
+from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  is_stale, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
@@ -107,7 +107,7 @@ from common.schema_io import add_pattern_to_hand_schema, add_to_hand_schema, add
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, label_key
-from common.validate import SchemaNames, check_against_schema, check_describes, check_triple_instance
+from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
 DRAFTS_DIR = RESULTS_DIR / "050_annotate"
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
@@ -129,7 +129,7 @@ PAGE = Path(__file__).with_name("page.html")
 KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
 #: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
-#: words for the page; {name} is filled with the name concerned.
+#: words for the page; each {placeholder} is filled with the component class concerned.
 MESSAGES = {
     "no_source_text": "No source text: select the passage in the record's text that states this, then press \"Use selection\".",
     "source_not_in_text": "The source text isn't in the record's text: check it was copied exactly.",
@@ -184,7 +184,7 @@ class Data:
         """(Re)read the hand-built schema: at the start, and after the page adds to it."""
         hand = read_hand_schema(HAND_SCHEMA) if HAND_SCHEMA.exists() else \
             {"entity_classes": {}, "predicates": {}, "patterns": []}
-        self.hand, self.names = hand, SchemaNames(hand)
+        self.hand, self.schema_entries = hand, SchemaEntries(hand)
 
     def text(self, rid: str) -> Text | None:
         if rid not in self.records:
@@ -214,19 +214,19 @@ def _group(rows: list) -> list:
 def check_row(data: Data, row: dict, title: str) -> list:
     """The row's problems, as {"code", "message", "kind": "error" | "flag"}."""
     if is_describes(row):
-        errors, flags = check_describes(row, row["id"], data.names)
+        errors, flags = check_describes(row, row["id"], data.schema_entries)
     elif not (row["subject"] and row["predicate"] and row["object"]):
         errors, flags = ["empty"], []
     else:
         text = data.text(row["id"])
         errors, flags = check_triple_instance(row, text, title) if text is not None else ([], [])
-        flags = flags + check_against_schema(row, data.names)
+        flags = flags + check_against_schema(row, data.schema_entries)
     return [{"code": c, "kind": kind, "message": MESSAGES[c].format(**{k: row.get(k) or "(none)" for k in COLUMNS}),
              "add": _offer(c, row, flags)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
 
 
-#: The flags a person resolves by adding a name to the hand-built schema: (kind, the row's column holding it).
+#: The flags a person resolves by adding a component class to the hand-built schema: (kind, the row's column holding it).
 ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
         "object_class_not_in_schema": ("entity class", "object_class"),
         "describes_class_not_in_schema": ("entity class", "object_class"),
@@ -240,7 +240,7 @@ def _offer(code: str, row: dict, flags: list) -> dict | None:
     if code in ADDS:
         kind, column = ADDS[code]
         name = str(row.get(column) or "").strip()
-        return {"kind": kind, "name": name} if label_key(name) else None
+        return {"kind": kind, "component_class": name} if label_key(name) else None
     classes_flagged = {"subject_class_not_in_schema", "object_class_not_in_schema"} & set(flags)
     if code == "pattern_not_in_schema" and not classes_flagged:
         return {"kind": "pattern", "predicate": row["predicate"], "subject_class": row["subject_class"],
@@ -284,13 +284,13 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 # --------------------------------------------------------------------------
 
 def _using(gt, kind: str, name: str) -> list:
-    """The ground truth rows that use a name (compared as label_key does)."""
+    """The ground truth rows that use a component class (compared as label_key does)."""
     columns = ("subject_class", "object_class") if kind == "entity class" else ("predicate",)
     return [r for r in gt.rows if any(label_key(r[c]) == label_key(name) for c in columns)]
 
 
 def _learned_from(data: Data, rows: list) -> str:
-    """Where a name was learned, as a "source:" line the fairness check
+    """Where a component class was learned, as a "source:" line the fairness check
     (common/common_helpers/schema_io.ground_truth_source_problem) can read: the
     ground truth records using it, by part, as pool positions."""
     by_part, outside = {"tuning": set(), "held-out": set()}, []
@@ -305,31 +305,32 @@ def _learned_from(data: Data, rows: list) -> str:
 
 
 def hand_schema_gaps(data: Data, gt) -> dict:
-    """What the ground truth uses that the hand-built schema lacks: names
-    coined in the ground truth, and patterns whose predicate and entity
+    """What the ground truth uses that the hand-built schema lacks:
+    component classes coined in the ground truth, and patterns whose predicate and entity
     classes are all in the schema, each with the rows using it."""
     coined = vocabulary(data.hand, gt)["coined"]
-    names = [{"kind": kind, "name": n, "uses": len(_using(gt, kind, n))}
+    names = [{"kind": kind, "component_class": n, "uses": len(_using(gt, kind, n))}
              for kind, key in KIND_KEYS.items() for n in coined[key]]
     k, patterns = label_key, {}
     for r in gt.rows:
-        if is_describes(r) or k(r["predicate"]) not in data.names.predicates \
-                or not {k(r["subject_class"]), k(r["object_class"])} <= data.names.entity_classes:
+        if is_describes(r) or k(r["predicate"]) not in data.schema_entries.predicates \
+                or not {k(r["subject_class"]), k(r["object_class"])} <= data.schema_entries.entity_classes:
             continue
         key = (k(r["subject_class"]), k(r["predicate"]), k(r["object_class"]))
-        if key not in data.names.patterns:
+        if key not in data.schema_entries.patterns:
             patterns.setdefault(key, {"kind": "pattern", "subject_class": r["subject_class"],
                                       "predicate": r["predicate"], "object_class": r["object_class"],
                                       "uses": 0})["uses"] += 1
-    return {"file": f"annotations/{HAND_SCHEMA.name}", "names": names, "patterns": list(patterns.values())}
+    return {"file": f"annotations/{HAND_SCHEMA.name}", "component_classes": names, "patterns": list(patterns.values())}
 
 
 HAND_LOCK = threading.Lock()
 
 
 def add_to_hand(data: Data, item: dict) -> str:
-    """Add one name (with its definition) or one pattern to the hand-built
-    schema; say what was added. A name is written as the page sent it, with
+    """Add one component class (with its definition) or one pattern to the
+    hand-built schema; say what was added. A component class is written as
+    the page sent it, with
     a "source:" line naming the ground truth records using it (in any
     spelling, compared as label_key does). One add at a time (HAND_LOCK):
     the server answers requests in parallel, and two adds at once could
@@ -343,7 +344,7 @@ def add_to_hand(data: Data, item: dict) -> str:
         kind = item.get("kind")
         if kind not in KIND_KEYS:
             raise ValueError("kind must be entity class, predicate or pattern")
-        name = str(item.get("name") or "").strip()
+        name = str(item.get("component_class") or "").strip()
         source = _learned_from(data, _using(read_ground_truth(), kind, name))
         add_to_hand_schema(HAND_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
@@ -408,13 +409,13 @@ def save_batch(data: Data, n: int, records: list) -> list:
 # --------------------------------------------------------------------------
 
 def _gtt(data: Data) -> dict:
-    """The ground truth vocabulary by kind: {kind: {name: definition}}."""
+    """The ground truth vocabulary by kind: {kind: {component class: definition}}."""
     vocab = vocabulary(data.hand, read_ground_truth())
     return {"entity class": vocab["entity_classes"], "predicate": vocab["predicates"]}
 
 
 def _crt() -> dict | None:
-    """The current schema's definitions (common/common_helpers/name_mapping.crt_definitions),
+    """The current schema's definitions (common/common_helpers/component_class_mapping.crt_definitions),
     or None if extraction's schema_used.json isn't there."""
     if not SCHEMA_USED.exists():
         return None
@@ -444,59 +445,60 @@ def mapping_view(data: Data) -> dict:
     suggested = {}                                    # evaluation's last suggestions for (none) rows
     if METRICS.exists():
         for s in json.loads(METRICS.read_text(encoding="utf-8")).get("translation_suggestions", []):
-            suggested[(s["kind"], label_key(s["name_from_past_or_crt_schema"]))] = s["name_in_gtt"]
+            suggested[(s["kind"], label_key(s["component_class_from_past_or_crt_schema"]))] = s["component_class_in_gtt"]
     rows = [{**r, "repeated": r["_line"] in extra,
-             "same_name_in_gtt": same_name.get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
-             "suggested_gtt": suggested.get((r["kind"], label_key(r["name_from_past_or_crt_schema"]))),
-             "in_crt": crt is not None and label_key(r["name_from_past_or_crt_schema"]) in crt.get(r["kind"], {}), "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
+             "same_component_class_in_gtt": same_name.get(r["kind"], {}).get(label_key(r["component_class_from_past_or_crt_schema"])),
+             "suggested_gtt": suggested.get((r["kind"], label_key(r["component_class_from_past_or_crt_schema"]))),
+             "in_crt": crt is not None and label_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {}), "crt_definition": (crt or {}).get(r["kind"], {}).get(label_key(r["component_class_from_past_or_crt_schema"])),
              "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
-             "example": examples.get(label_key(r["name_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
+             "example": examples.get(label_key(r["component_class_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
             for r in table]
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
             "rows": rows, "none": NONE, "repeats": repeated,
-            "gtt": {kind: [{"name": n, "definition": d} for n, d in sorted(names.items())]
+            "gtt": {kind: [{"component_class": n, "definition": d} for n, d in sorted(names.items())]
                     for kind, names in gtt.items()}}
 
 
 def save_mapping(data: Data, sent: list) -> None:
     """Write the person's choices for the rows the page showed. The rows'
-    kinds and current-schema names must still be the file's first rows, in
-    order; rows added after them (by step 070) are kept as they are. A row
-    saved as checked stores the current schema's definition of its name
+    kinds and current-schema component classes must still be the file's
+    first rows, in order; rows added after them (by step 070) are kept as
+    they are. A row saved as checked stores the current schema's definition
+    of its component class
     (the page sends a stale row as unchecked until the person ticks it)."""
     rows = read_mapping(MAPPING_PATH)
     crt = _crt()
-    if [(r["kind"], r["name_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
-            [(r.get("kind"), r.get("name_from_past_or_crt_schema")) for r in sent]:
+    if [(r["kind"], r["component_class_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
+            [(r.get("kind"), r.get("component_class_from_past_or_crt_schema")) for r in sent]:
         raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
     gtt = {kind: {label_key(n): n for n in names} for kind, names in _gtt(data).items()}
     for row, s in zip(rows, sent):
-        name = str(s.get("name_in_gtt") or "").strip()
+        name = str(s.get("component_class_in_gtt") or "").strip()
         if name != NONE:
             if label_key(name) not in gtt.get(row["kind"], {}):
                 raise ValueError(f"\"{name}\" isn't {'an' if row['kind'] == 'entity class' else 'a'} {row['kind']} "
                                  f"of the ground truth vocabulary")
             name = gtt[row["kind"]][label_key(name)]
-        row["name_in_gtt"] = name
+        row["component_class_in_gtt"] = name
         swap = row["kind"] == "predicate" and s.get("swap_subject_and_object") == "yes"
         row["swap_subject_and_object"] = "yes" if swap else "no"
         checked = str(s.get("checked") or "no")
-        row["checked"] = checked if checked in ("yes", "no", "same name") else "no"
+        row["checked"] = checked if checked in ("yes", "no", "same component class") else "no"
         if row["checked"] in CHECKED and crt is not None:
             row["definition_from_past_or_crt_schema"] = \
-                crt.get(row["kind"], {}).get(label_key(row["name_from_past_or_crt_schema"]), "")
+                crt.get(row["kind"], {}).get(label_key(row["component_class_from_past_or_crt_schema"]), "")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
 
 
 def delete_mapping_row(line: int, kind: str, name: str) -> None:
-    """Delete one row, only if it is one of a name's repeated rows and is
+    """Delete one row, only if it is one of a component class's repeated rows and is
     still at that line (so nothing else can be deleted, even by mistake)."""
     rows = read_mapping(MAPPING_PATH)
     target = next((r for r in rows if r["_line"] == line), None)
-    if target is None or (target["kind"], target["name_from_past_or_crt_schema"]) != (kind, name):
+    if target is None or (target["kind"], target["component_class_from_past_or_crt_schema"]) != (kind, name):
         raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
     if not any(line in r["lines"] for r in repeats(rows)):
-        raise ValueError("only a name's extra rows can be deleted here")
+        raise ValueError("only a component class's extra rows can be deleted here")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, [r for r in rows if r is not target])
 
 
@@ -528,7 +530,7 @@ def _additions() -> tuple:
     entries = []
     for kind, key in KIND_KEYS.items():
         for name, definition in schema[key].items():
-            entries.append({"kind": kind, "name": name, "definition": definition,
+            entries.append({"kind": kind, "component_class": name, "definition": definition,
                             "source": schema["sources"][key].get(name, ""),
                             "patterns": [[s_, o_] for s_, p_, o_ in schema["patterns"] if p_ == name]})
     return entries, schema["unread"]
@@ -539,29 +541,29 @@ def additions_view(data: Data) -> dict:
     used = {}
     if SCHEMA_USED.exists():
         for kind, key in KIND_KEYS.items():
-            used[kind] = {label_key(e["name"]): e["name"]
+            used[kind] = {label_key(e["component_class"]): e["component_class"]
                           for e in json.loads(SCHEMA_USED.read_text(encoding="utf-8")).get(key, [])
                           if e.get("from") != "additions"}
     names = []
     if EXTRACTION_DETAILS.exists():
         details = json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
-        have = {(e["kind"], label_key(e["name"])) for e in entries}
-        names = [{**n, "added": (n["kind"], label_key(n["name"])) in have}
-                 for n in (details.get("new_names") or {}).get("names", [])]
+        have = {(e["kind"], label_key(e["component_class"])) for e in entries}
+        names = [{**n, "added": (n["kind"], label_key(n["component_class"])) in have}
+                 for n in (details.get("new_component_classes") or {}).get("component_classes", [])]
     return {"file": f"annotations/{ADDITIONS.name}", "entries": entries, "unread": unread,
-            "names": names, "counted_over": (json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
-                                             .get("new_names") or {}).get("counted_over")
+            "new_component_classes": names, "counted_over": (json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
+                                             .get("new_component_classes") or {}).get("counted_over")
             if EXTRACTION_DETAILS.exists() else None,
-            "schema_names": {k: sorted(v.values()) for k, v in used.items()}}
+            "schema_component_classes": {k: sorted(v.values()) for k, v in used.items()}}
 
 
 def check_addition(data: Data, e: dict) -> str | None:
     """What's wrong with one entry, or None."""
     if e.get("kind") not in KIND_KEYS:
         return "kind must be entity class or predicate"
-    name = str(e.get("name") or "").strip()
+    name = str(e.get("component_class") or "").strip()
     if not name or any(c.isspace() for c in name):
-        return "the name must be one word, with no spaces (e.g. SpaceMission, PART_OF_MISSION)"
+        return "the component class must be one word, with no spaces (e.g. SpaceMission, PART_OF_MISSION)"
     if not str(e.get("definition") or "").strip():
         return f"{name} (additions file) needs a one-line definition"
     source = str(e.get("source") or "").strip()
@@ -589,11 +591,11 @@ def save_additions(data: Data, entries: list) -> None:
         problem = check_addition(data, e)
         if problem:
             raise ValueError(problem)
-        key = (e["kind"], label_key(e["name"]))
+        key = (e["kind"], label_key(e["component_class"]))
         if key in seen:
-            raise ValueError(f"{e['name']} (additions file) is there twice")
+            raise ValueError(f"{e['component_class']} (additions file) is there twice")
         seen.add(key)
-        clean.append({"kind": e["kind"], "name": e["name"].strip(), "definition": " ".join(e["definition"].split()),
+        clean.append({"kind": e["kind"], "component_class": e["component_class"].strip(), "definition": " ".join(e["definition"].split()),
                       "source": " ".join(e["source"].split()),
                       "patterns": [[str(a).strip(), str(b).strip()] for a, b in e.get("patterns") or []]
                       if e["kind"] == "predicate" else []})
@@ -723,7 +725,7 @@ def make_handler(data: Data):
                     save_review(data, body)
                     self._json({"saved": True})
                 elif url.path == "/api/mapping/delete":
-                    delete_mapping_row(int(body["line"]), body["kind"], body["name"])
+                    delete_mapping_row(int(body["line"]), body["kind"], body["component_class"])
                     self._json({"deleted": True})
                 else:
                     self._json({"error": "not found"}, 404)

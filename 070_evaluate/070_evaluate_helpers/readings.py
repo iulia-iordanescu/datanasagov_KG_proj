@@ -38,7 +38,7 @@ def _sure(n: dict, metric: dict, what: str) -> str:
             f"(the margin of error: the middle 95% of {stats.RESHUFFLES:,} redraws of these {n['records']} records).")
 
 
-def where_from(part: str, recs: list, evaluated, names, looks) -> list:
+def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
     """Once per part: what these numbers were computed from."""
     made = evaluated.extraction_made
     schema = evaluated.schema_used.get("made", {})
@@ -53,11 +53,11 @@ def where_from(part: str, recs: list, evaluated, names, looks) -> list:
            f"- **Extraction's schema (the current schema):** `{schema.get('schema', 'unknown')}`, plus "
            f"`{schema.get('additions', 'annotations/schema_additions.txt')}` ({len(additions)} addition(s)).",
            ("- **Schema additions learned from tuning records:** "
-            + "; ".join(f"{e['name']} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
+            + "; ".join(f"{e['component_class']} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
             "being evaluated, so they help here more surely than on records the pipeline hasn't seen."
             if from_tuning else "- **Schema additions learned from tuning records:** none."),
-           "- **Names:** extraction's names translated into the ground truth vocabulary through "
-           "`annotations/name_mapping.csv`.",
+           "- **Component classes:** extraction's component classes translated into the ground truth vocabulary through "
+           "`annotations/component_class_mapping.csv`.",
            f"- **Ground truth:** `annotations/ground_truth/`, the {len(recs)} finished {part} record(s) of the fair "
            f"part (pool positions {', '.join(f'#{p}' for p in positions) or '–'}).",
            ("- **Partial pairs:** " + (f"{review['unreviewed']} not reviewed yet; {review['rejected']} ruled out by "
@@ -75,10 +75,10 @@ def where_from(part: str, recs: list, evaluated, names, looks) -> list:
     return out
 
 
-def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion: dict) -> list:
+def readings(part: str, n: dict, recs: list, evaluated, translation, looks, confusion: dict) -> list:
     E, G = n["extracted"], n["gt_triples"]
     ex, pa = n["exact"], n["partial"]
-    out = [f"### Reading the metrics: {part} part", ""] + where_from(part, recs, evaluated, names, looks)
+    out = [f"### Reading the metrics: {part} part", ""] + where_from(part, recs, evaluated, translation, looks)
 
     # precision
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
@@ -134,7 +134,7 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
 
     # entity-class accuracy
     shared = [f"{', '.join(v)} (current schema) --> {k} (ground truth vocabulary)"
-              for kind in ("entity class",) for k, v in names.merged.get(kind, {}).items()]
+              for kind in ("entity class",) for k, v in translation.merged.get(kind, {}).items()]
     out += [f"#### Entity-class accuracy: {pct(ex['entity_class_accuracy']['value'])} (exact pairs), "
             f"{pct(pa['entity_class_accuracy']['value'])} (exact and partial pairs)", "",
             f"- Of the {ex['pairs']} exact pairs, {_of(ex['strict_pairs'], ex['pairs'])} also have both entity "
@@ -143,7 +143,7 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
             f"a {pct(ex['entity_class_accuracy']['value'])} chance.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
-        out.append("- Can't see mix-ups between current-schema names that translate to the same ground truth name: "
+        out.append("- Can't see mix-ups between current-schema component classes that translate to the same ground truth component class: "
                    + "; ".join(shared) + ".")
     out.append("")
 
@@ -154,7 +154,7 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
             f"- Of the {G} ground truth triples, {_of(W, G)} are within reach: their predicate has a counterpart "
             f"in the current schema, through the translation table. That's all a pair needs, so it's the most "
             f"recall any extraction could get with this schema and translation table: {G - W} ground truth "
-            f"triple(s) have a predicate the schema has no name for.",
+            f"triple(s) have a predicate with no counterpart in the schema.",
             f"- {_of(SW, G)} are within strict reach: their two entity classes have a counterpart too. That's "
             f"the most strict recall could be.",
             _sure(n, n["recall_upper_bound"], "the recall upper bound"), ""]

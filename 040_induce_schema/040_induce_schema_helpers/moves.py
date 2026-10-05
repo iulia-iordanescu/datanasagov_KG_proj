@@ -199,7 +199,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               f"{len(schema.single_maintainer):,}.", "",
               "Entity classes with the most support:", "",
               "| Entity class | Support | Maintainers | Examples |", "|---|---:|---:|---|"]
-    lines += [f"| {cell(c['name'])} | {c['support']} | {len(c['maintainers'])} | "
+    lines += [f"| {cell(c['component_class'])} | {c['support']} | {len(c['maintainers'])} | "
               f"{cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
     lines += [""] + model_calls([("stage 2: extract triple instances", triples.calls, triples.reused),
                                  ("stage 3: label component instances", labels.calls, None),

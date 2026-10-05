@@ -6,21 +6,21 @@ Adapted from to_be_reshaped/triple_io.py; the DESCRIBES row (at the end)
 was added. Used by common/common_helpers/extraction.py (050 and 060: clean_triple,
 triple_key, label_key, describes_row), common/common_helpers/validate.py,
 common/common_helpers/ground_truth.py, the annotation tool, 040 (label_key), 050 and 060
-(the DESCRIBES row's names, COLUMNS, label_key) and 070 (label_key, the
-DESCRIBES row's names).
+(the DESCRIBES row's component classes, COLUMNS, label_key) and 070
+(label_key, the DESCRIBES row's component classes).
 
 A triple row has the columns in COLUMNS. source_text is the passage that
 states the fact. The ground truth and the draft batches add three columns
 (common/common_helpers/ground_truth.COLUMNS).
 
-Names are evened out in two ways:
+Component instances and component classes are evened out in two ways:
     triple_key  (subject, predicate, object) as common/common_helpers/text_match.norm_text
                 gives them (case, spacing, quote marks, dashes, edge
                 punctuation, a leading article); predicates also treat
                 "_", "-" and spaces alike ("IS_ABOARD" == "is aboard").
                 Two rows with the same key are the same fact.
-    label_key   letters and digits only, for schema names the model
-                re-cased or re-spaced ("physical quantity" ==
+    label_key   letters and digits only, for component classes the
+                model re-cased or re-spaced ("physical quantity" ==
                 "PhysicalQuantity").
 
 Both keep digits: "Level-2" and "Level 3" never become the same thing.
@@ -44,9 +44,9 @@ COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
 
 # ------------------------------ normalisation ------------------------------
 #
-# norm_text (a name or free text, evened out for comparison) is defined once,
+# norm_text (a component instance or free text, evened out for comparison) is defined once,
 # in common/common_helpers/text_match.py, and shared with the fact checks in
-# common/common_helpers/validate.py, so "the same name" means one thing everywhere.
+# common/common_helpers/validate.py, so "the same" means one thing everywhere.
 
 
 def norm_predicate(s) -> str:
@@ -55,13 +55,13 @@ def norm_predicate(s) -> str:
 
 
 def label_key(s) -> str:
-    """Loosest key, for looking up a SCHEMA name the model re-cased or
+    """Loosest key, for looking up a COMPONENT CLASS the model re-cased or
     re-spaced ("physical quantity" -> "PhysicalQuantity"): letters and
-    digits only, digits kept. Used wherever schema names are compared
+    digits only, digits kept. Used wherever component classes are compared
     loosely: 040 (spelling folds, the comparison with the hand-built
     schema), the schema checks in common/common_helpers/validate.py, common/common_helpers/extraction.py
     (conflicting classes), 060 (merging the additions) and 070 (translating
-    names, matching classes)."""
+    component classes, matching classes)."""
     return re.sub(r"[^a-z0-9]", "", unicodedata.normalize(
         "NFKC", str(s or "")).casefold())
 

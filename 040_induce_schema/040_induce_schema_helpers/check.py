@@ -43,9 +43,9 @@ class Schema:
     entity_classes: list = field(default_factory=list)
     predicates: list = field(default_factory=list)
     patterns: list = field(default_factory=list)
-    deferred: list = field(default_factory=list)            # {"kind", "name", "reason", "support"}
-    missing_definitions: list = field(default_factory=list) # {"kind", "name"}
-    single_maintainer: list = field(default_factory=list)   # {"kind", "name"}
+    deferred: list = field(default_factory=list)            # {"kind", "schema_entry", "reason", "support"}
+    missing_definitions: list = field(default_factory=list) # {"kind", "component_class"}
+    single_maintainer: list = field(default_factory=list)   # {"kind", "component_class"}
 
 
 def _origin(texts: list) -> list:
@@ -60,28 +60,28 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
         target = getattr(schema, kind)
         for e in getattr(counts, kind):
             if e["support"] < cut:
-                schema.deferred.append({"kind": kind, "name": e["name"], "support": e["support"],
+                schema.deferred.append({"kind": kind, "schema_entry": e["component_class"], "support": e["support"],
                                         "reason": f"support {e['support']} < min_support {cut}"})
                 continue
-            if e["name"] in vague:
-                schema.deferred.append({"kind": kind, "name": e["name"], "support": e["support"],
-                                        "reason": f"too vague: {vague[e['name']]}"})
+            if e["component_class"] in vague:
+                schema.deferred.append({"kind": kind, "schema_entry": e["component_class"], "support": e["support"],
+                                        "reason": f"too vague: {vague[e['component_class']]}"})
                 continue
-            definition = definitions.of.get(kind, {}).get(e["name"])
+            definition = definitions.of.get(kind, {}).get(e["component_class"])
             if definition is None:
                 definition = MISSING_DEFINITION
-                schema.missing_definitions.append({"kind": kind, "name": e["name"]})
-            row = {"name": e["name"], "definition": definition}
+                schema.missing_definitions.append({"kind": kind, "component_class": e["component_class"]})
+            row = {"component_class": e["component_class"], "definition": definition}
             if kind == "entity_classes":
                 row["examples"] = e["examples"][:3]
             row.update({"support": e["support"], "maintainers": e["maintainers"],
                         "texts": e["texts"], ORIGIN_FIELD: _origin(e["texts"])})
             target.append(row)
             if len(e["maintainers"]) == 1:
-                schema.single_maintainer.append({"kind": kind, "name": e["name"]})
+                schema.single_maintainer.append({"kind": kind, "component_class": e["component_class"]})
 
-    kept_classes = {c["name"] for c in schema.entity_classes}
-    kept_predicates = {p["name"] for p in schema.predicates}
+    kept_classes = {c["component_class"] for c in schema.entity_classes}
+    kept_predicates = {p["component_class"] for p in schema.predicates}
     for e in counts.patterns:
         s, p, o = e["pattern"]
         if e["support"] < cut:
@@ -94,7 +94,7 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
                                     "maintainers": e["maintainers"], "texts": e["texts"],
                                     ORIGIN_FIELD: _origin(e["texts"])})
             continue
-        schema.deferred.append({"kind": "patterns", "name": " ".join(e["pattern"]),
+        schema.deferred.append({"kind": "patterns", "schema_entry": " ".join(e["pattern"]),
                                 "support": e["support"], "reason": reason})
     log.info(f"  schema: {len(schema.entity_classes):,} entity classes, {len(schema.predicates):,} "
              f"predicates, {len(schema.patterns):,} patterns; {len(schema.deferred):,} deferred")

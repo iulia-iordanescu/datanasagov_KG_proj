@@ -2,9 +2,9 @@
 label.py -- stage 3: give every component instance a label, with a running
 vocabulary.
 
-A label is the general name for a component instance: for one in a subject
-or object slot, the kind of thing it is ("MODIS" → `Instrument`), which
-becomes an entity class; for one in a predicate slot, the relation it
+A label is the general word for a component instance: for a subject
+or object instance, the kind of thing it is ("MODIS" → `Instrument`), which
+becomes an entity class; for a predicate instance, the relation it
 expresses ("is aboard" → `ABOARD`), which becomes a predicate. The two kinds
 are labeled in two separate passes, each with its own vocabulary of labels.
 

@@ -2,7 +2,7 @@
 pairing.py -- stage 3: compare, record by record, what 060 extracted with the
 ground truth. Code only, no model.
 
-Each extracted triple is first TRANSLATED into the ground truth vocabulary (names.py): its
+Each extracted triple is first TRANSLATED into the ground truth vocabulary (component_classes.py): its
 predicate and entity classes; a reversed predicate also swaps subject and
 object (and their entity classes). Then, per record, the ground truth's
 triples and the extracted triples are PAIRED: every triple, in either list, ends
@@ -13,7 +13,7 @@ partner for another triple), not just each triple's first possible partner:
 
   1. exact   subject and object equal once evened out (common/common_helpers/text_match.py
              norm_text: case, spacing, quote marks, dashes, edge punctuation
-             and a leading "the/a/an" ignored), predicate the same name
+             and a leading "the/a/an" ignored), predicate the same
   2. partial among the triples still unpaired: the same, except that the
              subject (or object) may be CONTAINED in the other one as whole
              words, either way round: "MODIS" in "Moderate Resolution Imaging
@@ -24,23 +24,24 @@ partner for another triple), not just each triple's first possible partner:
 
 The "exact" level counts pass 1's pairs; the "partial" level counts both
 passes'. At each level a pair is STRICT when both entity classes are also
-the same name. A ground truth triple is WITHIN REACH when its predicate and
-both its entity classes are something 060's schema could say (some checked
-row translates to them); the others no extractor using that schema could
-find. The DESCRIBES rows are compared on their entity class only, apart from
+the same. A ground truth triple is WITHIN REACH when its predicate is
+something 060's schema could say (some checked row translates to it): all a
+pair needs, since a pair doesn't need the entity classes to agree. It is
+WITHIN STRICT REACH when both its entity classes are too: all a strict pair
+needs. The DESCRIBES rows are compared on their entity class only, apart from
 the triples, since code writes the rest of them.
 
-NAME CLUES (name_clues): a wrong or missing row of the translation table
-leaves a trace in the triples. Extraction found the triple, but a name
-differs:
+COMPONENT CLASS CLUES (component_class_clues): a wrong or missing row of the
+translation table leaves a trace in the triples. Extraction found the triple,
+but a component class differs:
   - a paired triple whose entity class differs from the ground truth's: the
-    current schema's class may translate to the wrong name (or to (none));
+    current schema's entity class may translate to the wrong one (or to (none));
   - an unpaired extracted triple and an unpaired ground truth triple with the
     same subject and object (or the two swapped) but different predicates:
     the predicate's row may be wrong, or its swap_subject_and_object.
-Each (current schema's name, ground truth vocabulary's name) pair is
-counted; the frequent ones point at rows to look at. A single one may just
-be extraction choosing the wrong name.
+Each (current schema's component class, ground truth vocabulary's component
+class) pair is counted; the frequent ones point at rows to look at. A single
+one may just be extraction choosing the wrong component class.
 """
 from __future__ import annotations
 
@@ -52,7 +53,7 @@ from common.text_match import norm_text
 from common.triples_io import UNDECIDED, label_key
 
 LEVELS = ("exact", "partial")
-CLUE_WARN = 2                     # a name clue seen this often is a warning: a row to look at
+CLUE_WARN = 2                     # a component class clue seen this often is a warning: a row to look at
 
 
 def _words(s) -> list:
@@ -60,7 +61,7 @@ def _words(s) -> list:
 
 
 def _contains(a, b) -> bool:
-    """Whether one name holds the other as a run of whole words."""
+    """Whether one subject (or object) instance holds the other as a run of whole words."""
     wa, wb = _words(a), _words(b)
     if not wa or not wb:
         return False
@@ -71,14 +72,14 @@ def _contains(a, b) -> bool:
 NO_TRANSLATION = " (current schema; translates to (none))"
 
 
-def translate(triple: dict, names) -> dict:
-    """The triple in the ground truth vocabulary. A name whose row says (none)
-    keeps its own spelling, marked NO_TRANSLATION, so it can never equal a
-    name of the ground truth vocabulary. "crt" keeps the current schema's
-    names, slot by slot as translated (swapped along with subject and
-    object), for name_clues."""
-    p_mine, flipped = names.predicate.get(label_key(triple["predicate"]), (None, False))
-    sc, oc = (names.entity.get(label_key(triple[c])) for c in ("subject_class", "object_class"))
+def translate(triple: dict, translation) -> dict:
+    """The triple in the ground truth vocabulary. A component class whose row
+    says (none) keeps its own spelling, marked NO_TRANSLATION, so it can never
+    equal a component class of the ground truth vocabulary. "crt" keeps the
+    current schema's component classes, slot by slot as translated (swapped along with subject and
+    object), for component_class_clues."""
+    p_mine, flipped = translation.predicate.get(label_key(triple["predicate"]), (None, False))
+    sc, oc = (translation.entity.get(label_key(triple[c])) for c in ("subject_class", "object_class"))
     t = {"subject": triple["subject"], "subject_class": sc or f"{triple['subject_class']}{NO_TRANSLATION}",
          "predicate": p_mine or f"{triple['predicate']}{NO_TRANSLATION}",
          "object": triple["object"], "object_class": oc or f"{triple['object_class']}{NO_TRANSLATION}",
@@ -105,16 +106,16 @@ def classes_agree(g: dict, t: dict) -> bool:
         label_key(g["object_class"]) == label_key(t["object_class"])
 
 
-def _within_reach(g: dict, names) -> bool:
+def _within_reach(g: dict, translation) -> bool:
     """Its predicate is something 060's schema could say: all a pair needs
     (a pair doesn't need the entity classes to agree)."""
-    return label_key(g["predicate"]) in names.reachable["predicate"]
+    return label_key(g["predicate"]) in translation.reachable["predicate"]
 
 
-def _within_strict_reach(g: dict, names) -> bool:
+def _within_strict_reach(g: dict, translation) -> bool:
     """Its predicate and both its entity classes are: all a strict pair needs."""
-    return _within_reach(g, names) and label_key(g["subject_class"]) in names.reachable["entity class"] and \
-        label_key(g["object_class"]) in names.reachable["entity class"]
+    return _within_reach(g, translation) and label_key(g["subject_class"]) in translation.reachable["entity class"] and \
+        label_key(g["object_class"]) in translation.reachable["entity class"]
 
 
 def _max_pairs(can: dict) -> dict:
@@ -141,13 +142,13 @@ def _max_pairs(can: dict) -> dict:
     return {gi: ei for ei, gi in owner.items()}
 
 
-def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
+def compare_record(record: dict, translation, reviews: dict | None = None) -> dict:
     """The record's pairs and counts: record["compared"]. reviews: a person's
     verdicts on partial pairs ({pair_key: verdict}); a pair marked "not the
     same fact" is never made."""
     reviews = reviews or {}
     gt = record["gt"]
-    ex = [translate(f, names) for f in record["extracted"]]
+    ex = [translate(f, translation) for f in record["extracted"]]
 
     def allowed(gi, ei) -> bool:
         return reviews.get(pair_key(record["id"], gt[gi], ex[ei])) != NOT_SAME
@@ -161,8 +162,8 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
             pairs.append((gi, ei, level))
             free_g.discard(gi)
             free_e.discard(ei)
-    reach = [_within_reach(g, names) for g in gt]
-    strict_reach = [_within_strict_reach(g, names) for g in gt]
+    reach = [_within_reach(g, translation) for g in gt]
+    strict_reach = [_within_strict_reach(g, translation) for g in gt]
     counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach),
               "within_strict_reach": sum(strict_reach)}
     for level in LEVELS:
@@ -177,7 +178,7 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
     truth = gd["object_class"] if gd and gd["object_class"] not in ("", UNDECIDED) else None
     said = None
     if ed and ed["object_class"] not in ("", UNDECIDED):
-        said = names.entity.get(label_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
+        said = translation.entity.get(label_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
     rejected = sum(1 for gi in range(len(gt)) for ei in range(len(ex))
                    if not allowed(gi, ei) and _can_pair(gt[gi], ex[ei], "partial"))
     unreviewed = sum(1 for gi, ei, lv in pairs
@@ -191,11 +192,11 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
     return record
 
 
-def name_clues(records: list) -> list:
+def component_class_clues(records: list) -> list:
     """Traces of wrong or missing translations in compared records (see the
     module docstring): [{"kind", "crt_name", "translated_to", "gtt_name",
     "count", "swapped"}], most frequent first. translated_to is the
-    current schema's name after translation (marked NO_TRANSLATION if its
+    current schema's component class after translation (marked NO_TRANSLATION if its
     row says (none)); swapped: predicate clues where subject and object are
     the other way round."""
     found = {}
@@ -230,8 +231,8 @@ def name_clues(records: list) -> list:
             for (k, c, t, g, s), n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
-def compare_all(evaluated, names):
+def compare_all(evaluated, translation):
     for record in evaluated.records:
-        compare_record(record, names, evaluated.reviews)
+        compare_record(record, translation, evaluated.reviews)
     log.info(f"  compared {len(evaluated.records)} record(s)")
     return evaluated

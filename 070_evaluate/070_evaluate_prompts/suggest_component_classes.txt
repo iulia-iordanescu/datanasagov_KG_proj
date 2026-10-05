@@ -1,0 +1,26 @@
+Two vocabularies each have component classes of two kinds: entity classes
+(kinds of things) and predicates (kinds of relations). GROUND_TRUTH lists
+component classes of the ground truth vocabulary, grouped by kind; SCHEMA
+lists component classes of the current schema, each with its "kind". Every
+entry gives a "component_class" and its "definition".
+
+The component classes in SCHEMA were each judged earlier to have no
+counterpart in the ground truth vocabulary, which has since gained component
+classes. GROUND_TRUTH holds those of its component classes that nothing is
+matched to yet. For each component class in
+SCHEMA, say whether a component class in GROUND_TRUTH, of the same kind,
+means the same thing. Judge by meaning and definition, not by spelling.
+Suggest a pair only if you are confident; leave a component class out
+otherwise.
+
+Use only component classes exactly as they are written in the two lists.
+
+Return ONLY JSON, no prose, with "schema" the component class from SCHEMA
+and "ground_truth" the one from GROUND_TRUTH:
+{"suggestions": [{"kind": "entity class" or "predicate", "schema": "...", "ground_truth": "..."}]}
+
+GROUND_TRUTH
+$ground_truth
+
+SCHEMA
+$schema

@@ -3,12 +3,13 @@ triples with a class for the subject and the object.
 
 COMPLETENESS FIRST. Extract every fact the record states, whether or not
 the vocabulary below can express it. Leaving a fact out is the worst
-outcome; coining a new name is a normal one.
+outcome; coining a new class or predicate is a normal one.
 
 NAMING SECOND. Use a class or predicate from the vocabulary when one fits,
 so records name the same things the same way. Otherwise coin one in the
 same style: classes in CamelCase, predicates in UPPER_SNAKE_CASE. The
-vocabulary is short and incomplete, so expect to need new names.
+vocabulary is short and incomplete, so expect to need new classes and
+predicates.
 
 VOCABULARY
 $schema

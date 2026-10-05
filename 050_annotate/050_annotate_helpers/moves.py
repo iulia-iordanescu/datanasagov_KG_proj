@@ -62,7 +62,7 @@ def build_rows(chosen, replies) -> Drafts:
         if item["id"] not in replies.of:
             continue
         rows, removed = extraction.build_rows(item["id"], item["title"], item["text"],
-                                              replies.of[item["id"]], chosen.names)
+                                              replies.of[item["id"]], chosen.schema_entries)
         drafts.rows[item["id"]], drafts.removed[item["id"]] = rows, removed
         for r in rows:
             errors.update(r["errors"])
@@ -120,7 +120,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         warnings.append("No record was drafted, so no batch was written.")
     coined = [n for kind in ("entity_classes", "predicates") for n in chosen.coined[kind]]
     if coined:
-        warnings.append(f"{len(coined)} name(s) used in the ground truth aren't in the hand-built schema, so the model "
+        warnings.append(f"{len(coined)} component class(es) used in the ground truth aren't in the hand-built schema, so the model "
                         f"saw them without a definition: "
                         f"{named([f'{n} (ground truth vocabulary)' for n in coined], 5, '; ')}. "
                         f"Add each one you mean to keep, with a one-line definition, to the hand-built "
@@ -150,7 +150,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                          f"{sum(bool(r['flags']) for r in rows)} |")
     removed = collections.Counter(x["reason"] for v in drafts.removed.values() for x in v)
     lines += ["", f"- Errors (must be fixed): {counted(drafts.errors)}.",
-              f"- Flags (worth a look; a name not in the schema is often a good new one): {counted(drafts.flags)}.",
+              f"- Flags (worth a look; a component class not in the schema is often a good new one): {counted(drafts.flags)}.",
               f"- Removed: {counted(removed)} (listed in `{details_path.name}`).",
               "", "### Fair sample", "", fair_words(chosen.fair, chosen.positions), ""]
     if chosen.skipped:

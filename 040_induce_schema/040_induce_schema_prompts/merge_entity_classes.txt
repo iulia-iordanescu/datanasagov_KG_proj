@@ -1,5 +1,6 @@
 Below are the labels given to things named in texts from a catalog of NASA
-datasets, each with the names that most often got it. Some labels may name
+datasets, each with the subjects and objects (the texts' own words for
+things) that most often got it. Some labels may name
 the same kind of thing under different words (e.g. "Instrument" and
 "Sensor"). Find each set of labels that name the SAME kind of thing and merge
 the set into one of its labels, the clearest.

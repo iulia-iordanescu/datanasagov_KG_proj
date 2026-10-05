@@ -44,8 +44,8 @@ DEFINE_BATCH = 40
 
 @dataclass
 class Definitions:
-    of: dict = field(default_factory=dict)          # {"entity_classes": {name: sentence}, "predicates": {...}}
-    too_vague: dict = field(default_factory=dict)   # {"entity_classes": {name: reason}, ...}
+    of: dict = field(default_factory=dict)          # {"entity_classes": {entity class: sentence}, "predicates": {...}}
+    too_vague: dict = field(default_factory=dict)   # {"entity_classes": {entity class: reason}, ...}
     unknown: list = field(default_factory=list)     # schema entries in replies that weren't sent
     calls: int = 0                                  # model calls made by this stage
 
@@ -58,7 +58,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
         result.of[kind], result.too_vague[kind] = {}, {}
         wanted = [e for e in getattr(counts, kind) if e["support"] >= settings["min_support"]]
         for start in range(0, len(wanted), DEFINE_BATCH):
-            batch = [{"name": e["name"], "texts": e["support"],
+            batch = [{"component_class": e["component_class"], "texts": e["support"],
                       **({"examples": e["examples"]} if kind == "entity_classes" else {})}
                      for e in wanted[start:start + DEFINE_BATCH]]
             k = key(prompt_files.text(PROMPTS[kind]), kind, batch)
@@ -70,13 +70,13 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                                           read_timeout=600)
                 calls.paid.made_call()
                 cache.put(k, reply)
-            sent = {e["name"] for e in batch}
+            sent = {e["component_class"] for e in batch}
             for field_name, target in (("definitions", result.of[kind]),
                                        ("too_vague", result.too_vague[kind])):
                 given = reply.get(field_name) if isinstance(reply.get(field_name), dict) else {}
                 for name, text in given.items():
                     if name not in sent:
-                        result.unknown.append({"kind": kind, "name": name})
+                        result.unknown.append({"kind": kind, "component_class": name})
                     elif isinstance(text, str) and text.strip() and name not in result.of[kind] \
                             and name not in result.too_vague[kind]:
                         target[name] = " ".join(text.split())

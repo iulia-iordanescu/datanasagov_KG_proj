@@ -25,10 +25,10 @@ from such a sample. `fair` says whether the ground truth, the waiting drafts
 and this batch together are still exactly the first N of the pool.
 
 The vocabulary the model is shown is the ground truth vocabulary
-(common/common_helpers/ground_truth.vocabulary): the hand-built schema, plus the names a
-person coined in the ground truth, so a coined name is reused from the next
-batch on. The checks still compare with the hand-built schema alone, so a
-coined name (or a typo) stays flagged until it is added there.
+(common/common_helpers/ground_truth.vocabulary): the hand-built schema, plus the component
+classes a person coined in the ground truth, so a coined one is reused from
+the next batch on. The checks still compare with the hand-built schema alone,
+so a coined component class (or a typo) stays flagged until it is added there.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
 from common.step import check_settings, input_files
-from common.validate import SchemaNames
+from common.validate import SchemaEntries
 
 
 @dataclass
@@ -58,8 +58,8 @@ class Chosen:
     pool: list = field(default_factory=list)       # the pool's ids, in order
     positions: dict = field(default_factory=dict)  # {id: pool position}
     schema_text: str = ""                          # the ground truth vocabulary, as the prompt shows it
-    names: object = None                           # the hand-built schema's names, as the checks compare them
-    coined: dict = field(default_factory=dict)     # {kind: [names]} used in the ground truth, not in the hand-built schema
+    schema_entries: object = None  # the hand-built schema's entries, as the checks compare them (common.validate.SchemaEntries)
+    coined: dict = field(default_factory=dict)     # {kind: [component classes]} used in the ground truth, not in the hand-built schema
     fair: dict = field(default_factory=dict)       # see common/common_helpers/ground_truth.fair_sample()
     how: str = ""                                  # the choice in words, for the report
     skipped: dict = field(default_factory=dict)    # {reason: [ids]} passed over while choosing
@@ -67,7 +67,7 @@ class Chosen:
 
 def vocabulary_text(hand_text: str, coined: dict) -> str:
     """The ground truth vocabulary as the model sees it: the hand-built
-    schema's text as written, then the names coined in the ground truth,
+    schema's text as written, then the component classes coined in the ground truth,
     which have no definition yet. With nothing coined, just the schema's
     text, so earlier answers stay in the cache."""
     lines = [f"{label}: {', '.join(coined[kind])}"
@@ -105,7 +105,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.ground_truth = read_ground_truth(gt_files[0].parent)     # run_step made sure there is one
     hand = read_hand_schema(inputs["hand_schema"])
-    chosen.names = SchemaNames(hand)
+    chosen.schema_entries = SchemaEntries(hand)
     chosen.coined = vocabulary(hand, chosen.ground_truth)["coined"]
     chosen.schema_text = vocabulary_text(Path(inputs["hand_schema"]).read_text(encoding="utf-8-sig").strip(),
                                          chosen.coined)

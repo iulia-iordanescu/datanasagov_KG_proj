@@ -118,7 +118,7 @@ Don't add quotes or spaces around the `=`.
 
 `.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/common_helpers/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`) and 060 (`060_extract/run.py`), and 070 (`070_evaluate/run.py`) when it needs to propose name translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
+The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`) and 060 (`060_extract/run.py`), and 070 (`070_evaluate/run.py`) when it needs to propose component class translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
 ## Part 7: Check the setup
 

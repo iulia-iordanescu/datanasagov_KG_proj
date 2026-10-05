@@ -7,11 +7,11 @@ truth. Putting the two side by side is a quick sanity check on what the data
 taught the model: which entity classes, predicates and patterns both have,
 which only the hand-built one has, and which only the induced one has.
 
-It is not a metric. Names are matched when they are equal once case, spaces,
-underscores and punctuation are ignored ("PhysicalQuantity" = "Physical
-Quantity"); a concept named differently in the two ("Instrument", "Sensor")
+It is not a metric. Component classes are matched when they are equal once
+case, spaces, underscores and punctuation are ignored ("PhysicalQuantity" =
+"Physical Quantity"); a concept named differently in the two ("Instrument", "Sensor")
 counts as unmatched here. Measuring how much of the ground truth the induced
-schema can express, across different names, is 070's job.
+schema can express, across different component classes, is 070's job.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from common.triples_io import label_key
 
 
 def _side_by_side(hand: list, induced: list) -> dict:
-    """{"both": [(hand name, induced name)], "only_hand": [...], "only_induced": [...]}"""
+    """{"both": [(hand-built spelling, induced spelling)], "only_hand": [...], "only_induced": [...]}"""
     by_norm = {label_key(n): n for n in induced}
     both, only_hand = [], []
     for name in hand:
@@ -33,8 +33,8 @@ def _side_by_side(hand: list, induced: list) -> dict:
 def compare(hand: dict, schema) -> dict:
     pattern = lambda p: " ".join(p)                       # noqa: E731
     return {
-        "entity_classes": _side_by_side(list(hand["entity_classes"]), [c["name"] for c in schema.entity_classes]),
-        "predicates": _side_by_side(list(hand["predicates"]), [p["name"] for p in schema.predicates]),
+        "entity_classes": _side_by_side(list(hand["entity_classes"]), [c["component_class"] for c in schema.entity_classes]),
+        "predicates": _side_by_side(list(hand["predicates"]), [p["component_class"] for p in schema.predicates]),
         "patterns": _side_by_side([pattern(p) for p in hand["patterns"]],
                                   [pattern(p["pattern"]) for p in schema.patterns]),
     }
@@ -42,7 +42,7 @@ def compare(hand: dict, schema) -> dict:
 
 def report_lines(comparison: dict, hand_path: str, show: int) -> list:
     lines = ["### Compared with the hand-built schema", "",
-             f"`{hand_path}`, written while annotating ground truth. Names match when equal "
+             f"`{hand_path}`, written while annotating ground truth. Component classes match when equal "
              f"ignoring case, spaces and punctuation; a concept named differently in the two "
              f"counts as unmatched. A sanity check, not a metric (070 evaluates the schema).", "",
              "| | In both | Only hand-built | Only induced |", "|---|---:|---:|---:|"]

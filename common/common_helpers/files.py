@@ -67,7 +67,7 @@ def read_csv(path) -> list:
 def append_csv(path, columns: list, rows) -> None:
     """Add rows at the end of a CSV file, leaving every byte already in it as
     it is (the file is created with its header if missing). For the files a
-    step may only ADD to, never change: 070's annotations/name_mapping.csv
+    step may only ADD to, never change: 070's annotations/component_class_mapping.csv
     and annotations/held_out_looks.csv."""
     path = Path(path)
     if not path.exists():

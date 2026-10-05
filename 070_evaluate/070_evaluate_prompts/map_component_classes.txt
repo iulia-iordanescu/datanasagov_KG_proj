@@ -1,0 +1,27 @@
+Two vocabularies each have component classes of two kinds: entity classes
+(kinds of things) and predicates (kinds of relations). GROUND_TRUTH is the
+ground truth vocabulary, grouped by kind; SCHEMA lists component classes of
+the current schema, each with its "kind". Every entry gives a
+"component_class" and its "definition".
+
+For each component class in SCHEMA, give the component class in
+GROUND_TRUTH, of the same kind, that means the same thing, or null if none
+of GROUND_TRUTH does. Judge by meaning and definition, not by spelling.
+
+For a predicate, set "reversed": true when the predicate in GROUND_TRUTH
+states the same relation in the opposite direction ("A CARRIES B" means
+"B ABOARD A"); otherwise false.
+
+Use only component classes exactly as they are written in GROUND_TRUTH.
+Several component classes of SCHEMA may map to the same component class of
+GROUND_TRUTH. Answer for every component class of SCHEMA.
+
+Return ONLY JSON, no prose, with "schema" the component class from SCHEMA
+and "ground_truth" the one from GROUND_TRUTH:
+{"mapping": [{"kind": "entity class" or "predicate", "schema": "...", "ground_truth": "..." or null, "reversed": false}]}
+
+GROUND_TRUTH
+$ground_truth
+
+SCHEMA
+$schema

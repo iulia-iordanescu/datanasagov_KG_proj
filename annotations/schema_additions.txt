@@ -3,13 +3,13 @@
 # suggested. Empty sections add nothing.
 #
 # Same layout as schema_derived_from_manual_annotation.txt: an entry is its
-# name, two or more spaces, and its definition. Under a predicate, an indented
+# component class, two or more spaces, and its definition. Under a predicate, an indented
 # line lists its patterns ("Subject -> Object", separated by ";"). Under any
 # entry, an indented "source:" line says where the idea came from (e.g.
 # "source: mentor", "source: NASA missions A-to-Z"); an entry without one is
 # pointed out before paying. Lines starting with # are comments.
 #
-# A name learned from the ground truth must come from TUNING records only:
+# A component class learned from the ground truth must come from TUNING records only:
 # write "source: ground truth" and the records' pool positions, as the
 # annotation tool shows them (e.g. "source: ground truth tuning #12, #15"). Step 060
 # leaves out an addition that names a held-out record, or no record.

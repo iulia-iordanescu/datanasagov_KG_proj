@@ -98,7 +98,7 @@
 <header>
   <h1>Annotation tool</h1>
   <select id="batch" aria-label="Batch"></select>
-  <button id="mapping" title="annotations/name_mapping.csv">Translation table</button>
+  <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
   <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
   <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
   <button id="helpbutton" title="annotations/README.md">Help</button>
@@ -202,7 +202,7 @@ async function save() {
     data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
     status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
     refreshProblems();
-    api("/api/gaps").then(drawGaps).catch(() => {});  // a name just coined joins the list above
+    api("/api/gaps").then(drawGaps).catch(() => {});  // a component class just coined joins the list above
   } catch (e) {
     dirty = true;
     status(`NOT SAVED: ${e.message}. Is the tool still running? Your edits stay on this page; saving is retried on your next change.`, "failed");
@@ -245,14 +245,14 @@ function show(i) {
       rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
       ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
     el("div", { class: "meta" }, rec.part === "held-out"
-      ? el("span", {}, "Held-out record: names you learn here must not go into schema_additions.txt (held-out records must not influence the schema). ",
-          el("button", { disabled: true, title: "held-out record" }, "Add a name to the schema additions"))
+      ? el("span", {}, "Held-out record: component classes you learn here must not go into schema_additions.txt (held-out records must not influence the schema). ",
+          el("button", { disabled: true, title: "held-out record" }, "Add a component class to the schema additions"))
       : rec.part === "tuning"
-        ? el("span", {}, `Tuning record: a name you learn here may go into schema_additions.txt, with “source: ground truth tuning #${rec.position}”. `,
-            el("button", { onclick: () => openAdditions({ kind: "entity class", name: "", definition: "",
+        ? el("span", {}, `Tuning record: a component class you learn here may go into schema_additions.txt, with “source: ground truth tuning #${rec.position}”. `,
+            el("button", { onclick: () => openAdditions({ kind: "entity class", component_class: "", definition: "",
                            source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
-               "Add a name to the schema additions"))
-        : "Not in the pool: names learned here can't go into schema_additions.txt as coming from the ground truth."),
+               "Add a component class to the schema additions"))
+        : "Not in the pool: component classes learned here can't go into schema_additions.txt as coming from the ground truth."),
     el("div", { class: "bar" },
       el("label", { class: "finished" },
         el("input", { type: "checkbox", checked: rec.finished,
@@ -409,7 +409,7 @@ function refreshProblems() {
 }
 
 // ---------------------------------------------------------------- adding to the hand-built schema
-// A name the ground truth uses but the hand-built schema lacks is added with a one-line definition;
+// A component class the ground truth uses but the hand-built schema lacks is added with a one-line definition;
 // a pattern, with one click. The server writes the file (annotations/schema_derived_from_manual_annotation.txt)
 // and the checks run again.
 function addControl(a) {
@@ -420,13 +420,13 @@ function addControl(a) {
     return box;
   }
   const start = el("button", { onclick: () => {
-    const def = el("input", { placeholder: `one-line definition of ${a.name}`, "aria-label": `definition of ${a.name}` });
+    const def = el("input", { placeholder: `one-line definition of ${a.component_class}`, "aria-label": `definition of ${a.component_class}` });
     const go = () => addToHand({ ...a, definition: def.value });
     def.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
-    box.replaceChildren(def, el("button", { onclick: go }, `Add ${a.name}`),
+    box.replaceChildren(def, el("button", { onclick: go }, `Add ${a.component_class}`),
                         el("button", { onclick: () => box.replaceChildren(start) }, "Cancel"));
     def.focus();
-  } }, `Add ${a.name} to the hand-built schema…`);
+  } }, `Add ${a.component_class} to the hand-built schema…`);
   box.append(start);
   return box;
 }
@@ -447,27 +447,27 @@ async function addToHand(item) {
 }
 function drawGaps(g) {
   if ($("gaps").contains(document.activeElement)) return;   // you're typing a definition there
-  const n = g.names.length, p = g.patterns.length;
+  const n = g.component_classes.length, p = g.patterns.length;
   $("gaps").hidden = !(n || p);
   $("gaps").replaceChildren(
-    el("summary", {}, `The ground truth uses ${n} name(s) and ${p} pattern(s) that aren't in the hand-built ` +
+    el("summary", {}, `The ground truth uses ${n} component class(es) and ${p} pattern(s) that aren't in the hand-built ` +
        `schema (${g.file}). Add each one you mean to keep; fix any typo where it's used.`),
     el("ul", {},
-      g.names.map(x => el("li", {}, el("span", { class: "kind" }, x.kind), el("b", {}, x.name),
+      g.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.kind), el("b", {}, x.component_class),
         ` (ground truth vocabulary; ${x.uses} row(s))`, addControl(x))),
       g.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
         `${x.subject_class} ${x.predicate} ${x.object_class} (${x.uses} row(s))`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table
-// One row per name of the current schema (the one extraction used): which name
-// of the ground truth vocabulary it means. Only name_in_gtt,
+// One row per component class of the current schema (the one extraction used):
+// which component class of the ground truth vocabulary it means. Only component_class_in_gtt,
 // swap_subject_and_object and checked can be changed here.
 let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
-// A row "of the current schema": its name is in the schema extraction used
+// A row "of the current schema": its component class is in the schema extraction used
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
-const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same name");
+const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same component class");
 
 async function openMapping() {
   await flush();
@@ -475,14 +475,14 @@ async function openMapping() {
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
-  // A stale row (checked against another definition of its name) counts as
+  // A stale row (checked against another definition of its component class) counts as
   // unchecked until ticked again; ticking stores the current definition.
   for (const r of mapping.rows) if (r.stale) r.checked = "no";
   location.hash = "m";
   if (!mapping.found) {
     $("records").replaceChildren();
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
-      "annotations/name_mapping.csv wasn't found.")));
+      "annotations/component_class_mapping.csv wasn't found.")));
     status("");
     return;
   }
@@ -509,7 +509,7 @@ function drawMappingSummary() {
       past ? el("label", { class: "meta", style: "display:block" },
         el("input", { type: "checkbox", checked: showPast,
                       onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
-        ` Show the ${past} row(s) only past schemas use (kept, so a name that comes back needn't be checked again)`)
+        ` Show the ${past} row(s) only past schemas use (kept, so a component class that comes back needn't be checked again)`)
         : null));
 }
 
@@ -518,7 +518,7 @@ function drawMapping() {
   const cards = [];
   if (mapping.repeats.length)
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
-      "✖ One name, one row: " + mapping.repeats.map(r => `${r.kind} ${r.name} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
+      "✖ One component class, one row: " + mapping.repeats.map(r => `${r.kind} ${r.component_class} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
       " has more than one. Keep the right row (usually the one whose stored definition matches the current " +
       "schema's) and delete the others below. Evaluation won't evaluate until then."))));
   if (!mapping.schema_found)
@@ -536,36 +536,36 @@ function drawMapping() {
 function exampleLine(r) {
   if (r.kind !== "predicate") return null;
   const ex = r.example || { subject: "A", object: "B" };
-  const before = `${ex.subject}  ${r.name_from_past_or_crt_schema}  ${ex.object}`;
-  const after = r.name_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
-    : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.name_in_gtt}  ${ex.subject}`
-    : `${ex.subject}  ${r.name_in_gtt}  ${ex.object}`;
+  const before = `${ex.subject}  ${r.component_class_from_past_or_crt_schema}  ${ex.object}`;
+  const after = r.component_class_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
+    : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.component_class_in_gtt}  ${ex.subject}`
+    : `${ex.subject}  ${r.component_class_in_gtt}  ${ex.object}`;
   return el("div", { class: "example", title: r.example ? "the first such triple extraction kept" : "a made-up example" },
     `${before}   -->   ${after}`);
 }
 
 function mappingRow(r, i) {
   const vocab = mapping.gtt[r.kind] || [];
-  const known = vocab.some(v => v.name === r.name_in_gtt);
-  const options = [el("option", { value: mapping.none, selected: r.name_in_gtt === mapping.none },
+  const known = vocab.some(v => v.component_class === r.component_class_in_gtt);
+  const options = [el("option", { value: mapping.none, selected: r.component_class_in_gtt === mapping.none },
                       `${mapping.none}: nothing in the ground truth means this`)];
-  if (!known && r.name_in_gtt !== mapping.none)
-    options.push(el("option", { value: r.name_in_gtt, selected: true },
-                    `⚠ ${r.name_in_gtt} (not in the ground truth vocabulary: pick another)`));
-  for (const v of vocab) options.push(el("option", { value: v.name, selected: v.name === r.name_in_gtt }, v.name));
-  const chosen = vocab.find(v => v.name === r.name_in_gtt);
-  // Other names of the current schema already translated to the same name:
+  if (!known && r.component_class_in_gtt !== mapping.none)
+    options.push(el("option", { value: r.component_class_in_gtt, selected: true },
+                    `⚠ ${r.component_class_in_gtt} (not in the ground truth vocabulary: pick another)`));
+  for (const v of vocab) options.push(el("option", { value: v.component_class, selected: v.component_class === r.component_class_in_gtt }, v.component_class));
+  const chosen = vocab.find(v => v.component_class === r.component_class_in_gtt);
+  // Other component classes of the current schema already translated to the same component_class:
   // evaluation won't be able to tell them apart.
-  const sharing = r.in_crt && r.name_in_gtt !== mapping.none
-    ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.name_in_gtt === r.name_in_gtt)
-                  .map(o => o.name_from_past_or_crt_schema) : [];
-  const same = r.checked === "same name";
-  // A (none) row whose name the ground truth vocabulary now has: probably out of date.
-  const nowExists = r.name_in_gtt === mapping.none && r.same_name_in_gtt ? { name: r.same_name_in_gtt } : null;
+  const sharing = r.in_crt && r.component_class_in_gtt !== mapping.none
+    ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.component_class_in_gtt === r.component_class_in_gtt)
+                  .map(o => o.component_class_from_past_or_crt_schema) : [];
+  const same = r.checked === "same component class";
+  // A (none) row whose component class the ground truth vocabulary now has: probably out of date.
+  const nowExists = r.component_class_in_gtt === mapping.none && r.same_component_class_in_gtt ? { component_class: r.same_component_class_in_gtt } : null;
   const update = (key, value) => { r[key] = value; mapChanged(); drawMapping(); };
 
   return el("section", { class: "card maprow" + (toCheck(r) || r.repeated ? " todo" : "") },
-    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_from_past_or_crt_schema,
+    el("h3", {}, el("span", { class: "kind" }, r.kind), r.component_class_from_past_or_crt_schema,
        el("span", { class: "meta" }, isCurrent(r) ? "  (current schema)" : "  (past schema only)"),
        r.repeated ? el("span", { class: "meta" }, `  (line ${r._line}, repeated) `) : null,
        r.repeated ? el("button", { onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
@@ -574,35 +574,35 @@ function mappingRow(r, i) {
     el("div", { class: "meta" }, "In the current schema: ",
        r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
     r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
-       "⚑ This row was checked when the name was defined as: “" +
+       "⚑ This row was checked when the component class was defined as: “" +
        (r.definition_from_past_or_crt_schema || "(no definition)") +
        "”. Its meaning may have changed: check the translation again.")) : null,
     el("div", { class: "means" },
       el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
-      el("select", { id: `m${i}`, disabled: same, onchange: (e) => update("name_in_gtt", e.target.value) }, options)),
-    r.name_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
-      el("li", { class: "flag" }, `⚑ The model suggests ${r.name_from_past_or_crt_schema} (current schema) may ` +
-        `mean ${r.suggested_gtt} (ground truth vocabulary), a name the ground truth gained since this row was ` +
+      el("select", { id: `m${i}`, disabled: same, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
+    r.component_class_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
+      el("li", { class: "flag" }, `⚑ The model suggests ${r.component_class_from_past_or_crt_schema} (current schema) may ` +
+        `mean ${r.suggested_gtt} (ground truth vocabulary), a component class the ground truth gained since this row was ` +
         `checked. Pick it if right; keep (none) otherwise.`)) : null,
     nowExists ? el("ul", { class: "problems" }, el("li", { class: "flag" },
-      `⚑ ${nowExists.name} (ground truth vocabulary) now exists: should ${r.name_from_past_or_crt_schema} ` +
+      `⚑ ${nowExists.component_class} (ground truth vocabulary) now exists: should ${r.component_class_from_past_or_crt_schema} ` +
       `(current schema) translate to it? Keep (none) only if it means something else.`)) : null,
     sharing.length ? el("ul", { class: "problems" }, el("li", { class: "flag" },
-      `⚑ ${[r.name_from_past_or_crt_schema, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
-      `both translate to ${r.name_in_gtt} (ground truth vocabulary), so evaluation can't tell them apart: a ` +
+      `⚑ ${[r.component_class_from_past_or_crt_schema, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
+      `both translate to ${r.component_class_in_gtt} (ground truth vocabulary), so evaluation can't tell them apart: a ` +
       `mix-up between them costs extraction nothing. Fine if your ground truth doesn't distinguish them; if it ` +
-      `should, annotate with separate names in the ground truth.`)) : null,
+      `should, annotate with separate component classes in the ground truth.`)) : null,
     chosen ? el("div", { class: "meta" }, "In the ground truth: ",
                 chosen.definition ? chosen.definition
                   : el("i", {}, "coined while annotating; no definition yet (add one to the hand-built schema)")) : null,
     r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
-      el("input", { type: "checkbox", disabled: same || r.name_in_gtt === mapping.none,
+      el("input", { type: "checkbox", disabled: same || r.component_class_in_gtt === mapping.none,
                     checked: r.swap_subject_and_object === "yes",
                     onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
-      " Swap subject and object (the ground truth's name states the relation the other way round)") : null,
+      " Swap subject and object (the ground truth's predicate states the relation the other way round)") : null,
     exampleLine(r),
     el("div", { class: "bar" }, same
-      ? el("span", { class: "meta" }, "Same name in both: nothing to check.")
+      ? el("span", { class: "meta" }, "Same component class in both: nothing to check.")
       : el("label", { class: "finished" },
           el("input", { type: "checkbox", checked: r.checked === "yes",
                         onchange: (e) => { r.stale = false; update("checked", e.target.checked ? "yes" : "no"); } }),
@@ -610,10 +610,10 @@ function mappingRow(r, i) {
 }
 
 async function deleteMappingRow(r) {
-  if (!confirm(`Delete line ${r._line} (${r.kind} ${r.name_from_past_or_crt_schema} --> ${r.name_in_gtt})?`)) return;
+  if (!confirm(`Delete line ${r._line} (${r.kind} ${r.component_class_from_past_or_crt_schema} --> ${r.component_class_in_gtt})?`)) return;
   await flush();
   try {
-    await api("/api/mapping/delete", { line: r._line, kind: r.kind, name: r.name_from_past_or_crt_schema });
+    await api("/api/mapping/delete", { line: r._line, kind: r.kind, component_class: r.component_class_from_past_or_crt_schema });
     await openMapping();
     status(`Deleted line ${r._line} of ${mapping.file}`, "saved");
   } catch (e) { fail(e); }
@@ -633,7 +633,7 @@ async function saveMapping() {
   status("Saving…");
   try {
     await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
-      name_from_past_or_crt_schema: r.name_from_past_or_crt_schema, name_in_gtt: r.name_in_gtt,
+      component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
       swap_subject_and_object: r.swap_subject_and_object, checked: r.checked })) });
     status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
   } catch (e) {
@@ -741,14 +741,14 @@ async function saveAdditions(entries) {
 }
 
 function drawAdditions() {
-  const left = additions.names.filter(n => !n.added).length;
+  const left = additions.new_component_classes.filter(n => !n.added).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("h3", {}, "Schema additions"),
     el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Extraction adds them ` +
       "to whichever schema it uses (the current schema)."),
     el("p", { class: "meta" }, "Every entry needs a one-line definition and a source: where the idea came from. " +
-      "A name learned from the ground truth must come from tuning records: “ground truth tuning #12, #15”."),
-    el("button", { onclick: () => { editing = { kind: "entity class", name: "", definition: "", source: "",
+      "A component class learned from the ground truth must come from tuning records: “ground truth tuning #12, #15”."),
+    el("button", { onclick: () => { editing = { kind: "entity class", component_class: "", definition: "", source: "",
                                                   patterns: [] }; drawAdditions(); } }, "+ Add an entry")));
   const cards = [];
   if (additions.unread.length)
@@ -758,25 +758,25 @@ function drawAdditions() {
   if (editing) cards.push(additionForm(editing));
   cards.push(el("section", { class: "card" }, el("h3", {}, "In the file"),
     additions.entries.length ? additions.entries.map((e, i) => el("div", { class: "row" },
-      el("div", {}, el("span", { class: "kind" }, e.kind), el("b", {}, e.name), " (additions file): ", e.definition),
+      el("div", {}, el("span", { class: "kind" }, e.kind), el("b", {}, e.component_class), " (additions file): ", e.definition),
       e.patterns.length ? el("div", { class: "meta" }, "Patterns: " + e.patterns.map(p => `${p[0]} -> ${p[1]}`).join("; ")) : null,
       el("div", { class: "meta" }, `source: ${e.source || "(none)"}`),
       el("div", { class: "bar" },
         el("button", { onclick: () => { editing = { ...e, patterns: e.patterns.map(p => [...p]), _index: i }; drawAdditions(); } }, "Edit"),
-        el("button", { onclick: () => { if (confirm(`Delete ${e.name} from ${additions.file}?`))
+        el("button", { onclick: () => { if (confirm(`Delete ${e.component_class} from ${additions.file}?`))
                                           saveAdditions(additions.entries.filter((_, j) => j !== i)); } }, "Delete"))))
       : el("p", { class: "empty" }, "No entries yet.")));
-  cards.push(el("section", { class: "card" }, el("h3", {}, "Names outside the schema (extraction's last run)"),
+  cards.push(el("section", { class: "card" }, el("h3", {}, "Component classes outside the schema (extraction's last run)"),
     el("p", { class: "meta" }, additions.counted_over
-      ? `Names the model used that the current schema doesn't have, counted over ${additions.counted_over} ` +
-        "(held-out records are never counted). Every name here is fair to add; add only those that name a real " +
+      ? `Component classes the model used that the current schema doesn't have, counted over ${additions.counted_over} ` +
+        "(held-out records are never counted). Every one here is fair to add; add only those that name a real " +
         `kind of thing or relation. ${left} not added yet.`
       : "Extraction hasn't run yet (outputs/intermediate_results/060_extract/extracted_triples_details.json)."),
-    additions.names.map(n => el("div", { class: "row" },
-      el("span", { class: "kind" }, n.kind), el("b", {}, n.name), ` (used by the model; not in the current schema) · ` +
+    additions.new_component_classes.map(n => el("div", { class: "row" },
+      el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",
       n.added ? el("span", { class: "meta" }, "added") :
-        el("button", { onclick: () => { editing = { kind: n.kind, name: n.name, definition: "", source: n.source,
+        el("button", { onclick: () => { editing = { kind: n.kind, component_class: n.component_class, definition: "", source: n.source,
                                                     patterns: [] }; drawAdditions(); window.scrollTo(0, 0); } }, "Add")))));
   $("record").replaceChildren(...cards);
 }
@@ -798,17 +798,17 @@ function additionForm(e) {
                                        .map(x => x.split("->").map(y => y.trim())); check(); } }));
   const save = () => {
     const entries = additions.entries.map(x => ({ ...x }));
-    const clean = { kind: e.kind, name: e.name, definition: e.definition, source: e.source, patterns: e.patterns || [] };
+    const clean = { kind: e.kind, component_class: e.component_class, definition: e.definition, source: e.source, patterns: e.patterns || [] };
     if (e._index !== undefined) entries[e._index] = clean; else entries.push(clean);
     saveAdditions(entries);
   };
   setTimeout(check, 0);
   return el("section", { class: "card maprow todo" },
-    el("h3", {}, e._index !== undefined ? `Edit ${e.name}` : "Add an entry"),
+    el("h3", {}, e._index !== undefined ? `Edit ${e.component_class}` : "Add an entry"),
     el("label", { class: "meta" }, "Kind ",
       el("select", { onchange: (ev) => { e.kind = ev.target.value; drawAdditions(); } },
         ["entity class", "predicate"].map(k => el("option", { value: k, selected: e.kind === k }, k)))),
-    input("name", "Name, one word (entity classes in CamelCase, predicates in UPPER_SNAKE_CASE)"),
+    input("component_class", "Component class, one word (entity classes in CamelCase, predicates in UPPER_SNAKE_CASE)"),
     input("definition", "Definition, one line"),
     patterns,
     input("source", "Source: where the idea came from (e.g. mentor; NASA missions A-to-Z; ground truth tuning #12)"),

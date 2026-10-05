@@ -61,7 +61,7 @@ Each step reads what the one before it wrote, so run them in this order. From th
 | 040 induce schema | `py 040_induce_schema/run.py` | not yet measured | **yes** |
 | 050 annotate | `py 050_annotate/run.py` | not yet measured | **yes** (about one call per record) |
 | 060 extract | `py 060_extract/run.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
-| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when 060's schema has names not yet in `annotations/name_mapping.csv`; then check those rows and run it again) |
+| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when 060's schema has component classes not yet in `annotations/component_class_mapping.csv`; then check those rows and run it again) |
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`<step>/<step>.md`) says what every warning means and what to do.
 
@@ -83,7 +83,7 @@ The cheapest way to check that everything works, about 20 paid calls in all:
    | 040 | `py 040_induce_schema/run.py --induction_maintainers 2 --texts_per_maintainer 2` | 10–15 (4 texts, then labeling, merging, defining) |
    | 050 | `py 050_annotate/run.py --records_per_batch 1` | 2 (one record, and the test call) |
    | 060 | `py 060_extract/run.py` | 3 (the finished ground truth records, 2 as of 2026-10-01, and the test call) |
-   | 070 | `py 070_evaluate/run.py` | 2 the first time (name translations, and the test call); it then stops so you can check the rows it added to `annotations/name_mapping.csv`. Run it again: 0 calls. |
+   | 070 | `py 070_evaluate/run.py` | 2 the first time (component class translations, and the test call); it then stops so you can check the rows it added to `annotations/component_class_mapping.csv`. Run it again: 0 calls. |
 
 3. **Check you're charged properly.** For each run, compare the plan it prints before you press Enter ("… will make N model call(s) …") with its report's *Model calls* table (`outputs/reports/<run id>.md`): calls per stage, the test call, and the total paid. Running the same command again should show 0 paid calls: the cache works, and nothing is paid twice.
 

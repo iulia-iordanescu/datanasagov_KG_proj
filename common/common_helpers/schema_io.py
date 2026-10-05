@@ -8,11 +8,11 @@ shapes:
 
 1. JSON, like 040's the_schema.json (read by 060 by default):
 
-    {"entity_classes": [{"name": "Instrument", "definition": "A device that takes measurements."}, …],
-     "predicates":     [{"name": "ABOARD", "definition": "Is carried on."}, …],
+    {"entity_classes": [{"component_class": "Instrument", "definition": "A device that takes measurements."}, …],
+     "predicates":     [{"component_class": "ABOARD", "definition": "Is carried on."}, …],
      "patterns":       [{"pattern": ["Instrument", "ABOARD", "Spacecraft"]}, …]}
 
-   Only "name" is required in each entry ("definition" is strongly
+   Only "component_class" is required in each entry ("definition" is strongly
    advised: the model reads it); "patterns" may be missing. Anything else
    (040's support, maintainers, texts, examples, deferred, made) is ignored.
 
@@ -35,13 +35,13 @@ shapes:
                          Dataset -> TimeSpan; MissionPhase -> TimeSpan
                          source: mentor, 2026-10-01
 
-   A schema entry is a line starting with its name, followed by two or more
-   spaces and its definition. An indented line under a predicate lists the
-   pairs of entity classes (subject -> object) it has been used with,
-   separated by ";"; each pair is a pattern. An indented line starting
+   An entity class or a predicate is a line starting with the component
+   class, followed by two or more spaces and its definition. An indented
+   line under a predicate lists the pairs of entity classes (subject ->
+   object) it has been used with, separated by ";"; each pair is a pattern. An indented line starting
    "source:" under any entry says where the idea for it came from (used by
-   the additions file, and by the names the annotation tool adds to the
-   hand-built schema). Lines starting with # are comments.
+   the additions file, and by the component classes the annotation tool adds
+   to the hand-built schema). Lines starting with # are comments.
 
 Several steps read it: 040 compares the induced schema with the hand-built
 one; 050 shows the hand-built one to the model and checks every drafted row
@@ -54,7 +54,7 @@ vocabulary from the hand-built one and the ground truth.
     schema["entity_classes"]  {"Instrument": "a device that takes measurements", …}
     schema["predicates"]      {"ABOARD": "is carried on", …}
     schema["patterns"]        [("Instrument", "ABOARD", "Spacecraft"), …]
-    schema["sources"]         {"entity_classes": {name: source}, "predicates": {…}}  (text shape only)
+    schema["sources"]         {"entity_classes": {entity class: source}, "predicates": {…}}  (text shape only)
     schema["unread"]          ["line 12: …"]: lines of a section that are neither an entry, a
                               source nor patterns, e.g. prose, or a repeated entry (the first
                               is kept) and the lines under it (text shape only)
@@ -75,7 +75,7 @@ from pathlib import Path
 
 from common.triples_io import label_key
 
-ENTRY = re.compile(r"^(\S+) {2,}(\S.*)$")         # "Name  description"
+ENTRY = re.compile(r"^(\S+) {2,}(\S.*)$")         # "Instrument  definition"
 PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
 
 
@@ -115,8 +115,8 @@ def _read_text(path) -> dict:
                     schema["patterns"] += [(s, entry_name, o) for s, o in (p.groups() for p in pairs)]
                     continue
         # Anything else is not an entry: prose (the hand-built schema's
-        # explanation under PREDICATES), or a mistake, e.g. a name with a
-        # space in it. Kept, so a reader that expects no prose can say so.
+        # explanation under PREDICATES), or a mistake, e.g. a component class
+        # with a space in it. Kept, so a reader that expects no prose can say so.
         schema["unread"].append(f"line {number}: {head}")
     return schema
 
@@ -130,11 +130,11 @@ def _read_json(path) -> dict:
     for kind in ("entity_classes", "predicates"):
         items = data.get(kind)
         if not isinstance(items, list):
-            raise ValueError(f"{where}: \"{kind}\" must be a list of {{\"name\", \"definition\"}} entries")
+            raise ValueError(f"{where}: \"{kind}\" must be a list of {{\"component_class\", \"definition\"}} entries")
         for i, item in enumerate(items):
-            name = item.get("name") if isinstance(item, dict) else None
+            name = item.get("component_class") if isinstance(item, dict) else None
             if not isinstance(name, str) or not name.strip():
-                raise ValueError(f"{where}: {kind} entry {i} has no \"name\"")
+                raise ValueError(f"{where}: {kind} entry {i} has no \"component_class\"")
             definition = item.get("definition")
             schema[kind][name.strip()] = definition.strip() if isinstance(definition, str) else ""
     for i, item in enumerate(data.get("patterns") or []):
@@ -180,7 +180,7 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     """Why an addition whose source mentions the ground truth isn't fair to
     use, or None. Such a source must say "tuning" and name its records by
     pool position ("ground truth tuning #12, #15"), every one of them in the
-    tuning part: a name learned from a held-out record would let held-out
+    tuning part: a component class learned from a held-out record would let held-out
     records influence the schema, and the held-out numbers would no longer
     measure records the pipeline was never adjusted to. parts is {pool position: "tuning" | "held-out"}
     (030's splits.json). Shared by step 060 (which leaves such an addition
@@ -214,15 +214,15 @@ def additions_header(path) -> str:
 
 def additions_text(header: str, entries: list) -> str:
     """The additions file: header, then the entries in the text shape.
-    entries: [{"kind": "entity class" | "predicate", "name", "definition",
+    entries: [{"kind": "entity class" | "predicate", "component_class", "definition",
     "source", "patterns": [[subject class, object class], ...]}]."""
-    width = max([len(e["name"]) for e in entries] + [16]) + 2
+    width = max([len(e["component_class"]) for e in entries] + [16]) + 2
     pad = " " * width
 
     def block(kind):
         out = []
         for e in (e for e in entries if e["kind"] == kind):
-            out.append(f"{e['name'].ljust(width)}{e['definition']}".rstrip())
+            out.append(f"{e['component_class'].ljust(width)}{e['definition']}".rstrip())
             if kind == "predicate" and e.get("patterns"):
                 out.append(pad + "; ".join(f"{s_} -> {o_}" for s_, o_ in e["patterns"]))
             out.append(f"{pad}source: {e['source']}")
@@ -301,7 +301,7 @@ def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: li
     name, definition, source = str(name).strip(), " ".join(str(definition).split()), " ".join(str(source).split())
     patterns = [(str(s).strip(), str(o).strip()) for s, o in patterns] if key == "predicates" else []
     if not label_key(name) or any(c.isspace() for c in name) or name.startswith("#") or ";" in name or "->" in name:
-        raise ValueError("the name must be one word, with letters or digits, no spaces, and no ; or ->")
+        raise ValueError("the component class must be one word, with letters or digits, no spaces, and no ; or ->")
     if not definition:
         raise ValueError(f"{name} needs a one-line definition")
     if not all(PAIR.match(f"{s} -> {o}") for s, o in patterns):

@@ -63,7 +63,7 @@ def _schema_used(schema) -> dict:
     def entries(kind):
         out = []
         for name, definition in content[kind].items():
-            entry = {"name": name, "definition": definition, "from": came_from[kind][name]}
+            entry = {"component_class": name, "definition": definition, "from": came_from[kind][name]}
             if name in schema.sources[kind]:
                 entry["source"] = schema.sources[kind][name]
             out.append(entry)
@@ -76,18 +76,18 @@ def _schema_used(schema) -> dict:
                      "additions": schema.files["additions"]}}
 
 
-def _new_names(chosen, rows, settings) -> tuple:
-    """The names outside the schema the model used, most used first, and in
-    words where they come from: names it is fair to add to
-    annotations/schema_additions.txt. Never counted: a HELD-OUT record (a name
+def _new_component_classes(chosen, rows, settings) -> tuple:
+    """The component classes outside the schema the model used, most used
+    first, and in words where they come from: ones it is fair to add to
+    annotations/schema_additions.txt. Never counted: a HELD-OUT record (one
     learned there would let held-out records influence the schema). On a run over
-    every record, no ground truth record at all (names learned from records
+    every record, no ground truth record at all (ones learned from records
     outside it are fair as they are). Otherwise, tuning records are counted
     and named by pool position, for the "source: ground truth tuning #N" line an
     addition from them needs."""
     all_records = settings["extract_from"] == "all" and not settings["ids"].strip()
     listed = []
-    for (kind, name), v in rows.new_names.items():
+    for (kind, name), v in rows.new_component_classes.items():
         part = {r: chosen.pool.get(r, (None, None))[1] for r in v["records"]}
         recs = [r for r in v["records"] if part[r] != "held-out" and not (all_records and r in chosen.ground_truth)]
         if not (recs and name):
@@ -95,8 +95,8 @@ def _new_names(chosen, rows, settings) -> tuple:
         tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == "tuning")
         source = ("ground truth tuning " + ", ".join(f"#{p}" for p in tuning) if tuning else
                   "extraction over records outside the ground truth")
-        listed.append({"kind": kind, "name": name, "records": len(recs), "source": source})
-    listed.sort(key=lambda x: (-x["records"], x["kind"], x["name"]))
+        listed.append({"kind": kind, "component_class": name, "records": len(recs), "source": source})
+    listed.sort(key=lambda x: (-x["records"], x["kind"], x["component_class"]))
     where = ("records outside the ground truth" if all_records else
              "the tuning records of the ground truth" if settings["extract_from"] == "ground_truth"
              and not settings["ids"].strip() else "the records listed in ids, held-out ones left out")
@@ -112,7 +112,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
                 "flags": " ".join(x.get("errors", []) + x.get("flags", [])), "raw": x.get("raw", ""),
                 ORIGIN_COLUMN: origin_of[rid]}
                for rid in rows.removed for x in rows.removed[rid]]
-    new_names, where = _new_names(chosen, rows, settings)
+    new_component_classes, where = _new_component_classes(chosen, rows, settings)
 
     paths = {name: output / name for name in (KEPT_NAME, REMOVED_NAME, SCHEMA_NAME, DETAILS_NAME)}
     write_csv(paths[KEPT_NAME], KEPT_COLUMNS, kept)
@@ -127,7 +127,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
                      "kept": len(rows.kept.get(i["id"], [])), "removed": len(rows.removed.get(i["id"], []))}
                     for i in chosen.items],
         "skipped_while_choosing": chosen.skipped,
-        "new_names": {"counted_over": where, "names": new_names},
+        "new_component_classes": {"counted_over": where, "component_classes": new_component_classes},
     })
     log.info(f"  wrote {KEPT_NAME}, {REMOVED_NAME}, {SCHEMA_NAME}, {DETAILS_NAME}")
 
@@ -160,20 +160,20 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"- Flags on kept rows (worth a look): {counted(rows.flags)}.",
              f"- Removed: {len(removed):,} ({counted(rows.reasons)}), in `{REMOVED_NAME}` with the reason. "
              f"`source_text`: its source text is missing or isn't in the record's text; "
-             f"`name_not_in_schema`: it uses an entity class or predicate the schema doesn't have.", ""]
-    if new_names:
-        lines += ["### Names outside the schema", "",
-                  f"Names outside the schema (the current schema: the schema input plus the additions file) the "
-                  f"model used, counted over {where}, most used first (held-out records are never counted). A name "
-                  f"that keeps coming back, and that names a real kind of thing or relation, may be added to "
-                  f"`annotations/schema_additions.txt`, with a one-line definition and the `source:` line given "
-                  f"here: every name listed is fair to add.", "",
-                  "| Kind | Name (used by the model; not in the current schema) | Records | source: line for "
+             f"`component_class_not_in_schema`: it uses an entity class or predicate the schema doesn't have.", ""]
+    if new_component_classes:
+        lines += ["### Component classes outside the schema", "",
+                  f"Entity classes and predicates outside the schema (the current schema: the schema input plus "
+                  f"the additions file) the model used, counted over {where}, most used first (held-out records "
+                  f"are never counted). One that keeps coming back, and that names a real kind of thing or "
+                  f"relation, may be added to `annotations/schema_additions.txt`, with a one-line definition and "
+                  f"the `source:` line given here: every component class listed is fair to add.", "",
+                  "| Kind | Component class (used by the model; not in the current schema) | Records | source: line for "
                   "`annotations/schema_additions.txt` |", "|---|---|---:|---|"]
-        lines += [f"| {x['kind']} | {cell(x['name'])} | {x['records']} | `source: {cell(x['source'])}` |"
-                  for x in new_names[:SHOW]]
-        if len(new_names) > SHOW:
-            lines.append(f"| … {len(new_names) - SHOW} more, in `{DETAILS_NAME}` | | | |")
+        lines += [f"| {x['kind']} | {cell(x['component_class'])} | {x['records']} | `source: {cell(x['source'])}` |"
+                  for x in new_component_classes[:SHOW]]
+        if len(new_component_classes) > SHOW:
+            lines.append(f"| … {len(new_component_classes) - SHOW} more, in `{DETAILS_NAME}` | | | |")
         lines.append("")
     lines += model_calls([("extract triple instances (one per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.MODEL)

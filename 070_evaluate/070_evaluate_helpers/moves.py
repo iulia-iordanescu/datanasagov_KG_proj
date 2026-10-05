@@ -3,7 +3,7 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
 
     stage 1  records.py  pick_records     code: which records are evaluated (finished, extracted, in the fair part)
     -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
-    stage 2  names.py    translate_names  LLM: current schema's names → ground truth vocabulary, new names only (+ suggestions for (none) rows); you check
+    stage 2  component_classes.py  translate_component_classes  LLM: current schema's component classes → ground truth vocabulary, new ones only (+ suggestions for (none) rows); you check
     stage 3  pairing.py    compare          code: record by record, exact and partial pairs, strict, within reach
     stage 4  stats.py    compute_metrics  code: the numbers, each with its margin of error, per part and group
     -        (here)      results          writes metrics.json, per_record.md and compared_triples.csv; the report
@@ -18,7 +18,7 @@ import datetime as dt
 
 import pairing
 import readings
-import names as names_stage
+import component_classes as component_classes_stage
 import records as records_stage
 import stats
 from common import audit, llm
@@ -49,12 +49,12 @@ def paid_calls(evaluated, settings, output) -> llm.Calls:
     return llm.paid_calls(settings, output, notes=evaluated.notes)
 
 
-def translate_names(inputs, evaluated, calls):
-    return names_stage.translate_names(inputs, evaluated, calls)
+def translate_component_classes(inputs, evaluated, calls):
+    return component_classes_stage.translate_component_classes(inputs, evaluated, calls)
 
 
-def compare(evaluated, names):
-    return pairing.compare_all(evaluated, names)
+def compare(evaluated, translation):
+    return pairing.compare_all(evaluated, translation)
 
 
 def compute_metrics(evaluated, settings) -> dict:
@@ -121,7 +121,7 @@ def _per_record(records: list, hidden: int) -> str:
         missed = [(gt[i], c["within_reach"][i]) for i in range(len(gt)) if i not in paired_g]
         if missed:
             lines += ["**In the ground truth, but not extracted** (against recall)", ""]
-            lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: the schema has no name for its predicate")
+            lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: no predicate of the current schema translates to this one")
                       for f, reach in missed] + [""]
         if not (c["pairs"] or extra or missed):
             lines += ["No triples in the ground truth, and none extracted.", ""]
@@ -160,12 +160,12 @@ def _compared_rows(records: list) -> list:
 
 
 def _clue_lines(clues: list) -> list:
-    """The report's list of name clues (pairing.name_clues)."""
+    """The report's list of component class clues (pairing.component_class_clues)."""
     lines = ["### Possible translation errors", "",
-             "Where extraction found the triple but a name didn't line up with the ground truth's. A row of the "
-             "table below seen often means a row of the translation table (`annotations/name_mapping.csv`) is "
+             "Where extraction found the triple but a component class didn't line up with the ground truth's. A row of the "
+             "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, Translation table). Seen once, it may just be "
-             "extraction choosing the wrong name.", "",
+             "extraction choosing the wrong component class.", "",
              "How to read a row of the table below, e.g. *entity class | Body | Spacecraft | CelestialBody | 9*: "
              "these events, "
              "counted together, happened 9 times:", "",
@@ -178,13 +178,13 @@ def _clue_lines(clues: list) -> list:
              "object, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
              "predicate (ground truth vocabulary). With subject and object the other way round, the "
              "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
-             "Names are compared after translation. All 9 events share one cause: the translation table's row "
+             "Component classes are compared after translation. All 9 events share one cause: the translation table's row "
              "`Body` (current schema) --> `Spacecraft` (ground truth vocabulary). Had that row said `Body` --> `CelestialBody` (ground truth "
              "vocabulary), none of the 9 would have happened. So that row of the translation table is the "
              "likely mistake, and the one to check.", ""]
     if not clues:
         return lines + ["None.", ""]
-    lines += ["| Kind | Name in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
+    lines += ["| Kind | Component class in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
               "triple says instead (ground truth vocabulary) | Times | Check |", "|---|---|---|---|---:|---|"]
     for c in clues[:SHOW]:
         to = "(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION) else c["translated_to"]
@@ -198,7 +198,7 @@ def _clue_lines(clues: list) -> list:
     return lines + [""]
 
 
-def results(evaluated, names, metrics, calls, settings, output) -> Results:
+def results(evaluated, translation, metrics, calls, settings, output) -> Results:
     schema_file = evaluated.schema_used.get("made", {}).get("schema", "?")
     looks = _log_look(evaluated, schema_file) if settings["evaluate_held_out"] else None
     per_record_path, compared_path, metrics_path = (output / PER_RECORD_NAME, output / COMPARED_NAME,
@@ -206,7 +206,7 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
     # Only the parts whose numbers are shown: the held-out records' triples stay
     # unseen too, unless --evaluate_held_out true.
     shown = [r for r in evaluated.records if r["part"] in metrics]
-    clues = pairing.name_clues(shown)
+    clues = pairing.component_class_clues(shown)
     tuning = [r for r in shown if r["part"] == "tuning"]
     unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
     rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
@@ -223,8 +223,8 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
                                               for (t, s), n in v["confusion"].items()]}
                   for p, v in metrics.items() if p != "kept_aside"},
         "held_out_looks": looks,
-        "name_clues": clues,
-        "translation_suggestions": names.suggested,
+        "component_class_clues": clues,
+        "translation_suggestions": translation.suggested,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
     log.info(f"  wrote {METRICS_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
@@ -242,26 +242,26 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
                  for g in v["groups"]):
             warnings.append(f"{part}: some sampling group's share of the evaluated records differs from its share "
                             f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the group table.")
-    if names.suggested:
-        warnings.append(f"The model suggests {len(names.suggested)} row(s) of name_mapping.csv that say (none) may "
+    if translation.suggested:
+        warnings.append(f"The model suggests {len(translation.suggested)} row(s) of component_class_mapping.csv that say (none) may "
                         f"now have a counterpart in the ground truth vocabulary: "
-                        + named([f"{s['name_from_past_or_crt_schema']} (current schema) --> {s['name_in_gtt']} "
-                                 f"(ground truth vocabulary)" for s in names.suggested], 5, "; ")
+                        + named([f"{s['component_class_from_past_or_crt_schema']} (current schema) --> {s['component_class_in_gtt']} "
+                                 f"(ground truth vocabulary)" for s in translation.suggested], 5, "; ")
                         + ". Rows aren't changed: check them (py helpers/annotate.py, Translation table, shows the "
                           "suggestion).")
-    if names.outdated:
-        warnings.append(f"{len(names.outdated)} row(s) of name_mapping.csv translate to (none) though the ground "
-                        f"truth vocabulary now has the same name: {named(names.outdated, 5, '; ')}. Probably out of "
+    if translation.outdated:
+        warnings.append(f"{len(translation.outdated)} row(s) of component_class_mapping.csv translate to (none) though the ground "
+                        f"truth vocabulary now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
                         f"date: check them (py helpers/annotate.py, Translation table); keep (none) only if the ground "
-                        f"truth's name means something else.")
+                        f"truth's component class means something else.")
     if unreviewed:
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, so the partial "
                         f"level may count pairs that aren't the same fact (e.g. MODIS vs MODIS Terra). Review "
                         f"them: py helpers/annotate.py, Partial pairs.")
     frequent = [c for c in clues if c["count"] >= pairing.CLUE_WARN]
     if frequent:
-        warnings.append(f"{len(frequent)} pair(s) of names met {pairing.CLUE_WARN} or more times where extraction "
-                        f"found the triple but a name differed: a translation in name_mapping.csv may be wrong or "
+        warnings.append(f"{len(frequent)} pair(s) of component classes met {pairing.CLUE_WARN} or more times where extraction "
+                        f"found the triple but a component class differed: a translation in component_class_mapping.csv may be wrong or "
                         f"missing. See Possible translation errors.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
@@ -272,8 +272,8 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
 
     lines = ["### What this run worked on", "",
              f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth vocabulary "
-             f"through `annotations/name_mapping.csv` "
-             f"({names.rows_used} names; {names.reversed_used} predicate(s) reversed).", "",
+             f"through `annotations/component_class_mapping.csv` "
+             f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed).", "",
              "| Part | Records evaluated |", "|---|---:|"]
     for part in ("tuning", "held-out"):
         count = sum(r["part"] == part for r in evaluated.records)
@@ -283,22 +283,22 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
         lines += ["The held-out part's numbers are not shown: they are kept for the end, so the pipeline isn't "
                   "tuned on them. `--evaluate_held_out true` shows them (and logs the look).", ""]
     lines += ["### The translation table", "",
-              "Rows of `annotations/name_mapping.csv` that say `(none)`, and names of the ground truth vocabulary "
+              "Rows of `annotations/component_class_mapping.csv` that say `(none)`, and component classes of the ground truth vocabulary "
               "that no row translates to. The ground truth vocabulary grows as you annotate: if a `(none)` row "
-              "should now point to one of its names, fix that row.", "",
-              "| Kind | Current schema's names translated to (none) | Ground truth vocabulary's names nothing "
+              "should now point to one of its component classes, fix that row.", "",
+              "| Kind | Current schema's component classes translated to (none) | Ground truth vocabulary's component classes nothing "
               "translates to |", "|---|---|---|"]
-    lines += [f"| {kind} | {cell(named(names.to_none[kind], 20)) or '–'} | {cell(named(names.untranslated[kind], 20)) or '–'} |"
+    lines += [f"| {kind} | {cell(named(translation.to_none[kind], 20)) or '–'} | {cell(named(translation.untranslated[kind], 20)) or '–'} |"
               for kind in ("entity class", "predicate")]
     lines.append("")
     merged = [(kind, mine, theirs) for kind in ("entity class", "predicate")
-              for mine, theirs in names.merged[kind].items()]
+              for mine, theirs in translation.merged[kind].items()]
     if merged:
-        lines += ["Names of the ground truth vocabulary that two or more of the current schema's names translate "
-                  "to: the ground truth doesn't tell those current-schema names apart, so neither can these metrics "
+        lines += ["Component classes of the ground truth vocabulary that two or more of the current schema's component classes translate "
+                  "to: the ground truth doesn't tell those current-schema component classes apart, so neither can these metrics "
                   "(a mix-up between them costs extraction nothing). If the difference matters, make it in the "
                   "ground truth.", "",
-                  "| Kind | Name in the ground truth vocabulary | Current schema's names that translate to it |",
+                  "| Kind | Component class in the ground truth vocabulary | Current schema's component classes that translate to it |",
                   "|---|---|---|"]
         lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
         lines.append("")
@@ -317,7 +317,7 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
                       f"error: these numbers could easily have come out very differently. Don't draw "
                       f"conclusions from them yet.**", ""]
-        lines += ["| Names compared | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
+        lines += ["| Pair level | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
         for level in pairing.LEVELS:
             L = n[level]
             lines.append(f"| {level} | triples | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} "
@@ -330,7 +330,7 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
                        f"review (counted as extracted only and ground truth only): {pr['rejected']}." if part == "tuning" else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
-        lines += ["", "| Names compared | Entity-class accuracy | Recall within reach | Strict recall within "
+        lines += ["", "| Pair level | Entity-class accuracy | Recall within reach | Strict recall within "
                       "strict reach |", "|---|---:|---:|---:|"]
         lines += [f"| {level} | {_with_margin(n[level]['entity_class_accuracy'])} | "
                   f"{_with_margin(n[level]['recall_within_reach'])} | "
@@ -347,7 +347,7 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
                       "truth vocabulary) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
-        lines += readings.readings(part, n, recs, evaluated, names, looks, v["confusion"])
+        lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
         lines += [f"Per sampling group (numbers once a group has {stats.MIN_RECORDS} records; with many groups, "
                   f"about 1 in 20 margins misses by chance, so one odd group is not a finding):", "",
                   "| Group | Records | Share evaluated | Share of pool | Precision (exact) | Recall (exact) |",
@@ -363,8 +363,8 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
               "these records. The metrics assume the ground truth lists every fact the records state.", "",
               f"Every record's triples, side by side: `{PER_RECORD_NAME}`; one row per triple: `{COMPARED_NAME}`; "
               f"every number: `{METRICS_NAME}`.", ""]
-    lines += model_calls([("propose name translations", names.calls, None),
-                          ("suggest counterparts for (none) rows", names.suggest_calls, None)],
+    lines += model_calls([("propose component class translations", translation.calls, None),
+                          ("suggest counterparts for (none) rows", translation.suggest_calls, None)],
                          calls.paid.test_calls, llm.MODEL)
 
     tuning = metrics.get("tuning", {}).get("numbers")

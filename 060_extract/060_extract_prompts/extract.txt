@@ -4,8 +4,8 @@ object.
 
 Use ONLY the classes and predicates of the schema, spelled exactly as
 written, describes_class included. Leave out any fact they cannot express;
-do not invent names. If no class fits what the title names, leave
-describes_class empty.
+do not invent classes or predicates. If no class fits what the title
+names, leave describes_class empty.
 
 SCHEMA
 $schema

@@ -21,8 +21,8 @@ The schema is 040's induced schema by default, plus the entity classes and predi
 
 - **Before the real runs, choose the model:** from a different maker than annotation's, so the two don't share blind spots; for the run over every record, the cheapest whose metrics are within the margin of error of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
 - **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can evaluate only what it extracted.
-- **Read the report's table *Names outside the schema*** (`outputs/reports/060_extract_<date>_<time>.md`): names the model used that the current schema doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For a name that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed name has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every name listed is fair to add.
-- **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A name learned from the ground truth must come from tuning records only, named by pool position (`source: ground truth tuning #12`); the step leaves out any other.
+- **Read the report's table *Component classes outside the schema*** (`outputs/reports/060_extract_<date>_<time>.md`): entity classes and predicates the model used that the current schema doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For one that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed component class has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every component class listed is fair to add.
+- **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A component class learned from the ground truth must come from tuning records only, named by pool position (`source: ground truth tuning #12`); the step leaves out any other.
 - **Now and then, read the removed triples** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good facts is a sign the schema, or the prompt, needs work.
 
 ## Inputs
@@ -39,16 +39,16 @@ The schema is 040's induced schema by default, plus the entity classes and predi
 
 A schema holds entity classes and predicates, each with a one-line definition, and patterns. 060 reads two shapes, told apart by the file's ending (`common/common_helpers/schema_io.py`).
 
-**JSON (`.json`), like 040's `the_schema.json`.** Only the names are required, but give each a definition: it's the model's only clue to what the name means.
+**JSON (`.json`), like 040's `the_schema.json`.** Only each entry's `"component_class"` is required, but give each a definition: it's the model's only clue to what the entity class or predicate means.
 
 ```json
-{"entity_classes": [{"name": "Instrument", "definition": "A device that takes measurements."},
-                    {"name": "Spacecraft", "definition": "A craft that operates in space."}],
- "predicates":     [{"name": "ABOARD", "definition": "Is carried on."}],
+{"entity_classes": [{"component_class": "Instrument", "definition": "A device that takes measurements."},
+                    {"component_class": "Spacecraft", "definition": "A craft that operates in space."}],
+ "predicates":     [{"component_class": "ABOARD", "definition": "Is carried on."}],
  "patterns":       [{"pattern": ["Instrument", "ABOARD", "Spacecraft"]}]}
 ```
 
-- `entity_classes` and `predicates` are lists of entries, each with `"name"` and `"definition"`.
+- `entity_classes` and `predicates` are lists of entries, each with `"component_class"` and `"definition"`.
 - `patterns` is a list of `{"pattern": [subject class, predicate, object class]}`; it may be left out.
 - Anything else is ignored: 040's `support`, `maintainers`, `texts`, `examples`, `deferred`, `made`. So 040's file works as it is, and so does one written by hand.
 
@@ -66,9 +66,9 @@ ABOARD            is carried on
                   Instrument -> Spacecraft; Instrument -> Aircraft
 ```
 
-- An entry is its name (no spaces in it), then **two or more spaces**, then its definition, on one line. If a name appears twice, the first entry is kept.
+- An entry is the entity class or predicate (no spaces in it), then **two or more spaces**, then its definition, on one line. If one appears twice, the first entry is kept.
 - Under a predicate, an indented line lists its patterns as `Subject -> Object` pairs separated by `;`.
-- Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file, and by the names the annotation tool adds to the hand-built schema).
+- Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file, and by the component classes the annotation tool adds to the hand-built schema).
 - Lines starting with `#` are comments. Any other line is not read: in a schema given with `--schema` it's ignored as prose (like the explanation in the hand-built schema); in the additions file, where it's usually a mistake, it's pointed out before paying.
 
 So `py 060_extract/run.py --schema annotations/schema_derived_from_manual_annotation.txt` extracts with your hand-built schema.
@@ -91,9 +91,9 @@ PART_OF_MISSION   belongs to the mission
 ```
 
 - They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts.
-- An addition whose name the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked that loosely too (see *name outside the schema* in the terminology), and so is a second addition with the name of an earlier one. Its patterns still apply, to the entry kept.
+- An addition the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked that loosely too (see *component class outside the schema* in the terminology), and so is a second addition repeating an earlier one. Its patterns still apply, to the entry kept.
 - Give each one a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
-- **Adding names seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so a name added because it came up there flatters the metrics for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
+- **Adding component classes seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so one added because it came up there flatters the metrics for exactly those records. Add such component classes only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying. Component classes from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
 ## Outputs
 
@@ -106,7 +106,7 @@ In `outputs/intermediate_results/060_extract/`:
 | `extracted_triples.csv` | The triple instances kept: for each record extracted, its DESCRIBES row first, then its triple instances. Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
 | `extracted_triples_removed.csv` | Every triple instance removed, with `reason` (below; both, if both apply); `raw` holds what the model returned when it wasn't a triple instance at all. |
 | `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), the additions left out for a clash (`left_out_additions`), and those left out for not coming from tuning records only (`left_out_not_tuning`). 070 reads this (and 080 will), so they use exactly what 060 used. |
-| `extracted_triples_details.json` | Each record chosen, with its status (`extracted`, or `failed` with the error), text pieces, rows kept and removed; the records passed over while choosing; and the names outside the schema the model used (see the report). |
+| `extracted_triples_details.json` | Each record chosen, with its status (`extracted`, or `failed` with the error), text pieces, rows kept and removed; the records passed over while choosing; and the component classes outside the schema the model used (see the report). |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
@@ -149,23 +149,23 @@ py 060_extract/run.py --confirm_paid_calls false              don't ask (unatten
 Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). By `extract_from` or `ids` (above). Anything that differs from what was asked becomes a note shown before paying: a listed id not in the catalog or without text, ground truth records not yet finished.
-2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), entries of the schema input whose `source:` line fails the same check (kept), additions that clash with the schema, additions with no `source:` line, entries with no definition, pattern names that aren't entity classes or predicates of the schema.
-3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `060_extract/060_extract_prompts/extract.txt`: extract only the facts the schema can express, in only the schema's names, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
+2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), entries of the schema input whose `source:` line fails the same check (kept), additions that clash with the schema, additions with no `source:` line, entries with no definition, entity classes or predicates in patterns that the schema doesn't have.
+3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `060_extract/060_extract_prompts/extract.txt`: extract only the facts the schema can express, with only the schema's component classes, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
 4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/common_helpers/extraction.py` builds each record's rows (the DESCRIBES row first) and checks every one against the record's **whole** text and the schema (`common/common_helpers/validate.py`). Then:
 
    | What | Where it goes | Why |
    |---|---|---|
    | Its source text is missing, or isn't in the record's text | **removed**, reason `source_text` | It can't be verified, and may be invented. |
-   | An entity class or predicate the schema doesn't have | **removed**, reason `name_not_in_schema` | The graph can only hold the schema's names, and the prompt allows no others. The report lists these names (below). A name differing only in case, spaces or punctuation is not outside the schema: it's accepted and written in the schema's spelling. |
+   | An entity class or predicate the schema doesn't have | **removed**, reason `component_class_not_in_schema` | The graph can only hold the schema's component classes, and the prompt allows no others. The report lists these component classes (below). One differing only in case, spaces or punctuation is not outside the schema: it's accepted and written in the schema's spelling. |
    | The same subject, predicate, object and entity classes again | **removed**, reason `duplicate` | Counted once. |
    | Something that isn't a triple instance at all | **removed**, reason `malformed` | Nothing to keep. |
-   | A pattern the schema doesn't list (known names, new combination) | **kept**, flag `pattern_not_in_schema` | The schema's patterns are what was seen, not all that's allowed. |
-   | Any other flag (a reworded name, subject equal to object, the same triple instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
+   | A pattern the schema doesn't list (known component classes, new combination) | **kept**, flag `pattern_not_in_schema` | The schema's patterns are what was seen, not all that's allowed. |
+   | Any other flag (a reworded subject or object instance, subject equal to object, the same triple instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
    | The DESCRIBES row | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its class is `X`, flagged `describes_undecided`. |
 
 The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).
 
-**Names outside the schema.** The report's table *Names outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only names it is fair to add are counted: **held-out records are never counted** (a name learned there would let held-out records influence the schema, and the held-out numbers would no longer measure records the pipeline was never adjusted to); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_names`.
+**Component classes outside the schema.** The report's table *Component classes outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only component classes it is fair to add are counted: **held-out records are never counted** (one learned there would let held-out records influence the schema, and the held-out numbers would no longer measure records the pipeline was never adjusted to); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_component_classes`.
 
 **Then the results** (`results`): the four files are written, replacing the last run's; the report.
 
@@ -176,10 +176,10 @@ The code: `060_extract/` holds `run.py` (the control panel: inputs, settings and
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
 | `060_extract/060_extract_prompts/extract.txt` | stage 3, one call per text piece | list only the facts the schema can express, using **only** the schema's entity classes and predicates (the schema is shown in the prompt), and name the entity class of what the title names, or none if no class fits |
-| `common/common_prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050: names as written, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
+| `common/common_prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050: subject and object in the record's own words, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
 | `common/common_prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 |
 
-Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 050: editing them changes both steps.
+Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "classes", "predicates"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 050: editing them changes both steps.
 
 ## Checks and warnings
 
@@ -195,13 +195,13 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N record(s) you listed is/are not in the catalog / without text, so skipped* | With `ids`. | Check for typos. |
 | *N ground truth record(s) is/are not in the catalog / without text, so skipped* | With `extract_from` = `ground_truth` (the default): a ground truth id that isn't in 020's records, or a record with no text to read. | Check the id in `annotations/ground_truth/` for typos; a record without text can't be extracted. |
 | *extract_from (…) is ignored, because ids names the records.* | Both were given. | Drop one. |
-| *N addition(s) … have a name already there (in the schema, or an earlier addition), so that entry is kept* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
-| *N line(s) of schema_additions.txt aren't read as an entry, a source or patterns …* | The first 5 are listed with their line numbers: usually a name with a space in it, one space before the definition, a pattern line not in the `Subject -> Object; …` form, or a repeated entry (the first is kept; the repeat and the lines under it are listed). Such a line adds nothing. | Fix the line (see *The shape of a schema*). |
-| *N addition(s) … say they come from the ground truth but don't show they come from tuning records only, so they are left out* | Each is listed with why: it doesn't say `tuning`, or names a held-out record, a position not in the pool, or no record. | Take the name out, or (if it really came from tuning records) list their pool positions: `source: ground truth tuning #12`. |
-| *Entries of … whose source names ground truth records other than tuning ones (N)* | The schema given with `--schema` (e.g. the hand-built schema) has entries whose `source:` line names the ground truth but fails the check additions get: it names a held-out record, doesn't say `tuning`, names a position not in the pool, or names no record. Usually names learned from held-out records: the annotation tool gives each name it adds there a `source:` line naming the records that use it (patterns get none, so a pattern learned from a held-out record isn't caught). They are kept. | Fine for tuning numbers. Don't trust this run's held-out numbers: extract with a schema that didn't learn from held-out records (040's, by default). |
+| *N addition(s) … are already there (in the schema, or an earlier addition), so that entry is kept* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
+| *N line(s) of schema_additions.txt aren't read as an entry, a source or patterns …* | The first 5 are listed with their line numbers: usually an entity class or predicate with a space in it, one space before the definition, a pattern line not in the `Subject -> Object; …` form, or a repeated entry (the first is kept; the repeat and the lines under it are listed). Such a line adds nothing. | Fix the line (see *The shape of a schema*). |
+| *N addition(s) … say they come from the ground truth but don't show they come from tuning records only, so they are left out* | Each is listed with why: it doesn't say `tuning`, or names a held-out record, a position not in the pool, or no record. | Take the addition out, or (if it really came from tuning records) list their pool positions: `source: ground truth tuning #12`. |
+| *Entries of … whose source names ground truth records other than tuning ones (N)* | The schema given with `--schema` (e.g. the hand-built schema) has entries whose `source:` line names the ground truth but fails the check additions get: it names a held-out record, doesn't say `tuning`, names a position not in the pool, or names no record. Usually component classes learned from held-out records: the annotation tool gives each one it adds there a `source:` line naming the records that use it (patterns get none, so a pattern learned from a held-out record isn't caught). They are kept. | Fine for tuning numbers. Don't trust this run's held-out numbers: extract with a schema that didn't learn from held-out records (040's, by default). |
 | *N addition(s) have no "source:" line …* | Where the idea came from isn't recorded. | Add a `source:` line under each. |
-| *N schema entries have no definition …* | The model will see only the name. | Add definitions. |
-| *N name(s) used in patterns aren't entity classes or predicates of the schema* | A pattern names something the schema doesn't have (often a typo). | Fix the pattern, or add the name. |
+| *N schema entries have no definition …* | The model will see those entity classes or predicates with no definition. | Add definitions. |
+| *N component class(es) used in patterns aren't in the schema* | A pattern uses something the schema doesn't have (often a typo). | Fix the pattern, or add the missing entity class or predicate. |
 
 **In the report**, under *Warnings*:
 
@@ -216,7 +216,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *missing input files … schema … run 040_induce_schema first, or pass --schema* | 040 hasn't run. | Run 040 (or pass `--schema`). |
 | *… has no entity classes or no predicates: is it a schema?* | The `--schema` file isn't in either shape. | Check the file against *The shape of a schema* (Inputs). |
-| *"entity_classes" must be a list …* / *… entry N has no "name"* / *patterns entry N must be …* | A JSON schema that doesn't follow the shape above. | Fix the file (see *The shape of a schema*). |
+| *"entity_classes" must be a list …* / *… entry N has no "component_class"* / *patterns entry N must be …* | A JSON schema that doesn't follow the shape above. | Fix the file (see *The shape of a schema*). |
 | *extract_from must be one of ground_truth, all* | A typo in the setting. | Use `ground_truth` or `all`. |
 | *Nothing to extract. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
@@ -236,5 +236,5 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 - **Not yet run with the real model.** As of 2026-09-29, 060 has been tested only with a stand-in for the model, and with 040's schema from a stand-in run, because Ask Sage can't be reached from the laptop it was built on. Numbers in this guide come from the catalog, the code or the stand-in, not from a real run.
 - **Patterns are not enforced.** A triple instance joining two known entity classes with a known predicate is kept even if the schema never saw that combination. 070's metrics will show whether that lets in wrong facts.
-- **A synonym is removed, not repaired.** A name spelled differently (`Space craft`, `SPACECRAFT` for `Spacecraft`) is accepted, since names are compared on letters and digits only, ignoring case, and it is written in the schema's own spelling. A true synonym (`Satellite`) is removed; the report lists it.
+- **A synonym is removed, not repaired.** A component class spelled differently (`Space craft`, `SPACECRAFT` for `Spacecraft`) is accepted, since component classes are compared on letters and digits only, ignoring case, and it is written in the schema's own spelling. A true synonym (`Satellite`) is removed; the report lists it.
 - **The model varies.** Rerunning with an empty cache can extract different triple instances; the cache makes a rerun reproducible.

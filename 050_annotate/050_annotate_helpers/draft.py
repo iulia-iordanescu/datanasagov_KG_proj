@@ -5,7 +5,7 @@ One call per text piece (a long record is split, as in 040: common/common_helper
 The prompt (050_annotate/050_annotate_prompts/draft.txt) puts COMPLETENESS FIRST: every fact the
 record states, whether or not the hand-built schema can express it; then
 NAMING: the schema's entity classes and predicates when one fits, a new
-name otherwise. Its rules and reply format are shared with 060
+one otherwise. Its rules and reply format are shared with 060
 (common/common_prompts/), so the ground truth and what 060 extracts are asked for
 the same way.
 

@@ -9,8 +9,8 @@ returned the record, or a file kept in Git (annotations/), made by a person.
 Each hop shows the run that made it, with that run's report and log.
 
 A step's output files are the ones its _manifest.json lists. An item is
-found by its key (its "id", e.g. a CKAN record id, else its "name", e.g. a
-schema entry such as an entity class) or by its position
+found by its key (its "id", e.g. a CKAN record id, else its "component_class",
+e.g. an entity class of a schema) or by its position
 in the file, counting from 0. A JSON file holding several lists, each under
 its own name ({"<name>": {"records": [...]}}), is searched in all of them.
 """
@@ -23,9 +23,11 @@ from pathlib import Path
 from common.audit import ORIGIN_COLUMN, ORIGIN_FIELD, ref_path, sha256
 from common.step import LOGS_DIR, MANIFEST_NAME, REPORTS_DIR, RESULTS_DIR, ROOT
 
-#: The fields that name an item, in order: a record's or triple's "id", else a
-#: schema entry's "name".
-KEY_FIELDS = ("id", "name")
+#: The fields that identify an item, in order: a record's or triple's "id",
+#: else a schema entry's "component_class" (or "schema_entry", for 040's
+#: deferred entries, which may be patterns), else a "name" (e.g. 020's joined
+#: maintainers).
+KEY_FIELDS = ("id", "component_class", "schema_entry", "name")
 
 
 def _key(item: dict):

@@ -1,5 +1,5 @@
 Extract the facts this text states as subject/predicate/object, in the JSON
-format below. Use the text's own names for subject and object; the predicate
+format below. Use the text's own words for subject and object; the predicate
 is a short verb phrase in your own words. For each fact, source_text is the
 passage of the text that states it, copied word for word. Never use outside
 knowledge or add facts the text does not state.

@@ -2,7 +2,7 @@
 060 · Extract
 
 Extracts, from each record's text, the facts a schema can express: a model
-lists them as triple instances in ONLY the schema's names; code checks every
+lists them as triple instances with ONLY the schema's component classes; code checks every
 one against the record's text and the schema, keeps it, or removes it with
 a reason. The schema is 040's induced schema by default (or any schema given
 with --schema), plus the entity classes and predicates added by hand in
