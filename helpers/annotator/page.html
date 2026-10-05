@@ -235,7 +235,7 @@ function show(i) {
       rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
       ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
     el("div", { class: "meta" }, rec.part === "held-out"
-      ? el("span", {}, "Held-out record: names you learn here must not go into schema_additions.txt (the schema mustn't see the final exam). ",
+      ? el("span", {}, "Held-out record: names you learn here must not go into schema_additions.txt (held-out records must not influence the schema). ",
           el("button", { disabled: true, title: "held-out record" }, "Add a name to the schema additions"))
       : rec.part === "tuning"
         ? el("span", {}, `Tuning record: a name you learn here may go into schema_additions.txt, with “source: ground truth tuning #${rec.position}”. `,
@@ -437,7 +437,7 @@ function drawMappingSummary() {
       el("h3", {}, "Translation table"),
       el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the one extraction used last); ` +
                                   `${left} still to check.`),
-      el("p", { class: "meta" }, "Evaluation scores only when every row of the current schema is checked. " +
+      el("p", { class: "meta" }, "Evaluation evaluates only when every row of the current schema is checked. " +
                                   "It adds rows itself; it never changes one."),
       el("label", { class: "meta", style: "display:block" },
         el("input", { type: "checkbox", checked: onlyToCheck,
@@ -457,7 +457,7 @@ function drawMapping() {
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
       "✖ One name, one row: " + mapping.repeats.map(r => `${r.kind} ${r.name} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
       " has more than one. Keep the right row (usually the one whose stored definition matches the current " +
-      "schema's) and delete the others below. Evaluation won't score until then."))));
+      "schema's) and delete the others below. Evaluation won't evaluate until then."))));
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       "Extraction's schema_used.json wasn't found, so the current schema's definitions can't be shown.")));

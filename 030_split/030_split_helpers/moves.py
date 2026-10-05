@@ -11,13 +11,13 @@ moves.py -- the main moves of 030_split, as called by 030_split/run.py.
 
 Terms are as defined in docs/terminology.md.
 
-Each ground truth candidate also gets its part, for scoring (070):
+Each ground truth candidate also gets its part, for evaluation (070):
 
-    tuning     its scores may be looked at while improving the pipeline
-    held-out   its scores are kept aside, looked at only at the end: the
+    tuning     its metrics may be looked at while improving the pipeline
+    held-out   its metrics are kept aside, looked at only at the end: the
                number reported as how well the pipeline works
 
-by a rule fixed here, before any scoring: pool positions 0-5 are tuning (the
+by a rule fixed here, before any evaluation: pool positions 0-5 are tuning (the
 hand-built schema was written while annotating them, so they're not unseen);
 from position 6 on, every third record is held-out (8, 11, 14, ...) and the
 rest tuning. Both parts grow as annotation proceeds in pool order, and both
@@ -73,7 +73,7 @@ CANDIDATES = "ground_truth_candidates"      # the pool, in splits.json and messa
 INDUCTION = "induction_candidates"
 SHOW = 20                                   # rows listed in the report before "…"
 #: The tuning / held-out rule (see above). Fixed, not settings: changing them
-#: after scores have been looked at would defeat the held-out part.
+#: after metrics have been looked at would defeat the held-out part.
 ALL_TUNING_BEFORE = 6                       # positions 0-5: tuning
 HELD_OUT_EVERY = 3                          # from there on, every third position is held-out
 

@@ -78,7 +78,9 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
               f"| Git commit | {run['git_commit']} |",
               f"| Harvest date | {run['harvest_date'] or 'unknown'} |",
               f"| Log | {_link(run['log'], path)} |",
-              ""]
+              "",
+              "The run's full recipe: the Git commit above (the code), its Settings (the model among them), "
+              "its Prompts and its Inputs (each with the run that made it), below.", ""]
 
     lines += ["## Settings", ""]
     if settings:
@@ -88,6 +90,16 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
             lines.append(f"| `{key}` | {cell(value)} | {note} |")
     else:
         lines.append("None.")
+    lines.append("")
+
+    lines += ["## Prompts", ""]
+    if run.get("prompts"):
+        lines += ["Every prompt this run filled in: the model's answers came from exactly these texts, whether "
+                  "paid for now or taken from the cache.", "",
+                  "| Prompt file | sha256 of its text |", "|---|---|"]
+        lines += [f"| {cell(p['file'])} | `{p['sha256'][:12]}` |" for p in run["prompts"]]
+    else:
+        lines.append("None: this run sent nothing to a model.")
     lines.append("")
 
     lines += ["## Inputs", ""]

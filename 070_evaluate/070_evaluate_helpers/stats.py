@@ -1,7 +1,7 @@
 """
 stats.py -- stage 4: the numbers, each with its margin of error. Code only, no model.
 
-Every number is a ratio of sums over the scored records (e.g. precision =
+Every number is a ratio of sums over the evaluated records (e.g. precision =
 pairs in all records / triples extracted in all records), so a record with
 many triples weighs more than one with few, as each triple is one answer.
 
@@ -16,16 +16,16 @@ many triples weighs more than one with few, as each triple is one answer.
   describes accuracy      records whose DESCRIBES entity class is right /
                           records where the ground truth names one; with
                           the MAJORITY BASELINE (the share of the most common
-                          kind: what always guessing it would score) and the
+                          kind: what always guessing it would get) and the
                           PER-KIND average (each kind's accuracy, averaged)
 
 MARGIN OF ERROR, by the bootstrap: the numbers are recomputed RESHUFFLES
-times, each time from records drawn at random, with repeats, from the scored
+times, each time from records drawn at random, with repeats, from the evaluated
 ones; the middle 95% of the results is the margin. It draws WHOLE RECORDS
 (a record's triples come from one text and one model call, so they succeed or
 fail together; drawing triples one by one would give margins too narrow), and
 draws WITHIN EACH SAMPLING GROUP, as many as the group has, the way the pool
-was drawn. It is valid only for a random sample (records.py scores only the
+was drawn. It is valid only for a random sample (records.py metrics only the
 fair part) of enough records: below MIN_RECORDS, no margin is given, only a
 plain warning. The draws are seeded, so a rerun gives the same margins.
 """
@@ -37,13 +37,13 @@ import random
 from pairing import LEVELS
 from common.triples_io import label_key
 
-#: Fewer scored records than this: no margin of error (a bootstrap on very
+#: Fewer evaluated records than this: no margin of error (a bootstrap on very
 #: few records gives margins that are themselves unreliable, usually too
 #: narrow). A rule of thumb, not a law; the report says so.
 MIN_RECORDS = 20
 RESHUFFLES = 1000
 SEED = 70
-#: A sampling group whose share of the scored records differs from its share
+#: A sampling group whose share of the evaluated records differs from its share
 #: of the pool by more than this is pointed out (with enough records).
 SHARE_GAP = 0.10
 
@@ -58,6 +58,7 @@ def numbers(records: list) -> dict:
     for r in records:
         total.update(r["compared"]["counts"])
     out = {"records": len(records), "extracted": total["extracted"], "gt_triples": total["gt"],
+           "within_reach": total["within_reach"],
            "schema_ceiling": _ratio(total["within_reach"], total["gt"])}
     for level in LEVELS:
         m, s = total[f"{level}_pairs"], total[f"{level}_strict_pairs"]
@@ -65,7 +66,7 @@ def numbers(records: list) -> dict:
                       "strict_precision": _ratio(s, total["extracted"]), "strict_recall": _ratio(s, total["gt"]),
                       "entity_class_accuracy": _ratio(s, m),
                       "recall_within_reach": _ratio(total[f"{level}_pairs_within_reach"], total["within_reach"]),
-                      "pairs": m, "strict_pairs": s}
+                      "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"]}
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     kinds = collections.Counter(label_key(d["truth"]) for d in known)
     per_kind = {k: _ratio(sum(d["right"] for d in known if label_key(d["truth"]) == k), n) for k, n in kinds.items()}
@@ -121,12 +122,12 @@ def with_margins(records: list) -> dict:
     return point
 
 
-def by_part(scored) -> dict:
-    return {part: [r for r in scored.records if r["part"] == part] for part in ("tuning", "held-out")}
+def by_part(evaluated) -> dict:
+    return {part: [r for r in evaluated.records if r["part"] == part] for part in ("tuning", "held-out")}
 
 
 def group_table(records: list, pool_groups: dict) -> list:
-    """Per sampling group: records scored, share of scored vs share of the
+    """Per sampling group: records evaluated, share of evaluated vs share of the
     pool, and its numbers when it has enough records."""
     total_pool = sum(pool_groups.values())
     by_group = collections.defaultdict(list)
@@ -136,7 +137,7 @@ def group_table(records: list, pool_groups: dict) -> list:
     for g in sorted(set(pool_groups) | set(by_group), key=lambda g: (-pool_groups.get(g, 0), g)):
         recs = by_group.get(g, [])
         rows.append({"group": g or "(no group)", "records": len(recs),
-                     "share_scored": _ratio(len(recs), len(records)),
+                     "share_evaluated": _ratio(len(recs), len(records)),
                      "share_pool": _ratio(pool_groups.get(g, 0), total_pool),
                      "numbers": with_margins(recs) if len(recs) >= MIN_RECORDS else None})
     return rows
@@ -152,17 +153,17 @@ def describes_confusion(records: list) -> dict:
     return dict(c)
 
 
-def score(scored, settings: dict) -> dict:
+def compute_metrics(evaluated, settings: dict) -> dict:
     """Every number, per part: the tuning part always; the held-out part only
-    with the setting score_held_out. {part: {"numbers", "groups", "confusion"},
+    with the setting evaluate_held_out. {part: {"numbers", "groups", "confusion"},
     "kept_aside": {part: records not shown}}."""
-    parts = by_part(scored)
-    shown = ["tuning"] + (["held-out"] if settings["score_held_out"] else [])
+    parts = by_part(evaluated)
+    shown = ["tuning"] + (["held-out"] if settings["evaluate_held_out"] else [])
     result = {}
     for part in shown:
         recs = parts[part]
         result[part] = {"numbers": with_margins(recs) if recs else None,
-                        "groups": group_table(recs, scored.pool_groups) if recs else [],
+                        "groups": group_table(recs, evaluated.pool_groups) if recs else [],
                         "confusion": describes_confusion(recs)}
     result["kept_aside"] = {p: len(parts[p]) for p in ("tuning", "held-out") if p not in shown}
     return result

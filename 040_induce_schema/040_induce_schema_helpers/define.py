@@ -27,6 +27,7 @@ from pathlib import Path
 from common.cache import Cache, key
 from common import llm
 from common.audit import log
+from common import prompt_files
 from common.prompt_files import fill, load
 
 #: The two kinds of schema entry that get a definition.
@@ -60,7 +61,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
             batch = [{"name": e["name"], "texts": e["support"],
                       **({"examples": e["examples"]} if kind == "entity_classes" else {})}
                      for e in wanted[start:start + DEFINE_BATCH]]
-            k = key(PROMPTS[kind].template, kind, batch)
+            k = key(prompt_files.text(PROMPTS[kind]), kind, batch)
             reply = cache.get(k)
             if reply is None:
                 calls.paid.start("  040 needs model calls to define the schema's entries")

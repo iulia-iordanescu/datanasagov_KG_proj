@@ -220,8 +220,8 @@ def name_clues(records: list) -> list:
             for (k, c, t, g, s), n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
-def compare_all(scored, names):
-    for record in scored.records:
-        compare_record(record, names, scored.reviews)
-    log.info(f"  compared {len(scored.records)} record(s)")
-    return scored
+def compare_all(evaluated, names):
+    for record in evaluated.records:
+        compare_record(record, names, evaluated.reviews)
+    log.info(f"  compared {len(evaluated.records)} record(s)")
+    return evaluated

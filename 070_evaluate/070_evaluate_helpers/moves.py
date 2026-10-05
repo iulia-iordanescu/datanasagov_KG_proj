@@ -1,12 +1,12 @@
 """
 moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
 
-    stage 1  records.py  pick_records     code: which records are scored (finished, extracted, in the fair part)
+    stage 1  records.py  pick_records     code: which records are evaluated (finished, extracted, in the fair part)
     -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
     stage 2  names.py    translate_names  LLM: current schema's names → ground truth vocabulary, new names only (+ suggestions for (none) rows); you check
     stage 3  pairing.py    compare          code: record by record, exact and partial pairs, strict, within reach
-    stage 4  stats.py    score            code: the numbers, each with its margin of error, per part and group
-    -        (here)      results          writes scores.json, per_record.md and compared_triples.csv; the report
+    stage 4  stats.py    compute_metrics  code: the numbers, each with its margin of error, per part and group
+    -        (here)      results          writes metrics.json, per_record.md and compared_triples.csv; the report
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet.
@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime as dt
 
 import pairing
+import readings
 import names as names_stage
 import records as records_stage
 import stats
@@ -26,7 +27,7 @@ from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named
 from common.step import ANNOTATIONS_DIR, Results
 
-SCORES_NAME = "scores.json"
+METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
 COMPARED_NAME = "compared_triples.csv"
 LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
@@ -44,20 +45,20 @@ def pick_records(inputs, settings):
     return records_stage.pick_records(inputs, settings)
 
 
-def paid_calls(scored, settings, output) -> llm.Calls:
-    return llm.paid_calls(settings, output, notes=scored.notes)
+def paid_calls(evaluated, settings, output) -> llm.Calls:
+    return llm.paid_calls(settings, output, notes=evaluated.notes)
 
 
-def translate_names(inputs, scored, calls):
-    return names_stage.translate_names(inputs, scored, calls)
+def translate_names(inputs, evaluated, calls):
+    return names_stage.translate_names(inputs, evaluated, calls)
 
 
-def compare(scored, names):
-    return pairing.compare_all(scored, names)
+def compare(evaluated, names):
+    return pairing.compare_all(evaluated, names)
 
 
-def score(scored, settings) -> dict:
-    return stats.score(scored, settings)
+def compute_metrics(evaluated, settings) -> dict:
+    return stats.compute_metrics(evaluated, settings)
 
 
 # --------------------------------------------------------------------------
@@ -78,10 +79,10 @@ def _triple(f: dict) -> str:
     return f"{f['subject']} ({f['subject_class']}) {f['predicate']} {f['object']} ({f['object_class']})"
 
 
-def _log_look(scored, schema_file: str) -> int:
+def _log_look(evaluated, schema_file: str) -> int:
     """Add one line to annotations/held_out_looks.csv (never changing a line
     already there) and return how many looks it now holds."""
-    held = sum(r["part"] == "held-out" for r in scored.records)
+    held = sum(r["part"] == "held-out" for r in evaluated.records)
     append_csv(LOOKS, LOOKS_COLUMNS, [{"date": dt.date.today().isoformat(), "run_id": audit.current_run_id() or "",
                                        "schema": schema_file, "held_out_records": held}])
     return len(read_csv(LOOKS))
@@ -89,13 +90,13 @@ def _log_look(scored, schema_file: str) -> int:
 
 def _per_record(records: list, hidden: int) -> str:
     lines = ["# Per record", "",
-             "Each scored record: its pairs (✓ exact / ≈ partial, with both triples), extracted but not "
+             "Each evaluated record: its pairs (✓ exact / ≈ partial, with both triples), extracted but not "
              "in the ground truth (count against precision), and in the ground truth but not extracted (count "
              "against recall). Extracted triples are shown translated into the ground truth vocabulary. Terms: "
-             "docs/terminology.md, section *Scoring extraction*.", ""]
+             "docs/terminology.md, section *Evaluating extraction*.", ""]
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
-                  f"(`--score_held_out true` lists them, and logs the look).", ""]
+                  f"(`--evaluate_held_out true` lists them, and logs the look).", ""]
     for r in records:
         c = r["compared"]
         gt, ex = r["gt"], c["translated"]
@@ -196,53 +197,53 @@ def _clue_lines(clues: list) -> list:
         lines.append(f"| {c['kind']} | {cell(c['crt_name'])} | {cell(to)} | {cell(c['gtt_name'])} | {c['count']} "
                      f"| {cell(check)} |")
     if len(clues) > SHOW:
-        lines.append(f"| … {len(clues) - SHOW} more, in `{SCORES_NAME}` | | | | | |")
+        lines.append(f"| … {len(clues) - SHOW} more, in `{METRICS_NAME}` | | | | | |")
     return lines + [""]
 
 
-def results(scored, names, scores, calls, settings, output) -> Results:
-    schema_file = scored.schema_used.get("made", {}).get("schema", "?")
-    looks = _log_look(scored, schema_file) if settings["score_held_out"] else None
-    per_record_path, compared_path, scores_path = (output / PER_RECORD_NAME, output / COMPARED_NAME,
-                                                  output / SCORES_NAME)
+def results(evaluated, names, metrics, calls, settings, output) -> Results:
+    schema_file = evaluated.schema_used.get("made", {}).get("schema", "?")
+    looks = _log_look(evaluated, schema_file) if settings["evaluate_held_out"] else None
+    per_record_path, compared_path, metrics_path = (output / PER_RECORD_NAME, output / COMPARED_NAME,
+                                                  output / METRICS_NAME)
     # Only the parts whose numbers are shown: the held-out records' triples stay
-    # unseen too, unless --score_held_out true.
-    shown = [r for r in scored.records if r["part"] in scores]
+    # unseen too, unless --evaluate_held_out true.
+    shown = [r for r in evaluated.records if r["part"] in metrics]
     clues = pairing.name_clues(shown)
     tuning = [r for r in shown if r["part"] == "tuning"]
     unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
     rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
     compared_rows = _compared_rows(shown)
-    write_text(per_record_path, _per_record(shown, len(scored.records) - len(shown)))
+    write_text(per_record_path, _per_record(shown, len(evaluated.records) - len(shown)))
     write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
-    write_json(scores_path, {
+    write_json(metrics_path, {
         "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "schema": schema_file, "settings": settings,
                  "min_records_for_margin": stats.MIN_RECORDS, "reshuffles": stats.RESHUFFLES, "seed": stats.SEED},
-        "scored": {p: [r["id"] for r in scored.records if r["part"] == p] for p in ("tuning", "held-out")},
-        "left_out": scored.left_out,
+        "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
+        "left_out": evaluated.left_out,
         "parts": {p: {"numbers": v["numbers"], "groups": v["groups"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
-                  for p, v in scores.items() if p != "kept_aside"},
+                  for p, v in metrics.items() if p != "kept_aside"},
         "held_out_looks": looks,
         "name_clues": clues,
         "translation_suggestions": names.suggested,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
-    log.info(f"  wrote {SCORES_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
+    log.info(f"  wrote {METRICS_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
 
-    warnings = list(scored.notes)
-    for part, v in scores.items():
+    warnings = list(evaluated.notes)
+    for part, v in metrics.items():
         if part == "kept_aside" or v["numbers"] is None:
             continue
         n = v["numbers"]
         if not n["margins"]:
-            warnings.append(f"{part}: only {n['records']} record(s) scored, fewer than {stats.MIN_RECORDS}: the "
+            warnings.append(f"{part}: only {n['records']} record(s) evaluated, fewer than {stats.MIN_RECORDS}: the "
                             f"numbers are shown without a margin of error, and are too few to draw conclusions "
                             f"from.")
-        elif any(g["share_scored"] is not None and abs(g["share_scored"] - g["share_pool"]) > stats.SHARE_GAP
+        elif any(g["share_evaluated"] is not None and abs(g["share_evaluated"] - g["share_pool"]) > stats.SHARE_GAP
                  for g in v["groups"]):
-            warnings.append(f"{part}: some sampling group's share of the scored records differs from its share "
+            warnings.append(f"{part}: some sampling group's share of the evaluated records differs from its share "
                             f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the group table.")
     if names.suggested:
         warnings.append(f"The model suggests {len(names.suggested)} row(s) of name_mapping.csv that say (none) may "
@@ -276,14 +277,14 @@ def results(scored, names, scores, calls, settings, output) -> Results:
              f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth vocabulary "
              f"through `annotations/name_mapping.csv` "
              f"({names.rows_used} names; {names.reversed_used} predicate(s) reversed).", "",
-             "| Part | Records scored |", "|---|---:|"]
+             "| Part | Records evaluated |", "|---|---:|"]
     for part in ("tuning", "held-out"):
-        count = sum(r["part"] == part for r in scored.records)
-        lines.append(f"| {part} | {count}{'' if part in scores else ' (numbers not shown: see below)'} |")
+        count = sum(r["part"] == part for r in evaluated.records)
+        lines.append(f"| {part} | {count}{'' if part in metrics else ' (numbers not shown: see below)'} |")
     lines.append("")
-    if scores["kept_aside"]:
+    if metrics["kept_aside"]:
         lines += ["The held-out part's numbers are not shown: they are kept for the end, so the pipeline isn't "
-                  "tuned on them. `--score_held_out true` shows them (and logs the look).", ""]
+                  "tuned on them. `--evaluate_held_out true` shows them (and logs the look).", ""]
     lines += ["### The translation table", "",
               "Rows of `annotations/name_mapping.csv` that say `(none)`, and names of the ground truth vocabulary "
               "that no row translates to. The ground truth vocabulary grows as you annotate: if a `(none)` row "
@@ -297,7 +298,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
               for mine, theirs in names.merged[kind].items()]
     if merged:
         lines += ["Names of the ground truth vocabulary that two or more of the current schema's names translate "
-                  "to: the ground truth doesn't tell those current-schema names apart, so neither can these scores "
+                  "to: the ground truth doesn't tell those current-schema names apart, so neither can these metrics "
                   "(a mix-up between them costs extraction nothing). If the difference matters, make it in the "
                   "ground truth.", "",
                   "| Kind | Name in the ground truth vocabulary | Current schema's names that translate to it |",
@@ -305,15 +306,15 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
         lines.append("")
     lines += _clue_lines(clues)
-    if scored.left_out:
-        lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in scored.left_out.items())
-                  + f". Not finished yet in the ground truth: {scored.unfinished}.", ""]
+    if evaluated.left_out:
+        lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in evaluated.left_out.items())
+                  + f". Not finished yet in the ground truth: {evaluated.unfinished}.", ""]
 
-    for part, v in scores.items():
+    for part, v in metrics.items():
         if part == "kept_aside" or v["numbers"] is None:
             continue
         n = v["numbers"]
-        lines += [f"### Scores: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
+        lines += [f"### Metrics: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
                   f"{n['extracted']} extracted)", ""]
         if not n["margins"]:
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
@@ -325,10 +326,10 @@ def results(scored, names, scores, calls, settings, output) -> Results:
             lines.append(f"| {level} | triples | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} |")
             lines.append(f"| {level} | triples with entity classes (strict) | {_with_margin(L['strict_precision'])} "
                          f"| {_with_margin(L['strict_recall'])} |")
-        recs = [r for r in scored.records if r["part"] == part]
+        recs = [r for r in evaluated.records if r["part"] == part]
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
         lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; ruled out by your "
-                       f"review (counted as missed and extra): {pr['rejected']}." if part == "tuning" else
+                       f"review (counted as extracted only and ground truth only): {pr['rejected']}." if part == "tuning" else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
         lines += ["", "| Names compared | Entity-class accuracy | Recall within reach |", "|---|---:|---:|"]
@@ -338,37 +339,37 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         lines += ["", f"- **Schema ceiling** (ground truth triples the schema can express at all): "
                       f"{_with_margin(n['schema_ceiling'])}.",
                   f"- **What the record describes**: right for {_with_margin(d['accuracy'])} of {d['records']} "
-                  f"record(s). Always guessing the most common kind would score {_pct(d['majority_baseline'])}; "
+                  f"record(s). Always guessing the most common kind would get {_pct(d['majority_baseline'])}; "
                   f"averaged per kind: {_pct(d['per_kind_average'])}.", ""]
         if v["confusion"]:
             lines += ["| The ground truth says (ground truth vocabulary) | Extraction said (translated into the ground "
                       "truth vocabulary) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
+        lines += readings.readings(part, n, recs, evaluated, names, looks, v["confusion"])
         lines += [f"Per sampling group (numbers once a group has {stats.MIN_RECORDS} records; with many groups, "
                   f"about 1 in 20 margins misses by chance, so one odd group is not a finding):", "",
-                  "| Group | Records | Share scored | Share of pool | Precision (exact) | Recall (exact) |",
+                  "| Group | Records | Share evaluated | Share of pool | Precision (exact) | Recall (exact) |",
                   "|---|---:|---:|---:|---:|---:|"]
         for g in v["groups"]:
             gn = g["numbers"]
-            lines.append(f"| {cell(g['group'])} | {g['records']} | {_pct(g['share_scored'])} | {_pct(g['share_pool'])} "
+            lines.append(f"| {cell(g['group'])} | {g['records']} | {_pct(g['share_evaluated'])} | {_pct(g['share_pool'])} "
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
-    lines += ["A margin of error covers only which records happened to be scored: not mistakes in the ground "
-              "truth, not the model answering differently on another run, and not tuning on these records. The "
-              "ground truth was drafted by a model and corrected by a person, not written from scratch; a triple "
-              "both missed is counted nowhere, so recall may be overstated.", "",
+    lines += ["A margin of error covers only which records happened to be evaluated: not mistakes in the ground "
+              "truth, not the model answering differently on another run, and not changes made while looking at "
+              "these records. The metrics assume the ground truth lists every fact the records state.", "",
               f"Every record's triples, side by side: `{PER_RECORD_NAME}`; one row per triple: `{COMPARED_NAME}`; "
-              f"every number: `{SCORES_NAME}`.", ""]
+              f"every number: `{METRICS_NAME}`.", ""]
     lines += model_calls([("propose name translations", names.calls, None),
                           ("suggest counterparts for (none) rows", names.suggest_calls, None)],
                          calls.paid.test_calls, llm.MODEL)
 
-    tuning = scores.get("tuning", {}).get("numbers")
+    tuning = metrics.get("tuning", {}).get("numbers")
     headline = {}
     if tuning:
         headline = {"precision (tuning, exact)": _pct(tuning["exact"]["precision"]["value"]),
                     "recall (tuning, exact)": _pct(tuning["exact"]["recall"]["value"])}
-    return Results(files=[scores_path, per_record_path, compared_path], headline=headline,
+    return Results(files=[metrics_path, per_record_path, compared_path], headline=headline,
                    details="\n".join(lines), warnings=warnings)

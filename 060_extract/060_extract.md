@@ -4,9 +4,9 @@ Terms (triple instance, entity class, schema, pattern, DESCRIBES row, error, fla
 
 ## Purpose
 
-Extracts, from each record's text, the facts a schema can express. A model lists them as triple instances using **only** the schema's entity classes and predicates. Code checks every one against the record's text and the schema, then keeps it or removes it with a reason. What 060 keeps is what step 070 scores against the ground truth, and what step 080 will build the graph from.
+Extracts, from each record's text, the facts a schema can express. A model lists them as triple instances using **only** the schema's entity classes and predicates. Code checks every one against the record's text and the schema, then keeps it or removes it with a reason. What 060 keeps is what step 070 evaluates against the ground truth, and what step 080 will build the graph from.
 
-The schema is 040's induced schema by default, plus the entity classes and predicates you add by hand in `annotations/schema_additions.txt` (e.g. on a mentor's advice). By default, 060 extracts only from the records of the ground truth you've finished, the ones 070 can score. Once the schema is final, `--extract_from all` extracts from every record.
+The schema is 040's induced schema by default, plus the entity classes and predicates you add by hand in `annotations/schema_additions.txt` (e.g. on a mentor's advice). By default, 060 extracts only from the records of the ground truth you've finished, the ones 070 can evaluate. Once the schema is final, `--extract_from all` extracts from every record.
 
 ## To do
 
@@ -19,8 +19,8 @@ The schema is 040's induced schema by default, plus the entity classes and predi
 
 ### This step
 
-- **Before the real runs, choose the model:** from a different maker than annotation's, so the two don't share blind spots; for the run over every record, the cheapest whose scores are within the margin of error of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-- **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can score only what it extracted.
+- **Before the real runs, choose the model:** from a different maker than annotation's, so the two don't share blind spots; for the run over every record, the cheapest whose metrics are within the margin of error of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
+- **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can evaluate only what it extracted.
 - **Read the report's table *Names outside the schema*** (`outputs/reports/060_extract_<date>_<time>.md`): names the model used that the current schema doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For a name that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed name has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every name listed is fair to add.
 - **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A name learned from the ground truth must come from tuning records only, named by pool position (`source: ground truth tuning #12`); the step leaves out any other.
 - **Now and then, read the removed triples** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good facts is a sign the schema, or the prompt, needs work.
@@ -93,7 +93,7 @@ PART_OF_MISSION   belongs to the mission
 - They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts.
 - An addition whose name the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked that loosely too (see *name outside the schema* in the terminology), and so is a second addition with the name of an earlier one. Its patterns still apply, to the entry kept.
 - Give each one a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
-- **Adding names seen in ground truth records needs care.** Step 070 scores extraction on those records, so a name added because it came up there flatters the score for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
+- **Adding names seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so a name added because it came up there flatters the metrics for exactly those records. Add such names only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying. Names from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
 ## Outputs
 
@@ -110,7 +110,7 @@ In `outputs/intermediate_results/060_extract/`:
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
-For scoring: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not scored as zero. A record with **only its DESCRIBES row** was extracted and states no fact the schema can express.
+For evaluation: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not evaluated as zero. A record with **only its DESCRIBES row** was extracted and states no fact the schema can express.
 
 Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
@@ -118,7 +118,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 
 | Setting | Default | What it does | When to change it |
 |---|---|---|---|
-| `extract_from` | ground_truth | `ground_truth`: the records of the ground truth that are finished (*All facts extracted* ticked), the only ones 070 can score. `all`: every record with text. | `all` once the schema is final. That's about one model call per record, ~36,000; the confirmation shows the number before anything is spent. |
+| `extract_from` | ground_truth | `ground_truth`: the records of the ground truth that are finished (*All facts extracted* ticked), the only ones 070 can evaluate. `all`: every record with text. | `all` once the schema is final. That's about one model call per record, ~36,000; the confirmation shows the number before anything is spent. |
 | `ids` | empty | Exactly these records instead: ids separated by commas, or the path of a text file with one id per line (a CSV whose first column is the id works too; a header line `id`, blank lines and lines starting with `#` are skipped). | To extract from records you choose. |
 | `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/common_helpers/chunking.py`). | Rarely. |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
@@ -165,7 +165,7 @@ Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the oth
 
 The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).
 
-**Names outside the schema.** The report's table *Names outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only names it is fair to add are counted: **held-out records are never counted** (a name learned there would let the schema see the final exam); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_names`.
+**Names outside the schema.** The report's table *Names outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only names it is fair to add are counted: **held-out records are never counted** (a name learned there would let held-out records influence the schema, and the held-out numbers would no longer measure records the pipeline was never adjusted to); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_names`.
 
 **Then the results** (`results`): the four files are written, replacing the last run's; the report.
 
@@ -187,7 +187,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N record(s) of the ground truth aren't finished yet … so skipped* | Only finished records can be scored. | Finish them in `py helpers/annotate.py`, or ignore. |
+| *N record(s) of the ground truth aren't finished yet … so skipped* | Only finished records can be evaluated. | Finish them in `py helpers/annotate.py`, or ignore. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
@@ -222,6 +222,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 ## Audit trail
 
+- **Prompts.** The report's *Prompts* section lists every prompt the run filled in, each with a fingerprint (sha256) of its exact text, so the prompt behind any answer is known even if the prompt file was edited later (`_manifest.json` keeps the full fingerprints).
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each kept or removed row has an `origin` column naming its record in 020's `records.jsonl`; `schema_used.json` names the schema file and additions file it was built from.
 - **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`).
@@ -229,6 +230,6 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 ## Known limits
 
 - **Not yet run with the real model.** As of 2026-09-29, 060 has been tested only with a stand-in for the model, and with 040's schema from a stand-in run, because Ask Sage can't be reached from the laptop it was built on. Numbers in this guide come from the catalog, the code or the stand-in, not from a real run.
-- **Patterns are not enforced.** A triple instance joining two known entity classes with a known predicate is kept even if the schema never saw that combination. 070's scores will show whether that lets in wrong facts.
+- **Patterns are not enforced.** A triple instance joining two known entity classes with a known predicate is kept even if the schema never saw that combination. 070's metrics will show whether that lets in wrong facts.
 - **A synonym is removed, not repaired.** A name spelled differently (`Space craft`, `SPACECRAFT` for `Spacecraft`) is accepted, since names are compared on letters and digits only, ignoring case, and it is written in the schema's own spelling. A true synonym (`Satellite`) is removed; the report lists it.
 - **The model varies.** Rerunning with an empty cache can extract different triple instances; the cache makes a rerun reproducible.

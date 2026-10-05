@@ -174,8 +174,9 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     """Why an addition whose source mentions the ground truth isn't fair to
     use, or None. Such a source must say "tuning" and name its records by
     pool position ("ground truth tuning #12, #15"), every one of them in the
-    tuning part: a name learned from a held-out record would let the schema
-    see the final exam. parts is {pool position: "tuning" | "held-out"}
+    tuning part: a name learned from a held-out record would let held-out
+    records influence the schema, and the held-out numbers would no longer
+    measure records the pipeline was never adjusted to. parts is {pool position: "tuning" | "held-out"}
     (030's splits.json). Shared by step 060 (which leaves such an addition
     out) and the annotation tool (which refuses to save it)."""
     if "ground truth" not in source.lower():

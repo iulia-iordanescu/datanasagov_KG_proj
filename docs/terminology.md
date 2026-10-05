@@ -10,7 +10,7 @@ The words this project uses, and exactly what each one means. It is expected to 
 4. [Ground truth and samples](#4-ground-truth-and-samples)
 5. [Learning the schema (step 040)](#5-learning-the-schema-step-040)
 6. [Extracting with a schema (step 060)](#6-extracting-with-a-schema-step-060)
-7. [Scoring extraction (step 070)](#7-scoring-extraction-step-070)
+7. [Evaluating extraction (step 070)](#7-evaluating-extraction-step-070)
 8. [The pipeline](#8-the-pipeline)
 
 ---
@@ -115,14 +115,16 @@ The words *domain* and *range* were standardized in RDF Schema, another kind of 
 | Term | Meaning |
 |---|---|
 | **schema used** | The schema step 060 extracted with: its schema input (040's by default, or any given with `--schema`) plus the schema additions, merged, written to `schema_used.json`. Step 070 reads it (and 080 will), so they use exactly what 060 used. |
-| **kept** / **removed** | What 060 does with each triple instance after checking it. **Kept** ones go to `extracted_triples.csv`, the graph's facts and what 070 scores. **Removed** ones go to `extracted_triples_removed.csv` with the reason: `source_text` (its source text is missing or isn't in the record's text), `name_not_in_schema`, `duplicate` or `malformed`. Removed is not deleted: the file keeps them for a person to look at. |
+| **kept** / **removed** | What 060 does with each triple instance after checking it. **Kept** ones go to `extracted_triples.csv`, the graph's facts and what 070 evaluates. **Removed** ones go to `extracted_triples_removed.csv` with the reason: `source_text` (its source text is missing or isn't in the record's text), `name_not_in_schema`, `duplicate` or `malformed`. Removed is not deleted: the file keeps them for a person to look at. |
 | **name outside the schema** | An entity class or predicate the model used though the schema doesn't have it (e.g. `Satellite` when the schema says `Spacecraft`). Such a triple instance is removed; the report lists these names, most used first, as candidates for the schema additions. A name that differs only in case, spaces or punctuation (`Space craft`) is not outside the schema: it's accepted and written in the schema's spelling. |
 
 ---
 
-## 7. Scoring extraction (step 070)
+## 7. Evaluating extraction (step 070)
 
 Step 070 compares the triple instances (triples, for short) step 060 extracted with the ground truth, which works as the answer key. An example: a record's ground truth has 5 triples; 060 extracts 4, of which 3 form **pairs** with ground truth triples and 1 is extracted only (the text never says it); 2 ground truth triples are left without a partner (missed).
+
+Each metric below is also read out in sentences, with each run's own counts, in the report; how: `070_evaluate/070_evaluate.md`, section *Reading the metrics*.
 
 | Term | Meaning |
 |---|---|
@@ -130,18 +132,18 @@ Step 070 compares the triple instances (triples, for short) step 060 extracted w
 | **pairing** | How step 070 forms the pairs, record by record. Every triple, in either list, ends with zero or one partner, always from the other list; the two lists can have any lengths. Exact pairs are formed first, then partial ones among the triples left, each round forming as many pairs as possible (in maths, a *maximum matching*). An extracted triple left without a partner is **extracted only** (it counts against precision); a ground truth triple left without one is **ground truth only**, i.e. missed (against recall). |
 | **name translation** | The table `annotations/name_mapping.csv`, checked by a person: which name of the ground truth vocabulary each name of the schema 060 used means, or `(none)`. Its columns abbreviate (crt: **current**, gtt: **ground truth triples**): `name_from_past_or_crt_schema` is a name of a schema 060 used, now or in an earlier run (one table serves every schema); `name_in_gtt` is the name in the ground truth triples (the ground truth vocabulary); `definition_from_past_or_crt_schema` keeps that schema's definition of the name from when the row was written or last checked, so a row whose name the current schema defines differently is **stale** and must be checked again. `swap_subject_and_object` when it says the same relation the other way round ("A CARRIES B" is "B ABOARD A"). |
 | **ground truth vocabulary** | The entity classes and predicates of the ground truth: every one in the hand-built schema, plus every distinct one the ground truth triples use that the hand-built schema lacks (a **coined** name, compared ignoring case and punctuation). A coined name has no definition until it is added to the hand-built schema. Step 050 shows it to the model as the names to reuse, the annotation tool suggests it, and step 070 translates the names of the schema 060 used into it before comparing. |
-| **precision** | When 060 says something, how often it is right: the pairs, divided by all the triples 060 extracted. In the example, 3 ÷ 4 = 75%. Low precision means the graph gets **wrong** triples. |
-| **recall** | Of everything true in the text, how much 060 caught: the pairs, divided by all the ground truth triples. In the example, 3 ÷ 5 = 60%. Low recall means the graph is **missing** triples. |
+| **precision** | When 060 says something, how often it is right: the pairs, divided by all the triples 060 extracted. In the example, 3 ÷ 4 = 75%. Low precision means many of extraction's triples have no pair: the subject, the predicate or the object is wrong, or the text never states the fact at all. In the knowledge graph that graph building (step 080) makes from extraction's triples, each one would be a statement that shouldn't be there, and it can bring in nodes that shouldn't exist (e.g. an invented subject). |
+| **recall** | Of everything true in the text, how much 060 caught: the pairs, divided by all the ground truth triples. In the example, 3 ÷ 5 = 60%. Low recall means extraction misses many facts: the knowledge graph made from its triples would lack them. |
 | **entity-class accuracy** | Of the pairs, how many are strict: both entity classes right too. |
 | **within reach** | A ground truth triple the schema 060 used can express at all: its predicate and both its entity classes are something the schema's names translate to. |
 | **schema ceiling** | The ground truth triples within reach, divided by all of them: the best recall any extractor could get with that schema. **Recall within reach** is the pairs whose ground truth triple is within reach, divided by the ground truth triples within reach. A low ceiling points at the schema, a low recall within reach at the extraction. |
-| **fair part** | The pool's first records, with none skipped, that a person has finished and 060 extracted: the only records 070 scores, since only they are a fair sample of the catalog. |
+| **fair part** | The pool's first records, with none skipped, that a person has finished and 060 extracted: the only records 070 evaluates, since only they are a fair sample of the catalog. |
 | **margin of error** | How shaky a number is: "precision 65%, likely between 45% and 88%". With few records a number could easily have come out quite different, so its margin is wide; with many, narrow. Without it, a real improvement can't be told from luck. |
-| **bootstrap** | How 070 computes a margin of error: it recomputes the number about 1,000 times, each time from records drawn at random from the scored ones, with repeats allowed, and takes the middle 95% of the results. It draws **whole records**, since the triples of one record succeed or fail together, and draws **within the pool's sampling groups**, the way the pool was drawn. It is only valid when the scored records are a random sample (the first records of the pool) and there are enough of them; step 070 checks both. A margin covers only which records happened to be picked: not mistakes in the ground truth, and not the model answering differently on another run. |
-| **tuning part** | The ground truth records whose scores may be looked at while improving the pipeline (a prompt, the schema, a setting): pool positions 0–5, and from position 6 on, two of every three records. Step 030 marks each ground truth candidate's part in `splits.json`. |
-| **held-out part** | The ground truth records kept aside: from pool position 6 on, every third record (8, 11, 14, …). Their scores are not looked at while improving the pipeline, only at the end; that is the number reported as how well the pipeline works. Otherwise the pipeline gets tuned to the records it is scored on, and its scores flatter it. |
+| **bootstrap** | How 070 computes a margin of error: it recomputes the number about 1,000 times, each time from records drawn at random from the evaluated ones, with repeats allowed, and takes the middle 95% of the results. It draws **whole records**, since the triples of one record succeed or fail together, and draws **within the pool's sampling groups**, the way the pool was drawn. It is only valid when the evaluated records are a random sample (the first records of the pool) and there are enough of them; step 070 checks both. A margin covers only which records happened to be picked: not mistakes in the ground truth, and not the model answering differently on another run. |
+| **tuning part** | The ground truth records whose metrics may be looked at while improving the pipeline (a prompt, the schema, a setting): pool positions 0–5, and from position 6 on, two of every three records. Step 030 marks each ground truth candidate's part in `splits.json`. |
+| **held-out part** | The ground truth records kept aside: from pool position 6 on, every third record (8, 11, 14, …). Their metrics are not looked at while improving the pipeline, only at the end; that is the number reported as how well the pipeline works. Otherwise the pipeline gets tuned to the records it is evaluated on, and its metrics flatter it. |
 
-The two are reported together because each alone can be fooled: an extractor that states just one triple it is sure of has perfect precision and almost no recall; one that states everything it can think of has perfect recall and poor precision. They are counted over all the scored records of a part (tuning or held-out) together, not one record at a time.
+The two are reported together because each alone can be fooled: an extractor that states just one triple it is sure of has perfect precision and almost no recall; one that states everything it can think of has perfect recall and poor precision. They are counted over all the evaluated records of a part (tuning or held-out) together, not one record at a time.
 
 ---
 

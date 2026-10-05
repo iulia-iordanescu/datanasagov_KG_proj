@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from common import extraction
+from common import extraction, prompt_files
 from common.prompt_files import fill, load
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "050_annotate_prompts"   # 050_annotate/050_annotate_prompts/
@@ -28,7 +28,7 @@ PROMPT = load(PROMPTS_DIR / "draft.txt")
 
 def prompt_for(chosen, item: dict, piece: str) -> str:
     return fill(PROMPT, schema=chosen.schema_text, rules=extraction.rules_for(chosen.records[item["id"]]),
-                reply=extraction.REPLY.template.strip(), text=extraction.wrap(piece))
+                reply=prompt_files.text(extraction.REPLY).strip(), text=extraction.wrap(piece))
 
 
 def ask_model(chosen, calls, settings: dict) -> extraction.Replies:

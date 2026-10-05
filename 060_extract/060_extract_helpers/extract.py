@@ -47,7 +47,7 @@ import collections
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import extraction
+from common import extraction, prompt_files
 from common.audit import log
 from common.prompt_files import fill, load
 from common.triples_io import UNDECIDED, is_describes
@@ -88,7 +88,7 @@ def _in_schema_spelling(row: dict, names) -> dict:
 def ask_model(chosen, schema, calls, settings: dict) -> extraction.Replies:
     def prompt_for(item, piece):
         return fill(PROMPT, schema=schema.text, rules=extraction.rules_for(chosen.records[item["id"]]),
-                    reply=extraction.REPLY.template.strip(), text=extraction.wrap(piece))
+                    reply=prompt_files.text(extraction.REPLY).strip(), text=extraction.wrap(piece))
     return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "extract",
                                 f"060 will extract from {len(chosen.items)} record(s) ({chosen.how})",
                                 "extracting")

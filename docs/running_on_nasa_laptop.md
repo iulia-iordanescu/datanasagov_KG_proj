@@ -101,9 +101,9 @@ A listed model may still refuse you. To find out, just use it in a tiny run, e.g
 
 Which model where:
 
-- **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the schema, 050 decides how much you correct by hand, 070's translations decide the scores.
+- **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the schema, 050 decides how much you correct by hand, 070's translations decide the metrics.
 - **050 and 060: two different models, from different makers if you can** (e.g. a Claude model for one, a Gemini or GPT model for the other). The ground truth starts as 050's draft; if 060 used the same model, the facts that model misses would be missing from both, and recall would look better than it is.
-- **060 on every record (about 36,000 calls): measure before choosing.** Once 20 or more ground truth records are finished, run 060 on them with two or three models, score each with 070, and use the cheapest whose scores are within the margin of error of the best.
+- **060 on every record (about 36,000 calls): measure before choosing.** Once 20 or more ground truth records are finished, run 060 on them with two or three models, evaluate each with 070, and use the cheapest whose metrics are within the margin of error of the best.
 - **Decide before the real runs:** every cached answer is tied to its model, so changing models later means paying for those calls again.
 
 ## 6. Annotating ground truth (after 050, before 060)

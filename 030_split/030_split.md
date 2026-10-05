@@ -6,12 +6,12 @@ Terms (ground truth candidates pool, induction candidates, tuning part, held-out
 
 Sets the two lists of records that later steps work on, and keeps them apart:
 
-- **The ground truth candidates pool**: 1,000 records that are candidates for annotation. A person annotates them in pool order, and the annotated records become the ground truth that 070 scores the extraction against. Only a subset of the pool is ever annotated, since verifying 1,000 records by hand is more than the time available. The pool was shuffled when it was drawn, so the first *k* records are a fair sample of the catalog for any *k*, and annotation can stop anywhere.
+- **The ground truth candidates pool**: 1,000 records that are candidates for annotation. A person annotates them in pool order, and the annotated records become the ground truth that 070 evaluates the extraction against. Only a subset of the pool is ever annotated, since verifying 1,000 records by hand is more than the time available. The pool was shuffled when it was drawn, so the first *k* records are a fair sample of the catalog for any *k*, and annotation can stop anywhere.
 - **The induction candidates**: for every maintainer, all of its records that the schema may be learned from, in a fixed random order. 040 learns the schema from the first few of each of the largest maintainers.
 
-Each ground truth candidate is also given its **part**, for scoring in 070: **tuning** (its scores may be looked at while improving the pipeline) or **held-out** (its scores are kept aside and looked at only at the end, as the number reported for how well the pipeline works). The rule is fixed here, before any scoring: pool positions 0–5 are tuning, since the hand-built schema was written while annotating them; from position 6 on, every third record is held-out (8, 11, 14, …) and the rest tuning. Both parts grow as annotation proceeds, and both stay fair samples. Of the 999 candidates on 2026-09-29: 668 tuning, 331 held-out.
+Each ground truth candidate is also given its **part**, for evaluation in 070: **tuning** (its metrics may be looked at while improving the pipeline) or **held-out** (its metrics are kept aside and looked at only at the end, as the number reported for how well the pipeline works). The rule is fixed here, before any evaluation: pool positions 0–5 are tuning, since the hand-built schema was written while annotating them; from position 6 on, every third record is held-out (8, 11, 14, …) and the rest tuning. Both parts grow as annotation proceeds, and both stay fair samples. Of the 999 candidates on 2026-09-29: 668 tuning, 331 held-out.
 
-No record is ever in both lists. 070 measures how well extraction works on text the schema was *not* learned from; scoring on records the schema was learned from would flatter it.
+No record is ever in both lists. 070 measures how well extraction works on text the schema was *not* learned from; evaluation on records the schema was learned from would flatter it.
 
 **Both lists are in a fixed random order, and later steps take from the top.** Taking more later keeps what was already taken: if 040 learns from 15 records per maintainer today and 30 tomorrow, the first 15 are the same records, so the model calls already paid for them stay valid. The same holds for adding maintainers.
 
@@ -105,7 +105,7 @@ It took 3–4 s (2026-09-28 and 2026-09-29).
 Four stages, in `030_split/run.py`'s `main()`, all code:
 
 1. **Load the records** (`load_records`) that 020 wrote, by id (`common/common_helpers/records_io.py`, shared by every step that reads them).
-2. **Read the ground truth candidates pool** (`ground_truth_candidates`) from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used. Each record gets its part by the rule in Purpose (`part_of()` in `moves.py`; the rule's numbers are named constants there, not settings, since changing them after scores have been looked at would defeat the held-out part).
+2. **Read the ground truth candidates pool** (`ground_truth_candidates`) from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used. Each record gets its part by the rule in Purpose (`part_of()` in `moves.py`; the rule's numbers are named constants there, not settings, since changing them after metrics have been looked at would defeat the held-out part).
 3. **Order the induction candidates** (`induction_candidates`). A record is an induction candidate unless it is in the pool (kept or dropped) or has no title and no notes, which gives the schema nothing to learn from. Maintainers are ranked by how many records they hold in the catalog. Each maintainer's candidates are put in a random order of their own:
    - the generator is seeded by `induction_seed` and the maintainer's name, so one maintainer's order never depends on another's;
    - the ids are sorted before shuffling, so the same records and seed always give the same order, whatever the order of the records file;
@@ -122,7 +122,7 @@ On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for ha
 
 989 records have no maintainer; 020 files them under `undefined`, a value the catalog itself also uses. It is ranked like any other maintainer (5th largest), so when 040 learns from the 10 largest maintainers, `undefined` is one of them. That was decided on purpose, although its records don't come from one author:
 
-- Learning from each large maintainer separately is meant to show the schema step the vocabulary of as much of the catalog as possible, so that the largest maintainers don't drown the others. That purpose doesn't need each group to share one writing style. (That property matters for the ground truth candidates pool, which estimates catalog-wide scores, not for schema induction.)
+- Learning from each large maintainer separately is meant to show the schema step the vocabulary of as much of the catalog as possible, so that the largest maintainers don't drown the others. That purpose doesn't need each group to share one writing style. (That property matters for the ground truth candidates pool, which estimates catalog-wide metrics, not for schema induction.)
 - Replacing `undefined` with the next largest maintainer, Christopher Rumsey (178 records), would cover 0.5% of the catalog instead of 2.7%: the 10 maintainers would hold 89.4% of the catalog's records instead of 91.6%.
 
 ## Prompts
@@ -137,7 +137,7 @@ None: this step makes no model calls.
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N ground truth candidates are no longer in the catalog and were dropped* | Pool records that left the catalog since the pool was drawn. Listed in the report. 1 on 2026-09-28 (position 946). | Nothing: the others keep their positions. If a dropped record was already annotated, its ground truth no longer has a text to score against. |
+| *N ground truth candidates are no longer in the catalog and were dropped* | Pool records that left the catalog since the pool was drawn. Listed in the report. 1 on 2026-09-28 (position 946). | Nothing: the others keep their positions. If a dropped record was already annotated, its ground truth no longer has a text to evaluate against. |
 | *N ground truth candidates have a different maintainer in 020's records than in the pool file* | A maintainer's spelling is joined differently now, or the record's maintainer changed. Listed in the report. 0 on 2026-09-28. | Usually nothing; 020's maintainer is used. |
 | *splits.json already exists and was kept, but this run's draw differs from it* | The records, the pool file or the setting changed since `splits.json` was written. | Usually nothing: the kept file is what work in progress relies on. To take the change, delete `splits.json` and rerun. |
 

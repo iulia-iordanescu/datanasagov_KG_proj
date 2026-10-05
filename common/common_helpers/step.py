@@ -54,7 +54,7 @@ import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import audit
+from common import audit, prompt_files
 from common.files import write_text
 from common.audit import log
 
@@ -280,6 +280,7 @@ def _write_manifest(output: Path, run: dict, settings: dict, input_rows: list,
         "git_commit": run["git_commit"],
         "harvest_date": run["harvest_date"],
         "settings": settings,
+        "prompts": run.get("prompts", []),
         "inputs": input_rows,
         "outputs": output_rows,
         "headline": results.headline,
@@ -373,6 +374,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         old_manifest = _take_manifest(output)
         log.debug(f"output folder: {_rel(output)}")
         audit.begin_run(run_id, chosen_inputs)
+        prompt_files.reset_prompts()
 
         results = main(chosen_inputs, chosen_settings, output)
         if not isinstance(results, Results):
@@ -394,6 +396,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         run["status"], error = "failed", RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:
         audit.end_run()
+        run["prompts"] = prompt_files.prompts_used()      # also for a stopped or failed run
 
     finished = dt.datetime.now().astimezone()
     run["finished"] = _stamp(finished)

@@ -45,6 +45,7 @@ from pathlib import Path
 from common.cache import Cache, key
 from common import llm
 from common.audit import log
+from common import prompt_files
 from common.prompt_files import fill, load
 
 #: The two kinds of component instance, by slot: "entity" for subject and
@@ -144,7 +145,7 @@ def label_component_instances(triples, calls) -> Labels:
 
         def ask(items: dict) -> dict:
             """The labels for one batch: from the cache, else from the model."""
-            k = key(prompt.template, kind, items, vocabulary)
+            k = key(prompt_files.text(prompt), kind, items, vocabulary)
             reply = cache.get(k)
             if reply is None:
                 calls.paid.start("  040 needs model calls to label component instances")

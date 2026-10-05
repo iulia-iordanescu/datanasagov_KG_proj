@@ -38,6 +38,7 @@ from pathlib import Path
 from common.cache import Cache, key
 from common import llm
 from common.audit import log
+from common import prompt_files
 from common.prompt_files import fill, load
 from label import KINDS
 
@@ -95,7 +96,7 @@ def merge_labels(labels, triples, calls):
         if len(sent) > 1:
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
                         "examples": [v for v, _ in instances_of[lbl].most_common(EXAMPLES)]} for lbl in sent]
-            k = key(PROMPTS[kind].template, kind, listing)
+            k = key(prompt_files.text(PROMPTS[kind]), kind, listing)
             reply = cache.get(k)
             if reply is None:
                 calls.paid.start("  040 needs model calls to merge synonymous labels")

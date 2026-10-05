@@ -1,12 +1,12 @@
 """
 common/common_helpers/extraction.py -- what the steps that ask a model for a record's
 triple instances WITH entity classes share: 050 (drafting ground truth) and
-060 (extracting with a schema), so the one is scored against the other on
+060 (extracting with a schema), so the one is evaluated against the other on
 equal terms.
 
-    rules_for(record)          the shared rules (prompts/extraction_rules.txt),
+    rules_for(record)          the shared rules (common/common_prompts/extraction_rules.txt),
                                with the record's field names filled in
-    REPLY                      the reply format (prompts/extraction_reply.txt)
+    REPLY                      the reply format (common/common_prompts/extraction_reply.txt)
     wrap(piece)                a text piece between BEGIN/END RECORD lines
     ask_model(...)             one cached model call per text piece; a record
                                with a failed call is left out whole

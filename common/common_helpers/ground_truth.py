@@ -44,7 +44,7 @@ Problems, each listed, none silently resolved:
 the annotation tool shows them on its page.
 
 Shared by the steps that read ground truth (050, to know which records are
-done and to check the files; 060, which records are finished; 070, to score
+done and to check the files; 060, which records are finished; 070, to evaluate
 against it) and by the annotation tool (helpers/annotate.py), which writes the
 files.
 """

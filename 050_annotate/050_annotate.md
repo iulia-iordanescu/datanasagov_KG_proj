@@ -22,13 +22,13 @@ Each run also checks your ground truth files for typos (see *Your ground truth* 
 ### This step
 
 - **Before the real runs, choose the model:** the strongest one Ask Sage lets you use, and from a different maker than extraction's (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-- **Draft and correct batches in pool order, without skipping:** a record after a gap falls out of the fair part, which is all evaluation scores.
+- **Draft and correct batches in pool order, without skipping:** a record after a gap falls out of the fair part, the only records evaluation evaluates.
 - **Correct every draft batch** with `py helpers/annotate.py`: read each record's text first, then fix, delete or add rows until every fact it states is there, and tick *All facts extracted*. The tool saves your corrections to `annotations/ground_truth/batch_<NNN>.csv`; never correct the draft itself (`outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv`): it can be deleted and rebuilt. Commit each corrected batch.
 - **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: recall comes out higher than it should.
 - **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for names you'd add to the schema (see extraction's *To do*).
 - **When you coin a name**, add it with a one-line definition to the hand-built schema (`annotations/schema_derived_from_manual_annotation.txt`). Until then the next drafts reuse it, but the model sees only the name, and the tool keeps flagging it (it could be a typo); the tool's page and this step's report list every such name.
 - **Fix the typos and problems** the tool and this step's report flag in the ground truth (`annotations/ground_truth/`).
-- **Report any score** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
+- **Report any metric** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
 
 ## Inputs
 
@@ -160,7 +160,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N record(s) you listed is not in the catalog / without text / already in the ground truth / waiting in a draft batch to be corrected (batch K), so skipped* | With `ids`: those records can't or needn't be drafted. | Check for typos; a record waiting in a draft batch is drafted again only if you delete that draft batch (both its files) before correcting it. |
 | *You listed N records that can be drafted, but records_per_batch is M* | Only the first M are drafted now. | Raise `records_per_batch`, or run again for the rest. |
 | *start_position (N) is ignored, because ids names the records.* | The two settings can't both apply. | Drop one. |
-| *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 scores only the fair part (the pool's first records, with none skipped), so records after the gap are not scored until the records before them are annotated too. |
+| *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 evaluates only the fair part (the pool's first records, with none skipped), so records after the gap are not evaluated until the records before them are annotated too. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
@@ -188,6 +188,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 ## Audit trail
 
+- **Prompts.** The report's *Prompts* section lists every prompt the run filled in, each with a fingerprint (sha256) of its exact text, so the prompt behind any answer is known even if the prompt file was edited later (`_manifest.json` keeps the full fingerprints).
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each row of a draft batch has an `origin` column naming its record in 020's `records.jsonl`. The ground truth files carry none: they are made by a person, so a trace stops there.
 - **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`). It searches only the files a step's last run wrote, so for 050 the newest draft batch; a record in an older one is found through 030's `splits.json`.

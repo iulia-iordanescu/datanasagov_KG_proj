@@ -7,7 +7,7 @@ one against the record's text and the schema, keeps it, or removes it with
 a reason. The schema is 040's induced schema by default (or any schema given
 with --schema), plus the entity classes and predicates added by hand in
 annotations/schema_additions.txt. By default only the finished records of
-the ground truth are extracted from, which is what 070 scores; every record
+the ground truth are extracted from, which is what 070 evaluates; every record
 once the schema is final. Terms: docs/terminology.md.
 
 Reads:   records.jsonl (020), splits.json (030), the_schema.json (040),
@@ -33,7 +33,7 @@ INPUTS = {
 }
 
 SETTINGS = {
-    "extract_from":       "ground_truth",  # ground_truth (the finished records 070 scores) or all
+    "extract_from":       "ground_truth",  # ground_truth (the finished records 070 evaluates) or all
     "ids":                "",              # or exactly these records: ids separated by commas, or a file with one per line
     "max_chars":          8000,            # a longer text is split into text pieces, one call each
     "workers":            4,               # model calls made at the same time

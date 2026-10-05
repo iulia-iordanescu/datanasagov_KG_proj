@@ -115,7 +115,7 @@ def load_schema(inputs: dict) -> Schema:
     if result.not_tuning:
         result.notes.append(f"{len(result.not_tuning)} addition(s) in {Path(inputs['additions']).name} say they come "
                             f"from the ground truth but don't show they come from tuning records only, so they are "
-                            f"left out (a name from a held-out record would let the schema see the final exam): "
+                            f"left out (a name from a held-out record would let held-out records influence the schema): "
                             + named([f"{x['name']} (additions file; {x['why']})" for x in result.not_tuning], 5, "; ")
                             + ".")
     if result.left_out:

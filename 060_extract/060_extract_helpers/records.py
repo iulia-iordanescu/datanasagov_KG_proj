@@ -5,7 +5,7 @@ The setting `extract_from` says which:
 
     ground_truth   (default) the records of the ground truth a person has
                    finished (all facts extracted on every row), the only ones
-                   070 can score; a record still in progress is skipped
+                   070 can evaluate; a record still in progress is skipped
     all            every record with text: once the schema is final
 
 or `ids` names exactly the records, as in 050 (common/common_helpers/records_io.read_ids).

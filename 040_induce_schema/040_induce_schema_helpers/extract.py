@@ -36,6 +36,7 @@ from pathlib import Path
 from common.cache import Cache, key
 from common import llm
 from common.audit import log
+from common import prompt_files
 from common.prompt_files import fill, load
 from common.text_match import Text
 from common.validate import check_triple_instance
@@ -79,7 +80,7 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
     answers, todo = {}, {}
     for t in texts.items:
         for i, piece in enumerate(t["pieces"]):
-            k = key(PROMPT.template, piece)
+            k = key(prompt_files.text(PROMPT), piece)
             stored = cache.get(k)
             if stored is not None:
                 answers[(t["id"], i)] = stored

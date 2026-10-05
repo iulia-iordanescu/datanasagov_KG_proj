@@ -27,7 +27,7 @@ which name of the ground truth vocabulary each name of the current schema
 A row is only as good as the meaning it was checked against: a later schema
 may use the same name for something else. So a checked row whose stored
 definition differs from the current schema's (spacing aside) is STALE:
-step 070 won't score until a person checks it again, and the annotation tool
+step 070 won't evaluate until a person checks it again, and the annotation tool
 shows both definitions. Checking it again stores the current definition.
 
 One name, one row: two rows with the same kind and the same

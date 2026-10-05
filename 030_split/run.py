@@ -5,8 +5,8 @@ Sets the two lists of records the later steps work on, and keeps them
 apart: the ground truth candidates pool, 1,000 records a person annotates in
 order (only a subset ever is), and the induction candidates, the records the
 schema may be learned from. No record is ever in both, so the extraction is
-scored on text the schema was not learned from. Each pool record is also marked
-tuning or held-out, for scoring in 070 (a fixed rule by pool position: from
+evaluated on text the schema was not learned from. Each pool record is also marked
+tuning or held-out, for evaluation in 070 (a fixed rule by pool position: from
 position 6 on, every third is held-out). Terms: docs/terminology.md.
 
 Both lists are in a fixed random order, and later steps take from the top,

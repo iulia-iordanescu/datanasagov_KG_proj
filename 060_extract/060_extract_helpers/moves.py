@@ -80,7 +80,7 @@ def _new_names(chosen, rows, settings) -> tuple:
     """The names outside the schema the model used, most used first, and in
     words where they come from: names it is fair to add to
     annotations/schema_additions.txt. Never counted: a HELD-OUT record (a name
-    learned there would let the schema see the final exam). On a run over
+    learned there would let held-out records influence the schema). On a run over
     every record, no ground truth record at all (names learned from records
     outside it are fair as they are). Otherwise, tuning records are counted
     and named by pool position, for the "source: ground truth tuning #N" line an

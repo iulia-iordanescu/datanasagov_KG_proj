@@ -79,7 +79,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 |---|---|---|---|
 | `induction_maintainers` | 10 | Learn from this many of the largest maintainers. | To cover more (or fewer) of the catalog's maintainers. |
 | `texts_per_maintainer` | 15 | Take the first this-many induction candidates of each. | To learn from more text. Taking more keeps the texts already taken, so their extraction calls are reused (see How to run). |
-| `min_support` | 1 | A schema entry enters the schema if its support is at least this. 1 keeps everything found. | Once 070's scores can compare values; see Known limits. |
+| `min_support` | 1 | A schema entry enters the schema if its support is at least this. 1 keeps everything found. | Once 070's metrics can compare values; see Known limits. |
 | `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/common_helpers/chunking.py`). | Rarely. No text of the default sample is that long (the longest is 5,797 characters). |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
 | `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
@@ -116,7 +116,7 @@ Seven stages, in `040_induce_schema/run.py`'s `main()`; stages 2, 3, 4 and 6 ask
 6. **Write definitions** (`define.py`, `write_definitions`). Every entity class and predicate whose support reaches `min_support` goes to the model, 40 at a time, for one defining sentence each, or a reason if it's too vague to tell anything apart ("Thing"). This stage only writes words; it merges and chooses nothing.
 7. **Build the schema** (`check.py`, `check_schema`). The schema is built from stage 5's counts, never from the model's replies: an entity class or predicate is in it if its support reaches `min_support` and it isn't too vague; a pattern is in it if its support reaches `min_support` and its two entity classes and its predicate are in it. Every other schema entry is deferred, with its reason. A schema entry missing its definition stays in, marked, and is listed.
 
-Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code, comparing names with `common/common_helpers/triples_io.label_key`): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Names match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a score: 070 measures how much of the ground truth the schema can express.
+Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code, comparing names with `common/common_helpers/triples_io.label_key`): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Names match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a metric: 070 measures how much of the ground truth the schema can express.
 
 **Then the results** (`results`): `the_schema.json` and `induction_evidence.json` are written; the report.
 
@@ -174,6 +174,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 ## Audit trail
 
+- **Prompts.** The report's *Prompts* section lists every prompt the run filled in, each with a fingerprint (sha256) of its exact text, so the prompt behind any answer is known even if the prompt file was edited later (`_manifest.json` keeps the full fingerprints).
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each schema entry's `_origin` names the 020 records whose texts it was found in, e.g. `020_clean/records.jsonl#a1b2…`; `induction_evidence.json` keeps every text's triple instances and labels.
 - **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`). A schema entry can be traced by its name: `py helpers/audit.py Instrument`.
@@ -185,5 +186,5 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **The labels depend a little on the order component instances are labeled in.** Most common first, so the order is meaningful, not arbitrary, but a different order could coin a different first label for an idea.
 - **One call per kind to merge labels.** Up to 800 labels of one kind; above that the step stops rather than merging in groups where synonyms could miss each other. At that size, labels would first need grouping by meaning (e.g. a local embedding model), which isn't built.
 - **What the sample can see.** 150 texts from the 10 largest maintainers (91.6% of the catalog's records). An entity class used by 1% of the catalog's records is found in the sample with probability 78%; by 0.5%, 53%. 070's schema ceiling shows whether what was missed matters for the ground truth.
-- **min_support is not yet chosen.** It is 1 (keep everything). To choose it: run 040, 060 and 070 with other values and compare the **tuning part's** scores, never the held-out part's (see `070_evaluate/070_evaluate.md`). How to weigh precision against recall when choosing is still open.
+- **min_support is not yet chosen.** It is 1 (keep everything). To choose it: run 040, 060 and 070 with other values and compare the **tuning part's** metrics, never the held-out part's (see `070_evaluate/070_evaluate.md`). How to weigh precision against recall when choosing is still open.
 - **The model varies.** Rerunning with an empty cache can give different triple instances, labels and definitions; the cache is what makes a rerun reproducible.

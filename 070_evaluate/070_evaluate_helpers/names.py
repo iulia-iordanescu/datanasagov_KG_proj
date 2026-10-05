@@ -25,7 +25,7 @@ For every name of schema_used.json without a row:
 The new rows are ADDED at the end of the file; a row already there is never
 changed or deleted. This is one of two narrow exceptions to "no step writes
 into annotations/" (the other is held_out_looks.csv). After adding rows the
-step stops, so the person can look at them; it scores only when every row it
+step stops, so the person can look at them; it evaluates only when every row it
 needs is checked ("yes" or "same name"), was checked against the current
 schema's definition of its name (else it is stale: a later schema may mean
 something else by it), and names a name of the ground truth vocabulary or
@@ -126,9 +126,9 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls) -> tuple:
     return rows, notes, made
 
 
-def translate_names(inputs: dict, scored, calls) -> Names:
+def translate_names(inputs: dict, evaluated, calls) -> Names:
     path = Path(inputs["name_mapping"])
-    names = Names(gtt=gtt_vocabulary(inputs["hand_schema"], scored.ground_truth))
+    names = Names(gtt=gtt_vocabulary(inputs["hand_schema"], evaluated.ground_truth))
     rows = read_mapping(path)
     repeated = repeats(rows)
     if repeated:
@@ -143,10 +143,10 @@ def translate_names(inputs: dict, scored, calls) -> Names:
         raise SystemExit(f"{path.name}: kind must be 'entity class' or 'predicate' for: "
                          f"{named([f'{n} (a past or the current schema)' for n in bad_kind], 5, '; ')}.")
 
-    needed = [("entity class", e["name"]) for e in scored.schema_used["entity_classes"]] + \
-             [("predicate", e["name"]) for e in scored.schema_used["predicates"]]
+    needed = [("entity class", e["name"]) for e in evaluated.schema_used["entity_classes"]] + \
+             [("predicate", e["name"]) for e in evaluated.schema_used["predicates"]]
     gtt_key = {k: {label_key(n): n for n in v} for k, v in names.gtt.items()}
-    now = crt_definitions(scored.schema_used)
+    now = crt_definitions(evaluated.schema_used)
     same, missing = [], []
     handled = set(have)                     # a name spelled two ways in the schema gets one row
     for kind, name in needed:
@@ -162,7 +162,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
             missing.append((kind, name))
     proposed, notes = [], []
     if missing:
-        proposed, notes, names.calls = _propose(missing, names.gtt, scored.schema_used, calls)
+        proposed, notes, names.calls = _propose(missing, names.gtt, evaluated.schema_used, calls)
     if same or proposed:
         append_csv(path, COLUMNS, same + proposed)
         raise SystemExit(f"Added {len(same) + len(proposed)} row(s) to {path.name} for names of the current "
@@ -185,7 +185,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     if unchecked:
         raise SystemExit(f"{len(unchecked)} row(s) of {path.name} still need checking (py helpers/annotate.py, "
                          f"Translation table): {named([f'{n} (current schema)' for n in unchecked], 5, '; ')}. "
-                         f"Scoring waits until all are checked.")
+                         f"Evaluation waits until all are checked.")
     if stale:
         raise SystemExit(f"{len(stale)} checked row(s) of {path.name} were checked when the current schema defined "
                          f"the name differently, so they may no longer be right: "
@@ -241,7 +241,7 @@ def translate_names(inputs: dict, scored, calls) -> Names:
     for kind in KINDS:
         names.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))
         names.untranslated[kind] = sorted(n for n in names.gtt[kind] if label_key(n) not in names.reachable[kind])
-    names.suggested, names.suggest_calls = _suggest(names, scored.schema_used, calls)
+    names.suggested, names.suggest_calls = _suggest(names, evaluated.schema_used, calls)
     return names
 
 
@@ -253,7 +253,7 @@ def _suggest(names: Names, schema_used: dict, calls) -> tuple:
     to; the answer is cached by the lists asked about, so the same lists are
     never paid for twice. Rows are never changed: these are suggestions for
     the person (report warnings; the annotation tool reads them from
-    scores.json). Returns (suggestions, calls made)."""
+    metrics.json). Returns (suggestions, calls made)."""
     same = {kind: {label_key(n) for n in names.gtt[kind]} for kind in KINDS}
     schema_side = [(k, n) for k in KINDS for n in names.to_none[k] if label_key(n) not in same[k]]
     gtt_side = {k: [n for n in names.untranslated[k]] for k in KINDS}

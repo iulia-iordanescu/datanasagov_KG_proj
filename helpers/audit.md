@@ -8,7 +8,7 @@ Every run of a step has a run id, e.g. `020_clean_2026-09-27_1030`: the step nam
 
 | File | Answers | Kept |
 |---|---|---|
-| `outputs/reports/<run id>.md` | What came out? Numbers, warnings, timeline, and links to the files below. | every run |
+| `outputs/reports/<run id>.md` | What came out? Numbers, warnings, timeline, and links to the files below. And the run's full recipe: the Git commit (the code), the settings (the model among them), the prompts it filled in with a fingerprint of each one's exact text, and the inputs with the run that made each. | every run |
 | `outputs/logs/<run id>.log` | What happened, in what order? Why did it fail? | every run |
 | `outputs/intermediate_results/<step>/_manifest.json` | Exactly which files went in and came out: each with its sha256 hash, and the run that produced each input. | Removed when a run starts and written when it finishes, so it describes the last run that finished. If a run fails, the previous manifest is put back only if every file it lists still has the hash it recorded (e.g. a run stopped by a bad setting, which wrote nothing); otherwise the step has none until a run finishes. |
 | The item's **origin**, inside the output file itself | Where did this item come from? | as long as the output file |

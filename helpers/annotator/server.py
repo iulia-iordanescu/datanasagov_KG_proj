@@ -15,7 +15,7 @@ What it reads
     annotations/name_mapping.csv                                             the translation table
     outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
     outputs/intermediate_results/060_extract/extracted_triples.csv           an example triple per predicate
-    outputs/intermediate_results/070_evaluate/scores.json                    evaluation's suggestions for (none) rows
+    outputs/intermediate_results/070_evaluate/metrics.json                    evaluation's suggestions for (none) rows
     outputs/intermediate_results/070_evaluate/compared_triples.csv                    evaluation's partial pairs
     annotations/partial_pair_reviews.csv                                     your verdicts on them
     annotations/schema_additions.txt                                         the schema additions
@@ -97,7 +97,7 @@ DRAFTS_DIR = RESULTS_DIR / "050_annotate"
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
 SCHEMA_USED = RESULTS_DIR / "060_extract" / "schema_used.json"
 EXTRACTED = RESULTS_DIR / "060_extract" / "extracted_triples.csv"
-SCORES = RESULTS_DIR / "070_evaluate" / "scores.json"
+METRICS = RESULTS_DIR / "070_evaluate" / "metrics.json"
 COMPARED = RESULTS_DIR / "070_evaluate" / "compared_triples.csv"
 ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
 README = ANNOTATIONS_DIR / "README.md"
@@ -336,8 +336,8 @@ def mapping_view(data: Data) -> dict:
     extra = {line for r in repeated for line in r["lines"]}
     same_name = {kind: {label_key(n): n for n in names} for kind, names in gtt.items()}
     suggested = {}                                    # evaluation's last suggestions for (none) rows
-    if SCORES.exists():
-        for s in json.loads(SCORES.read_text(encoding="utf-8")).get("translation_suggestions", []):
+    if METRICS.exists():
+        for s in json.loads(METRICS.read_text(encoding="utf-8")).get("translation_suggestions", []):
             suggested[(s["kind"], label_key(s["name_from_past_or_crt_schema"]))] = s["name_in_gtt"]
     rows = [{**r, "repeated": r["_line"] in extra,
              "same_name_in_gtt": same_name.get(r["kind"], {}).get(label_key(r["name_from_past_or_crt_schema"])),
