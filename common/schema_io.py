@@ -58,6 +58,8 @@ vocabulary from the hand-built one and the ground truth.
                               source nor patterns, e.g. prose, or a repeated entry (the first
                               is kept) and the lines under it (text shape only)
     schema_text(schema)       the text shape, for a prompt
+    additions_text(header, entries)       the additions file, written by the annotation tool
+    ground_truth_source_problem(source, parts)   why an addition's source isn't fair, or None
 
 read_hand_schema(path) is read_schema for the hand-built text file.
 """
@@ -162,3 +164,63 @@ def schema_text(schema: dict) -> str:
         if by_predicate.get(name):
             lines.append(" " * width + "; ".join(by_predicate[name]))
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------
+# the additions file (annotations/schema_additions.txt)
+# --------------------------------------------------------------------------
+
+def ground_truth_source_problem(source: str, parts: dict) -> str | None:
+    """Why an addition whose source mentions the ground truth isn't fair to
+    use, or None. Such a source must say "tuning" and name its records by
+    pool position ("ground truth tuning #12, #15"), every one of them in the
+    tuning part: a name learned from a held-out record would let the schema
+    see the final exam. parts is {pool position: "tuning" | "held-out"}
+    (030's splits.json). Shared by step 060 (which leaves such an addition
+    out) and the annotation tool (which refuses to save it)."""
+    if "ground truth" not in source.lower():
+        return None
+    positions = [int(n) for n in re.findall(r"#(\d+)", source)]
+    if not positions:
+        return "says ground truth but names no record (write: ground truth tuning #12)"
+    if not re.search(r"\btuning\b", source.lower()):
+        return "names ground truth records but doesn't say tuning (write: ground truth tuning #12)"
+    unknown = [p for p in positions if p not in parts]
+    held = [p for p in positions if parts.get(p) == "held-out"]
+    if unknown:
+        return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position"
+    if held:
+        return "comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
+    return None
+
+
+def additions_header(path) -> str:
+    """The comments at the top of the additions file (everything before its
+    CLASSES line), kept as they are when the tool rewrites the entries."""
+    text = Path(path).read_text(encoding="utf-8-sig") if Path(path).exists() else ""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == "CLASSES":
+            return "\n".join(lines[:i]).rstrip() + "\n"
+    return text.rstrip() + "\n" if text.strip() else ""
+
+
+def additions_text(header: str, entries: list) -> str:
+    """The additions file: header, then the entries in the text shape.
+    entries: [{"kind": "entity class" | "predicate", "name", "definition",
+    "source", "patterns": [[subject class, object class], ...]}]."""
+    width = max([len(e["name"]) for e in entries] + [16]) + 2
+    pad = " " * width
+
+    def block(kind):
+        out = []
+        for e in (e for e in entries if e["kind"] == kind):
+            out.append(f"{e['name'].ljust(width)}{e['definition']}".rstrip())
+            if kind == "predicate" and e.get("patterns"):
+                out.append(pad + "; ".join(f"{s_} -> {o_}" for s_, o_ in e["patterns"]))
+            out.append(f"{pad}source: {e['source']}")
+        return out
+
+    lines = ([header.rstrip(), ""] if header.strip() else []) + ["CLASSES", "-------"] + block("entity class") \
+        + ["", "PREDICATES", "----------"] + block("predicate")
+    return "\n".join(lines) + "\n"

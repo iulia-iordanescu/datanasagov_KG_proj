@@ -83,7 +83,7 @@ def _new_names(chosen, rows, settings) -> tuple:
     learned there would let the schema see the final exam). On a run over
     every record, no ground truth record at all (names learned from records
     outside it are fair as they are). Otherwise, tuning records are counted
-    and named by pool position, for the "source: ground truth #N" line an
+    and named by pool position, for the "source: ground truth tuning #N" line an
     addition from them needs."""
     all_records = settings["extract_from"] == "all" and not settings["ids"].strip()
     listed = []
@@ -93,7 +93,7 @@ def _new_names(chosen, rows, settings) -> tuple:
         if not (recs and name):
             continue
         tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == "tuning")
-        source = ("ground truth " + ", ".join(f"#{p}" for p in tuning) if tuning else
+        source = ("ground truth tuning " + ", ".join(f"#{p}" for p in tuning) if tuning else
                   "extraction over records outside the ground truth")
         listed.append({"kind": kind, "name": name, "records": len(recs), "source": source})
     listed.sort(key=lambda x: (-x["records"], x["kind"], x["name"]))

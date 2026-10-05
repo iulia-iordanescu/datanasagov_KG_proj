@@ -8,7 +8,7 @@ Work made by a person, kept in Git because it can't be rebuilt by rerunning the 
 | `ground_truth_candidates.csv` | The ground truth candidates pool: 1,000 records drawn once (2026-09-21), in their shuffled order, each with its maintainer and the sampling group it was drawn from (`group`, `group_size`, `drawn_from_group`). | 030, 070 (the groups) |
 | `ground_truth_candidates.json` | How the pool was drawn: stratified by maintainer, seed 1000, 1,000 of 36,323 records, and each group's size and places. | nothing (a record of the draw) |
 | `schema_derived_from_manual_annotation.txt` | The hand-built schema: entity classes and predicates with a description each, and the patterns each predicate has been used in. Updated by hand as annotation goes: add each name you coin while annotating, with a definition (the annotation tool and step 050's report list the ones still missing). | 040 (to compare with), 050 (shown to the model; every row is checked against it), the annotation tool; 060 with `--schema`; 070 (the ground truth vocabulary) |
-| `schema_additions.txt` | Entity classes and predicates to add to the schema step 060 extracts with (e.g. a mentor's suggestions), each with a `source:` line saying where the idea came from; a name learned from the ground truth must come from tuning records, named by pool position (`source: ground truth #12`), or 060 leaves it out. Starts empty. Its layout: [instructions/060_extract.md](../instructions/060_extract.md). | 060 |
+| `schema_additions.txt` | Entity classes and predicates to add to the schema step 060 extracts with (e.g. a mentor's suggestions), each with a `source:` line saying where the idea came from; a name learned from the ground truth must come from tuning records, named by pool position (`source: ground truth tuning #12`), or 060 leaves it out. Easiest edited in the annotation tool (*Schema additions*), which keeps the layout right. Starts empty. Its layout: [instructions/060_extract.md](../instructions/060_extract.md). | 060 |
 | `name_mapping.csv` | The translation of the names of the schema 060 used into the ground truth vocabulary: one row per name (`kind`, `name_from_past_or_crt_schema`, `name_in_gtt`, `swap_subject_and_object`, `checked`, `definition_from_past_or_crt_schema`). 070 adds rows for new names (proposed by the model, `checked` = `no`); you check them. How: [instructions/070_evaluate.md](../instructions/070_evaluate.md). | 070 |
 | `partial_pair_reviews.csv` | Your verdicts on step 070's partial pairs (`same fact` / `not the same fact`), tuning records only, made with the annotation tool (*Partial pairs*). 070 never pairs two triples you marked `not the same fact`. Starts with its header only. | 070 |
 | `held_out_looks.csv` | One line per time the held-out part's numbers were looked at (`date`, `run_id`, `schema`, `held_out_records`: how many held-out records were scored). 070 adds a line with `--score_held_out true`; commit it. | 070 |
@@ -23,7 +23,7 @@ After running step 050, from the repository folder:
 py annotate.py
 ```
 
-It opens a page in your browser (Ctrl+C in the terminal stops it). It runs only on your computer: no internet, no model calls, nothing to install.
+It opens a page in your browser (Ctrl+C in the terminal stops it). On any view, **Help** at the top shows this file's section about that view. It runs only on your computer: no internet, no model calls, nothing to install.
 
 1. **Pick the batch** at the top of the page. The first time you open a draft batch, the tool copies it into `ground_truth/`, renamed by its batch number (`outputs/intermediate_results/050_annotate/drafted_triples_batch1.csv` → `annotations/ground_truth/batch_001.csv`). From then on you're editing that copy; the draft in `outputs/` is never changed.
 2. **Correct each record**: its heading shows its pool position and whether it's a **tuning** or **held-out** record (a name you learn from a held-out record must not go into `schema_additions.txt`). Read its text first (the source text of each row is highlighted in it; the row you're on is darker), then fix, delete (🗑) or add (+) rows. Entity classes and predicates suggest the names of the ground truth vocabulary as you type (the hand-built schema's, plus any already coined in the ground truth); you can still type a new one. A name not in the hand-built schema stays flagged (it could be a typo), and the page lists every such name above the batches, so you can add it, with a definition, to the hand-built schema. To set a source text, select the passage in the text and press **Use selection**. Every change is saved to the file at once, and the checks under each row update as you go (✖ must be fixed, ⚑ worth a look).
@@ -31,6 +31,8 @@ It opens a page in your browser (Ctrl+C in the terminal stops it). It runs only 
 4. **Commit** the file to Git, so the work is safe.
 
 The tool also opens the files already in `ground_truth/`, like `batch_000.csv`. The first time it saves a file, it rewrites it in its own plain format: the same rows and values, but the CSV quoting may change, so Git can show more lines changed than you edited. Deleting every row of a record keeps one row holding only its id, which means "annotated, states no facts". The draft's `flags` column isn't kept, since the tool recomputes the checks.
+
+**Without the tool**, the same result by hand: copy the draft batch into `ground_truth/` under its new name, correct it in any editor (the `flags` column can stay; it's ignored), set `all_facts_extracted` to `1` on every row of each finished record, and commit. Never correct the file in `outputs/`: it can be deleted and rebuilt, and your corrections would go with it.
 
 ### Checking the translation table
 
@@ -51,7 +53,14 @@ Every change is saved to `name_mapping.csv` at once. The tool can't add or reord
 
 Press **Partial pairs** at the top of the page, after a run of step 070. A partial pair is a ground truth triple and an extracted triple whose predicates agree but whose subjects or objects agree only loosely: one contained in the other as whole words, either way round (`MODIS` and `Moderate Resolution Imaging Spectroradiometer (MODIS)`, but also `MODIS` and `MODIS Terra`, a different satellite). Each card shows both triples (the extracted one translated into the ground truth vocabulary) and, unfolded, the record's text. Press **Same fact** or **Not the same fact**; **Take back** removes a verdict. Every verdict is saved to `partial_pair_reviews.csv` at once; rerun step 070 to see its effect. Only tuning records are shown: reviewing held-out pairs would mean looking at held-out results.
 
-**Without the tool**, the same result by hand: copy the draft batch into `ground_truth/` under its new name, correct it in any editor (the `flags` column can stay; it's ignored), set `all_facts_extracted` to `1` on every row of each finished record, and commit. Never correct the file in `outputs/`: it can be deleted and rebuilt, and your corrections would go with it.
+### Adding to the schema additions
+
+Press **Schema additions** at the top of the page. It lists the entries of `schema_additions.txt` (*Edit*, *Delete*) and opens a form with **+ Add an entry**: kind, name (one word: entity classes in CamelCase, predicates in UPPER_SNAKE_CASE), a one-line definition, patterns for a predicate (`Subject -> Object; …`) and the source. What's wrong is shown as you type, and the tool won't save an entry that is wrong: no definition, no source, or a source naming the ground truth that doesn't say `tuning` or names a held-out record (`source: ground truth tuning #12, #15`; the same check step 060 makes). The comments at the top of the file are kept.
+
+Two shortcuts:
+
+- **On a tuning record's page:** *Add a name to the schema additions* opens the form with `source: ground truth tuning #<its position>` filled in. On a held-out record the button is greyed out.
+- **Names outside the schema:** below the entries, the names extraction's last run used that the current schema doesn't have (held-out records never counted), each with *Add*, which fills in the kind, name and source. You write the definition.
 
 ## The ground truth files
 

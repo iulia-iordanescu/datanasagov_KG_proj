@@ -13,7 +13,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `010_harvest.py` … `070_evaluate.py` | The pipeline steps, run in order, one short script each: its inputs, its settings, and its main moves | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step) |
 | `010_harvest/` … `070_evaluate/` | The code behind each step's script, one file per stage where a stage is big enough | the step's guide, section *How it works* |
 | `040_induce_schema/prompts/` … `070_evaluate/prompts/`, `common/prompts/` | Every prompt the steps send to the AI model, each a plain text file you can open and read (12 in all; `common/prompts/` holds the two shared by 050 and 060) | the step's guide, section *Prompts* |
-| `annotate.py`, `annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth, and for checking the translation table (`annotations/name_mapping.csv`) | [`annotations/README.md`](annotations/README.md) |
+| `annotate.py`, `annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth, checking the translation table (`annotations/name_mapping.csv`), reviewing partial pairs and editing the schema additions | [`annotations/README.md`](annotations/README.md) |
 | `models.py` | Lists the AI models Ask Sage shows your account: `py models.py`. Free; a listed model may still refuse you. Give a model's name to a step's `model` setting | [`docs/running_on_nasa_laptop.md`](docs/running_on_nasa_laptop.md), *Choosing a model* |
 | `audit.py` | Answers "where did this come from?": `py audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`instructions/000_audit.md`](instructions/000_audit.md) |
 | `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …) | the opening comment of each file, for people reading the code |
@@ -66,7 +66,7 @@ Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to
 | `070_evaluate` | Scores extraction against the ground truth: precision, recall, schema ceiling, each with its margin of error | 020, 030, 060, `annotations/` (the pool, the hand-built schema, the ground truth, `name_mapping.csv`) | `scores.json`, `per_record.md`, `matches.csv`; adds lines to `annotations/name_mapping.csv` and `held_out_looks.csv` | built; tested on a hand-made 060 output |
 | `080_build_graph` | Builds the graph | 020, 060 | | not built |
 
-Two helpers aren't steps: `py annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches, and for checking the translation table; and `py audit.py <record id>`, which traces a record back to the download that first brought it in. Code shared by the steps is in `common/`; files made by a person are in `annotations/`.
+Two helpers aren't steps: `py annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches, checking the translation table, reviewing partial pairs and editing the schema additions; and `py audit.py <record id>`, which traces a record back to the download that first brought it in. Code shared by the steps is in `common/`; files made by a person are in `annotations/`.
 
 ## Records and fields
 

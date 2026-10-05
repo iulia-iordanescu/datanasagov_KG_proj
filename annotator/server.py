@@ -18,9 +18,13 @@ What it reads
     outputs/intermediate_results/070_evaluate/scores.json                    evaluation's suggestions for (none) rows
     outputs/intermediate_results/070_evaluate/matches.csv                    evaluation's partial pairs
     annotations/partial_pair_reviews.csv                                     your verdicts on them
+    annotations/schema_additions.txt                                         the schema additions
+    annotations/README.md                                                    the Help shown on the page
+    outputs/intermediate_results/060_extract/extracted_triples_details.json  extraction's names outside the schema
 
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
-annotations/name_mapping.csv and annotations/partial_pair_reviews.csv.
+annotations/name_mapping.csv, annotations/partial_pair_reviews.csv and
+annotations/schema_additions.txt.
     - Opening draft batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
       then on that copy is what's shown and edited. The draft in outputs/ is
@@ -37,6 +41,19 @@ or reordered here, and the only rows that can be removed are a name's
 repeated ones (common/name_mapping.repeats), and a save keeps any rows step 070 added since
 the page was loaded; if the rows the page shows have changed in the file, the
 save is refused, so nothing is overwritten.
+
+Schema additions: the entries of annotations/schema_additions.txt, to add,
+edit or delete through a form, so the file's layout can't go wrong; the
+comments at its top are kept. Every entry needs a definition and a source;
+a source naming the ground truth must say "tuning" and name tuning records
+only (common/schema_io.ground_truth_source_problem, the same check step 060
+applies). A file with lines the layout can't read is not rewritten (fix it
+by hand first). Extraction's last list of names outside the schema is shown
+alongside, each name ready to add with its source.
+
+Help: the page's Help button shows the section of annotations/README.md
+about the view you're on (HELP_SECTIONS), so the tool's explanation lives in
+one place.
 
 Partial pairs (common/partial_reviews.py): evaluation's last run's partial
 pairs of TUNING records, each with both triples and the record's text, for a
@@ -62,14 +79,15 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from common.chunking import full_text
-from common.files import write_csv
+from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, vocabulary)
 from common.name_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  is_stale, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
-from common.schema_io import read_hand_schema
+from common.schema_io import additions_header, additions_text, ground_truth_source_problem, read_hand_schema, \
+    read_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, label_key
@@ -81,6 +99,14 @@ SCHEMA_USED = RESULTS_DIR / "060_extract" / "schema_used.json"
 EXTRACTED = RESULTS_DIR / "060_extract" / "extracted_triples.csv"
 SCORES = RESULTS_DIR / "070_evaluate" / "scores.json"
 MATCHES = RESULTS_DIR / "070_evaluate" / "matches.csv"
+ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
+README = ANNOTATIONS_DIR / "README.md"
+#: The heading of annotations/README.md that explains each view of the page.
+HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
+                 "mapping": "### Checking the translation table",
+                 "partial": "### Reviewing partial pairs",
+                 "additions": "### Adding to the schema additions"}
+EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
 PAGE = Path(__file__).with_name("page.html")
@@ -369,6 +395,109 @@ def delete_mapping_row(line: int, kind: str, name: str) -> None:
 
 
 # --------------------------------------------------------------------------
+# help
+# --------------------------------------------------------------------------
+
+def help_text(view: str) -> dict:
+    """The README's section for a view, as Markdown: from its heading to the
+    next heading."""
+    head = HELP_SECTIONS.get(view)
+    if head is None:
+        raise ValueError(f"no help for {view!r}")
+    text = README.read_text(encoding="utf-8")
+    i = text.index(head)
+    nxt = [j for j in (text.find("\n## ", i + len(head)), text.find("\n### ", i + len(head))) if j != -1]
+    return {"file": f"annotations/{README.name}", "markdown": text[i:min(nxt) if nxt else len(text)].strip()}
+
+
+# --------------------------------------------------------------------------
+# schema additions
+# --------------------------------------------------------------------------
+
+KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
+
+
+def _additions() -> tuple:
+    """(entries, unread lines) of the additions file."""
+    if not ADDITIONS.exists():
+        return [], []
+    schema = read_schema(ADDITIONS)
+    entries = []
+    for kind, key in KIND_KEYS.items():
+        for name, definition in schema[key].items():
+            entries.append({"kind": kind, "name": name, "definition": definition,
+                            "source": schema["sources"][key].get(name, ""),
+                            "patterns": [[s_, o_] for s_, p_, o_ in schema["patterns"] if p_ == name]})
+    return entries, schema["unread"]
+
+
+def additions_view(data: Data) -> dict:
+    entries, unread = _additions()
+    used = {}
+    if SCHEMA_USED.exists():
+        for kind, key in KIND_KEYS.items():
+            used[kind] = {label_key(e["name"]): e["name"]
+                          for e in json.loads(SCHEMA_USED.read_text(encoding="utf-8")).get(key, [])
+                          if e.get("from") != "additions"}
+    names = []
+    if EXTRACTION_DETAILS.exists():
+        details = json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
+        have = {(e["kind"], label_key(e["name"])) for e in entries}
+        names = [{**n, "added": (n["kind"], label_key(n["name"])) in have}
+                 for n in (details.get("new_names") or {}).get("names", [])]
+    return {"file": f"annotations/{ADDITIONS.name}", "entries": entries, "unread": unread,
+            "names": names, "counted_over": (json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
+                                             .get("new_names") or {}).get("counted_over")
+            if EXTRACTION_DETAILS.exists() else None,
+            "schema_names": {k: sorted(v.values()) for k, v in used.items()}}
+
+
+def check_addition(data: Data, e: dict) -> str | None:
+    """What's wrong with one entry, or None."""
+    if e.get("kind") not in KIND_KEYS:
+        return "kind must be entity class or predicate"
+    name = str(e.get("name") or "").strip()
+    if not name or any(c.isspace() for c in name):
+        return "the name must be one word, with no spaces (e.g. SpaceMission, PART_OF_MISSION)"
+    if not str(e.get("definition") or "").strip():
+        return f"{name} (additions file) needs a one-line definition"
+    source = str(e.get("source") or "").strip()
+    if not source:
+        return f"{name} (additions file) needs a source: where the idea came from"
+    parts = {data.positions[i]: part for i, part in data.parts.items() if i in data.positions}
+    problem = ground_truth_source_problem(source, parts)
+    if problem:
+        return f"{name} (additions file): its source {problem}"
+    for pair in e.get("patterns") or []:
+        if len(pair) != 2 or not all(str(x).strip() and not any(c.isspace() for c in str(x).strip()) for x in pair):
+            return f"{name} (additions file): each pattern is two entity classes, one word each (Subject -> Object)"
+    return None
+
+
+def save_additions(data: Data, entries: list) -> None:
+    """Rewrite the additions file with these entries, keeping its comments."""
+    _, unread = _additions()
+    if unread:
+        raise ValueError(f"{ADDITIONS.name} has line(s) its layout can't read ({'; '.join(unread[:3])}): fix them "
+                         f"by hand first, so saving here doesn't lose them")
+    seen = set()
+    clean = []
+    for e in entries:
+        problem = check_addition(data, e)
+        if problem:
+            raise ValueError(problem)
+        key = (e["kind"], label_key(e["name"]))
+        if key in seen:
+            raise ValueError(f"{e['name']} (additions file) is there twice")
+        seen.add(key)
+        clean.append({"kind": e["kind"], "name": e["name"].strip(), "definition": " ".join(e["definition"].split()),
+                      "source": " ".join(e["source"].split()),
+                      "patterns": [[str(a).strip(), str(b).strip()] for a, b in e.get("patterns") or []]
+                      if e["kind"] == "predicate" else []})
+    write_text(ADDITIONS, additions_text(additions_header(ADDITIONS), clean))
+
+
+# --------------------------------------------------------------------------
 # partial pairs
 # --------------------------------------------------------------------------
 
@@ -457,6 +586,10 @@ def make_handler(data: Data):
                     self._json(mapping_view(data))
                 elif url.path == "/api/partial":
                     self._json(partial_view(data))
+                elif url.path == "/api/help":
+                    self._json(help_text(q["view"][0]))
+                elif url.path == "/api/additions":
+                    self._json(additions_view(data))
                 elif url.path == "/api/batch":
                     n = int(q["n"][0])
                     self._json(batch_view(data, n, open_batch(n)))
@@ -474,6 +607,11 @@ def make_handler(data: Data):
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
                     self._json({"saved": True})
+                elif url.path == "/api/additions/save":
+                    save_additions(data, body["entries"])
+                    self._json({"saved": True})
+                elif url.path == "/api/additions/check":
+                    self._json({"problem": check_addition(data, body)})
                 elif url.path == "/api/partial/review":
                     save_review(data, body)
                     self._json({"saved": True})

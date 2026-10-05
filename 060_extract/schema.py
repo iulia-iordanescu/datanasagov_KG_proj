@@ -20,11 +20,13 @@ An addition learned from the ground truth must come from TUNING records only
 exam). Its source line says so and names the records by pool position, as the
 annotation tool shows them:
 
-    source: ground truth #12, #15
+    source: ground truth tuning #12, #15
 
-Any source mentioning "ground truth" is checked against splits.json (030):
-an addition naming a held-out record, a position not in the pool, or no
-record at all is left out, with a note shown before paying.
+The word "tuning" is required too, as a check on the person: any source
+mentioning "ground truth" is checked against splits.json (030), and an
+addition that doesn't say "tuning", names a held-out record, a position not
+in the pool, or no record at all is left out, with a note shown before
+paying.
 
 The merged schema is what the model is shown, what every row is checked
 against, and what is written to schema_used.json, so 070 (and 080, once
@@ -33,13 +35,12 @@ built) read exactly the schema this run used.
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.audit import log, ref_path
 from common.report import named
-from common.schema_io import read_schema, schema_text
+from common.schema_io import ground_truth_source_problem, read_schema, schema_text
 from common.triples_io import label_key
 from common.validate import SchemaNames
 
@@ -57,24 +58,6 @@ class Schema:
     notes: list = field(default_factory=list)      # shown before paying, and in the report
     left_out: list = field(default_factory=list)   # {"kind", "name", "kept"}: additions whose name is already there
     not_tuning: list = field(default_factory=list) # {"kind", "name", "source", "why"}: from ground truth, not tuning only
-
-
-def _not_tuning(source: str, parts: dict) -> str | None:
-    """Why an addition whose source mentions the ground truth can't be used,
-    or None if every record it names is in the tuning part. parts is
-    {pool position: "tuning" | "held-out"}."""
-    if "ground truth" not in source.lower():
-        return None
-    positions = [int(n) for n in re.findall(r"#(\d+)", source)]
-    if not positions:
-        return "says ground truth but names no record (write the pool positions, e.g. #12)"
-    unknown = [p for p in positions if p not in parts]
-    held = [p for p in positions if parts.get(p) == "held-out"]
-    if unknown:
-        return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position"
-    if held:
-        return "comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
-    return None
 
 
 def _source(came_from: str | None) -> str:
@@ -99,7 +82,7 @@ def load_schema(inputs: dict) -> Schema:
     for kind in KINDS:
         have = {label_key(n): n for n in merged[kind]}
         for name, definition in extra[kind].items():
-            why = _not_tuning(extra["sources"][kind].get(name, ""), parts)
+            why = ground_truth_source_problem(extra["sources"][kind].get(name, ""), parts)
             if why:
                 result.not_tuning.append({"kind": kind, "name": name,
                                           "source": extra["sources"][kind][name], "why": why})
