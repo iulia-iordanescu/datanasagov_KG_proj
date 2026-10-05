@@ -63,7 +63,7 @@ Each step reads what the one before it wrote, so run them in this order. From th
 | 060 extract | `py 060_extract/run.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
 | 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when 060's schema has names not yet in `annotations/name_mapping.csv`; then check those rows and run it again) |
 
-Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`instructions/<step>.md`) says what every warning means and what to do.
+Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`<step>/<step>.md`) says what every warning means and what to do.
 
 ## 5. The steps that cost money: 040, 050, 060, 070
 
@@ -132,7 +132,7 @@ Any record, triple instance or schema entry can be traced back to the API reques
 py helpers/audit.py <record id>
 ```
 
-See `instructions/000_audit.md`.
+See `helpers/audit.md`.
 
 ## Added later
 

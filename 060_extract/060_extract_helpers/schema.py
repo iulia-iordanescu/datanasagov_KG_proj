@@ -70,7 +70,7 @@ def load_schema(inputs: dict) -> Schema:
     result = Schema(files={"schema": ref_path(inputs["schema"]), "additions": ref_path(inputs["additions"])})
     if not base["entity_classes"] or not base["predicates"]:
         raise ValueError(f"{Path(inputs['schema']).name} has no entity classes or no predicates: "
-                         f"is it a schema? (see instructions/060_extract.md for the shapes it can have)")
+                         f"is it a schema? (see 060_extract/060_extract.md for the shapes it can have)")
 
     splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
     parts = {r["position"]: r.get("part") for r in splits["ground_truth_candidates"]["records"]}

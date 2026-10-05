@@ -13,7 +13,7 @@ docs/terminology.md.
 Reads:   records.jsonl (020), splits.json (030), and, to compare with,
          annotations/schema_derived_from_manual_annotation.txt
 Writes:  the_schema.json, induction_evidence.json
-Details: instructions/040_induce_schema.md
+Details: 040_induce_schema/040_induce_schema.md
 """
 import sys
 from pathlib import Path

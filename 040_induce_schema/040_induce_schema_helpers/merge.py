@@ -89,7 +89,7 @@ def merge_labels(labels, triples, calls):
             raise ValueError(f"{len(sent)} {kind} labels are more than one call takes "
                              f"({MAX_LABELS_ONE_CALL}). Merging them in separate groups would let "
                              f"synonyms miss each other; group them by meaning first (see "
-                             f"instructions/040_induce_schema.md, Known limits).")
+                             f"040_induce_schema/040_induce_schema.md, Known limits).")
         issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": []}
         mapping = {label: label for label in sent}
         if len(sent) > 1:

@@ -65,9 +65,9 @@ The draft batch's columns are the ground truth's, plus two:
 | `source_text` | The passage of the record's text that states it, as the model copied it. `(record structure)` on the DESCRIBES row. |
 | `all_facts_extracted` | Always `0` in a draft: you set it to 1 (the tool's "All facts extracted" box) once a record is finished. |
 | `flags` | Every check the row failed (see *Checks on each row*). Not kept in the ground truth: the tool recomputes the checks as you edit. |
-| `origin` | Where the row came from: `020_clean/records.jsonl#<record id>` (see `instructions/000_audit.md`). |
+| `origin` | Where the row came from: `020_clean/records.jsonl#<record id>` (see `helpers/audit.md`). |
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
 ## Settings
 
@@ -190,7 +190,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each row of a draft batch has an `origin` column naming its record in 020's `records.jsonl`. The ground truth files carry none: they are made by a person, so a trace stops there.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`). It searches only the files a step's last run wrote, so for 050 the newest draft batch; a record in an older one is found through 030's `splits.json`.
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`). It searches only the files a step's last run wrote, so for 050 the newest draft batch; a record in an older one is found through 030's `splits.json`.
 
 ## Known limits
 

@@ -68,7 +68,7 @@ In `outputs/intermediate_results/070_evaluate/`:
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`. The report shows the numbers, the group table and every warning: read it first.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`. The report shows the numbers, the group table and every warning: read it first.
 
 **Two files in `annotations/` that 070 adds to**, the only exceptions to "no step writes into `annotations/`". 070 only ever **adds** lines at their end; a line already there is never changed or deleted:
 
@@ -219,7 +219,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, the model call's retries (if any), each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each row of `compared_triples.csv` has an `origin` column naming the 060 row it compares (`060_extract/extracted_triples.csv#<position>`) and the ground truth row (`annotations/ground_truth/batch_000.csv#<position>`); the ground truth is made by a person, so a trace stops there.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`).
 - **Held-out looks.** `annotations/held_out_looks.csv` keeps one line per look at the held-out part, in Git.
 
 ## Known limits

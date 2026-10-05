@@ -67,11 +67,11 @@ In `outputs/intermediate_results/040_induce_schema/`:
 |---|---|
 | `support` | The schema entry's support: how many different texts it was found in. |
 | `maintainers` | The maintainers those texts came from. Support from many is a catalog-wide regularity; support from one may be that maintainer's house style. |
-| `texts`, `_origin` | The records whose texts it was found in (see `instructions/000_audit.md`). |
+| `texts`, `_origin` | The records whose texts it was found in (see `helpers/audit.md`). |
 | `examples` | Entity classes only: the component instances that most often got the entity class, picked by code. |
 | `deferred` | Every schema entry found but not in the schema: support below `min_support`, judged too vague by the model, or a pattern through a schema entry that isn't in the schema. |
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
 ## Settings
 
@@ -122,7 +122,7 @@ Then, for the report only, **the induced schema is put beside the hand-built one
 
 The code: `040_induce_schema/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `040_induce_schema/040_induce_schema_helpers/` holds `moves.py` (the moves, and writing the results), one file per stage (above) and `compare.py`; `040_induce_schema/040_induce_schema_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/validate.py` and `common/common_helpers/text_match.py` (the checks), `common/common_helpers/schema_io.py` (reading the hand-built schema), `common/common_helpers/chunking.py` (text pieces), `common/common_helpers/cache.py` (the answer cache), `common/common_helpers/llm.py` (the model).
 
-**Why "undefined" is one of the maintainers learned from:** it is the 5th largest (989 records with no maintainer); see `instructions/030_split.md`, *Why "undefined" counts as a maintainer*.
+**Why "undefined" is one of the maintainers learned from:** it is the 5th largest (989 records with no maintainer); see `030_split/030_split.md`, *Why "undefined" counts as a maintainer*.
 
 ## Prompts
 
@@ -176,7 +176,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each schema entry's `_origin` names the 020 records whose texts it was found in, e.g. `020_clean/records.jsonl#a1b2…`; `induction_evidence.json` keeps every text's triple instances and labels.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`). A schema entry can be traced by its name: `py helpers/audit.py Instrument`.
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`). A schema entry can be traced by its name: `py helpers/audit.py Instrument`.
 
 ## Known limits
 
@@ -185,5 +185,5 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 - **The labels depend a little on the order component instances are labeled in.** Most common first, so the order is meaningful, not arbitrary, but a different order could coin a different first label for an idea.
 - **One call per kind to merge labels.** Up to 800 labels of one kind; above that the step stops rather than merging in groups where synonyms could miss each other. At that size, labels would first need grouping by meaning (e.g. a local embedding model), which isn't built.
 - **What the sample can see.** 150 texts from the 10 largest maintainers (91.6% of the catalog's records). An entity class used by 1% of the catalog's records is found in the sample with probability 78%; by 0.5%, 53%. 070's schema ceiling shows whether what was missed matters for the ground truth.
-- **min_support is not yet chosen.** It is 1 (keep everything). To choose it: run 040, 060 and 070 with other values and compare the **tuning part's** scores, never the held-out part's (see `instructions/070_evaluate.md`). How to weigh precision against recall when choosing is still open.
+- **min_support is not yet chosen.** It is 1 (keep everything). To choose it: run 040, 060 and 070 with other values and compare the **tuning part's** scores, never the held-out part's (see `070_evaluate/070_evaluate.md`). How to weigh precision against recall when choosing is still open.
 - **The model varies.** Rerunning with an empty cache can give different triple instances, labels and definitions; the cache is what makes a rerun reproducible.

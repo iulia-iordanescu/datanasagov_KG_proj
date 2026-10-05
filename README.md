@@ -10,12 +10,14 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 
 | File or folder | What it is | Explained in |
 |---|---|---|
-| `010_harvest/` … `070_evaluate/` | One folder per pipeline step, run in order. Each holds `run.py`, the step's short script (its inputs, its settings, and its main moves, one line each), which you run from the repository folder: `py 010_harvest/run.py`; `<step>_helpers/`, the code behind it (`moves.py` ties the stages together, one file per stage where a stage is big enough); and, for the steps that call the model, `<step>_prompts/` | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step); *How it works* for the code |
+| `010_harvest/` … `070_evaluate/` | One folder per pipeline step, run in order. Each holds `run.py`, the step's short script (its inputs, its settings, and its main moves, one line each), which you run from the repository folder: `py 010_harvest/run.py`; `<step>.md`, the step's guide; `<step>_helpers/`, the code behind it (`moves.py` ties the stages together, one file per stage where a stage is big enough); and, for the steps that call the model, `<step>_prompts/` | the step's guide |
+| `<step>/<step>.md` | The step's guide, e.g. `040_induce_schema/040_induce_schema.md`. Every guide has the same sections in the same order: Purpose, To do (everything you have to do for that step: what every step needs, then what this one needs), Inputs, Outputs, Settings, How to run, How it works, Prompts, Checks and warnings, Audit trail, Known limits (a section that doesn't apply says so in one line) | — |
 | `040_induce_schema/040_induce_schema_prompts/` … `070_evaluate/070_evaluate_prompts/`, `common/common_prompts/` | Every prompt the steps send to the AI model, each a plain text file you can open and read (13 in all; `common/common_prompts/` holds the two shared by 050 and 060) | the step's guide, section *Prompts* |
 | `helpers/` | Everything you run that isn't a pipeline step: the three tools below | each tool's row |
 | `helpers/annotate.py`, `helpers/annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth, checking the translation table (`annotations/name_mapping.csv`), reviewing partial pairs and editing the schema additions | [`annotations/README.md`](annotations/README.md) |
 | `helpers/models.py` | Lists the AI models Ask Sage shows your account: `py helpers/models.py`. Free; a listed model may still refuse you. Give a model's name to a step's `model` setting | [`docs/running_on_nasa_laptop.md`](docs/running_on_nasa_laptop.md), *Choosing a model* |
-| `helpers/audit.py` | Answers "where did this come from?": `py helpers/audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`instructions/000_audit.md`](instructions/000_audit.md) |
+| `helpers/audit.md` | Reading a run's report and log, and tracing a record back to its download | — |
+| `helpers/audit.py` | Answers "where did this come from?": `py helpers/audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`helpers/audit.md`](helpers/audit.md) |
 | `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …), in `common/common_helpers/`, and the prompts shared by 050 and 060, in `common/common_prompts/` | the opening comment of each file, for people reading the code |
 
 **What you read or edit**
@@ -23,7 +25,6 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is | Explained in |
 |---|---|---|
 | `README.md` | This page: what's where, and why the pipeline is built the way it is | — |
-| `instructions/` | One guide per step (`010_harvest.md` … `070_evaluate.md`), each with the same sections in the same order: Purpose, To do (everything you have to do for that step: what every step needs, then what this one needs), Inputs, Outputs, Settings, How to run, How it works, Prompts, Checks and warnings, Audit trail, Known limits (a section that doesn't apply says so in one line). Plus `000_audit.md`: reading a run's report and log, and tracing records | — |
 | `docs/terminology.md` | What every word used here means | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
@@ -36,8 +37,8 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is | Explained in |
 |---|---|---|
 | `outputs/intermediate_results/<step>/` | What each step wrote: its output files, `_manifest.json` (which files went in and came out, with their hashes), and, for steps that call the model, `cache/` (every paid answer; don't delete it) | the step's guide, section *Outputs* |
-| `outputs/reports/<run id>.md` | One page per run of a step: what it read and wrote, its numbers, its warnings | [`instructions/000_audit.md`](instructions/000_audit.md) |
-| `outputs/logs/<run id>.log` | Everything a run did, line by line, and why it failed if it did | [`instructions/000_audit.md`](instructions/000_audit.md) |
+| `outputs/reports/<run id>.md` | One page per run of a step: what it read and wrote, its numbers, its warnings | [`helpers/audit.md`](helpers/audit.md) |
+| `outputs/logs/<run id>.log` | Everything a run did, line by line, and why it failed if it did | [`helpers/audit.md`](helpers/audit.md) |
 | `.env` | Your Ask Sage email and key | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md), part 6 |
 | `.myvenv/` | The project's Python environment | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md) |
 | `__pycache__/` (in several folders) | Python's compiled copies of the code, made automatically when it runs; safe to delete | — |
@@ -47,14 +48,14 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is |
 |---|---|
 | `to_be_reshaped/` | The scripts from before the pipeline, kept as reference while their work moves into the steps. Never run. |
-| `docs/pipeline_redesign_plan.md` | An earlier write-up of the pipeline's design, written before the pipeline was built and kept as background. It isn't kept up to date: where it differs from the guides in `instructions/` or the code (file names, folders, step details), those are right. |
+| `docs/pipeline_redesign_plan.md` | An earlier write-up of the pipeline's design, written before the pipeline was built and kept as background. It isn't kept up to date: where it differs from the steps' guides (`<step>/<step>.md`) or the code (file names, folders, step details), those are right. |
 | `docs/v0_schema.txt` | An early version of the schema. Nothing reads it. |
 | `.vscode/settings.json` | A VS Code setting: its file list hides Python's `__pycache__/` folders (compiled copies Python makes by itself). Nothing is deleted. |
 | `.gitattributes`, `.gitignore` | Git settings: plain line endings on every computer, and the files Git leaves out (`outputs/`, `.env`, `.myvenv/`, …). |
 
 ## Pipeline overview
 
-Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from the short script in its folder, run from the repository folder (`py 010_harvest/run.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Details of each step are in its guide, `instructions/<step>.md`.
+Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from the short script in its folder, run from the repository folder (`py 010_harvest/run.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Details of each step are in its guide, `<step>/<step>.md`.
 
 | Step | What it does | Reads | Writes | Status |
 |---|---|---|---|---|
@@ -131,7 +132,7 @@ Where phase 1 merely copied field values into triples, phase 2 has to extract fa
 
 Everything starts from one download of the whole catalog through data.nasa.gov's public API: the metadata only (titles, descriptions, maintainers, tags, formats, links), never the scientific data the records point to. A harvest is a snapshot of the catalog on the day it was taken, and the date travels with every later result. Pages are fetched in a fixed order (oldest record first), so records added or edited during the harvest can't shift the pages; each page is saved as it arrives, so an interrupted harvest resumes where it stopped; and each page keeps the request that returned it, which is where every record's history starts.
 
-Details: [`instructions/010_harvest.md`](instructions/010_harvest.md).
+Details: [`010_harvest/010_harvest.md`](010_harvest/010_harvest.md).
 
 ### Cleaning (step 020)
 
@@ -139,7 +140,7 @@ The `notes` and `title` fields are cleaned before anything reads them. In the ha
 
 The same step also joins maintainer spellings, e.g. "Kristan Morgan" and "KRISTAN MORGAN" are one person; left apart they count as two communities everywhere downstream. Names matching once case, punctuation, word order and titles (Dr., Ph.D.) are ignored are treated as one, which took the 434 spellings in the harvest of 2026-09-27 down to 422 maintainers. Names differing by a middle initial are left apart, since merging those needs a rule nobody has chosen.
 
-Details: [`instructions/020_clean.md`](instructions/020_clean.md).
+Details: [`020_clean/020_clean.md`](020_clean/020_clean.md).
 
 ### Splitting (step 030): two samples that never overlap
 
@@ -152,13 +153,13 @@ Both orders are fixed, so taking more records later keeps the ones already taken
 
 030 also splits the pool into a **tuning part** and a **held-out part** for scoring (step 070). While improving the pipeline, only the tuning part's scores are looked at; the held-out part's scores are looked at only at the end, and that is the number reported. Otherwise the pipeline would get tuned to the very records it is scored on, and its scores would flatter it. From pool position 6 on, every third record is held out; positions 0–5, from which the hand-built schema was written, are tuning.
 
-Details: [`instructions/030_split.md`](instructions/030_split.md).
+Details: [`030_split/030_split.md`](030_split/030_split.md).
 
 ### Schema induction (step 040)
 
 The schema is derived from the catalog rather than written in advance. The data-driven method to induce the schema follows AutoSchemaKG ([arXiv:2505.23628](https://arxiv.org/abs/2505.23628)): take a sample of records (the first 15 induction candidates of each of the 10 largest maintainers, who together held 91.6% of the catalog's records in the harvest of 2026-09-27), extract facts with no schema imposed, give every extracted name a general label, merge the labels that mean one thing, and count how many distinct records produced each candidate. The model also says what kind of thing each record describes (a dataset, a web tool, a document), so the schema always has entity classes for that. Every candidate is kept with its evidence; a cutoff, to be chosen from step 070's scores, decides which enter the schema (today the cutoff is 1 record, so every candidate enters except those the model finds too vague to define, and the patterns that use them). Support is counted in distinct records and distinct maintainers, so a pattern backed by one maintainer's house style is visible as such rather than passing as a catalog-wide regularity. What code can check, it checks rather than trusting the model: each extracted fact's source text must really be in its record's text, or the fact isn't counted, and the counts, the patterns' entity classes and each entity class's examples are computed by code.
 
-Details: [`instructions/040_induce_schema.md`](instructions/040_induce_schema.md).
+Details: [`040_induce_schema/040_induce_schema.md`](040_induce_schema/040_induce_schema.md).
 
 ### Annotation (step 050): the ground truth
 
@@ -170,13 +171,13 @@ Annotating is slow, and the rules had to be worked out on the records themselves
 
 Writing every triple by hand is the bottleneck, so step 050 drafts the triple instances of the next few records (10 per batch by default), asking the model for every fact the text states, in the hand-built schema's names where they fit. A person then corrects each draft batch in the annotation tool (`py helpers/annotate.py`), a page in the browser that shows each record's text with its triple instances and saves every change into `annotations/ground_truth/`. The draft is not ground truth: a human keeps, edits, deletes or adds, driven by the record's text. Two biases remain, since the ground truth starts as a model's draft: accepting a wrong row is easy, and a fact the model missed is unlikely to be added. So any score against this ground truth is reported as such: drafted by a model and corrected by a person, not written from scratch.
 
-Details: [`instructions/050_annotate.md`](instructions/050_annotate.md).
+Details: [`050_annotate/050_annotate.md`](050_annotate/050_annotate.md).
 
 ### Extraction (step 060)
 
 Step 060 extracts, from each record's text, only the facts the schema can express, in only the schema's names. The schema is 040's induced one by default, plus any entity classes and predicates added by hand (`annotations/schema_additions.txt`, e.g. on a mentor's advice, each noting where the idea came from); any other schema can be given instead. Code checks every triple instance: one whose source text isn't in the record's text (it may be invented), or that uses a name the schema doesn't have, is removed with the reason; the rest are kept. The names outside the schema the model keeps reaching for are listed, as candidates for the schema. Until the schema is final, 060 extracts only from the finished ground truth records, which is all step 070 can score; afterwards, from every record.
 
-Details: [`instructions/060_extract.md`](instructions/060_extract.md).
+Details: [`060_extract/060_extract.md`](060_extract/060_extract.md).
 
 ### Evaluation (step 070)
 
@@ -186,7 +187,7 @@ Step 070 first translates 060's names into the ground truth's, through a table a
 
 Every number comes with its **margin of error**, computed by redrawing whole records many times within the pool's sampling groups (the bootstrap), which is only valid for a fair sample of enough records: 070 scores only the pool's first records, with none skipped, and gives no margin below 20 of them. Only the **tuning part** of the ground truth is shown while the pipeline is being improved; the **held-out part** is looked at only at the end, and every look is logged, so the reported numbers don't flatter choices made by looking at them.
 
-Details: [`instructions/070_evaluate.md`](instructions/070_evaluate.md).
+Details: [`070_evaluate/070_evaluate.md`](070_evaluate/070_evaluate.md).
 
 ### Graph building (step 080, not built yet)
 

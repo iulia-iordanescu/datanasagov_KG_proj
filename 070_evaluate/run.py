@@ -18,7 +18,7 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
 Writes:  scores.json, per_record.md, compared_triples.csv; adds rows to
          annotations/name_mapping.csv and, with --score_held_out true, a line
          to annotations/held_out_looks.csv (never changing an existing one)
-Details: instructions/070_evaluate.md
+Details: 070_evaluate/070_evaluate.md
 """
 import sys
 from pathlib import Path

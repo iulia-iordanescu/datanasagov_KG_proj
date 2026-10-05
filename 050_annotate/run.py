@@ -14,7 +14,7 @@ Reads:   records.jsonl (020), splits.json (030),
          annotations/schema_derived_from_manual_annotation.txt,
          annotations/ground_truth/ (to skip records already done, and to check it)
 Writes:  drafted_triples_batch<N>.csv, drafted_triples_batch<N>_details.json
-Details: instructions/050_annotate.md
+Details: 050_annotate/050_annotate.md
 """
 import sys
 from pathlib import Path

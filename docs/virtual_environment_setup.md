@@ -140,7 +140,7 @@ If the path points somewhere else, the environment isn't active. Go back to part
 
 ## Part 8: Run the scripts
 
-The usage examples in the scripts and in `instructions/` use `py`, for example `py helpers/audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
+The usage examples in the scripts and in the steps' guides use `py`, for example `py helpers/audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
 
 **Pipeline steps in the repo root.** These find their files relative to the repo, so the folder you run them from doesn't matter. Running them from the repo root is simplest:
 
@@ -150,7 +150,7 @@ py 010_harvest/run.py
 py helpers/audit.py <record id>
 ```
 
-Each step's guide in `instructions/` says how to run it. `docs/running_on_nasa_laptop.md` gives the order to run them in.
+Each step's guide (`<step>/<step>.md`, e.g. `010_harvest/010_harvest.md`) says how to run it. `docs/running_on_nasa_laptop.md` gives the order to run them in.
 
 **Scripts in `to_be_reshaped/`** are the earlier scripts, kept for reference while the pipeline steps replace them. They aren't run.
 

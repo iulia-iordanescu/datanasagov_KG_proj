@@ -18,7 +18,7 @@ splits.json once, and kept after that.
 
 Reads:   records.jsonl (020), annotations/ground_truth_candidates.csv
 Writes:  splits.json
-Details: instructions/030_split.md
+Details: 030_split/030_split.md
 """
 import sys
 from pathlib import Path

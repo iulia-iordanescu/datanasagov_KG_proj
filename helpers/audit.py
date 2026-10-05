@@ -10,7 +10,7 @@ run's report and log.
     py helpers/audit.py <key> --step 010_harvest     look in one step only
     py helpers/audit.py --step 010_harvest --file batch_01000.json --position 17
 
-Details: instructions/000_audit.md
+Details: helpers/audit.md
 """
 import argparse
 import sys

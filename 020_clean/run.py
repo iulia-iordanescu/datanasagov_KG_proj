@@ -11,7 +11,7 @@ a description begins. Terms: docs/terminology.md.
 
 Reads:   batch_*.json (010)
 Writes:  records.jsonl
-Details: instructions/020_clean.md
+Details: 020_clean/020_clean.md
 """
 import sys
 from pathlib import Path

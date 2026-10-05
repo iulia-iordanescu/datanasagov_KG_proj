@@ -67,9 +67,9 @@ One record:
 | `formats` | The file formats of the record's resources: each listed once, surrounding spaces removed, blanks left out, spelled as the catalog writes them. |
 | `license`, `url`, `metadata_created`, `metadata_modified` | As the catalog gives them (`license` is CKAN's `license_title`). |
 | `_cleaning` | Which method cleaned each text field (see How it works). |
-| `_origin` | The batch file and record the item came from (see `instructions/000_audit.md`). |
+| `_origin` | The batch file and record the item came from (see `helpers/audit.md`). |
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
 ## Settings
 
@@ -146,7 +146,7 @@ Values cleaned by the *conservative* method are complete but may read less well;
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each record's `_origin` names the 010 batch file and the record's id there, e.g. `010_harvest/batch_00000.json#a1b2…`.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`).
 
 ## Known limits
 

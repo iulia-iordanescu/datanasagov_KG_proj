@@ -75,7 +75,7 @@ In `outputs/intermediate_results/030_split/`:
 | `induction_candidates.records` | Every induction candidate, grouped by maintainer in rank order. `position` is the record's place in its maintainer's random order, counting from 0: a step taking *k* records from a maintainer takes positions 0 to *k*−1. |
 | `drawn` | The run that wrote the file, its settings and its inputs. |
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
 ## Settings
 
@@ -154,7 +154,7 @@ None: this step makes no model calls.
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each ground truth candidate's `_origin` names its row in `annotations/ground_truth_candidates.csv` (made by a person, so the trace stops there) and its record in 020's `records.jsonl`; each induction candidate's names its 020 record.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`).
 
 ## Known limits
 

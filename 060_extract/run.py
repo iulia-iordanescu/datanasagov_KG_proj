@@ -14,7 +14,7 @@ Reads:   records.jsonl (020), splits.json (030), the_schema.json (040),
          annotations/schema_additions.txt, annotations/ground_truth/
 Writes:  extracted_triples.csv, extracted_triples_removed.csv,
          schema_used.json, extracted_triples_details.json
-Details: instructions/060_extract.md
+Details: 060_extract/060_extract.md
 """
 import sys
 from pathlib import Path

@@ -47,7 +47,7 @@ notes: The MODIS instrument aboard Aqua …
 | **triple instance** | A triple with all three slots filled: one fact stated as subject, predicate and object, e.g. "MODIS" – "is aboard" – "Aqua". |
 | **verified triple instance** | One whose source text is really in its record's text, checked in code. An **unverified** one (no source text, or a source text that isn't in the text) can't be trusted: step 040 leaves it out of what it counts; step 050 keeps it, marked as an error, for the person to fix; step 060 removes it (reason `source_text`). |
 | **DESCRIBES row** | The one triple instance every record gets that no text states, written by code: `<record id>` (`CatalogEntry`) DESCRIBES `<the record's title>` (`<entity class>`). It keeps the catalog entry apart from the thing the entry is about. The model's only part in it is naming that entity class; `X` means none was named yet. |
-| **error** / **flag** | What a check of a triple instance can raise. An **error** is something code can prove wrong (e.g. its source text isn't in the text); a **flag** is often a sign of a mistake, often fine (e.g. a reworded name, or a name the schema doesn't have). Listed in `instructions/050_annotate.md`. |
+| **error** / **flag** | What a check of a triple instance can raise. An **error** is something code can prove wrong (e.g. its source text isn't in the text); a **flag** is often a sign of a mistake, often fine (e.g. a reworded name, or a name the schema doesn't have). Listed in `050_annotate/050_annotate.md`. |
 
 ---
 

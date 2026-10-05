@@ -9,7 +9,7 @@ docs/terminology.md.
 Reads:   nothing (the data.nasa.gov API)
 Writes:  batch_*.json, one per page: the raw records, with the request that
          returned them
-Details: instructions/010_harvest.md
+Details: 010_harvest/010_harvest.md
 """
 import sys
 from pathlib import Path

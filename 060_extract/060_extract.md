@@ -112,7 +112,7 @@ In `outputs/intermediate_results/060_extract/`:
 
 For scoring: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not scored as zero. A record with **only its DESCRIBES row** was extracted and states no fact the schema can express.
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `instructions/000_audit.md`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
 ## Settings
 
@@ -163,7 +163,7 @@ Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the oth
    | Any other flag (a reworded name, subject equal to object, the same triple instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
    | The DESCRIBES row | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its class is `X`, flagged `describes_undecided`. |
 
-The flag names are listed in `instructions/050_annotate.md` (*Checks on each row*).
+The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).
 
 **Names outside the schema.** The report's table *Names outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only names it is fair to add are counted: **held-out records are never counted** (a name learned there would let the schema see the final exam); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_names`.
 
@@ -224,7 +224,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each kept or removed row has an `origin` column naming its record in 020's `records.jsonl`; `schema_used.json` names the schema file and additions file it was built from.
-- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`helpers/audit.md`).
 
 ## Known limits
 

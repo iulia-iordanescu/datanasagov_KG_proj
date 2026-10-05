@@ -137,7 +137,7 @@ def _parse_command_line(step_name, inputs, settings, argv):
                          f"on the command line as --<name>: {', '.join(shared)}")
     ap = argparse.ArgumentParser(
         prog=f"py {step_name}/run.py",
-        description=f"Run {step_name}. Instructions: instructions/{step_name}.md",
+        description=f"Run {step_name}. Instructions: {step_name}/{step_name}.md",
     )
     for key, default in inputs.items():
         ap.add_argument(f"--{key}", f"--{key.replace('_', '-')}", dest=f"in_{key}",

@@ -5,7 +5,7 @@ common/common_helpers/records_io.py -- reads the cleaned records 020_clean write
 
 Every step after 020 reads that file; this is the one place that does, so
 they all read it the same way. The record format is described in
-instructions/020_clean.md.
+020_clean/020_clean.md.
 
     from common.records_io import load_records, has_text, read_ids
     records = load_records(inputs["records"])      # {id: record}, in file order
