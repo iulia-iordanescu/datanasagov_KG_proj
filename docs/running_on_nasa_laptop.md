@@ -55,13 +55,13 @@ Each step reads what the one before it wrote, so run them in this order. From th
 
 | Step | Command | Time (measured 2026-09-27/28) | Pays for model calls? |
 |---|---|---|---|
-| 010 harvest | `py 010_harvest.py` | about 23 min | no |
-| 020 clean | `py 020_clean.py` | about 15 s | no |
-| 030 split | `py 030_split.py` | about 3 s | no |
-| 040 induce schema | `py 040_induce_schema.py` | not yet measured | **yes** |
-| 050 annotate | `py 050_annotate.py` | not yet measured | **yes** (about one call per record) |
-| 060 extract | `py 060_extract.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
-| 070 evaluate | `py 070_evaluate.py` | not yet measured | **yes** (one call, only when 060's schema has names not yet in `annotations/name_mapping.csv`; then check those rows and run it again) |
+| 010 harvest | `py 010_harvest/run.py` | about 23 min | no |
+| 020 clean | `py 020_clean/run.py` | about 15 s | no |
+| 030 split | `py 030_split/run.py` | about 3 s | no |
+| 040 induce schema | `py 040_induce_schema/run.py` | not yet measured | **yes** |
+| 050 annotate | `py 050_annotate/run.py` | not yet measured | **yes** (about one call per record) |
+| 060 extract | `py 060_extract/run.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
+| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when 060's schema has names not yet in `annotations/name_mapping.csv`; then check those rows and run it again) |
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`instructions/<step>.md`) says what every warning means and what to do.
 
@@ -80,24 +80,24 @@ The cheapest way to check that everything works, about 20 paid calls in all:
 
    | Step | Command | Paid calls, roughly |
    |---|---|---|
-   | 040 | `py 040_induce_schema.py --induction_maintainers 2 --texts_per_maintainer 2` | 10–15 (4 texts, then labeling, merging, defining) |
-   | 050 | `py 050_annotate.py --records_per_batch 1` | 2 (one record, and the test call) |
-   | 060 | `py 060_extract.py` | 3 (the finished ground truth records, 2 as of 2026-10-01, and the test call) |
-   | 070 | `py 070_evaluate.py` | 2 the first time (name translations, and the test call); it then stops so you can check the rows it added to `annotations/name_mapping.csv`. Run it again: 0 calls. |
+   | 040 | `py 040_induce_schema/run.py --induction_maintainers 2 --texts_per_maintainer 2` | 10–15 (4 texts, then labeling, merging, defining) |
+   | 050 | `py 050_annotate/run.py --records_per_batch 1` | 2 (one record, and the test call) |
+   | 060 | `py 060_extract/run.py` | 3 (the finished ground truth records, 2 as of 2026-10-01, and the test call) |
+   | 070 | `py 070_evaluate/run.py` | 2 the first time (name translations, and the test call); it then stops so you can check the rows it added to `annotations/name_mapping.csv`. Run it again: 0 calls. |
 
 3. **Check you're charged properly.** For each run, compare the plan it prints before you press Enter ("… will make N model call(s) …") with its report's *Model calls* table (`outputs/reports/<run id>.md`): calls per stage, the test call, and the total paid. Running the same command again should show 0 paid calls: the cache works, and nothing is paid twice.
 
-Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's record is real work (correct it in `py annotate.py`); 060 and 070 simply run again after the real 040.
+Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's record is real work (correct it in `py helpers/annotate.py`); 060 and 070 simply run again after the real 040.
 
 ### Choosing a model
 
 Each of 040–070 has a `model` setting (default `google-claude-sonnet-5`). To see which models Ask Sage lists for your account (free):
 
 ```powershell
-py models.py
+py helpers/models.py
 ```
 
-A listed model may still refuse you. To find out, just use it in a tiny run, e.g. `py 050_annotate.py --model <name> --records_per_batch 1`: if it refuses, the step stops at its one-line test call, having spent that call only, and says why. Try the next one.
+A listed model may still refuse you. To find out, just use it in a tiny run, e.g. `py 050_annotate/run.py --model <name> --records_per_batch 1`: if it refuses, the step stops at its one-line test call, having spent that call only, and says why. Try the next one.
 
 Which model where:
 
@@ -109,7 +109,7 @@ Which model where:
 ## 6. Annotating ground truth (after 050, before 060)
 
 ```powershell
-py annotate.py
+py helpers/annotate.py
 ```
 
 A page opens in your browser: pick the draft batch 050 wrote, correct it, tick *All facts extracted* on each finished record, stop with Ctrl+C, commit. How: `annotations/README.md`. It makes no model calls, so it also works on your personal laptop, if that laptop has run steps 010 to 030 and has the draft batch.
@@ -129,7 +129,7 @@ A page opens in your browser: pick the draft batch 050 wrote, correct it, tick *
 Any record, triple instance or schema entry can be traced back to the API request that first returned it:
 
 ```powershell
-py audit.py <record id>
+py helpers/audit.py <record id>
 ```
 
 See `instructions/000_audit.md`.

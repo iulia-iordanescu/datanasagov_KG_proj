@@ -10,13 +10,13 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 
 | File or folder | What it is | Explained in |
 |---|---|---|
-| `010_harvest.py` … `070_evaluate.py` | The pipeline steps, run in order, one short script each: its inputs, its settings, and its main moves | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step) |
-| `010_harvest/` … `070_evaluate/` | The code behind each step's script, one file per stage where a stage is big enough | the step's guide, section *How it works* |
-| `040_induce_schema/prompts/` … `070_evaluate/prompts/`, `common/prompts/` | Every prompt the steps send to the AI model, each a plain text file you can open and read (12 in all; `common/prompts/` holds the two shared by 050 and 060) | the step's guide, section *Prompts* |
-| `annotate.py`, `annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth, checking the translation table (`annotations/name_mapping.csv`), reviewing partial pairs and editing the schema additions | [`annotations/README.md`](annotations/README.md) |
-| `models.py` | Lists the AI models Ask Sage shows your account: `py models.py`. Free; a listed model may still refuse you. Give a model's name to a step's `model` setting | [`docs/running_on_nasa_laptop.md`](docs/running_on_nasa_laptop.md), *Choosing a model* |
-| `audit.py` | Answers "where did this come from?": `py audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`instructions/000_audit.md`](instructions/000_audit.md) |
-| `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …) | the opening comment of each file, for people reading the code |
+| `010_harvest/` … `070_evaluate/` | One folder per pipeline step, run in order. Each holds `run.py`, the step's short script (its inputs, its settings, and its main moves, one line each), which you run from the repository folder: `py 010_harvest/run.py`; `<step>_helpers/`, the code behind it (`moves.py` ties the stages together, one file per stage where a stage is big enough); and, for the steps that call the model, `<step>_prompts/` | the step's guide, `instructions/<step>.md` (same sections, in the same order, for every step); *How it works* for the code |
+| `040_induce_schema/040_induce_schema_prompts/` … `070_evaluate/070_evaluate_prompts/`, `common/common_prompts/` | Every prompt the steps send to the AI model, each a plain text file you can open and read (13 in all; `common/common_prompts/` holds the two shared by 050 and 060) | the step's guide, section *Prompts* |
+| `helpers/` | Everything you run that isn't a pipeline step: the three tools below | each tool's row |
+| `helpers/annotate.py`, `helpers/annotator/` | The annotation tool: a page in your browser for reading and correcting draft batches of ground truth, checking the translation table (`annotations/name_mapping.csv`), reviewing partial pairs and editing the schema additions | [`annotations/README.md`](annotations/README.md) |
+| `helpers/models.py` | Lists the AI models Ask Sage shows your account: `py helpers/models.py`. Free; a listed model may still refuse you. Give a model's name to a step's `model` setting | [`docs/running_on_nasa_laptop.md`](docs/running_on_nasa_laptop.md), *Choosing a model* |
+| `helpers/audit.py` | Answers "where did this come from?": `py helpers/audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`instructions/000_audit.md`](instructions/000_audit.md) |
+| `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …), in `common/common_helpers/`, and the prompts shared by 050 and 060, in `common/common_prompts/` | the opening comment of each file, for people reading the code |
 
 **What you read or edit**
 
@@ -47,13 +47,14 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | File or folder | What it is |
 |---|---|
 | `to_be_reshaped/` | The scripts from before the pipeline, kept as reference while their work moves into the steps. Never run. |
-| `docs/pipeline_redesign_plan.md` | An earlier write-up of the pipeline's design, kept as background. |
+| `docs/pipeline_redesign_plan.md` | An earlier write-up of the pipeline's design, written before the pipeline was built and kept as background. It isn't kept up to date: where it differs from the guides in `instructions/` or the code (file names, folders, step details), those are right. |
 | `docs/v0_schema.txt` | An early version of the schema. Nothing reads it. |
+| `.vscode/settings.json` | A VS Code setting: its file list hides Python's `__pycache__/` folders (compiled copies Python makes by itself). Nothing is deleted. |
 | `.gitattributes`, `.gitignore` | Git settings: plain line endings on every computer, and the files Git leaves out (`outputs/`, `.env`, `.myvenv/`, …). |
 
 ## Pipeline overview
 
-Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from its own short script in the repository folder (`py 010_harvest.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Details of each step are in its guide, `instructions/<step>.md`.
+Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered steps, run in order, each from the short script in its folder, run from the repository folder (`py 010_harvest/run.py`, …). Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a report and a log. Details of each step are in its guide, `instructions/<step>.md`.
 
 | Step | What it does | Reads | Writes | Status |
 |---|---|---|---|---|
@@ -66,7 +67,7 @@ Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to
 | `070_evaluate` | Scores extraction against the ground truth: precision, recall, schema ceiling, each with its margin of error | 020, 030, 060, `annotations/` (the pool, the hand-built schema, the ground truth, `name_mapping.csv`) | `scores.json`, `per_record.md`, `matches.csv`; adds lines to `annotations/name_mapping.csv` and `held_out_looks.csv` | built; tested on a hand-made 060 output |
 | `080_build_graph` | Builds the graph | 020, 060 | | not built |
 
-Two helpers aren't steps: `py annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches, checking the translation table, reviewing partial pairs and editing the schema additions; and `py audit.py <record id>`, which traces a record back to the download that first brought it in. Code shared by the steps is in `common/`; files made by a person are in `annotations/`.
+Three helpers, in `helpers/`, aren't steps: `py helpers/annotate.py`, the annotation tool, a page in your browser for reading and correcting draft batches, checking the translation table, reviewing partial pairs and editing the schema additions; and `py helpers/audit.py <record id>`, which traces a record back to the download that first brought it in; and `py helpers/models.py`, which lists the AI models Ask Sage offers your account. Code shared by the steps is in `common/`; files made by a person are in `annotations/`.
 
 ## Records and fields
 
@@ -167,7 +168,7 @@ The pool is a stratified random sample: records are grouped by maintainer, each 
 
 Annotating is slow, and the rules had to be worked out on the records themselves. Each record gets one structural row, the DESCRIBES row, keeping the catalog entry separate from the thing it describes. The entity classes and predicates decided this way are kept in the hand-built schema (`annotations/schema_derived_from_manual_annotation.txt`), which grows as annotation proceeds; it is small and elementary, and it is expected to keep growing.
 
-Writing every triple by hand is the bottleneck, so step 050 drafts the triple instances of the next few records (10 per batch by default), asking the model for every fact the text states, in the hand-built schema's names where they fit. A person then corrects each draft batch in the annotation tool (`py annotate.py`), a page in the browser that shows each record's text with its triple instances and saves every change into `annotations/ground_truth/`. The draft is not ground truth: a human keeps, edits, deletes or adds, driven by the record's text. Two biases remain, since the ground truth starts as a model's draft: accepting a wrong row is easy, and a fact the model missed is unlikely to be added. So any score against this ground truth is reported as such: drafted by a model and corrected by a person, not written from scratch.
+Writing every triple by hand is the bottleneck, so step 050 drafts the triple instances of the next few records (10 per batch by default), asking the model for every fact the text states, in the hand-built schema's names where they fit. A person then corrects each draft batch in the annotation tool (`py helpers/annotate.py`), a page in the browser that shows each record's text with its triple instances and saves every change into `annotations/ground_truth/`. The draft is not ground truth: a human keeps, edits, deletes or adds, driven by the record's text. Two biases remain, since the ground truth starts as a model's draft: accepting a wrong row is easy, and a fact the model missed is unlikely to be added. So any score against this ground truth is reported as such: drafted by a model and corrected by a person, not written from scratch.
 
 Details: [`instructions/050_annotate.md`](instructions/050_annotate.md).
 

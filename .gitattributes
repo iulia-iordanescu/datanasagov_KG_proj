@@ -1,5 +1,5 @@
 # Plain "\n" line endings for every text file, on every computer. The pipeline
 # writes its own files this way, and a file's hash (recorded in manifests and
-# checked by audit.py) must not change just because Git rewrote its line
+# checked by helpers/audit.py) must not change just because Git rewrote its line
 # endings on checkout. Git still detects binary files and leaves them alone.
 * text=auto eol=lf

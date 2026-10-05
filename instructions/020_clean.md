@@ -83,11 +83,11 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 From the repository folder, with the environment active (`docs/virtual_environment_setup.md`):
 
 ```
-py 020_clean.py --help                              every input and setting, with its default
-py 020_clean.py                                     reads 010's batch files
-py 020_clean.py --join_maintainers false            keep maintainer spellings as harvested
-py 020_clean.py --extra_text_fields author          also clean and save the author field
-py 020_clean.py --batches path/to/batch_*.json      read batch files from elsewhere
+py 020_clean/run.py --help                              every input and setting, with its default
+py 020_clean/run.py                                     reads 010's batch files
+py 020_clean/run.py --join_maintainers false            keep maintainer spellings as harvested
+py 020_clean/run.py --extra_text_fields author          also clean and save the author field
+py 020_clean/run.py --batches path/to/batch_*.json      read batch files from elsewhere
 ```
 
 **Paying.** This step makes no model calls: it costs nothing, and keeps no cache.
@@ -96,7 +96,7 @@ The whole catalog took 14–32 s (36,387 records read; 2026-09-27 to 2026-09-29)
 
 ## How it works
 
-Four stages, in `020_clean.py`'s `main()`, all code:
+Four stages, in `020_clean/run.py`'s `main()`, all code:
 
 1. **Load the raw records** (`load_raw`). First the `extra_text_fields` setting is checked (see Settings), so a name that would overwrite another field stops the step before any file is read. Then every batch file is read in order. A record with no id is dropped, and named in the log and the report by its batch file, position, CKAN name and title: an id made up from its position would point at a different record after a re-harvest, and ground truth written under it would be scored against the wrong text. A record whose id was already seen is dropped too, keeping the first copy.
 2. **Keep the fields** (`keep_fields`). Each record becomes one line with each field under its own key (see Outputs), and its origin: the batch file and the record's id there.
@@ -112,7 +112,7 @@ Four stages, in `020_clean.py`'s `main()`, all code:
 
 **Then the results** (`results`): `records.jsonl` is written under a temporary name and renamed when complete. The report gives record counts; per text field, how many values had HTML tags or escapes and which cleaning method each value got; the joins made; and the 10 largest maintainers. Records dropped for having no id are all listed. Other lists (repeated ids, values that needed a fallback method, joins) show their first 20 entries and say how many more there are; every repeated id and every fallback value also has a DEBUG line in the log.
 
-The code: `020_clean/` holds `moves.py` (the moves, and writing the results), `note_cleaning.py` (the cleaning library and its self-test) and `maintainers.py` (the joining rules and their self-test). Shared with other steps: `common/files.py` (saving files). Both self-tests also run on their own: `py note_cleaning.py --selftest` and `py maintainers.py`, from inside `020_clean/`.
+The code: `020_clean/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `020_clean/020_clean_helpers/` holds `moves.py` (the moves, and writing the results), `note_cleaning.py` (the cleaning library and its self-test) and `maintainers.py` (the joining rules and their self-test). Shared with other steps: `common/common_helpers/files.py` (saving files). Both self-tests also run on their own: `py note_cleaning.py --selftest` and `py maintainers.py`, from inside `020_clean/`.
 
 ## Prompts
 
@@ -135,7 +135,7 @@ None: this step makes no model calls.
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *… is in the old batch format* | 010's files were saved by an older version, without a request block. | Rerun `py 010_harvest.py`, which downloads them again. |
+| *… is in the old batch format* | 010's files were saved by an older version, without a request block. | Rerun `py 010_harvest/run.py`, which downloads them again. |
 | *extra_text_fields names …, which 020 already writes as a field of its own* | An extra text field was given the name of a field 020 already writes, e.g. `maintainer`. | Remove that name from `extra_text_fields`. |
 | *AssertionError: N failure(s)* | A self-test failed: the cleaning library's (in `clean_text`) or the joining rules' (in `join_maintainers`). The timeline in the report shows which move failed. | Don't use the output. Read the listed failures; usually a changed Python version, or an edit to `note_cleaning.py` or `maintainers.py`. |
 | *missing input files … (run 010_harvest first, or pass --batches)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
@@ -146,7 +146,7 @@ Values cleaned by the *conservative* method are complete but may read less well;
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each record's `_origin` names the 010 batch file and the record's id there, e.g. `010_harvest/batch_00000.json#a1b2…`.
-- **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 
 ## Known limits
 

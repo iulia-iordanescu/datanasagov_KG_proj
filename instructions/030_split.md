@@ -90,8 +90,8 @@ The setting only takes effect when `splits.json` is written, i.e. when it doesn'
 From the repository folder, with the environment active (`docs/virtual_environment_setup.md`):
 
 ```
-py 030_split.py --help       every input and setting, with its default
-py 030_split.py              reads 020's records and the pool in annotations/
+py 030_split/run.py --help       every input and setting, with its default
+py 030_split/run.py              reads 020's records and the pool in annotations/
 ```
 
 **Paying.** This step makes no model calls: it costs nothing, and keeps no cache.
@@ -102,9 +102,9 @@ It took 3–4 s (2026-09-28 and 2026-09-29).
 
 ## How it works
 
-Four stages, in `030_split.py`'s `main()`, all code:
+Four stages, in `030_split/run.py`'s `main()`, all code:
 
-1. **Load the records** (`load_records`) that 020 wrote, by id (`common/records_io.py`, shared by every step that reads them).
+1. **Load the records** (`load_records`) that 020 wrote, by id (`common/common_helpers/records_io.py`, shared by every step that reads them).
 2. **Read the ground truth candidates pool** (`ground_truth_candidates`) from `annotations/`, in its order. An id listed twice, or a file without `id` and `maintainer` columns, stops the step. A pool record that is no longer in 020's records (it left the catalog) is dropped and listed; the others keep their positions, so annotation continues where it was. A pool record whose maintainer in the file differs from 020's current maintainer is listed; 020's is used. Each record gets its part by the rule in Purpose (`part_of()` in `moves.py`; the rule's numbers are named constants there, not settings, since changing them after scores have been looked at would defeat the held-out part).
 3. **Order the induction candidates** (`induction_candidates`). A record is an induction candidate unless it is in the pool (kept or dropped) or has no title and no notes, which gives the schema nothing to learn from. Maintainers are ranked by how many records they hold in the catalog. Each maintainer's candidates are put in a random order of their own:
    - the generator is seeded by `induction_seed` and the maintainer's name, so one maintainer's order never depends on another's;
@@ -114,7 +114,7 @@ Four stages, in `030_split.py`'s `main()`, all code:
 
 **Then the results** (`results`): `splits.json` is written (under a temporary name, renamed when complete), or the existing one kept; the report.
 
-The code: `030_split/` holds `moves.py` (the moves, and writing the results). Shared with other steps: `common/records_io.py` (reading records), `common/files.py` (saving files).
+The code: `030_split/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `030_split/030_split_helpers/` holds `moves.py` (the moves, and writing the results). Shared with other steps: `common/common_helpers/records_io.py` (reading records), `common/common_helpers/files.py` (saving files).
 
 On 2026-09-28: 36,375 records; 999 left out as ground truth candidates, 0 for having no text; 35,376 induction candidates across 422 maintainers. On 2026-09-29 `splits.json` was rebuilt once to add each candidate's part: everything already in it came out identical.
 
@@ -154,7 +154,7 @@ None: this step makes no model calls.
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each ground truth candidate's `_origin` names its row in `annotations/ground_truth_candidates.csv` (made by a person, so the trace stops there) and its record in 020's `records.jsonl`; each induction candidate's names its 020 record.
-- **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 
 ## Known limits
 

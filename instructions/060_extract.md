@@ -21,7 +21,7 @@ The schema is 040's induced schema by default, plus the entity classes and predi
 
 - **Before the real runs, choose the model:** from a different maker than annotation's, so the two don't share blind spots; for the run over every record, the cheapest whose scores are within the margin of error of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
 - **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can score only what it extracted.
-- **Read the report's table *Names outside the schema*** (`outputs/reports/060_extract_<date>_<time>.md`): names the model used that the current schema doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For a name that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py annotate.py`, *Schema additions*, where each listed name has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every name listed is fair to add.
+- **Read the report's table *Names outside the schema*** (`outputs/reports/060_extract_<date>_<time>.md`): names the model used that the current schema doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For a name that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed name has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every name listed is fair to add.
 - **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A name learned from the ground truth must come from tuning records only, named by pool position (`source: ground truth tuning #12`); the step leaves out any other.
 - **Now and then, read the removed triples** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good facts is a sign the schema, or the prompt, needs work.
 
@@ -37,7 +37,7 @@ The schema is 040's induced schema by default, plus the entity classes and predi
 
 ### The shape of a schema
 
-A schema holds entity classes and predicates, each with a one-line definition, and patterns. 060 reads two shapes, told apart by the file's ending (`common/schema_io.py`).
+A schema holds entity classes and predicates, each with a one-line definition, and patterns. 060 reads two shapes, told apart by the file's ending (`common/common_helpers/schema_io.py`).
 
 **JSON (`.json`), like 040's `the_schema.json`.** Only the names are required, but give each a definition: it's the model's only clue to what the name means.
 
@@ -71,7 +71,7 @@ ABOARD            is carried on
 - Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file).
 - Lines starting with `#` are comments. Any other line is not read: in a schema given with `--schema` it's ignored as prose (like the explanation in the hand-built schema); in the additions file, where it's usually a mistake, it's pointed out before paying.
 
-So `py 060_extract.py --schema annotations/schema_derived_from_manual_annotation.txt` extracts with your hand-built schema.
+So `py 060_extract/run.py --schema annotations/schema_derived_from_manual_annotation.txt` extracts with your hand-built schema.
 
 ### Adding entity classes and predicates by hand
 
@@ -120,9 +120,9 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 |---|---|---|---|
 | `extract_from` | ground_truth | `ground_truth`: the records of the ground truth that are finished (*All facts extracted* ticked), the only ones 070 can score. `all`: every record with text. | `all` once the schema is final. That's about one model call per record, ~36,000; the confirmation shows the number before anything is spent. |
 | `ids` | empty | Exactly these records instead: ids separated by commas, or the path of a text file with one id per line (a CSV whose first column is the id works too; a header line `id`, blank lines and lines starting with `#` are skipped). | To extract from records you choose. |
-| `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/chunking.py`). | Rarely. |
+| `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/common_helpers/chunking.py`). | Rarely. |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
-| `model` | google-claude-sonnet-5 | The AI model to ask. `py models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
+| `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call. | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 ## How to run
@@ -130,12 +130,12 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 From the repository folder, with the environment active (`docs/virtual_environment_setup.md`), on a computer that can reach Ask Sage and has your key in `.env` (`docs/running_on_nasa_laptop.md`):
 
 ```
-py 060_extract.py --help                                  every input and setting, with its default
-py 060_extract.py                                         the finished ground truth records, with 040's schema
-py 060_extract.py --schema annotations/schema_derived_from_manual_annotation.txt   with your hand-built schema
-py 060_extract.py --extract_from all                      every record (once the schema is final)
-py 060_extract.py --ids 3122be4c-…,cfd6ec3f-…             exactly these records
-py 060_extract.py --confirm_paid_calls false              don't ask (unattended runs)
+py 060_extract/run.py --help                                  every input and setting, with its default
+py 060_extract/run.py                                         the finished ground truth records, with 040's schema
+py 060_extract/run.py --schema annotations/schema_derived_from_manual_annotation.txt   with your hand-built schema
+py 060_extract/run.py --extract_from all                      every record (once the schema is final)
+py 060_extract/run.py --ids 3122be4c-…,cfd6ec3f-…             exactly these records
+py 060_extract/run.py --confirm_paid_calls false              don't ask (unattended runs)
 ```
 
 060 needs 040's `the_schema.json`. Until 040 has run, it stops with *missing input files … run 040_induce_schema first, or pass --schema*.
@@ -146,12 +146,12 @@ py 060_extract.py --confirm_paid_calls false              don't ask (unattended 
 
 ## How it works
 
-Four stages, in `060_extract.py`'s `main()`; stage 3 asks the model, the others are code:
+Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). By `extract_from` or `ids` (above). Anything that differs from what was asked becomes a note shown before paying: a listed id not in the catalog or without text, ground truth records not yet finished.
 2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), additions that clash with the schema, additions with no `source:` line, entries with no definition, pattern names that aren't entity classes or predicates of the schema.
-3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `prompts/extract.txt`: extract only the facts the schema can express, in only the schema's names, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
-4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/extraction.py` builds each record's rows (the DESCRIBES row first) and checks every one against the record's **whole** text and the schema (`common/validate.py`). Then:
+3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `prompts/extract.txt`: extract only the facts the schema can express, in only the schema's names, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
+4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/common_helpers/extraction.py` builds each record's rows (the DESCRIBES row first) and checks every one against the record's **whole** text and the schema (`common/common_helpers/validate.py`). Then:
 
    | What | Where it goes | Why |
    |---|---|---|
@@ -169,17 +169,17 @@ The flag names are listed in `instructions/050_annotate.md` (*Checks on each row
 
 **Then the results** (`results`): the four files are written, replacing the last run's; the report.
 
-The code: `060_extract/` holds `moves.py` (the moves, and writing the results), `records.py`, `schema.py`, `extract.py` and `prompts/`. Shared with other steps: `common/extraction.py` and `common/prompts/` (asking the model and building rows, with 050), `common/schema_io.py` (reading schemas), `common/validate.py` (the checks), `common/cache.py`, `common/llm.py`.
+The code: `060_extract/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `060_extract/060_extract_helpers/` holds `moves.py` (the moves, and writing the results), `records.py`, `schema.py` and `extract.py`; `060_extract/060_extract_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/extraction.py` and `common/common_prompts/` (asking the model and building rows, with 050), `common/common_helpers/schema_io.py` (reading schemas), `common/common_helpers/validate.py` (the checks), `common/common_helpers/cache.py`, `common/common_helpers/llm.py`.
 
 ## Prompts
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `060_extract/prompts/extract.txt` | stage 3, one call per text piece | list only the facts the schema can express, using **only** the schema's entity classes and predicates (the schema is shown in the prompt), and name the entity class of what the title names, or none if no class fits |
-| `common/prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050: names as written, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
-| `common/prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 |
+| `060_extract/060_extract_prompts/extract.txt` | stage 3, one call per text piece | list only the facts the schema can express, using **only** the schema's entity classes and predicates (the schema is shown in the prompt), and name the entity class of what the title names, or none if no class fits |
+| `common/common_prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050: names as written, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
+| `common/common_prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 |
 
-Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/prompts/` files are shared with 050: editing them changes both steps.
+Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 050: editing them changes both steps.
 
 ## Checks and warnings
 
@@ -187,7 +187,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N record(s) of the ground truth aren't finished yet … so skipped* | Only finished records can be scored. | Finish them in `py annotate.py`, or ignore. |
+| *N record(s) of the ground truth aren't finished yet … so skipped* | Only finished records can be scored. | Finish them in `py helpers/annotate.py`, or ignore. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
@@ -216,15 +216,15 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *extract_from must be one of ground_truth, all* | A typo in the setting. | Use `ground_truth` or `all`. |
 | *Nothing to extract. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
-| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
-| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
 ## Audit trail
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each kept or removed row has an `origin` column naming its record in 020's `records.jsonl`; `schema_used.json` names the schema file and additions file it was built from.
-- **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 
 ## Known limits
 

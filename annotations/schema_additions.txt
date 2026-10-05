@@ -14,7 +14,7 @@
 # annotation tool shows them (e.g. "source: ground truth tuning #12, #15"). Step 060
 # leaves out an addition that names a held-out record, or no record.
 #
-# Easiest: edit this file with the annotation tool (py annotate.py, Schema
+# Easiest: edit this file with the annotation tool (py helpers/annotate.py, Schema
 # additions), which keeps the layout right and these comments as they are.
 #
 # Example (remove the # to use it):

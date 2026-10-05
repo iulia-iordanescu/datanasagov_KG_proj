@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotation tool</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #d9dde5;
+    --accent: #2457c5; --soft: #fff3b0; --strong: #ffd33d; --error: #b3261e; --flag: #8a5a00;
+    --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --input: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15181e; --panel: #1e222a; --ink: #e6e9ef; --muted: #9aa3b2; --line: #343a46;
+      --accent: #7aa2ff; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
+      --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --input: #15181e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 12px;
+           align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 17px; margin: 0 8px 0 0; }
+  select, input, textarea, button { font: inherit; color: var(--ink); }
+  select, input, textarea { background: var(--input); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .bar button.current { outline: 2px solid var(--accent); font-weight: 600; }
+  #status { margin-left: auto; color: var(--muted); font-size: 14px; }
+  #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
+  #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
+  #warnings:empty { display: none; }
+  main { display: grid; grid-template-columns: 290px 1fr; gap: 16px; padding: 16px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
+        max-height: calc(100vh - 90px); overflow: auto; position: sticky; top: 70px; align-self: start; }
+  nav button { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 6px 8px; margin: 1px 0; }
+  nav button.current { background: var(--bg); outline: 2px solid var(--accent); }
+  nav .badge { float: right; font-size: 13px; margin-left: 6px; }
+  nav .small { color: var(--muted); font-size: 12px; }
+  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; min-width: 0; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  h3 { font-size: 15px; margin: 0 0 8px; }
+  .meta { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+  label.finished { font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  #text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 45vh; overflow: auto;
+          border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: var(--bg); }
+  mark { background: var(--soft); color: inherit; border-radius: 2px; cursor: pointer; }
+  mark.active { background: var(--strong); outline: 1px solid var(--flag); }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .row { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .row.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 8px; }
+  .triple label, .source label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); min-width: 0; }
+  .triple input { width: 100%; min-width: 0; }
+  .triple .cls { font-size: 13px; }
+  @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
+  .source { display: flex; gap: 8px; align-items: flex-end; margin-top: 6px; }
+  .source label { flex: 1; }
+  .source textarea { width: 100%; min-height: 44px; resize: vertical; }
+  .problems { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
+  .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
+  .problems li.error { background: var(--error-bg); color: var(--error); }
+  .problems li.flag { background: var(--flag-bg); color: var(--flag); }
+  .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .describes input.title { flex: 1 1 280px; min-width: 0; }
+  .empty { color: var(--muted); font-style: italic; }
+  #help { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.45); display: flex;
+          justify-content: center; align-items: flex-start; padding: 40px 16px; overflow: auto; }
+  #help[hidden] { display: none; }
+  .helpbox { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px;
+             max-width: 820px; width: 100%; }
+  .helpbody code { background: var(--bg); padding: 0 4px; border-radius: 4px; }
+  .helpbody pre { background: var(--bg); padding: 8px; border-radius: 6px; overflow: auto; }
+  .part { font-size: 12px; border-radius: 10px; padding: 0 7px; border: 1px solid var(--line); }
+  .part.held-out { color: var(--flag); background: var(--flag-bg); border-color: var(--flag); }
+  .kind { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
+          border-radius: 10px; padding: 0 7px; margin-right: 6px; vertical-align: middle; }
+  .maprow.todo { border-left: 4px solid var(--flag); }
+  .maprow .means { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .maprow select { max-width: 100%; }
+  .example { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg);
+             border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Annotation tool</h1>
+  <select id="batch" aria-label="Batch"></select>
+  <button id="mapping" title="annotations/name_mapping.csv">Translation table</button>
+  <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
+  <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
+  <button id="helpbutton" title="annotations/README.md">Help</button>
+  <span id="status"></span>
+</header>
+<ul id="warnings"></ul>
+<main>
+  <nav id="records" aria-label="Records"></nav>
+  <div id="record"><section class="card"><p class="empty">Pick a batch at the top.</p></section></div>
+</main>
+<div id="help" hidden></div>
+<datalist id="entity_classes"></datalist>
+<datalist id="predicates"></datalist>
+
+<script>
+"use strict";
+// The whole state: the open batch, as the server sent it, edited in place.
+let batch = null, current = 0, activeRow = null, saveTimer = null, saving = false, dirty = false;
+
+const $ = (id) => document.getElementById(id);
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined && v !== false) node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()) if (c !== null && c !== undefined) node.append(c);
+  return node;
+}
+async function api(path, body) {
+  const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify(body) } : {});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+function status(text, kind) { const s = $("status"); s.textContent = text; s.className = kind || ""; }
+const isDescribes = (r) => r.subject_class.toLowerCase() === "catalogentry" && r.predicate.toUpperCase() === "DESCRIBES";
+const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.kind === "error").length, 0);
+
+// ---------------------------------------------------------------- batches
+async function loadBatches() {
+  const data = await api("/api/batches");
+  const pick = $("batch");
+  pick.replaceChildren(el("option", { value: "" }, "Choose a batch…"));
+  for (const b of data.batches) {
+    const what = b.ground_truth
+      ? `${b.ground_truth}: ${b.records} records, ${b.finished} finished`
+      : `draft ${b.draft}: not opened yet`;
+    pick.append(el("option", { value: b.n }, `Batch ${b.n} (${what})`));
+  }
+  const warnings = [...data.problems, ...data.reminders];
+  if (!data.records_found) warnings.unshift("records.jsonl wasn't found, so records' texts can't be shown or checked: run steps 010 and 020 first.");
+  $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
+  const wanted = new URLSearchParams(location.hash.slice(1));
+  if (wanted.has("m")) { await openMapping(); return; }
+  if (wanted.has("p")) { await openPartial(); return; }
+  if (wanted.has("a")) { await openAdditions(); return; }
+  if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
+    pick.value = wanted.get("b");
+    await openBatch(+wanted.get("b"), +(wanted.get("r") || 0));
+  }
+}
+async function openBatch(n, at) {
+  await flush();
+  mapping = null; partial = null; additions = null;
+  status("Opening…");
+  batch = await api(`/api/batch?n=${n}`);
+  $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
+  $("predicates").replaceChildren(...batch.predicates.map(p => el("option", { value: p })));
+  status(`Editing annotations/ground_truth/${batch.file}`, "saved");
+  show(Math.min(at || 0, Math.max(batch.records.length - 1, 0)));
+  const opt = [...$("batch").options].find(o => o.value === String(n));
+  if (opt && opt.textContent.includes("not opened yet")) loadBatches();   // it now has its copy
+}
+$("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBatch(+e.target.value, 0).catch(fail); });
+$("mapping").addEventListener("click", () => openMapping().catch(fail));
+$("partial").addEventListener("click", () => openPartial().catch(fail));
+$("additions").addEventListener("click", () => openAdditions().catch(fail));
+$("helpbutton").addEventListener("click", () => showHelp());
+
+// ---------------------------------------------------------------- saving
+function changed() {
+  dirty = true;
+  status("Unsaved changes…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 600);
+}
+async function save() {
+  clearTimeout(saveTimer);
+  if (!batch || !dirty) return;
+  if (saving) { saveTimer = setTimeout(save, 300); return; }
+  saving = true; dirty = false;
+  status("Saving…");
+  try {
+    const sent = batch.records;
+    const data = await api("/api/save", { n: batch.n, records: sent });
+    data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
+    status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
+    refreshProblems();
+  } catch (e) {
+    dirty = true;
+    status(`NOT SAVED: ${e.message}. Is the tool still running? Your edits stay on this page; saving is retried on your next change.`, "failed");
+  } finally { saving = false; }
+}
+async function flush() { if (dirty) await save(); if (mapDirty) await saveMapping(); }
+window.addEventListener("beforeunload", (e) => {
+  if (dirty || saving) save();
+  if (mapDirty || mapSaving) saveMapping();
+  if (dirty || saving || mapDirty || mapSaving) { e.preventDefault(); e.returnValue = ""; }
+});
+function fail(e) { status(`Problem: ${e.message}`, "failed"); }
+
+// ---------------------------------------------------------------- the records list
+function drawList() {
+  $("records").replaceChildren(...batch.records.map((rec, i) => {
+    const errors = errorsIn(rec);
+    return el("button", { class: i === current ? "current" : "", onclick: () => show(i) },
+      el("span", { class: "badge", title: rec.finished ? "all facts extracted" : "not finished" },
+         (errors ? `⚠ ${errors} ` : "") + (rec.finished ? "✓" : "…")),
+      rec.position !== null && rec.position !== undefined ? `#${rec.position} ` : "",
+      rec.title || rec.id,
+      el("div", { class: "small" }, rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
+         rec.part ? " " : "", rec.maintainer || ""));
+  }));
+}
+
+// ---------------------------------------------------------------- one record
+function show(i) {
+  current = i; activeRow = null;
+  location.hash = `b=${batch.n}&r=${i}`;
+  drawList();
+  const rec = batch.records[i];
+  if (!rec) { $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" }, "This batch has no records."))); return; }
+
+  const head = el("section", { class: "card" },
+    el("h2", {}, rec.title || "(no title)"),
+    el("div", { class: "meta" },
+      `Pool position ${rec.position ?? "?"} `,
+      rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
+      ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
+    el("div", { class: "meta" }, rec.part === "held-out"
+      ? el("span", {}, "Held-out record: names you learn here must not go into schema_additions.txt (the schema mustn't see the final exam). ",
+          el("button", { disabled: true, title: "held-out record" }, "Add a name to the schema additions"))
+      : rec.part === "tuning"
+        ? el("span", {}, `Tuning record: a name you learn here may go into schema_additions.txt, with “source: ground truth tuning #${rec.position}”. `,
+            el("button", { onclick: () => openAdditions({ kind: "entity class", name: "", definition: "",
+                           source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
+               "Add a name to the schema additions"))
+        : "Not in the pool: names learned here can't go into schema_additions.txt as coming from the ground truth."),
+    el("div", { class: "bar" },
+      el("label", { class: "finished" },
+        el("input", { type: "checkbox", checked: rec.finished,
+                      onchange: (e) => { rec.finished = e.target.checked; drawList(); changed(); } }),
+        "All facts extracted"),
+      el("span", { class: "meta" }, "Tick once every fact the text states is below."),
+      el("span", { style: "margin-left:auto" },
+        el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0 }, "← Previous"), " ",
+        el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
+                       disabled: current === batch.records.length - 1 }, "Next →"))));
+
+  const text = el("section", { class: "card" },
+    el("h3", {}, "The record's text"),
+    rec.text === null
+      ? el("p", { class: "empty" }, "This record isn't in records.jsonl, so its text can't be shown.")
+      : el("div", { id: "text" }),
+    el("p", { class: "hint" },
+      "Yellow: the source texts of the rows below; the row you're on is darker. Click one to go to its row. " +
+      "To set a row's source text, select a passage here and press “Use selection” on the row."));
+
+  const describes = rec.rows.findIndex(isDescribes);
+  const rows = el("section", { class: "card" },
+    el("h3", {}, "Triple instances"),
+    describes >= 0 ? describesRow(rec, describes) : null,
+    rec.rows.map((r, j) => isDescribes(r) ? null : tripleRow(rec, j)),
+    rec.rows.filter(r => !isDescribes(r)).length === 0
+      ? el("p", { class: "empty" }, "No triple instances: saved as “this record states no facts”.") : null,
+    el("button", { onclick: () => addRow(rec) }, "+ Add a triple instance"));
+
+  $("record").replaceChildren(head, text, rows);
+  drawText();
+}
+
+function field(rec, j, key, label, extra) {
+  const r = rec.rows[j];
+  return el("label", {}, label,
+    el("input", { value: r[key], ...extra, "data-row": j,
+                  oninput: (e) => { r[key] = e.target.value; if (key === "source_text") drawText(); changed(); },
+                  onfocus: () => setActive(j) }));
+}
+function problemList(r, j) {
+  return el("ul", { class: "problems", "data-problems": j },
+    r.problems.map(p => el("li", { class: p.kind }, (p.kind === "error" ? "✖ " : "⚑ ") + p.message)));
+}
+function describesRow(rec, j) {
+  const r = rec.rows[j];
+  return el("div", { class: "row", "data-row-box": j },
+    el("div", { class: "describes" },
+      el("strong", {}, "This record describes"),
+      el("input", { class: "title", value: r.object, "aria-label": "what the record describes", "data-row": j,
+                    oninput: (e) => { r.object = e.target.value; changed(); }, onfocus: () => setActive(j) }),
+      el("span", {}, "which is a"),
+      el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes",
+                    placeholder: "entity class", "aria-label": "its entity class", "data-row": j,
+                    oninput: (e) => { r.object_class = e.target.value; changed(); }, onfocus: () => setActive(j) })),
+    problemList(r, j));
+}
+function tripleRow(rec, j) {
+  const r = rec.rows[j];
+  return el("div", { class: "row", "data-row-box": j },
+    el("div", { class: "triple" },
+      field(rec, j, "subject", "Subject"),
+      field(rec, j, "predicate", "Predicate", { list: "predicates" }),
+      field(rec, j, "object", "Object"),
+      field(rec, j, "subject_class", "Subject's entity class", { list: "entity_classes", class: "cls" }),
+      el("span"),
+      field(rec, j, "object_class", "Object's entity class", { list: "entity_classes", class: "cls" })),
+    el("div", { class: "source" },
+      el("label", {}, "Source text (copied exactly from the text above)",
+        el("textarea", { "data-row": j, onfocus: () => setActive(j),
+                         oninput: (e) => { r.source_text = e.target.value; drawText(); changed(); } }, r.source_text)),
+      el("button", { title: "Put the passage selected in the text above here", onclick: () => useSelection(rec, j) }, "Use selection"),
+      el("button", { title: "Delete this triple instance", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
+    problemList(r, j));
+}
+
+function setActive(j) {
+  if (activeRow === j) return;
+  activeRow = j;
+  document.querySelectorAll("[data-row-box]").forEach(b => b.classList.toggle("active", +b.dataset.rowBox === j));
+  drawText();
+  const m = document.querySelector("#text mark.active");
+  if (m) { const box = $("text"); box.scrollTop = m.offsetTop - box.offsetTop - box.clientHeight / 3; }
+}
+function addRow(rec) {
+  rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
+                  source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
+                  problems: [{ kind: "error", code: "empty", message: "Subject, predicate and object must all be filled in." }] });
+  show(current);
+  const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);
+  if (inputs.length) inputs[0].focus();
+}
+function deleteRow(rec, j) {
+  const r = rec.rows[j];
+  if ((r.subject || r.object) && !confirm(`Delete “${r.subject} ${r.predicate} ${r.object}”?`)) return;
+  rec.rows.splice(j, 1);
+  show(current); changed();
+}
+function useSelection(rec, j) {
+  const sel = window.getSelection();
+  const box = $("text");
+  if (!sel || sel.isCollapsed || !box || !box.contains(sel.anchorNode)) {
+    alert("First select a passage in the record's text, then press “Use selection”."); return;
+  }
+  rec.rows[j].source_text = sel.toString().replace(/\s+/g, " ").trim();
+  const area = document.querySelector(`textarea[data-row="${j}"]`);
+  if (area) area.value = rec.rows[j].source_text;
+  drawText(); changed();
+}
+
+// ---------------------------------------------------------------- highlighting
+// Finds a source text in the text the forgiving way the checks do: only
+// letters and digits must match, in order; case, spacing, quotes and dashes
+// between them may differ. (Whether it's REALLY there is the server's check.)
+function findSpan(text, source) {
+  const words = (source || "").match(/[\p{L}\p{N}]+/gu);
+  if (!words) return null;
+  const esc = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const m = new RegExp(esc.join("[^\\p{L}\\p{N}]+"), "iu").exec(text);
+  return m ? [m.index, m.index + m[0].length] : null;
+}
+function drawText() {
+  const box = $("text"), rec = batch && batch.records[current];
+  if (!box || !rec || rec.text === null) return;
+  const owner = new Array(rec.text.length).fill(-1);   // which row's source text covers each character
+  rec.rows.forEach((r, j) => {
+    if (isDescribes(r)) return;
+    const span = findSpan(rec.text, r.source_text);
+    if (!span) return;
+    for (let k = span[0]; k < span[1]; k++) if (owner[k] === -1 || j === activeRow) owner[k] = j;
+  });
+  const parts = [];
+  for (let k = 0; k < rec.text.length;) {
+    let end = k + 1;
+    while (end < rec.text.length && owner[end] === owner[k]) end++;
+    const piece = rec.text.slice(k, end), j = owner[k];
+    parts.push(j === -1 ? piece : el("mark", { class: j === activeRow ? "active" : "",
+      title: "Go to this row", onclick: () => { const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus(); } }, piece));
+    k = end;
+  }
+  box.replaceChildren(...parts);
+}
+
+// After a save: new problems for every row, without redrawing the inputs (so typing isn't interrupted).
+function refreshProblems() {
+  const rec = batch.records[current];
+  document.querySelectorAll("[data-problems]").forEach(ul => {
+    const j = +ul.dataset.problems;
+    if (rec.rows[j]) ul.replaceWith(problemList(rec.rows[j], j));
+  });
+  drawList();
+}
+
+// ---------------------------------------------------------------- the translation table
+// One row per name of the current schema (the one extraction used): which name
+// of the ground truth vocabulary it means. Only name_in_gtt,
+// swap_subject_and_object and checked can be changed here.
+let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
+// A row "of the current schema": its name is in the schema extraction used
+// last (schema_used.json). Without that file, every row counts as current.
+const isCurrent = (r) => !mapping.schema_found || r.in_crt;
+const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same name");
+
+async function openMapping() {
+  await flush();
+  batch = null; partial = null; additions = null;
+  $("batch").value = "";
+  status("Opening…");
+  mapping = await api("/api/mapping");
+  // A stale row (checked against another definition of its name) counts as
+  // unchecked until ticked again; ticking stores the current definition.
+  for (const r of mapping.rows) if (r.stale) r.checked = "no";
+  location.hash = "m";
+  if (!mapping.found) {
+    $("records").replaceChildren();
+    $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
+      "annotations/name_mapping.csv wasn't found.")));
+    status("");
+    return;
+  }
+  status(`Editing ${mapping.file}`, "saved");
+  onlyToCheck = mapping.rows.some(r => isCurrent(r) && toCheck(r));   // open on the rows that need you
+  drawMapping();
+}
+
+function drawMappingSummary() {
+  const current = mapping.rows.filter(isCurrent);
+  const past = mapping.rows.length - current.length;
+  const left = current.filter(toCheck).length;
+  $("records").replaceChildren(
+    el("div", { style: "padding:6px 8px" },
+      el("h3", {}, "Translation table"),
+      el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the one extraction used last); ` +
+                                  `${left} still to check.`),
+      el("p", { class: "meta" }, "Evaluation scores only when every row of the current schema is checked. " +
+                                  "It adds rows itself; it never changes one."),
+      el("label", { class: "meta", style: "display:block" },
+        el("input", { type: "checkbox", checked: onlyToCheck,
+                      onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
+        " Show only rows to check"),
+      past ? el("label", { class: "meta", style: "display:block" },
+        el("input", { type: "checkbox", checked: showPast,
+                      onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
+        ` Show the ${past} row(s) only past schemas use (kept, so a name that comes back needn't be checked again)`)
+        : null));
+}
+
+function drawMapping() {
+  drawMappingSummary();
+  const cards = [];
+  if (mapping.repeats.length)
+    cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
+      "✖ One name, one row: " + mapping.repeats.map(r => `${r.kind} ${r.name} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
+      " has more than one. Keep the right row (usually the one whose stored definition matches the current " +
+      "schema's) and delete the others below. Evaluation won't score until then."))));
+  if (!mapping.schema_found)
+    cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
+      "Extraction's schema_used.json wasn't found, so the current schema's definitions can't be shown.")));
+  mapping.rows.forEach((r, i) => {
+    if (r.repeated || ((isCurrent(r) || showPast) && (!onlyToCheck || toCheck(r)))) cards.push(mappingRow(r, i));
+  });
+  if (cards.length === 0)
+    cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
+      mapping.rows.length ? "Every row is checked." : "The table has no rows yet: evaluation adds them.")));
+  $("record").replaceChildren(...cards);
+}
+
+function exampleLine(r) {
+  if (r.kind !== "predicate") return null;
+  const ex = r.example || { subject: "A", object: "B" };
+  const before = `${ex.subject}  ${r.name_from_past_or_crt_schema}  ${ex.object}`;
+  const after = r.name_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
+    : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.name_in_gtt}  ${ex.subject}`
+    : `${ex.subject}  ${r.name_in_gtt}  ${ex.object}`;
+  return el("div", { class: "example", title: r.example ? "the first such triple extraction kept" : "a made-up example" },
+    `${before}   -->   ${after}`);
+}
+
+function mappingRow(r, i) {
+  const vocab = mapping.gtt[r.kind] || [];
+  const known = vocab.some(v => v.name === r.name_in_gtt);
+  const options = [el("option", { value: mapping.none, selected: r.name_in_gtt === mapping.none },
+                      `${mapping.none}: nothing in the ground truth means this`)];
+  if (!known && r.name_in_gtt !== mapping.none)
+    options.push(el("option", { value: r.name_in_gtt, selected: true },
+                    `⚠ ${r.name_in_gtt} (not in the ground truth vocabulary: pick another)`));
+  for (const v of vocab) options.push(el("option", { value: v.name, selected: v.name === r.name_in_gtt }, v.name));
+  const chosen = vocab.find(v => v.name === r.name_in_gtt);
+  // Other names of the current schema already translated to the same name:
+  // evaluation won't be able to tell them apart.
+  const sharing = r.in_crt && r.name_in_gtt !== mapping.none
+    ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.name_in_gtt === r.name_in_gtt)
+                  .map(o => o.name_from_past_or_crt_schema) : [];
+  const same = r.checked === "same name";
+  // A (none) row whose name the ground truth vocabulary now has: probably out of date.
+  const nowExists = r.name_in_gtt === mapping.none && r.same_name_in_gtt ? { name: r.same_name_in_gtt } : null;
+  const update = (key, value) => { r[key] = value; mapChanged(); drawMapping(); };
+
+  return el("section", { class: "card maprow" + (toCheck(r) || r.repeated ? " todo" : "") },
+    el("h3", {}, el("span", { class: "kind" }, r.kind), r.name_from_past_or_crt_schema,
+       el("span", { class: "meta" }, isCurrent(r) ? "  (current schema)" : "  (past schema only)"),
+       r.repeated ? el("span", { class: "meta" }, `  (line ${r._line}, repeated) `) : null,
+       r.repeated ? el("button", { onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
+    r.repeated ? el("div", { class: "meta" }, "Stored definition (when this row was checked): ",
+       r.definition_from_past_or_crt_schema || el("i", {}, "none")) : null,
+    el("div", { class: "meta" }, "In the current schema: ",
+       r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
+    r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
+       "⚑ This row was checked when the name was defined as: “" +
+       (r.definition_from_past_or_crt_schema || "(no definition)") +
+       "”. Its meaning may have changed: check the translation again.")) : null,
+    el("div", { class: "means" },
+      el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
+      el("select", { id: `m${i}`, disabled: same, onchange: (e) => update("name_in_gtt", e.target.value) }, options)),
+    r.name_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
+      el("li", { class: "flag" }, `⚑ The model suggests ${r.name_from_past_or_crt_schema} (current schema) may ` +
+        `mean ${r.suggested_gtt} (ground truth vocabulary), a name the ground truth gained since this row was ` +
+        `checked. Pick it if right; keep (none) otherwise.`)) : null,
+    nowExists ? el("ul", { class: "problems" }, el("li", { class: "flag" },
+      `⚑ ${nowExists.name} (ground truth vocabulary) now exists: should ${r.name_from_past_or_crt_schema} ` +
+      `(current schema) translate to it? Keep (none) only if it means something else.`)) : null,
+    sharing.length ? el("ul", { class: "problems" }, el("li", { class: "flag" },
+      `⚑ ${[r.name_from_past_or_crt_schema, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
+      `both translate to ${r.name_in_gtt} (ground truth vocabulary), so evaluation can't tell them apart: a ` +
+      `mix-up between them costs extraction nothing. Fine if your ground truth doesn't distinguish them; if it ` +
+      `should, annotate with separate names in the ground truth.`)) : null,
+    chosen ? el("div", { class: "meta" }, "In the ground truth: ",
+                chosen.definition ? chosen.definition
+                  : el("i", {}, "coined while annotating; no definition yet (add one to the hand-built schema)")) : null,
+    r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
+      el("input", { type: "checkbox", disabled: same || r.name_in_gtt === mapping.none,
+                    checked: r.swap_subject_and_object === "yes",
+                    onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
+      " Swap subject and object (the ground truth's name states the relation the other way round)") : null,
+    exampleLine(r),
+    el("div", { class: "bar" }, same
+      ? el("span", { class: "meta" }, "Same name in both: nothing to check.")
+      : el("label", { class: "finished" },
+          el("input", { type: "checkbox", checked: r.checked === "yes",
+                        onchange: (e) => { r.stale = false; update("checked", e.target.checked ? "yes" : "no"); } }),
+          "Checked: this translation is right")));
+}
+
+async function deleteMappingRow(r) {
+  if (!confirm(`Delete line ${r._line} (${r.kind} ${r.name_from_past_or_crt_schema} --> ${r.name_in_gtt})?`)) return;
+  await flush();
+  try {
+    await api("/api/mapping/delete", { line: r._line, kind: r.kind, name: r.name_from_past_or_crt_schema });
+    await openMapping();
+    status(`Deleted line ${r._line} of ${mapping.file}`, "saved");
+  } catch (e) { fail(e); }
+}
+
+function mapChanged() {
+  mapDirty = true;
+  status("Unsaved changes…");
+  clearTimeout(mapTimer);
+  mapTimer = setTimeout(saveMapping, 600);
+}
+async function saveMapping() {
+  clearTimeout(mapTimer);
+  if (!mapping || !mapDirty) return;
+  if (mapSaving) { mapTimer = setTimeout(saveMapping, 300); return; }
+  mapSaving = true; mapDirty = false;
+  status("Saving…");
+  try {
+    await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
+      name_from_past_or_crt_schema: r.name_from_past_or_crt_schema, name_in_gtt: r.name_in_gtt,
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked })) });
+    status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
+  } catch (e) {
+    mapDirty = true;
+    status(`NOT SAVED: ${e.message}`, "failed");
+  } finally { mapSaving = false; }
+}
+
+// ---------------------------------------------------------------- partial pairs
+// Evaluation's partial pairs of tuning records (one subject or object only
+// contained in the other), to mark "same fact" or "not the same fact".
+let partial = null, onlyUnreviewed = true;
+
+async function openPartial() {
+  await flush();
+  batch = null; mapping = null; additions = null;
+  $("batch").value = "";
+  status("Opening…");
+  partial = await api("/api/partial");
+  location.hash = "p";
+  if (!partial.found) {
+    $("records").replaceChildren();
+    $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
+      "Evaluation's matches.csv wasn't found: run py 070_evaluate/run.py first.")));
+    status("");
+    return;
+  }
+  onlyUnreviewed = partial.items.some(i => !i.verdict);
+  status(`Saving verdicts to ${partial.file}`, "saved");
+  drawPartial();
+}
+
+function drawPartial() {
+  const left = partial.items.filter(i => !i.verdict).length;
+  $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+    el("h3", {}, "Partial pairs"),
+    el("p", { class: "meta" }, `${partial.items.length} pair(s) of tuning records; ${left} not reviewed yet.`),
+    el("p", { class: "meta" }, "A partial pair: the predicates agree, and each subject and object is the same " +
+      "or contained in the other as whole words. That can be wrong (MODIS vs MODIS Terra). A pair you mark " +
+      "“not the same fact” is never paired again: evaluation counts it as missed and extra."),
+    el("label", { class: "meta" },
+      el("input", { type: "checkbox", checked: onlyUnreviewed,
+                    onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
+      " Show only pairs not reviewed yet")));
+  const shown = partial.items.filter(i => !onlyUnreviewed || !i.verdict);
+  $("record").replaceChildren(...(shown.length ? shown.map(partialCard) : [el("section", { class: "card" },
+    el("p", { class: "empty" }, partial.items.length ? "Every pair is reviewed." :
+      "No partial pairs in evaluation's last run."))]));
+}
+
+function partialCard(i) {
+  const triple = (who, s, p, o) => el("div", { class: "example" }, `${who}:  ${s}  ${p}  ${o}`);
+  const pick = async (verdict) => {
+    try {
+      await api("/api/partial/review", { ...i, verdict });
+      i.verdict = verdict || null;
+      status(`Saved to ${partial.file} at ${new Date().toLocaleTimeString()}`, "saved");
+      drawPartial();
+    } catch (e) { fail(e); }
+  };
+  return el("section", { class: "card maprow" + (i.verdict ? "" : " todo") },
+    el("h3", {}, `#${i.position ?? "?"} `, el("span", { class: "part tuning" }, "tuning"), " ", i.title),
+    triple("Ground truth (ground truth vocabulary)", i.ground_truth_subject, i.ground_truth_predicate,
+           i.ground_truth_object),
+    triple("Extracted (translated into the ground truth vocabulary)", i.translated_subject,
+           i.translated_predicate, i.translated_object),
+    i.text ? el("details", {}, el("summary", { class: "meta" }, "The record's text"),
+                el("div", { class: "meta", style: "white-space:pre-wrap" }, i.text)) : null,
+    el("div", { class: "bar" },
+      el("button", { onclick: () => pick("same fact"), class: i.verdict === "same fact" ? "current" : "" },
+         (i.verdict === "same fact" ? "✓ " : "") + "Same fact"),
+      el("button", { onclick: () => pick("not the same fact"),
+                     class: i.verdict === "not the same fact" ? "current" : "" },
+         (i.verdict === "not the same fact" ? "✓ " : "") + "Not the same fact"),
+      i.verdict ? el("button", { onclick: () => pick("") }, "Take back") : null,
+      el("span", { class: "meta" }, i.verdict ? `Your verdict: ${i.verdict}` : "Not reviewed yet")));
+}
+
+// ---------------------------------------------------------------- schema additions
+// annotations/schema_additions.txt, through a form. A source naming the ground
+// truth must say "tuning" and name tuning records only (checked here and by
+// extraction); the form keeps the file's layout right.
+let additions = null, editing = null;
+
+async function openAdditions(prefill) {
+  await flush();
+  batch = null; mapping = null; partial = null;
+  $("batch").value = "";
+  status("Opening…");
+  additions = await api("/api/additions");
+  location.hash = "a";
+  editing = prefill || null;
+  status(`Editing ${additions.file}`, "saved");
+  drawAdditions();
+}
+
+async function saveAdditions(entries) {
+  try {
+    await api("/api/additions/save", { entries });
+    additions = await api("/api/additions");
+    editing = null;
+    status(`Saved to ${additions.file} at ${new Date().toLocaleTimeString()}`, "saved");
+    drawAdditions();
+  } catch (e) { status(`NOT SAVED: ${e.message}`, "failed"); }
+}
+
+function drawAdditions() {
+  const left = additions.names.filter(n => !n.added).length;
+  $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+    el("h3", {}, "Schema additions"),
+    el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Extraction adds them ` +
+      "to whichever schema it uses (the current schema)."),
+    el("p", { class: "meta" }, "Every entry needs a one-line definition and a source: where the idea came from. " +
+      "A name learned from the ground truth must come from tuning records: “ground truth tuning #12, #15”."),
+    el("button", { onclick: () => { editing = { kind: "entity class", name: "", definition: "", source: "",
+                                                  patterns: [] }; drawAdditions(); } }, "+ Add an entry")));
+  const cards = [];
+  if (additions.unread.length)
+    cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
+      `✖ ${additions.file} has line(s) its layout can't read: ${additions.unread.join("; ")}. ` +
+      "Fix them by hand first; until then the tool won't save, so nothing is lost."))));
+  if (editing) cards.push(additionForm(editing));
+  cards.push(el("section", { class: "card" }, el("h3", {}, "In the file"),
+    additions.entries.length ? additions.entries.map((e, i) => el("div", { class: "row" },
+      el("div", {}, el("span", { class: "kind" }, e.kind), el("b", {}, e.name), " (additions file): ", e.definition),
+      e.patterns.length ? el("div", { class: "meta" }, "Patterns: " + e.patterns.map(p => `${p[0]} -> ${p[1]}`).join("; ")) : null,
+      el("div", { class: "meta" }, `source: ${e.source || "(none)"}`),
+      el("div", { class: "bar" },
+        el("button", { onclick: () => { editing = { ...e, patterns: e.patterns.map(p => [...p]), _index: i }; drawAdditions(); } }, "Edit"),
+        el("button", { onclick: () => { if (confirm(`Delete ${e.name} from ${additions.file}?`))
+                                          saveAdditions(additions.entries.filter((_, j) => j !== i)); } }, "Delete"))))
+      : el("p", { class: "empty" }, "No entries yet.")));
+  cards.push(el("section", { class: "card" }, el("h3", {}, "Names outside the schema (extraction's last run)"),
+    el("p", { class: "meta" }, additions.counted_over
+      ? `Names the model used that the current schema doesn't have, counted over ${additions.counted_over} ` +
+        "(held-out records are never counted). Every name here is fair to add; add only those that name a real " +
+        `kind of thing or relation. ${left} not added yet.`
+      : "Extraction hasn't run yet (outputs/intermediate_results/060_extract/extracted_triples_details.json)."),
+    additions.names.map(n => el("div", { class: "row" },
+      el("span", { class: "kind" }, n.kind), el("b", {}, n.name), ` (used by the model; not in the current schema) · ` +
+      `${n.records} record(s) · source: ${n.source}`, " ",
+      n.added ? el("span", { class: "meta" }, "added") :
+        el("button", { onclick: () => { editing = { kind: n.kind, name: n.name, definition: "", source: n.source,
+                                                    patterns: [] }; drawAdditions(); window.scrollTo(0, 0); } }, "Add")))));
+  $("record").replaceChildren(...cards);
+}
+
+function additionForm(e) {
+  const problem = el("ul", { class: "problems" });
+  const check = async () => {
+    const r = await api("/api/additions/check", e);
+    problem.replaceChildren(...(r.problem ? [el("li", { class: "error" }, "✖ " + r.problem)] : []));
+  };
+  const input = (key, label, attrs) => el("label", { style: "display:block;margin-top:6px" }, el("span", { class: "meta" }, label),
+    el("input", { value: e[key] || "", style: "width:100%", ...attrs,
+                  oninput: (ev) => { e[key] = ev.target.value; check(); } }));
+  const patterns = el("label", { style: "display:block;margin-top:6px" },
+    el("span", { class: "meta" }, "Patterns (predicates only): the entity classes it joins, as Subject -> Object; Subject -> Object"),
+    el("input", { value: (e.patterns || []).map(p => `${p[0]} -> ${p[1]}`).join("; "), style: "width:100%",
+                  disabled: e.kind !== "predicate",
+                  oninput: (ev) => { e.patterns = ev.target.value.split(";").map(x => x.trim()).filter(Boolean)
+                                       .map(x => x.split("->").map(y => y.trim())); check(); } }));
+  const save = () => {
+    const entries = additions.entries.map(x => ({ ...x }));
+    const clean = { kind: e.kind, name: e.name, definition: e.definition, source: e.source, patterns: e.patterns || [] };
+    if (e._index !== undefined) entries[e._index] = clean; else entries.push(clean);
+    saveAdditions(entries);
+  };
+  setTimeout(check, 0);
+  return el("section", { class: "card maprow todo" },
+    el("h3", {}, e._index !== undefined ? `Edit ${e.name}` : "Add an entry"),
+    el("label", { class: "meta" }, "Kind ",
+      el("select", { onchange: (ev) => { e.kind = ev.target.value; drawAdditions(); } },
+        ["entity class", "predicate"].map(k => el("option", { value: k, selected: e.kind === k }, k)))),
+    input("name", "Name, one word (entity classes in CamelCase, predicates in UPPER_SNAKE_CASE)"),
+    input("definition", "Definition, one line"),
+    patterns,
+    input("source", "Source: where the idea came from (e.g. mentor; NASA missions A-to-Z; ground truth tuning #12)"),
+    problem,
+    el("div", { class: "bar" }, el("button", { onclick: save }, "Save"),
+       el("button", { onclick: () => { editing = null; drawAdditions(); } }, "Cancel")));
+}
+
+// ---------------------------------------------------------------- help
+// The section of annotations/README.md about the view you're on.
+function currentView() {
+  return additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
+}
+
+function inline(text) {                  // `code`, **bold**, *italic*, on escaped text
+  const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return esc.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+            .replace(/\*([^*]+)\*/g, "<i>$1</i>");
+}
+
+function markdown(md) {                  // headings, paragraphs, lists, code blocks: enough for the README
+  const out = [];
+  let list = null, code = null;
+  for (const line of md.split("\n")) {
+    if (line.startsWith("```")) {
+      if (code === null) code = []; else { out.push(`<pre>${code.join("\n").replace(/</g, "&lt;")}</pre>`); code = null; }
+      continue;
+    }
+    if (code !== null) { code.push(line); continue; }
+    const item = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+    if (item) { if (!list) { list = []; } list.push(`<li>${inline(item[1])}</li>`); continue; }
+    if (list) { out.push(`<ul>${list.join("")}</ul>`); list = null; }
+    const head = line.match(/^(#{2,3})\s+(.*)$/);
+    if (head) out.push(`<h3>${inline(head[2])}</h3>`);
+    else if (line.trim()) out.push(`<p>${inline(line)}</p>`);
+  }
+  if (list) out.push(`<ul>${list.join("")}</ul>`);
+  return out.join("");
+}
+
+async function showHelp() {
+  try {
+    const h = await api(`/api/help?view=${currentView()}`);
+    const body = el("div", { class: "helpbody" });
+    body.innerHTML = markdown(h.markdown);
+    $("help").replaceChildren(el("div", { class: "helpbox" },
+      el("div", { class: "bar", style: "margin-top:0" },
+        el("span", { class: "meta" }, `From ${h.file}`),
+        el("button", { style: "margin-left:auto", onclick: hideHelp }, "Close")),
+      body));
+    $("help").hidden = false;
+  } catch (e) { fail(e); }
+}
+function hideHelp() { $("help").hidden = true; }
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideHelp(); });
+
+loadBatches().catch(fail);
+</script>
+</body>
+</html>

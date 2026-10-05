@@ -30,9 +30,9 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 
 ### This step
 
-- **Check the translation table (`annotations/name_mapping.csv`) whenever this step adds rows:** `py annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse. Then **rerun** this step.
+- **Check the translation table (`annotations/name_mapping.csv`) whenever this step adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse. Then **rerun** this step.
 - **Act on the table's flags** there and in the report (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are stale (the name's definition changed), out of date or suggested (the ground truth vocabulary gained a counterpart), or repeated.
-- **Review the partial pairs** of the tuning part: `py annotate.py`, *Partial pairs* (your verdicts go to `annotations/partial_pair_reviews.csv`). Mark each `same fact` or `not the same fact`, with the record's text at hand.
+- **Review the partial pairs** of the tuning part: `py helpers/annotate.py`, *Partial pairs* (your verdicts go to `annotations/partial_pair_reviews.csv`). Mark each `same fact` or `not the same fact`, with the record's text at hand.
 - **Read the report's *Possible translation errors*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: names that share a translation are ones the scores can't tell apart; if that distinction matters to you, make it in the ground truth.
 - **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the partial matches and the facts "extracted, but not in the ground truth": some may be real facts you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favours extraction).
 - **Margins of error need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
@@ -49,10 +49,10 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 | `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is not scored, not scored as zero). |
 | `schema_used` | `060_extract/schema_used.json` | The schema 060 used: the names to translate. |
 | `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's sampling group. |
-| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the names coined in the ground truth, the ground truth vocabulary, built by `common/ground_truth.vocabulary` as in 050 and the annotation tool. |
+| `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the names coined in the ground truth, the ground truth vocabulary, built by `common/common_helpers/ground_truth.vocabulary` as in 050 and the annotation tool. |
 | `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | The answer key. Only records you've finished (*All facts extracted*) are scored. |
 | `name_mapping` | `./annotations/name_mapping.csv` (in Git) | The translation table (below). |
-| `partial_reviews` | `./annotations/partial_pair_reviews.csv` (in Git) | Your verdicts on partial pairs (`same fact` / `not the same fact`), made in `py annotate.py`, *Partial pairs*. Two triples you marked `not the same fact` are never paired. Starts with its header only. |
+| `partial_reviews` | `./annotations/partial_pair_reviews.csv` (in Git) | Your verdicts on partial pairs (`same fact` / `not the same fact`), made in `py helpers/annotate.py`, *Partial pairs*. Two triples you marked `not the same fact` are never paired. Starts with its header only. |
 
 ## Outputs
 
@@ -82,20 +82,20 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | Setting | Default | What it does | When to change it |
 |---|---|---|---|
 | `score_held_out` | false | Also show the held-out part's numbers, and log the look in `annotations/held_out_looks.csv`. | Only at the end, for the numbers you report. Each look is a chance to tune on the held-out part without meaning to. |
-| `model` | google-claude-sonnet-5 | The AI model to ask. `py models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
+| `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only to propose translations for names it has no row for). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
-The numbers that are fixed on purpose (in `070_evaluate/stats.py`): `MIN_RECORDS = 20` (fewer scored records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*).
+The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer scored records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*).
 
 ## How to run
 
 From the repository folder, with the environment active (`docs/virtual_environment_setup.md`), and, when names need translating, on a computer that can reach Ask Sage with your key in `.env` (`docs/running_on_nasa_laptop.md`):
 
 ```
-py 070_evaluate.py --help                    every input and setting, with its default
-py 070_evaluate.py                           the tuning part
-py 070_evaluate.py --score_held_out true     also the held-out part (for the end; each look is logged)
-py 070_evaluate.py --confirm_paid_calls false    don't ask (unattended runs)
+py 070_evaluate/run.py --help                    every input and setting, with its default
+py 070_evaluate/run.py                           the tuning part
+py 070_evaluate/run.py --score_held_out true     also the held-out part (for the end; each look is logged)
+py 070_evaluate/run.py --confirm_paid_calls false    don't ask (unattended runs)
 ```
 
 Needs 060's output. The first run with a new schema stops after adding rows to `annotations/name_mapping.csv`: check them, then run again.
@@ -106,7 +106,7 @@ Needs 060's output. The first run with a new schema stops after adding rows to `
 
 ## How it works
 
-Four stages, in `070_evaluate.py`'s `main()`; stage 2 asks the model (only for names without a row), the others are code:
+Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 asks the model (only for names without a row), the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). A record is scored if you've finished it in the ground truth and 060's last run extracted it. Of those, only the **fair part**: the longest run of the pool's first records that are all scored. A record after a gap (an unfinished or unextracted pool record before it) or outside the pool is left out and named, so every scored record belongs to a fair sample.
 2. **Translate names** (`names.py`, `translate_names`), through `annotations/name_mapping.csv`:
@@ -143,7 +143,7 @@ Four stages, in `070_evaluate.py`'s `main()`; stage 2 asks the model (only for n
 
 **Then the results** (`results`): `scores.json`, `per_record.md` and `matches.csv` are written, replacing the last run's; with `--score_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **possible translation errors** (`match.py`, `name_clues`), found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the fact but a name differs. A paired fact whose entity class differs from the ground truth's suggests the row of the current schema's entity class is wrong (its row may say `(none)`, or the wrong name); an unpaired extracted fact and an unpaired ground truth fact with the same subject and object (or the two swapped) but different predicates suggest the predicate's row is wrong (or its `swap_subject_and_object`). Each pair of names is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong name, a frequent one is a row to check.
 
-The code: `070_evaluate/` holds `moves.py` (the moves, and writing the results), `records.py`, `names.py`, `match.py`, `stats.py` and `prompts/`. Shared with other steps: `common/ground_truth.py` (reading the ground truth; the fair part), `common/text_match.py`, `common/triples_io.py`, `common/files.py` (adding lines without changing any), `common/cache.py`, `common/llm.py`.
+The code: `070_evaluate/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `070_evaluate/070_evaluate_helpers/` holds `moves.py` (the moves, and writing the results), `records.py`, `names.py`, `match.py` and `stats.py`; `070_evaluate/070_evaluate_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/ground_truth.py` (reading the ground truth; the fair part), `common/common_helpers/text_match.py`, `common/common_helpers/triples_io.py`, `common/common_helpers/files.py` (adding lines without changing any), `common/common_helpers/cache.py`, `common/common_helpers/llm.py`.
 
 ### The margin of error, and the checks it needs
 
@@ -167,8 +167,8 @@ A margin covers only **which records happened to be scored**: not mistakes in th
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `070_evaluate/prompts/map_names.txt` | stage 2, one call, only for names of 060's schema without a row | for each of those names, give the name of the ground truth vocabulary that means the same thing (or none), and say whether a predicate states the relation in the opposite direction; the ground truth vocabulary's names and definitions are shown in the prompt |
-| `070_evaluate/prompts/suggest_names.txt` | stage 2, one call, only when there are both current-schema rows that say `(none)` and ground truth names nothing translates to; the answer is cached by those two lists, so the same lists are never paid for twice | for each `(none)` name, whether a ground truth name nothing translates to means the same thing (suggest only if confident) |
+| `070_evaluate/070_evaluate_prompts/map_names.txt` | stage 2, one call, only for names of 060's schema without a row | for each of those names, give the name of the ground truth vocabulary that means the same thing (or none), and say whether a predicate states the relation in the opposite direction; the ground truth vocabulary's names and definitions are shown in the prompt |
+| `070_evaluate/070_evaluate_prompts/suggest_names.txt` | stage 2, one call, only when there are both current-schema rows that say `(none)` and ground truth names nothing translates to; the answer is cached by those two lists, so the same lists are never paid for twice | for each `(none)` name, whether a ground truth name nothing translates to means the same thing (suggest only if confident) |
 
 Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "names", "classes"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. Its answers are only proposals: you check every row before scoring uses it.
 
@@ -178,7 +178,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N finished ground truth record(s) weren't extracted by 060's last run* | They can't be scored. | Run `py 060_extract.py`. |
+| *N finished ground truth record(s) weren't extracted by 060's last run* | They can't be scored. | Run `py 060_extract/run.py`. |
 | *N record(s) are left out because they aren't in the fair part* | A pool record before them isn't finished or extracted, or they're outside the pool. | Finish (or extract) the records before them. |
 | *N scored record(s) have no sampling group* | Not in the pool file. | Normally impossible for pool records. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
@@ -191,35 +191,35 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *only N record(s) scored, fewer than 20* | No margin of error; don't draw conclusions yet. | Annotate more; until then, read `per_record.md` rather than the numbers. |
 | *some sampling group's share … differs from its share of the pool* | The scored records don't mirror the pool. | Look at the group table; usually hand-picked or skipped records. |
-| *The model suggests N row(s) of name_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained names since those rows were checked, and the model thinks one means the same as the row's current-schema name, under another name (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py annotate.py`, *Translation table* (it shows the suggestion): pick the suggested name if right, keep `(none)` otherwise. |
-| *N partial pair(s) of the tuning part aren't reviewed yet* | The partial level counts pairs nobody has confirmed; some may not be the same fact (e.g. `MODIS` vs `MODIS Terra`). | Review them in `py annotate.py`, *Partial pairs*; rerun 070. |
-| *N row(s) of name_mapping.csv translate to (none) though the ground truth vocabulary now has the same name* | A row checked as `(none)` before that name joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's name means something else. | Check the row in `py annotate.py`, *Translation table* (it's flagged there); change it to the ground truth name, or keep `(none)`. |
-| *N pair(s) of names met 2 or more times where extraction found the fact but a name differed* | A row of `name_mapping.csv` may translate a current-schema name to the wrong ground truth name, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py annotate.py`, *Translation table*). |
+| *The model suggests N row(s) of name_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained names since those rows were checked, and the model thinks one means the same as the row's current-schema name, under another name (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py helpers/annotate.py`, *Translation table* (it shows the suggestion): pick the suggested name if right, keep `(none)` otherwise. |
+| *N partial pair(s) of the tuning part aren't reviewed yet* | The partial level counts pairs nobody has confirmed; some may not be the same fact (e.g. `MODIS` vs `MODIS Terra`). | Review them in `py helpers/annotate.py`, *Partial pairs*; rerun 070. |
+| *N row(s) of name_mapping.csv translate to (none) though the ground truth vocabulary now has the same name* | A row checked as `(none)` before that name joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's name means something else. | Check the row in `py helpers/annotate.py`, *Translation table* (it's flagged there); change it to the ground truth name, or keep `(none)`. |
+| *N pair(s) of names met 2 or more times where extraction found the fact but a name differed* | A row of `name_mapping.csv` may translate a current-schema name to the wrong ground truth name, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py helpers/annotate.py`, *Translation table*). |
 | *The held-out part was looked at: N time(s) so far* | After `--score_held_out true`: each look is logged and counted. | Commit `annotations/held_out_looks.csv`. |
 
 **The step stops** with:
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no` (easiest in `py annotate.py`, *Translation table*), then run again. |
-| *N checked row(s) of name_mapping.csv were checked when the current schema defined the name differently* | A later schema uses the name, but defines it differently from when the row was checked: the translation may no longer be right. | Check those rows again in `py annotate.py`, *Translation table* (it shows both definitions), then run again. |
-| *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them in `py annotate.py`, *Translation table* (or in the CSV: fix `name_in_gtt` and `swap_subject_and_object` where wrong, then set `checked` to `yes`), then run again. |
+| *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no` (easiest in `py helpers/annotate.py`, *Translation table*), then run again. |
+| *N checked row(s) of name_mapping.csv were checked when the current schema defined the name differently* | A later schema uses the name, but defines it differently from when the row was checked: the translation may no longer be right. | Check those rows again in `py helpers/annotate.py`, *Translation table* (it shows both definitions), then run again. |
+| *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them in `py helpers/annotate.py`, *Translation table* (or in the CSV: fix `name_in_gtt` and `swap_subject_and_object` where wrong, then set `checked` to `yes`), then run again. |
 | *N checked row(s) … translate to a name that isn't in the ground truth vocabulary* | A typo in `name_in_gtt`, or a ground truth name since renamed; each is listed as *name (current schema) --> name (not in the ground truth vocabulary)*. | Choose a name of the ground truth vocabulary, or `(none)`. |
-| *name_mapping.csv has N name(s) with more than one row: … (lines …)* | Two rows for one name (usually from a hand edit), so which translation counts is unclear. | Keep one row per name: `py annotate.py`, *Translation table*, shows a *Delete this row* button on each repeated row. |
+| *name_mapping.csv has N name(s) with more than one row: … (lines …)* | Two rows for one name (usually from a hand edit), so which translation counts is unclear. | Keep one row per name: `py helpers/annotate.py`, *Translation table*, shows a *Delete this row* button on each repeated row. |
 | *name_mapping.csv lacks the column(s) …* | The file's header was changed. | Restore the header: `kind,name_from_past_or_crt_schema,name_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema`. |
 | *kind must be 'entity class' or 'predicate'* | A typo in `kind`. | Fix it. |
-| *Nothing to score yet* | No finished ground truth record that 060 extracted is in the fair part. | Finish records in `py annotate.py`, then run 060. |
-| *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split.py`. |
+| *Nothing to score yet* | No finished ground truth record that 060 extracted is in the fair part. | Finish records in `py helpers/annotate.py`, then run 060. |
+| *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split/run.py`. |
 | *missing input files … run 060_extract first* | 060 hasn't run. | Run it. |
-| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
-| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
 ## Audit trail
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, the model call's retries (if any), each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each row of `matches.csv` has an `origin` column naming the 060 row it compares (`060_extract/extracted_triples.csv#<position>`) and the ground truth row (`annotations/ground_truth/batch_000.csv#<position>`); the ground truth is made by a person, so a trace stops there.
-- **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 - **Held-out looks.** `annotations/held_out_looks.csv` keeps one line per look at the held-out part, in Git.
 
 ## Known limits

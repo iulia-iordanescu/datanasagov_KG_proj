@@ -4,7 +4,7 @@ Work made by a person, kept in Git because it can't be rebuilt by rerunning the 
 
 | File or folder | What it holds | Read by |
 |---|---|---|
-| `ground_truth/` | The ground truth: one file per corrected batch, written with the annotation tool (`py annotate.py`). How to add a batch: below. | 050 (to skip records already done, and to check the files for typos), 060 (which records are finished), 070 (the answer key) |
+| `ground_truth/` | The ground truth: one file per corrected batch, written with the annotation tool (`py helpers/annotate.py`). How to add a batch: below. | 050 (to skip records already done, and to check the files for typos), 060 (which records are finished), 070 (the answer key) |
 | `ground_truth_candidates.csv` | The ground truth candidates pool: 1,000 records drawn once (2026-09-21), in their shuffled order, each with its maintainer and the sampling group it was drawn from (`group`, `group_size`, `drawn_from_group`). | 030, 070 (the groups) |
 | `ground_truth_candidates.json` | How the pool was drawn: stratified by maintainer, seed 1000, 1,000 of 36,323 records, and each group's size and places. | nothing (a record of the draw) |
 | `schema_derived_from_manual_annotation.txt` | The hand-built schema: entity classes and predicates with a description each, and the patterns each predicate has been used in. Updated by hand as annotation goes: add each name you coin while annotating, with a definition (the annotation tool and step 050's report list the ones still missing). | 040 (to compare with), 050 (shown to the model; every row is checked against it), the annotation tool; 060 with `--schema`; 070 (the ground truth vocabulary) |
@@ -20,7 +20,7 @@ Work made by a person, kept in Git because it can't be rebuilt by rerunning the 
 After running step 050, from the repository folder:
 
 ```
-py annotate.py
+py helpers/annotate.py
 ```
 
 It opens a page in your browser (Ctrl+C in the terminal stops it). On any view, **Help** at the top shows this file's section about that view. It runs only on your computer: no internet, no model calls, nothing to install.
@@ -72,7 +72,7 @@ Their columns:
 
 ### What the pipeline checks
 
-Every step that reads `ground_truth/` (050, 060 and 070, through `common/ground_truth.py`) lists these in its report's warnings, and the annotation tool shows them on its page; none is ever silently fixed:
+Every step that reads `ground_truth/` (050, 060 and 070, through `common/common_helpers/ground_truth.py`) lists these in its report's warnings, and the annotation tool shows them on its page; none is ever silently fixed:
 
 - a record in two files (annotated twice): keep it in one file;
 - a record whose rows disagree on `all_facts_extracted`: set it the same on every row;

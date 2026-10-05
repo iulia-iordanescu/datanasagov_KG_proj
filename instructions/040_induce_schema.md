@@ -80,9 +80,9 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `induction_maintainers` | 10 | Learn from this many of the largest maintainers. | To cover more (or fewer) of the catalog's maintainers. |
 | `texts_per_maintainer` | 15 | Take the first this-many induction candidates of each. | To learn from more text. Taking more keeps the texts already taken, so their extraction calls are reused (see How to run). |
 | `min_support` | 1 | A schema entry enters the schema if its support is at least this. 1 keeps everything found. | Once 070's scores can compare values; see Known limits. |
-| `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/chunking.py`). | Rarely. No text of the default sample is that long (the longest is 5,797 characters). |
+| `max_chars` | 8000 | A text longer than this is split into text pieces, one model call each (`common/common_helpers/chunking.py`). | Rarely. No text of the default sample is that long (the longest is 5,797 characters). |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
-| `model` | google-claude-sonnet-5 | The AI model to ask. `py models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
+| `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call. | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 ## How to run
@@ -90,10 +90,10 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 From the repository folder, with the environment active (`docs/virtual_environment_setup.md`), on a computer that can reach Ask Sage and has your key in `.env` (`docs/running_on_nasa_laptop.md`):
 
 ```
-py 040_induce_schema.py --help                           every input and setting, with its default
-py 040_induce_schema.py                                  learn from 150 texts; asks before paying
-py 040_induce_schema.py --texts_per_maintainer 30        learn from more text
-py 040_induce_schema.py --confirm_paid_calls false       don't ask (unattended runs)
+py 040_induce_schema/run.py --help                           every input and setting, with its default
+py 040_induce_schema/run.py                                  learn from 150 texts; asks before paying
+py 040_induce_schema/run.py --texts_per_maintainer 30        learn from more text
+py 040_induce_schema/run.py --confirm_paid_calls false       don't ask (unattended runs)
 ```
 
 **Paying.** Before its first model call, 040 logs its plan (how many extraction calls, the model) and waits: Enter starts, anything else stops the run having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Before you pay: this run can't do exactly what you asked*, then the reasons, listed under *Checks and warnings*). Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: about one per text to extract triple instances, plus a few dozen to label, merge and define; the report counts each stage's calls exactly.
@@ -102,31 +102,31 @@ py 040_induce_schema.py --confirm_paid_calls false       don't ask (unattended r
 
 ## How it works
 
-Seven stages, in `040_induce_schema.py`'s `main()`; stages 2, 3, 4 and 6 ask the model, the others are code:
+Seven stages, in `040_induce_schema/run.py`'s `main()`; stages 2, 3, 4 and 6 ask the model, the others are code:
 
 1. **Pick the texts** (`texts.py`, `pick_texts`). From 030's induction candidates, the first `texts_per_maintainer` records of each of the `induction_maintainers` largest maintainers: 150 texts by default. Each text is the record's title and notes (and any extra text fields 020 kept), split into text pieces only if it's longer than `max_chars`, with the title repeated at the top of each piece.
-2. **Extract triple instances, and check them** (`extract.py`, `extract_triple_instances`). One model call per text piece: list every fact the text states as a triple instance, with the text's own words as its component instances ("MODIS" – "is aboard" – "Aqua"), each with its source text, copied word for word. Nothing tells the model what kinds of things or relations to look for. The reply also names `describes_class`: the kind of thing the text's title names ("Dataset", "WebTool", …), judged from the whole text; the first piece to name one decides it. Steps 050 and 060 need such entity classes for every record's DESCRIBES row, so this makes sure the schema has them. Then code checks every triple instance against its record's whole text (`common/validate.py`, shared with 050 and 060):
+2. **Extract triple instances, and check them** (`extract.py`, `extract_triple_instances`). One model call per text piece: list every fact the text states as a triple instance, with the text's own words as its component instances ("MODIS" – "is aboard" – "Aqua"), each with its source text, copied word for word. Nothing tells the model what kinds of things or relations to look for. The reply also names `describes_class`: the kind of thing the text's title names ("Dataset", "WebTool", …), judged from the whole text; the first piece to name one decides it. Steps 050 and 060 need such entity classes for every record's DESCRIBES row, so this makes sure the schema has them. Then code checks every triple instance against its record's whole text (`common/common_helpers/validate.py`, shared with 050 and 060):
    - **unverified, left out** (may be invented): a triple instance with no source text, or whose source text isn't in the text. It counts toward nothing in the later stages, and is listed with why in `induction_evidence.json`;
    - **verified, flagged**: a triple instance whose subject or object isn't in the text or in its own source text (usually reworded, "the instrument" for "MODIS"), or whose subject and object are the same. The flags are counted in the report.
 
-   "In the text" ignores case, spacing, quote marks, dash styles and a leading "the"/"a"/"an" (`common/text_match.py`). A triple instance two pieces of one text both state counts once; an item that isn't a triple instance is dropped and counted.
+   "In the text" ignores case, spacing, quote marks, dash styles and a leading "the"/"a"/"an" (`common/common_helpers/text_match.py`). A triple instance two pieces of one text both state counts once; an item that isn't a triple instance is dropped and counted.
 3. **Label every component instance, with a running vocabulary** (`label.py`, `label_component_instances`). A component instance in a subject or object slot gets an entity class label ("MODIS" → `Instrument`); one in a predicate slot gets a predicate label ("is aboard" → `ABOARD`). Each is judged by the shortest triple instance it appears in. A text's title isn't sent: its label is its `describes_class` from stage 2, and those labels start the entity vocabulary (most common first), so other component instances reuse them. The component instances go to the model in batches of 80, most common first, and every batch is shown the labels chosen so far, with the instruction to reuse one whenever it fits and coin a new one only when none does. So one idea doesn't end up under several labels because its component instances were in different batches. One left unlabeled is asked once more; if still unlabeled, it's listed and counts toward no schema entry.
 4. **Merge synonymous labels** (`merge.py`, `merge_labels`). A few synonyms can still slip through stage 3, so the finished list of labels goes to the model in one call per kind (entity class labels, predicate labels), each label with the component instances that most often got it. Every label is seen beside every other. The model lists only the merges it finds (`Sensor` → `Instrument`); predicates pointing in opposite directions are never merged. Code checks the reply: a merge must go into a label that was sent; labels that weren't sent are ignored; a label merged twice keeps the first merge; chains are followed to their end. Every merge is listed in the report.
 5. **Count the evidence** (`count.py`, `count_support`). Each verified triple instance becomes, through the labels of its component instances, an entity class for its subject and its object, a predicate, and, if all three are labeled, a pattern. Each text's title also counts once toward its label, as an entity class, whether or not it is in a triple instance. For every schema entry: its support, which texts, and which maintainers. Labels that differ only in case, spacing or punctuation are folded into one first (digits are kept: `Level2` and `Level3` stay apart); every fold is listed in `induction_evidence.json` (the report shows the first 20).
 6. **Write definitions** (`define.py`, `write_definitions`). Every entity class and predicate whose support reaches `min_support` goes to the model, 40 at a time, for one defining sentence each, or a reason if it's too vague to tell anything apart ("Thing"). This stage only writes words; it merges and chooses nothing.
 7. **Build the schema** (`check.py`, `check_schema`). The schema is built from stage 5's counts, never from the model's replies: an entity class or predicate is in it if its support reaches `min_support` and it isn't too vague; a pattern is in it if its support reaches `min_support` and its two entity classes and its predicate are in it. Every other schema entry is deferred, with its reason. A schema entry missing its definition stays in, marked, and is listed.
 
-Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code, comparing names with `common/triples_io.label_key`): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Names match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a score: 070 measures how much of the ground truth the schema can express.
+Then, for the report only, **the induced schema is put beside the hand-built one** (`compare.py`, code, comparing names with `common/common_helpers/triples_io.label_key`): which entity classes, predicates and patterns both have, which only the hand-built one has, and which only the induced one has. Names match when equal ignoring case, spaces and punctuation, so a concept the two name differently (`Instrument`, `Sensor`) counts as unmatched. It's a sanity check on what the data taught the model, not a score: 070 measures how much of the ground truth the schema can express.
 
 **Then the results** (`results`): `the_schema.json` and `induction_evidence.json` are written; the report.
 
-The code: `040_induce_schema/` holds `moves.py` (the moves, and writing the results), one file per stage (above), `compare.py` and `prompts/`. Shared with other steps: `common/validate.py` and `common/text_match.py` (the checks), `common/schema_io.py` (reading the hand-built schema), `common/chunking.py` (text pieces), `common/cache.py` (the answer cache), `common/llm.py` (the model).
+The code: `040_induce_schema/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `040_induce_schema/040_induce_schema_helpers/` holds `moves.py` (the moves, and writing the results), one file per stage (above) and `compare.py`; `040_induce_schema/040_induce_schema_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/validate.py` and `common/common_helpers/text_match.py` (the checks), `common/common_helpers/schema_io.py` (reading the hand-built schema), `common/common_helpers/chunking.py` (text pieces), `common/common_helpers/cache.py` (the answer cache), `common/common_helpers/llm.py` (the model).
 
 **Why "undefined" is one of the maintainers learned from:** it is the 5th largest (989 records with no maintainer); see `instructions/030_split.md`, *Why "undefined" counts as a maintainer*.
 
 ## Prompts
 
-In `040_induce_schema/prompts/`:
+In `040_induce_schema/040_induce_schema_prompts/`:
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
@@ -167,16 +167,16 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *… labels are more than one call takes* | Over 800 labels of one kind: too many to merge in one call. | See Known limits. |
 | *missing input files … (run 020_clean or 030_split first, or pass --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A setting is out of range: `induction_maintainers`, `texts_per_maintainer`, `min_support` or `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
-| *induction candidate … is not in 020's records; splits.json and records.jsonl are out of step* | 020 was rerun on a different harvest after 030 wrote `splits.json`. | Delete 030's `splits.json`, then run `py 030_split.py` (it writes the file only once). |
-| *model must name a model* | The `model` setting is empty. | Give a model's name (`py models.py` lists them). |
-| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py models.py` lists them). Otherwise check `.env` and the network. |
+| *induction candidate … is not in 020's records; splits.json and records.jsonl are out of step* | 020 was rerun on a different harvest after 030 wrote `splits.json`. | Delete 030's `splits.json`, then run `py 030_split/run.py` (it writes the file only once). |
+| *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 
 ## Audit trail
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every model call's retries, each move's duration, each output file's hash and, on failure, the full traceback.
 - **Origin.** Each schema entry's `_origin` names the 020 records whose texts it was found in, e.g. `020_clean/records.jsonl#a1b2…`; `induction_evidence.json` keeps every text's triple instances and labels.
-- **Trace.** `py audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`). A schema entry can be traced by its name: `py audit.py Instrument`.
+- **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`). A schema entry can be traced by its name: `py helpers/audit.py Instrument`.
 
 ## Known limits
 

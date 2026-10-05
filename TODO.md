@@ -6,9 +6,9 @@
 - [x] **Make a script that extracts facts based off a particular schema.** (done: step 060)
   - [x] Use texts the schema induction script never saw (done: by default 060 extracts from the finished ground truth records, which 030 keeps apart from 040's texts)
 - [ ] **Make a script that validates extracted facts for the full run.**
-  - [x] Check each fact exists in the text (done: `common/validate.py`, used by 040, 050, 060 and the annotation tool)
+  - [x] Check each fact exists in the text (done: `common/common_helpers/validate.py`, used by 040, 050, 060 and the annotation tool)
   - [ ] Add controlled keywords for entity classes and predicates if they exist. The "Mission" entity class should use: <https://www.nasa.gov/a-to-z-of-nasa-missions/>
-- [x] **Make a script that drafts the ground truth triples.** (done: step 050, corrected with `py annotate.py`)
+- [x] **Make a script that drafts the ground truth triples.** (done: step 050, corrected with `py helpers/annotate.py`)
   - [x] Use texts the schema induction script never saw; draw the pool of records that can be used potentially ONCE so that you don't have to worry about this ever again.
 - [x] **Make a script that compares ground truth triples to found triples for a set of texts via precision and recall.** (done: step 070)
   - [ ] Explore and research other quality metrics, e.g. coverage and partial accuracy (partly done: 070 also reports partial matches, entity-class accuracy and the schema ceiling)
@@ -21,7 +21,7 @@
 
     If a group comes back highly similar, two options: drop the duplicates and sample replacements from the same maintainer, or keep them but count that maintainer's contribution once instead of fifteen times.
   - [ ] Stage 2 accepts junk and nothing filters it, e.g. the extractor produces "dataset" as a bare subject and reads "VNP43D66 is the BSA" as a type statement, accumulating real support for an unhelpful fact. There's no cheap filter currently, like a stoplist for generic subjects which would cost nothing and remove a known noise source.
-  - [x] (done: steps 050 and 060 write it for every record, `common/triples_io.py`) We should enforce the following in our schema. Every record gets one structural triple that keeps a catalog entry separate from the thing it describes. The only piece code does not handle, i.e. the LLM's role, is deciding what type of thing the record is describing (a dataset, a publication, etc):
+  - [x] (done: steps 050 and 060 write it for every record, `common/common_helpers/triples_io.py`) We should enforce the following in our schema. Every record gets one structural triple that keeps a catalog entry separate from the thing it describes. The only piece code does not handle, i.e. the LLM's role, is deciding what type of thing the record is describing (a dataset, a publication, etc):
        <record id> (CatalogEntry) DESCRIBES <title> (its class)
   - [ ] Consider properties, since we are moving in the direction of an LPG
   - [ ] Explore data.nasa.gov public-facing website for inspiration about entity classes to include and predicates, e.g. the filters a user can apply for a search

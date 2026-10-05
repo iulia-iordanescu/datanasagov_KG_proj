@@ -63,9 +63,9 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 From the repository folder, with the environment active (`docs/virtual_environment_setup.md`):
 
 ```
-py 010_harvest.py --help                   every setting, with its default
-py 010_harvest.py                          whole catalog (37 pages, about 20-25 minutes)
-py 010_harvest.py --max_records 2000       quick trial
+py 010_harvest/run.py --help                   every setting, with its default
+py 010_harvest/run.py                          whole catalog (37 pages, about 20-25 minutes)
+py 010_harvest/run.py --max_records 2000       quick trial
 ```
 
 **Paying.** This step makes no model calls: it costs nothing, and keeps no cache. It needs the internet, and the `requests` package (installed with the environment).
@@ -82,7 +82,7 @@ The report counts all four cases (downloaded, kept, downloaded again, deleted). 
 
 ## How it works
 
-Two stages, in `010_harvest.py`'s `main()`, both code:
+Two stages, in `010_harvest/run.py`'s `main()`, both code:
 
 1. **Download the catalog** (`download_catalog`). The first request learns the catalog's size; the run aims for that many records, or `max_records` if smaller. Pages are requested in order (`start` = 0, 1000, 2000, …), sorted oldest record first (by creation time, then id). CKAN's default order puts the most recently modified record first, so a record added or edited during the harvest would jump ahead of the pages already fetched: it would be missed, and every later page would shift and repeat a record. In creation order a new record lands at the end and an edit moves nothing. Each page is written as soon as it arrives, under a temporary name that is renamed when the write finishes, so a crash never leaves a half-written file behind.
    - Responses 429, 500, 502, 503 and 504, and failed connections or reads, are retried up to 5 times: the first retry straight away, then after 3, 6, 12 and 24 s, or after the wait the server asks for (a `Retry-After` header). When the retries run out, or on any other error (e.g. 404), the step stops.
@@ -92,7 +92,7 @@ Two stages, in `010_harvest.py`'s `main()`, both code:
 
 **Then the results** (`results`): the batch files are already on disk; the report gives record counts, batch files downloaded vs. kept, batch files with their request block, the harvest date, and any warnings.
 
-The code: `010_harvest/` holds `moves.py` (the moves, and writing the results), `ckan_client.py` (the API requests) and `batches.py` (the batch files). Shared with other steps: `common/files.py` (saving files).
+The code: `010_harvest/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `010_harvest/010_harvest_helpers/` holds `moves.py` (the moves, and writing the results), `ckan_client.py` (the API requests) and `batches.py` (the batch files). Shared with other steps: `common/common_helpers/files.py` (saving files).
 
 ## Prompts
 
@@ -126,7 +126,7 @@ None: this step makes no model calls.
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, every API request (URL, status, size, time), every retry, each move's duration, each output file's hash and, on failure, the full traceback. The console shows the same run without the request-level detail.
 - **Origin.** Each batch file holds the request that returned its records: the URL, when it was fetched, the HTTP status, the catalog size the API reported, and the run that fetched it. A batch kept on a rerun keeps the request block of the run that fetched it. This is where every later item's origin chain ends. Harvests saved by an earlier version of this step, as a bare list with a separate `_lineage.jsonl`, are downloaded again on the next run, and the old `_lineage.jsonl` is deleted. (The harvest of 2026-09-27 was converted to this format in place, from its `_lineage.jsonl`, instead of being downloaded again. That older format didn't keep the catalog size per page, so in those files only `batch_00000.json` has a `catalog_count`.)
-- **Trace a record.** `py audit.py <record id>` starts from the latest step that has the record (the highest-numbered step whose last run's output holds it: for a ground truth record, e.g. 060's `extracted_triples.csv`, 050's newest draft batch or 030's `splits.json`; otherwise 020's `records.jsonl`) and follows it back to the batch file that holds it, the run that fetched it, and the request that returned it.
+- **Trace a record.** `py helpers/audit.py <record id>` starts from the latest step that has the record (the highest-numbered step whose last run's output holds it: for a ground truth record, e.g. 060's `extracted_triples.csv`, 050's newest draft batch or 030's `splits.json`; otherwise 020's `records.jsonl`) and follows it back to the batch file that holds it, the run that fetched it, and the request that returned it.
 
 ## Known limits
 

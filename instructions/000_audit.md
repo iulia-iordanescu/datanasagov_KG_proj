@@ -31,12 +31,12 @@ Start from the report: its **Run** section links to the log.
 ## Tracing an item
 
 ```
-py audit.py <key>                                         a record id, or a schema entry's name
-py audit.py <key> --step 010_harvest                      look in one step only
-py audit.py --step 010_harvest --file batch_01000.json --position 17
+py helpers/audit.py <key>                                         a record id, or a schema entry's name
+py helpers/audit.py <key> --step 010_harvest                      look in one step only
+py helpers/audit.py --step 010_harvest --file batch_01000.json --position 17
 ```
 
-`audit.py` finds the item in the latest step that has it (searching the output files each step's manifest lists, by the item's `id`, or its `name` for a schema entry), then follows its origin upstream, one step at a time, to the 010 batch file and the API request that first returned it. An origin can also point to a file kept in Git, such as the ground truth candidates pool in `annotations/`; the trace shows it as made by a person and goes no further up that branch. A JSON output holding several lists under their own names (030's `splits.json`) is searched in all of them. It shows at most 20 matches.
+`helpers/audit.py` finds the item in the latest step that has it (searching the output files each step's manifest lists, by the item's `id`, or its `name` for a schema entry), then follows its origin upstream, one step at a time, to the 010 batch file and the API request that first returned it. An origin can also point to a file kept in Git, such as the ground truth candidates pool in `annotations/`; the trace shows it as made by a person and goes no further up that branch. A JSON output holding several lists under their own names (030's `splits.json`) is searched in all of them. It shows at most 20 matches.
 
 Each hop names a run, with its report and log: for a 010 batch file, the run recorded in the file (the one that fetched it); for any other file, the run in its step's manifest (the last run that finished). A step folder without a manifest is not searched, and hops through it show `made by run unknown`. Only the files a step's manifest lists are searched, i.e. those its last finished run wrote: for 050, the newest draft batch, not earlier ones. A record in an older draft batch is found in 030's `splits.json` instead, which leads back to the same harvest.
 

@@ -22,7 +22,7 @@ Then create the `.env` file (part 6) and run the checks (part 7).
 | Need | Detail |
 |---|---|
 | Python | **3.14** (part 1 checks for it) |
-| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `common/llm.py` to read your Ask Sage key from `.env`. Everything else comes with Python |
+| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `common/common_helpers/llm.py` to read your Ask Sage key from `.env`. Everything else comes with Python |
 | Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a model need it |
 
 ## Part 1: Check that Python 3.14 is installed
@@ -116,9 +116,9 @@ ASKSAGE_API_KEY=your-key-here
 
 Don't add quotes or spaces around the `=`.
 
-`.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
+`.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/common_helpers/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-The pipeline steps that call the model need the file: steps 040 (`040_induce_schema.py`), 050 (`050_annotate.py`) and 060 (`060_extract.py`), and 070 (`070_evaluate.py`) when it needs to propose name translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
+The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`) and 060 (`060_extract/run.py`), and 070 (`070_evaluate/run.py`) when it needs to propose name translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
 ## Part 7: Check the setup
 
@@ -140,14 +140,14 @@ If the path points somewhere else, the environment isn't active. Go back to part
 
 ## Part 8: Run the scripts
 
-The usage examples in the scripts and in `instructions/` use `py`, for example `py audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
+The usage examples in the scripts and in `instructions/` use `py`, for example `py helpers/audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
 
 **Pipeline steps in the repo root.** These find their files relative to the repo, so the folder you run them from doesn't matter. Running them from the repo root is simplest:
 
 ```powershell
-py 010_harvest.py --help
-py 010_harvest.py
-py audit.py <record id>
+py 010_harvest/run.py --help
+py 010_harvest/run.py
+py helpers/audit.py <record id>
 ```
 
 Each step's guide in `instructions/` says how to run it. `docs/running_on_nasa_laptop.md` gives the order to run them in.
