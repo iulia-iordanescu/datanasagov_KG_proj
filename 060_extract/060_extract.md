@@ -49,7 +49,7 @@ A schema holds entity classes and predicates, each with a one-line definition, a
 ```
 
 - `entity_classes` and `predicates` are lists of entries, each with `"name"` and `"definition"`.
-- `patterns` is a list of `{"pattern": [subject entity class, predicate, object entity class]}`; it may be left out.
+- `patterns` is a list of `{"pattern": [subject class, predicate, object class]}`; it may be left out.
 - Anything else is ignored: 040's `support`, `maintainers`, `texts`, `examples`, `deferred`, `made`. So 040's file works as it is, and so does one written by hand.
 
 **Text (any other ending), like the hand-built schema** `annotations/schema_derived_from_manual_annotation.txt`:
