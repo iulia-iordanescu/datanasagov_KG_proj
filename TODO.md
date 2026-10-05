@@ -11,7 +11,7 @@
 - [x] **Make a script that drafts the ground truth triples.** (done: step 050, corrected with `py helpers/annotate.py`)
   - [x] Use texts the schema induction script never saw; draw the pool of records that can be used potentially ONCE so that you don't have to worry about this ever again.
 - [x] **Make a script that compares ground truth triples to found triples for a set of texts via precision and recall.** (done: step 070)
-  - [ ] Explore and research other quality metrics, e.g. coverage and partial accuracy (partly done: 070 also reports partial matches, entity-class accuracy and the schema ceiling)
+  - [ ] Explore and research other quality metrics, e.g. coverage and partial accuracy (partly done: 070 also reports partial pairs, entity-class accuracy and the schema ceiling)
 - [ ] **Enhance script that induces the schema.**
   - [ ] Purview glossary
   - [ ] Neo4j capabilities

@@ -140,6 +140,7 @@ None: this step makes no model calls.
 | *N ground truth candidates are no longer in the catalog and were dropped* | Pool records that left the catalog since the pool was drawn. Listed in the report. 1 on 2026-09-28 (position 946). | Nothing: the others keep their positions. If a dropped record was already annotated, its ground truth no longer has a text to evaluate against. |
 | *N ground truth candidates have a different maintainer in 020's records than in the pool file* | A maintainer's spelling is joined differently now, or the record's maintainer changed. Listed in the report. 0 on 2026-09-28. | Usually nothing; 020's maintainer is used. |
 | *splits.json already exists and was kept, but this run's draw differs from it* | The records, the pool file or the setting changed since `splits.json` was written. | Usually nothing: the kept file is what work in progress relies on. To take the change, delete `splits.json` and rerun. |
+| *N of M ground truth candidates (or induction candidates) have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
 

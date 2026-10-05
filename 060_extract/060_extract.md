@@ -68,7 +68,7 @@ ABOARD            is carried on
 
 - An entry is its name (no spaces in it), then **two or more spaces**, then its definition, on one line. If a name appears twice, the first entry is kept.
 - Under a predicate, an indented line lists its patterns as `Subject -> Object` pairs separated by `;`.
-- Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file).
+- Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file, and by the names the annotation tool adds to the hand-built schema).
 - Lines starting with `#` are comments. Any other line is not read: in a schema given with `--schema` it's ignored as prose (like the explanation in the hand-built schema); in the additions file, where it's usually a mistake, it's pointed out before paying.
 
 So `py 060_extract/run.py --schema annotations/schema_derived_from_manual_annotation.txt` extracts with your hand-built schema.
@@ -149,8 +149,8 @@ py 060_extract/run.py --confirm_paid_calls false              don't ask (unatten
 Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). By `extract_from` or `ids` (above). Anything that differs from what was asked becomes a note shown before paying: a listed id not in the catalog or without text, ground truth records not yet finished.
-2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), additions that clash with the schema, additions with no `source:` line, entries with no definition, pattern names that aren't entity classes or predicates of the schema.
-3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `prompts/extract.txt`: extract only the facts the schema can express, in only the schema's names, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
+2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), entries of the schema input whose `source:` line fails the same check (kept), additions that clash with the schema, additions with no `source:` line, entries with no definition, pattern names that aren't entity classes or predicates of the schema.
+3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `060_extract/060_extract_prompts/extract.txt`: extract only the facts the schema can express, in only the schema's names, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
 4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/common_helpers/extraction.py` builds each record's rows (the DESCRIBES row first) and checks every one against the record's **whole** text and the schema (`common/common_helpers/validate.py`). Then:
 
    | What | Where it goes | Why |
@@ -192,10 +192,12 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
 | *Ground truth: batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 | *N record(s) you listed is/are not in the catalog / without text, so skipped* | With `ids`. | Check for typos. |
+| *N ground truth record(s) is/are not in the catalog / without text, so skipped* | With `extract_from` = `ground_truth` (the default): a ground truth id that isn't in 020's records, or a record with no text to read. | Check the id in `annotations/ground_truth/` for typos; a record without text can't be extracted. |
 | *extract_from (…) is ignored, because ids names the records.* | Both were given. | Drop one. |
 | *N addition(s) … have a name already there (in the schema, or an earlier addition), so that entry is kept* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
 | *N line(s) of schema_additions.txt aren't read as an entry, a source or patterns …* | The first 5 are listed with their line numbers: usually a name with a space in it, one space before the definition, a pattern line not in the `Subject -> Object; …` form, or a repeated entry (the first is kept; the repeat and the lines under it are listed). Such a line adds nothing. | Fix the line (see *The shape of a schema*). |
 | *N addition(s) … say they come from the ground truth but don't show they come from tuning records only, so they are left out* | Each is listed with why: it doesn't say `tuning`, or names a held-out record, a position not in the pool, or no record. | Take the name out, or (if it really came from tuning records) list their pool positions: `source: ground truth tuning #12`. |
+| *Entries of … whose source names ground truth records other than tuning ones (N)* | The schema given with `--schema` (e.g. the hand-built schema) has entries whose `source:` line names the ground truth but fails the check additions get: it names a held-out record, doesn't say `tuning`, names a position not in the pool, or names no record. Usually names learned from held-out records: the annotation tool gives each name it adds there a `source:` line naming the records that use it (patterns get none, so a pattern learned from a held-out record isn't caught). They are kept. | Fine for tuning numbers. Don't trust this run's held-out numbers: extract with a schema that didn't learn from held-out records (040's, by default). |
 | *N addition(s) have no "source:" line …* | Where the idea came from isn't recorded. | Add a `source:` line under each. |
 | *N schema entries have no definition …* | The model will see only the name. | Add definitions. |
 | *N name(s) used in patterns aren't entity classes or predicates of the schema* | A pattern names something the schema doesn't have (often a typo). | Fix the pattern, or add the name. |
@@ -205,6 +207,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | Message | Meaning | What to do |
 |---|---|---|
 | *N record(s) failed and are not in the output* | Their model calls failed (after the model client's own retries). | Run the step again: only those are asked again, and every answer already paid for is reused. |
+| *N of M rows have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
 
@@ -219,6 +222,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
+| *Stopped. Calls not yet started were cancelled. Answers already received are kept in the cache; nothing else was written.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
 
 ## Audit trail
 

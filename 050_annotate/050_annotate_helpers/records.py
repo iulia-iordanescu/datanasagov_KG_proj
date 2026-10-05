@@ -33,13 +33,12 @@ coined name (or a typo) stays flagged until it is added there.
 from __future__ import annotations
 
 import csv
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
 from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, read_ground_truth,
-                                 vocabulary)
+                                 read_pool, vocabulary)
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
@@ -100,8 +99,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     check_settings(settings, {"records_per_batch": 1, "start_position": 0})
     chosen = Chosen()
     chosen.records = load_records(inputs["records"])
-    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
-    pool_rows = splits["ground_truth_candidates"]["records"]
+    pool_rows = read_pool(inputs["splits"])
     chosen.pool = [r["id"] for r in pool_rows]
     chosen.positions = {r["id"]: r["position"] for r in pool_rows}
     gt_files = input_files(Path(inputs["ground_truth"]))

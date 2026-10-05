@@ -28,17 +28,22 @@ addition that doesn't say "tuning", names a held-out record, a position not
 in the pool, or no record at all is left out, with a note shown before
 paying.
 
+The schema input's own entries are never left out, but one whose "source:"
+line fails the same check (e.g. a name the annotation tool added to the
+hand-built schema from a held-out record) becomes a note shown before
+paying.
+
 The merged schema is what the model is shown, what every row is checked
 against, and what is written to schema_used.json, so 070 (and 080, once
 built) read exactly the schema this run used.
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.audit import log, ref_path
+from common.ground_truth import read_pool
 from common.report import named
 from common.schema_io import ground_truth_source_problem, read_schema, schema_text
 from common.triples_io import label_key
@@ -49,7 +54,7 @@ KINDS = ("entity_classes", "predicates")
 
 @dataclass
 class Schema:
-    content: dict = field(default_factory=dict)    # as common/schema_io reads it, merged
+    content: dict = field(default_factory=dict)    # as common/common_helpers/schema_io.py reads it, merged
     came_from: dict = field(default_factory=dict)  # {kind: {name or pattern: "schema" | "additions"}}
     sources: dict = field(default_factory=dict)    # {kind: {name: its source line}} for additions
     text: str = ""                                 # as the model sees it
@@ -72,8 +77,7 @@ def load_schema(inputs: dict) -> Schema:
         raise ValueError(f"{Path(inputs['schema']).name} has no entity classes or no predicates: "
                          f"is it a schema? (see 060_extract/060_extract.md for the shapes it can have)")
 
-    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
-    parts = {r["position"]: r.get("part") for r in splits["ground_truth_candidates"]["records"]}
+    parts = {r["position"]: r.get("part") for r in read_pool(inputs["splits"])}
 
     merged = {kind: dict(base[kind]) for kind in KINDS}
     result.came_from = {kind: {name: "schema" for name in base[kind]} for kind in KINDS}
@@ -112,6 +116,14 @@ def load_schema(inputs: dict) -> Schema:
     result.text = schema_text(merged)
     result.names = SchemaNames(merged)
 
+    from_held_out = [f"{name} (schema input; {why})" for kind in KINDS for name, source in base["sources"][kind].items()
+                     if (why := ground_truth_source_problem(source, parts))]
+    if from_held_out:
+        result.notes.append(f"Entries of {Path(inputs['schema']).name} whose source names ground truth records "
+                            f"other than tuning ones ({len(from_held_out)}), e.g. names the annotation tool added "
+                            f"from held-out records: " + named(from_held_out, 5, "; ") + ". They are kept (it's "
+                            f"the schema you chose), but then evaluation's held-out numbers no longer measure "
+                            f"records the pipeline was never adjusted to.")
     if result.not_tuning:
         result.notes.append(f"{len(result.not_tuning)} addition(s) in {Path(inputs['additions']).name} say they come "
                             f"from the ground truth but don't show they come from tuning records only, so they are "

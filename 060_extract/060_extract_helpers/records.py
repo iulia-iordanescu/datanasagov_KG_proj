@@ -15,13 +15,12 @@ shown before the paid-call question and in the report.
 """
 from __future__ import annotations
 
-import json
 
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import read_ground_truth
+from common.ground_truth import read_ground_truth, read_pool
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.step import check_settings, input_files
@@ -46,8 +45,7 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
         raise ValueError(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}); "
                          f"to name records, use ids")
     chosen = Chosen(records=load_records(inputs["records"]))
-    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
-    chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in splits["ground_truth_candidates"]["records"]}
+    chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in read_pool(inputs["splits"])}
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = read_ground_truth(gt_files[0].parent)                  # run_step made sure there is one
     chosen.ground_truth = {r["id"] for r in gt.rows}

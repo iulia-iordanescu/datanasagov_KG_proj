@@ -11,13 +11,14 @@ every change you make is saved to that copy at once. The "Translation
 table" button opens annotations/name_mapping.csv (step 070's table of which
 ground truth name each name of the current schema means), row by row, to
 check; "Partial pairs" to review evaluation's partial pairs; "Schema
-additions" to edit annotations/schema_additions.txt. Press Ctrl+C here to
-stop the tool.
+additions" to edit annotations/schema_additions.txt. A name or pattern the
+ground truth uses but the hand-built schema lacks can be added to it with
+a button. Press Ctrl+C here to stop the tool.
 
 It runs only on this computer: no internet, no model calls, nothing to
 install. It isn't a pipeline step: it writes nothing but your ground truth
-files, the translation table, your partial-pair verdicts and the
-schema additions. How it works: helpers/annotator/server.py; how to use it:
+files, the translation table, your partial-pair verdicts, the schema
+additions and the names and patterns you add to the hand-built schema. How it works: helpers/annotator/server.py; how to use it:
 annotations/README.md.
 """
 import argparse

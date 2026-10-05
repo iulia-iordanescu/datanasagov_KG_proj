@@ -40,7 +40,7 @@ In `outputs/intermediate_results/010_harvest/`:
 One batch file, shortened:
 
 ```json
-{"request": "GET https://data.nasa.gov/api/3/action/package_search?rows=1000&start=0",
+{"request": "GET https://data.nasa.gov/api/3/action/package_search?rows=1000&start=0&sort=metadata_created+asc%2C+id+asc",
  "fetched_at": "2026-09-27T10:16:03-07:00", "http_status": 200, "catalog_count": 36388,
  "run_id": "010_harvest_2026-09-27_1016",
  "records": [{"id": "a1b2…", "name": "modis-aqua-…", "title": "MODIS/Aqua …", "notes": "…",
@@ -111,6 +111,7 @@ None: this step makes no model calls.
 | *The API returned an empty page before the reported count* | The catalog shrank during the harvest, or the API misbehaved. | Rerun later. |
 | *N batch files were kept from an earlier run … between DATE and DATE* | A resumed harvest spans several days. | Fine for development. For a snapshot you'll cite, delete the folder and rerun. |
 | *N batch files have no request block* | Should not happen: a file without one is downloaded again, so it means a batch file was replaced by hand during the run. | Rerun; the named files are fetched again. |
+| *N record(s) have no id.* | Should not happen: CKAN gives every record an id. Such records can't be told apart from others; 020_clean drops them. | Look at the batch files to see which records they are. |
 
 **The step stops** with:
 
@@ -120,7 +121,7 @@ None: this step makes no model calls.
 | *NNN Client Error …* (e.g. 404), or *CKAN reported failure for start=N* | The API refused the request. | Check the address (`URL` in `ckan_client.py`); retry later. |
 | *page_size must be at least 1* / *max_records must be at least 0* / *pause_seconds must be at least 0* | A setting is out of range. | Fix the setting. |
 
-**Harvest date.** Recorded in the report and the manifest, and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at`, or a range of days if pages were kept from earlier runs.
+**Harvest date.** Recorded in the report and the manifest, and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at` (for a file without a request block, the day the file was last changed), or a range of days if pages were kept from earlier runs.
 
 ## Audit trail
 

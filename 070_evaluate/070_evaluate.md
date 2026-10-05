@@ -4,7 +4,7 @@ Terms (precision, recall, pair, pairing, margin of error, bootstrap, tuning part
 
 ## Purpose
 
-Metrics what step 060 extracted against the ground truth, the answer key:
+Evaluates what step 060 extracted against the ground truth, the answer key:
 
 - **precision**: when 060 says something, how often it is right;
 - **recall**: of the triples in the ground truth, how many 060 found;
@@ -46,7 +46,7 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 | `records` | `020_clean/records.jsonl` | Titles, for the per-record list. |
 | `splits` | `030_split/splits.json` | The pool's order, and each record's part (tuning or held-out). |
 | `extracted_triples` | `060_extract/extracted_triples.csv` | What 060 kept. |
-| `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is not evaluated, not evaluated as zero). |
+| `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is left out, not counted as zero). |
 | `schema_used` | `060_extract/schema_used.json` | The schema 060 used: the names to translate. |
 | `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's sampling group. |
 | `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the names coined in the ground truth, the ground truth vocabulary, built by `common/common_helpers/ground_truth.vocabulary` as in 050 and the annotation tool. |
@@ -85,7 +85,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only about the translation table: to propose rows for names without one, and to suggest counterparts for `(none)` rows). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
-The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer evaluated records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*).
+The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer evaluated records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*). In `pairing.py`: `CLUE_WARN = 2` (a pair of names met this often where only a name differed becomes a warning; see *Checks and warnings*).
 
 ## How to run
 
@@ -211,12 +211,13 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N row(s) of name_mapping.csv translate to (none) though the ground truth vocabulary now has the same name* | A row checked as `(none)` before that name joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's name means something else. | Check the row in `py helpers/annotate.py`, *Translation table* (it's flagged there); change it to the ground truth name, or keep `(none)`. |
 | *N pair(s) of names met 2 or more times where extraction found the triple but a name differed* | A row of `name_mapping.csv` may translate a current-schema name to the wrong ground truth name, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py helpers/annotate.py`, *Translation table*). |
 | *The held-out part was looked at: N time(s) so far* | After `--evaluate_held_out true`: each look is logged and counted. | Commit `annotations/held_out_looks.csv`. |
+| *N of M compared triples have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *Added N row(s) to name_mapping.csv …* | New names of 060's schema. | Check the rows with `checked` = `no` (easiest in `py helpers/annotate.py`, *Translation table*), then run again. |
+| *Added N row(s) to name_mapping.csv …* | New names of 060's schema. If the model proposed a name that isn't in the ground truth vocabulary, the row says `(none)` and the message ends by listing them (*The model proposed N name(s) that aren't in the ground truth vocabulary, written as (none): …*). | Check the rows with `checked` = `no` (easiest in `py helpers/annotate.py`, *Translation table*), then run again. |
 | *N checked row(s) of name_mapping.csv were checked when the current schema defined the name differently* | A later schema uses the name, but defines it differently from when the row was checked: the translation may no longer be right. | Check those rows again in `py helpers/annotate.py`, *Translation table* (it shows both definitions), then run again. |
 | *N row(s) of name_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them in `py helpers/annotate.py`, *Translation table* (or in the CSV: fix `name_in_gtt` and `swap_subject_and_object` where wrong, then set `checked` to `yes`), then run again. |
 | *N checked row(s) … translate to a name that isn't in the ground truth vocabulary* | A typo in `name_in_gtt`, or a ground truth name since renamed; each is listed as *name (current schema) --> name (not in the ground truth vocabulary)*. | Choose a name of the ground truth vocabulary, or `(none)`. |

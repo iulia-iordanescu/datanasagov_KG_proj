@@ -17,13 +17,14 @@ import collections
 import stats
 
 
-def _pct(x) -> str:
+def pct(x) -> str:
+    """A share as a whole percentage: "50%", or "–" for none."""
     return "–" if x is None else f"{100 * x:.0f}%"
 
 
 def _of(k: int, n: int) -> str:
     """k, with its share of n: "4 (50%)" (the sentence names n)."""
-    return f"{k} ({_pct(k / n) if n else '–'})"
+    return f"{k} ({pct(k / n) if n else '–'})"
 
 
 def _sure(n: dict, metric: dict, what: str) -> str:
@@ -33,7 +34,7 @@ def _sure(n: dict, metric: dict, what: str) -> str:
     if metric.get("low") is None:
         return (f"- Computed over {n['records']} record(s): too few for a margin of error (it needs "
                 f"{stats.MIN_RECORDS}), so {what} could easily be quite different over the whole catalog.")
-    return (f"- For the whole catalog, {what} is likely between {_pct(metric['low'])} and {_pct(metric['high'])} "
+    return (f"- For the whole catalog, {what} is likely between {pct(metric['low'])} and {pct(metric['high'])} "
             f"(the margin of error: the middle 95% of {stats.RESHUFFLES:,} redraws of these {n['records']} records).")
 
 
@@ -80,14 +81,14 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
     out = [f"### Reading the metrics: {part} part", ""] + where_from(part, recs, evaluated, names, looks)
 
     # precision
-    out += [f"#### Precision: {_pct(ex['precision']['value'])} (exact pairs), {_pct(pa['precision']['value'])} "
+    out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
             f"(exact and partial pairs)", "",
             f"- Of the {E} triples extraction kept for these records, {_of(ex['pairs'], E)} form exact pairs with "
             f"ground truth triples; counting partial pairs too, {_of(pa['pairs'], E)}.",
-            f"- Read as a chance: a triple extraction keeps for such a record has a {_pct(ex['precision']['value'])} "
-            f"chance of forming an exact pair ({_pct(pa['precision']['value'])} counting partial pairs).",
+            f"- Read as a chance: a triple extraction keeps for such a record has a {pct(ex['precision']['value'])} "
+            f"chance of forming an exact pair ({pct(pa['precision']['value'])} counting partial pairs).",
             f"- In a knowledge graph built from these triples, {E - ex['pairs']} of the {E} statements "
-            f"({_pct((E - ex['pairs']) / E) if E else '–'}) would have no "
+            f"({pct((E - ex['pairs']) / E) if E else '–'}) would have no "
             f"exact counterpart in the ground truth: a wrong subject, predicate or object, or a fact the text "
             f"doesn't state ({E - pa['pairs']} counting partial pairs as right).",
             _sure(n, ex["precision"], "exact precision"),
@@ -95,27 +96,27 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
             "counts against precision.", ""]
 
     # recall
-    out += [f"#### Recall: {_pct(ex['recall']['value'])} (exact pairs), {_pct(pa['recall']['value'])} "
+    out += [f"#### Recall: {pct(ex['recall']['value'])} (exact pairs), {pct(pa['recall']['value'])} "
             f"(exact and partial pairs)", "",
             f"- Of the {G} ground truth triples, {_of(ex['pairs'], G)} have an exact pair; counting partial pairs "
             f"too, {_of(pa['pairs'], G)}.",
-            f"- Read as a chance: a ground truth triple has a {_pct(ex['recall']['value'])} chance of being found "
-            f"as an exact pair ({_pct(pa['recall']['value'])} counting partial pairs).",
+            f"- Read as a chance: a ground truth triple has a {pct(ex['recall']['value'])} chance of being found "
+            f"as an exact pair ({pct(pa['recall']['value'])} counting partial pairs).",
             f"- A knowledge graph built from extraction's triples would lack {G - ex['pairs']} of the {G} "
-            f"facts ({_pct((G - ex['pairs']) / G) if G else '–'}) these records state, per the ground truth ({G - pa['pairs']} counting partial pairs as found).",
+            f"facts ({pct((G - ex['pairs']) / G) if G else '–'}) these records state, per the ground truth ({G - pa['pairs']} counting partial pairs as found).",
             _sure(n, ex["recall"], "exact recall"),
             "- Assumes the ground truth lists every fact these records state: a fact missing from it is not "
             "counted at all.", ""]
 
     # strict
-    out += [f"#### Strict precision and strict recall: {_pct(ex['strict_precision']['value'])} and "
-            f"{_pct(ex['strict_recall']['value'])} (exact pairs)", "",
+    out += [f"#### Strict precision and strict recall: {pct(ex['strict_precision']['value'])} and "
+            f"{pct(ex['strict_recall']['value'])} (exact pairs)", "",
             f"- The same, counting only strict pairs: pairs whose two entity classes also agree, after translation. "
             f"{ex['strict_pairs']} of the {ex['pairs']} exact pairs are strict ({pa['strict_pairs']} of the "
             f"{pa['pairs']} counting partial pairs).",
             f"- Strict precision: {ex['strict_pairs']} of the {E} extracted triples "
-            f"({_pct(ex['strict_precision']['value'])}); strict recall: {ex['strict_pairs']} of the {G} ground "
-            f"truth triples ({_pct(ex['strict_recall']['value'])}).",
+            f"({pct(ex['strict_precision']['value'])}); strict recall: {ex['strict_pairs']} of the {G} ground "
+            f"truth triples ({pct(ex['strict_recall']['value'])}).",
             "- For a knowledge graph: a strict pair is a statement whose two nodes would also get the right "
             "entity classes (node labels).",
             _sure(n, ex["strict_precision"], "exact strict precision"), ""]
@@ -123,12 +124,12 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
     # entity-class accuracy
     shared = [f"{', '.join(v)} (current schema) --> {k} (ground truth vocabulary)"
               for kind in ("entity class",) for k, v in names.merged.get(kind, {}).items()]
-    out += [f"#### Entity-class accuracy: {_pct(ex['entity_class_accuracy']['value'])} (exact pairs), "
-            f"{_pct(pa['entity_class_accuracy']['value'])} (exact and partial pairs)", "",
+    out += [f"#### Entity-class accuracy: {pct(ex['entity_class_accuracy']['value'])} (exact pairs), "
+            f"{pct(pa['entity_class_accuracy']['value'])} (exact and partial pairs)", "",
             f"- Of the {ex['pairs']} exact pairs, {_of(ex['strict_pairs'], ex['pairs'])} also have both entity "
             f"classes right; of the {pa['pairs']} pairs counting partial ones, {_of(pa['strict_pairs'], pa['pairs'])}.",
             f"- Read as a chance: when extraction gets a triple right, its two entity classes are both right with "
-            f"a {_pct(ex['entity_class_accuracy']['value'])} chance.",
+            f"a {pct(ex['entity_class_accuracy']['value'])} chance.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
         out.append("- Can't see mix-ups between current-schema names that translate to the same ground truth name: "
@@ -137,14 +138,14 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
 
     # schema ceiling and recall within reach
     W = n["within_reach"]
-    out += [f"#### Schema ceiling: {_pct(n['schema_ceiling']['value'])}", "",
+    out += [f"#### Schema ceiling: {pct(n['schema_ceiling']['value'])}", "",
             f"- Of the {G} ground truth triples, {_of(W, G)} are within reach: their predicate and both entity "
             f"classes have a counterpart in the current schema, through the translation table.",
             f"- It's the best recall any extraction could get with this schema and translation table: "
             f"{G - W} ground truth triple(s) say something the schema has no names for.",
             _sure(n, n["schema_ceiling"], "the schema ceiling"), ""]
-    out += [f"#### Recall within reach: {_pct(ex['recall_within_reach']['value'])} (exact pairs), "
-            f"{_pct(pa['recall_within_reach']['value'])} (exact and partial pairs)", "",
+    out += [f"#### Recall within reach: {pct(ex['recall_within_reach']['value'])} (exact pairs), "
+            f"{pct(pa['recall_within_reach']['value'])} (exact and partial pairs)", "",
             f"- Of the {W} ground truth triples within reach, {_of(ex['pairs_within_reach'], W)} have an exact "
             f"pair; counting partial pairs too, {_of(pa['pairs_within_reach'], W)}.",
             "- Read with the schema ceiling: a low ceiling points at the schema; a low recall within reach points "
@@ -158,13 +159,13 @@ def readings(part: str, n: dict, recs: list, evaluated, names, looks, confusion:
         truths[t] += k
     common = truths.most_common(1)[0][0] if truths else None
     right = round((d["accuracy"]["value"] or 0) * d["records"]) if d["accuracy"]["value"] is not None else 0
-    out += [f"#### What each record describes: {_pct(d['accuracy']['value'])}", "",
+    out += [f"#### What each record describes: {pct(d['accuracy']['value'])}", "",
             f"- Of the {d['records']} record(s) whose ground truth names what the record describes (the DESCRIBES "
             f"row's entity class), extraction named the same entity class for {_of(right, d['records'])}.",
             (f"- Always guessing the most common kind, `{common}` (ground truth vocabulary), would get "
-             f"{_pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that."
+             f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that."
              if common else "- No baseline: no record names what it describes."),
-            f"- Averaged per kind ({len(truths)} kind(s)): {_pct(d['per_kind_average'])}, so a rare kind counts as "
+            f"- Averaged per kind ({len(truths)} kind(s)): {pct(d['per_kind_average'])}, so a rare kind counts as "
             f"much as a common one.",
             _sure(n, d["accuracy"], "this accuracy"), ""]
     return out

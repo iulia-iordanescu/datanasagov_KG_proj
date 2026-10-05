@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.files import read_csv
-from common.ground_truth import fair_prefix, read_ground_truth
+from common.ground_truth import fair_prefix, read_ground_truth, read_pool
 from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
@@ -39,7 +39,7 @@ class Evaluated:
     ground_truth: object = None                    # common.ground_truth.GroundTruth
     schema_used: dict = field(default_factory=dict)  # 060's schema_used.json
     unfinished: int = 0                            # ground truth records not finished yet
-    reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/partial_reviews)
+    reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/common_helpers/partial_reviews.py)
     extraction_made: dict = field(default_factory=dict)  # 060's run: run id, model, settings (from its details file)
 
 
@@ -62,8 +62,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = evaluated.ground_truth = read_ground_truth(gt_files[0].parent)        # run_step made sure there is one
     evaluated.notes += [f"Ground truth: {p}" for p in gt.problems]
-    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
-    pool_rows = splits["ground_truth_candidates"]["records"]
+    pool_rows = read_pool(inputs["splits"])
     if any("part" not in r for r in pool_rows):
         raise ValueError("splits.json has no tuning / held-out part for its records: rebuild it with 030 "
                          "(delete 030's splits.json, then run py 030_split/run.py)")

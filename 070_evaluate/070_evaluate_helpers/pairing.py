@@ -11,7 +11,7 @@ earns one pair, not two). Two passes, each finding the largest possible set
 of pairs (in maths, a maximum matching: a pair may be swapped to free a
 partner for another triple), not just each triple's first possible partner:
 
-  1. exact   subject and object equal once evened out (common/text_match
+  1. exact   subject and object equal once evened out (common/common_helpers/text_match.py
              norm_text: case, spacing, quote marks, dashes, edge punctuation
              and a leading "the/a/an" ignored), predicate the same name
   2. partial among the triples still unpaired: the same, except that the

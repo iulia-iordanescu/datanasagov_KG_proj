@@ -44,7 +44,7 @@ from common import llm
 from common.audit import log
 from common.cache import Cache, key
 from common.chunking import text_fields
-from common.prompt_files import fill, load
+from common.prompt_files import fill, load, text as prompt_text
 from common.text_match import Text
 from common.triples_io import (clean_triple, describes_row, label_key, triple_key)
 from common.validate import SchemaNames, check_against_schema, check_describes, check_triple_instance
@@ -58,6 +58,14 @@ ROW_KEYS = ("subject", "subject_class", "predicate", "object", "object_class", "
 
 def rules_for(record: dict) -> str:
     return fill(RULES, field_names=", ".join(f'"{n}:"' for n in text_fields(record)))
+
+
+def prompt(template, schema_text: str, record: dict, piece: str) -> str:
+    """The prompt for one text piece: template (050's draft.txt or 060's
+    extract.txt) filled with the schema, this record's rules, the shared
+    reply format and the piece."""
+    return fill(template, schema=schema_text, rules=rules_for(record), reply=prompt_text(REPLY).strip(),
+                text=wrap(piece))
 
 
 def wrap(piece: str) -> str:

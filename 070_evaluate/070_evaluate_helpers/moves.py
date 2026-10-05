@@ -63,16 +63,12 @@ def compute_metrics(evaluated, settings) -> dict:
 
 # --------------------------------------------------------------------------
 
-def _pct(x) -> str:
-    return "–" if x is None else f"{100 * x:.0f}%"
-
-
 def _with_margin(n: dict) -> str:
     if n is None or n.get("value") is None:
         return "–"
     if n.get("low") is None:
-        return _pct(n["value"])
-    return f"{_pct(n['value'])} ({_pct(n['low'])}–{_pct(n['high'])})"
+        return readings.pct(n["value"])
+    return f"{readings.pct(n['value'])} ({readings.pct(n['low'])}–{readings.pct(n['high'])})"
 
 
 def _triple(f: dict) -> str:
@@ -339,8 +335,8 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
         lines += ["", f"- **Schema ceiling** (ground truth triples the schema can express at all): "
                       f"{_with_margin(n['schema_ceiling'])}.",
                   f"- **What the record describes**: right for {_with_margin(d['accuracy'])} of {d['records']} "
-                  f"record(s). Always guessing the most common kind would get {_pct(d['majority_baseline'])}; "
-                  f"averaged per kind: {_pct(d['per_kind_average'])}.", ""]
+                  f"record(s). Always guessing the most common kind would get {readings.pct(d['majority_baseline'])}; "
+                  f"averaged per kind: {readings.pct(d['per_kind_average'])}.", ""]
         if v["confusion"]:
             lines += ["| The ground truth says (ground truth vocabulary) | Extraction said (translated into the ground "
                       "truth vocabulary) | Records |", "|---|---|---:|"]
@@ -353,7 +349,7 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
                   "|---|---:|---:|---:|---:|---:|"]
         for g in v["groups"]:
             gn = g["numbers"]
-            lines.append(f"| {cell(g['group'])} | {g['records']} | {_pct(g['share_evaluated'])} | {_pct(g['share_pool'])} "
+            lines.append(f"| {cell(g['group'])} | {g['records']} | {readings.pct(g['share_evaluated'])} | {readings.pct(g['share_pool'])} "
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
@@ -369,7 +365,7 @@ def results(evaluated, names, metrics, calls, settings, output) -> Results:
     tuning = metrics.get("tuning", {}).get("numbers")
     headline = {}
     if tuning:
-        headline = {"precision (tuning, exact)": _pct(tuning["exact"]["precision"]["value"]),
-                    "recall (tuning, exact)": _pct(tuning["exact"]["recall"]["value"])}
+        headline = {"precision (tuning, exact)": readings.pct(tuning["exact"]["precision"]["value"]),
+                    "recall (tuning, exact)": readings.pct(tuning["exact"]["recall"]["value"])}
     return Results(files=[metrics_path, per_record_path, compared_path], headline=headline,
                    details="\n".join(lines), warnings=warnings)

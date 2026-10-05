@@ -2,7 +2,7 @@
 draft.py -- stage 2: the model drafts each chosen record's triple instances.
 
 One call per text piece (a long record is split, as in 040: common/common_helpers/chunking.py).
-The prompt (prompts/draft.txt) puts COMPLETENESS FIRST: every fact the
+The prompt (050_annotate/050_annotate_prompts/draft.txt) puts COMPLETENESS FIRST: every fact the
 record states, whether or not the hand-built schema can express it; then
 NAMING: the schema's entity classes and predicates when one fits, a new
 name otherwise. Its rules and reply format are shared with 060
@@ -19,16 +19,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from common import extraction, prompt_files
-from common.prompt_files import fill, load
+from common import extraction
+from common.prompt_files import load
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "050_annotate_prompts"   # 050_annotate/050_annotate_prompts/
 PROMPT = load(PROMPTS_DIR / "draft.txt")
 
 
 def prompt_for(chosen, item: dict, piece: str) -> str:
-    return fill(PROMPT, schema=chosen.schema_text, rules=extraction.rules_for(chosen.records[item["id"]]),
-                reply=prompt_files.text(extraction.REPLY).strip(), text=extraction.wrap(piece))
+    return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece)
 
 
 def ask_model(chosen, calls, settings: dict) -> extraction.Replies:

@@ -112,7 +112,7 @@ Four stages, in `020_clean/run.py`'s `main()`, all code:
 
 **Then the results** (`results`): `records.jsonl` is written under a temporary name and renamed when complete. The report gives record counts; per text field, how many values had HTML tags or escapes and which cleaning method each value got; the joins made; and the 10 largest maintainers. Records dropped for having no id are all listed. Other lists (repeated ids, values that needed a fallback method, joins) show their first 20 entries and say how many more there are; every repeated id and every fallback value also has a DEBUG line in the log.
 
-The code: `020_clean/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `020_clean/020_clean_helpers/` holds `moves.py` (the moves, and writing the results), `note_cleaning.py` (the cleaning library and its self-test) and `maintainers.py` (the joining rules and their self-test). Shared with other steps: `common/common_helpers/files.py` (saving files). Both self-tests also run on their own: `py note_cleaning.py --selftest` and `py maintainers.py`, from inside `020_clean/`.
+The code: `020_clean/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `020_clean/020_clean_helpers/` holds `moves.py` (the moves, and writing the results), `note_cleaning.py` (the cleaning library and its self-test) and `maintainers.py` (the joining rules and their self-test). Shared with other steps: `common/common_helpers/files.py` (saving files). Both self-tests also run on their own: `py note_cleaning.py --selftest` and `py maintainers.py`, from inside `020_clean/020_clean_helpers/`.
 
 ## Prompts
 

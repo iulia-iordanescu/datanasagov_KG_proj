@@ -9,7 +9,7 @@ Each file wraps one page's raw CKAN records, exactly as the API returned
 them, with the request that returned them. This request block is where every
 item's origin starts (see common/common_helpers/audit.py):
 
-    {"request": "GET https://data.nasa.gov/api/3/action/package_search?rows=1000&start=0",
+    {"request": "GET https://data.nasa.gov/api/3/action/package_search?rows=1000&start=0&sort=metadata_created+asc%2C+id+asc",
      "fetched_at": "2026-09-27T10:16:03-07:00", "http_status": 200,
      "catalog_count": 36388, "run_id": "010_harvest_2026-09-27_1016",
      "records": [ ...raw CKAN records... ]}

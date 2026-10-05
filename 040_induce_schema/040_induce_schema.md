@@ -159,6 +159,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *The merge reply had items code ignored* | The model proposed a merge into something that isn't a label, named labels it wasn't sent, or merged a label twice (the first merge is kept). | Nothing: they were ignored. Listed in `induction_evidence.json` under `merge_issues`. |
 | *N schema entries have no definition* | The model didn't define them. They stay in the schema, marked. | Delete `cache/define.json` and rerun to ask again. |
 | *The definition replies named N schema entries that weren't sent* | Ignored. | Nothing. Listed under `unknown_schema_entries`. |
+| *N of M entity classes (or predicates, or patterns) have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
 
@@ -171,6 +172,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
+| *Stopped. Calls not yet started were cancelled. Answers already received are kept in the cache.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
 
 ## Audit trail
 

@@ -4,7 +4,7 @@ instances with the schema; code checks them and sorts them into kept and
 removed.
 
 Stage 3, ask_model. One call per text piece (a long record is split:
-common/common_helpers/chunking.py). The prompt (prompts/extract.txt) asks for ONLY the
+common/common_helpers/chunking.py). The prompt (060_extract/060_extract_prompts/extract.txt) asks for ONLY the
 facts the schema can express, in ONLY the schema's names; its rules and
 reply format are 050's (common/common_prompts/), so what 060 extracts and the
 ground truth 050 drafted are asked for the same way. The calls are made by
@@ -47,9 +47,9 @@ import collections
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import extraction, prompt_files
+from common import extraction
 from common.audit import log
-from common.prompt_files import fill, load
+from common.prompt_files import load
 from common.triples_io import UNDECIDED, is_describes
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "060_extract_prompts"   # 060_extract/060_extract_prompts/
@@ -87,8 +87,7 @@ def _in_schema_spelling(row: dict, names) -> dict:
 
 def ask_model(chosen, schema, calls, settings: dict) -> extraction.Replies:
     def prompt_for(item, piece):
-        return fill(PROMPT, schema=schema.text, rules=extraction.rules_for(chosen.records[item["id"]]),
-                    reply=prompt_files.text(extraction.REPLY).strip(), text=extraction.wrap(piece))
+        return extraction.prompt(PROMPT, schema.text, chosen.records[item["id"]], piece)
     return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "extract",
                                 f"060 will extract from {len(chosen.items)} record(s) ({chosen.how})",
                                 "extracting")

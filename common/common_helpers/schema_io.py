@@ -40,7 +40,8 @@ shapes:
    pairs of entity classes (subject -> object) it has been used with,
    separated by ";"; each pair is a pattern. An indented line starting
    "source:" under any entry says where the idea for it came from (used by
-   the additions file). Lines starting with # are comments.
+   the additions file, and by the names the annotation tool adds to the
+   hand-built schema). Lines starting with # are comments.
 
 Several steps read it: 040 compares the induced schema with the hand-built
 one; 050 shows the hand-built one to the model and checks every drafted row
@@ -60,14 +61,19 @@ vocabulary from the hand-built one and the ground truth.
     schema_text(schema)       the text shape, for a prompt
     additions_text(header, entries)       the additions file, written by the annotation tool
     ground_truth_source_problem(source, parts)   why an addition's source isn't fair, or None
+    add_to_hand_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
+    add_pattern_to_hand_schema(path, predicate, subject_class, object_class)   one pattern added (same)
 
 read_hand_schema(path) is read_schema for the hand-built text file.
 """
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
+
+from common.triples_io import label_key
 
 ENTRY = re.compile(r"^(\S+) {2,}(\S.*)$")         # "Name  description"
 PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
@@ -184,14 +190,14 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     positions = [int(n) for n in re.findall(r"#(\d+)", source)]
     if not positions:
         return "says ground truth but names no record (write: ground truth tuning #12)"
+    held = [p for p in positions if parts.get(p) == "held-out"]
+    if held:
+        return "comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
     if not re.search(r"\btuning\b", source.lower()):
         return "names ground truth records but doesn't say tuning (write: ground truth tuning #12)"
     unknown = [p for p in positions if p not in parts]
-    held = [p for p in positions if parts.get(p) == "held-out"]
     if unknown:
         return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position"
-    if held:
-        return "comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
     return None
 
 
@@ -225,3 +231,127 @@ def additions_text(header: str, entries: list) -> str:
     lines = ([header.rstrip(), ""] if header.strip() else []) + ["CLASSES", "-------"] + block("entity class") \
         + ["", "PREDICATES", "----------"] + block("predicate")
     return "\n".join(lines) + "\n"
+
+
+# --------------------------------------------------------------------------
+# adding to the hand-built schema (the annotation tool)
+# --------------------------------------------------------------------------
+#
+# Both functions change the file the same careful way (_edit_text): the
+# lines are edited, the byte-order mark and line endings stay as they were,
+# and the file is read back. If anything other than the one addition reads
+# differently (an entry, definition, pattern, source or unread line), the
+# file is put back byte for byte and a ValueError says so.
+
+def _comparable(schema: dict) -> tuple:
+    """A schema as read from text, in a form to compare: unread lines lose
+    their line numbers, which shift when a line is added above them."""
+    return (schema["entity_classes"], schema["predicates"], sorted(schema["patterns"]), schema["sources"],
+            sorted(u.split(": ", 1)[-1] for u in schema["unread"]))
+
+
+def _edit_text(path, edit, expected: dict, what: str) -> None:
+    """edit(lines) -> lines; expected: the schema the file must read as after."""
+    raw = Path(path).read_bytes()
+    bom = "﻿" if raw.startswith(b"\xef\xbb\xbf") else ""
+    newline = "\r\n" if b"\r\n" in raw else "\n"
+    lines = edit(raw.decode("utf-8-sig").split(newline))
+    tmp = Path(path).with_name(Path(path).name + ".part")
+    tmp.write_bytes((bom + newline.join(lines)).encode("utf-8"))
+    os.replace(tmp, path)
+    if _comparable(_read_text(path)) != _comparable(expected):
+        Path(path).write_bytes(raw)
+        raise ValueError(f"adding {what} would have changed something else in {Path(path).name}; "
+                         f"the file was left as it was")
+
+
+def _section(lines: list, key: str, path) -> tuple:
+    """(first line, end) of a section: from its heading to the next one."""
+    heads = [i for i, line in enumerate(lines) if line.strip() in ("CLASSES", "PREDICATES")]
+    wanted = "CLASSES" if key == "entity_classes" else "PREDICATES"
+    start = next((i for i in heads if lines[i].strip() == wanted), None)
+    if start is None:
+        raise ValueError(f"{Path(path).name} has no {wanted} section")
+    return start, next((i for i in heads if i > start), len(lines))
+
+
+def _under(lines: list, i: int, end: int) -> int:
+    """The last of the indented lines under the entry on line i (i if none).
+    Blank lines between them are skipped, as the reader skips them."""
+    j = i
+    while j + 1 < end and (not lines[j + 1].strip() or lines[j + 1][:1].isspace()):
+        j += 1
+        if lines[j].strip():
+            i = j
+    return i
+
+
+def _pairs_text(pairs) -> str:
+    return "; ".join(f"{s} -> {o}" for s, o in pairs)
+
+
+def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: list = (), source: str = "") -> None:
+    """Add one entry to the hand-built schema (text shape): an entity class
+    after the last entity class, a predicate after the last predicate and
+    the lines under it, aligned like the entries of its section. A
+    predicate's patterns, [(subject class, object class)], go on the line
+    under it, then the source, if any, on a "source:" line. kind is "entity
+    class" or "predicate"."""
+    key = {"entity class": "entity_classes", "predicate": "predicates"}[kind]
+    name, definition, source = str(name).strip(), " ".join(str(definition).split()), " ".join(str(source).split())
+    patterns = [(str(s).strip(), str(o).strip()) for s, o in patterns] if key == "predicates" else []
+    if not label_key(name) or any(c.isspace() for c in name) or name.startswith("#") or ";" in name or "->" in name:
+        raise ValueError("the name must be one word, with letters or digits, no spaces, and no ; or ->")
+    if not definition:
+        raise ValueError(f"{name} needs a one-line definition")
+    if not all(PAIR.match(f"{s} -> {o}") for s, o in patterns):
+        raise ValueError(f"{name}: each pattern is two entity classes, one word each")
+    before = _read_text(path)
+    same = [n for n in before[key] if label_key(n) == label_key(name)]
+    if same:
+        raise ValueError(f"{same[0]} is already in the hand-built schema")
+
+    def edit(lines):
+        start, end = _section(lines, key, path)
+        entries = [i for i in range(start, end) if ENTRY.match(lines[i])]
+        column = max(ENTRY.match(lines[entries[0]]).start(2) if entries else 18, len(name) + 2)
+        new = [name.ljust(column) + definition] + ([" " * column + _pairs_text(patterns)] if patterns else []) \
+            + ([" " * column + "source: " + source] if source else [])
+        last = _under(lines, entries[-1], end) if entries else start + 1     # else under the heading's dashes
+        return lines[:last + 1] + new + lines[last + 1:]
+
+    expected = {**before, key: {**before[key], name: definition},
+                "patterns": before["patterns"] + [(s, name, o) for s, o in patterns],
+                "sources": {**before["sources"], key: {**before["sources"][key], **({name: source} if source else {})}}}
+    _edit_text(path, edit, expected, name)
+
+
+def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_class: str) -> None:
+    """Add one pattern to a predicate of the hand-built schema: to the end of
+    its patterns line, or on a new line just under it if it has none. The
+    predicate and both entity classes must be in the schema already, and are
+    written in its spelling."""
+    before = _read_text(path)
+    name = next((n for n in before["predicates"] if label_key(n) == label_key(predicate)), None)
+    if name is None:
+        raise ValueError(f"{predicate} isn't a predicate of the hand-built schema: add it first")
+    spelling = {label_key(n): n for n in before["entity_classes"]}
+    missing = [c for c in (subject_class, object_class) if label_key(c) not in spelling]
+    if missing:
+        raise ValueError(f"{missing[0]} isn't an entity class of the hand-built schema: add it first")
+    pair = (spelling[label_key(subject_class)], spelling[label_key(object_class)])
+    if any(p == name and label_key(s) == label_key(pair[0]) and label_key(o) == label_key(pair[1])
+           for s, p, o in before["patterns"]):
+        raise ValueError(f"{pair[0]} -> {pair[1]} is already a pattern of {name}")
+
+    def edit(lines):
+        start, end = _section(lines, "predicates", path)
+        i = next(j for j in range(start, end) if (m := ENTRY.match(lines[j])) and m.group(1) == name)
+        for j in range(i + 1, _under(lines, i, end) + 1):
+            if all(PAIR.match(p) for p in lines[j].split(";")):
+                return lines[:j] + [lines[j].rstrip() + "; " + _pairs_text([pair])] + lines[j + 1:]
+        indent = " " * ENTRY.match(lines[i]).start(2)
+        return lines[:i + 1] + [indent + _pairs_text([pair])] + lines[i + 1:]
+
+    _edit_text(path, edit, {**before, "patterns": before["patterns"] + [(pair[0], name, pair[1])]},
+               f"{pair[0]} -> {pair[1]} to {name}")

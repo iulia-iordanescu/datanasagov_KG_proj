@@ -33,6 +33,13 @@
   #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
   #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
   #warnings:empty { display: none; }
+  #gaps { padding: 8px 16px; background: var(--flag-bg); color: var(--flag); }
+  #gaps[hidden] { display: none; }
+  #gaps summary { cursor: pointer; }
+  #gaps ul { list-style: none; margin: 6px 0 0; padding: 0; color: var(--ink); }
+  #gaps li { margin-top: 4px; }
+  .addbox { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 6px; }
+  .addbox input { width: min(420px, 100%); }
   main { display: grid; grid-template-columns: 290px 1fr; gap: 16px; padding: 16px; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
@@ -98,6 +105,7 @@
   <span id="status"></span>
 </header>
 <ul id="warnings"></ul>
+<details id="gaps" hidden></details>
 <main>
   <nav id="records" aria-label="Records"></nav>
   <div id="record"><section class="card"><p class="empty">Pick a batch at the top.</p></section></div>
@@ -144,9 +152,10 @@ async function loadBatches() {
       : `draft ${b.draft}: not opened yet`;
     pick.append(el("option", { value: b.n }, `Batch ${b.n} (${what})`));
   }
-  const warnings = [...data.problems, ...data.reminders];
+  const warnings = [...data.problems];
   if (!data.records_found) warnings.unshift("records.jsonl wasn't found, so records' texts can't be shown or checked: run steps 010 and 020 first.");
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
+  drawGaps(data.gaps);
   const wanted = new URLSearchParams(location.hash.slice(1));
   if (wanted.has("m")) { await openMapping(); return; }
   if (wanted.has("p")) { await openPartial(); return; }
@@ -193,6 +202,7 @@ async function save() {
     data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
     status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
     refreshProblems();
+    api("/api/gaps").then(drawGaps).catch(() => {});  // a name just coined joins the list above
   } catch (e) {
     dirty = true;
     status(`NOT SAVED: ${e.message}. Is the tool still running? Your edits stay on this page; saving is retried on your next change.`, "failed");
@@ -285,7 +295,8 @@ function field(rec, j, key, label, extra) {
 }
 function problemList(r, j) {
   return el("ul", { class: "problems", "data-problems": j },
-    r.problems.map(p => el("li", { class: p.kind }, (p.kind === "error" ? "✖ " : "⚑ ") + p.message)));
+    r.problems.map(p => el("li", { class: p.kind }, (p.kind === "error" ? "✖ " : "⚑ ") + p.message,
+                           p.add ? addControl(p.add) : null)));
 }
 function describesRow(rec, j) {
   const r = rec.rows[j];
@@ -386,14 +397,66 @@ function drawText() {
   box.replaceChildren(...parts);
 }
 
-// After a save: new problems for every row, without redrawing the inputs (so typing isn't interrupted).
+// After a save: new problems for every row, without redrawing the inputs (so typing isn't interrupted;
+// a list you're typing a definition in is left as it is).
 function refreshProblems() {
   const rec = batch.records[current];
   document.querySelectorAll("[data-problems]").forEach(ul => {
     const j = +ul.dataset.problems;
-    if (rec.rows[j]) ul.replaceWith(problemList(rec.rows[j], j));
+    if (rec.rows[j] && !ul.contains(document.activeElement)) ul.replaceWith(problemList(rec.rows[j], j));
   });
   drawList();
+}
+
+// ---------------------------------------------------------------- adding to the hand-built schema
+// A name the ground truth uses but the hand-built schema lacks is added with a one-line definition;
+// a pattern, with one click. The server writes the file (annotations/schema_derived_from_manual_annotation.txt)
+// and the checks run again.
+function addControl(a) {
+  const box = el("span", { class: "addbox" });
+  if (a.kind === "pattern") {
+    box.append(el("button", { onclick: () => addToHand(a) },
+      `Add the pattern ${a.subject_class} -> ${a.object_class} to ${a.predicate}`));
+    return box;
+  }
+  const start = el("button", { onclick: () => {
+    const def = el("input", { placeholder: `one-line definition of ${a.name}`, "aria-label": `definition of ${a.name}` });
+    const go = () => addToHand({ ...a, definition: def.value });
+    def.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+    box.replaceChildren(def, el("button", { onclick: go }, `Add ${a.name}`),
+                        el("button", { onclick: () => box.replaceChildren(start) }, "Cancel"));
+    def.focus();
+  } }, `Add ${a.name} to the hand-built schema…`);
+  box.append(start);
+  return box;
+}
+let adding = false;
+async function addToHand(item) {
+  if (adding) return;                               // one add at a time
+  adding = true;
+  if (document.activeElement) document.activeElement.blur();   // so the row's checks are redrawn after
+  try {
+    await flush();
+    if (dirty) return;                              // the batch didn't save: save() has said why
+    const r = await api("/api/hand/add", item);
+    drawGaps(await api("/api/gaps"));
+    if (batch) { dirty = true; await save(); }       // the checks run again against the grown schema
+    if (!dirty) status(r.added, "saved");            // else save() has said why it failed
+  } catch (e) { status(`NOT ADDED: ${e.message}`, "failed"); }
+  finally { adding = false; }
+}
+function drawGaps(g) {
+  if ($("gaps").contains(document.activeElement)) return;   // you're typing a definition there
+  const n = g.names.length, p = g.patterns.length;
+  $("gaps").hidden = !(n || p);
+  $("gaps").replaceChildren(
+    el("summary", {}, `The ground truth uses ${n} name(s) and ${p} pattern(s) that aren't in the hand-built ` +
+       `schema (${g.file}). Add each one you mean to keep; fix any typo where it's used.`),
+    el("ul", {},
+      g.names.map(x => el("li", {}, el("span", { class: "kind" }, x.kind), el("b", {}, x.name),
+        ` (ground truth vocabulary; ${x.uses} row(s))`, addControl(x))),
+      g.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
+        `${x.subject_class} ${x.predicate} ${x.object_class} (${x.uses} row(s))`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table

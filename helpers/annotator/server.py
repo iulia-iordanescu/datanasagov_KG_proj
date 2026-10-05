@@ -23,8 +23,10 @@ What it reads
     outputs/intermediate_results/060_extract/extracted_triples_details.json  extraction's names outside the schema
 
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
-annotations/name_mapping.csv, annotations/partial_pair_reviews.csv and
-annotations/schema_additions.txt.
+annotations/name_mapping.csv, annotations/partial_pair_reviews.csv,
+annotations/schema_additions.txt, and additions to
+annotations/schema_derived_from_manual_annotation.txt (nothing else in it
+changes).
     - Opening draft batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
       then on that copy is what's shown and edited. The draft in outputs/ is
@@ -68,12 +70,26 @@ suggested as you type are the ground truth vocabulary
 (common/common_helpers/ground_truth.vocabulary): the hand-built schema's, plus those
 coined in the ground truth, so a coined name is offered for reuse. A coined
 name stays flagged until it is added to the hand-built schema, since it
-could be a typo, and the page lists every coined name as a reminder.
+could be a typo.
+
+Adding to the hand-built schema: each flag "not in the hand-built schema" on
+a row has a button that adds the name, with the one-line definition the
+person types, or the pattern; so does the list, above every view, of what
+the ground truth uses that the hand-built schema lacks (hand_schema_gaps). A
+pattern is offered only once its entity classes are in the schema. The file
+is changed by common/common_helpers/schema_io.add_to_hand_schema and
+add_pattern_to_hand_schema, which add one entry or pattern, check that
+nothing else changed, and otherwise put the file back. A name gets a
+"source:" line naming the ground truth records using it, by part ("ground
+truth tuning #3; held-out #8"), so it can be told whether held-out records
+shaped its names (patterns get no source line: the layout has none for
+them).
 """
 from __future__ import annotations
 
 import csv
 import json
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -81,13 +97,13 @@ from urllib.parse import parse_qs, urlsplit
 from common.chunking import full_text
 from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
-                                 draft_name, file_name, read_ground_truth, vocabulary)
+                                 draft_name, file_name, read_ground_truth, read_pool, vocabulary)
 from common.name_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  is_stale, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
-from common.schema_io import additions_header, additions_text, ground_truth_source_problem, read_hand_schema, \
-    read_schema
+from common.schema_io import add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
+    ground_truth_source_problem, read_hand_schema, read_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, label_key
@@ -110,6 +126,7 @@ EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.js
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
 PAGE = Path(__file__).with_name("page.html")
+KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
 #: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
 #: words for the page; {name} is filled with the name concerned.
@@ -123,20 +140,25 @@ MESSAGES = {
     "subject_equals_object": "The subject and the object are the same.",
     "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the hand-built schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
-                                   "If it's new, add it, with a definition, to the hand-built schema.",
+                                   "If it's new, add it to the hand-built schema with the button below, "
+                                   "giving a one-line definition.",
     "object_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new one, "
                                   "or a typo. Keep it only if none of the schema's fits. "
-                                  "If it's new, add it, with a definition, to the hand-built schema.",
+                                  "If it's new, add it to the hand-built schema with the button below, "
+                                  "giving a one-line definition.",
     "predicate_not_in_schema": "\"{predicate}\" isn't a predicate of the hand-built schema: a new one, or a typo. "
                                "Keep it only if none of the schema's fits. "
-                               "If it's new, add it, with a definition, to the hand-built schema.",
+                               "If it's new, add it to the hand-built schema with the button below, "
+                               "giving a one-line definition.",
     "pattern_not_in_schema": "The hand-built schema never uses {predicate} between {subject_class} and "
-                             "{object_class}: a new pattern, or a wrong entity class.",
+                             "{object_class}: a new pattern, or a wrong entity class. If it's right, add it to the "
+                             "hand-built schema with the button below (shown once both entity classes are in it).",
     "empty": "Subject, predicate and object must all be filled in.",
     "describes_undecided": "Choose the entity class of what the title names.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
-                                     "If it's new, add it, with a definition, to the hand-built schema.",
+                                     "If it's new, add it to the hand-built schema with the button below, "
+                                     "giving a one-line definition.",
     "describes_subject_not_id": "This row's subject should be the record's id.",
 }
 
@@ -152,14 +174,17 @@ class Data:
         self.records = load_records(RECORDS) if RECORDS.exists() else {}
         self.positions, self.parts = {}, {}
         if SPLITS.exists():
-            splits = json.loads(SPLITS.read_text(encoding="utf-8"))
-            pool = splits["ground_truth_candidates"]["records"]
+            pool = read_pool(SPLITS)
             self.positions = {r["id"]: r["position"] for r in pool}
             self.parts = {r["id"]: r.get("part") for r in pool}            # "tuning" or "held-out"
-        self.hand = read_hand_schema(HAND_SCHEMA) if HAND_SCHEMA.exists() else \
-            {"entity_classes": {}, "predicates": {}, "patterns": []}
-        self.names = SchemaNames(self.hand)
+        self.read_hand()
         self._texts = {}
+
+    def read_hand(self) -> None:
+        """(Re)read the hand-built schema: at the start, and after the page adds to it."""
+        hand = read_hand_schema(HAND_SCHEMA) if HAND_SCHEMA.exists() else \
+            {"entity_classes": {}, "predicates": {}, "patterns": []}
+        self.hand, self.names = hand, SchemaNames(hand)
 
     def text(self, rid: str) -> Text | None:
         if rid not in self.records:
@@ -196,8 +221,31 @@ def check_row(data: Data, row: dict, title: str) -> list:
         text = data.text(row["id"])
         errors, flags = check_triple_instance(row, text, title) if text is not None else ([], [])
         flags = flags + check_against_schema(row, data.names)
-    return [{"code": c, "kind": kind, "message": MESSAGES[c].format(**{k: row.get(k) or "(none)" for k in COLUMNS})}
+    return [{"code": c, "kind": kind, "message": MESSAGES[c].format(**{k: row.get(k) or "(none)" for k in COLUMNS}),
+             "add": _offer(c, row, flags)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
+
+
+#: The flags a person resolves by adding a name to the hand-built schema: (kind, the row's column holding it).
+ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
+        "object_class_not_in_schema": ("entity class", "object_class"),
+        "describes_class_not_in_schema": ("entity class", "object_class"),
+        "predicate_not_in_schema": ("predicate", "predicate")}
+
+
+def _offer(code: str, row: dict, flags: list) -> dict | None:
+    """What the page offers to add to the hand-built schema for one flag, or
+    None. A pattern is offered only once both its entity classes are in the
+    schema, so a mistyped entity class can't become part of a pattern."""
+    if code in ADDS:
+        kind, column = ADDS[code]
+        name = str(row.get(column) or "").strip()
+        return {"kind": kind, "name": name} if label_key(name) else None
+    classes_flagged = {"subject_class_not_in_schema", "object_class_not_in_schema"} & set(flags)
+    if code == "pattern_not_in_schema" and not classes_flagged:
+        return {"kind": "pattern", "predicate": row["predicate"], "subject_class": row["subject_class"],
+                "object_class": row["object_class"]}
+    return None
 
 
 def _is_blank(row: dict) -> bool:
@@ -231,17 +279,75 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"])}
 
 
-def coined_reminder(data: Data, gt) -> list:
-    """A line naming the names used in the ground truth but not in the
-    hand-built schema, or none."""
+# --------------------------------------------------------------------------
+# adding to the hand-built schema
+# --------------------------------------------------------------------------
+
+def _using(gt, kind: str, name: str) -> list:
+    """The ground truth rows that use a name (compared as label_key does)."""
+    columns = ("subject_class", "object_class") if kind == "entity class" else ("predicate",)
+    return [r for r in gt.rows if any(label_key(r[c]) == label_key(name) for c in columns)]
+
+
+def _learned_from(data: Data, rows: list) -> str:
+    """Where a name was learned, as a "source:" line the fairness check
+    (common/common_helpers/schema_io.ground_truth_source_problem) can read: the
+    ground truth records using it, by part, as pool positions."""
+    by_part, outside = {"tuning": set(), "held-out": set()}, []
+    for rid in dict.fromkeys(r["id"] for r in rows):
+        if data.parts.get(rid) in by_part and rid in data.positions:
+            by_part[data.parts[rid]].add(data.positions[rid])
+        else:
+            outside.append(rid)
+    bits = [f"{part} " + ", ".join(f"#{p}" for p in sorted(ps)) for part, ps in by_part.items() if ps]
+    bits += ["not in the pool: " + ", ".join(outside)] if outside else []
+    return "ground truth " + "; ".join(bits) if bits else ""
+
+
+def hand_schema_gaps(data: Data, gt) -> dict:
+    """What the ground truth uses that the hand-built schema lacks: names
+    coined in the ground truth, and patterns whose predicate and entity
+    classes are all in the schema, each with the rows using it."""
     coined = vocabulary(data.hand, gt)["coined"]
-    names = coined["entity_classes"] + coined["predicates"]
-    if not names:
-        return []
-    return [f"{len(names)} name(s) used in the ground truth aren't in the hand-built schema "
-            f"({HAND_SCHEMA.name}): {'; '.join(f'{n} (ground truth vocabulary)' for n in names)}. "
-            f"Add each one you mean to keep, with a one-line "
-            f"definition; fix any typo where it's used."]
+    names = [{"kind": kind, "name": n, "uses": len(_using(gt, kind, n))}
+             for kind, key in KIND_KEYS.items() for n in coined[key]]
+    k, patterns = label_key, {}
+    for r in gt.rows:
+        if is_describes(r) or k(r["predicate"]) not in data.names.predicates \
+                or not {k(r["subject_class"]), k(r["object_class"])} <= data.names.entity_classes:
+            continue
+        key = (k(r["subject_class"]), k(r["predicate"]), k(r["object_class"]))
+        if key not in data.names.patterns:
+            patterns.setdefault(key, {"kind": "pattern", "subject_class": r["subject_class"],
+                                      "predicate": r["predicate"], "object_class": r["object_class"],
+                                      "uses": 0})["uses"] += 1
+    return {"file": f"annotations/{HAND_SCHEMA.name}", "names": names, "patterns": list(patterns.values())}
+
+
+HAND_LOCK = threading.Lock()
+
+
+def add_to_hand(data: Data, item: dict) -> str:
+    """Add one name (with its definition) or one pattern to the hand-built
+    schema; say what was added. A name is written as the page sent it, with
+    a "source:" line naming the ground truth records using it (in any
+    spelling, compared as label_key does). One add at a time (HAND_LOCK):
+    the server answers requests in parallel, and two adds at once could
+    undo each other."""
+    with HAND_LOCK:
+        if item.get("kind") == "pattern":
+            add_pattern_to_hand_schema(HAND_SCHEMA, item["predicate"], item["subject_class"], item["object_class"])
+            data.read_hand()
+            return (f"Added the pattern {item['subject_class']} -> {item['object_class']} to {item['predicate']} "
+                    f"in {HAND_SCHEMA.name}")
+        kind = item.get("kind")
+        if kind not in KIND_KEYS:
+            raise ValueError("kind must be entity class, predicate or pattern")
+        name = str(item.get("name") or "").strip()
+        source = _learned_from(data, _using(read_ground_truth(), kind, name))
+        add_to_hand_schema(HAND_SCHEMA, kind, name, item.get("definition") or "", source=source)
+        data.read_hand()
+        return f"Added the {kind} {name} to {HAND_SCHEMA.name}" + (f" (source: {source})" if source else "")
 
 
 def list_batches() -> list:
@@ -414,9 +520,6 @@ def help_text(view: str) -> dict:
 # schema additions
 # --------------------------------------------------------------------------
 
-KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
-
-
 def _additions() -> tuple:
     """(entries, unread lines) of the additions file."""
     if not ADDITIONS.exists():
@@ -581,7 +684,9 @@ def make_handler(data: Data):
                 elif url.path == "/api/batches":
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
-                                "problems": gt.problems, "reminders": coined_reminder(data, gt)})
+                                "problems": gt.problems, "gaps": hand_schema_gaps(data, gt)})
+                elif url.path == "/api/gaps":
+                    self._json(hand_schema_gaps(data, read_ground_truth()))
                 elif url.path == "/api/mapping":
                     self._json(mapping_view(data))
                 elif url.path == "/api/partial":
@@ -610,6 +715,8 @@ def make_handler(data: Data):
                 elif url.path == "/api/additions/save":
                     save_additions(data, body["entries"])
                     self._json({"saved": True})
+                elif url.path == "/api/hand/add":
+                    self._json({"added": add_to_hand(data, body)})
                 elif url.path == "/api/additions/check":
                     self._json({"problem": check_addition(data, body)})
                 elif url.path == "/api/partial/review":

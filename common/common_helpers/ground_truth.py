@@ -28,6 +28,7 @@ progress. A row with an id but an empty subject, predicate and object says
     gt.records     {record id: {"file", "rows", "finished"}}
     gt.problems    ["…"]: what a person must fix (see below)
     fair_sample, fair_prefix  whether ids are the pool's first records (below)
+    read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
     vocabulary(hand_schema, gt)  the ground truth vocabulary: the hand-built
                               schema's names plus those coined in the ground truth
     check_rows(gt, records)   rows with a typo to fix: an id not in the
@@ -51,6 +52,7 @@ files.
 from __future__ import annotations
 
 import csv
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -182,7 +184,8 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
     plus every one the ground truth triples use that it lacks. Names are
     compared as common.triples_io.label_key does (ignoring case and
     punctuation), keeping the first spelling met; the DESCRIBES row's own
-    names (CatalogEntry, DESCRIBES) and the undecided X are not names.
+    names (CatalogEntry, DESCRIBES), the undecided X and anything without a
+    letter or digit (e.g. "-") are not names.
 
     Returned in the schema shape, plus "coined": {"entity_classes": [...],
     "predicates": [...]}, the names used in the ground truth but not in the
@@ -197,7 +200,8 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
     for row in gt.rows:
         for kind, name in (("entity_classes", row["subject_class"]), ("entity_classes", row["object_class"]),
                            ("predicates", row["predicate"])):
-            if name and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) and label_key(name) not in known[kind]:
+            if label_key(name) and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) \
+                    and label_key(name) not in known[kind]:
                 out[kind][name] = ""
                 out["coined"][kind].append(name)
                 known[kind].add(label_key(name))
@@ -212,6 +216,12 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
 # fair sample of the catalog, for any N. Results about the whole catalog may
 # only be drawn from such a sample. pool is the pool's ids in order
 # (030's splits.json); taken is a set of ids.
+
+def read_pool(splits_path) -> list:
+    """The ground truth candidates pool, in pool order, from 030's
+    splits.json: [{"id", "position", "part" ("tuning" or "held-out"), …}]."""
+    return json.loads(Path(splits_path).read_text(encoding="utf-8"))["ground_truth_candidates"]["records"]
+
 
 def fair_sample(pool: list, taken: set) -> dict:
     """Whether the records taken are exactly the first N of the pool, and if

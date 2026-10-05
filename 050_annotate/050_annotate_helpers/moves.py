@@ -123,8 +123,8 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         warnings.append(f"{len(coined)} name(s) used in the ground truth aren't in the hand-built schema, so the model "
                         f"saw them without a definition: "
                         f"{named([f'{n} (ground truth vocabulary)' for n in coined], 5, '; ')}. "
-                        f"Add each one you mean to keep, with a "
-                        f"one-line definition, to the hand-built schema; fix any typo in the ground truth.")
+                        f"Add each one you mean to keep, with a one-line definition, to the hand-built "
+                        f"schema (the annotation tool's buttons do it); fix any typo in the ground truth.")
     if typos:
         warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix; listed in the "
                         f"report under Your ground truth.")
