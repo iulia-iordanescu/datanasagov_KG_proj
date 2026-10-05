@@ -2,7 +2,7 @@
 common/common_helpers/partial_reviews.py -- a person's verdicts on partial pairs,
 annotations/partial_pair_reviews.csv.
 
-A partial pair (step 070, match.py) is a ground truth triple and an extracted
+A partial pair (step 070, pairing.py) is a ground truth triple and an extracted
 triple whose predicates agree and whose subjects and objects agree only
 loosely: one contained in the other as whole words ("MODIS" in "Moderate
 Resolution Imaging Spectroradiometer (MODIS)"). That can be fooled ("MODIS"
@@ -14,7 +14,7 @@ in "MODIS Terra"), so a person can review each one:
     verdict   "same fact" or "not the same fact"
 
 The extracted triple is written as translated into the ground truth
-vocabulary (as matches.csv shows it), so a verdict stops applying if the
+vocabulary (as compared_triples.csv shows it), so a verdict stops applying if the
 translation table changes that triple. Step 070 never pairs two triples a
 person marked "not the same fact"; it counts every partial pair not yet
 reviewed. The annotation tool writes the file (Partial pairs), for TUNING
@@ -45,7 +45,7 @@ def pair_key(record_id: str, gt: dict, translated: dict) -> tuple:
 
 
 def row_key(row: dict) -> tuple:
-    """pair_key of a row of the file (or of matches.csv)."""
+    """pair_key of a row of the file (or of compared_triples.csv)."""
     return pair_key(row.get("record_id") or "",
                     {s: row.get(f"ground_truth_{s}") for s in SLOTS},
                     {s: row.get(f"translated_{s}") for s in SLOTS})

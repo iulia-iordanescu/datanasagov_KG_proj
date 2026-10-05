@@ -2,16 +2,17 @@
 stats.py -- stage 4: the numbers, each with its margin of error. Code only, no model.
 
 Every number is a ratio of sums over the scored records (e.g. precision =
-facts matched in all records / facts extracted in all records), so a record
-with many facts weighs more than one with few, as each fact is one answer.
+pairs in all records / triples extracted in all records), so a record with
+many triples weighs more than one with few, as each triple is one answer.
 
-  precision        matched / extracted
-  recall           matched / ground truth facts
-  (both at the two name levels, exact and partial, and for facts alone and
-   STRICT, i.e. with both entity classes right too)
-  entity-class accuracy   strict matches / matches
-  schema ceiling          ground truth facts within reach / all of them
-  recall within reach     matched facts within reach / facts within reach
+  precision        pairs / extracted triples
+  recall           pairs / ground truth triples
+  (both at the two name levels, exact and partial, and for all pairs and
+   STRICT pairs, i.e. with both entity classes right too)
+  entity-class accuracy   strict pairs / pairs
+  schema ceiling          ground truth triples within reach / all of them
+  recall within reach     pairs whose ground truth triple is within reach /
+                          ground truth triples within reach
   describes accuracy      records whose DESCRIBES entity class is right /
                           records where the ground truth names one; with
                           the MAJORITY BASELINE (the share of the most common
@@ -21,8 +22,8 @@ with many facts weighs more than one with few, as each fact is one answer.
 MARGIN OF ERROR, by the bootstrap: the numbers are recomputed RESHUFFLES
 times, each time from records drawn at random, with repeats, from the scored
 ones; the middle 95% of the results is the margin. It draws WHOLE RECORDS
-(a record's facts come from one text and one model call, so they succeed or
-fail together; drawing facts one by one would give margins too narrow), and
+(a record's triples come from one text and one model call, so they succeed or
+fail together; drawing triples one by one would give margins too narrow), and
 draws WITHIN EACH SAMPLING GROUP, as many as the group has, the way the pool
 was drawn. It is valid only for a random sample (records.py scores only the
 fair part) of enough records: below MIN_RECORDS, no margin is given, only a
@@ -33,7 +34,7 @@ from __future__ import annotations
 import collections
 import random
 
-from match import LEVELS
+from pairing import LEVELS
 from common.triples_io import label_key
 
 #: Fewer scored records than this: no margin of error (a bootstrap on very
@@ -56,15 +57,15 @@ def numbers(records: list) -> dict:
     total = collections.Counter()
     for r in records:
         total.update(r["compared"]["counts"])
-    out = {"records": len(records), "extracted": total["extracted"], "gt_facts": total["gt"],
+    out = {"records": len(records), "extracted": total["extracted"], "gt_triples": total["gt"],
            "schema_ceiling": _ratio(total["within_reach"], total["gt"])}
     for level in LEVELS:
-        m, s = total[f"{level}_matched"], total[f"{level}_strict"]
+        m, s = total[f"{level}_pairs"], total[f"{level}_strict_pairs"]
         out[level] = {"precision": _ratio(m, total["extracted"]), "recall": _ratio(m, total["gt"]),
                       "strict_precision": _ratio(s, total["extracted"]), "strict_recall": _ratio(s, total["gt"]),
                       "entity_class_accuracy": _ratio(s, m),
-                      "recall_within_reach": _ratio(total[f"{level}_matched_within_reach"], total["within_reach"]),
-                      "matched": m, "strict": s}
+                      "recall_within_reach": _ratio(total[f"{level}_pairs_within_reach"], total["within_reach"]),
+                      "pairs": m, "strict_pairs": s}
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     kinds = collections.Counter(label_key(d["truth"]) for d in known)
     per_kind = {k: _ratio(sum(d["right"] for d in known if label_key(d["truth"]) == k), n) for k, n in kinds.items()}

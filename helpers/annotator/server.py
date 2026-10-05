@@ -16,7 +16,7 @@ What it reads
     outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
     outputs/intermediate_results/060_extract/extracted_triples.csv           an example triple per predicate
     outputs/intermediate_results/070_evaluate/scores.json                    evaluation's suggestions for (none) rows
-    outputs/intermediate_results/070_evaluate/matches.csv                    evaluation's partial pairs
+    outputs/intermediate_results/070_evaluate/compared_triples.csv                    evaluation's partial pairs
     annotations/partial_pair_reviews.csv                                     your verdicts on them
     annotations/schema_additions.txt                                         the schema additions
     annotations/README.md                                                    the Help shown on the page
@@ -98,7 +98,7 @@ RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
 SCHEMA_USED = RESULTS_DIR / "060_extract" / "schema_used.json"
 EXTRACTED = RESULTS_DIR / "060_extract" / "extracted_triples.csv"
 SCORES = RESULTS_DIR / "070_evaluate" / "scores.json"
-MATCHES = RESULTS_DIR / "070_evaluate" / "matches.csv"
+COMPARED = RESULTS_DIR / "070_evaluate" / "compared_triples.csv"
 ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
 README = ANNOTATIONS_DIR / "README.md"
 #: The heading of annotations/README.md that explains each view of the page.
@@ -510,7 +510,7 @@ def _read_reviews_rows() -> list:
 
 def partial_view(data: Data) -> dict:
     """Evaluation's last run's partial pairs of tuning records, plus pairs
-    ruled out by an earlier review (no longer paired, so not in matches.csv),
+    ruled out by an earlier review (no longer paired, so not in compared_triples.csv),
     each with the verdict so far and the record's title, position and text."""
     reviews = {row_key(r): r["verdict"] for r in _read_reviews_rows()}
     items, seen = [], set()
@@ -526,15 +526,15 @@ def partial_view(data: Data) -> dict:
                       "title": record.get("title") or rid,
                       "text": full_text(record) if record else None})
 
-    if MATCHES.exists():
-        with open(MATCHES, encoding="utf-8-sig", newline="") as fh:
+    if COMPARED.exists():
+        with open(COMPARED, encoding="utf-8-sig", newline="") as fh:
             for r in csv.DictReader(fh):
-                if r.get("status") == "partial":
+                if r.get("status") == "partial pair":
                     add(r, reviews.get(row_key(r)))
     for r in _read_reviews_rows():
         if r["verdict"] == NOT_SAME:
             add(r, NOT_SAME)
-    return {"found": MATCHES.exists(), "file": f"annotations/{REVIEWS_PATH.name}", "items": items}
+    return {"found": COMPARED.exists(), "file": f"annotations/{REVIEWS_PATH.name}", "items": items}
 
 
 def save_review(data: Data, item: dict) -> None:

@@ -3,7 +3,7 @@ records.py -- stage 1: which records are scored, and what is known about
 each.
 
 A record is scored when a person has finished it in the ground truth (all
-facts extracted, on every row) AND step 060's last run extracted from it.
+triples extracted, on every row) AND step 060's last run extracted from it.
 Of those, only the FAIR PART is scored: the longest run of the pool's first
 records that are all scored. The pool is shuffled, so that run is a fair
 sample of the catalog, which the margins of error require (see stats.py). A
@@ -12,7 +12,7 @@ the pool at all (hand-picked) is left out and listed, with what to do.
 
 For each scored record: its pool position, its part (tuning or held-out,
 from 030), its sampling group (from the pool file), its title, its ground
-truth facts and DESCRIBES row, and 060's kept facts and DESCRIBES row.
+truth triples and DESCRIBES row, and 060's kept triples and DESCRIBES row.
 """
 from __future__ import annotations
 
@@ -42,17 +42,17 @@ class Scored:
     reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/partial_reviews)
 
 
-def _facts(rows: list) -> tuple:
-    """(facts, DESCRIBES row or None): rows with subject, predicate and object."""
-    facts, describes = [], None
+def _triples(rows: list) -> tuple:
+    """(triples, DESCRIBES row or None): rows with subject, predicate and object."""
+    triples, describes = [], None
     for r in rows:
         if not (r.get("subject") and r.get("predicate") and r.get("object")):
-            continue                                   # "annotated, states no facts"
+            continue                                   # "annotated, states no triples"
         if is_describes(r):
             describes = describes or r
         else:
-            facts.append(r)
-    return facts, describes
+            triples.append(r)
+    return triples, describes
 
 
 def pick_records(inputs: dict, settings: dict) -> Scored:
@@ -104,12 +104,12 @@ def pick_records(inputs: dict, settings: dict) -> Scored:
     for rid in scored.pool:
         if rid not in fair:
             continue
-        gt_facts, gt_describes = _facts(rows_of.get(rid, []))
-        ex_facts, ex_describes = _facts(extracted.get(rid, []))
+        gt_triples, gt_describes = _triples(rows_of.get(rid, []))
+        ex_triples, ex_describes = _triples(extracted.get(rid, []))
         scored.records.append({
             "id": rid, "position": by_id[rid]["position"], "part": by_id[rid]["part"],
             "group": groups.get(rid, ""), "title": titles.get(rid, ""),
-            "gt": gt_facts, "gt_describes": gt_describes, "extracted": ex_facts, "extracted_describes": ex_describes,
+            "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
         })
     missing_group = [r["id"] for r in scored.records if not r["group"]]
     if missing_group:

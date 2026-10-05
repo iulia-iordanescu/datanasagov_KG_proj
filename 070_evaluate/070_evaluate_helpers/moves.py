@@ -3,10 +3,10 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
 
     stage 1  records.py  pick_records     code: which records are scored (finished, extracted, in the fair part)
     -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
-    stage 2  names.py    translate_names  LLM: current schema's names → ground truth vocabulary, new names only; you check
-    stage 3  match.py    compare          code: record by record, exact and partial matches, strict, within reach
+    stage 2  names.py    translate_names  LLM: current schema's names → ground truth vocabulary, new names only (+ suggestions for (none) rows); you check
+    stage 3  pairing.py    compare          code: record by record, exact and partial pairs, strict, within reach
     stage 4  stats.py    score            code: the numbers, each with its margin of error, per part and group
-    -        (here)      results          writes scores.json, per_record.md and matches.csv; the report
+    -        (here)      results          writes scores.json, per_record.md and compared_triples.csv; the report
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet.
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-import match
+import pairing
 import names as names_stage
 import records as records_stage
 import stats
@@ -28,14 +28,14 @@ from common.step import ANNOTATIONS_DIR, Results
 
 SCORES_NAME = "scores.json"
 PER_RECORD_NAME = "per_record.md"
-MATCHES_NAME = "matches.csv"
+COMPARED_NAME = "compared_triples.csv"
 LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records"]
-FACT = ("subject", "subject_class", "predicate", "object", "object_class")
+TRIPLE = ("subject", "subject_class", "predicate", "object", "object_class")
 SHOW = 20                        # rows listed in the report before "…"
-MATCH_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_classes_right", "within_reach"]
-                 + [f"extracted_{c}" for c in FACT] + [f"translated_{c}" for c in FACT]
-                 + [f"ground_truth_{c}" for c in FACT] + [ORIGIN_COLUMN])
+COMPARED_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_classes_right", "within_reach"]
+                 + [f"extracted_{c}" for c in TRIPLE] + [f"translated_{c}" for c in TRIPLE]
+                 + [f"ground_truth_{c}" for c in TRIPLE] + [ORIGIN_COLUMN])
 
 
 # --------------------------------------------------------------------------
@@ -53,7 +53,7 @@ def translate_names(inputs, scored, calls):
 
 
 def compare(scored, names):
-    return match.compare_all(scored, names)
+    return pairing.compare_all(scored, names)
 
 
 def score(scored, settings) -> dict:
@@ -74,7 +74,7 @@ def _with_margin(n: dict) -> str:
     return f"{_pct(n['value'])} ({_pct(n['low'])}–{_pct(n['high'])})"
 
 
-def _fact(f: dict) -> str:
+def _triple(f: dict) -> str:
     return f"{f['subject']} ({f['subject_class']}) {f['predicate']} {f['object']} ({f['object_class']})"
 
 
@@ -89,9 +89,9 @@ def _log_look(scored, schema_file: str) -> int:
 
 def _per_record(records: list, hidden: int) -> str:
     lines = ["# Per record", "",
-             "Each scored record: its facts matched (✓ exact / ≈ partial, with both versions), extracted but not "
+             "Each scored record: its pairs (✓ exact / ≈ partial, with both triples), extracted but not "
              "in the ground truth (count against precision), and in the ground truth but not extracted (count "
-             "against recall). Extracted facts are shown translated into the ground truth vocabulary. Terms: "
+             "against recall). Extracted triples are shown translated into the ground truth vocabulary. Terms: "
              "docs/terminology.md, section *Scoring extraction*.", ""]
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
@@ -108,30 +108,30 @@ def _per_record(records: list, hidden: int) -> str:
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         if c["pairs"]:
-            lines.append("**Matched**")
+            lines.append("**Pairs**")
             lines.append("")
             for gi, ei, level in c["pairs"]:
-                strict = match.classes_agree(gt[gi], ex[ei])
+                strict = pairing.classes_agree(gt[gi], ex[ei])
                 lines.append(f"- {'✓ exact' if level == 'exact' else '≈ partial'}"
-                             f"{'' if strict else ', entity classes differ'}: {_fact(ex[ei])}")
+                             f"{'' if strict else ', entity classes differ'}: {_triple(ex[ei])}")
                 if level == "partial" or not strict:
-                    lines.append(f"  - ground truth: {_fact(gt[gi])}")
+                    lines.append(f"  - ground truth: {_triple(gt[gi])}")
             lines.append("")
         extra = [ex[i] for i in range(len(ex)) if i not in paired_e]
         if extra:
             lines += ["**Extracted, but not in the ground truth** (against precision)", ""]
-            lines += [f"- ✗ {_fact(f)}" for f in extra] + [""]
+            lines += [f"- ✗ {_triple(f)}" for f in extra] + [""]
         missed = [(gt[i], c["within_reach"][i]) for i in range(len(gt)) if i not in paired_g]
         if missed:
             lines += ["**In the ground truth, but not extracted** (against recall)", ""]
-            lines += [f"- ✗ {_fact(f)}" + ("" if reach else " — out of reach: the schema can't say it")
+            lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: the schema can't say it")
                       for f, reach in missed] + [""]
         if not (c["pairs"] or extra or missed):
-            lines += ["No facts in the ground truth, and none extracted.", ""]
+            lines += ["No triples in the ground truth, and none extracted.", ""]
     return "\n".join(lines)
 
 
-def _match_rows(records: list) -> list:
+def _compared_rows(records: list) -> list:
     rows = []
     for r in records:
         c = r["compared"]
@@ -142,29 +142,29 @@ def _match_rows(records: list) -> list:
             out = {**base, "status": status}
             if ei is not None:
                 raw = r["extracted"][ei]
-                out.update({f"extracted_{k}": raw[k] for k in FACT})
-                out.update({f"translated_{k}": ex[ei][k] for k in FACT})
+                out.update({f"extracted_{k}": raw[k] for k in TRIPLE})
+                out.update({f"translated_{k}": ex[ei][k] for k in TRIPLE})
                 out[ORIGIN_COLUMN] = audit.origin("extracted_triples", raw["_position"])
             if gi is not None:
-                out.update({f"ground_truth_{k}": gt[gi][k] for k in FACT})
+                out.update({f"ground_truth_{k}": gt[gi][k] for k in TRIPLE})
                 out["within_reach"] = "yes" if c["within_reach"][gi] else "no"
                 origins = gt[gi].get(audit.ORIGIN_FIELD) or []
                 out[ORIGIN_COLUMN] = "; ".join(filter(None, [out.get(ORIGIN_COLUMN), *origins]))
             if gi is not None and ei is not None:
-                out["entity_classes_right"] = "yes" if match.classes_agree(gt[gi], ex[ei]) else "no"
+                out["entity_classes_right"] = "yes" if pairing.classes_agree(gt[gi], ex[ei]) else "no"
             return out
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
-        rows += [row(level, gi, ei) for gi, ei, level in c["pairs"]]
-        rows += [row("wrong", ei=i) for i in range(len(ex)) if i not in paired_e]
-        rows += [row("missed", gi=i) for i in range(len(gt)) if i not in paired_g]
+        rows += [row(f"{level} pair", gi, ei) for gi, ei, level in c["pairs"]]
+        rows += [row("extracted only", ei=i) for i in range(len(ex)) if i not in paired_e]
+        rows += [row("ground truth only", gi=i) for i in range(len(gt)) if i not in paired_g]
     return rows
 
 
 def _clue_lines(clues: list) -> list:
-    """The report's list of name clues (match.name_clues)."""
+    """The report's list of name clues (pairing.name_clues)."""
     lines = ["### Possible translation errors", "",
-             "Where extraction found the fact but a name didn't line up with the ground truth's. A row of the "
+             "Where extraction found the triple but a name didn't line up with the ground truth's. A row of the "
              "table below seen often means a row of the translation table (`annotations/name_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, Translation table). Seen once, it may just be "
              "extraction choosing the wrong name.", "",
@@ -172,7 +172,7 @@ def _clue_lines(clues: list) -> list:
              "these events, "
              "counted together, happened 9 times:", "",
              "- **entity class, subject:** extraction used `Body` (current schema) as the entity class of a "
-             "triple's subject, translated to `Spacecraft` (ground truth vocabulary), while the ground truth triple paired with it (a match, "
+             "triple's subject, translated to `Spacecraft` (ground truth vocabulary), while the ground truth triple paired with it (a pair, "
              "exact or partial) had `CelestialBody` (ground truth vocabulary) as its subject's entity class;",
              "- **entity class, object:** the same, for the object's entity class. One triple can count twice, "
              "once per slot;",
@@ -189,7 +189,7 @@ def _clue_lines(clues: list) -> list:
     lines += ["| Kind | Name in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
               "triple says instead (ground truth vocabulary) | Times | Check |", "|---|---|---|---|---:|---|"]
     for c in clues[:SHOW]:
-        to = "(none)" if c["translated_to"].endswith(match.NO_TRANSLATION) else c["translated_to"]
+        to = "(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION) else c["translated_to"]
         check = (f"swap_subject_and_object of {c['crt_name']} (current schema): subject and object were the "
                  f"other way round" if c["swapped"] else
                  f"should {c['crt_name']} (current schema) translate to {c['gtt_name']} (ground truth vocabulary)?")
@@ -203,18 +203,18 @@ def _clue_lines(clues: list) -> list:
 def results(scored, names, scores, calls, settings, output) -> Results:
     schema_file = scored.schema_used.get("made", {}).get("schema", "?")
     looks = _log_look(scored, schema_file) if settings["score_held_out"] else None
-    per_record_path, matches_path, scores_path = (output / PER_RECORD_NAME, output / MATCHES_NAME,
+    per_record_path, compared_path, scores_path = (output / PER_RECORD_NAME, output / COMPARED_NAME,
                                                   output / SCORES_NAME)
-    # Only the parts whose numbers are shown: the held-out records' facts stay
+    # Only the parts whose numbers are shown: the held-out records' triples stay
     # unseen too, unless --score_held_out true.
     shown = [r for r in scored.records if r["part"] in scores]
-    clues = match.name_clues(shown)
+    clues = pairing.name_clues(shown)
     tuning = [r for r in shown if r["part"] == "tuning"]
     unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
     rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
-    match_rows = _match_rows(shown)
+    compared_rows = _compared_rows(shown)
     write_text(per_record_path, _per_record(shown, len(scored.records) - len(shown)))
-    write_csv(matches_path, MATCH_COLUMNS, match_rows)
+    write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
     write_json(scores_path, {
         "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "schema": schema_file, "settings": settings,
                  "min_records_for_margin": stats.MIN_RECORDS, "reshuffles": stats.RESHUFFLES, "seed": stats.SEED},
@@ -229,7 +229,7 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         "translation_suggestions": names.suggested,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
-    log.info(f"  wrote {SCORES_NAME}, {PER_RECORD_NAME}, {MATCHES_NAME}")
+    log.info(f"  wrote {SCORES_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
 
     warnings = list(scored.notes)
     for part, v in scores.items():
@@ -260,15 +260,15 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, so the partial "
                         f"level may count pairs that aren't the same fact (e.g. MODIS vs MODIS Terra). Review "
                         f"them: py helpers/annotate.py, Partial pairs.")
-    frequent = [c for c in clues if c["count"] >= match.CLUE_WARN]
+    frequent = [c for c in clues if c["count"] >= pairing.CLUE_WARN]
     if frequent:
-        warnings.append(f"{len(frequent)} pair(s) of names met {match.CLUE_WARN} or more times where extraction "
-                        f"found the fact but a name differed: a translation in name_mapping.csv may be wrong or "
+        warnings.append(f"{len(frequent)} pair(s) of names met {pairing.CLUE_WARN} or more times where extraction "
+                        f"found the triple but a name differed: a translation in name_mapping.csv may be wrong or "
                         f"missing. See Possible translation errors.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
                         f"(annotations/held_out_looks.csv; commit it). Each look is a chance to tune on it.")
-    missing = check_origins(match_rows, "match rows")
+    missing = check_origins(compared_rows, "compared triples")
     if missing:
         warnings.append(missing)
 
@@ -313,17 +313,17 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         if part == "kept_aside" or v["numbers"] is None:
             continue
         n = v["numbers"]
-        lines += [f"### Scores: {part} part ({n['records']} records, {n['gt_facts']} ground truth facts, "
+        lines += [f"### Scores: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
                   f"{n['extracted']} extracted)", ""]
         if not n["margins"]:
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
                       f"error: these numbers could easily have come out very differently. Don't draw "
                       f"conclusions from them yet.**", ""]
         lines += ["| Names compared | | Precision | Recall |", "|---|---|---:|---:|"]
-        for level in match.LEVELS:
+        for level in pairing.LEVELS:
             L = n[level]
-            lines.append(f"| {level} | facts | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} |")
-            lines.append(f"| {level} | facts with entity classes (strict) | {_with_margin(L['strict_precision'])} "
+            lines.append(f"| {level} | triples | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} |")
+            lines.append(f"| {level} | triples with entity classes (strict) | {_with_margin(L['strict_precision'])} "
                          f"| {_with_margin(L['strict_recall'])} |")
         recs = [r for r in scored.records if r["part"] == part]
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
@@ -333,9 +333,9 @@ def results(scored, names, scores, calls, settings, output) -> Results:
                        "so its partial level may count pairs that aren't the same fact.")]
         lines += ["", "| Names compared | Entity-class accuracy | Recall within reach |", "|---|---:|---:|"]
         lines += [f"| {level} | {_with_margin(n[level]['entity_class_accuracy'])} | "
-                  f"{_with_margin(n[level]['recall_within_reach'])} |" for level in match.LEVELS]
+                  f"{_with_margin(n[level]['recall_within_reach'])} |" for level in pairing.LEVELS]
         d = n["describes"]
-        lines += ["", f"- **Schema ceiling** (ground truth facts the schema can express at all): "
+        lines += ["", f"- **Schema ceiling** (ground truth triples the schema can express at all): "
                       f"{_with_margin(n['schema_ceiling'])}.",
                   f"- **What the record describes**: right for {_with_margin(d['accuracy'])} of {d['records']} "
                   f"record(s). Always guessing the most common kind would score {_pct(d['majority_baseline'])}; "
@@ -357,9 +357,9 @@ def results(scored, names, scores, calls, settings, output) -> Results:
         lines.append("")
     lines += ["A margin of error covers only which records happened to be scored: not mistakes in the ground "
               "truth, not the model answering differently on another run, and not tuning on these records. The "
-              "ground truth was drafted by a model and corrected by a person, not written from scratch; a fact "
+              "ground truth was drafted by a model and corrected by a person, not written from scratch; a triple "
               "both missed is counted nowhere, so recall may be overstated.", "",
-              f"Every record's facts, side by side: `{PER_RECORD_NAME}`; one row per fact: `{MATCHES_NAME}`; "
+              f"Every record's triples, side by side: `{PER_RECORD_NAME}`; one row per triple: `{COMPARED_NAME}`; "
               f"every number: `{SCORES_NAME}`.", ""]
     lines += model_calls([("propose name translations", names.calls, None),
                           ("suggest counterparts for (none) rows", names.suggest_calls, None)],
@@ -370,5 +370,5 @@ def results(scored, names, scores, calls, settings, output) -> Results:
     if tuning:
         headline = {"precision (tuning, exact)": _pct(tuning["exact"]["precision"]["value"]),
                     "recall (tuning, exact)": _pct(tuning["exact"]["recall"]["value"])}
-    return Results(files=[scores_path, per_record_path, matches_path], headline=headline,
+    return Results(files=[scores_path, per_record_path, compared_path], headline=headline,
                    details="\n".join(lines), warnings=warnings)

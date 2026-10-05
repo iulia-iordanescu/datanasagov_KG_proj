@@ -1,41 +1,41 @@
 """
-match.py -- stage 3: compare, record by record, what 060 extracted with the
+pairing.py -- stage 3: compare, record by record, what 060 extracted with the
 ground truth. Code only, no model.
 
-Each extracted fact is first TRANSLATED into the ground truth vocabulary (names.py): its
+Each extracted triple is first TRANSLATED into the ground truth vocabulary (names.py): its
 predicate and entity classes; a reversed predicate also swaps subject and
 object (and their entity classes). Then, per record, the ground truth's
-facts and the extracted facts are PAIRED: every fact, in either list, ends
-with zero or one partner, always from the other list (so a fact stated twice
-earns one match, not two). Two passes, each finding the largest possible set
-of pairs (maximum matching: a pairing may switch to free a partner for
-another fact), not just each fact's first match:
+triples and the extracted triples are PAIRED: every triple, in either list, ends
+with zero or one partner, always from the other list (so a triple stated twice
+earns one pair, not two). Two passes, each finding the largest possible set
+of pairs (in maths, a maximum matching: a pair may be swapped to free a
+partner for another triple), not just each triple's first possible partner:
 
   1. exact   subject and object equal once evened out (common/text_match
              norm_text: case, spacing, quote marks, dashes, edge punctuation
              and a leading "the/a/an" ignored), predicate the same name
-  2. partial among the facts still unpaired: the same, except that the
+  2. partial among the triples still unpaired: the same, except that the
              subject (or object) may be CONTAINED in the other one as whole
              words, either way round: "MODIS" in "Moderate Resolution Imaging
              Spectroradiometer (MODIS)". It can be fooled ("MODIS" in "MODIS
              Terra"), so a person can review partial pairs (annotation tool,
-             Partial pairs; common/common_helpers/partial_reviews.py): two facts marked "not
+             Partial pairs; common/common_helpers/partial_reviews.py): two triples marked "not
              the same fact" are never paired.
 
 The "exact" level counts pass 1's pairs; the "partial" level counts both
 passes'. At each level a pair is STRICT when both entity classes are also
-the same name. A ground truth fact is WITHIN REACH when its predicate and
+the same name. A ground truth triple is WITHIN REACH when its predicate and
 both its entity classes are something 060's schema could say (some checked
 row translates to them); the others no extractor using that schema could
 find. The DESCRIBES rows are compared on their entity class only, apart from
-the facts, since code writes the rest of them.
+the triples, since code writes the rest of them.
 
 NAME CLUES (name_clues): a wrong or missing row of the translation table
-leaves a trace in the triples. Extraction found the fact, but a name
+leaves a trace in the triples. Extraction found the triple, but a name
 differs:
-  - a paired fact whose entity class differs from the ground truth's: the
+  - a paired triple whose entity class differs from the ground truth's: the
     current schema's class may translate to the wrong name (or to (none));
-  - an unpaired extracted fact and an unpaired ground truth fact with the
+  - an unpaired extracted triple and an unpaired ground truth triple with the
     same subject and object (or the two swapped) but different predicates:
     the predicate's row may be wrong, or its swap_subject_and_object.
 Each (current schema's name, ground truth vocabulary's name) pair is
@@ -71,19 +71,19 @@ def _contains(a, b) -> bool:
 NO_TRANSLATION = " (current schema; translates to (none))"
 
 
-def translate(fact: dict, names) -> dict:
-    """The fact in the ground truth vocabulary. A name whose row says (none)
+def translate(triple: dict, names) -> dict:
+    """The triple in the ground truth vocabulary. A name whose row says (none)
     keeps its own spelling, marked NO_TRANSLATION, so it can never equal a
     name of the ground truth vocabulary. "crt" keeps the current schema's
     names, slot by slot as translated (swapped along with subject and
     object), for name_clues."""
-    p_mine, flipped = names.predicate.get(label_key(fact["predicate"]), (None, False))
-    sc, oc = (names.entity.get(label_key(fact[c])) for c in ("subject_class", "object_class"))
-    t = {"subject": fact["subject"], "subject_class": sc or f"{fact['subject_class']}{NO_TRANSLATION}",
-         "predicate": p_mine or f"{fact['predicate']}{NO_TRANSLATION}",
-         "object": fact["object"], "object_class": oc or f"{fact['object_class']}{NO_TRANSLATION}",
-         "crt": {"subject_class": fact["subject_class"], "predicate": fact["predicate"],
-                 "object_class": fact["object_class"]}}
+    p_mine, flipped = names.predicate.get(label_key(triple["predicate"]), (None, False))
+    sc, oc = (names.entity.get(label_key(triple[c])) for c in ("subject_class", "object_class"))
+    t = {"subject": triple["subject"], "subject_class": sc or f"{triple['subject_class']}{NO_TRANSLATION}",
+         "predicate": p_mine or f"{triple['predicate']}{NO_TRANSLATION}",
+         "object": triple["object"], "object_class": oc or f"{triple['object_class']}{NO_TRANSLATION}",
+         "crt": {"subject_class": triple["subject_class"], "predicate": triple["predicate"],
+                 "object_class": triple["object_class"]}}
     if flipped and p_mine:
         t["subject"], t["object"] = t["object"], t["subject"]
         t["subject_class"], t["object_class"] = t["object_class"], t["subject_class"]
@@ -91,7 +91,7 @@ def translate(fact: dict, names) -> dict:
     return t
 
 
-def _same_fact(g: dict, t: dict, level: str) -> bool:
+def _can_pair(g: dict, t: dict, level: str) -> bool:
     if label_key(g["predicate"]) != label_key(t["predicate"]):
         return False
     if level == "exact":
@@ -100,7 +100,7 @@ def _same_fact(g: dict, t: dict, level: str) -> bool:
 
 
 def classes_agree(g: dict, t: dict) -> bool:
-    """Both facts name the same entity classes (what "strict" counts)."""
+    """Both triples name the same entity classes (what "strict" counts)."""
     return label_key(g["subject_class"]) == label_key(t["subject_class"]) and \
         label_key(g["object_class"]) == label_key(t["object_class"])
 
@@ -112,12 +112,12 @@ def _within_reach(g: dict, names) -> bool:
 
 
 def _max_pairs(can: dict) -> dict:
-    """The largest pairing {gt index: extracted index}, each fact in either
-    list with zero or one partner from the other, each gt fact paired with
-    one of the extracted facts it matches (can[gi]): the
-    standard augmenting-path method (Kuhn's algorithm). Taking each gt
-    fact's first free match instead can leave a fact unpaired that another
-    pairing would have matched. Deterministic: facts are tried in order."""
+    """The largest pairing {gt index: extracted index}, each triple in either
+    list with zero or one partner from the other, each gt triple paired with
+    one of the extracted triples it can pair with (can[gi]): the standard
+    augmenting-path method (Kuhn's algorithm). Taking each gt triple's first
+    free partner instead can leave a triple unpaired that another choice of
+    pairs would have paired. Deterministic: triples are tried in order."""
     owner = {}                                        # extracted index -> gt index
 
     def place(gi, seen) -> bool:
@@ -149,7 +149,7 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
     pairs = []                                        # (gt index, extracted index, "exact" | "partial")
     free_g, free_e = set(range(len(gt))), set(range(len(ex)))
     for level in LEVELS:
-        can = {gi: [ei for ei in sorted(free_e) if _same_fact(gt[gi], ex[ei], level) and allowed(gi, ei)]
+        can = {gi: [ei for ei in sorted(free_e) if _can_pair(gt[gi], ex[ei], level) and allowed(gi, ei)]
                for gi in sorted(free_g)}
         for gi, ei in sorted(_max_pairs(can).items()):
             pairs.append((gi, ei, level))
@@ -159,9 +159,9 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
     counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach)}
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
-        counts[f"{level}_matched"] = len(used)
-        counts[f"{level}_strict"] = sum(classes_agree(gt[gi], ex[ei]) for gi, ei in used)
-        counts[f"{level}_matched_within_reach"] = sum(reach[gi] for gi, _ in used)
+        counts[f"{level}_pairs"] = len(used)
+        counts[f"{level}_strict_pairs"] = sum(classes_agree(gt[gi], ex[ei]) for gi, ei in used)
+        counts[f"{level}_pairs_within_reach"] = sum(reach[gi] for gi, _ in used)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]
     truth = gd["object_class"] if gd and gd["object_class"] not in ("", UNDECIDED) else None
@@ -169,7 +169,7 @@ def compare_record(record: dict, names, reviews: dict | None = None) -> dict:
     if ed and ed["object_class"] not in ("", UNDECIDED):
         said = names.entity.get(label_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
     rejected = sum(1 for gi in range(len(gt)) for ei in range(len(ex))
-                   if not allowed(gi, ei) and _same_fact(gt[gi], ex[ei], "partial"))
+                   if not allowed(gi, ei) and _can_pair(gt[gi], ex[ei], "partial"))
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
@@ -215,7 +215,7 @@ def name_clues(records: list) -> list:
                     norm_text(g["object"]) == norm_text(t["subject"])
                 if same or swapped:
                     add("predicate", t["crt"]["predicate"], t["predicate"], g["predicate"], swapped and not same)
-                    break                             # one clue per ground truth fact
+                    break                             # one clue per ground truth triple
     return [{"kind": k, "crt_name": c, "translated_to": t, "gtt_name": g, "swapped": s, "count": n}
             for (k, c, t, g, s), n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
 

@@ -1,23 +1,23 @@
 # 070_evaluate
 
-Terms (precision, recall, match, margin of error, bootstrap, tuning part, held-out part, …) are as defined in [docs/terminology.md](../docs/terminology.md), especially section *Scoring extraction (step 070)*.
+Terms (precision, recall, pair, pairing, margin of error, bootstrap, tuning part, held-out part, …) are as defined in [docs/terminology.md](../docs/terminology.md), especially section *Scoring extraction (step 070)*.
 
 ## Purpose
 
 Scores what step 060 extracted against the ground truth, the answer key:
 
 - **precision**: when 060 says something, how often it is right;
-- **recall**: of the facts in the ground truth, how many 060 found;
+- **recall**: of the triples in the ground truth, how many 060 found;
 
 each with its **margin of error**, so a real improvement can be told from luck. Around them:
 
-- **entity-class accuracy**: of the facts 060 got right, how often it also named the kinds of things right;
+- **entity-class accuracy**: of the triples 060 got right, how often it also named the kinds of things right;
 - **schema ceiling**: how much of the ground truth the schema can express at all, and **recall within reach**: how well 060 did on what it could do. A low ceiling means the schema needs work; a high ceiling with low recall within reach means the extraction does;
 - **what each record describes**: how often 060 named the right kind of thing for the DESCRIBES row, next to what always guessing the most common kind would score.
 
 Before comparing, the names of 060's schema (the current schema) are translated into the ground truth vocabulary, through a table you check. Only the **fair part** of the ground truth is scored (a fair sample of the catalog), and by default only its **tuning part**: the held-out part is kept for the end.
 
-The ground truth was drafted by a model (050) and corrected by a person, not written from scratch; a fact both missed is counted nowhere, so recall may come out higher than it is. The report says so.
+The ground truth was drafted by a model (050) and corrected by a person, not written from scratch; a triple both missed is counted nowhere, so recall may come out higher than it is. The report says so.
 
 ## To do
 
@@ -30,11 +30,11 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 
 ### This step
 
-- **Check the translation table (`annotations/name_mapping.csv`) whenever this step adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right facts into wrong ones, or the reverse. Then **rerun** this step.
+- **Check the translation table (`annotations/name_mapping.csv`) whenever this step adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right triples into wrong ones, or the reverse. Then **rerun** this step.
 - **Act on the table's flags** there and in the report (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are stale (the name's definition changed), out of date or suggested (the ground truth vocabulary gained a counterpart), or repeated.
 - **Review the partial pairs** of the tuning part: `py helpers/annotate.py`, *Partial pairs* (your verdicts go to `annotations/partial_pair_reviews.csv`). Mark each `same fact` or `not the same fact`, with the record's text at hand.
 - **Read the report's *Possible translation errors*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: names that share a translation are ones the scores can't tell apart; if that distinction matters to you, make it in the ground truth.
-- **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the partial matches and the facts "extracted, but not in the ground truth": some may be real facts you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favours extraction).
+- **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the partial pairs and the triples "extracted, but not in the ground truth": some may be real triples you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favours extraction).
 - **Margins of error need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
 - **Look at the held-out part only at the end** (`--score_held_out true`), and commit `annotations/held_out_looks.csv` after each look.
 - **Add schema names (`annotations/schema_additions.txt`) only from the tuning part**, or from outside knowledge: adding names because of what held-out records need is tuning on them.
@@ -62,9 +62,9 @@ In `outputs/intermediate_results/070_evaluate/`:
 
 | File | Contents |
 |---|---|
-| `per_record.md` | For reading. Each scored record of the parts shown (the tuning part; the held-out part too with `--score_held_out true`, so its facts stay unseen until then): what it describes (✓/✗), its facts **matched** (✓ exact or ≈ partial, with the ground truth's version when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted facts are shown translated into the ground truth vocabulary. Opens well in VS Code or on GitHub. |
-| `matches.csv` | For sorting and filtering, e.g. in Excel. One row per fact of the parts shown: record, pool position, part, group, `status` (`exact`, `partial`, `wrong`, `missed`), `entity_classes_right`, `within_reach`, then the fact as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
-| `scores.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were scored and which left out, and why; the possible translation errors (`name_clues`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the settings. |
+| `per_record.md` | For reading. Each scored record of the parts shown (the tuning part; the held-out part too with `--score_held_out true`, so its triples stay unseen until then): what it describes (✓/✗), its **pairs** (✓ exact or ≈ partial, with the ground truth's triple when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted triples are shown translated into the ground truth vocabulary. Opens well in VS Code or on GitHub. |
+| `compared_triples.csv` | For sorting and filtering, e.g. in Excel. One row per pair, and one per triple left without a partner, of the parts shown: record, pool position, part, group, `status` (`exact pair`, `partial pair`, `extracted only`: no partner, counts against precision; `ground truth only`: no partner, counts against recall), `entity_classes_right`, `within_reach`, then the triple as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
+| `scores.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were scored and which left out, and why; the possible translation errors (`name_clues`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the tuning part's partial pairs not yet reviewed and ruled out by your review (`partial_pairs_tuning`); the settings. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
@@ -83,7 +83,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 |---|---|---|---|
 | `score_held_out` | false | Also show the held-out part's numbers, and log the look in `annotations/held_out_looks.csv`. | Only at the end, for the numbers you report. Each look is a chance to tune on the held-out part without meaning to. |
 | `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
-| `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only to propose translations for names it has no row for). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
+| `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only about the translation table: to propose rows for names without one, and to suggest counterparts for `(none)` rows). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer scored records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*).
 
@@ -100,13 +100,13 @@ py 070_evaluate/run.py --confirm_paid_calls false    don't ask (unattended runs)
 
 Needs 060's output. The first run with a new schema stops after adding rows to `annotations/name_mapping.csv`: check them, then run again.
 
-**Paying.** Before its first model call, 070 logs its plan (how many names to translate, the model) and waits: Enter starts, anything else stops the run having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Before you pay: this run can't do exactly what you asked*, then the reasons, listed under *Checks and warnings*). Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: one, only when 060's schema has names without a row in `annotations/name_mapping.csv`; no call otherwise, since the scoring is code.
+**Paying.** Before its first model call, 070 logs its plan (how many names to translate, the model) and waits: Enter starts, anything else stops the run having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Before you pay: this run can't do exactly what you asked*, then the reasons, listed under *Checks and warnings*). Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: at most two, both about the translation table: one when 060's schema has names without a row in `annotations/name_mapping.csv`, and one when there are both `(none)` rows of the current schema and ground truth names nothing translates to (asked once per such pair of lists). None otherwise: the scoring is code.
 
 **The cache.** Every model answer is kept in `cache/`, under a fingerprint of everything that decided it: the model, the prompt's exact text, and what was sent. A rerun reuses every answer whose fingerprint is unchanged: a failed call isn't kept, so a rerun asks only the calls that failed; editing a prompt asks again exactly the calls that use it; deleting `cache/` (or all of `outputs/`) means paying for every call again.
 
 ## How it works
 
-Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 asks the model (only for names without a row), the others are code:
+Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for names without a row, and for suggestions on `(none)` rows), the others are code:
 
 1. **Pick the records** (`records.py`, `pick_records`). A record is scored if you've finished it in the ground truth and 060's last run extracted it. Of those, only the **fair part**: the longest run of the pool's first records that are all scored. A record after a gap (an unfinished or unextracted pool record before it) or outside the pool is left out and named, so every scored record belongs to a fair sample.
 2. **Translate names** (`names.py`, `translate_names`), through `annotations/name_mapping.csv`:
@@ -120,30 +120,30 @@ Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 asks the model (only f
    ```
 
    For each name of 060's schema without a row: one equal to a name of the ground truth vocabulary (ignoring case and punctuation) gets a row at once, `checked` = `same name`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `name_in_gtt` (a name of the ground truth vocabulary, or `(none)`) and `swap_subject_and_object` where wrong, then set `checked` to `yes`. Scoring runs only once every row it needs is checked. Each row also keeps the current schema's definition of its name from when it was written or last checked (`definition_from_past_or_crt_schema`): if a later schema defines that name differently, the row is **stale** (it may no longer be right) and the step stops until you check it again; checking it again stores the new definition. So the one table can serve every schema: a name keeps its row while its meaning stays the same. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
-3. **Compare, record by record** (`match.py`, `compare`). Each extracted fact is translated into the ground truth vocabulary; a reversed predicate also swaps subject and object. Then the ground truth's facts and the extracted facts are **paired**: every fact, in either list, ends with **zero or one partner**, always from the other list (so a fact stated twice earns one match, not two; the two lists can have any lengths). Two rounds, each finding the largest possible set of pairs (*maximum matching*: a pairing may switch to another partner to free one for a fact that would otherwise have none; taking each fact's first match in list order could lose a real match, and make the score depend on the order facts were written in):
+3. **Compare, record by record** (`pairing.py`, `compare`). Each extracted triple is translated into the ground truth vocabulary; a reversed predicate also swaps subject and object. Then the ground truth's triples and the extracted triples are **paired**: every triple, in either list, ends with **zero or one partner**, always from the other list (so a triple stated twice earns one pair, not two; the two lists can have any lengths). Two rounds, each finding the largest possible set of pairs (in maths, a *maximum matching*: a pair may be swapped to free a partner for a triple that would otherwise have none; taking each triple's first possible partner in list order could lose a real pair, and make the score depend on the order triples were written in):
    - **exact**: subject and object the same once evened out (case, spacing, quote marks, dashes, edge punctuation and a leading "the/a/an" ignored, as everywhere in the pipeline), predicate the same;
-   - **partial**, among the facts still unpaired: the same, except that a subject or object may be contained in the other as whole words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)". This can be fooled ("MODIS" in "MODIS Terra"), which is why every partial pair is listed in `per_record.md`.
+   - **partial**, among the triples still unpaired: the same, except that a subject or object may be contained in the other as whole words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)". This can be fooled ("MODIS" in "MODIS Terra"), which is why every partial pair is listed in `per_record.md`, and why you review the tuning part's partial pairs in `py helpers/annotate.py`, *Partial pairs*: two triples you mark `not the same fact` are never paired.
 
-   A pair is **strict** when both entity classes also agree. A ground truth fact is **within reach** when its predicate and both its entity classes are names some checked row translates to. The DESCRIBES rows are compared only on their entity class, apart from the facts, since code writes the rest of them.
-4. **Score** (`stats.py`, `score`). Every number is summed over the records before dividing (a fact is an answer, whichever record it's in):
+   A pair is **strict** when both entity classes also agree. A ground truth triple is **within reach** when its predicate and both its entity classes are names some checked row translates to. The DESCRIBES rows are compared only on their entity class, apart from the triples, since code writes the rest of them.
+4. **Score** (`stats.py`, `score`). Every number is summed over the records before dividing (a triple is an answer, whichever record it's in):
 
    | Number | Is |
    |---|---|
-   | precision | facts matched ÷ facts extracted |
-   | recall | facts matched ÷ ground truth facts |
+   | precision | pairs ÷ extracted triples |
+   | recall | pairs ÷ ground truth triples |
    | strict precision, strict recall | the same, counting only strict pairs |
    | entity-class accuracy | strict pairs ÷ pairs |
-   | schema ceiling | ground truth facts within reach ÷ all ground truth facts |
-   | recall within reach | matched facts within reach ÷ facts within reach |
+   | schema ceiling | ground truth triples within reach ÷ all ground truth triples |
+   | recall within reach | pairs whose ground truth triple is within reach ÷ ground truth triples within reach |
    | describes: accuracy | records whose DESCRIBES entity class is right ÷ records whose ground truth names one |
    | describes: baseline | the share of the most common kind: what always guessing it would score |
    | describes: per-kind average | each kind's accuracy, averaged, so rare kinds count as much as common ones |
 
    Each is given at both name levels (**exact**, and **partial**, which counts exact and partial pairs), with its **margin of error** by the **bootstrap** (below), for the tuning part, for the held-out part when asked, and per sampling group. The report adds a table of what 060 said each record describes versus what it is.
 
-**Then the results** (`results`): `scores.json`, `per_record.md` and `matches.csv` are written, replacing the last run's; with `--score_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **possible translation errors** (`match.py`, `name_clues`), found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the fact but a name differs. A paired fact whose entity class differs from the ground truth's suggests the row of the current schema's entity class is wrong (its row may say `(none)`, or the wrong name); an unpaired extracted fact and an unpaired ground truth fact with the same subject and object (or the two swapped) but different predicates suggest the predicate's row is wrong (or its `swap_subject_and_object`). Each pair of names is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong name, a frequent one is a row to check.
+**Then the results** (`results`): `scores.json`, `per_record.md` and `compared_triples.csv` are written, replacing the last run's; with `--score_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **possible translation errors** (`pairing.py`, `name_clues`), found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the triple but a name differs. A paired triple whose entity class differs from the ground truth's suggests the row of the current schema's entity class is wrong (its row may say `(none)`, or the wrong name); an unpaired extracted triple and an unpaired ground truth triple with the same subject and object (or the two swapped) but different predicates suggest the predicate's row is wrong (or its `swap_subject_and_object`). Each pair of names is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong name, a frequent one is a row to check.
 
-The code: `070_evaluate/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `070_evaluate/070_evaluate_helpers/` holds `moves.py` (the moves, and writing the results), `records.py`, `names.py`, `match.py` and `stats.py`; `070_evaluate/070_evaluate_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/ground_truth.py` (reading the ground truth; the fair part), `common/common_helpers/text_match.py`, `common/common_helpers/triples_io.py`, `common/common_helpers/files.py` (adding lines without changing any), `common/common_helpers/cache.py`, `common/common_helpers/llm.py`.
+The code: `070_evaluate/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `070_evaluate/070_evaluate_helpers/` holds `moves.py` (the moves, and writing the results), `records.py`, `names.py`, `pairing.py` and `stats.py`; `070_evaluate/070_evaluate_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/ground_truth.py` (reading the ground truth; the fair part), `common/common_helpers/text_match.py`, `common/common_helpers/triples_io.py`, `common/common_helpers/files.py` (adding lines without changing any), `common/common_helpers/cache.py`, `common/common_helpers/llm.py`.
 
 ### The margin of error, and the checks it needs
 
@@ -152,7 +152,7 @@ The bootstrap recomputes every number 1,000 times, each time from records drawn 
 | Condition | Why | How 070 checks it |
 |---|---|---|
 | The scored records are a random sample of the catalog | Otherwise the numbers say nothing about the rest of the catalog. | Only the fair part is scored (How it works, 1); anything else is left out and named. |
-| Whole records are drawn, not facts | A record's facts come from one text and one model call, so they succeed or fail together; drawing facts one by one gives margins too narrow. | By design. |
+| Whole records are drawn, not triples | A record's triples come from one text and one model call, so they succeed or fail together; drawing triples one by one gives margins too narrow. | By design. |
 | Drawn the way the pool was drawn | The pool was drawn by sampling group, each getting its share. | Each reshuffle draws within each sampling group as many records as it has. A record without a group is left out of the per-group numbers, and named. |
 | Enough records | With very few, the margins are themselves unreliable, usually too narrow. | Below 20 records, no margin: a plain warning that the numbers could easily have come out very differently. 20 is a rule of thumb, not a law. |
 
@@ -194,7 +194,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *The model suggests N row(s) of name_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained names since those rows were checked, and the model thinks one means the same as the row's current-schema name, under another name (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py helpers/annotate.py`, *Translation table* (it shows the suggestion): pick the suggested name if right, keep `(none)` otherwise. |
 | *N partial pair(s) of the tuning part aren't reviewed yet* | The partial level counts pairs nobody has confirmed; some may not be the same fact (e.g. `MODIS` vs `MODIS Terra`). | Review them in `py helpers/annotate.py`, *Partial pairs*; rerun 070. |
 | *N row(s) of name_mapping.csv translate to (none) though the ground truth vocabulary now has the same name* | A row checked as `(none)` before that name joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's name means something else. | Check the row in `py helpers/annotate.py`, *Translation table* (it's flagged there); change it to the ground truth name, or keep `(none)`. |
-| *N pair(s) of names met 2 or more times where extraction found the fact but a name differed* | A row of `name_mapping.csv` may translate a current-schema name to the wrong ground truth name, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py helpers/annotate.py`, *Translation table*). |
+| *N pair(s) of names met 2 or more times where extraction found the triple but a name differed* | A row of `name_mapping.csv` may translate a current-schema name to the wrong ground truth name, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py helpers/annotate.py`, *Translation table*). |
 | *The held-out part was looked at: N time(s) so far* | After `--score_held_out true`: each look is logged and counted. | Commit `annotations/held_out_looks.csv`. |
 
 **The step stops** with:
@@ -218,14 +218,14 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 ## Audit trail
 
 - **Log.** `outputs/logs/<run id>.log` records the command line, the settings, the git commit, the model call's retries (if any), each move's duration, each output file's hash and, on failure, the full traceback.
-- **Origin.** Each row of `matches.csv` has an `origin` column naming the 060 row it compares (`060_extract/extracted_triples.csv#<position>`) and the ground truth row (`annotations/ground_truth/batch_000.csv#<position>`); the ground truth is made by a person, so a trace stops there.
+- **Origin.** Each row of `compared_triples.csv` has an `origin` column naming the 060 row it compares (`060_extract/extracted_triples.csv#<position>`) and the ground truth row (`annotations/ground_truth/batch_000.csv#<position>`); the ground truth is made by a person, so a trace stops there.
 - **Trace.** `py helpers/audit.py <record id>` follows a record back through every step's output to the 010 batch file and the API request that first returned it (`instructions/000_audit.md`).
 - **Held-out looks.** `annotations/held_out_looks.csv` keeps one line per look at the held-out part, in Git.
 
 ## Known limits
 
-- **Not yet run with the real model.** As of 2026-09-29, 070 has been tested only with a hand-made 060 output whose right answers were worked out in advance (all 16 numbers matched), and with synthetic records for the margins; 060 itself hasn't run with the real model yet, because Ask Sage can't be reached from the laptop it was built on. The numbers in this guide come from those tests, not from a real run.
+- **Not yet run with the real model.** As of 2026-09-29, 070 has been tested only with a hand-made 060 output whose right answers were worked out in advance (all 16 numbers came out as expected), and with synthetic records for the margins; 060 itself hasn't run with the real model yet, because Ask Sage can't be reached from the laptop it was built on. The numbers in this guide come from those tests, not from a real run.
 - **One translation per name.** A name of the current schema translates to at most one name of the ground truth vocabulary; if it covers two (e.g. `Instrument` (current schema) for both `Instrument` and `Sensor` (ground truth vocabulary)), pick the closer one.
-- **Partial matching can be fooled**, and doesn't catch synonyms ("the satellite" for "Aqua"). Every partial pair is listed so you can see it.
+- **Partial pairing can be fooled**, and doesn't catch synonyms ("the satellite" for "Aqua"). You review the tuning part's partial pairs; the held-out part's are never reviewed (that would mean looking at it), so its partial level may count pairs that aren't the same fact.
 - **The ground truth started as a model's draft**: recall may be overstated (see Purpose).
 - **The threshold of 20 records** for a margin is a rule of thumb.

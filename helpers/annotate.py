@@ -10,7 +10,7 @@ for the first time copies it to annotations/ground_truth/batch_<NNN>.csv, and
 every change you make is saved to that copy at once. The "Translation
 table" button opens annotations/name_mapping.csv (step 070's table of which
 ground truth name each name of the current schema means), row by row, to
-check; "Partial pairs" to review evaluation's loose matches; "Schema
+check; "Partial pairs" to review evaluation's partial pairs; "Schema
 additions" to edit annotations/schema_additions.txt. Press Ctrl+C here to
 stop the tool.
 

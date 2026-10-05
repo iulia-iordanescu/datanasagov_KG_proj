@@ -2,7 +2,7 @@
 070 · Evaluate
 
 Scores what 060 extracted against the ground truth: precision (when
-060 says something, how often it is right) and recall (of the facts in the
+060 says something, how often it is right) and recall (of the triples in the
 ground truth, how many 060 found), each with its margin of error. 060's
 names are first translated into the ground truth's names, through a table a
 person checks. Only the fair part of the ground truth is scored, and only
@@ -15,7 +15,7 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          annotations/schema_derived_from_manual_annotation.txt,
          annotations/ground_truth/, annotations/name_mapping.csv,
          annotations/partial_pair_reviews.csv
-Writes:  scores.json, per_record.md, matches.csv; adds rows to
+Writes:  scores.json, per_record.md, compared_triples.csv; adds rows to
          annotations/name_mapping.csv and, with --score_held_out true, a line
          to annotations/held_out_looks.csv (never changing an existing one)
 Details: instructions/070_evaluate.md
@@ -53,10 +53,10 @@ evaluate = load_moves("070_evaluate")
 def main(inputs, settings, output):
     scored = evaluate.pick_records(inputs, settings)                  # code: finished, extracted, in the fair part
     calls  = evaluate.paid_calls(scored, settings, output)            # code: asks before paying; keeps every answer in cache/
-    names  = evaluate.translate_names(inputs, scored, calls)          # LLM: Satellite → Spacecraft, new names only; you check
+    names  = evaluate.translate_names(inputs, scored, calls)          # LLM: Satellite → Spacecraft, new names only (+ suggestions for (none) rows); you check
     scored = evaluate.compare(scored, names)                          # code: per record, exact / partial / wrong / missed
     scores = evaluate.score(scored, settings)                         # code: the numbers, with margins, per part and group
-    # writes scores.json, per_record.md, matches.csv; the report
+    # writes scores.json, per_record.md, compared_triples.csv; the report
     return evaluate.results(scored, names, scores, calls, settings, output)
 
 

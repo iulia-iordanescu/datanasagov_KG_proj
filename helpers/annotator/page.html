@@ -594,7 +594,7 @@ async function openPartial() {
   if (!partial.found) {
     $("records").replaceChildren();
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
-      "Evaluation's matches.csv wasn't found: run py 070_evaluate/run.py first.")));
+      "Evaluation's compared_triples.csv wasn't found: run py 070_evaluate/run.py first.")));
     status("");
     return;
   }
