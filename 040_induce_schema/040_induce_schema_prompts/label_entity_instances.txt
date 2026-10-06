@@ -1,5 +1,5 @@
 Below are subjects and objects from texts: each is the words a text uses for
-one particular thing. Give each one concept label: a short CamelCase noun for
+one particular thing. Give each one label: a short CamelCase noun for
 the KIND of thing it is (e.g. "Rosetta" -> "Spacecraft", "ozone" ->
 "PhysicalQuantity", "Goddard Space Flight Center" -> "Organization"). Judge
 each by its usage example, not by the words alone.

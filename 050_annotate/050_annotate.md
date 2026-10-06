@@ -8,7 +8,7 @@ Drafts ground truth for you to correct. A model reads the next records of the gr
 
 Each run writes one numbered **draft batch**. You correct it with the annotation tool (`py helpers/annotate.py`), which saves it into `annotations/ground_truth/` as the ground truth file with the same number. No step ever writes there.
 
-Each run also checks your ground truth files for typos (see *Your ground truth* in the report).
+Each run also checks your ground truth files for errors (see *Your ground truth* in the report).
 
 ## To do
 
@@ -27,7 +27,7 @@ Each run also checks your ground truth files for typos (see *Your ground truth* 
 - **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: recall comes out higher than it should.
 - **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for component classes you'd add to the schema (see extraction's *To do*).
 - **When you coin an entity class or predicate**, add it with a one-line definition to the hand-built schema (`annotations/schema_derived_from_manual_annotation.txt`): in the tool, press the button under its flag. Until then the next drafts reuse it, but the model sees it without a definition, and the tool keeps flagging it (it could be a typo); the tool's page and this step's report list every such component class.
-- **Fix the typos and problems** the tool and this step's report flag in the ground truth (`annotations/ground_truth/`).
+- **Fix the errors and problems** the tool and this step's report point out in the ground truth (`annotations/ground_truth/`).
 - **Report any metric** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
 
 ## Inputs
@@ -138,7 +138,7 @@ Run against the record's **whole** text, including rows from one piece of a long
 | `pattern_not_in_schema` | flag | The predicate is in the schema, but never between these two entity classes. |
 | `conflicting_classes` | flag | The same triple instance appears again with other entity classes; both rows are flagged. |
 
-"In the text" ignores case, spacing, quote marks, dash variants, edge punctuation and a leading "the/a/an" (`common/common_helpers/text_match.py`). Entity classes and predicates are compared with the schema's by loose match (only letters and digits count), so `has version` is `HAS_VERSION`.
+"In the text" means found once evened out (glossary: case, spacing, quote marks, dashes, punctuation at either end, and a leading "a", "an", or "the" are ignored; `common/common_helpers/text_match.py`). Entity classes and predicates are compared with the schema's by loose match (only letters and digits count), so `has version` is `HAS_VERSION`.
 
 ## Prompts
 
@@ -173,7 +173,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N record(s) failed and are not in the batch* | Their model calls failed (after the model client's own retries). | Run the step again: only those are asked again, and every answer already paid for is reused. The next run drafts them first. |
 | *No record was drafted, so no batch was written.* | Every call failed. | Check the connection; run again. |
 | *N component class(es) used in the ground truth aren't in the hand-built schema, so the model saw them without a definition* | Entity classes or predicates you coined while annotating (or typos). The model was shown them to reuse, but with no definition to go on. | Add each one you mean to keep, with a one-line definition, to the hand-built schema (the annotation tool's buttons do it); fix any typo in the ground truth. |
-| *N row(s) of the ground truth have something to fix* | Typos, listed under *Your ground truth* with file and line: an id that isn't in the catalog, a subject, predicate or object partly empty, no source text or one not in the record's text, a DESCRIBES row without an entity class or whose subject isn't the record's id. | Fix them with the tool or any editor. |
+| *N row(s) of the ground truth have something to fix* | Errors, listed under *Your ground truth* with file and line: an id that isn't in the catalog, a subject, predicate or object partly empty, no source text or one not in the record's text, a DESCRIBES row without an entity class or whose subject isn't the record's id. | Fix them with the tool or any editor. |
 | *N of M draft rows have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
@@ -188,6 +188,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 | *Stopped. Calls not yet started were cancelled. Answers already received are kept in the cache; nothing else was written.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
+| *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).* | The Ask Sage credentials aren't set, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`). |
 
 ## Audit trail
 

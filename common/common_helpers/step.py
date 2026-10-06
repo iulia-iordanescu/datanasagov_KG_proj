@@ -26,7 +26,7 @@ only has to show the step's main moves:
                       calls declined), the log says why (with the full
                       traceback on an error), the report is marked failed,
                       interrupted or stopped, the
-                      previous manifest is put back if every file it lists
+                      previous manifest is put back if every output file it lists
                       is unchanged, and the step exits with a non-zero code
 
 Everything a run produces goes under outputs/, which is gitignored and can be
@@ -317,7 +317,7 @@ def _restore_manifest(output: Path, text: str | None) -> None:
         unchanged = False
     if unchanged:
         write_text(output / MANIFEST_NAME, text)
-        log.debug("previous manifest restored: every file it lists is unchanged")
+        log.debug("previous manifest restored: every output file it lists is unchanged")
     else:
         log.debug("previous manifest not restored: files it lists changed or are gone")
 
@@ -357,7 +357,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
            "settings_changed": changed}
 
     log.info(f"{step_name}: run {run_id} started")
-    log.debug(f"command: {' '.join([f'py {step_name}.py'] + argv)}")
+    log.debug(f"command: {' '.join([f'py {step_name}/run.py'] + argv)}")
     log.debug(f"git commit: {run['git_commit']}; python {platform.python_version()} on {platform.system()}")
     for key, value in chosen_settings.items():
         log.debug(f"setting {key} = {value!r}" + (" (command line)" if key in changed else ""))
@@ -370,7 +370,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
         output.mkdir(parents=True, exist_ok=True)
         # The old manifest may no longer describe this folder once the run
         # starts writing, so it is removed; if the run fails, it is put back
-        # only if every file it lists is still unchanged (see _restore_manifest).
+        # only if every output file it lists is still unchanged (see _restore_manifest).
         old_manifest = _take_manifest(output)
         log.debug(f"output folder: {_rel(output)}")
         audit.begin_run(run_id, chosen_inputs)

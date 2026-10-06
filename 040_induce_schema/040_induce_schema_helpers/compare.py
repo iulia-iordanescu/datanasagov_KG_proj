@@ -7,9 +7,9 @@ truth. Putting the two side by side is a quick sanity check on what the data
 taught the model: which entity classes, predicates and patterns both have,
 which only the hand-built one has, and which only the induced one has.
 
-It is not a metric. Component classes are matched when they are equal once
-case, spaces, underscores and punctuation are ignored ("PhysicalQuantity" =
-"Physical Quantity"); a concept named differently in the two ("Instrument", "Sensor")
+It is not a metric. Component classes are matched when they are a loose
+match (only letters and digits count: "PhysicalQuantity" = "Physical
+Quantity"); a concept named differently in the two ("Instrument", "Sensor")
 counts as unmatched here. Measuring how much of the ground truth the induced
 schema can express, across different component classes, is 070's job.
 """
@@ -42,8 +42,8 @@ def compare(hand: dict, schema) -> dict:
 
 def report_lines(comparison: dict, hand_path: str, show: int) -> list:
     lines = ["### Compared with the hand-built schema", "",
-             f"`{hand_path}`, written while annotating ground truth. Component classes match when equal "
-             f"ignoring case, spaces and punctuation; a concept named differently in the two "
+             f"`{hand_path}`, written while annotating ground truth. Component classes match when they are "
+             f"a loose match (only letters and digits count); a concept named differently in the two "
              f"counts as unmatched. A sanity check, not a metric (070 evaluates the schema).", "",
              "| | In both | Only hand-built | Only induced |", "|---|---:|---:|---:|"]
     for kind in ("entity_classes", "predicates", "patterns"):

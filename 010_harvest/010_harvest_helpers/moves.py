@@ -54,6 +54,7 @@ class Check:
     first_saved: dt.date
     last_saved: dt.date
     without_request: list         # batch files with no request block
+    catalog_sizes: set            # the catalog's size as each page reported it
 
 
 # --------------------------------------------------------------------------
@@ -133,7 +134,7 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
 
 def check_complete(harvest: Harvest) -> Check:
     seen, records, missing = set(), 0, 0
-    dates, without_request = set(), []
+    dates, without_request, sizes = set(), [], set()
     for path in harvest.files:
         batch = batches.load_batch(path)
         for record in batch["records"]:
@@ -143,6 +144,8 @@ def check_complete(harvest: Harvest) -> Check:
                 missing += 1
             else:
                 seen.add(rid)
+        if batch.get("catalog_count") is not None:
+            sizes.add(batch["catalog_count"])
         # The harvest date is when each page was fetched, from its request block.
         if batch.get("request") and batch.get("fetched_at"):
             dates.add(dt.date.fromisoformat(batch["fetched_at"][:10]))
@@ -154,7 +157,7 @@ def check_complete(harvest: Harvest) -> Check:
     return Check(records=records, unique_ids=len(seen), missing_ids=missing,
                  duplicate_ids=records - missing - len(seen),
                  first_saved=min(dates), last_saved=max(dates),
-                 without_request=without_request)
+                 without_request=without_request, catalog_sizes=sizes)
 
 
 def _shown(folder: Path) -> str:
@@ -174,6 +177,12 @@ def results(harvest: Harvest, check: Check) -> Results:
     if harvest.ran_dry:
         warnings.append("The API returned an empty page before the reported count was reached; "
                         "the catalog may have shrunk during the harvest.")
+    if len(check.catalog_sizes) > 1:
+        warnings.append(f"The catalog's size changed while the pages were fetched (from "
+                        f"{min(check.catalog_sizes):,} to {max(check.catalog_sizes):,} records, as the "
+                        f"pages reported it). A record deleted meanwhile shifts the later pages back "
+                        f"by one, so one record is missed, even when a record added meanwhile keeps "
+                        f"the total right. For an exact snapshot, delete the folder and rerun.")
     if check.duplicate_ids:
         n = check.duplicate_ids
         warnings.append(f"{n} record{'s' if n != 1 else ''} appear{'' if n != 1 else 's'} twice. "
@@ -186,13 +195,15 @@ def results(harvest: Harvest, check: Check) -> Results:
         n = check.missing_ids
         warnings.append(f"{n} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} no id.")
     if harvest.reused and check.first_saved != check.last_saved:
-        warnings.append(f"{harvest.reused} of {len(harvest.files)} batch files were kept from an "
+        warnings.append(f"{harvest.reused} of {len(harvest.files)} batch files "
+                        f"{'were' if harvest.reused != 1 else 'was'} kept from an "
                         f"earlier run, so this harvest mixes pages saved between "
                         f"{check.first_saved} and {check.last_saved}. For a single-day snapshot, "
                         f"delete {_shown(harvest.folder)}/ and rerun.")
     if check.without_request:
         shown = named(check.without_request)
-        warnings.append(f"{len(check.without_request)} batch files have no request block, so the "
+        n = len(check.without_request)
+        warnings.append(f"{n} batch file{'s have' if n != 1 else ' has'} no request block, so the "
                         f"request that returned their records is not recorded: {shown}. Rerun to "
                         f"fetch them again.")
 

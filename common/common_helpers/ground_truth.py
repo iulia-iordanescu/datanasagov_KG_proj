@@ -95,6 +95,10 @@ class GroundTruth:
     problems: list = field(default_factory=list)   # what a person must fix
 
 
+#: Each row's line in its file, as read (blank lines and source texts spanning lines counted).
+LINE_FIELD = "_line"
+
+
 def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
     gt = GroundTruth()
     in_files = {}                                  # {id: [files it appears in]}
@@ -112,6 +116,7 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
                 if not row["id"]:
                     continue                       # a blank line
                 row[ORIGIN_FIELD] = [f"{ref_path(path)}#{position}"]
+                row[LINE_FIELD] = reader.line_num          # the file line the row ends on (blank lines counted)
                 gt.rows.append(row)
                 by_record.setdefault(row["id"], []).append(row)
                 files = in_files.setdefault(row["id"], [])
@@ -132,7 +137,7 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
         for row in rows:
             if not (row["subject"] and row["predicate"] and row["object"]) or is_describes(row):
                 continue
-            line = int(row[ORIGIN_FIELD][0].rsplit("#", 1)[1]) + 2
+            line = row[LINE_FIELD]
             k = triple_key(row)
             if k in first:
                 gt.problems.append(f"record {rid} in {in_files[rid][0]}: lines {first[k]} and {line} are the "
@@ -186,9 +191,8 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
                 texts[rid] = Text(full_text(records[rid]))
             errors = check_triple_instance(row, texts[rid], records[rid].get("title") or "")[0]
         if errors:
-            ref = row[ORIGIN_FIELD][0]
-            file, position = ref.rsplit("/", 1)[-1].split("#")
-            out.append({"where": f"{file} line {int(position) + 2}", "id": rid, "errors": errors})
+            file = row[ORIGIN_FIELD][0].rsplit("/", 1)[-1].split("#")[0]
+            out.append({"where": f"{file} line {row[LINE_FIELD]}", "id": rid, "errors": errors})
     return out
 
 

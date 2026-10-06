@@ -21,7 +21,7 @@ by a rule fixed here, before any evaluation: pool positions 0-5 are tuning (the
 hand-built schema was written while annotating them, so they're not unseen);
 from position 6 on, every third record is held-out (8, 11, 14, ...) and the
 rest tuning. Both parts grow as annotation proceeds in pool order, and both
-stay fair samples, since the pool is shuffled. A position is the record's
+stay random samples of the catalog, since the pool is shuffled. A position is the record's
 row in the pool file, so a dropped candidate changes no one's part.
 
 Both lists are ordered so that their first records are always a fair random
@@ -257,6 +257,8 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
         lines += ["Candidates whose maintainer changed:", "",
                   "| Id | In the pool file | In 020's records |", "|---|---|---|"]
         lines += [f"| {r['id']} | {cell(r['in_pool'])} | {cell(r['now'])} |" for r in pool.renamed[:SHOW]]
+        if len(pool.renamed) > SHOW:
+            lines.append(f"| … {len(pool.renamed) - SHOW:,} more | | |")
         lines.append("")
     by_maintainer = collections.Counter(r["maintainer"] for r in pool.records).most_common(10)
     lines += ["Largest maintainers in the pool:", "", "| Maintainer | Candidates |", "|---|---:|"]
@@ -282,8 +284,9 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
 
     return Results(
         files=[path],
-        headline={"ground truth candidates": len(pool.records),
-                  "induction candidates": len(induction.records)},
+        # The counts of the file kept (or written), which the manifest describes, not of this run's draw.
+        headline={"ground truth candidates": len((existing if kept else drawn)[CANDIDATES]["records"]),
+                  "induction candidates": len((existing if kept else drawn)[INDUCTION]["records"])},
         details="\n".join(lines),
         warnings=warnings,
     )

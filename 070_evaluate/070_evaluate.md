@@ -86,7 +86,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only about the translation table: to propose rows for component classes without one, and to suggest counterparts for `(none)` rows). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
-The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer evaluated records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*). In `pairing.py`: `MISMATCH_WARN = 2` (a component class mismatch seen this often becomes a warning; see *Checks and warnings*).
+The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer evaluated records: no margin), `REDRAWS = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*). In `pairing.py`: `MISMATCH_WARN = 2` (a component class mismatch seen this often becomes a warning; see *Checks and warnings*).
 
 ## How to run
 
@@ -139,7 +139,7 @@ Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for
    | strict recall upper bound | ground truth triples within strict reach ÷ all ground truth triples: the most strict recall can be |
    | recall within reach | pairs whose ground truth triple is within reach ÷ ground truth triples within reach |
    | strict recall within reach | strict pairs ÷ ground truth triples within strict reach |
-   | describes: accuracy | records whose DESCRIBES entity class is right ÷ records whose ground truth names one |
+   | describes: accuracy | records whose describes class is right ÷ records whose ground truth names one |
    | describes: baseline | the share of the most common entity class: what always guessing it would get |
    | describes: per-entity-class average | each entity class's accuracy, averaged, so rare entity classes count as much as common ones |
 
@@ -172,7 +172,7 @@ The bootstrap recomputes every number 1,000 times, each time from records drawn 
 |---|---|---|
 | The evaluated records are a random sample of the catalog | Otherwise the numbers say nothing about the rest of the catalog. | Only the fair sample is evaluated (How it works, 1); anything else is left out and named. |
 | Whole records are drawn, not triples | A record's triples come from one text and one model call, so they succeed or fail together; drawing triples one by one gives margins too narrow. | By design. |
-| Drawn the way the pool was drawn | The pool was drawn by sampling group, each getting its share. | Each reshuffle draws within each sampling group as many records as it has. A record without a group is left out of the per-group numbers, and named. |
+| Drawn the way the pool was drawn | The pool was drawn by sampling group, each getting its share. | Each redraw draws within each sampling group as many records as it has. A record without a group is left out of the per-group numbers, and named. |
 | Enough records | With very few, the margins are themselves unreliable, usually too narrow. | Below 20 records, no margin: a plain warning that the numbers could easily have come out very differently. 20 is a rule of thumb, not a law. |
 
 A margin covers only **which records happened to be evaluated**: not mistakes in the ground truth, not the model answering differently on another run (the cache holds one answer per question), and not tuning on the evaluated records (the held-out part is for that).
@@ -210,7 +210,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | Message | Meaning | What to do |
 |---|---|---|
 | *only N record(s) evaluated, fewer than 20* | No margin of error; don't draw conclusions yet. | Annotate more; until then, read `per_record.md` rather than the numbers. |
-| *some sampling group's share … differs from its share of the pool* | The evaluated records don't mirror the pool. | Look at the group table; usually hand-picked or skipped records. |
+| *some sampling group's share … differs from its share of the pool* | The evaluated records' mix of maintainers differs from the pool's (and so from the catalog's), by chance: the fair sample is a random sample. | Look at the group table, and read the numbers with that in mind; the difference shrinks as more records are evaluated. |
 | *The model suggests N row(s) of component_class_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained component classes since those rows were checked, and the model thinks a different one means the same as the row's component class of the current schema (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py helpers/annotate.py`, *Translation table* (it shows the suggestion): pick the suggested component class if right, keep `(none)` otherwise. |
 | *N partial pair(s) of the tuning part aren't reviewed yet* | The partial level counts pairs nobody has confirmed; some may not be the same fact (e.g. `MODIS` vs `MODIS Terra`). | Review them in `py helpers/annotate.py`, *Partial pairs*; rerun 070. |
 | *N row(s) of component_class_mapping.csv translate to (none) though the ground truth vocabulary now has the same component class* | A row checked as `(none)` before that component class joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's component class means something else. | Check the row in `py helpers/annotate.py`, *Translation table* (it's flagged there); change it to the ground truth vocabulary's component class, or keep `(none)`. |
@@ -235,6 +235,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
+| *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).* | The Ask Sage credentials aren't set, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`). |
 
 ## Audit trail
 

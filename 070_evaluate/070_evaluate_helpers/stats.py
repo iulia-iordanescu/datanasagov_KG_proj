@@ -27,7 +27,7 @@ many triples weighs more than one with few, as each triple is one answer.
                           kind: what always guessing it would get) and the
                           PER-ENTITY-CLASS average (each entity class's accuracy, averaged)
 
-MARGIN OF ERROR, by the bootstrap: the numbers are recomputed RESHUFFLES
+MARGIN OF ERROR, by the bootstrap: the numbers are recomputed REDRAWS
 times, each time from records drawn at random, with repeats, from the evaluated
 ones; the middle 95% of the results is the margin. It draws WHOLE RECORDS
 (a record's triples come from one text and one model call, so they succeed or
@@ -49,7 +49,7 @@ from common.triples_io import component_class_key
 #: few records gives margins that are themselves unreliable, usually too
 #: narrow). A rule of thumb, not a law; the report says so.
 MIN_RECORDS = 20
-RESHUFFLES = 1000
+REDRAWS = 1000
 SEED = 70
 #: A sampling group whose share of the evaluated records differs from its share
 #: of the pool by more than this is pointed out (with enough records).
@@ -116,7 +116,7 @@ def with_margins(records: list) -> dict:
         for r in records:
             by_group[r["group"]].append(r)
         groups = [by_group[g] for g in sorted(by_group)]
-        for _ in range(RESHUFFLES):
+        for _ in range(REDRAWS):
             drawn = [rng.choice(g) for g in groups for _ in g]
             n = numbers(drawn)
             for path, _ in WITH_MARGIN:

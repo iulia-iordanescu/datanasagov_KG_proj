@@ -5,7 +5,7 @@ moves.py -- the main moves of 050_annotate, as called by 050_annotate/run.py.
     -        (here)      paid_calls          code: asks before paying; keeps every answer in cache/
     stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
     stage 3  (here)      build_rows          code: DESCRIBES row, duplicates out, every row checked
-    stage 4  (here)      check_ground_truth  code: typos in the ground truth files
+    stage 4  (here)      check_ground_truth  code: errors in the ground truth files
     -        (here)      results             writes the draft batch; the report
 
 Every model answer is cached in cache/ inside the step's output folder

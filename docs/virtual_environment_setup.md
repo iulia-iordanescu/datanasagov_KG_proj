@@ -142,7 +142,7 @@ If the path points somewhere else, the environment isn't active. Go back to part
 
 The usage examples in the scripts and in the steps' guides use `py`, for example `py helpers/audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
 
-**Pipeline steps in the repo root.** These find their files relative to the repo, so the folder you run them from doesn't matter. Running them from the repo root is simplest:
+**Pipeline steps.** These find their files relative to the repo, so the folder you run them from doesn't matter. Running them from the repo root is simplest:
 
 ```powershell
 py 010_harvest/run.py --help

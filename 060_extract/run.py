@@ -5,7 +5,7 @@ Extracts, from each record's text, the facts a schema can express: a model
 lists them as triple instances with ONLY the schema's component classes; code checks every
 one against the record's text and the schema, keeps it, or removes it with
 a reason. The schema is 040's induced schema by default (or any schema given
-with --schema), plus the entity classes and predicates added by hand in
+with --schema), plus the entity classes, predicates and patterns added by hand in
 annotations/schema_additions.txt. By default only the finished records of
 the ground truth are extracted from, which is what 070 evaluates; every record
 once the schema is final. Terms: docs/terminology.md.

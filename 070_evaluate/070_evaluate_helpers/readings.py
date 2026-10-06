@@ -13,6 +13,7 @@ metric gets only the readings that hold for it.
 from __future__ import annotations
 
 import collections
+import re
 
 import stats
 
@@ -35,7 +36,7 @@ def _sure(n: dict, metric: dict, what: str) -> str:
         return (f"- Computed over {n['records']} record(s): too few for a margin of error (it needs "
                 f"{stats.MIN_RECORDS}), so {what} could easily be quite different over the whole catalog.")
     return (f"- For the whole catalog, {what} is likely between {pct(metric['low'])} and {pct(metric['high'])} "
-            f"(the margin of error: the middle 95% of {stats.RESHUFFLES:,} redraws of these {n['records']} records).")
+            f"(the margin of error: the middle 95% of {stats.REDRAWS:,} redraws of these {n['records']} records).")
 
 
 def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
@@ -44,7 +45,7 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
     schema = evaluated.schema_used.get("made", {})
     additions = [e for kind in ("entity_classes", "predicates", "patterns") for e in evaluated.schema_used.get(kind, [])
                  if e.get("from") == "additions"]               # a pattern added alone has its own source
-    from_tuning = [e for e in additions if "ground truth tuning" in (e.get("source") or "").lower()]
+    from_tuning = [e for e in additions if re.search(r"ground[\s_-]*truth", (e.get("source") or "").lower())]
     positions = sorted(r["position"] for r in recs if r.get("position") is not None)
     review = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
     out = ["#### Where these numbers come from", "",
@@ -59,9 +60,9 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
            "- **Component classes:** extraction's component classes translated into the ground truth vocabulary through "
            "`annotations/component_class_mapping.csv`.",
            f"- **Ground truth:** `annotations/ground_truth/`, the {len(recs)} finished {part} record(s) of the fair "
-           f"part (pool positions {', '.join(f'#{p}' for p in positions) or '–'}).",
-           ("- **Partial pairs:** " + (f"{review['unreviewed']} not reviewed yet; {review['rejected']} ruled out by "
-                                        f"your review (counted as extracted only and ground truth only)."
+           f"sample (pool positions {', '.join(f'#{p}' for p in positions) or '–'}).",
+           ("- **Partial pairs:** " + (f"{review['unreviewed']} not reviewed yet; pairs your review ruled out (\"not the same "
+                                        f"fact\"): {review['rejected']}."
                                         if part == "tuning" else
                                         "never reviewed for the held-out part (that would mean looking at it).")),
            ]
@@ -83,14 +84,17 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     # precision
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
             f"(exact and partial pairs)", "",
-            f"- Of the {E} extracted triples of these records, {_of(ex['pairs'], E)} form exact pairs with "
-            f"ground truth triples; counting partial pairs too, {_of(pa['pairs'], E)}.",
-            f"- Read as a chance: an extracted triple of such a record has a {pct(ex['precision']['value'])} "
-            f"chance of forming an exact pair ({pct(pa['precision']['value'])} counting partial pairs).",
-            f"- In a knowledge graph built from these triples, {E - ex['pairs']} of the {E} statements "
-            f"({pct((E - ex['pairs']) / E) if E else '–'}) would have no "
-            f"exact counterpart in the ground truth: a wrong subject, predicate or object, or a fact the text "
-            f"doesn't state ({E - pa['pairs']} counting partial pairs as right).",
+            f"- Of the {E} extracted triples of these records, {_of(ex['pairs'], E)} are correct at the exact "
+            f"level, and {_of(pa['pairs'], E)} at the partial level.",
+            f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
+            f"{pct(1 - ex['precision']['value']) if E else '–'} of those edges would not be correct at the exact "
+            f"level ({pct(1 - pa['precision']['value']) if E else '–'} at the partial level): an estimate, since "
+            f"precision is measured on the evaluated records only.",
+            f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], E)} of the extracted triples are correct only "
+            f"once wording differences are forgiven (e.g. \"MODIS\" vs its full name).",
+            f"- Precision minus strict precision: {_of(ex['pairs'] - ex['strict_pairs'], E)} of the extracted "
+            f"triples state the right fact but with a wrong subject class or object class (exact level; "
+            f"{_of(pa['pairs'] - pa['strict_pairs'], E)} at the partial level).",
             _sure(n, ex["precision"], "exact precision"),
             "- Assumes the ground truth lists every fact these records state: a true triple missing from it "
             "counts against precision.", ""]
@@ -139,7 +143,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"{pct(pa['entity_class_accuracy']['value'])} (exact and partial pairs)", "",
             f"- Of the {ex['pairs']} exact pairs, {_of(ex['strict_pairs'], ex['pairs'])} also have both entity "
             f"classes right; of the {pa['pairs']} pairs counting partial ones, {_of(pa['strict_pairs'], pa['pairs'])}.",
-            f"- Read as a chance: when extraction gets a triple right, its two entity classes are both right with "
+            f"- Read as a chance: when extraction finds a fact, its subject class and object class are both right with "
             f"a {pct(ex['entity_class_accuracy']['value'])} chance.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
@@ -176,9 +180,9 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     common = truths.most_common(1)[0][0] if truths else None
     right = round((d["accuracy"]["value"] or 0) * d["records"]) if d["accuracy"]["value"] is not None else 0
     out += [f"#### What each record describes: {pct(d['accuracy']['value'])}", "",
-            f"- Of the {d['records']} record(s) whose ground truth names what the record describes (the DESCRIBES "
-            f"row's entity class), extraction named the same entity class for {_of(right, d['records'])}.",
-            (f"- Always guessing the most common entity class, `{common}` (ground truth vocabulary), would get "
+            f"- Of the {d['records']} record(s) whose ground truth names a describes class, extraction named "
+            f"the same describes class for {_of(right, d['records'])}.",
+            (f"- Always guessing the most common describes class, `{common}` (ground truth vocabulary), would get "
              f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that."
              if common else "- No baseline: no record names what it describes."),
             f"- Averaged per entity class ({len(truths)} entity class(es)): {pct(d['per_entity_class_average'])}, so a rare one counts as "

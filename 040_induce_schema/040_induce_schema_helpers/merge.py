@@ -59,17 +59,12 @@ EXAMPLES = 3
 BECOMES = {"entity": "entity class", "predicate": "predicate"}
 
 
-def _flatten(mapping: dict) -> dict:
-    """Follow chains so each label maps straight to its final label; a cycle
-    stops where it would repeat."""
-    out = {}
-    for label in mapping:
-        seen, target = {label}, mapping[label]
-        while target in mapping and mapping[target] != target and mapping[target] not in seen:
-            seen.add(target)
-            target = mapping[target]
-        out[label] = target
-    return out
+def _final(decided: dict, label: str) -> str:
+    """Where a label ends up, following the merges decided (which never form
+    a cycle): A merged into B, and B into C, puts A in C."""
+    while label in decided:
+        label = decided[label]
+    return label
 
 
 def merge_labels(labels, triples, calls):
@@ -91,7 +86,7 @@ def merge_labels(labels, triples, calls):
                              f"({MAX_LABELS_ONE_CALL}). Merging them in separate groups would let "
                              f"synonyms miss each other; group them by meaning first (see "
                              f"040_induce_schema/040_induce_schema.md, Known limits).")
-        issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": []}
+        issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": [], "cycle": []}
         mapping = {label: label for label in sent}
         if len(sent) > 1:
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
@@ -120,10 +115,11 @@ def merge_labels(labels, triples, calls):
                         continue
                     elif lbl in decided and decided[lbl] != into:
                         issues["merged_twice"].append(lbl)      # the first merge stands
+                    elif _final(decided, into) == lbl:
+                        issues["cycle"].append(lbl)             # into already merged into lbl: the first merge stands
                     else:
                         decided[lbl] = into
-            mapping.update(decided)
-            mapping = _flatten(mapping)
+            mapping = {label: _final(decided, label) for label in mapping}
         for lbl, final in sorted(mapping.items()):
             if final != lbl:
                 labels.merges.append({"kind": BECOMES[kind], "label": lbl, "into": final,

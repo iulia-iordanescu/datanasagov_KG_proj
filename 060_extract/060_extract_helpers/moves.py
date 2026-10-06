@@ -96,7 +96,7 @@ def _new_component_classes(chosen, rows, settings) -> tuple:
             continue
         tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == "tuning")
         source = ("ground truth tuning " + ", ".join(f"#{p}" for p in tuning) if tuning else
-                  "extraction over records outside the ground truth")
+                  "extraction over records not annotated")
         listed.append({"kind": kind, "component_class": name, "records": len(recs), "source": source})
     listed.sort(key=lambda x: (-x["records"], x["kind"], x["component_class"]))
     where = ("records outside the ground truth" if all_records else

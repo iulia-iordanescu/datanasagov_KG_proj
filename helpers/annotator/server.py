@@ -82,8 +82,8 @@ add_pattern_to_hand_schema, which add one entry or pattern, check that
 nothing else changed, and otherwise put the file back. A component class gets a
 "source:" line naming the ground truth records using it, by part ("ground
 truth tuning #3; held-out #8"), so it can be told whether held-out records
-shaped its component classes (patterns get no source line: the layout has none for
-them).
+shaped its component classes (a pattern gets no source line: it is added under its predicate,
+where the layout has no place for one).
 """
 from __future__ import annotations
 
@@ -464,8 +464,9 @@ def save_mapping(data: Data, sent: list) -> None:
     kinds and component classes of the current schema must still be the file's
     first rows, in order; rows added after them (by step 070) are kept as
     they are. A row saved as checked stores the current schema's definition
-    of its component class
-    (the page sends a stale row as unchecked until the person ticks it)."""
+    of its component class, unless the page says keep_definition: a stale
+    row the person hasn't ticked again keeps its checked value and its old
+    definition, so it stays stale."""
     rows = read_mapping(MAPPING_PATH)
     crt = _crt()
     if [(r["kind"], r["component_class_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
@@ -484,7 +485,7 @@ def save_mapping(data: Data, sent: list) -> None:
         row["swap_subject_and_object"] = "yes" if swap else "no"
         checked = str(s.get("checked") or "no")
         row["checked"] = checked if checked in ("yes", "no", "same component class") else "no"
-        if row["checked"] in CHECKED and crt is not None:
+        if row["checked"] in CHECKED and crt is not None and not s.get("keep_definition"):
             row["definition_from_past_or_crt_schema"] = \
                 crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)

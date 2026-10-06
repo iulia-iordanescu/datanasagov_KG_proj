@@ -172,7 +172,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
         chosen.notes.append("With this batch, the ground truth is no longer the first records of the pool "
                             "(a fair sample of the catalog): " + fair_words(chosen.fair, chosen.positions) +
                             " Fine for a closer look at chosen records, but step 070 evaluates only the fair "
-                            "part, so they won't be evaluated until the records before them are annotated.")
+                            "sample, so they won't be evaluated until the records before them are annotated.")
     if not chosen.items:
         raise SystemExit("Nothing to draft. " + " ".join(chosen.notes))
     return chosen

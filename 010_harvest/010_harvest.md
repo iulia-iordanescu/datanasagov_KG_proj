@@ -20,7 +20,7 @@ Only metadata is downloaded (titles, descriptions, maintainers, tags, formats, l
 ### This step
 
 - **Don't make a small trial harvest first** (`--max_records`): splitting writes its file (`outputs/intermediate_results/030_split/splits.json`) only once, so a trial catalog would stay in it.
-- Nothing else: the step runs on its own (a full harvest takes about 23 minutes).
+- Nothing else: the step runs on its own (for how long, see *Known limits*).
 
 ## Inputs
 
@@ -64,7 +64,7 @@ From the repository folder, with the environment active (`docs/virtual_environme
 
 ```
 py 010_harvest/run.py --help                   every setting, with its default
-py 010_harvest/run.py                          whole catalog (37 pages, about 20-25 minutes)
+py 010_harvest/run.py                          whole catalog (37 pages)
 py 010_harvest/run.py --max_records 2000       quick trial
 ```
 
@@ -88,7 +88,7 @@ Two stages, in `010_harvest/run.py`'s `main()`, both code:
    - Responses 429, 500, 502, 503 and 504, and failed connections or reads, are retried up to 5 times: the first retry straight away, then after 3, 6, 12 and 24 s, or after the wait the server asks for (a `Retry-After` header). When the retries run out, or on any other error (e.g. 404), the step stops.
    - Each request waits up to 5 s to connect and up to 120 s for the response's data. On data.nasa.gov a page of 1,000 records took 23–52 s to arrive (2026-09-27).
    - An empty page before the target is reached ends the download early, with a warning.
-2. **Check it's complete** (`check_complete`). Every saved record is counted and its `id` collected: the number saved is compared with the number the run aimed for; ids that appear twice and records with no id are counted; and every batch file must have its request block.
+2. **Check it's complete** (`check_complete`). Every saved record is counted and its `id` collected: the number saved is compared with the number the run aimed for; ids that appear twice and records with no id are counted; the catalog's size, as each page reported it, must not change; and every batch file must have its request block.
 
 **Then the results** (`results`): the batch files are already on disk; the report gives record counts, batch files downloaded vs. kept, batch files with their request block, the harvest date, and any warnings.
 
@@ -107,9 +107,10 @@ None: this step makes no model calls.
 | Message | Meaning | What to do |
 |---|---|---|
 | *Saved N records but expected M* | Some pages weren't saved, or records were deleted from the catalog during the harvest: each deletion shifts the later pages back by one, so one record is missed, and the last page comes back short. | Rerun: it fetches missing pages and the short last page, but not a record missed in the middle. For a complete snapshot, delete the folder and rerun. |
+| *The catalog's size changed while the pages were fetched (from N to M records …)* | Records were added or deleted during the harvest. A deletion shifts the later pages back by one, so one record is missed, even when an addition keeps the total right. | For an exact snapshot, delete the folder and rerun. |
 | *N records appear twice* | With pages in creation order, new and edited records shift nothing, so a repeat means a record reappeared in the middle of the order during the harvest (e.g. one restored after deletion), or that batch files kept from an earlier run overlap the new ones. (The harvest of 2026-09-27, made in CKAN's default order, had 12 repeats, from records added or edited mid-harvest; that is what the fixed order prevents.) | 020_clean keeps the first copy. For a clean snapshot, delete the folder and rerun. |
 | *The API returned an empty page before the reported count* | The catalog shrank during the harvest, or the API misbehaved. | Rerun later. |
-| *N batch files were kept from an earlier run … between DATE and DATE* | A resumed harvest spans several days. | Fine for development. For a snapshot you'll cite, delete the folder and rerun. |
+| *N of M batch files were kept from an earlier run … between DATE and DATE* | A resumed harvest spans several days. | Fine for development. For a snapshot you'll cite, delete the folder and rerun. |
 | *N batch files have no request block* | Should not happen: a file without one is downloaded again, so it means a batch file was replaced by hand during the run. | Rerun; the named files are fetched again. |
 | *N record(s) have no id.* | Should not happen: CKAN gives every record an id. Such records can't be told apart from others; 020_clean drops them. | Look at the batch files to see which records they are. |
 
@@ -119,6 +120,7 @@ None: this step makes no model calls.
 |---|---|---|
 | *Max retries exceeded …* (e.g. *too many 503 error responses*), or a connection error | The API kept failing after 5 retries, or couldn't be reached. Pages already saved are kept. | Rerun later: only the missing pages are fetched. |
 | *NNN Client Error …* (e.g. 404), or *CKAN reported failure for start=N* | The API refused the request. | Check the address (`URL` in `ckan_client.py`); retry later. |
+| *data.nasa.gov returned a page that isn't JSON for start=N …* | The API answered with something else, e.g. a maintenance page. | Retry later. |
 | *page_size must be at least 1* / *max_records must be at least 0* / *pause_seconds must be at least 0* | A setting is out of range. | Fix the setting. |
 
 **Harvest date.** Recorded in the report and the manifest, and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at` (for a file without a request block, the day the file was last changed), or a range of days if pages were kept from earlier runs.

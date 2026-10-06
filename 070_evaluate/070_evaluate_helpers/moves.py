@@ -188,10 +188,10 @@ def _mismatch_lines(mismatches: list) -> list:
               "triple says instead (ground truth vocabulary) | Times | Check |", "|---|---|---|---|---:|---|"]
     for c in mismatches[:SHOW]:
         to = "(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION) else c["translated_to"]
-        check = (f"swap_subject_and_object of {c['crt_class']} (current schema): subject and object were the "
+        check = (f"swap_subject_and_object of {c['crt_component_class']} (current schema): subject and object were the "
                  f"other way round" if c["swapped"] else
-                 f"should {c['crt_class']} (current schema) translate to {c['gtt_class']} (ground truth vocabulary)?")
-        lines.append(f"| {c['kind']} | {cell(c['crt_class'])} | {cell(to)} | {cell(c['gtt_class'])} | {c['count']} "
+                 f"should {c['crt_component_class']} (current schema) translate to {c['gtt_component_class']} (ground truth vocabulary)?")
+        lines.append(f"| {c['kind']} | {cell(c['crt_component_class'])} | {cell(to)} | {cell(c['gtt_component_class'])} | {c['count']} "
                      f"| {cell(check)} |")
     if len(mismatches) > SHOW:
         lines.append(f"| … {len(mismatches) - SHOW} more, in `{METRICS_NAME}` | | | | | |")
@@ -215,7 +215,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
     write_json(metrics_path, {
         "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "schema": schema_file, "settings": settings,
-                 "min_records_for_margin": stats.MIN_RECORDS, "reshuffles": stats.RESHUFFLES, "seed": stats.SEED},
+                 "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
         "left_out": evaluated.left_out,
         "parts": {p: {"numbers": v["numbers"], "groups": v["groups"],
@@ -326,8 +326,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(L['strict_recall'])} | {_with_margin(L['strict_f1'])} |")
         recs = [r for r in evaluated.records if r["part"] == part]
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
-        lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; ruled out by your "
-                       f"review (counted as extracted only and ground truth only): {pr['rejected']}." if part == "tuning" else
+        lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; pairs your review "
+                       f"ruled out (\"not the same fact\"): {pr['rejected']}." if part == "tuning" else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
         lines += ["", "| Pair level | Entity-class accuracy | Recall within reach | Strict recall within "

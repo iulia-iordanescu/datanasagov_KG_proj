@@ -138,7 +138,13 @@ async function api(path, body) {
   return data;
 }
 function status(text, kind) { const s = $("status"); s.textContent = text; s.className = kind || ""; }
-const isDescribes = (r) => r.subject_class.toLowerCase() === "catalogentry" && r.predicate.toUpperCase() === "DESCRIBES";
+// As the server decides (common/common_helpers/triples_io.is_describes): the subject class by
+// loose match (only letters and digits count, so "Catalog_Entry" counts too); the predicate
+// with case ignored, spaces, "_" and "-" equivalent, and punctuation at either end dropped.
+const looseKey = (s) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+const predicateKey = (s) => (s || "").toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+  .replace(/[\s_\-]+/g, " ").trim();
+const isDescribes = (r) => looseKey(r.subject_class) === "catalogentry" && predicateKey(r.predicate) === "describes";
 const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "error").length, 0);
 
 // ---------------------------------------------------------------- batches
@@ -365,9 +371,10 @@ function useSelection(rec, j) {
 }
 
 // ---------------------------------------------------------------- highlighting
-// Finds a source text in the text the forgiving way the checks do: only
-// letters and digits must match, in order; case, spacing, quotes and dashes
-// between them may differ. (Whether it's REALLY there is the server's check.)
+// Finds a source text in the text, for highlighting only: the letters and digits must
+// match, in order, and anything else between them may differ. That is more forgiving
+// than the server's check (evened out: only spacing, quote marks and dashes may differ),
+// so a highlighted source text can still get the server's ✖ "isn't in the record's text".
 function findSpan(text, source) {
   const words = (source || "").match(/[\p{L}\p{N}]+/gu);
   if (!words) return null;
@@ -475,9 +482,9 @@ async function openMapping() {
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
-  // A stale row (checked against another definition of its component class) counts as
-  // unchecked until ticked again; ticking stores the current definition.
-  for (const r of mapping.rows) if (r.stale) r.checked = "no";
+  // A stale row (checked against another definition of its component class) is shown, and
+  // counts, as unchecked until ticked again; ticking stores the current definition. Untouched,
+  // it is saved as it is in the file, so it stays stale.
   location.hash = "m";
   if (!mapping.found) {
     $("records").replaceChildren();
@@ -604,7 +611,7 @@ function mappingRow(r, i) {
     el("div", { class: "bar" }, same
       ? el("span", { class: "meta" }, "Same component class in both: nothing to check.")
       : el("label", { class: "finished" },
-          el("input", { type: "checkbox", checked: r.checked === "yes",
+          el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale,
                         onchange: (e) => { r.stale = false; update("checked", e.target.checked ? "yes" : "no"); } }),
           "Checked: this translation is right")));
 }
@@ -634,7 +641,7 @@ async function saveMapping() {
   try {
     await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
       component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
-      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked })) });
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: !!r.stale })) });
     status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
   } catch (e) {
     mapDirty = true;
@@ -744,8 +751,8 @@ function drawAdditions() {
   const left = additions.new_component_classes.filter(n => !n.added).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("h3", {}, "Schema additions"),
-    el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Extraction adds them ` +
-      "to whichever schema it uses (the current schema)."),
+    el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Extraction merges them ` +
+      "into its schema input (the induced schema, by default); the result is the current schema."),
     el("p", { class: "meta" }, "Every entity class and predicate needs a one-line definition, and every entry a " +
       "source: where the idea came from. One learned from the ground truth must come from tuning records: " +
       "“ground truth tuning #12, #15”. To add a pattern to a predicate the schema already has, add a pattern."),

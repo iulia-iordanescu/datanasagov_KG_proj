@@ -4,8 +4,8 @@ common/common_helpers/report.py -- writes the Markdown report every step leaves 
     outputs/reports/<run id>.md      e.g. outputs/reports/010_harvest_2026-09-27_1016.md
 
 The run id is shared with the run's log (outputs/logs/<run id>.log) and manifest.
-Every report has the same sections: Run, Settings, Inputs, Outputs,
-Timeline, Results, Warnings. Results is written by the step itself; the rest
+Every report has the same sections: Run, Settings, Prompts, Inputs,
+Outputs, Timeline, Results, Warnings. Results is written by the step itself; the rest
 comes from run_step.
 """
 from __future__ import annotations

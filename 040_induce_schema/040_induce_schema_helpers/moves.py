@@ -123,11 +123,12 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         warnings.append(f"{unlabeled} component instance(s) were left unlabeled even after a second try; "
                         f"they count toward no schema entry. Listed in {EVIDENCE_NAME} under unlabeled.")
     issues = {k: sum(len(v[k]) for v in labels.merge_issues.values())
-              for k in ("into_not_a_label", "not_sent", "merged_twice")}
+              for k in ("into_not_a_label", "not_sent", "merged_twice", "cycle")}
     if any(issues.values()):
         warnings.append(f"The merge reply had items code ignored: {issues['into_not_a_label']} merge(s) "
                         f"into something that isn't a label, {issues['not_sent']} label(s) that weren't "
-                        f"sent, {issues['merged_twice']} label(s) merged twice (the first merge kept). "
+                        f"sent, {issues['merged_twice']} label(s) merged twice and {issues['cycle']} merge(s) that "
+                        f"would close a cycle (the first merge kept each time). "
                         f"Listed in {EVIDENCE_NAME} under merge_issues.")
     if schema.missing_definitions:
         n = len(schema.missing_definitions)
@@ -181,7 +182,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         reason = "too vague" if d["reason"].startswith("too vague") else \
             ("support below min_support" if d["reason"].startswith("support")
              else "through a schema entry not in the schema")
-        kind = d["entry_type"].replace("_", " ")
+        kind = d["entry_type"]
         by_reason[(kind, reason)] = by_reason.get((kind, reason), 0) + 1
     lines += ["### Schema", "",
               f"min_support = {settings['min_support']}: a schema entry enters the schema if its support "
@@ -191,7 +192,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               f"| Predicates | {len(schema.predicates):,} | {len(counts.predicates):,} |",
               f"| Patterns | {len(schema.patterns):,} | {len(counts.patterns):,} |", ""]
     if by_reason:
-        lines += ["Deferred:", "", "| Kind | Reason | Schema entries |", "|---|---|---:|"]
+        lines += ["Deferred:", "", "| Entry type | Reason | Schema entries |", "|---|---|---:|"]
         lines += [f"| {k} | {r} | {n:,} |" for (k, r), n in sorted(by_reason.items())]
         lines.append("")
     lines += compare.report_lines(comparison, comparison["hand_schema"], SHOW)

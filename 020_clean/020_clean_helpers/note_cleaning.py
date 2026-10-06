@@ -213,7 +213,7 @@ ATTR_URL = re.compile(r"""(?:href|src)\s*=\s*["']?\s*([^"'\s>]+)""", re.I)
 #: verifier to find links whose visible text is their own address.
 LINK = re.compile(r"""<a\b[^>]*?\bhref\s*=\s*["']?\s*([^"'\s>]+)[^>]*>(.*?)</a\s*>""",
                   re.I | re.S)
-TOKEN = re.compile(r"[A-Za-z0-9]+")
+TOKEN = re.compile(r"[^\W_]+")                  # letters and digits, in any script
 BLANK_RUN = re.compile(r"\n{3,}")
 #: Where the renderer ended an HTML table cell. A private-use character, so
 #: it can't be mistaken for a "|" the text itself contains: tidying joins and

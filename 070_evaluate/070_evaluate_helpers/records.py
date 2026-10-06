@@ -115,7 +115,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     missing_group = [r["id"] for r in evaluated.records if not r["group"]]
     if missing_group:
         evaluated.notes.append(f"{len(missing_group)} evaluated record(s) have no sampling group in the pool file, so "
-                            f"they're left out of the per-group numbers: {named(missing_group)}.")
+                            f"the per-group numbers show them as the group \"(no group)\": {named(missing_group)}.")
     if not evaluated.records:
         raise SystemExit("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
                          "fair sample. " + " ".join(evaluated.notes))

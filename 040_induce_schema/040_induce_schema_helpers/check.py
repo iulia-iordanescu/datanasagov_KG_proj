@@ -38,6 +38,9 @@ from define import KINDS
 MISSING_DEFINITION = "(no definition: the model didn't return one for this schema entry)"
 
 
+#: The words for KINDS in the output files ("kind", "entry_type").
+WORD = {"entity_classes": "entity class", "predicates": "predicate"}
+
 @dataclass
 class Schema:
     entity_classes: list = field(default_factory=list)
@@ -60,17 +63,17 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
         target = getattr(schema, kind)
         for e in getattr(counts, kind):
             if e["support"] < cut:
-                schema.deferred.append({"entry_type": kind, "schema_entry": e["component_class"], "support": e["support"],
+                schema.deferred.append({"entry_type": WORD[kind], "schema_entry": e["component_class"], "support": e["support"],
                                         "reason": f"support {e['support']} < min_support {cut}"})
                 continue
             if e["component_class"] in vague:
-                schema.deferred.append({"entry_type": kind, "schema_entry": e["component_class"], "support": e["support"],
+                schema.deferred.append({"entry_type": WORD[kind], "schema_entry": e["component_class"], "support": e["support"],
                                         "reason": f"too vague: {vague[e['component_class']]}"})
                 continue
             definition = definitions.of.get(kind, {}).get(e["component_class"])
             if definition is None:
                 definition = MISSING_DEFINITION
-                schema.missing_definitions.append({"kind": kind, "component_class": e["component_class"]})
+                schema.missing_definitions.append({"kind": WORD[kind], "component_class": e["component_class"]})
             row = {"component_class": e["component_class"], "definition": definition}
             if kind == "entity_classes":
                 row["examples"] = e["examples"][:3]
@@ -78,7 +81,7 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
                         "texts": e["texts"], ORIGIN_FIELD: _origin(e["texts"])})
             target.append(row)
             if len(e["maintainers"]) == 1:
-                schema.single_maintainer.append({"kind": kind, "component_class": e["component_class"]})
+                schema.single_maintainer.append({"kind": WORD[kind], "component_class": e["component_class"]})
 
     kept_classes = {c["component_class"] for c in schema.entity_classes}
     kept_predicates = {p["component_class"] for p in schema.predicates}
@@ -87,14 +90,14 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
         if e["support"] < cut:
             reason = f"support {e['support']} < min_support {cut}"
         elif not (s in kept_classes and o in kept_classes and p in kept_predicates):
-            missing = [x for x in (s, p, o) if x not in kept_classes | kept_predicates]
+            missing = [x for x, kept in ((s, kept_classes), (p, kept_predicates), (o, kept_classes)) if x not in kept]
             reason = f"{missing[0]} is not in the schema"
         else:
             schema.patterns.append({"pattern": e["pattern"], "support": e["support"],
                                     "maintainers": e["maintainers"], "texts": e["texts"],
                                     ORIGIN_FIELD: _origin(e["texts"])})
             continue
-        schema.deferred.append({"entry_type": "patterns", "schema_entry": " ".join(e["pattern"]),
+        schema.deferred.append({"entry_type": "pattern", "schema_entry": " ".join(e["pattern"]),
                                 "support": e["support"], "reason": reason})
     log.info(f"  schema: {len(schema.entity_classes):,} entity classes, {len(schema.predicates):,} "
              f"predicates, {len(schema.patterns):,} patterns; {len(schema.deferred):,} deferred")

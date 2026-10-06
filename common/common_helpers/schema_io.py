@@ -218,7 +218,7 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     measure records the pipeline was never adjusted to. parts is {pool position: "tuning" | "held-out"}
     (030's splits.json). Shared by step 060 (which leaves such an addition
     out) and the annotation tool (which refuses to save it)."""
-    if "ground truth" not in source.lower():
+    if not re.search(r"ground[\s_-]*truth", source.lower()):    # any spelling: "ground-truth" too
         return None
     positions = [int(n) for n in re.findall(r"#(\d+)", source)]
     if not positions:

@@ -6,7 +6,7 @@ Terms (triple instance, entity class, schema, pattern, DESCRIBES row, error, fla
 
 Extracts, from each record's text, the facts a schema can express. A model lists them as triple instances using **only** the schema's entity classes and predicates. Code checks every one against the record's text and the schema, then keeps it or removes it with a reason. What 060 keeps is what step 070 evaluates against the ground truth, and what step 080 will build the graph from.
 
-The schema is 040's induced schema by default, plus the entity classes and predicates you add by hand in `annotations/schema_additions.txt` (e.g. on a mentor's advice). By default, 060 extracts only from the records of the ground truth you've finished, the ones 070 can evaluate. Once the schema is final, `--extract_from all` extracts from every record.
+The schema is 040's induced schema by default, plus the entity classes, predicates and patterns you add by hand in `annotations/schema_additions.txt` (e.g. on a mentor's advice). By default, 060 extracts only from the records of the ground truth you've finished, the ones 070 can evaluate. Once the schema is final, `--extract_from all` extracts from every record.
 
 ## To do
 
@@ -99,7 +99,7 @@ Instrument ABOARD Mission
 - They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts. A pattern of the `PATTERNS` section adds a pattern to a predicate the schema already has (`ABOARD` above), without repeating the predicate.
 - An addition the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked by loose match too (see *component class outside the schema* in the terminology), and so is a second addition repeating an earlier one. Its patterns still apply, to the entry kept.
 - Give each one (entity class, predicate or pattern) a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
-- **Adding component classes seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so one added because it came up there flatters the metrics for exactly those records. Add such component classes only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying; so are the patterns written under such a predicate. Component classes from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
+- **Adding component classes seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so one added because it came up there flatters the metrics for exactly those records. Add such component classes only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but doesn't say `tuning`, names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying; so are the patterns written under such a predicate. Component classes from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
 ## Outputs
 
@@ -171,7 +171,7 @@ Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the oth
 
 The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).
 
-**Component classes outside the schema.** The report's table *Component classes outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only component classes it is fair to add are counted: **held-out records are never counted** (one learned there would let held-out records influence the schema, and the held-out numbers would no longer measure records the pipeline was never adjusted to); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records outside the ground truth`). The full list is in `extracted_triples_details.json`, under `new_component_classes`.
+**Component classes outside the schema.** The report's table *Component classes outside the schema* lists the entity classes and predicates the model used that the current schema doesn't have, most used first, each with the `source:` line an addition of it needs. Only component classes it is fair to add are counted: **held-out records are never counted** (one learned there would let held-out records influence the schema, and the held-out numbers would no longer measure records the pipeline was never adjusted to); tuning records are, and are named by pool position (`source: ground truth tuning #0, #12`); on a run over every record, no ground truth record is counted at all (`source: extraction over records not annotated`). The full list is in `extracted_triples_details.json`, under `new_component_classes`.
 
 **Then the results** (`results`): the four files are written, replacing the last run's; the report.
 
@@ -230,6 +230,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 | *Stopped. Calls not yet started were cancelled. Answers already received are kept in the cache; nothing else was written.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
+| *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).* | The Ask Sage credentials aren't set, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`). |
 
 ## Audit trail
 

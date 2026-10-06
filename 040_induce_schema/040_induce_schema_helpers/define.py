@@ -76,7 +76,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
                 given = reply.get(field_name) if isinstance(reply.get(field_name), dict) else {}
                 for name, text in given.items():
                     if name not in sent:
-                        result.unknown.append({"kind": kind, "component_class": name})
+                        result.unknown.append({"kind": {"entity_classes": "entity class", "predicates": "predicate"}[kind], "component_class": name})
                     elif isinstance(text, str) and text.strip() and name not in result.of[kind] \
                             and name not in result.too_vague[kind]:
                         target[name] = " ".join(text.split())

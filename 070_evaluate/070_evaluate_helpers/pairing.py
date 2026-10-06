@@ -194,15 +194,15 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
 
 def component_class_mismatches(records: list) -> list:
     """Traces of wrong or missing translations in compared records (see the
-    module docstring): [{"kind", "crt_class", "translated_to", "gtt_class",
+    module docstring): [{"kind", "crt_component_class", "translated_to", "gtt_component_class",
     "count", "swapped"}], most frequent first. translated_to is the
     current schema's component class after translation (marked NO_TRANSLATION if its
     row says (none)); swapped: predicate mismatches where subject and object are
     the other way round."""
     found = {}
 
-    def add(kind, crt_class, translated_to, gtt_class, swapped=False):
-        key = (kind, crt_class, translated_to, gtt_class, swapped)
+    def add(kind, crt_component_class, translated_to, gtt_component_class, swapped=False):
+        key = (kind, crt_component_class, translated_to, gtt_component_class, swapped)
         found[key] = found.get(key, 0) + 1
 
     for rec in records:
@@ -227,7 +227,7 @@ def component_class_mismatches(records: list) -> list:
                 if same or swapped:
                     add("predicate", t["crt"]["predicate"], t["predicate"], g["predicate"], swapped and not same)
                     break                             # one mismatch per ground truth triple
-    return [{"kind": k, "crt_class": c, "translated_to": t, "gtt_class": g, "swapped": s, "count": n}
+    return [{"kind": k, "crt_component_class": c, "translated_to": t, "gtt_component_class": g, "swapped": s, "count": n}
             for (k, c, t, g, s), n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 

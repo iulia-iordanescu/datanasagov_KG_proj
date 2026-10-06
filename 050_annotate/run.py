@@ -3,8 +3,9 @@
 
 Drafts ground truth for a person to correct. A model reads the next records
 of the ground truth candidates pool and lists every fact each one states, as
-triple instances with entity classes, using the hand-built schema's component
-classes where they fit and new ones where they don't; code adds each record's
+triple instances with entity classes, using the ground truth vocabulary's
+component classes (the hand-built schema's, plus any coined in the ground
+truth) where they fit and new ones where they don't; code adds each record's
 DESCRIBES row and checks every row against the record's text and the schema.
 Each run writes one numbered draft batch. The person corrects it with the
 annotation tool (py helpers/annotate.py), which saves it into annotations/ground_truth/;

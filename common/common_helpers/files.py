@@ -3,8 +3,8 @@ common/common_helpers/files.py -- the one way every step, the manifest, the repo
 annotation tool save a file. (The log is the one exception: it is written
 line by line as a run goes, so a crash still leaves every line before it.)
 
-Each function writes under a temporary name (<name>.part) and then renames
-it, so a file is either the old one or the complete new one, never half
+Each function but append_csv (which adds rows to the end of a file in place)
+writes under a temporary name (<name>.part) and then renames it, so a file is either the old one or the complete new one, never half
 written, even after a crash or Ctrl+C. Every file is UTF-8 with plain line
 endings ("\\n") on every computer, so its hash doesn't depend on whether it
 was written on Windows (see .gitattributes).

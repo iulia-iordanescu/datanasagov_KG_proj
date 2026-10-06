@@ -74,9 +74,13 @@ def fetch_page(session: requests.Session, start: int, rows: int) -> tuple:
     seconds = time.monotonic() - t0
     log.debug(f"GET {resp.url} -> {resp.status_code}, {len(resp.content):,} bytes in {seconds:.2f} s")
     resp.raise_for_status()
-    body = resp.json()
-    if not body.get("success", True):
-        raise RuntimeError(f"CKAN reported failure for start={start}: {body.get('error')}")
+    try:
+        body = resp.json()
+    except ValueError:                      # e.g. a maintenance page served with status 200
+        raise RuntimeError(f"data.nasa.gov returned a page that isn't JSON for start={start} "
+                           f"({resp.headers.get('Content-Type', 'no content type')}): retry later") from None
+    if not isinstance(body, dict) or not body.get("success", True) or "result" not in body:
+        raise RuntimeError(f"CKAN reported failure for start={start}: {body.get('error') if isinstance(body, dict) else body}")
     request = {"request": f"GET {resp.url}", "fetched_at": fetched_at,
                "http_status": resp.status_code}
     return body["result"], request

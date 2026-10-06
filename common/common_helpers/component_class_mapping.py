@@ -13,8 +13,8 @@ the current schema (the one step 060 used) means.
                              a component class of the current schema or of a
                              past schema (crt: current): one
                              table serves every schema, so rows accumulate
-    component_class_in_gtt   the component class in the ground truth triples
-                             (gtt: the ground truth vocabulary), or (none)
+    component_class_in_gtt   a component class of the ground truth vocabulary
+                             (gtt: ground truth triples), or (none)
     swap_subject_and_object  predicates only: "yes" when the ground truth's
                              predicate states the relation the other way round
     checked                  "same component class" (added by code: the two

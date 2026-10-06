@@ -168,7 +168,7 @@ def label_component_instances(triples, calls) -> Labels:
             vocabulary += new
             labels.update(got)
             unlabeled += missing
-            result.batches.append({"kind": kind, "component_instances": len(batch), "new_labels": new,
+            result.batches.append({"kind": {"entity": "entity class", "predicate": "predicate"}[kind], "component_instances": len(batch), "new_labels": new,
                                    "reused": len(set(got.values())) - len(new)})
         result.of[kind], result.vocabulary[kind], result.unlabeled[kind] = labels, vocabulary, unlabeled
         log.info(f"  {kind} component instances: {len(labels):,} labeled with {len(vocabulary):,} labels"

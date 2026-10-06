@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import collections
 import re
+import unicodedata
 
 #: Used when a record's maintainer is missing or blank. "undefined" is also a
 #: literal maintainer value in this catalog, so blanks join that group rather
@@ -56,19 +57,25 @@ def as_harvested(value) -> str:
     return " ".join(str(value or "").split()) or UNKNOWN
 
 
+def _plain(word: str) -> str:
+    """A word's letters and digits (in any script), lowercased."""
+    return re.sub(r"[\W_]", "", unicodedata.normalize("NFKC", word).casefold())
+
+
 def _name_words(name: str) -> list[str]:
     """The words of a name, as written, without the degree and honorifics."""
     words = re.split(r"[\s,]+", DEGREE.sub(" ", name).strip())
-    return [w for w in words
-            if w and re.sub(r"[^a-z0-9]", "", w.lower()) not in HONORIFICS]
+    return [w for w in words if w and _plain(w) not in HONORIFICS]
 
 
 def name_key(name: str) -> str:
     """What two spellings of one maintainer have in common: the words,
     lowercased and without punctuation, the degree and honorifics, SORTED so
-    that a swapped first and last name still matches."""
-    words = [re.sub(r"[^a-z0-9]", "", w.lower()) for w in _name_words(name)]
-    return " ".join(sorted(w for w in words if w))
+    that a swapped first and last name still matches. A name with no letter
+    or digit left gets a key of its own (the name itself, marked), so it is
+    never joined to another."""
+    words = sorted(w for w in (_plain(w) for w in _name_words(name)) if w)
+    return " ".join(words) if words else "(no letters) " + name
 
 
 def display_name(spellings: collections.Counter) -> str:
@@ -79,9 +86,9 @@ def display_name(spellings: collections.Counter) -> str:
     record counts, so for a name whose word order varies the name follows
     the majority."""
     ranked = spellings.most_common()
-    name = next((n for n, _ in ranked if not n.isupper()), ranked[0][0])
+    name = next((n for n, _ in ranked if not n.isupper() and not n.islower()), ranked[0][0])
     name = " ".join(_name_words(name)).strip(" ,.")
-    return name.title() if name.isupper() else name
+    return name.title() if name.isupper() or name.islower() else name
 
 
 def join(names: list[str]) -> tuple[dict, list]:
@@ -122,6 +129,8 @@ SELFTESTS = [
     ("Jane Doe", "Jane Doe, PhD", True),                          # degree, one word
     ("Jane Doe", "Jane Doe Ph.D.", True),                         # degree, dotted
     ("Jane Doe", "Dr. Jane Doe", True),                           # honorific
+    ("张伟", "李娜", False),                                       # letters of any script count
+    ("-", "?", False),                                            # no letters at all: never joined
     ("Jane Doe", "Prof Jane Doe", True),                          # honorific
     ("Mama Pucci", "Mama D. Pucci", False),                       # initial D is a name
     ("Lola Olsen", "Lola M. Olsen", False),                       # any initial is a name
