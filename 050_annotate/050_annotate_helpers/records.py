@@ -103,7 +103,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     chosen.pool = [r["id"] for r in pool_rows]
     chosen.positions = {r["id"]: r["position"] for r in pool_rows}
     gt_files = input_files(Path(inputs["ground_truth"]))
-    chosen.ground_truth = read_ground_truth(gt_files[0].parent)     # run_step made sure there is one
+    chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent)   # none yet: no record done
     hand = read_hand_schema(inputs["hand_schema"])
     chosen.schema_entries = SchemaEntries(hand)
     chosen.coined = vocabulary(hand, chosen.ground_truth)["coined"]

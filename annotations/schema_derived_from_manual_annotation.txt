@@ -17,7 +17,7 @@ Version           a label marking one release of something
 
 PREDICATES
 ----------
-Each entry below reads subject -> object, and lists the class pairs used so far.
+Each entry below reads subject -> object, and lists the entity class pairs used so far.
 Those pairs record where a predicate has been used, not the only place it
 may be used. Use a predicate wherever its meaning fits.
 

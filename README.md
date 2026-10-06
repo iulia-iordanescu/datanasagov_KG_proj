@@ -18,6 +18,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `helpers/models.py` | Lists the AI models Ask Sage shows your account: `py helpers/models.py`. Free; a listed model may still refuse you. Give a model's name to a step's `model` setting | [`docs/running_on_nasa_laptop.md`](docs/running_on_nasa_laptop.md), *Choosing a model* |
 | `helpers/audit.md` | Reading a run's report and log, and tracing a record back to its download | — |
 | `helpers/audit.py` | Answers "where did this come from?": `py helpers/audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`helpers/audit.md`](helpers/audit.md) |
+| `tests/` | The tests: `py tests/run_all.py` checks, in about 40 seconds and without calling the model or data.nasa.gov, that every step does what its guide says. Run it before every commit | [`tests/README.md`](tests/README.md) |
 | `common/` | Code shared by several steps (reading records and schemas, the model client, the checks, the reports, …), in `common/common_helpers/`, and the prompts shared by 050 and 060, in `common/common_prompts/` | the opening comment of each file, for people reading the code |
 
 **What you read or edit**

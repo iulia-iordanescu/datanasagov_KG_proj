@@ -14,7 +14,10 @@ only has to show the step's main moves:
                       e.g. 010_harvest_2026-09-27_1016
     3. log            outputs/logs/<run id>.log, from the first line to the last
     4. input check    every input file must exist; if one is missing the
-                      step stops and says which step produces it
+                      step stops and says which step produces it (except
+                      the inputs a panel names in may_be_empty, which may
+                      have no files yet, e.g. 050's ground truth on a
+                      first run)
     5. output folder  outputs/intermediate_results/<step>/
     6. main           calls main(inputs, settings, output); every move is
                       timed and logged. The helpers give each output item
@@ -186,10 +189,10 @@ def input_files(path: Path) -> list:
     return [path] if path.is_file() else []
 
 
-def _check_inputs(inputs: dict, defaults: dict) -> None:
+def _check_inputs(inputs: dict, defaults: dict, may_be_empty=()) -> None:
     missing = []
     for key, path in inputs.items():
-        if not input_files(path):
+        if not input_files(path) and key not in may_be_empty:
             producer = defaults[key].split("/")[0]
             hint = f"run {producer} first, or pass --{key}" if producer[:3].isdigit() else f"pass --{key}"
             missing.append(f"  {key}: {_rel(path)}  ({hint})")
@@ -204,10 +207,13 @@ def _describe_inputs(inputs: dict) -> tuple:
     rows, warnings, harvest_dates = [], [], set()
     for key, path in inputs.items():
         files = input_files(path)
-        manifest_path = files[0].parent / MANIFEST_NAME
+        where = files[0] if files else path          # an input allowed to have no files yet: its pattern
+        manifest_path = where.parent / MANIFEST_NAME
         run_id, origin = None, "unknown (no manifest beside it)"
-        in_git = not files[0].resolve().is_relative_to(RESULTS_DIR.resolve())
-        if in_git:
+        in_git = not where.resolve().is_relative_to(RESULTS_DIR.resolve())
+        if not files:
+            origin = "no files yet"
+        elif in_git:
             # A file kept in Git (e.g. annotations/) is made by a person, not by
             # a run, so it has no manifest and none is expected.
             origin = "kept in Git, made by a person"
@@ -220,7 +226,7 @@ def _describe_inputs(inputs: dict) -> tuple:
                     harvest_dates.add(m["harvest_date"])
             except (ValueError, OSError):
                 origin = "unknown (manifest unreadable)"
-        if run_id is None and not in_git:
+        if run_id is None and not in_git and files:
             warnings.append(f"Input `{key}` ({_rel(path)}) has no readable manifest, so the run "
                             f"that produced it is not recorded.")
         row = {"name": key, "path": _rel(path), "files": len(files),
@@ -336,7 +342,7 @@ class RunError:
 # run_step
 # --------------------------------------------------------------------------
 
-def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> None:
+def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=()) -> None:
     from common.report import write_step_report
 
     argv = sys.argv[1:] if argv is None else argv
@@ -365,7 +371,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None) -> N
     input_rows, output_rows, results, error = [], [], None, None
     old_manifest = None                  # nothing to restore if the run stops before taking it
     try:
-        _check_inputs(chosen_inputs, inputs)
+        _check_inputs(chosen_inputs, inputs, may_be_empty)
         input_rows, input_warnings, harvest_dates = _describe_inputs(chosen_inputs)
         output.mkdir(parents=True, exist_ok=True)
         # The old manifest may no longer describe this folder once the run

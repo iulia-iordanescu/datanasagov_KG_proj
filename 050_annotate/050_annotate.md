@@ -37,7 +37,7 @@ Each run also checks your ground truth files for errors (see *Your ground truth*
 | `records` | `020_clean/records.jsonl` | 020's cleaned records: the texts. |
 | `splits` | `030_split/splits.json` | 030's ground truth candidates: the pool's 999 records still in the catalog, in the pool's order. |
 | `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema. Shown to the model as the component classes to reuse, together with the component classes coined in the ground truth; every row is checked against the hand-built schema alone, so a coined component class stays flagged until you add it there. |
-| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Your ground truth: records in it are never drafted again, every run checks it, and the component classes you coined in it are shown to the model for reuse. |
+| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | Your ground truth: records in it are never drafted again, every run checks it, and the component classes you coined in it are shown to the model for reuse. Before the first draft batch is corrected there are no files yet: the step then starts from the top of the pool. |
 
 Draft batches already in 050's output folder are read too: their records are waiting to be corrected, so they're not drafted again.
 

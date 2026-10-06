@@ -32,6 +32,10 @@ INPUTS = {
     "ground_truth": "./annotations/ground_truth/batch_*.csv",
 }
 
+#: Inputs that may have no files yet: before the first draft batch is corrected,
+#: there is no ground truth, and no record is done.
+MAY_BE_EMPTY = ("ground_truth",)
+
 SETTINGS = {
     "records_per_batch":  10,    # how many records to draft this run
     "start_position":     0,     # the pool position to start from (records already done are skipped)
@@ -56,4 +60,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("050_annotate", INPUTS, SETTINGS, main)
+    run_step("050_annotate", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY)

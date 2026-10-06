@@ -111,7 +111,7 @@ def sort_rows(chosen, schema, replies) -> Rows:
             if is_describes(row):
                 row = _in_schema_spelling(row, schema.schema_entries)
                 if row["errors"] or "describes_class_not_in_schema" in row["flags"]:
-                    row["object_class"] = UNDECIDED           # no class of the schema named
+                    row["object_class"] = UNDECIDED           # no entity class of the schema named
                     row["flags"] = sorted(set(row["flags"]) | set(row["errors"]) | {"describes_undecided"})
                     row["errors"] = []
                 kept.append(row)

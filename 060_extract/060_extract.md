@@ -156,7 +156,7 @@ Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the oth
 
 1. **Pick the records** (`records.py`, `pick_records`). By `extract_from` or `ids` (above). Anything that differs from what was asked becomes a note shown before paying: a listed id not in the catalog or without text, ground truth records not yet finished.
 2. **Load the schema** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), entries of the schema input whose `source:` line fails the same check (kept), additions that clash with the schema, additions with no `source:` line, entries with no definition, entity classes or predicates in patterns that the schema doesn't have.
-3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `060_extract/060_extract_prompts/extract.txt`: extract only the facts the schema can express, with only the schema's component classes, and name the entity class of what the title names (`describes_class`), or none if no class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
+3. **Ask the model** (`extract.py`, `ask_model`). One call per text piece, with the prompt `060_extract/060_extract_prompts/extract.txt`: extract only the facts the schema can express, with only the schema's component classes, and name the entity class of what the title names (`describes_class`), or none if no entity class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
 4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/common_helpers/extraction.py` builds each record's rows (the DESCRIBES row first) and checks every one against the record's **whole** text and the schema (`common/common_helpers/validate.py`). Then:
 
    | What | Where it goes | Why |
@@ -167,7 +167,7 @@ Four stages, in `060_extract/run.py`'s `main()`; stage 3 asks the model, the oth
    | Something that isn't a triple instance at all | **removed**, reason `malformed` | Nothing to keep. |
    | A pattern the schema doesn't list (known component classes, new combination) | **kept**, flag `pattern_not_in_schema` | The schema's patterns are what was seen, not all that's allowed. |
    | Any other flag (a reworded subject or object instance, subject equal to object, the same triple instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
-   | The DESCRIBES row | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its class is `X`, flagged `describes_undecided`. |
+   | The DESCRIBES row | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its entity class is `X`, flagged `describes_undecided`. |
 
 The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).
 
@@ -181,7 +181,7 @@ The code: `060_extract/` holds `run.py` (the control panel: inputs, settings and
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `060_extract/060_extract_prompts/extract.txt` | stage 3, one call per text piece | list only the facts the schema can express, using **only** the schema's entity classes and predicates (the schema is shown in the prompt), and name the entity class of what the title names, or none if no class fits |
+| `060_extract/060_extract_prompts/extract.txt` | stage 3, one call per text piece | list only the facts the schema can express, using **only** the schema's entity classes and predicates (the schema is shown in the prompt), and name the entity class of what the title names, or none if no entity class fits |
 | `common/common_prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050: subject and object in the record's own words, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
 | `common/common_prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 |
 

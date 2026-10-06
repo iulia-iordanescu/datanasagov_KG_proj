@@ -61,7 +61,7 @@ def component_class_key(s) -> str:
     loosely: 040 (spelling folds, the comparison with the hand-built
     schema), the schema checks in common/common_helpers/validate.py, common/common_helpers/extraction.py
     (the conflicting_classes flag), 060 (merging the additions) and 070 (translating
-    component classes, matching classes)."""
+    component classes, matching entity classes)."""
     return re.sub(r"[^a-z0-9]", "", unicodedata.normalize(
         "NFKC", str(s or "")).casefold())
 
