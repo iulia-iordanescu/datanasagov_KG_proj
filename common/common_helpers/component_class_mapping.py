@@ -10,8 +10,8 @@ the current schema (the one step 060 used) means.
 
     kind                     "entity class" or "predicate"
     component_class_from_past_or_crt_schema
-                             a component class of a schema step 060 used, in
-                             this run or an earlier one (crt: current): one
+                             a component class of the current schema or of a
+                             past schema (crt: current): one
                              table serves every schema, so rows accumulate
     component_class_in_gtt   the component class in the ground truth triples
                              (gtt: the ground truth vocabulary), or (none)
@@ -47,7 +47,7 @@ import csv
 from pathlib import Path
 
 from common.step import ANNOTATIONS_DIR
-from common.triples_io import label_key
+from common.triples_io import component_class_key
 
 MAPPING_PATH = ANNOTATIONS_DIR / "component_class_mapping.csv"
 COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt", "swap_subject_and_object", "checked",
@@ -58,16 +58,16 @@ CHECKED = ("yes", "same component class")                                       
 
 
 def crt_definitions(schema_used: dict) -> dict:
-    """{kind: {label_key(component class): definition}} of the current schema
+    """{kind: {component_class_key(component class): definition}} of the current schema
     (step 060's schema_used.json, as read with json)."""
-    return {kind: {label_key(e["component_class"]): e.get("definition") or "" for e in schema_used.get(key, [])}
+    return {kind: {component_class_key(e["component_class"]): e.get("definition") or "" for e in schema_used.get(key, [])}
             for kind, key in KINDS.items()}
 
 
 def is_stale(row: dict, definitions: dict) -> bool:
     """True if the row's stored definition differs from the current
     schema's definition of its component class (spacing aside)."""
-    now = definitions.get(row["kind"], {}).get(label_key(row["component_class_from_past_or_crt_schema"]), "")
+    now = definitions.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
     return " ".join(row["definition_from_past_or_crt_schema"].split()) != " ".join(now.split())
 
 
@@ -76,7 +76,7 @@ def repeats(rows: list) -> list:
     numbers]}], in the order first met."""
     found = {}
     for r in rows:
-        key = (r["kind"], label_key(r["component_class_from_past_or_crt_schema"]))
+        key = (r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"]))
         found.setdefault(key, {"kind": r["kind"], "component_class": r["component_class_from_past_or_crt_schema"], "lines": []})
         found[key]["lines"].append(r["_line"])
     return [v for v in found.values() if len(v["lines"]) > 1]

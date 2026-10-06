@@ -22,7 +22,7 @@ Each run also checks your ground truth files for typos (see *Your ground truth* 
 ### This step
 
 - **Before the real runs, choose the model:** the strongest one Ask Sage lets you use, and from a different maker than extraction's (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-- **Draft and correct batches in pool order, without skipping:** a record after a gap falls out of the fair part, the only records evaluation evaluates.
+- **Draft and correct batches in pool order, without skipping:** a record after a gap falls out of the fair sample, the only records evaluation evaluates.
 - **Correct every draft batch** with `py helpers/annotate.py`: read each record's text first, then fix, delete or add rows until every fact it states is there, and tick *All facts extracted*. The tool saves your corrections to `annotations/ground_truth/batch_<NNN>.csv`; never correct the draft itself (`outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv`): it can be deleted and rebuilt. Commit each corrected batch.
 - **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: recall comes out higher than it should.
 - **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for component classes you'd add to the schema (see extraction's *To do*).
@@ -124,7 +124,7 @@ The code: `050_annotate/` holds `run.py` (the control panel: inputs, settings an
 
 Run against the record's **whole** text, including rows from one piece of a long text. They're written in the `flags` column, and the annotation tool shows them in plain words as you edit.
 
-| Check | Kind | Meaning |
+| Check | Type | Meaning |
 |---|---|---|
 | `no_source_text` | error | The row has no source text. |
 | `source_not_in_text` | error | Its source text isn't in the record's text: it may be invented. |
@@ -148,7 +148,7 @@ Run against the record's **whole** text, including rows from one piece of a long
 | `common/common_prompts/extraction_rules.txt` | inside `draft.txt` (`$rules`) | follow the rules shared with 060: subject and object in the record's own words, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
 | `common/common_prompts/extraction_reply.txt` | inside `draft.txt` (`$reply`) | reply in the JSON form shared with 060 |
 
-Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "classes", "predicates"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 060: editing them changes both steps.
+Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "entity classes", "predicates"), explaining any term they use. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 060: editing them changes both steps.
 
 ## Checks and warnings
 
@@ -160,7 +160,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | *N record(s) you listed is not in the catalog / without text / already in the ground truth / waiting in a draft batch to be corrected (batch K), so skipped* | With `ids`: those records can't or needn't be drafted. | Check for typos; a record waiting in a draft batch is drafted again only if you delete that draft batch (both its files) before correcting it. |
 | *You listed N records that can be drafted, but records_per_batch is M* | Only the first M are drafted now. | Raise `records_per_batch`, or run again for the rest. |
 | *start_position (N) is ignored, because ids names the records.* | The two settings can't both apply. | Drop one. |
-| *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 evaluates only the fair part (the pool's first records, with none skipped), so records after the gap are not evaluated until the records before them are annotated too. |
+| *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 evaluates only the fair sample (the pool's first records, with none skipped), so records after the gap are not evaluated until the records before them are annotated too. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
 | *Ground truth: record … in batch_…: lines … and … are the same triple (…)* | The same subject, predicate and object twice in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as missed. | Delete one of the two rows. |

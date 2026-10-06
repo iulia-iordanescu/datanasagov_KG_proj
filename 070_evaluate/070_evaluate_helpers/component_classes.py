@@ -49,7 +49,7 @@ from common.component_class_mapping import CHECKED, COLUMNS, KINDS, NONE, crt_de
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_hand_schema
-from common.triples_io import label_key
+from common.triples_io import component_class_key
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "070_evaluate_prompts"   # 070_evaluate/070_evaluate_prompts/
 PROMPT = load(PROMPTS_DIR / "map_component_classes.txt")
@@ -58,9 +58,9 @@ SUGGEST_PROMPT = load(PROMPTS_DIR / "suggest_component_classes.txt")
 
 @dataclass
 class Translation:
-    entity: dict = field(default_factory=dict)      # {label_key(current schema's component class): gtt component class or None}
-    predicate: dict = field(default_factory=dict)   # {label_key(current schema's component class): (gtt component class or None, reversed)}
-    reachable: dict = field(default_factory=dict)   # {"entity class": {label_key(gtt component class)}, "predicate": {...}}
+    entity: dict = field(default_factory=dict)      # {component_class_key(current schema's component class): gtt component class or None}
+    predicate: dict = field(default_factory=dict)   # {component_class_key(current schema's component class): (gtt component class or None, reversed)}
+    reachable: dict = field(default_factory=dict)   # {"entity class": {component_class_key(gtt component class)}, "predicate": {...}}
     gtt: dict = field(default_factory=dict)         # the ground truth vocabulary: {kind: {component class: definition}}
     rows_used: int = 0
     to_none: dict = field(default_factory=dict)     # {kind: [060's component classes whose row says (none)]}
@@ -99,7 +99,7 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls) -> tuple:
     made = 0
     if reply is None:
         calls.paid.start(f"  070 will ask the model to propose translations for {len(missing)} component class(es) of the "
-                         f"schema 060 used: 1 model call")
+                         f"current schema: 1 model call")
         reply = llm.call_llm_json(prompt)
         calls.paid.made_call()
         made = 1
@@ -107,13 +107,13 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls) -> tuple:
     answers = {}
     for item in reply.get("mapping", []) if isinstance(reply, dict) else []:
         if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("schema"), str):
-            answers[(item["kind"], label_key(item["schema"]))] = item
-    by_key = {k: {label_key(n): n for n in v} for k, v in gtt.items()}
+            answers[(item["kind"], component_class_key(item["schema"]))] = item
+    by_key = {k: {component_class_key(n): n for n in v} for k, v in gtt.items()}
     rows, strays = [], []
     for kind, name in missing:
-        item = answers.get((kind, label_key(name)), {})
+        item = answers.get((kind, component_class_key(name)), {})
         mine = item.get("ground_truth") if isinstance(item.get("ground_truth"), str) else None
-        gtt_name = by_key[kind].get(label_key(mine)) if mine else None
+        gtt_name = by_key[kind].get(component_class_key(mine)) if mine else None
         if mine and gtt_name is None:
             strays.append(f"{name} (current schema) --> {mine} (not in the ground truth vocabulary)")
         rows.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": gtt_name or NONE,
@@ -137,7 +137,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                                   f"{', '.join(map(str, r['lines']))})" for r in repeated], 5, "; ")
                          + ". Keep one row per component class (py helpers/annotate.py, Translation table, can delete the extra "
                            "ones), then run 070 again.")
-    have = {(r["kind"], label_key(r["component_class_from_past_or_crt_schema"])): r for r in rows}
+    have = {(r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])): r for r in rows}
     bad_kind = [r["component_class_from_past_or_crt_schema"] for r in rows if r["kind"] not in KINDS]
     if bad_kind:
         raise SystemExit(f"{path.name}: kind must be 'entity class' or 'predicate' for: "
@@ -145,19 +145,19 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
     needed = [("entity class", e["component_class"]) for e in evaluated.schema_used["entity_classes"]] + \
              [("predicate", e["component_class"]) for e in evaluated.schema_used["predicates"]]
-    gtt_key = {k: {label_key(n): n for n in v} for k, v in translation.gtt.items()}
+    gtt_key = {k: {component_class_key(n): n for n in v} for k, v in translation.gtt.items()}
     now = crt_definitions(evaluated.schema_used)
     same, missing = [], []
     handled = set(have)                     # a component class spelled two ways in the schema gets one row
     for kind, name in needed:
-        if (kind, label_key(name)) in handled:
+        if (kind, component_class_key(name)) in handled:
             continue
-        handled.add((kind, label_key(name)))
-        mine = gtt_key[kind].get(label_key(name))
+        handled.add((kind, component_class_key(name)))
+        mine = gtt_key[kind].get(component_class_key(name))
         if mine:
             same.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": mine, "swap_subject_and_object": "no",
                          "checked": "same component class",
-                         "definition_from_past_or_crt_schema": now[kind].get(label_key(name), "")})
+                         "definition_from_past_or_crt_schema": now[kind].get(component_class_key(name), "")})
         else:
             missing.append((kind, name))
     proposed, notes = [], []
@@ -175,12 +175,12 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
     unchecked, stale, unknown = [], [], []
     for kind, name in needed:
-        r = have[(kind, label_key(name))]
+        r = have[(kind, component_class_key(name))]
         if r["checked"].lower() not in CHECKED:
             unchecked.append(name)
         elif is_stale(r, now):
             stale.append(name)
-        elif r["component_class_in_gtt"] != NONE and label_key(r["component_class_in_gtt"]) not in gtt_key[kind]:
+        elif r["component_class_in_gtt"] != NONE and component_class_key(r["component_class_in_gtt"]) not in gtt_key[kind]:
             unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth vocabulary)")
     if unchecked:
         raise SystemExit(f"{len(unchecked)} row(s) of {path.name} still need checking (py helpers/annotate.py, "
@@ -198,38 +198,38 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
     translation.reachable = {"entity class": set(), "predicate": set()}
     for kind, name in needed:
-        r = have[(kind, label_key(name))]
-        mine = None if r["component_class_in_gtt"] == NONE else gtt_key[kind][label_key(r["component_class_in_gtt"])]
+        r = have[(kind, component_class_key(name))]
+        mine = None if r["component_class_in_gtt"] == NONE else gtt_key[kind][component_class_key(r["component_class_in_gtt"])]
         if kind == "entity class":
-            translation.entity[label_key(name)] = mine
+            translation.entity[component_class_key(name)] = mine
         else:
             flipped = r["swap_subject_and_object"].lower() == "yes"
-            translation.predicate[label_key(name)] = (mine, flipped)
+            translation.predicate[component_class_key(name)] = (mine, flipped)
             translation.reversed_used += flipped
         if mine:
-            translation.reachable[kind].add(label_key(mine))
+            translation.reachable[kind].add(component_class_key(mine))
     translation.rows_used = len(needed)
     # A row checked as (none) before the same component class joined the ground
     # truth vocabulary is almost surely out of date. Warned about (not a stop: (none)
     # may still be right if the ground truth's component class means something else).
-    translation.outdated = [f"{name} (current schema) --> (none), but {gtt_key[kind][label_key(name)]} (ground truth "
+    translation.outdated = [f"{name} (current schema) --> (none), but {gtt_key[kind][component_class_key(name)]} (ground truth "
                       f"vocabulary) now exists" for kind, name in needed
-                      if have[(kind, label_key(name))]["component_class_in_gtt"] == NONE and label_key(name) in gtt_key[kind]]
+                      if have[(kind, component_class_key(name))]["component_class_in_gtt"] == NONE and component_class_key(name) in gtt_key[kind]]
     # The ground truth vocabulary grows as you annotate: a row checked as (none) may since have
     # gained a counterpart. Both lists go in the report, so such a row can be
     # spotted and fixed (rows are never changed by the step).
     def translates_to_none(kind: str, name: str) -> bool:
         if kind == "entity class":
-            return translation.entity.get(label_key(name), "") is None
-        return translation.predicate.get(label_key(name), ("", False))[0] is None
+            return translation.entity.get(component_class_key(name), "") is None
+        return translation.predicate.get(component_class_key(name), ("", False))[0] is None
 
     # Two or more of the current schema's component classes translated to one
     # component class of the ground truth vocabulary: evaluation can't
     # tell them apart (a mix-up between them costs nothing), so they're listed.
     def translated(kind: str, name: str):
         if kind == "entity class":
-            return translation.entity.get(label_key(name))
-        return translation.predicate.get(label_key(name), (None, False))[0]
+            return translation.entity.get(component_class_key(name))
+        return translation.predicate.get(component_class_key(name), (None, False))[0]
 
     for kind in KINDS:
         into = {}
@@ -240,7 +240,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
     for kind in KINDS:
         translation.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))
-        translation.untranslated[kind] = sorted(n for n in translation.gtt[kind] if label_key(n) not in translation.reachable[kind])
+        translation.untranslated[kind] = sorted(n for n in translation.gtt[kind] if component_class_key(n) not in translation.reachable[kind])
     translation.suggested, translation.suggest_calls = _suggest(translation, evaluated.schema_used, calls)
     return translation
 
@@ -255,8 +255,8 @@ def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     never paid for twice. Rows are never changed: these are suggestions for
     the person (report warnings; the annotation tool reads them from
     metrics.json). Returns (suggestions, calls made)."""
-    same = {kind: {label_key(n) for n in translation.gtt[kind]} for kind in KINDS}
-    schema_side = [(k, n) for k in KINDS for n in translation.to_none[k] if label_key(n) not in same[k]]
+    same = {kind: {component_class_key(n) for n in translation.gtt[kind]} for kind in KINDS}
+    schema_side = [(k, n) for k in KINDS for n in translation.to_none[k] if component_class_key(n) not in same[k]]
     gtt_side = {k: [n for n in translation.untranslated[k]] for k in KINDS}
     kinds = {k for k, _ in schema_side if gtt_side[k]}
     schema_side = [(k, n) for k, n in schema_side if k in kinds]
@@ -266,7 +266,7 @@ def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     prompt = fill(SUGGEST_PROMPT,
                   ground_truth=json.dumps({k: [{"component_class": n, "definition": translation.gtt[k][n]} for n in gtt_side[k]]
                                            for k in kinds}, ensure_ascii=False, indent=0),
-                  schema=json.dumps([{"kind": k, "component_class": n, "definition": now[k].get(label_key(n), "")}
+                  schema=json.dumps([{"kind": k, "component_class": n, "definition": now[k].get(component_class_key(n), "")}
                                      for k, n in schema_side], ensure_ascii=False, indent=0))
     cache = Cache(calls.cache_dir, "suggest_component_classes")
     k = key(prompt)
@@ -279,15 +279,15 @@ def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
         calls.paid.made_call()
         made = 1
         cache.put(k, reply)
-    asked = {(kind, label_key(n)): n for kind, n in schema_side}
-    offered = {kind: {label_key(n): n for n in gtt_side[kind]} for kind in kinds}
+    asked = {(kind, component_class_key(n)): n for kind, n in schema_side}
+    offered = {kind: {component_class_key(n): n for n in gtt_side[kind]} for kind in kinds}
     out = []
     for item in reply.get("suggestions", []) if isinstance(reply, dict) else []:
         if not isinstance(item, dict) or item.get("kind") not in kinds:
             continue
         kind = item["kind"]
-        crt = asked.get((kind, label_key(item.get("schema"))))
-        gtt = offered[kind].get(label_key(item.get("ground_truth")))
+        crt = asked.get((kind, component_class_key(item.get("schema"))))
+        gtt = offered[kind].get(component_class_key(item.get("ground_truth")))
         if crt and gtt:                                   # only component classes that were asked about
             out.append({"kind": kind, "component_class_from_past_or_crt_schema": crt, "component_class_in_gtt": gtt})
     return out, made

@@ -6,7 +6,7 @@ moves.py -- the main moves of 060_extract, as called by 060_extract/run.py.
     -        (here)      paid_calls     code: asks before paying; keeps every answer in cache/
     stage 3  extract.py  ask_model      LLM: the facts each record states that the schema can express
     stage 4  extract.py  sort_rows      code: every row checked; kept, or removed with its reason
-    -        (here)      results        writes the kept and removed triple instances, the schema used; the report
+    -        (here)      results        writes the kept and removed triple instances, the current schema; the report
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet. Every file is
@@ -69,7 +69,9 @@ def _schema_used(schema) -> dict:
             out.append(entry)
         return out
     return {"entity_classes": entries("entity_classes"), "predicates": entries("predicates"),
-            "patterns": [{"pattern": list(p), "from": came_from["patterns"][p]} for p in content["patterns"]],
+            "patterns": [{"pattern": list(p), "from": came_from["patterns"][p],
+                          **({"source": schema.sources["patterns"][p]} if p in schema.sources.get("patterns", {}) else {})}
+                         for p in content["patterns"]],
             "left_out_additions": schema.left_out,
             "left_out_not_tuning": schema.not_tuning,
             "made": {"run_id": audit.current_run_id(), "schema": schema.files["schema"],
@@ -154,10 +156,10 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"`{schema.files['schema']}` plus `{schema.files['additions']}`: {len(c['entity_classes'])} entity "
              f"classes, {len(c['predicates'])} predicates, {len(c['patterns'])} patterns, of which added: "
              f"{added['entity_classes']} entity classes, {added['predicates']} predicates, {added['patterns']} "
-             f"patterns. The schema used is in `{SCHEMA_NAME}`.", "",
+             f"patterns. This run's schema, from now on the current schema, is in `{SCHEMA_NAME}`.", "",
              "### Triple instances", "",
-             f"- Kept: {n_kept_facts:,} triple instances, plus one DESCRIBES row per record, in `{KEPT_NAME}`.",
-             f"- Flags on kept rows (worth a look): {counted(rows.flags)}.",
+             f"- Extracted triples: {n_kept_facts:,}, plus one DESCRIBES row per record, in `{KEPT_NAME}`.",
+             f"- Flags on extracted triples (worth a look): {counted(rows.flags)}.",
              f"- Removed: {len(removed):,} ({counted(rows.reasons)}), in `{REMOVED_NAME}` with the reason. "
              f"`source_text`: its source text is missing or isn't in the record's text; "
              f"`component_class_not_in_schema`: it uses an entity class or predicate the schema doesn't have.", ""]
@@ -180,7 +182,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
 
     return Results(
         files=list(paths.values()),
-        headline={"records extracted": len(rows.kept), "triple instances kept": n_kept_facts},
+        headline={"records extracted": len(rows.kept), "extracted triples": n_kept_facts},
         details="\n".join(lines),
         warnings=warnings,
     )

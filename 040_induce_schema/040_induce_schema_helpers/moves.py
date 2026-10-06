@@ -181,7 +181,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         reason = "too vague" if d["reason"].startswith("too vague") else \
             ("support below min_support" if d["reason"].startswith("support")
              else "through a schema entry not in the schema")
-        kind = d["kind"].replace("_", " ")
+        kind = d["entry_type"].replace("_", " ")
         by_reason[(kind, reason)] = by_reason.get((kind, reason), 0) + 1
     lines += ["### Schema", "",
               f"min_support = {settings['min_support']}: a schema entry enters the schema if its support "

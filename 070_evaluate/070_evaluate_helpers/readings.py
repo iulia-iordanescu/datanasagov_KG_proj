@@ -42,18 +42,18 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
     """Once per part: what these numbers were computed from."""
     made = evaluated.extraction_made
     schema = evaluated.schema_used.get("made", {})
-    additions = [e for kind in ("entity_classes", "predicates") for e in evaluated.schema_used.get(kind, [])
-                 if e.get("from") == "additions"]
+    additions = [e for kind in ("entity_classes", "predicates", "patterns") for e in evaluated.schema_used.get(kind, [])
+                 if e.get("from") == "additions"]               # a pattern added alone has its own source
     from_tuning = [e for e in additions if "ground truth tuning" in (e.get("source") or "").lower()]
     positions = sorted(r["position"] for r in recs if r.get("position") is not None)
     review = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
     out = ["#### Where these numbers come from", "",
-           f"- **Extracted triples:** the triples extraction kept in run `{made.get('run_id', 'unknown: not in the details file of extraction')}` "
+           f"- **Extracted triples:** from extraction's run `{made.get('run_id', 'unknown: not in the details file of extraction')}` "
            f"(model `{made.get('model', 'unknown')}`), in `060_extract/extracted_triples.csv`.",
-           f"- **Extraction's schema (the current schema):** `{schema.get('schema', 'unknown')}`, plus "
+           f"- **The current schema (the one extraction used):** `{schema.get('schema', 'unknown')}`, plus "
            f"`{schema.get('additions', 'annotations/schema_additions.txt')}` ({len(additions)} addition(s)).",
            ("- **Schema additions learned from tuning records:** "
-            + "; ".join(f"{e['component_class']} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
+            + "; ".join(f"{e.get('component_class') or ' '.join(e['pattern'])} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
             "being evaluated, so they help here more surely than on records the pipeline hasn't seen."
             if from_tuning else "- **Schema additions learned from tuning records:** none."),
            "- **Component classes:** extraction's component classes translated into the ground truth vocabulary through "
@@ -83,9 +83,9 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     # precision
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
             f"(exact and partial pairs)", "",
-            f"- Of the {E} triples extraction kept for these records, {_of(ex['pairs'], E)} form exact pairs with "
+            f"- Of the {E} extracted triples of these records, {_of(ex['pairs'], E)} form exact pairs with "
             f"ground truth triples; counting partial pairs too, {_of(pa['pairs'], E)}.",
-            f"- Read as a chance: a triple extraction keeps for such a record has a {pct(ex['precision']['value'])} "
+            f"- Read as a chance: an extracted triple of such a record has a {pct(ex['precision']['value'])} "
             f"chance of forming an exact pair ({pct(pa['precision']['value'])} counting partial pairs).",
             f"- In a knowledge graph built from these triples, {E - ex['pairs']} of the {E} statements "
             f"({pct((E - ex['pairs']) / E) if E else '–'}) would have no "
@@ -102,7 +102,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"too, {_of(pa['pairs'], G)}.",
             f"- Read as a chance: a ground truth triple has a {pct(ex['recall']['value'])} chance of being found "
             f"as an exact pair ({pct(pa['recall']['value'])} counting partial pairs).",
-            f"- A knowledge graph built from extraction's triples would lack {G - ex['pairs']} of the {G} "
+            f"- A knowledge graph built from the extracted triples would lack {G - ex['pairs']} of the {G} "
             f"facts ({pct((G - ex['pairs']) / G) if G else '–'}) these records state, per the ground truth ({G - pa['pairs']} counting partial pairs as found).",
             _sure(n, ex["recall"], "exact recall"),
             "- Assumes the ground truth lists every fact these records state: a fact missing from it is not "
@@ -143,7 +143,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"a {pct(ex['entity_class_accuracy']['value'])} chance.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
-        out.append("- Can't see mix-ups between current-schema component classes that translate to the same ground truth component class: "
+        out.append("- Can't see mix-ups between component classes of the current schema that translate to the same ground truth component class: "
                    + "; ".join(shared) + ".")
     out.append("")
 
@@ -178,10 +178,10 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     out += [f"#### What each record describes: {pct(d['accuracy']['value'])}", "",
             f"- Of the {d['records']} record(s) whose ground truth names what the record describes (the DESCRIBES "
             f"row's entity class), extraction named the same entity class for {_of(right, d['records'])}.",
-            (f"- Always guessing the most common kind, `{common}` (ground truth vocabulary), would get "
+            (f"- Always guessing the most common entity class, `{common}` (ground truth vocabulary), would get "
              f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that."
              if common else "- No baseline: no record names what it describes."),
-            f"- Averaged per kind ({len(truths)} kind(s)): {pct(d['per_kind_average'])}, so a rare kind counts as "
+            f"- Averaged per entity class ({len(truths)} entity class(es)): {pct(d['per_entity_class_average'])}, so a rare one counts as "
             f"much as a common one.",
             _sure(n, d["accuracy"], "this accuracy"), ""]
     return out

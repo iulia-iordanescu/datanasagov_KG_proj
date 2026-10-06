@@ -9,8 +9,8 @@
 - Only facts the record states. Never use outside knowledge, and never
   infer what an unexplained code or acronym stands for.
 - Do NOT write "is a" triples. What kind of thing something is belongs in
-  its class.
-- describes_class: the class of the thing the record's title names.
+  its entity class.
+- describes_class: the entity class of the thing the record's title names.
 - The record is split into fields, each starting with its name: $field_names.
   The field names are formatting, not facts.
 - The record may be one part of a longer record ("part 1 of 2"); extract

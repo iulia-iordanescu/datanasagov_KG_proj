@@ -22,7 +22,7 @@
     If a group comes back highly similar, two options: drop the duplicates and sample replacements from the same maintainer, or keep them but count that maintainer's contribution once instead of fifteen times.
   - [ ] Stage 2 accepts junk and nothing filters it, e.g. the extractor produces "dataset" as a bare subject and reads "VNP43D66 is the BSA" as a type statement, accumulating real support for an unhelpful fact. There's no cheap filter currently, like a stoplist for generic subjects which would cost nothing and remove a known noise source.
   - [x] (done: steps 050 and 060 write it for every record, `common/common_helpers/triples_io.py`) We should enforce the following in our schema. Every record gets one structural triple that keeps a catalog entry separate from the thing it describes. The only piece code does not handle, i.e. the LLM's role, is deciding what type of thing the record is describing (a dataset, a publication, etc):
-       <record id> (CatalogEntry) DESCRIBES <title> (its class)
+       <record id> (CatalogEntry) DESCRIBES <title> (its entity class)
   - [ ] Consider properties, since we are moving in the direction of an LPG
   - [ ] Explore data.nasa.gov public-facing website for inspiration about entity classes to include and predicates, e.g. the filters a user can apply for a search
   - [ ] It's possible other fields (free-text description or structured alike) might be useful to include as the text by which schema is induced...so far, we've used just `title` and `notes`

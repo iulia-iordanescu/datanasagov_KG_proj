@@ -20,8 +20,8 @@ shapes:
    (annotations/schema_derived_from_manual_annotation.txt) and the additions
    file (annotations/schema_additions.txt):
 
-    CLASSES
-    -------
+    ENTITY CLASSES
+    --------------
     Instrument        a device that takes measurements
     …
 
@@ -35,13 +35,22 @@ shapes:
                          Dataset -> TimeSpan; MissionPhase -> TimeSpan
                          source: mentor, 2026-10-01
 
+    PATTERNS
+    --------
+    Instrument ABOARD Mission
+                         source: mentor, 2026-10-01
+
    An entity class or a predicate is a line starting with the component
    class, followed by two or more spaces and its definition. An indented
    line under a predicate lists the pairs of entity classes (subject ->
-   object) it has been used with, separated by ";"; each pair is a pattern. An indented line starting
-   "source:" under any entry says where the idea for it came from (used by
-   the additions file, and by the component classes the annotation tool adds
-   to the hand-built schema). Lines starting with # are comments.
+   object) it has been used with, separated by ";"; each pair is a pattern.
+   A pattern can also stand on its own, in the PATTERNS section: subject
+   class, predicate and object class on one line (used by the additions
+   file, to add a pattern to a predicate the schema already has). An
+   indented line starting "source:" under any entry (entity class,
+   predicate or pattern) says where the idea for it came from (used by the
+   additions file, and by the component classes the annotation tool adds to
+   the hand-built schema). Lines starting with # are comments.
 
 Several steps read it: 040 compares the induced schema with the hand-built
 one; 050 shows the hand-built one to the model and checks every drafted row
@@ -53,8 +62,11 @@ vocabulary from the hand-built one and the ground truth.
     schema = read_schema(path)          # either shape, by the file's suffix
     schema["entity_classes"]  {"Instrument": "a device that takes measurements", …}
     schema["predicates"]      {"ABOARD": "is carried on", …}
-    schema["patterns"]        [("Instrument", "ABOARD", "Spacecraft"), …]
-    schema["sources"]         {"entity_classes": {entity class: source}, "predicates": {…}}  (text shape only)
+    schema["patterns"]        [("Instrument", "ABOARD", "Spacecraft"), …]: every pattern, under a
+                              predicate or in the PATTERNS section
+    schema["pattern_entries"] the patterns of the PATTERNS section only (text shape only)
+    schema["sources"]         {"entity_classes": {entity class: source}, "predicates": {…},
+                              "patterns": {"Instrument ABOARD Mission": source}}  (text shape only)
     schema["unread"]          ["line 12: …"]: lines of a section that are neither an entry, a
                               source nor patterns, e.g. prose, or a repeated entry (the first
                               is kept) and the lines under it (text shape only)
@@ -73,20 +85,30 @@ import os
 import re
 from pathlib import Path
 
-from common.triples_io import label_key
+from common.triples_io import component_class_key
 
 ENTRY = re.compile(r"^(\S+) {2,}(\S.*)$")         # "Instrument  definition"
 PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
+PATTERN_LINE = re.compile(r"^(\S+)\s+(\S+)\s+(\S+)$")   # "Instrument ABOARD Mission", in a PATTERNS section
+#: The text shape's section headings ("CLASSES" is the older heading of the
+#: entity classes, still read).
+SECTIONS = {"ENTITY CLASSES": "entity_classes", "CLASSES": "entity_classes", "PREDICATES": "predicates",
+            "PATTERNS": "patterns"}
 
 
 def _empty() -> dict:
-    return {"entity_classes": {}, "predicates": {}, "patterns": [],
-            "sources": {"entity_classes": {}, "predicates": {}}, "unread": []}
+    return {"entity_classes": {}, "predicates": {}, "patterns": [], "pattern_entries": [],
+            "sources": {"entity_classes": {}, "predicates": {}, "patterns": {}}, "unread": []}
+
+
+def pattern_key(pattern) -> str:
+    """How a pattern is written in a PATTERNS section, and keyed in "sources"."""
+    return " ".join(pattern)
 
 
 def _read_text(path) -> dict:
     schema = _empty()
-    sections = {"CLASSES": "entity_classes", "PREDICATES": "predicates"}
+    sections = SECTIONS
     section, entry_name = None, None
     for number, line in enumerate(Path(path).read_text(encoding="utf-8-sig").splitlines(), 1):
         head = line.strip()
@@ -95,7 +117,18 @@ def _read_text(path) -> dict:
             continue
         if not head or head.startswith("#") or set(head) == {"-"} or section is None:
             continue
-        entry = ENTRY.match(line)
+        if section == "patterns" and not line[:1].isspace():
+            triple = PATTERN_LINE.match(head)
+            if triple and pattern_key(triple.groups()) in map(pattern_key, schema["pattern_entries"]):
+                schema["unread"].append(f"line {number}: {head} (repeats an earlier entry; the first is kept)")
+                entry_name = None
+                continue
+            if triple:
+                schema["patterns"].append(triple.groups())
+                schema["pattern_entries"].append(triple.groups())
+                entry_name = pattern_key(triple.groups())
+                continue
+        entry = ENTRY.match(line) if section != "patterns" else None
         if entry:
             name, definition = entry.groups()
             if name in schema[section]:            # a repeat: the first entry is kept
@@ -158,10 +191,10 @@ def schema_text(schema: dict) -> str:
     """The schema in the text shape, for a model to read: every entity class
     and predicate with its definition, and each predicate's patterns."""
     width = max((len(n) for kind in ("entity_classes", "predicates") for n in schema[kind]), default=0) + 2
-    lines = ["CLASSES", "-------"]
+    lines = ["ENTITY CLASSES", "--------------"]
     lines += [f"{name.ljust(width)}{d}".rstrip() for name, d in schema["entity_classes"].items()]
     lines += ["", "PREDICATES", "----------",
-              "Each entry reads subject -> object, with the class pairs it is used with.", ""]
+              "Each entry reads subject -> object, with the entity class pairs it is used with.", ""]
     by_predicate = {}
     for s_, p_, o_ in schema["patterns"]:
         by_predicate.setdefault(p_, []).append(f"{s_} -> {o_}")
@@ -203,33 +236,38 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
 
 def additions_header(path) -> str:
     """The comments at the top of the additions file (everything before its
-    CLASSES line), kept as they are when the tool rewrites the entries."""
+    ENTITY CLASSES line), kept as they are when the tool rewrites the entries."""
     text = Path(path).read_text(encoding="utf-8-sig") if Path(path).exists() else ""
     lines = text.splitlines()
     for i, line in enumerate(lines):
-        if line.strip() == "CLASSES":
+        if SECTIONS.get(line.strip()) == "entity_classes":
             return "\n".join(lines[:i]).rstrip() + "\n"
     return text.rstrip() + "\n" if text.strip() else ""
 
 
 def additions_text(header: str, entries: list) -> str:
     """The additions file: header, then the entries in the text shape.
-    entries: [{"kind": "entity class" | "predicate", "component_class", "definition",
-    "source", "patterns": [[subject class, object class], ...]}]."""
-    width = max([len(e["component_class"]) for e in entries] + [16]) + 2
+    entries: [{"entry_type": "entity class" | "predicate", "component_class",
+    "definition", "source", "patterns": [[subject class, object class], ...]}
+    and {"entry_type": "pattern", "subject_class", "predicate",
+    "object_class", "source"}]."""
+    width = max([len(e["component_class"]) for e in entries if e["entry_type"] != "pattern"] + [16]) + 2
     pad = " " * width
 
-    def block(kind):
+    def block(entry_type):
         out = []
-        for e in (e for e in entries if e["kind"] == kind):
-            out.append(f"{e['component_class'].ljust(width)}{e['definition']}".rstrip())
-            if kind == "predicate" and e.get("patterns"):
+        for e in (e for e in entries if e["entry_type"] == entry_type):
+            if entry_type == "pattern":
+                out.append(pattern_key((e["subject_class"], e["predicate"], e["object_class"])))
+            else:
+                out.append(f"{e['component_class'].ljust(width)}{e['definition']}".rstrip())
+            if entry_type == "predicate" and e.get("patterns"):
                 out.append(pad + "; ".join(f"{s_} -> {o_}" for s_, o_ in e["patterns"]))
             out.append(f"{pad}source: {e['source']}")
         return out
 
-    lines = ([header.rstrip(), ""] if header.strip() else []) + ["CLASSES", "-------"] + block("entity class") \
-        + ["", "PREDICATES", "----------"] + block("predicate")
+    lines = ([header.rstrip(), ""] if header.strip() else []) + ["ENTITY CLASSES", "--------------"] + block("entity class") \
+        + ["", "PREDICATES", "----------"] + block("predicate") + ["", "PATTERNS", "--------"] + block("pattern")
     return "\n".join(lines) + "\n"
 
 
@@ -267,11 +305,10 @@ def _edit_text(path, edit, expected: dict, what: str) -> None:
 
 def _section(lines: list, key: str, path) -> tuple:
     """(first line, end) of a section: from its heading to the next one."""
-    heads = [i for i, line in enumerate(lines) if line.strip() in ("CLASSES", "PREDICATES")]
-    wanted = "CLASSES" if key == "entity_classes" else "PREDICATES"
-    start = next((i for i in heads if lines[i].strip() == wanted), None)
+    heads = [i for i, line in enumerate(lines) if line.strip() in SECTIONS]
+    start = next((i for i in heads if SECTIONS[lines[i].strip()] == key), None)
     if start is None:
-        raise ValueError(f"{Path(path).name} has no {wanted} section")
+        raise ValueError(f"{Path(path).name} has no {'ENTITY CLASSES' if key == 'entity_classes' else 'PREDICATES'} section")
     return start, next((i for i in heads if i > start), len(lines))
 
 
@@ -300,14 +337,14 @@ def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: li
     key = {"entity class": "entity_classes", "predicate": "predicates"}[kind]
     name, definition, source = str(name).strip(), " ".join(str(definition).split()), " ".join(str(source).split())
     patterns = [(str(s).strip(), str(o).strip()) for s, o in patterns] if key == "predicates" else []
-    if not label_key(name) or any(c.isspace() for c in name) or name.startswith("#") or ";" in name or "->" in name:
+    if not component_class_key(name) or any(c.isspace() for c in name) or name.startswith("#") or ";" in name or "->" in name:
         raise ValueError("the component class must be one word, with letters or digits, no spaces, and no ; or ->")
     if not definition:
         raise ValueError(f"{name} needs a one-line definition")
     if not all(PAIR.match(f"{s} -> {o}") for s, o in patterns):
         raise ValueError(f"{name}: each pattern is two entity classes, one word each")
     before = _read_text(path)
-    same = [n for n in before[key] if label_key(n) == label_key(name)]
+    same = [n for n in before[key] if component_class_key(n) == component_class_key(name)]
     if same:
         raise ValueError(f"{same[0]} is already in the hand-built schema")
 
@@ -332,15 +369,15 @@ def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_
     predicate and both entity classes must be in the schema already, and are
     written in its spelling."""
     before = _read_text(path)
-    name = next((n for n in before["predicates"] if label_key(n) == label_key(predicate)), None)
+    name = next((n for n in before["predicates"] if component_class_key(n) == component_class_key(predicate)), None)
     if name is None:
         raise ValueError(f"{predicate} isn't a predicate of the hand-built schema: add it first")
-    spelling = {label_key(n): n for n in before["entity_classes"]}
-    missing = [c for c in (subject_class, object_class) if label_key(c) not in spelling]
+    spelling = {component_class_key(n): n for n in before["entity_classes"]}
+    missing = [c for c in (subject_class, object_class) if component_class_key(c) not in spelling]
     if missing:
         raise ValueError(f"{missing[0]} isn't an entity class of the hand-built schema: add it first")
-    pair = (spelling[label_key(subject_class)], spelling[label_key(object_class)])
-    if any(p == name and label_key(s) == label_key(pair[0]) and label_key(o) == label_key(pair[1])
+    pair = (spelling[component_class_key(subject_class)], spelling[component_class_key(object_class)])
+    if any(p == name and component_class_key(s) == component_class_key(pair[0]) and component_class_key(o) == component_class_key(pair[1])
            for s, p, o in before["patterns"]):
         raise ValueError(f"{pair[0]} -> {pair[1]} is already a pattern of {name}")
 

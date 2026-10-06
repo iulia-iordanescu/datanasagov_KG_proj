@@ -1,14 +1,15 @@
-Below are classes of things named in texts from a catalog of NASA datasets:
-each is a kind of thing, with examples (the words texts use for things of
-that kind) and the number of texts it was found in. For each class, write ONE sentence defining it, general enough to
-cover its examples.
+Below are entity classes of things named in texts from a catalog of NASA
+datasets: each is a kind of thing, with examples (the words texts use for
+things of that kind) and the number of texts it was found in. For each
+entity class, write ONE sentence defining it, general enough to cover its
+examples.
 
-If a class is too vague to tell anything apart (e.g. "Thing", "Entity",
+If an entity class is too vague to tell anything apart (e.g. "Thing", "Entity",
 "Item"), do not define it: list it under "too_vague" with a one-line reason.
 
-Return ONLY JSON, no prose; every class below must appear exactly once, in
+Return ONLY JSON, no prose; every entity class below must appear exactly once, in
 "definitions" or in "too_vague":
-{"definitions": {"<class>": "<one sentence>"}, "too_vague": {"<class>": "<reason>"}}
+{"definitions": {"<entity class>": "<one sentence>"}, "too_vague": {"<entity class>": "<reason>"}}
 
-CLASSES:
+ENTITY CLASSES:
 $entries

@@ -1,7 +1,7 @@
 """
 moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
 
-    stage 1  records.py  pick_records     code: which records are evaluated (finished, extracted, in the fair part)
+    stage 1  records.py  pick_records     code: which records are evaluated (finished, extracted, in the fair sample)
     -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
     stage 2  component_classes.py  translate_component_classes  LLM: current schema's component classes → ground truth vocabulary, new ones only (+ suggestions for (none) rows); you check
     stage 3  pairing.py    compare          code: record by record, exact and partial pairs, strict, within reach
@@ -159,10 +159,10 @@ def _compared_rows(records: list) -> list:
     return rows
 
 
-def _clue_lines(clues: list) -> list:
-    """The report's list of component class clues (pairing.component_class_clues)."""
-    lines = ["### Possible translation errors", "",
-             "Where extraction found the triple but a component class didn't line up with the ground truth's. A row of the "
+def _mismatch_lines(mismatches: list) -> list:
+    """The report's list of component class mismatches (pairing.component_class_mismatches)."""
+    lines = ["### Component class mismatches", "",
+             "A mismatch: extraction found the triple, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
              "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, Translation table). Seen once, it may just be "
              "extraction choosing the wrong component class.", "",
@@ -182,19 +182,19 @@ def _clue_lines(clues: list) -> list:
              "`Body` (current schema) --> `Spacecraft` (ground truth vocabulary). Had that row said `Body` --> `CelestialBody` (ground truth "
              "vocabulary), none of the 9 would have happened. So that row of the translation table is the "
              "likely mistake, and the one to check.", ""]
-    if not clues:
+    if not mismatches:
         return lines + ["None.", ""]
     lines += ["| Kind | Component class in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
               "triple says instead (ground truth vocabulary) | Times | Check |", "|---|---|---|---|---:|---|"]
-    for c in clues[:SHOW]:
+    for c in mismatches[:SHOW]:
         to = "(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION) else c["translated_to"]
-        check = (f"swap_subject_and_object of {c['crt_name']} (current schema): subject and object were the "
+        check = (f"swap_subject_and_object of {c['crt_class']} (current schema): subject and object were the "
                  f"other way round" if c["swapped"] else
-                 f"should {c['crt_name']} (current schema) translate to {c['gtt_name']} (ground truth vocabulary)?")
-        lines.append(f"| {c['kind']} | {cell(c['crt_name'])} | {cell(to)} | {cell(c['gtt_name'])} | {c['count']} "
+                 f"should {c['crt_class']} (current schema) translate to {c['gtt_class']} (ground truth vocabulary)?")
+        lines.append(f"| {c['kind']} | {cell(c['crt_class'])} | {cell(to)} | {cell(c['gtt_class'])} | {c['count']} "
                      f"| {cell(check)} |")
-    if len(clues) > SHOW:
-        lines.append(f"| … {len(clues) - SHOW} more, in `{METRICS_NAME}` | | | | | |")
+    if len(mismatches) > SHOW:
+        lines.append(f"| … {len(mismatches) - SHOW} more, in `{METRICS_NAME}` | | | | | |")
     return lines + [""]
 
 
@@ -206,7 +206,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     # Only the parts whose numbers are shown: the held-out records' triples stay
     # unseen too, unless --evaluate_held_out true.
     shown = [r for r in evaluated.records if r["part"] in metrics]
-    clues = pairing.component_class_clues(shown)
+    mismatches = pairing.component_class_mismatches(shown)
     tuning = [r for r in shown if r["part"] == "tuning"]
     unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
     rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
@@ -223,7 +223,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                               for (t, s), n in v["confusion"].items()]}
                   for p, v in metrics.items() if p != "kept_aside"},
         "held_out_looks": looks,
-        "component_class_clues": clues,
+        "component_class_mismatches": mismatches,
         "translation_suggestions": translation.suggested,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
@@ -258,11 +258,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, so the partial "
                         f"level may count pairs that aren't the same fact (e.g. MODIS vs MODIS Terra). Review "
                         f"them: py helpers/annotate.py, Partial pairs.")
-    frequent = [c for c in clues if c["count"] >= pairing.CLUE_WARN]
+    frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
-        warnings.append(f"{len(frequent)} pair(s) of component classes met {pairing.CLUE_WARN} or more times where extraction "
+        warnings.append(f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times where extraction "
                         f"found the triple but a component class differed: a translation in component_class_mapping.csv may be wrong or "
-                        f"missing. See Possible translation errors.")
+                        f"missing. See Component class mismatches.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
                         f"(annotations/held_out_looks.csv; commit it). Each look is a chance to tune on it.")
@@ -295,14 +295,14 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
               for mine, theirs in translation.merged[kind].items()]
     if merged:
         lines += ["Component classes of the ground truth vocabulary that two or more of the current schema's component classes translate "
-                  "to: the ground truth doesn't tell those current-schema component classes apart, so neither can these metrics "
+                  "to: the ground truth doesn't tell those component classes of the current schema apart, so neither can these metrics "
                   "(a mix-up between them costs extraction nothing). If the difference matters, make it in the "
                   "ground truth.", "",
                   "| Kind | Component class in the ground truth vocabulary | Current schema's component classes that translate to it |",
                   "|---|---|---|"]
         lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
         lines.append("")
-    lines += _clue_lines(clues)
+    lines += _mismatch_lines(mismatches)
     if evaluated.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in evaluated.left_out.items())
                   + f". Not finished yet in the ground truth: {evaluated.unfinished}.", ""]
@@ -340,8 +340,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                       f"can be): {_with_margin(n['recall_upper_bound'])}. **Strict recall upper bound** (predicate and both "
                       f"entity classes, the most strict recall can be): {_with_margin(n['strict_recall_upper_bound'])}.",
                   f"- **What the record describes**: right for {_with_margin(d['accuracy'])} of {d['records']} "
-                  f"record(s). Always guessing the most common kind would get {readings.pct(d['majority_baseline'])}; "
-                  f"averaged per kind: {readings.pct(d['per_kind_average'])}.", ""]
+                  f"record(s). Always guessing the most common entity class would get {readings.pct(d['majority_baseline'])}; "
+                  f"averaged per entity class: {readings.pct(d['per_entity_class_average'])}.", ""]
         if v["confusion"]:
             lines += ["| The ground truth says (ground truth vocabulary) | Extraction said (translated into the ground "
                       "truth vocabulary) | Records |", "|---|---|---:|"]

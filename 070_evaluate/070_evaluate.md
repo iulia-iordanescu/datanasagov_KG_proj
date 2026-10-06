@@ -11,12 +11,12 @@ Evaluates what step 060 extracted against the ground truth, the answer key:
 
 each with its **margin of error**, so a real improvement can be told from luck. Around them:
 
-- **entity-class accuracy**: of the triples 060 got right, how often it also named the kinds of things right;
+- **entity-class accuracy**: of the triples 060 got right, how often it also named the right entity classes;
 - **F1**: precision and recall in one number, the usual headline for comparing runs or models;
 - **recall upper bound**: how much of the ground truth the schema can express at all (the most recall can be), and **recall within reach**: how well 060 did on what it could do; each also in a strict version, with the entity classes. A low upper bound means the schema needs work; a high upper bound with low recall within reach means the extraction does;
-- **what each record describes**: how often 060 named the right kind of thing for the DESCRIBES row, next to what always guessing the most common kind would get.
+- **what each record describes**: how often 060 named the right entity class for the DESCRIBES row, next to what always guessing the most common kind would get.
 
-Before comparing, the component classes of 060's schema (the current schema) are translated into the ground truth vocabulary, through a table you check. Only the **fair part** of the ground truth is evaluated (a fair sample of the catalog), and by default only its **tuning part**: the held-out part is kept for the end.
+Before comparing, the component classes of the current schema (the one 060 used) are translated into the ground truth vocabulary, through a table you check. Only the **fair sample** of the ground truth is evaluated, and by default only its **tuning part**: the held-out part is kept for the end.
 
 The ground truth was drafted by a model (050) and corrected by a person, not written from scratch; a triple both missed is counted nowhere, so recall may come out higher than it is. The report says so.
 
@@ -31,10 +31,10 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 
 ### This step
 
-- **Check the translation table (`annotations/component_class_mapping.csv`) whenever this step adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right triples into wrong ones, or the reverse. Then **rerun** this step.
-- **Act on the table's flags** there and in the report (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are stale (the component class's definition changed), out of date or suggested (the ground truth vocabulary gained a counterpart), or repeated.
+- **Check the translation table ([`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)) whenever this step adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example triple. A wrong translation silently turns right triples into wrong ones, or the reverse. Then **rerun** this step.
+- **Act on the row states** (glossary: *row state*) there and in the report (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are stale (the component class's definition changed), now exists or suggested (the ground truth vocabulary gained a counterpart), or repeated.
 - **Review the partial pairs** of the tuning part: `py helpers/annotate.py`, *Partial pairs* (your verdicts go to `annotations/partial_pair_reviews.csv`). Mark each `same fact` or `not the same fact`, with the record's text at hand.
-- **Read the report's *Possible translation errors*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: component classes that share a translation are ones the metrics can't tell apart; if that distinction matters to you, make it in the ground truth.
+- **Read the report's *Component class mismatches*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: component classes that share a translation are ones the metrics can't tell apart; if that distinction matters to you, make it in the ground truth.
 - **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the partial pairs and the triples "extracted, but not in the ground truth": some may be real triples you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favours extraction).
 - **Margins of error need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
 - **Look at the held-out part only at the end** (`--evaluate_held_out true`), and commit `annotations/held_out_looks.csv` after each look.
@@ -46,7 +46,7 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 |---|---|---|
 | `records` | `020_clean/records.jsonl` | Titles, for the per-record list. |
 | `splits` | `030_split/splits.json` | The pool's order, and each record's part (tuning or held-out). |
-| `extracted_triples` | `060_extract/extracted_triples.csv` | What 060 kept. |
+| `extracted_triples` | `060_extract/extracted_triples.csv` | The extracted triples. |
 | `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is left out, not counted as zero). |
 | `schema_used` | `060_extract/schema_used.json` | The schema 060 used: the component classes to translate. |
 | `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's sampling group. |
@@ -65,7 +65,7 @@ In `outputs/intermediate_results/070_evaluate/`:
 |---|---|
 | `per_record.md` | For reading. Each evaluated record of the parts shown (the tuning part; the held-out part too with `--evaluate_held_out true`, so its triples stay unseen until then): what it describes (✓/✗), its **pairs** (✓ exact or ≈ partial, with the ground truth's triple when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted triples are shown translated into the ground truth vocabulary. Opens well in VS Code or on GitHub. |
 | `compared_triples.csv` | For sorting and filtering, e.g. in Excel. One row per pair, and one per triple left without a partner, of the parts shown: record, pool position, part, group, `status` (`exact pair`, `partial pair`, `extracted only`: no partner, counts against precision; `ground truth only`: no partner, counts against recall), `entity_classes_right`, `within_reach`, `within_strict_reach`, then the triple as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
-| `metrics.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were evaluated and which left out, and why; the possible translation errors (`component_class_clues`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the tuning part's partial pairs not yet reviewed and ruled out by your review (`partial_pairs_tuning`); the settings. |
+| `metrics.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were evaluated and which left out, and why; the component class mismatches (`component_class_mismatches`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the tuning part's partial pairs not yet reviewed and ruled out by your review (`partial_pairs_tuning`); the settings. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
@@ -75,8 +75,8 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 
 | File | What 070 adds |
 |---|---|
-| `annotations/component_class_mapping.csv` | Rows for component classes of 060's schema that have none yet (see *How it works*, stage 2). |
-| `annotations/held_out_looks.csv` | One line per run with `--evaluate_held_out true`: date, run id, schema used, held-out records evaluated. Commit it: it's how the looks are counted, across laptops and after `outputs/` is deleted. |
+| `annotations/component_class_mapping.csv` | Rows for component classes of the current schema that have none yet (see *How it works*, stage 2). |
+| `annotations/held_out_looks.csv` | One line per run with `--evaluate_held_out true`: date, run id, current schema, held-out records evaluated. Commit it: it's how the looks are counted, across laptops and after `outputs/` is deleted. |
 
 ## Settings
 
@@ -86,7 +86,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `model` | google-claude-sonnet-5 | The AI model to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the run's first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call (070 calls the model only about the translation table: to propose rows for component classes without one, and to suggest counterparts for `(none)` rows). | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
-The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer evaluated records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*). In `pairing.py`: `CLUE_WARN = 2` (a pair of component classes met this often where only a component class differed becomes a warning; see *Checks and warnings*).
+The numbers that are fixed on purpose (in `070_evaluate/070_evaluate_helpers/stats.py`): `MIN_RECORDS = 20` (fewer evaluated records: no margin), `RESHUFFLES = 1000`, `SEED = 70` (a rerun gives the same margins), `SHARE_GAP = 0.10` (see *Checks and warnings*). In `pairing.py`: `MISMATCH_WARN = 2` (a component class mismatch seen this often becomes a warning; see *Checks and warnings*).
 
 ## How to run
 
@@ -101,7 +101,7 @@ py 070_evaluate/run.py --confirm_paid_calls false    don't ask (unattended runs)
 
 Needs 060's output. The first run with a new schema stops after adding rows to `annotations/component_class_mapping.csv`: check them, then run again.
 
-**Paying.** Before its first model call, 070 logs its plan (how many component classes to translate, the model) and waits: Enter starts, anything else stops the run having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Before you pay: this run can't do exactly what you asked*, then the reasons, listed under *Checks and warnings*). Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: at most two, both about the translation table: one when 060's schema has component classes without a row in `annotations/component_class_mapping.csv`, and one when there are both `(none)` rows of the current schema and component classes of the ground truth vocabulary nothing translates to (asked once per such pair of lists). None otherwise: the evaluation is code.
+**Paying.** Before its first model call, 070 logs its plan (how many component classes to translate, the model) and waits: Enter starts, anything else stops the run having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Before you pay: this run can't do exactly what you asked*, then the reasons, listed under *Checks and warnings*). Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: at most two, both about the translation table: one when the current schema has component classes without a row in `annotations/component_class_mapping.csv`, and one when there are both `(none)` rows of the current schema and component classes of the ground truth vocabulary nothing translates to (asked once per such pair of lists). None otherwise: the evaluation is code.
 
 **The cache.** Every model answer is kept in `cache/`, under a fingerprint of everything that decided it: the model, the prompt's exact text, and what was sent. A rerun reuses every answer whose fingerprint is unchanged: a failed call isn't kept, so a rerun asks only the calls that failed; editing a prompt asks again exactly the calls that use it; deleting `cache/` (or all of `outputs/`) means paying for every call again.
 
@@ -109,7 +109,7 @@ Needs 060's output. The first run with a new schema stops after adding rows to `
 
 Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for component classes without a row, and for suggestions on `(none)` rows), the others are code:
 
-1. **Pick the records** (`records.py`, `pick_records`). A record is evaluated if you've finished it in the ground truth and 060's last run extracted it. Of those, only the **fair part**: the longest run of the pool's first records that are all evaluated. A record after a gap (an unfinished or unextracted pool record before it) or outside the pool is left out and named, so every evaluated record belongs to a fair sample.
+1. **Pick the records** (`records.py`, `pick_records`). A record is evaluated if you've finished it in the ground truth and 060's last run extracted it. Of those, only the **fair sample**: the longest run of the pool's first records that are all evaluated. A record after a gap (an unfinished or unextracted pool record before it) or outside the pool is left out and named, so every evaluated record belongs to a fair sample.
 2. **Translate component classes** (`component_classes.py`, `translate_component_classes`), through `annotations/component_class_mapping.csv`:
 
    ```
@@ -120,7 +120,7 @@ Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for
    entity class,Dataset,Dataset,no,same component class,A set of data.
    ```
 
-   For each component class of 060's schema without a row: one equal to a component class of the ground truth vocabulary (ignoring case and punctuation) gets a row at once, `checked` = `same component class`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `component_class_in_gtt` (a component class of the ground truth vocabulary, or `(none)`) and `swap_subject_and_object` where wrong, then set `checked` to `yes`. Evaluation runs only once every row it needs is checked. Each row also keeps the current schema's definition of its component class from when it was written or last checked (`definition_from_past_or_crt_schema`): if a later schema defines that component class differently, the row is **stale** (it may no longer be right) and the step stops until you check it again; checking it again stores the new definition. So the one table can serve every schema: a component class keeps its row while its meaning stays the same. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
+   For each component class of the current schema without a row: one equal to a component class of the ground truth vocabulary (ignoring case and punctuation) gets a row at once, `checked` = `same component class`; the model proposes the others (one paid call, after the usual confirmation), `checked` = `no`. The step then stops. You check each `no` row: fix `component_class_in_gtt` (a component class of the ground truth vocabulary, or `(none)`) and `swap_subject_and_object` where wrong, then set `checked` to `yes`. Evaluation runs only once every row it needs is checked. Each row also keeps the current schema's definition of its component class from when it was written or last checked (`definition_from_past_or_crt_schema`): if a later schema defines that component class differently, the row is **stale** (it may no longer be right) and the step stops until you check it again; checking it again stores the new definition. So the one table can serve every schema: a component class keeps its row while its meaning stays the same. The model's proposals are only a first draft: in testing, a stand-in's deliberate mistake (`Phase` → `(none)` instead of `MissionPhase`) is exactly what the check is for.
 3. **Compare, record by record** (`pairing.py`, `compare`). Each extracted triple is translated into the ground truth vocabulary; a reversed predicate also swaps subject and object. Then the ground truth's triples and the extracted triples are **paired**: every triple, in either list, ends with **zero or one partner**, always from the other list (so a triple stated twice earns one pair, not two; the two lists can have any lengths). Two rounds, each finding the largest possible set of pairs (in maths, a *maximum matching*: a pair may be swapped to free a partner for a triple that would otherwise have none; taking each triple's first possible partner in list order could lose a real pair, and make the metrics depend on the order triples were written in):
    - **exact**: subject and object the same once evened out (case, spacing, quote marks, dashes, edge punctuation and a leading "the/a/an" ignored, as everywhere in the pipeline), predicate the same;
    - **partial**, among the triples still unpaired: the same, except that a subject or object may be contained in the other as whole words: "MODIS" in "Moderate Resolution Imaging Spectroradiometer (MODIS)". This can be fooled ("MODIS" in "MODIS Terra"), which is why every partial pair is listed in `per_record.md`, and why you review the tuning part's partial pairs in `py helpers/annotate.py`, *Partial pairs*: two triples you mark `not the same fact` are never paired.
@@ -140,14 +140,14 @@ Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for
    | recall within reach | pairs whose ground truth triple is within reach ÷ ground truth triples within reach |
    | strict recall within reach | strict pairs ÷ ground truth triples within strict reach |
    | describes: accuracy | records whose DESCRIBES entity class is right ÷ records whose ground truth names one |
-   | describes: baseline | the share of the most common kind: what always guessing it would get |
-   | describes: per-kind average | each kind's accuracy, averaged, so rare kinds count as much as common ones |
+   | describes: baseline | the share of the most common entity class: what always guessing it would get |
+   | describes: per-entity-class average | each entity class's accuracy, averaged, so rare entity classes count as much as common ones |
 
    Each is given at both pair levels (**exact**, and **partial**, which counts exact and partial pairs), with its **margin of error** by the **bootstrap** (below), for the tuning part, for the held-out part when asked, and per sampling group. The report adds a table of what 060 said each record describes versus what it is.
 
-**Then the results** (`results`): `metrics.json`, `per_record.md` and `compared_triples.csv` are written, replacing the last run's; with `--evaluate_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **possible translation errors** (`pairing.py`, `component_class_clues`), found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the triple but a component class differs. A paired triple whose entity class differs from the ground truth's suggests the row of the current schema's entity class is wrong (its row may say `(none)`, or the wrong entity class); an unpaired extracted triple and an unpaired ground truth triple with the same subject and object (or the two swapped) but different predicates suggest the predicate's row is wrong (or its `swap_subject_and_object`). Each pair of component classes is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong component class, a frequent one is a row to check.
+**Then the results** (`results`): `metrics.json`, `per_record.md` and `compared_triples.csv` are written, replacing the last run's; with `--evaluate_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **component class mismatches** (`pairing.py`, `component_class_mismatches`), possible translation errors, found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the triple but a component class differs. A paired triple whose entity class differs from the ground truth's suggests the row of the current schema's entity class is wrong (its row may say `(none)`, or the wrong entity class); an unpaired extracted triple and an unpaired ground truth triple with the same subject and object (or the two swapped) but different predicates suggest the predicate's row is wrong (or its `swap_subject_and_object`). Each mismatch is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong component class, a frequent one is a row to check.
 
-The code: `070_evaluate/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `070_evaluate/070_evaluate_helpers/` holds `moves.py` (the moves, and writing the results), `records.py`, `component_classes.py`, `pairing.py`, `stats.py` and `readings.py` (the metrics read as sentences); `070_evaluate/070_evaluate_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/ground_truth.py` (reading the ground truth; the fair part), `common/common_helpers/text_match.py`, `common/common_helpers/triples_io.py`, `common/common_helpers/files.py` (adding lines without changing any), `common/common_helpers/cache.py`, `common/common_helpers/llm.py`.
+The code: `070_evaluate/` holds `run.py` (the control panel: inputs, settings and the moves, in order); `070_evaluate/070_evaluate_helpers/` holds `moves.py` (the moves, and writing the results), `records.py`, `component_classes.py`, `pairing.py`, `stats.py` and `readings.py` (the metrics read as sentences); `070_evaluate/070_evaluate_prompts/` holds the prompts (see *Prompts*). Shared with other steps: `common/common_helpers/ground_truth.py` (reading the ground truth; the fair sample), `common/common_helpers/text_match.py`, `common/common_helpers/triples_io.py`, `common/common_helpers/files.py` (adding lines without changing any), `common/common_helpers/cache.py`, `common/common_helpers/llm.py`.
 
 ### Reading the metrics
 
@@ -155,12 +155,12 @@ A percentage alone is hard to use, so for each part the report also writes every
 
 Then, per metric, the readings that hold for it, such as:
 
-- the counts behind it, e.g. "of the 8 triples extraction kept for these records, 4 (50%) form exact pairs";
-- read as a chance, e.g. "a triple extraction keeps has a 50% chance of forming an exact pair";
-- what it means for a knowledge graph built from extraction's triples, e.g. "4 of the 8 statements would have no exact counterpart in the ground truth";
+- the counts behind it, e.g. "of the 8 extracted triples of these records, 4 (50%) form exact pairs";
+- read as a chance, e.g. "an extracted triple has a 50% chance of forming an exact pair";
+- what it means for a knowledge graph built from the extracted triples, e.g. "4 of the 8 statements would have no exact counterpart in the ground truth";
 - how sure it is: "for the whole catalog, likely between 52% and 70%" (the margin of error), or, with fewer than 20 records, that it has none;
 - what it assumes, e.g. that the ground truth lists every fact the records state;
-- where needed, what it can't see, e.g. entity-class accuracy can't see mix-ups between current-schema component classes that translate to the same component class of the ground truth vocabulary.
+- where needed, what it can't see, e.g. entity-class accuracy can't see mix-ups between component classes of the current schema that translate to the same component class of the ground truth vocabulary.
 
 A metric gets only the readings that apply to it: the recall upper bound, for instance, has no "chance" reading, and *what each record describes* is read against what always guessing the most common kind would get.
 
@@ -170,7 +170,7 @@ The bootstrap recomputes every number 1,000 times, each time from records drawn 
 
 | Condition | Why | How 070 checks it |
 |---|---|---|
-| The evaluated records are a random sample of the catalog | Otherwise the numbers say nothing about the rest of the catalog. | Only the fair part is evaluated (How it works, 1); anything else is left out and named. |
+| The evaluated records are a random sample of the catalog | Otherwise the numbers say nothing about the rest of the catalog. | Only the fair sample is evaluated (How it works, 1); anything else is left out and named. |
 | Whole records are drawn, not triples | A record's triples come from one text and one model call, so they succeed or fail together; drawing triples one by one gives margins too narrow. | By design. |
 | Drawn the way the pool was drawn | The pool was drawn by sampling group, each getting its share. | Each reshuffle draws within each sampling group as many records as it has. A record without a group is left out of the per-group numbers, and named. |
 | Enough records | With very few, the margins are themselves unreliable, usually too narrow. | Below 20 records, no margin: a plain warning that the numbers could easily have come out very differently. 20 is a rule of thumb, not a law. |
@@ -186,8 +186,8 @@ A margin covers only **which records happened to be evaluated**: not mistakes in
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `070_evaluate/070_evaluate_prompts/map_component_classes.txt` | stage 2, one call, only for component classes of 060's schema without a row | for each of those component classes, give the component class of the ground truth vocabulary that means the same thing (or none), and say whether a predicate states the relation in the opposite direction; the ground truth vocabulary's component classes and definitions are shown in the prompt |
-| `070_evaluate/070_evaluate_prompts/suggest_component_classes.txt` | stage 2, one call, only when there are both current-schema rows that say `(none)` and component classes of the ground truth vocabulary nothing translates to; the answer is cached by those two lists, so the same lists are never paid for twice | for each `(none)` component class, whether a component class of the ground truth vocabulary nothing translates to means the same thing (suggest only if confident) |
+| `070_evaluate/070_evaluate_prompts/map_component_classes.txt` | stage 2, one call, only for component classes of the current schema without a row | for each of those component classes, give the component class of the ground truth vocabulary that means the same thing (or none), and say whether a predicate states the relation in the opposite direction; the ground truth vocabulary's component classes and definitions are shown in the prompt |
+| `070_evaluate/070_evaluate_prompts/suggest_component_classes.txt` | stage 2, one call, only when there are both rows of the current schema that say `(none)` and component classes of the ground truth vocabulary nothing translates to; the answer is cached by those two lists, so the same lists are never paid for twice | for each `(none)` component class, whether a component class of the ground truth vocabulary nothing translates to means the same thing (suggest only if confident) |
 
 Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts use this project's terms (component class, entity class, predicate, ground truth vocabulary, current schema), each explained in the prompt. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. Its answers are only proposals: you check every row before evaluation uses it.
 
@@ -198,7 +198,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | Message | Meaning | What to do |
 |---|---|---|
 | *N finished ground truth record(s) weren't extracted by 060's last run* | They can't be evaluated. | Run `py 060_extract/run.py`. |
-| *N record(s) are left out because they aren't in the fair part* | A pool record before them isn't finished or extracted, or they're outside the pool. | Finish (or extract) the records before them. |
+| *N record(s) are left out because they aren't in the fair sample* | A pool record before them isn't finished or extracted, or they're outside the pool. | Finish (or extract) the records before them. |
 | *N evaluated record(s) have no sampling group* | Not in the pool file. | Normally impossible for pool records. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
@@ -211,10 +211,10 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *only N record(s) evaluated, fewer than 20* | No margin of error; don't draw conclusions yet. | Annotate more; until then, read `per_record.md` rather than the numbers. |
 | *some sampling group's share … differs from its share of the pool* | The evaluated records don't mirror the pool. | Look at the group table; usually hand-picked or skipped records. |
-| *The model suggests N row(s) of component_class_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained component classes since those rows were checked, and the model thinks a different one means the same as the row's current-schema component class (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py helpers/annotate.py`, *Translation table* (it shows the suggestion): pick the suggested component class if right, keep `(none)` otherwise. |
+| *The model suggests N row(s) of component_class_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained component classes since those rows were checked, and the model thinks a different one means the same as the row's component class of the current schema (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py helpers/annotate.py`, *Translation table* (it shows the suggestion): pick the suggested component class if right, keep `(none)` otherwise. |
 | *N partial pair(s) of the tuning part aren't reviewed yet* | The partial level counts pairs nobody has confirmed; some may not be the same fact (e.g. `MODIS` vs `MODIS Terra`). | Review them in `py helpers/annotate.py`, *Partial pairs*; rerun 070. |
 | *N row(s) of component_class_mapping.csv translate to (none) though the ground truth vocabulary now has the same component class* | A row checked as `(none)` before that component class joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's component class means something else. | Check the row in `py helpers/annotate.py`, *Translation table* (it's flagged there); change it to the ground truth vocabulary's component class, or keep `(none)`. |
-| *N pair(s) of component classes met 2 or more times where extraction found the triple but a component class differed* | A row of `component_class_mapping.csv` may translate a current-schema component class to the wrong one of the ground truth vocabulary, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Possible translation errors* in the report; fix the rows that are wrong (`py helpers/annotate.py`, *Translation table*). |
+| *N component class mismatch(es) seen 2 or more times where extraction found the triple but a component class differed* | A row of `component_class_mapping.csv` may translate a component class of the current schema to the wrong one of the ground truth vocabulary, to `(none)` when one fits, or with the wrong `swap_subject_and_object`. | Look at *Component class mismatches* in the report; fix the rows that are wrong (`py helpers/annotate.py`, *Translation table*). |
 | *The held-out part was looked at: N time(s) so far* | After `--evaluate_held_out true`: each look is logged and counted. | Commit `annotations/held_out_looks.csv`. |
 | *N of M compared triples have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
@@ -222,14 +222,14 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *Added N row(s) to component_class_mapping.csv …* | New component classes of 060's schema. If the model proposed a component class that isn't in the ground truth vocabulary, the row says `(none)` and the message ends by listing them (*The model proposed N component class(es) that aren't in the ground truth vocabulary, written as (none): …*). | Check the rows with `checked` = `no` (easiest in `py helpers/annotate.py`, *Translation table*), then run again. |
+| *Added N row(s) to component_class_mapping.csv …* | New component classes of the current schema. If the model proposed a component class that isn't in the ground truth vocabulary, the row says `(none)` and the message ends by listing them (*The model proposed N component class(es) that aren't in the ground truth vocabulary, written as (none): …*). | Check the rows with `checked` = `no` (easiest in `py helpers/annotate.py`, *Translation table*), then run again. |
 | *N checked row(s) of component_class_mapping.csv were checked when the current schema defined the component class differently* | A later schema uses the component class, but defines it differently from when the row was checked: the translation may no longer be right. | Check those rows again in `py helpers/annotate.py`, *Translation table* (it shows both definitions), then run again. |
 | *N row(s) of component_class_mapping.csv still need checking* | Rows added by an earlier run aren't checked yet. | Check them in `py helpers/annotate.py`, *Translation table* (or in the CSV: fix `component_class_in_gtt` and `swap_subject_and_object` where wrong, then set `checked` to `yes`), then run again. |
 | *N checked row(s) … translate to a component class that isn't in the ground truth vocabulary* | A typo in `component_class_in_gtt`, or one since renamed; each is listed as *component class (current schema) --> component class (not in the ground truth vocabulary)*. | Choose a component class of the ground truth vocabulary, or `(none)`. |
 | *component_class_mapping.csv has N component class(es) with more than one row: … (lines …)* | Two rows for one component class (usually from a hand edit), so which translation counts is unclear. | Keep one row per component class: `py helpers/annotate.py`, *Translation table*, shows a *Delete this row* button on each repeated row. |
 | *component_class_mapping.csv lacks the column(s) …* | The file's header was changed. | Restore the header: `kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema`. |
 | *kind must be 'entity class' or 'predicate'* | A typo in `kind`. | Fix it. |
-| *Nothing to evaluate yet* | No finished ground truth record that 060 extracted is in the fair part. | Finish records in `py helpers/annotate.py`, then run 060. |
+| *Nothing to evaluate yet* | No finished ground truth record that 060 extracted is in the fair sample. | Finish records in `py helpers/annotate.py`, then run 060. |
 | *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split/run.py`. |
 | *missing input files … run 060_extract first* | 060 hasn't run. | Run it. |
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |

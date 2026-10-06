@@ -47,7 +47,7 @@ from common.cache import Cache, key
 from common.chunking import text_fields
 from common.prompt_files import fill, load, text as prompt_text
 from common.text_match import Text
-from common.triples_io import (clean_triple, describes_row, label_key, triple_key)
+from common.triples_io import (clean_triple, describes_row, component_class_key, triple_key)
 from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
@@ -99,7 +99,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
                 continue
             row = {"id": record_id, **{k: t.get(k, "") for k in ROW_KEYS}}
             k = triple_key(row)
-            pair = (label_key(row["subject_class"]), label_key(row["object_class"]))
+            pair = (component_class_key(row["subject_class"]), component_class_key(row["object_class"]))
             if k in seen and pair in seen[k][1]:
                 removed.append({"reason": "duplicate", **row})
                 continue

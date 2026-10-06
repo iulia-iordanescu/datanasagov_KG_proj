@@ -42,7 +42,7 @@ import collections
 from dataclasses import dataclass, field
 
 from common.audit import log
-from common.triples_io import label_key
+from common.triples_io import component_class_key
 from merge import BECOMES
 
 #: Example component instances kept per entity class.
@@ -66,7 +66,7 @@ def _folding(finals: collections.Counter, kind: str, folds: list) -> dict:
     alphabetically)."""
     groups = collections.defaultdict(collections.Counter)
     for label, n in finals.items():
-        groups[label_key(label)][label] += n
+        groups[component_class_key(label)][label] += n
     out = {}
     for spellings in groups.values():
         into = sorted(spellings.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]

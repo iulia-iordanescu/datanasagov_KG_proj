@@ -55,8 +55,8 @@ A schema holds entity classes and predicates, each with a one-line definition, a
 **Text (any other ending), like the hand-built schema** `annotations/schema_derived_from_manual_annotation.txt`:
 
 ```
-CLASSES
--------
+ENTITY CLASSES
+--------------
 Instrument        a device that takes measurements
 Spacecraft        a craft that operates in space
 
@@ -68,18 +68,19 @@ ABOARD            is carried on
 
 - An entry is the entity class or predicate (no spaces in it), then **two or more spaces**, then its definition, on one line. If one appears twice, the first entry is kept.
 - Under a predicate, an indented line lists its patterns as `Subject -> Object` pairs separated by `;`.
-- Under any entry, an indented line starting `source:` says where the idea came from (used by the additions file, and by the component classes the annotation tool adds to the hand-built schema).
+- A pattern can also stand on its own, in a `PATTERNS` section: subject class, predicate and object class on one line, e.g. `Instrument ABOARD Mission`. The additions file uses it to add a pattern to a predicate the schema already has.
+- Under any entry (entity class, predicate or pattern), an indented line starting `source:` says where the idea came from (used by the additions file, and by the component classes the annotation tool adds to the hand-built schema).
 - Lines starting with `#` are comments. Any other line is not read: in a schema given with `--schema` it's ignored as prose (like the explanation in the hand-built schema); in the additions file, where it's usually a mistake, it's pointed out before paying.
 
 So `py 060_extract/run.py --schema annotations/schema_derived_from_manual_annotation.txt` extracts with your hand-built schema.
 
-### Adding entity classes and predicates by hand
+### Adding entity classes, predicates and patterns by hand
 
 Write them in `annotations/schema_additions.txt`, in the text shape above. It holds an example in `#` comments. For instance:
 
 ```
-CLASSES
--------
+ENTITY CLASSES
+--------------
 Mission           a named spaceflight effort
                   source: mentor
 
@@ -88,12 +89,17 @@ PREDICATES
 PART_OF_MISSION   belongs to the mission
                   Spacecraft -> Mission
                   source: mentor
+
+PATTERNS
+--------
+Instrument ABOARD Mission
+                  source: mentor
 ```
 
-- They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts.
+- They're added to whichever schema is used, marked as coming from the additions, with no support, maintainers or texts. A pattern of the `PATTERNS` section adds a pattern to a predicate the schema already has (`ABOARD` above), without repeating the predicate.
 - An addition the schema already has is left out, and the schema's entry is kept. So is one differing only in case or punctuation (`spacecraft` or `Space_craft` vs `Spacecraft`), since every row is checked that loosely too (see *component class outside the schema* in the terminology), and so is a second addition repeating an earlier one. Its patterns still apply, to the entry kept.
-- Give each one a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
-- **Adding component classes seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so one added because it came up there flatters the metrics for exactly those records. Add such component classes only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying. Component classes from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
+- Give each one (entity class, predicate or pattern) a `source:` line saying where the **idea** came from (`mentor`, `NASA missions A-to-Z`, …). An addition without one is pointed out before paying.
+- **Adding component classes seen in ground truth records needs care.** Step 070 evaluates extraction on those records, so one added because it came up there flatters the metrics for exactly those records. Add such component classes only from the **tuning part** (070 shows only its numbers, unless you ask for the held-out part), and write `source: ground truth` with the records' pool positions, as the annotation tool shows them: `source: ground truth tuning #12, #15` (the tool says on each record whether it's tuning or held-out). Code enforces it: an addition whose source mentions the ground truth but names a held-out record, a position not in the pool, or no record at all is left out, with a note before paying; so are the patterns written under such a predicate. Component classes from outside knowledge, or from a run over every record (the report's list then leaves the ground truth records out), are fine.
 
 ## Outputs
 
@@ -103,7 +109,7 @@ In `outputs/intermediate_results/060_extract/`:
 
 | File | Contents |
 |---|---|
-| `extracted_triples.csv` | The triple instances kept: for each record extracted, its DESCRIBES row first, then its triple instances. Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
+| `extracted_triples.csv` | The extracted triples: for each record extracted, its DESCRIBES row first, then its triple instances. Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
 | `extracted_triples_removed.csv` | Every triple instance removed, with `reason` (below; both, if both apply); `raw` holds what the model returned when it wasn't a triple instance at all. |
 | `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), the additions left out for a clash (`left_out_additions`), and those left out for not coming from tuning records only (`left_out_not_tuning`). 070 reads this (and 080 will), so they use exactly what 060 used. |
 | `extracted_triples_details.json` | Each record chosen, with its status (`extracted`, or `failed` with the error), text pieces, rows kept and removed; the records passed over while choosing; and the component classes outside the schema the model used (see the report). |
@@ -179,7 +185,7 @@ The code: `060_extract/` holds `run.py` (the control panel: inputs, settings and
 | `common/common_prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050: subject and object in the record's own words, the shortest source text copied exactly, one fact per triple, no "is a" triples, the kind of thing the title names |
 | `common/common_prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 |
 
-Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "classes", "predicates"), not in this project's terms, which the model doesn't know. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 050: editing them changes both steps.
+Each prompt is a plain text file: open it to read exactly what the model is told. `$name` marks where the code fills something in. The prompts speak plainly to the model ("facts", "entity classes", "predicates"), explaining any term they use. Editing a prompt is allowed: the next run asks again every call that uses it, and pays for them. The two `common/common_prompts/` files are shared with 050: editing them changes both steps.
 
 ## Checks and warnings
 

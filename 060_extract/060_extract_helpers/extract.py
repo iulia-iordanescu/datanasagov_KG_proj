@@ -36,7 +36,7 @@ schema. Then:
     The DESCRIBES row is always kept, so every record extracted has one
     (a record with nothing else "states no fact the schema can express").
     If the model named no entity class for it, or one the schema doesn't
-    have, its class is X and the row is flagged.
+    have, its entity class is X and the row is flagged.
 
 Component classes outside the schema are counted (new_component_classes), so the report can list
 the ones the model reaches for most: candidates for schema_additions.txt.
@@ -69,13 +69,13 @@ SLOTS_OF = {"subject_class_not_in_schema": ("entity class", "subject_class"),
 class Rows:
     kept: dict = field(default_factory=dict)       # {id: [rows]}, DESCRIBES row first
     removed: dict = field(default_factory=dict)    # {id: [removed items, each with "reason"]}
-    flags: dict = field(default_factory=dict)      # {check: kept rows that raised it}
+    flags: dict = field(default_factory=dict)      # {check: extracted triples that raised it}
     reasons: dict = field(default_factory=dict)    # {reason: rows removed for it}
     new_component_classes: dict = field(default_factory=dict)  # {(kind, component class): {"records": [ids]}}
 
 
 def _in_schema_spelling(row: dict, schema_entries) -> dict:
-    """A kept row with its entity classes and predicate written the way the
+    """An extracted triple with its entity classes and predicate written the way the
     schema writes them: they are compared loosely ("Space craft" is
     Spacecraft), but the output always uses the schema's spelling."""
     fixed = dict(row)

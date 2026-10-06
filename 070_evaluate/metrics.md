@@ -8,18 +8,18 @@ Formulas use the usual set symbols: \|…\| is the number of members, ∪ is uni
 
 ### <ins>Definition</ins>
 
-A **pair** is one extracted triple and one ground truth triple of the same record that evaluation takes to state the same fact, once the extracted triple's predicate, subject class and object class are translated into the ground truth vocabulary (through `annotations/component_class_mapping.csv`). Each triple has at most one partner, and evaluation finds the largest possible set of pairs. There are two kinds, **exact pairs** and **partial pairs**, and when two triples count as stating the same fact depends on the kind.
+A **pair** is one extracted triple and one ground truth triple of the same record that evaluation takes to state the same fact, once the extracted triple's predicate, subject class and object class are translated into the ground truth vocabulary (through the translation table, [`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)). Each triple has at most one partner, and evaluation finds the largest possible set of pairs. There are two **pair levels**, exact and partial, and when two triples count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
 
-| Kind | Two triples count as stating the same fact when… |
+| Pair level | Two triples count as stating the same fact when… |
 |---|---|
-| exact pair | they have the same predicate, the same subject instance and the same object instance, ignoring case, spacing, quote marks, dashes, punctuation at either end and a leading "a", "an" or "the" |
-| partial pair | they have the same predicate; the two subject instances are equal or one appears inside the other as whole words (either way round); and the same holds for the two object instances. Only triples left without an exact partner can form one. |
+| exact | they have the same predicate, the same subject instance and the same object instance, ignoring case, spacing, quote marks, dashes, punctuation at either end and a leading "a", "an" or "the" |
+| partial | they have the same predicate; the two subject instances are equal or one appears inside the other as whole words (either way round); and the same holds for the two object instances. Only triples left without an exact partner can form one. |
 
-Strict is an extra condition on a pair of either kind: a **strict pair** is an exact or partial pair whose subject classes and object classes are also the same.
+Strict is an extra condition on a pair at either level: a **strict pair** is an exact or partial pair whose subject classes and object classes are also the same.
 
 So every pair is exactly one of these four:
 
-| | strict (classes the same) | not strict |
+| | strict (subject classes and object classes the same) | not strict |
 |---|---|---|
 | exact pair | exact pairs ∩ strict pairs | exact pairs, not strict |
 | partial pair | partial pairs ∩ strict pairs | partial pairs, not strict |
@@ -39,7 +39,7 @@ Worked example: [Pairs: example](#pairs-example). Sources: [Pairs: sources](#pai
 
 ### <ins>Definition</ins>
 
-The share of extraction's triples that are correct. What "correct" means depends on the version.
+The share of the extracted triples that are correct. What "correct" means depends on the version.
 
 ### <ins>Formula</ins>
 
@@ -54,7 +54,7 @@ Four versions.
 
 ### <ins>How to read it</ins>
 
-- As a chance: precision 80% means a triple extraction keeps has an 80% chance of forming a pair.
+- As a chance: precision 80% means an extracted triple has an 80% chance of forming a pair.
 - For the graph: with precision 80%, 1 statement in 5 would have no counterpart in the ground truth.
 - Low precision means many triples without a partner: a wrong subject, predicate or object, a fact the text doesn't state, the same fact again in other words, or a true fact the ground truth lacks.
 
@@ -86,7 +86,7 @@ Four versions.
 
 - As a chance: recall 57% means a fact the ground truth lists has a 57% chance of being found.
 - For the graph: with recall 57%, it would lack 3 of every 7 facts the records state.
-- Low recall means many ground truth triples without a partner: facts extraction missed, facts whose predicate the current schema doesn't have (see *Recall upper bound*), or a wrong row in the translation table.
+- Low recall means many ground truth triples without a partner: facts extraction missed, facts whose predicate the current schema doesn't have (see *Recall upper bound*), or a wrong row in the translation table ([`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)).
 
 ### <ins>Assumes and can't see</ins>
 
@@ -147,7 +147,7 @@ Two versions.
 
 ### <ins>Assumes and can't see</ins>
 
-- Only paired triples are judged: the classes of a triple without a partner aren't counted anywhere.
+- Only paired triples are judged: the subject class and object class of a triple without a partner aren't counted anywhere.
 - Two component classes of the current schema that translate to one component class of the ground truth vocabulary look the same, so mixing them up isn't seen.
 - How sure the number is: see *Margin of error*.
 
@@ -180,7 +180,7 @@ Its extracted triples, after translation, and what each becomes:
 
 And G5 (CERES ABOARD Aqua) has no partner: ground truth only, a missed fact.
 
-In all: 6 extracted triples, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2–G2 not); 2 partial pairs (E3–G3 strict, E4–G4 not); so 2 strict pairs, one of each kind; 2 extracted only (E5, E6); 1 ground truth only (G5).
+In all: 6 extracted triples, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2–G2 not); 2 partial pairs (E3–G3 strict, E4–G4 not); so 2 strict pairs, one at each pair level; 2 extracted only (E5, E6); 1 ground truth only (G5).
 
 ### Precision: example
 

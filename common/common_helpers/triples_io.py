@@ -4,10 +4,10 @@ keyed, and the DESCRIBES row is made.
 
 Adapted from to_be_reshaped/triple_io.py; the DESCRIBES row (at the end)
 was added. Used by common/common_helpers/extraction.py (050 and 060: clean_triple,
-triple_key, label_key, describes_row), common/common_helpers/validate.py,
-common/common_helpers/ground_truth.py, the annotation tool, 040 (label_key), 050 and 060
-(the DESCRIBES row's component classes, COLUMNS, label_key) and 070
-(label_key, the DESCRIBES row's component classes).
+triple_key, component_class_key, describes_row), common/common_helpers/validate.py,
+common/common_helpers/ground_truth.py, the annotation tool, 040 (component_class_key), 050 and 060
+(the DESCRIBES row's component classes, COLUMNS, component_class_key) and 070
+(component_class_key, the DESCRIBES row's component classes).
 
 A triple row has the columns in COLUMNS. source_text is the passage that
 states the fact. The ground truth and the draft batches add three columns
@@ -19,7 +19,7 @@ Component instances and component classes are evened out in two ways:
                 punctuation, a leading article); predicates also treat
                 "_", "-" and spaces alike ("IS_ABOARD" == "is aboard").
                 Two rows with the same key are the same fact.
-    label_key   letters and digits only, for component classes the
+    component_class_key   letters and digits only, for component classes the
                 model re-cased or re-spaced ("physical quantity" ==
                 "PhysicalQuantity").
 
@@ -54,13 +54,13 @@ def norm_predicate(s) -> str:
     return re.sub(r"[\s_\-]+", " ", norm_text(s)).strip()
 
 
-def label_key(s) -> str:
+def component_class_key(s) -> str:
     """Loosest key, for looking up a COMPONENT CLASS the model re-cased or
     re-spaced ("physical quantity" -> "PhysicalQuantity"): letters and
     digits only, digits kept. Used wherever component classes are compared
     loosely: 040 (spelling folds, the comparison with the hand-built
     schema), the schema checks in common/common_helpers/validate.py, common/common_helpers/extraction.py
-    (conflicting classes), 060 (merging the additions) and 070 (translating
+    (the conflicting_classes flag), 060 (merging the additions) and 070 (translating
     component classes, matching classes)."""
     return re.sub(r"[^a-z0-9]", "", unicodedata.normalize(
         "NFKC", str(s or "")).casefold())
@@ -68,7 +68,7 @@ def label_key(s) -> str:
 
 def triple_key(t: dict) -> tuple:
     """The tuple two triples must share to count as the same fact. It
-    ignores the classes: the same fact given twice with different classes
+    ignores the entity classes: the same fact given twice with different entity classes
     is ONE fact here, and common/common_helpers/extraction.py flags that case
     (conflicting_classes)."""
     return (norm_text(t.get("subject")), norm_predicate(t.get("predicate")),
@@ -140,5 +140,5 @@ def describes_row(record_id: str, title: str, entity_class: str) -> dict:
 
 
 def is_describes(row: dict) -> bool:
-    return label_key(row.get("subject_class")) == label_key(ENTRY_CLASS) and \
+    return component_class_key(row.get("subject_class")) == component_class_key(ENTRY_CLASS) and \
         norm_predicate(row.get("predicate")) == norm_predicate(ENTRY_PREDICATE)

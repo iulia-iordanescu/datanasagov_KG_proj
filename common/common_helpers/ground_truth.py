@@ -200,7 +200,7 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
     """The ground truth vocabulary: the hand-built schema's entity classes and
     predicates (hand_schema, as common.schema_io.read_hand_schema reads it),
     plus every one the ground truth triples use that it lacks. Component
-    classes are compared as common.triples_io.label_key does (ignoring case and
+    classes are compared as common.triples_io.component_class_key does (ignoring case and
     punctuation), keeping the first spelling met; the DESCRIBES row's own
     component classes (CatalogEntry, DESCRIBES), the undecided X and anything
     without a letter or digit (e.g. "-") are not counted.
@@ -210,20 +210,20 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
     not in the hand-built schema, in the order first used. A coined component
     class has an empty
     definition: only the hand-built schema has definitions."""
-    from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, label_key
+    from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, component_class_key
 
     out = {"entity_classes": dict(hand_schema["entity_classes"]), "predicates": dict(hand_schema["predicates"]),
            "patterns": list(hand_schema.get("patterns", [])),
            "coined": {"entity_classes": [], "predicates": []}}
-    known = {kind: {label_key(n) for n in out[kind]} for kind in ("entity_classes", "predicates")}
+    known = {kind: {component_class_key(n) for n in out[kind]} for kind in ("entity_classes", "predicates")}
     for row in gt.rows:
         for kind, name in (("entity_classes", row["subject_class"]), ("entity_classes", row["object_class"]),
                            ("predicates", row["predicate"])):
-            if label_key(name) and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) \
-                    and label_key(name) not in known[kind]:
+            if component_class_key(name) and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) \
+                    and component_class_key(name) not in known[kind]:
                 out[kind][name] = ""
                 out["coined"][kind].append(name)
-                known[kind].add(label_key(name))
+                known[kind].add(component_class_key(name))
     return out
 
 

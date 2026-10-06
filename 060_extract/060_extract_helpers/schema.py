@@ -3,8 +3,9 @@ schema.py -- stage 2: the schema this run extracts with.
 
 The schema input (040's the_schema.json by default, or any file given with
 --schema, in either shape common/common_helpers/schema_io.py reads) plus the additions
-(annotations/schema_additions.txt): entity classes and predicates a person
-added, e.g. on a mentor's advice. They are merged into one schema, and each
+(annotations/schema_additions.txt): entity classes, predicates and patterns a
+person added, e.g. on a mentor's advice (a pattern for a predicate the
+schema already has goes in the file's PATTERNS section). They are merged into one schema, and each
 entry remembers where it came from: "schema" (the schema input) or
 "additions". An addition the schema (or an earlier addition) already has,
 ignoring case and punctuation, is left out (the entry already there is
@@ -27,7 +28,8 @@ The word "tuning" is required too, as a check on the person: any source
 mentioning "ground truth" is checked against splits.json (030), and an
 addition that doesn't say "tuning", names a held-out record, a position not
 in the pool, or no record at all is left out, with a note shown before
-paying.
+paying. The patterns written under such a predicate are left out with it;
+a pattern of the PATTERNS section is checked by its own source line.
 
 The schema input's own entries are never left out, but one whose "source:"
 line fails the same check (e.g. a component class the annotation tool added to the
@@ -46,8 +48,8 @@ from pathlib import Path
 from common.audit import log, ref_path
 from common.ground_truth import read_pool
 from common.report import named
-from common.schema_io import ground_truth_source_problem, read_schema, schema_text
-from common.triples_io import label_key
+from common.schema_io import ground_truth_source_problem, pattern_key, read_schema, schema_text
+from common.triples_io import component_class_key
 from common.validate import SchemaEntries
 
 KINDS = ("entity_classes", "predicates")
@@ -57,13 +59,13 @@ KINDS = ("entity_classes", "predicates")
 class Schema:
     content: dict = field(default_factory=dict)    # as common/common_helpers/schema_io.py reads it, merged
     came_from: dict = field(default_factory=dict)  # {kind: {component class or pattern: "schema" | "additions"}}
-    sources: dict = field(default_factory=dict)    # {kind: {component class: its source line}} for additions
+    sources: dict = field(default_factory=dict)    # {kind: {component class: its source line}}, "patterns": {pattern: …}, for additions
     text: str = ""                                 # as the model sees it
     schema_entries: object = None  # common.validate.SchemaEntries
     files: dict = field(default_factory=dict)      # {"schema": path, "additions": path}
     notes: list = field(default_factory=list)      # shown before paying, and in the report
     left_out: list = field(default_factory=list)   # {"kind", "component_class", "kept"}: additions already there
-    not_tuning: list = field(default_factory=list) # {"kind", "component_class", "source", "why"}: from ground truth, not tuning only
+    not_tuning: list = field(default_factory=list) # {"entry_type", "schema_entry", "source", "why"}: from ground truth, not tuning only
 
 
 def _source(came_from: str | None) -> str:
@@ -85,17 +87,17 @@ def load_schema(inputs: dict) -> Schema:
     result.sources = {kind: {} for kind in KINDS}
     no_source = []
     for kind in KINDS:
-        have = {label_key(n): n for n in merged[kind]}
+        have = {component_class_key(n): n for n in merged[kind]}
         for name, definition in extra[kind].items():
             why = ground_truth_source_problem(extra["sources"][kind].get(name, ""), parts)
             if why:
-                result.not_tuning.append({"kind": kind, "component_class": name,
+                result.not_tuning.append({"entry_type": kind, "schema_entry": name,
                                           "source": extra["sources"][kind][name], "why": why})
                 continue
-            if label_key(name) in have:
-                result.left_out.append({"kind": kind, "component_class": name, "kept": have[label_key(name)]})
+            if component_class_key(name) in have:
+                result.left_out.append({"kind": kind, "component_class": name, "kept": have[component_class_key(name)]})
                 continue
-            have[label_key(name)] = name
+            have[component_class_key(name)] = name
             merged[kind][name] = definition
             result.came_from[kind][name] = "additions"
             source = extra["sources"][kind].get(name)
@@ -103,14 +105,36 @@ def load_schema(inputs: dict) -> Schema:
                 result.sources[kind][name] = source
             else:
                 no_source.append(name)
-    spelling = {kind: {label_key(n): n for n in merged[kind]} for kind in KINDS}
+    spelling = {kind: {component_class_key(n): n for n in merged[kind]} for kind in KINDS}
 
     def spelled(pattern: tuple) -> tuple:
-        return tuple(spelling[kind].get(label_key(x), x)
+        return tuple(spelling[kind].get(component_class_key(x), x)
                      for x, kind in zip(pattern, ("entity_classes", "predicates", "entity_classes")))
 
+    # The additions' patterns: those under a predicate share its source, so they
+    # are left out with it; a pattern of the PATTERNS section has its own.
+    result.sources["patterns"] = {}
+    rejected = {component_class_key(x["schema_entry"]) for x in result.not_tuning if x["entry_type"] == "predicates"}
+    standalone = {tuple(q) for q in extra.get("pattern_entries", [])}
+    added_patterns = []
+    for q in extra["patterns"]:
+        if tuple(q) not in standalone:
+            if component_class_key(q[1]) not in rejected:
+                added_patterns.append(q)
+            continue
+        source = extra["sources"].get("patterns", {}).get(pattern_key(q), "")
+        why = ground_truth_source_problem(source, parts)
+        if why:
+            result.not_tuning.append({"entry_type": "patterns", "schema_entry": pattern_key(q), "source": source,
+                                      "why": why})
+            continue
+        added_patterns.append(q)
+        if source:
+            result.sources["patterns"][spelled(q)] = source
+        else:
+            no_source.append(pattern_key(q))
     in_base = {spelled(p) for p in base["patterns"]}
-    patterns = list(dict.fromkeys(spelled(p) for p in base["patterns"] + extra["patterns"]))
+    patterns = list(dict.fromkeys(spelled(p) for p in base["patterns"] + added_patterns))
     merged["patterns"] = patterns
     result.came_from["patterns"] = {p: "schema" if p in in_base else "additions" for p in patterns}
     result.content = merged
@@ -128,8 +152,8 @@ def load_schema(inputs: dict) -> Schema:
     if result.not_tuning:
         result.notes.append(f"{len(result.not_tuning)} addition(s) in {Path(inputs['additions']).name} say they come "
                             f"from the ground truth but don't show they come from tuning records only, so they are "
-                            f"left out (a component class from a held-out record would let held-out records influence the schema): "
-                            + named([f"{x['component_class']} (additions file; {x['why']})" for x in result.not_tuning], 5, "; ")
+                            f"left out (an addition from a held-out record would let held-out records influence the schema): "
+                            + named([f"{x['schema_entry']} (additions file; {x['why']})" for x in result.not_tuning], 5, "; ")
                             + ".")
     if result.left_out:
         result.notes.append(f"{len(result.left_out)} addition(s) in {Path(inputs['additions']).name} "
@@ -141,7 +165,8 @@ def load_schema(inputs: dict) -> Schema:
     if extra["unread"]:
         result.notes.append(f"{len(extra['unread'])} line(s) of {Path(inputs['additions']).name} aren't read as an "
                             f"entry, a source or patterns (an entity class or predicate can't contain a space; two or more spaces go "
-                            f"before the definition; patterns are \"Subject -> Object\" separated by \";\"): "
+                            f"before the definition; patterns under a predicate are \"Subject -> Object\" separated by \";\"; "
+                            f"in the PATTERNS section, one pattern per line, \"Subject PREDICATE Object\"): "
                             + named(extra["unread"], 5, "; ") + ".")
     if no_source:
         result.notes.append(f"{len(no_source)} addition(s) have no \"source:\" line saying where the idea "

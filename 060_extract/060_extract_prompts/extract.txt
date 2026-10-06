@@ -1,10 +1,10 @@
 Extract the facts this record states that the schema below can express, as
-subject / predicate / object triples with a class for the subject and the
-object.
+subject / predicate / object triples, each with an entity class (the kind of
+thing it is) for the subject and for the object.
 
-Use ONLY the classes and predicates of the schema, spelled exactly as
+Use ONLY the entity classes and predicates of the schema, spelled exactly as
 written, describes_class included. Leave out any fact they cannot express;
-do not invent classes or predicates. If no class fits what the title
+do not invent entity classes or predicates. If no entity class fits what the title
 names, leave describes_class empty.
 
 SCHEMA

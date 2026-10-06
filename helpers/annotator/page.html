@@ -139,7 +139,7 @@ async function api(path, body) {
 }
 function status(text, kind) { const s = $("status"); s.textContent = text; s.className = kind || ""; }
 const isDescribes = (r) => r.subject_class.toLowerCase() === "catalogentry" && r.predicate.toUpperCase() === "DESCRIBES";
-const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.kind === "error").length, 0);
+const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "error").length, 0);
 
 // ---------------------------------------------------------------- batches
 async function loadBatches() {
@@ -249,7 +249,7 @@ function show(i) {
           el("button", { disabled: true, title: "held-out record" }, "Add a component class to the schema additions"))
       : rec.part === "tuning"
         ? el("span", {}, `Tuning record: a component class you learn here may go into schema_additions.txt, with “source: ground truth tuning #${rec.position}”. `,
-            el("button", { onclick: () => openAdditions({ kind: "entity class", component_class: "", definition: "",
+            el("button", { onclick: () => openAdditions({ entry_type: "entity class", component_class: "", definition: "",
                            source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
                "Add a component class to the schema additions"))
         : "Not in the pool: component classes learned here can't go into schema_additions.txt as coming from the ground truth."),
@@ -295,7 +295,7 @@ function field(rec, j, key, label, extra) {
 }
 function problemList(r, j) {
   return el("ul", { class: "problems", "data-problems": j },
-    r.problems.map(p => el("li", { class: p.kind }, (p.kind === "error" ? "✖ " : "⚑ ") + p.message,
+    r.problems.map(p => el("li", { class: p.type }, (p.type === "error" ? "✖ " : "⚑ ") + p.message,
                            p.add ? addControl(p.add) : null)));
 }
 function describesRow(rec, j) {
@@ -341,7 +341,7 @@ function setActive(j) {
 function addRow(rec) {
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
-                  problems: [{ kind: "error", code: "empty", message: "Subject, predicate and object must all be filled in." }] });
+                  problems: [{ type: "error", code: "empty", message: "Subject, predicate and object must all be filled in." }] });
   show(current);
   const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);
   if (inputs.length) inputs[0].focus();
@@ -414,7 +414,7 @@ function refreshProblems() {
 // and the checks run again.
 function addControl(a) {
   const box = el("span", { class: "addbox" });
-  if (a.kind === "pattern") {
+  if (a.entry_type === "pattern") {
     box.append(el("button", { onclick: () => addToHand(a) },
       `Add the pattern ${a.subject_class} -> ${a.object_class} to ${a.predicate}`));
     return box;
@@ -453,7 +453,7 @@ function drawGaps(g) {
     el("summary", {}, `The ground truth uses ${n} component class(es) and ${p} pattern(s) that aren't in the hand-built ` +
        `schema (${g.file}). Add each one you mean to keep; fix any typo where it's used.`),
     el("ul", {},
-      g.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.kind), el("b", {}, x.component_class),
+      g.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
         ` (ground truth vocabulary; ${x.uses} row(s))`, addControl(x))),
       g.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
         `${x.subject_class} ${x.predicate} ${x.object_class} (${x.uses} row(s))`, addControl(x)))));
@@ -464,7 +464,7 @@ function drawGaps(g) {
 // which component class of the ground truth vocabulary it means. Only component_class_in_gtt,
 // swap_subject_and_object and checked can be changed here.
 let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
-// A row "of the current schema": its component class is in the schema extraction used
+// A row "of the current schema": its component class is in the current schema
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
 const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same component class");
@@ -540,7 +540,7 @@ function exampleLine(r) {
   const after = r.component_class_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
     : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.component_class_in_gtt}  ${ex.subject}`
     : `${ex.subject}  ${r.component_class_in_gtt}  ${ex.object}`;
-  return el("div", { class: "example", title: r.example ? "the first such triple extraction kept" : "a made-up example" },
+  return el("div", { class: "example", title: r.example ? "the first such extracted triple" : "a made-up example" },
     `${before}   -->   ${after}`);
 }
 
@@ -746,9 +746,10 @@ function drawAdditions() {
     el("h3", {}, "Schema additions"),
     el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Extraction adds them ` +
       "to whichever schema it uses (the current schema)."),
-    el("p", { class: "meta" }, "Every entry needs a one-line definition and a source: where the idea came from. " +
-      "A component class learned from the ground truth must come from tuning records: “ground truth tuning #12, #15”."),
-    el("button", { onclick: () => { editing = { kind: "entity class", component_class: "", definition: "", source: "",
+    el("p", { class: "meta" }, "Every entity class and predicate needs a one-line definition, and every entry a " +
+      "source: where the idea came from. One learned from the ground truth must come from tuning records: " +
+      "“ground truth tuning #12, #15”. To add a pattern to a predicate the schema already has, add a pattern."),
+    el("button", { onclick: () => { editing = { entry_type: "entity class", component_class: "", definition: "", source: "",
                                                   patterns: [] }; drawAdditions(); } }, "+ Add an entry")));
   const cards = [];
   if (additions.unread.length)
@@ -758,12 +759,14 @@ function drawAdditions() {
   if (editing) cards.push(additionForm(editing));
   cards.push(el("section", { class: "card" }, el("h3", {}, "In the file"),
     additions.entries.length ? additions.entries.map((e, i) => el("div", { class: "row" },
-      el("div", {}, el("span", { class: "kind" }, e.kind), el("b", {}, e.component_class), " (additions file): ", e.definition),
-      e.patterns.length ? el("div", { class: "meta" }, "Patterns: " + e.patterns.map(p => `${p[0]} -> ${p[1]}`).join("; ")) : null,
+      e.entry_type === "pattern"
+        ? el("div", {}, el("span", { class: "kind" }, "pattern"), el("b", {}, entryName(e)), " (additions file)")
+        : el("div", {}, el("span", { class: "kind" }, e.entry_type), el("b", {}, e.component_class), " (additions file): ", e.definition),
+      e.patterns && e.patterns.length ? el("div", { class: "meta" }, "Patterns: " + e.patterns.map(p => `${p[0]} -> ${p[1]}`).join("; ")) : null,
       el("div", { class: "meta" }, `source: ${e.source || "(none)"}`),
       el("div", { class: "bar" },
-        el("button", { onclick: () => { editing = { ...e, patterns: e.patterns.map(p => [...p]), _index: i }; drawAdditions(); } }, "Edit"),
-        el("button", { onclick: () => { if (confirm(`Delete ${e.component_class} from ${additions.file}?`))
+        el("button", { onclick: () => { editing = { ...e, patterns: (e.patterns || []).map(p => [...p]), _index: i }; drawAdditions(); } }, "Edit"),
+        el("button", { onclick: () => { if (confirm(`Delete ${entryName(e)} from ${additions.file}?`))
                                           saveAdditions(additions.entries.filter((_, j) => j !== i)); } }, "Delete"))))
       : el("p", { class: "empty" }, "No entries yet.")));
   cards.push(el("section", { class: "card" }, el("h3", {}, "Component classes outside the schema (extraction's last run)"),
@@ -776,10 +779,13 @@ function drawAdditions() {
       el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",
       n.added ? el("span", { class: "meta" }, "added") :
-        el("button", { onclick: () => { editing = { kind: n.kind, component_class: n.component_class, definition: "", source: n.source,
+        el("button", { onclick: () => { editing = { entry_type: n.kind, component_class: n.component_class, definition: "", source: n.source,
                                                     patterns: [] }; drawAdditions(); window.scrollTo(0, 0); } }, "Add")))));
   $("record").replaceChildren(...cards);
 }
+
+// An entry's name for messages: a component class, or a pattern written as "Subject PREDICATE Object".
+const entryName = (e) => e.entry_type === "pattern" ? [e.subject_class, e.predicate, e.object_class].join(" ") : e.component_class;
 
 function additionForm(e) {
   const problem = el("ul", { class: "problems" });
@@ -793,24 +799,30 @@ function additionForm(e) {
   const patterns = el("label", { style: "display:block;margin-top:6px" },
     el("span", { class: "meta" }, "Patterns (predicates only): the entity classes it joins, as Subject -> Object; Subject -> Object"),
     el("input", { value: (e.patterns || []).map(p => `${p[0]} -> ${p[1]}`).join("; "), style: "width:100%",
-                  disabled: e.kind !== "predicate",
+                  disabled: e.entry_type !== "predicate",
                   oninput: (ev) => { e.patterns = ev.target.value.split(";").map(x => x.trim()).filter(Boolean)
                                        .map(x => x.split("->").map(y => y.trim())); check(); } }));
   const save = () => {
     const entries = additions.entries.map(x => ({ ...x }));
-    const clean = { kind: e.kind, component_class: e.component_class, definition: e.definition, source: e.source, patterns: e.patterns || [] };
+    const clean = e.entry_type === "pattern"
+      ? { entry_type: "pattern", subject_class: e.subject_class, predicate: e.predicate, object_class: e.object_class, source: e.source }
+      : { entry_type: e.entry_type, component_class: e.component_class, definition: e.definition, source: e.source, patterns: e.patterns || [] };
     if (e._index !== undefined) entries[e._index] = clean; else entries.push(clean);
     saveAdditions(entries);
   };
   setTimeout(check, 0);
   return el("section", { class: "card maprow todo" },
-    el("h3", {}, e._index !== undefined ? `Edit ${e.component_class}` : "Add an entry"),
-    el("label", { class: "meta" }, "Kind ",
-      el("select", { onchange: (ev) => { e.kind = ev.target.value; drawAdditions(); } },
-        ["entity class", "predicate"].map(k => el("option", { value: k, selected: e.kind === k }, k)))),
-    input("component_class", "Component class, one word (entity classes in CamelCase, predicates in UPPER_SNAKE_CASE)"),
-    input("definition", "Definition, one line"),
-    patterns,
+    el("h3", {}, e._index !== undefined ? `Edit ${entryName(e)}` : "Add an entry"),
+    el("label", { class: "meta" }, "Entry type ",
+      el("select", { onchange: (ev) => { e.entry_type = ev.target.value; drawAdditions(); } },
+        ["entity class", "predicate", "pattern"].map(k => el("option", { value: k, selected: e.entry_type === k }, k)))),
+    ...(e.entry_type === "pattern"
+      ? [input("subject_class", "Subject class, one word (an entity class)"),
+         input("predicate", "Predicate, one word (one the schema has, or one added here)"),
+         input("object_class", "Object class, one word (an entity class)")]
+      : [input("component_class", "Component class, one word (entity classes in CamelCase, predicates in UPPER_SNAKE_CASE)"),
+         input("definition", "Definition, one line"),
+         patterns]),
     input("source", "Source: where the idea came from (e.g. mentor; NASA missions A-to-Z; ground truth tuning #12)"),
     problem,
     el("div", { class: "bar" }, el("button", { onclick: save }, "Save"),

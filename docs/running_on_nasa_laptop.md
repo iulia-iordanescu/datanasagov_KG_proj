@@ -61,7 +61,7 @@ Each step reads what the one before it wrote, so run them in this order. From th
 | 040 induce schema | `py 040_induce_schema/run.py` | not yet measured | **yes** |
 | 050 annotate | `py 050_annotate/run.py` | not yet measured | **yes** (about one call per record) |
 | 060 extract | `py 060_extract/run.py` | not yet measured | **yes** (about one call per record: by default only the finished ground truth records) |
-| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when 060's schema has component classes not yet in `annotations/component_class_mapping.csv`; then check those rows and run it again) |
+| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when the current schema has component classes not yet in `annotations/component_class_mapping.csv`; then check those rows and run it again) |
 
 Each step ends by printing where its report is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`<step>/<step>.md`) says what every warning means and what to do.
 

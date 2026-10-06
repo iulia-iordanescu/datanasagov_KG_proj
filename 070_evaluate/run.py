@@ -5,7 +5,7 @@ Evaluates what 060 extracted against the ground truth: precision (when
 060 says something, how often it is right) and recall (of the triples in the
 ground truth, how many 060 found), each with its margin of error. 060's
 component classes are first translated into the ground truth vocabulary,
-through a table a person checks. Only the fair part of the ground truth is evaluated, and only
+through a table a person checks. Only the fair sample of the ground truth is evaluated, and only
 its tuning part by default; the held-out part is kept for the end. Terms:
 docs/terminology.md, section "Evaluating extraction".
 
@@ -51,7 +51,7 @@ evaluate = load_moves("070_evaluate")
 
 
 def main(inputs, settings, output):
-    evaluated = evaluate.pick_records(inputs, settings)              # code: finished, extracted, in the fair part
+    evaluated = evaluate.pick_records(inputs, settings)              # code: finished, extracted, in the fair sample
     calls     = evaluate.paid_calls(evaluated, settings, output)     # code: asks before paying; keeps every answer in cache/
     translation     = evaluate.translate_component_classes(inputs, evaluated, calls)   # LLM: Satellite → Spacecraft, new component classes only (+ suggestions for (none) rows); you check
     evaluated = evaluate.compare(evaluated, translation)                   # code: per record, exact pairs / partial pairs / extracted only / ground truth only

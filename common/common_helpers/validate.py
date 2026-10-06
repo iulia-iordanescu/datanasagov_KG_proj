@@ -86,7 +86,7 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
 #     describes_class_not_in_schema  FLAG: that entity class isn't in it
 #     describes_subject_not_id       ERROR: its subject isn't the record's id
 #
-# Component classes are compared loosely (triples_io.label_key: letters and digits only,
+# Component classes are compared loosely (triples_io.component_class_key: letters and digits only,
 # case ignored), so "physical quantity" is PhysicalQuantity and has_version
 # is HAS_VERSION. The schema is a dict as common/common_helpers/schema_io.py reads it.
 
@@ -95,14 +95,14 @@ class SchemaEntries:
     """A schema's entries (entity classes, predicates, patterns) as they are compared (see above)."""
 
     def __init__(self, schema: dict):
-        from common.triples_io import label_key
-        self.key = label_key
-        self.entity_classes = {label_key(n) for n in schema.get("entity_classes", {})}
-        self.predicates = {label_key(n) for n in schema.get("predicates", {})}
+        from common.triples_io import component_class_key
+        self.key = component_class_key
+        self.entity_classes = {component_class_key(n) for n in schema.get("entity_classes", {})}
+        self.predicates = {component_class_key(n) for n in schema.get("predicates", {})}
         #: {kind: {loose key: the schema's own spelling}}, to write a component class the way the schema does
-        self.spelling = {kind: {label_key(n): n for n in schema.get(kind, {})}
+        self.spelling = {kind: {component_class_key(n): n for n in schema.get(kind, {})}
                          for kind in ("entity_classes", "predicates")}
-        self.patterns = {tuple(label_key(x) for x in p) for p in schema.get("patterns", [])}
+        self.patterns = {tuple(component_class_key(x) for x in p) for p in schema.get("patterns", [])}
 
 
 def check_against_schema(instance: dict, schema_entries: SchemaEntries) -> list:

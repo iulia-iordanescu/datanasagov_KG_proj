@@ -25,7 +25,7 @@ many triples weighs more than one with few, as each triple is one answer.
                           records where the ground truth names one; with
                           the MAJORITY BASELINE (the share of the most common
                           kind: what always guessing it would get) and the
-                          PER-KIND average (each kind's accuracy, averaged)
+                          PER-ENTITY-CLASS average (each entity class's accuracy, averaged)
 
 MARGIN OF ERROR, by the bootstrap: the numbers are recomputed RESHUFFLES
 times, each time from records drawn at random, with repeats, from the evaluated
@@ -33,8 +33,8 @@ ones; the middle 95% of the results is the margin. It draws WHOLE RECORDS
 (a record's triples come from one text and one model call, so they succeed or
 fail together; drawing triples one by one would give margins too narrow), and
 draws WITHIN EACH SAMPLING GROUP, as many as the group has, the way the pool
-was drawn. It is valid only for a random sample (records.py metrics only the
-fair part) of enough records: below MIN_RECORDS, no margin is given, only a
+was drawn. It is valid only for a random sample (records.py evaluates only the
+fair sample) of enough records: below MIN_RECORDS, no margin is given, only a
 plain warning. The draws are seeded, so a rerun gives the same margins.
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ import collections
 import random
 
 from pairing import LEVELS
-from common.triples_io import label_key
+from common.triples_io import component_class_key
 
 #: Fewer evaluated records than this: no margin of error (a bootstrap on very
 #: few records gives margins that are themselves unreliable, usually too
@@ -82,11 +82,11 @@ def numbers(records: list) -> dict:
                       "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"],
                       "strict_pairs_within_reach": sw}
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
-    kinds = collections.Counter(label_key(d["truth"]) for d in known)
-    per_kind = {k: _ratio(sum(d["right"] for d in known if label_key(d["truth"]) == k), n) for k, n in kinds.items()}
+    kinds = collections.Counter(component_class_key(d["truth"]) for d in known)
+    per_kind = {k: _ratio(sum(d["right"] for d in known if component_class_key(d["truth"]) == k), n) for k, n in kinds.items()}
     out["describes"] = {"records": len(known), "accuracy": _ratio(sum(d["right"] for d in known), len(known)),
                         "majority_baseline": _ratio(max(kinds.values(), default=0), len(known)),
-                        "per_kind_average": _ratio(sum(per_kind.values()), len(per_kind))}
+                        "per_entity_class_average": _ratio(sum(per_kind.values()), len(per_kind))}
     return out
 
 

@@ -15,19 +15,19 @@ schema can express, across different component classes, is 070's job.
 """
 from __future__ import annotations
 
-from common.triples_io import label_key
+from common.triples_io import component_class_key
 
 
 def _side_by_side(hand: list, induced: list) -> dict:
     """{"both": [(hand-built spelling, induced spelling)], "only_hand": [...], "only_induced": [...]}"""
-    by_norm = {label_key(n): n for n in induced}
+    by_norm = {component_class_key(n): n for n in induced}
     both, only_hand = [], []
     for name in hand:
-        match = by_norm.get(label_key(name))
+        match = by_norm.get(component_class_key(name))
         (both.append((name, match)) if match else only_hand.append(name))
-    matched = {label_key(h) for h, _ in both}
+    matched = {component_class_key(h) for h, _ in both}
     return {"both": both, "only_hand": only_hand,
-            "only_induced": [n for n in induced if label_key(n) not in matched]}
+            "only_induced": [n for n in induced if component_class_key(n) not in matched]}
 
 
 def compare(hand: dict, schema) -> dict:

@@ -1,5 +1,5 @@
-﻿CLASSES
--------
+﻿ENTITY CLASSES
+--------------
 Dataset           a set of observations, measurements or samples
 WebTool           a tool used over the web
 Document          a written publication

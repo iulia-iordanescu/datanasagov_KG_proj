@@ -4,7 +4,7 @@ each.
 
 A record is evaluated when a person has finished it in the ground truth (all
 triples extracted, on every row) AND step 060's last run extracted from it.
-Of those, only the FAIR PART is evaluated: the longest run of the pool's first
+Of those, only the FAIR SAMPLE is evaluated: the longest run of the pool's first
 records that are all evaluated. The pool is shuffled, so that run is a fair
 sample of the catalog, which the margins of error require (see stats.py). A
 record after a gap (an unfinished or unextracted record before it) or not in
@@ -12,7 +12,7 @@ the pool at all (hand-picked) is left out and listed, with what to do.
 
 For each evaluated record: its pool position, its part (tuning or held-out,
 from 030), its sampling group (from the pool file), its title, its ground
-truth triples and DESCRIBES row, and 060's kept triples and DESCRIBES row.
+truth triples and DESCRIBES row, and 060's extracted triples and DESCRIBES row.
 """
 from __future__ import annotations
 
@@ -89,13 +89,13 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     outside = sorted(taken - fair)
     evaluated.left_out = {k: v for k, v in {
         "finished, but not extracted by 060's last run": not_extracted,
-        "outside the fair part (after an unfinished or unextracted pool record, or not in the pool)": outside,
+        "outside the fair sample (after an unfinished or unextracted pool record, or not in the pool)": outside,
     }.items() if v}
     if not_extracted:
         evaluated.notes.append(f"{len(not_extracted)} finished ground truth record(s) weren't extracted by 060's "
                             f"last run, so can't be evaluated: {named(not_extracted)}. Run py 060_extract/run.py.")
     if outside:
-        evaluated.notes.append(f"{len(outside)} record(s) are left out because they aren't in the fair part (the "
+        evaluated.notes.append(f"{len(outside)} record(s) are left out because they aren't in the fair sample (the "
                             f"pool's first records, with none skipped): {named(outside)}. Finish (or extract) "
                             f"the pool records before them to bring them in.")
 
@@ -118,6 +118,6 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                             f"they're left out of the per-group numbers: {named(missing_group)}.")
     if not evaluated.records:
         raise SystemExit("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
-                         "fair part. " + " ".join(evaluated.notes))
+                         "fair sample. " + " ".join(evaluated.notes))
     evaluated.reviews = read_reviews(Path(inputs["partial_reviews"]))
     return evaluated
