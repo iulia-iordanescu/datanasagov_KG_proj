@@ -2,7 +2,7 @@
 
 The one place each of evaluation's numbers is explained: what it is, its formula with an example, how to read it, what it assumes, and where it comes from. Other files point here instead of repeating it. Each metric's worked example is under *Examples*, and where it comes from under *Sources*, at the end. Terms: [docs/terminology.md](../docs/terminology.md).
 
-Formulas use the usual set symbols: \|…\| is the number of members, ∪ is union (in either), ∩ is intersection (in both). Every count is over all the evaluated records together, and never includes the DESCRIBES rows (they're compared on their own, see *What each record describes*).
+Formulas use the usual set symbols: \|…\| is the number of members, ∪ is union (in either), ∩ is intersection (in both). Every count is over all the evaluated records of one part (tuning or held-out) together, not one record at a time, and never includes the DESCRIBES rows (they're compared on their own, see *What each record describes*).
 
 ## Pairs
 
@@ -12,7 +12,7 @@ A **pair** is one extracted triple and one ground truth triple of the same recor
 
 | Pair level | Two triples count as stating the same fact when… |
 |---|---|
-| exact | they have the same predicate, the same subject instance and the same object instance, ignoring case, spacing, quote marks, dashes, punctuation at either end and a leading "a", "an" or "the" |
+| exact | they have the same predicate, the same subject instance and the same object instance, once evened out (glossary): ignoring case, spacing, quote marks, dashes, punctuation at either end and a leading "a", "an" or "the" |
 | partial | they have the same predicate; the two subject instances are equal or one appears inside the other as whole words (either way round); and the same holds for the two object instances. Only triples left without an exact partner can form one. |
 
 Strict is an extra condition on a pair at either level: a **strict pair** is an exact or partial pair whose subject classes and object classes are also the same.
@@ -86,6 +86,7 @@ Four versions.
 
 - As a chance: recall 57% means a fact the ground truth lists has a 57% chance of being found.
 - For the graph: with recall 57%, it would lack 3 of every 7 facts the records state.
+- Read with precision: each alone can be fooled. An extractor that states just one triple it is sure of has perfect precision and almost no recall; one that states everything it can think of has perfect recall and poor precision.
 - Low recall means many ground truth triples without a partner: facts extraction missed, facts whose predicate the current schema doesn't have (see *Recall upper bound*), or a wrong row in the translation table ([`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)).
 
 ### <ins>Assumes and can't see</ins>

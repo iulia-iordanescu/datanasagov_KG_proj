@@ -39,7 +39,7 @@ schema. Then:
     have, its entity class is X and the row is flagged.
 
 Component classes outside the schema are counted (new_component_classes), so the report can list
-the ones the model reaches for most: candidates for schema_additions.txt.
+the ones the model reaches for most: possible schema additions (schema_additions.txt).
 """
 from __future__ import annotations
 

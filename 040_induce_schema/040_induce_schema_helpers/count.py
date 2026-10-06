@@ -1,5 +1,5 @@
 """
-count.py -- stage 5: the evidence behind every candidate schema entry. Code
+count.py -- stage 5: the evidence behind every schema entry found. Code
 only, no model.
 
 Each verified triple instance becomes, through the labels of its component

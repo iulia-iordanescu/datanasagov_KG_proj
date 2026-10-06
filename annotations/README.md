@@ -51,7 +51,7 @@ Every change is saved to `component_class_mapping.csv` at once. The tool can't a
 
 ### Reviewing partial pairs
 
-Press **Partial pairs** at the top of the page, after a run of step 070. A partial pair is a ground truth triple and an extracted triple whose predicates agree but whose subjects or objects agree only loosely: one contained in the other as whole words, either way round (`MODIS` and `Moderate Resolution Imaging Spectroradiometer (MODIS)`, but also `MODIS` and `MODIS Terra`, a different satellite). Each card shows both triples (the extracted one translated into the ground truth vocabulary) and, unfolded, the record's text. Press **Same fact** or **Not the same fact**; **Take back** removes a verdict. Every verdict is saved to `partial_pair_reviews.csv` at once; rerun step 070 to see its effect. Only tuning records are shown: reviewing held-out pairs would mean looking at held-out results.
+Press **Partial pairs** at the top of the page, after a run of step 070. A partial pair is a ground truth triple and an extracted triple whose predicates agree but whose subjects or objects agree only partly: one contained in the other as whole words, either way round (`MODIS` and `Moderate Resolution Imaging Spectroradiometer (MODIS)`, but also `MODIS` and `MODIS Terra`, a different satellite). Each card shows both triples (the extracted one translated into the ground truth vocabulary) and, unfolded, the record's text. Press **Same fact** or **Not the same fact**; **Take back** removes a verdict. Every verdict is saved to `partial_pair_reviews.csv` at once; rerun step 070 to see its effect. Only tuning records are shown: reviewing held-out pairs would mean looking at held-out results.
 
 ### Adding to the schema additions
 

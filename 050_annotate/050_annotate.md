@@ -138,7 +138,7 @@ Run against the record's **whole** text, including rows from one piece of a long
 | `pattern_not_in_schema` | flag | The predicate is in the schema, but never between these two entity classes. |
 | `conflicting_classes` | flag | The same triple instance appears again with other entity classes; both rows are flagged. |
 
-"In the text" ignores case, spacing, quote marks, dash variants, edge punctuation and a leading "the/a/an" (`common/common_helpers/text_match.py`). Entity classes and predicates are compared with the schema's loosely: letters and digits only, case ignored, so `has version` is `HAS_VERSION`.
+"In the text" ignores case, spacing, quote marks, dash variants, edge punctuation and a leading "the/a/an" (`common/common_helpers/text_match.py`). Entity classes and predicates are compared with the schema's by loose match (only letters and digits count), so `has version` is `HAS_VERSION`.
 
 ## Prompts
 
