@@ -34,7 +34,7 @@ class Split(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
-    def write_pool(self, rows, header="id,maintainer,group,group_size,drawn_from_group"):
+    def write_pool(self, rows, header="id,maintainer,stratum,stratum_size,drawn_from_stratum"):
         lines = [header] + [f"{i},{m},g,1,1" for i, m in rows]
         (self.tmp / "pool.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -87,7 +87,7 @@ class Split(unittest.TestCase):
         self.write_pool([("r03", "A"), ("r03", "A")])
         with self.assertRaisesRegex(ValueError, "more than once"):
             self.split()
-        self.write_pool([("r03", "A")], header="record,who,group,group_size,drawn_from_group")
+        self.write_pool([("r03", "A")], header="record,who,stratum,stratum_size,drawn_from_stratum")
         with self.assertRaisesRegex(ValueError, "needs the columns"):
             self.split()
 

@@ -5,7 +5,7 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
     -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
     stage 2  component_classes.py  translate_component_classes  LLM: current schema's component classes → ground truth vocabulary, new ones only (+ suggestions for (none) rows); you check
     stage 3  pairing.py    compare          code: record by record, exact and partial pairs, strict, within reach
-    stage 4  stats.py    compute_metrics  code: the numbers, each with its margin of error, per part and group
+    stage 4  stats.py    compute_metrics  code: the numbers, each with its margin of error, per part and stratum
     -        (here)      results          writes metrics.json, per_record.md and compared_triples.csv; the report
 
 Every model answer is cached in cache/ inside the step's output folder
@@ -34,7 +34,7 @@ LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records"]
 TRIPLE = ("subject", "subject_class", "predicate", "object", "object_class")
 SHOW = 20                        # rows listed in the report before "…"
-COMPARED_COLUMNS = (["record_id", "position", "part", "group", "status", "entity_classes_right", "within_reach", "within_strict_reach"]
+COMPARED_COLUMNS = (["record_id", "position", "part", "stratum", "status", "entity_classes_right", "within_reach", "within_strict_reach"]
                  + [f"extracted_{c}" for c in TRIPLE] + [f"translated_{c}" for c in TRIPLE]
                  + [f"ground_truth_{c}" for c in TRIPLE] + [ORIGIN_COLUMN])
 
@@ -76,7 +76,7 @@ def _margin_check_lines(checks: dict | None) -> list:
     if not checks:
         return []
     ok = lambda good: "holds" if good else "**doesn't hold**"           # noqa: E731
-    alone, bound = checks["single_record_groups"], checks["at_bound"]
+    alone, bound = checks["single_record_strata"], checks["at_bound"]
     big = checks["largest_record"]
     share = checks["catalog_proportion"] or 0
     return ["#### The margin of error's assumptions, checked", "",
@@ -84,8 +84,8 @@ def _margin_check_lines(checks: dict | None) -> list:
             "| The evaluated records are a random sample of the catalog | only the fair sample is evaluated | holds (by design) |",
             "| Whole records vary, independently of each other | records are redrawn whole | holds (by design) |",
             f"| Enough records | at least {stats.MIN_RECORDS} evaluated | holds |",
-            f"| Every sampling group adds spread | sampling groups with only 1 evaluated record: "
-            f"{len(alone)}{' (' + named(alone, 5) + ')' if alone else ''} | {ok(not alone)}: such a group's "
+            f"| Every stratum adds spread | strata with only 1 evaluated record: "
+            f"{len(alone)}{' (' + named(alone, 5) + ')' if alone else ''} | {ok(not alone)}: such a stratum's "
             f"record is in every redraw, so the ranges come out too narrow |",
             f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
             f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow |",
@@ -124,7 +124,7 @@ def _per_record(records: list, hidden: int) -> str:
         c = r["compared"]
         gt, ex = r["gt"], c["translated"]
         lines += [f"## {r['title'] or r['id']}", "",
-                  f"Pool position {r['position']} · {r['part']} · group {r['group'] or '(none)'} · id `{r['id']}`", ""]
+                  f"Pool position {r['position']} · {r['part']} · stratum {r['stratum'] or '(none)'} · id `{r['id']}`", ""]
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
         lines += [f"Describes: {mark} extraction said `{d['said'] or '(none named)'}` (translated into the ground truth "
@@ -160,7 +160,7 @@ def _compared_rows(records: list) -> list:
     for r in records:
         c = r["compared"]
         gt, ex = r["gt"], c["translated"]
-        base = {"record_id": r["id"], "position": r["position"], "part": r["part"], "group": r["group"]}
+        base = {"record_id": r["id"], "position": r["position"], "part": r["part"], "stratum": r["stratum"]}
 
         def row(status, gi=None, ei=None):
             out = {**base, "status": status}
@@ -245,7 +245,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                  "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
         "left_out": evaluated.left_out,
-        "parts": {p: {"numbers": v["numbers"], "groups": v["groups"], "margin_checks": v["margin_checks"],
+        "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
                   for p, v in metrics.items() if p != "kept_aside"},
@@ -266,11 +266,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                             f"numbers are shown without a margin of error, and are too few to draw conclusions "
                             f"from.")
         elif any(g["share_evaluated"] is not None and abs(g["share_evaluated"] - g["share_pool"]) > stats.SHARE_GAP
-                 for g in v["groups"]):
-            warnings.append(f"{part}: some sampling group's share of the evaluated records differs from its share "
-                            f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the group table.")
+                 for g in v["strata"]):
+            warnings.append(f"{part}: some stratum's share of the evaluated records differs from its share "
+                            f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the strata table.")
         checks = v["margin_checks"]
-        if checks and (checks["single_record_groups"] or checks["at_bound"]
+        if checks and (checks["single_record_strata"] or checks["at_bound"]
                        or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
             warnings.append(f"{part}: an assumption of the margin of error doesn't hold, so some ranges are less "
                             f"trustworthy; see the report's section on the margin of error's assumptions.")
@@ -380,13 +380,13 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
-        lines += [f"Per sampling group (numbers once a group has {stats.MIN_RECORDS} records; with many groups, "
-                  f"about 1 in 20 margins misses by chance, so one odd group is not a finding):", "",
-                  "| Group | Records | Share evaluated | Share of pool | Precision (exact) | Recall (exact) |",
+        lines += [f"Per stratum (numbers once a stratum has {stats.MIN_RECORDS} records; with many strata, "
+                  f"about 1 in 20 margins misses by chance, so one odd stratum is not a finding):", "",
+                  "| Stratum | Records | Share evaluated | Share of pool | Precision (exact) | Recall (exact) |",
                   "|---|---:|---:|---:|---:|---:|"]
-        for g in v["groups"]:
+        for g in v["strata"]:
             gn = g["numbers"]
-            lines.append(f"| {cell(g['group'])} | {g['records']} | {readings.pct(g['share_evaluated'])} | {readings.pct(g['share_pool'])} "
+            lines.append(f"| {cell(g['stratum'])} | {g['records']} | {readings.pct(g['share_evaluated'])} | {readings.pct(g['share_pool'])} "
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")

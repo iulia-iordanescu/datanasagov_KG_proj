@@ -33,13 +33,13 @@ def triple(s, sc, p, o, oc):
     return {"subject": s, "subject_class": sc, "predicate": p, "object": o, "object_class": oc}
 
 
-def record(gt, extracted, rid="r1", gt_class=None, said_class=None, group="g", part="tuning"):
+def record(gt, extracted, rid="r1", gt_class=None, said_class=None, stratum="g", part="tuning"):
     describes = lambda c: {"object_class": c} if c is not None else None   # noqa: E731
-    return {"id": rid, "gt": gt, "extracted": extracted, "group": group, "part": part,
+    return {"id": rid, "gt": gt, "extracted": extracted, "stratum": stratum, "part": part,
             "gt_describes": describes(gt_class), "extracted_describes": describes(said_class)}
 
 
-def counts_record(extracted, gt, pairs, strict, group="g", **more):
+def counts_record(extracted, gt, pairs, strict, stratum="g", **more):
     """A compared record with only the counts set, for the metric formulas."""
     c = {"extracted": extracted, "gt": gt, "within_reach": more.get("within_reach", gt),
          "within_strict_reach": more.get("within_strict_reach", gt)}
@@ -48,7 +48,7 @@ def counts_record(extracted, gt, pairs, strict, group="g", **more):
         c[f"{level}_strict_pairs"] = strict
         c[f"{level}_pairs_within_reach"] = pairs
         c[f"{level}_strict_pairs_within_strict_reach"] = strict
-    return {"group": group, "part": "tuning",
+    return {"stratum": stratum, "part": "tuning",
             "compared": {"counts": c, "describes": more.get("describes", {"truth": None, "said": None, "right": False})}}
 
 
@@ -206,7 +206,7 @@ class Reach(unittest.TestCase):
         c = pairing.compare_record(record(G, E), t)["compared"]
         self.assertEqual(c["within_reach"], [True, True, True, False, True])
         self.assertEqual(c["within_strict_reach"], [True, True, False, False, True])
-        n = stats.numbers([{"compared": c, "group": "g"}])
+        n = stats.numbers([{"compared": c, "stratum": "g"}])
         self.assertAlmostEqual(n["recall_upper_bound"], 4 / 5)
         self.assertAlmostEqual(n["strict_recall_upper_bound"], 3 / 5)
 
@@ -300,7 +300,7 @@ class Margins(unittest.TestCase):
         self.assertEqual(m["exact"]["precision"], {"value": 0.5, "low": None, "high": None})
 
     def test_margin_contains_spread(self):
-        recs = [counts_record(2, 2, i % 3, 0, group=f"g{i % 2}") for i in range(40)]
+        recs = [counts_record(2, 2, i % 3, 0, stratum=f"g{i % 2}") for i in range(40)]
         m = stats.with_margins(recs)
         self.assertTrue(m["margins"])
         p = m["exact"]["precision"]
@@ -312,20 +312,20 @@ class Margins(unittest.TestCase):
         m = stats.with_margins([counts_record(2, 2, 2, 2) for _ in range(stats.MIN_RECORDS)])
         self.assertEqual(m["exact"]["precision"], {"value": 1.0, "low": 1.0, "high": 1.0})
 
-    def test_each_group_keeps_its_size(self):
-        # One record of group "a" with precision 0, 39 of group "b" with 1:
+    def test_each_stratum_keeps_its_size(self):
+        # One record of stratum "a" with precision 0, 39 of stratum "b" with 1:
         # every redraw keeps one "a" record, so precision never falls below 39/40.
-        recs = [counts_record(1, 1, 0, 0, group="a")] + [counts_record(1, 1, 1, 1, group="b") for _ in range(39)]
+        recs = [counts_record(1, 1, 0, 0, stratum="a")] + [counts_record(1, 1, 1, 1, stratum="b") for _ in range(39)]
         p = stats.with_margins(recs)["exact"]["precision"]
         self.assertEqual((p["low"], p["value"], p["high"]), (39 / 40, 39 / 40, 39 / 40))
 
 
 class MarginChecks(unittest.TestCase):
 
-    def records(self, groups, extracted=2):
+    def records(self, strata, extracted=2):
         out = []
-        for i, g in enumerate(groups):
-            r = counts_record(extracted, 2, i % 3, 0, group=g)
+        for i, g in enumerate(strata):
+            r = counts_record(extracted, 2, i % 3, 0, stratum=g)
             r["id"] = f"r{i}"
             out.append(r)
         return out
@@ -333,7 +333,7 @@ class MarginChecks(unittest.TestCase):
     def test_all_hold(self):
         recs = self.records(["a", "b"] * 20)
         checks = stats.margin_checks(recs, stats.with_margins(recs), catalog_records=10_000)
-        self.assertEqual(checks["single_record_groups"], [])
+        self.assertEqual(checks["single_record_strata"], [])
         self.assertNotIn("exact: precision", checks["at_bound"])
         self.assertAlmostEqual(checks["catalog_proportion"], 40 / 10_000)
         self.assertAlmostEqual(checks["largest_record"]["extracted triples"]["proportion"], 1 / 40)
@@ -343,14 +343,14 @@ class MarginChecks(unittest.TestCase):
         recs[0]["compared"]["counts"]["extracted"] = 41                    # one record with half the extracted triples
         point = stats.with_margins(recs)
         checks = stats.margin_checks(recs, point, catalog_records=200)
-        self.assertEqual(checks["single_record_groups"], ["(no group)", "b"])
+        self.assertEqual(checks["single_record_strata"], ["(no stratum)", "b"])
         self.assertIn("exact: strict_precision", checks["at_bound"])        # 0 strict pairs: the range is 0% to 0%
         self.assertEqual(checks["largest_record"]["extracted triples"], {"record": "r0", "proportion": 41 / 119})
         self.assertGreater(checks["catalog_proportion"], stats.FINITE_NEGLIGIBLE)
         import moves
         text = "\n".join(moves._margin_check_lines(checks))
         self.assertEqual(text.count("doesn't hold"), 3)
-        self.assertIn("(no group), b", text)
+        self.assertIn("(no stratum), b", text)
 
 
 class Parts(unittest.TestCase):
@@ -360,7 +360,7 @@ class Parts(unittest.TestCase):
             pass
         e = Evaluated()
         e.records = [dict(counts_record(1, 1, 1, 1), part="tuning"), dict(counts_record(1, 1, 0, 0), part="held-out")]
-        e.pool_groups = {"g": 10}
+        e.pool_strata = {"g": 10}
         return e
 
     def test_held_out_kept_aside(self):
@@ -374,10 +374,10 @@ class Parts(unittest.TestCase):
         self.assertEqual(m["kept_aside"], {})
         self.assertEqual(m["held-out"]["numbers"]["exact"]["precision"]["value"], 0.0)
 
-    def test_group_table(self):
-        recs = [counts_record(1, 1, 1, 1, group="a"), counts_record(1, 1, 1, 1, group="a"),
-                counts_record(1, 1, 1, 1, group="b")]
-        rows = {r["group"]: r for r in stats.group_table(recs, {"a": 3, "b": 1, "c": 4})}
+    def test_strata_table(self):
+        recs = [counts_record(1, 1, 1, 1, stratum="a"), counts_record(1, 1, 1, 1, stratum="a"),
+                counts_record(1, 1, 1, 1, stratum="b")]
+        rows = {r["stratum"]: r for r in stats.strata_table(recs, {"a": 3, "b": 1, "c": 4})}
         self.assertEqual(set(rows), {"a", "b", "c"})
         self.assertAlmostEqual(rows["a"]["share_evaluated"], 2 / 3)
         self.assertAlmostEqual(rows["a"]["share_pool"], 3 / 8)

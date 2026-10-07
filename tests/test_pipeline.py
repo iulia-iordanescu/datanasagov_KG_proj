@@ -101,9 +101,9 @@ class Pipeline(unittest.TestCase):
         records = [json.loads(x) for x in self.output("020_clean", "records.jsonl").read_text(encoding="utf-8").splitlines()]
         pool = sorted(records, key=lambda r: r["id"][::-1])[:12]                # a fixed "random" order
         write_csv(self.annotations / "ground_truth_candidates.csv",
-                  [{"id": r["id"], "maintainer": r["maintainer"], "group": r["maintainer"], "group_size": 1,
-                    "drawn_from_group": 1} for r in pool],
-                  ["id", "maintainer", "group", "group_size", "drawn_from_group"])
+                  [{"id": r["id"], "maintainer": r["maintainer"], "stratum": r["maintainer"], "stratum_size": 1,
+                    "drawn_from_stratum": 1} for r in pool],
+                  ["id", "maintainer", "stratum", "stratum_size", "drawn_from_stratum"])
         self.run_step("030_split")
         splits = json.loads(self.output("030_split", "splits.json").read_text(encoding="utf-8"))
         candidates = splits["ground_truth_candidates"]["records"]

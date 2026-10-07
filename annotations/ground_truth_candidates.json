@@ -7,9 +7,9 @@
  "seed": 1000,
  "records_in_population": 36323,
  "picked": 1000,
- "design": "stratified by maintainer, proportional allocation, maintainers with a share under 2 places collapsed into one group, largest-remainder rounding, rows shuffled",
- "groups": 19,
- "places_per_group": {
+ "design": "stratified by maintainer, proportional allocation, maintainers with a share under 2 places collapsed into one stratum, largest-remainder rounding, rows shuffled",
+ "strata": 19,
+ "places_per_stratum": {
   "Earthdata Forum": 293,
   "Thomas Morgan": 264,
   "Planetary Data System": 171,
@@ -30,7 +30,7 @@
   "Jennifer Blue": 2,
   "Beth Beck": 2
  },
- "group_sizes": {
+ "stratum_sizes": {
   "Earthdata Forum": 10650,
   "Thomas Morgan": 9595,
   "Planetary Data System": 6214,

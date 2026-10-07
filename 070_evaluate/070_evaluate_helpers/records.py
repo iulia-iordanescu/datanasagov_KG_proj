@@ -11,7 +11,7 @@ record after a gap (an unfinished or unextracted record before it) or not in
 the pool at all (hand-picked) is left out and listed, with what to do.
 
 For each evaluated record: its pool position, its part (tuning or held-out,
-from 030), its sampling group (from the pool file), its title, its ground
+from 030), its stratum (from the pool file), its title, its ground
 truth triples and DESCRIBES row, and 060's extracted triples and DESCRIBES row.
 """
 from __future__ import annotations
@@ -35,7 +35,7 @@ class Evaluated:
     left_out: dict = field(default_factory=dict)   # {reason: [ids]}
     notes: list = field(default_factory=list)      # shown before paying (mapping calls) and in the report
     pool: list = field(default_factory=list)       # the pool's ids, in order
-    pool_groups: dict = field(default_factory=dict)  # {group: pool records in it}
+    pool_strata: dict = field(default_factory=dict)  # {stratum: pool records in it}
     ground_truth: object = None                    # common.ground_truth.GroundTruth
     schema_used: dict = field(default_factory=dict)  # 060's schema_used.json
     unfinished: int = 0                            # ground truth records not finished yet
@@ -69,10 +69,10 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                          "(delete 030's splits.json, then run py 030_split/run.py)")
     evaluated.pool = [r["id"] for r in pool_rows]
     by_id = {r["id"]: r for r in pool_rows}
-    groups = {r["id"].strip(): (r.get("group") or "").strip() for r in read_csv(Path(inputs["candidates"]))}
+    strata = {r["id"].strip(): (r.get("stratum") or "").strip() for r in read_csv(Path(inputs["candidates"]))}
     for r in pool_rows:
-        g = groups.get(r["id"], "")
-        evaluated.pool_groups[g] = evaluated.pool_groups.get(g, 0) + 1
+        g = strata.get(r["id"], "")
+        evaluated.pool_strata[g] = evaluated.pool_strata.get(g, 0) + 1
     details = json.loads(Path(inputs["extracted_triples_details"]).read_text(encoding="utf-8"))
     evaluated.extraction_made = details.get("made") or {}
     extracted_ids = {r["id"] for r in details["records"] if r["status"] == "extracted"}
@@ -112,13 +112,13 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         ex_triples, ex_describes = _triples(extracted.get(rid, []))
         evaluated.records.append({
             "id": rid, "position": by_id[rid]["position"], "part": by_id[rid]["part"],
-            "group": groups.get(rid, ""), "title": titles.get(rid, ""),
+            "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
         })
-    missing_group = [r["id"] for r in evaluated.records if not r["group"]]
-    if missing_group:
-        evaluated.notes.append(f"{len(missing_group)} evaluated record(s) have no sampling group in the pool file, so "
-                            f"the per-group numbers show them as the group \"(no group)\": {named(missing_group)}.")
+    missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]
+    if missing_stratum:
+        evaluated.notes.append(f"{len(missing_stratum)} evaluated record(s) have no stratum in the pool file, so "
+                            f"the per-stratum numbers show them as the stratum \"(no stratum)\": {named(missing_stratum)}.")
     if not evaluated.records:
         raise SystemExit("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
                          "fair sample. " + " ".join(evaluated.notes))

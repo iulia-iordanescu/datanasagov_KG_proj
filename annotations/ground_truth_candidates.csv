@@ -1,4 +1,4 @@
-id,maintainer,group,group_size,drawn_from_group
+id,maintainer,stratum,stratum_size,drawn_from_stratum
 3122be4c-b9d0-4cc9-b6d3-9b96c6e743da,Paul Gill,(small maintainers),2082,57
 cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,Thomas Morgan,Thomas Morgan,9595,264
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,NSIDC Services,NSIDC Services,653,18

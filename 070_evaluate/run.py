@@ -55,7 +55,7 @@ def main(inputs, settings, output):
     calls     = evaluate.paid_calls(evaluated, settings, output)     # code: asks before paying; keeps every answer in cache/
     translation     = evaluate.translate_component_classes(inputs, evaluated, calls)   # LLM: Satellite → Spacecraft, new component classes only (+ suggestions for (none) rows); you check
     evaluated = evaluate.compare(evaluated, translation)                   # code: per record, exact pairs / partial pairs / extracted only / ground truth only
-    metrics   = evaluate.compute_metrics(evaluated, settings)        # code: the numbers, with margins, per part and group
+    metrics   = evaluate.compute_metrics(evaluated, settings)        # code: the numbers, with margins, per part and stratum
     # writes metrics.json, per_record.md, compared_triples.csv; the report
     return evaluate.results(evaluated, translation, metrics, calls, settings, output)
 

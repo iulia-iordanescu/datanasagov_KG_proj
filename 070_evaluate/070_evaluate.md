@@ -49,7 +49,7 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 | `extracted_triples` | `060_extract/extracted_triples.csv` | The extracted triples. |
 | `extracted_triples_details` | `060_extract/extracted_triples_details.json` | Which records 060 extracted (a record whose call failed is left out, not counted as zero). |
 | `schema_used` | `060_extract/schema_used.json` | The schema 060 used: the component classes to translate. |
-| `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's sampling group. |
+| `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | Each pool record's stratum. |
 | `hand_schema` | `./annotations/schema_derived_from_manual_annotation.txt` (in Git) | The hand-built schema: with the component classes coined in the ground truth, the ground truth vocabulary, built by `common/common_helpers/ground_truth.vocabulary` as in 050 and the annotation tool. |
 | `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | The answer key. Only records you've finished (*All facts extracted*) are evaluated. |
 | `component_class_mapping` | `./annotations/component_class_mapping.csv` (in Git) | The translation table (below). |
@@ -64,8 +64,8 @@ In `outputs/intermediate_results/070_evaluate/`:
 | File | Contents |
 |---|---|
 | `per_record.md` | For reading. Each evaluated record of the parts shown (the tuning part; the held-out part too with `--evaluate_held_out true`, so its triples stay unseen until then): what it describes (✓/✗), its **pairs** (✓ exact or ≈ partial, with the ground truth's triple when they differ), **extracted but not in the ground truth** (they count against precision) and **in the ground truth but not extracted** (against recall; marked *out of reach* when the schema can't express them). Extracted triples are shown translated into the ground truth vocabulary. Opens well in VS Code or on GitHub. |
-| `compared_triples.csv` | For sorting and filtering, e.g. in Excel. One row per pair, and one per triple left without a partner, of the parts shown: record, pool position, part, group, `status` (`exact pair`, `partial pair`, `extracted only`: no partner, counts against precision; `ground truth only`: no partner, counts against recall), `entity_classes_right`, `within_reach`, `within_strict_reach`, then the triple as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
-| `metrics.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per sampling group; which records were evaluated and which left out, and why; the component class mismatches (`component_class_mismatches`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the tuning part's partial pairs not yet reviewed and ruled out by your review (`partial_pairs_tuning`); the settings. |
+| `compared_triples.csv` | For sorting and filtering, e.g. in Excel. One row per pair, and one per triple left without a partner, of the parts shown: record, pool position, part, stratum, `status` (`exact pair`, `partial pair`, `extracted only`: no partner, counts against precision; `ground truth only`: no partner, counts against recall), `entity_classes_right`, `within_reach`, `within_strict_reach`, then the triple as extracted, as translated, and as in the ground truth, and where each came from (`origin`). |
+| `metrics.json` | For comparing runs. Every number (each with `value`, `low`, `high`: the margin), per part and per stratum; which records were evaluated and which left out, and why; the component class mismatches (`component_class_mismatches`, see *Then the results*); the model's suggestions for `(none)` rows (`translation_suggestions`, which the annotation tool shows); the tuning part's partial pairs not yet reviewed and ruled out by your review (`partial_pairs_tuning`); the settings. |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the manifest. |
 | `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a run finishes. |
 
@@ -143,7 +143,7 @@ Four stages, in `070_evaluate/run.py`'s `main()`; stage 2 may ask the model (for
    | describes: baseline | the share of the most common entity class: what always guessing it would get |
    | describes: per-entity-class average | each entity class's accuracy, averaged, so rare entity classes count as much as common ones |
 
-   Each is given at both pair levels (**exact**, and **partial**, which counts exact and partial pairs), with its **margin of error** by the **bootstrap** (below), for the tuning part, for the held-out part when asked, and per sampling group. The report adds a table of what 060 said each record describes versus what it is.
+   Each is given at both pair levels (**exact**, and **partial**, which counts exact and partial pairs), with its **margin of error** by the **bootstrap** (below), for the tuning part, for the held-out part when asked, and per stratum. The report adds a table of what 060 said each record describes versus what it is.
 
 **Then the results** (`results`): `metrics.json`, `per_record.md` and `compared_triples.csv` are written, replacing the last run's; with `--evaluate_held_out true`, a line is added to `annotations/held_out_looks.csv`; the report. The report also lists **component class mismatches** (`pairing.py`, `component_class_mismatches`), possible translation errors, found in the shown parts' triples: a wrong or missing row of the translation table leaves a trace where extraction found the triple but a component class differs. A paired triple whose entity class differs from the ground truth's suggests the row of the current schema's entity class is wrong (its row may say `(none)`, or the wrong entity class); an unpaired extracted triple and an unpaired ground truth triple with the same subject and object (or the two swapped) but different predicates suggest the predicate's row is wrong (or its `swap_subject_and_object`). Each mismatch is counted, e.g. *Gadget (current schema) --> (none), met Device (ground truth vocabulary) 9 times*; a single one may just be extraction choosing the wrong component class, a frequent one is a row to check.
 
@@ -168,10 +168,10 @@ A metric gets only the readings that apply to it: the recall upper bound, for in
 
 How it is computed, what it assumes, and how the report checks each assumption: [`070_evaluate/metrics.md`](metrics.md#sampling-error).
 
-**Per sampling group**, every group of the pool is listed with its number of evaluated records, its share of them and its share of the pool; its numbers appear once it has 20 records. Overall numbers need no weighting, because each group had places in proportion to its size. Two more checks:
+**Per stratum**, every stratum of the pool is listed with its number of evaluated records, its share of them and its share of the pool; its numbers appear once it has 20 records. Overall numbers need no weighting, because each stratum had places in proportion to its size. Two more checks:
 
-- if a group's share of the evaluated records differs from its share of the pool by more than 10 points (with enough records), the report warns: the evaluated records don't mirror the pool;
-- with many groups, about 1 in 20 margins misses the true value by chance, so one group that looks unusually good or bad is not, alone, a finding. The report says so beside the table.
+- if a stratum's share of the evaluated records differs from its share of the pool by more than 10 points (with enough records), the report warns: the evaluated records don't mirror the pool;
+- with many strata, about 1 in 20 margins misses the true value by chance, so one stratum that looks unusually good or bad is not, alone, a finding. The report says so beside the table.
 
 ## Prompts
 
@@ -190,7 +190,7 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 |---|---|---|
 | *N finished ground truth record(s) weren't extracted by 060's last run* | They can't be evaluated. | Run `py 060_extract/run.py`. |
 | *N record(s) are left out because they aren't in the fair sample* | A pool record before them isn't finished or extracted, or they're outside the pool. | Finish (or extract) the records before them. |
-| *N evaluated record(s) have no sampling group* | Not in the pool file. | Normally impossible for pool records. |
+| *N evaluated record(s) have no stratum* | Not in the pool file. | Normally impossible for pool records. |
 | *Ground truth: record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
 | *Ground truth: record … all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
 | *Ground truth: record … in batch_…: lines … and … are the same triple (…)* | The same subject, predicate and object twice in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as missed. | Delete one of the two rows. |
@@ -201,8 +201,8 @@ Each prompt is a plain text file: open it to read exactly what the model is told
 | Message | Meaning | What to do |
 |---|---|---|
 | *only N record(s) evaluated, fewer than 20* | No margin of error; don't draw conclusions yet. | Annotate more; until then, read `per_record.md` rather than the numbers. |
-| *some sampling group's share … differs from its share of the pool* | The evaluated records' mix of maintainers differs from the pool's (and so from the catalog's), by chance: the fair sample is a random sample. | Look at the group table, and read the numbers with that in mind; the difference shrinks as more records are evaluated. |
-| *an assumption of the margin of error doesn't hold* | Some ranges are less trustworthy: which assumption, and why, is in the report's section *The margin of error's assumptions, checked* ([`metrics.md`](metrics.md#sampling-error)). | Usually: annotate more records. A sampling group with only 1 evaluated record, or a range at 0% or 100%, becomes rarer as records are added. |
+| *some stratum's share … differs from its share of the pool* | The evaluated records' mix of maintainers differs from the pool's (and so from the catalog's), by chance: the fair sample is a random sample. | Look at the group table, and read the numbers with that in mind; the difference shrinks as more records are evaluated. |
+| *an assumption of the margin of error doesn't hold* | Some ranges are less trustworthy: which assumption, and why, is in the report's section *The margin of error's assumptions, checked* ([`metrics.md`](metrics.md#sampling-error)). | Usually: annotate more records. A stratum with only 1 evaluated record, or a range at 0% or 100%, becomes rarer as records are added. |
 | *The model suggests N row(s) of component_class_mapping.csv that say (none) may now have a counterpart in the ground truth vocabulary* | The ground truth vocabulary gained component classes since those rows were checked, and the model thinks a different one means the same as the row's component class of the current schema (e.g. *Gadget (current schema) --> Device (ground truth vocabulary)*). Rows are never changed by it. | Check the row in `py helpers/annotate.py`, *Translation table* (it shows the suggestion): pick the suggested component class if right, keep `(none)` otherwise. |
 | *N partial pair(s) of the tuning part aren't reviewed yet* | The partial level counts pairs nobody has confirmed; some may not be the same fact (e.g. `MODIS` vs `MODIS Terra`). | Review them in `py helpers/annotate.py`, *Partial pairs*; rerun 070. |
 | *N row(s) of component_class_mapping.csv translate to (none) though the ground truth vocabulary now has the same component class* | A row checked as `(none)` before that component class joined the ground truth vocabulary (you coined it, or added it to the hand-built schema): probably out of date. Not a stop, since `(none)` may still be right if the ground truth's component class means something else. | Check the row in `py helpers/annotate.py`, *Translation table* (it's flagged there); change it to the ground truth vocabulary's component class, or keep `(none)`. |

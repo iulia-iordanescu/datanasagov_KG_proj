@@ -36,7 +36,7 @@ No record is ever in both lists. 070 measures how well extraction works on text 
 | Input | Default | Contents |
 |---|---|---|
 | `records` | `020_clean/records.jsonl` | 020's cleaned records. |
-| `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | The ground truth candidates pool, one row per record in pool order: `id`, `maintainer`, and how it was drawn (`group`, `group_size`, `drawn_from_group`). `ground_truth_candidates.json` beside it describes the draw (seed 1000, 36,323 records, stratified by maintainer); 030 doesn't read it. |
+| `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | The ground truth candidates pool, one row per record in pool order: `id`, `maintainer`, and how it was drawn (`stratum`, `stratum_size`, `drawn_from_stratum`). `ground_truth_candidates.json` beside it describes the draw (seed 1000, 36,323 records, stratified by maintainer); 030 doesn't read it. |
 
 ## Outputs
 

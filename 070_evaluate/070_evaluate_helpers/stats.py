@@ -32,7 +32,7 @@ times, each time from records drawn at random, with repeats, from the evaluated
 ones; the middle 95% of the results is the margin. It draws WHOLE RECORDS
 (a record's triples come from one text and one model call, so they succeed or
 fail together; drawing triples one by one would give margins too narrow), and
-draws WITHIN EACH SAMPLING GROUP, as many as the group has, the way the pool
+draws WITHIN EACH STRATUM, as many as the stratum has, the way the pool
 was drawn. It is valid only for a random sample (records.py evaluates only the
 fair sample) of enough records: below MIN_RECORDS, no margin is given, only a
 plain warning. The draws are seeded, so a rerun gives the same margins.
@@ -51,7 +51,7 @@ from common.triples_io import component_class_key
 MIN_RECORDS = 20
 REDRAWS = 1000
 SEED = 70
-#: A sampling group whose share of the evaluated records differs from its share
+#: A stratum whose share of the evaluated records differs from its share
 #: of the pool by more than this is pointed out (with enough records).
 SHARE_GAP = 0.10
 
@@ -112,12 +112,12 @@ def with_margins(records: list) -> dict:
     samples = {path: [] for path, _ in WITH_MARGIN}
     if enough:
         rng = random.Random(SEED)
-        by_group = collections.defaultdict(list)
+        by_stratum = collections.defaultdict(list)
         for r in records:
-            by_group[r["group"]].append(r)
-        groups = [by_group[g] for g in sorted(by_group)]
+            by_stratum[r["stratum"]].append(r)
+        strata = [by_stratum[g] for g in sorted(by_stratum)]
         for _ in range(REDRAWS):
-            drawn = [rng.choice(g) for g in groups for _ in g]
+            drawn = [rng.choice(g) for g in strata for _ in g]
             n = numbers(drawn)
             for path, _ in WITH_MARGIN:
                 v = _get(n, path)
@@ -145,13 +145,13 @@ FINITE_NEGLIGIBLE = 0.05
 
 def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
     """The margin of error's assumptions that can be checked on the evaluated
-    records (070_evaluate/metrics.md, Sampling error): sampling groups with
+    records (070_evaluate/metrics.md, Sampling error): strata with
     only one evaluated record (they add no spread to the redraws), metrics
     whose range reaches 0% or 100% (where a percentile range is unreliable),
     the largest record's proportion of the triples, and the proportion of the
     catalog evaluated."""
-    sizes = collections.Counter(r["group"] for r in records)
-    alone = sorted(g or "(no group)" for g, k in sizes.items() if k == 1)
+    sizes = collections.Counter(r["stratum"] for r in records)
+    alone = sorted(g or "(no stratum)" for g, k in sizes.items() if k == 1)
     at_bound = [label for path, label in WITH_MARGIN
                 if (m := _get(point, path)) and m.get("low") is not None and (m["low"] <= 0 or m["high"] >= 1)]
     largest = {}
@@ -159,7 +159,7 @@ def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
         total = sum(r["compared"]["counts"][key] for r in records)
         top = max(records, key=lambda r: r["compared"]["counts"][key])
         largest[what] = {"record": top["id"], "proportion": _ratio(top["compared"]["counts"][key], total)}
-    return {"single_record_groups": alone, "at_bound": at_bound, "largest_record": largest,
+    return {"single_record_strata": alone, "at_bound": at_bound, "largest_record": largest,
             "catalog_proportion": _ratio(len(records), catalog_records)}
 
 
@@ -167,19 +167,19 @@ def by_part(evaluated) -> dict:
     return {part: [r for r in evaluated.records if r["part"] == part] for part in ("tuning", "held-out")}
 
 
-def group_table(records: list, pool_groups: dict) -> list:
-    """Per sampling group: records evaluated, share of evaluated vs share of the
+def strata_table(records: list, pool_strata: dict) -> list:
+    """Per stratum: records evaluated, share of evaluated vs share of the
     pool, and its numbers when it has enough records."""
-    total_pool = sum(pool_groups.values())
-    by_group = collections.defaultdict(list)
+    total_pool = sum(pool_strata.values())
+    by_stratum = collections.defaultdict(list)
     for r in records:
-        by_group[r["group"]].append(r)
+        by_stratum[r["stratum"]].append(r)
     rows = []
-    for g in sorted(set(pool_groups) | set(by_group), key=lambda g: (-pool_groups.get(g, 0), g)):
-        recs = by_group.get(g, [])
-        rows.append({"group": g or "(no group)", "records": len(recs),
+    for g in sorted(set(pool_strata) | set(by_stratum), key=lambda g: (-pool_strata.get(g, 0), g)):
+        recs = by_stratum.get(g, [])
+        rows.append({"stratum": g or "(no stratum)", "records": len(recs),
                      "share_evaluated": _ratio(len(recs), len(records)),
-                     "share_pool": _ratio(pool_groups.get(g, 0), total_pool),
+                     "share_pool": _ratio(pool_strata.get(g, 0), total_pool),
                      "numbers": with_margins(recs) if len(recs) >= MIN_RECORDS else None})
     return rows
 
@@ -196,7 +196,7 @@ def describes_confusion(records: list) -> dict:
 
 def compute_metrics(evaluated, settings: dict) -> dict:
     """Every number, per part: the tuning part always; the held-out part only
-    with the setting evaluate_held_out. {part: {"numbers", "groups", "confusion"},
+    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion"},
     "kept_aside": {part: records not shown}}."""
     parts = by_part(evaluated)
     shown = ["tuning"] + (["held-out"] if settings["evaluate_held_out"] else [])
@@ -205,7 +205,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
         recs = parts[part]
         numbers = with_margins(recs) if recs else None
         result[part] = {"numbers": numbers,
-                        "groups": group_table(recs, evaluated.pool_groups) if recs else [],
+                        "strata": strata_table(recs, evaluated.pool_strata) if recs else [],
                         "confusion": describes_confusion(recs),
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
                         if numbers and numbers["margins"] else None}

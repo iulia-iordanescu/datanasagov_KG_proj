@@ -249,7 +249,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 **How the report checks or limits it: the margin of error.** A range around each metric's value that says how much the value could change with another sample of the same size. Every metric gets one, except the describes baseline and the describes per-entity-class average. Example: [Sampling error: example](#sampling-error-example).
 
 - **How it is computed**, by the bootstrap, with fixed numbers in `070_evaluate/070_evaluate_helpers/stats.py`:
-  1. Redraw the evaluated records: within each sampling group, draw at random, with repeats, as many records as the group has. Whole records are drawn, never single triples.
+  1. Redraw the evaluated records: within each stratum, draw at random, with repeats, as many records as the stratum has. Whole records are drawn, never single triples.
   2. Compute the metric on the redrawn records, adding up their counts as on the real ones. A redraw where the metric is undefined (e.g. no extracted triples) is skipped.
   3. Repeat 1,000 times (`REDRAWS`), from a fixed seed (`SEED = 70`), so a rerun gives the same range.
   4. The range is the middle 95% of the 1,000 values: from the 2.5th to the 97.5th percentile.
@@ -266,7 +266,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   | The evaluated records are a random sample of the catalog | The redraws stand in for other samples of the catalog. | Only the fair sample is evaluated (by design). |
   | Whole records vary, independently of each other | A record's triples come from one text and one model call, so they succeed or fail together; redrawing single triples would make the range too narrow. | Records are redrawn whole (by design). |
   | Enough records | With very few, the range is itself unreliable, usually too narrow. | No range below 20 evaluated records (a rule of thumb; no source found gives a number). |
-  | Every sampling group adds spread | A sampling group with only 1 evaluated record puts that record in every redraw, so the range comes out too narrow. | Lists the sampling groups with only 1 evaluated record. |
+  | Every stratum adds spread | A stratum with only 1 evaluated record puts that record in every redraw, so the range comes out too narrow. | Lists the strata with only 1 evaluated record. |
   | The range isn't at 0% or 100% | There, a percentile range is too narrow. | Lists the metrics whose range reaches 0% or 100%. |
   | No one record dominates | A record with most of the triples sways every redraw it's in. | Gives the largest record's proportion of the extracted triples and of the ground truth triples, for reading (no established threshold). |
   | A small proportion of the catalog is evaluated | Redrawing with repeats treats the catalog as endless; for a large proportion, the range comes out somewhat too wide. | Gives the proportion of the catalog evaluated; holds below 5%. |
@@ -278,7 +278,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 **How the report checks or limits it.**
 - The pool matches the catalog's mix of maintainers: it was drawn with proportional allocation (`annotations/ground_truth_candidates.json`).
-- The report's group table compares, per sampling group, the proportion of the evaluated records with the proportion of the pool.
+- The report's strata table compares, per stratum, the proportion of the evaluated records with the proportion of the pool.
 - From 20 evaluated records on, it warns when the two differ by more than 10 percentage points (`SHARE_GAP`). The 10 points is a rule of thumb, with no source found.
 
 ### Small-sample bias of a ratio
@@ -359,7 +359,7 @@ The record of the *Pairs* example has 5 ground truth triples, with the predicate
 
 ### Sampling error: example
 
-40 evaluated records, in two sampling groups of 30 and 10, with exact precision 70%. Each redraw takes 30 records at random, with repeats, from the first group's 30, and 10 from the second's 10, and computes exact precision on them. Of the 1,000 values, the middle 95% run from 61% to 78%. The report says: "for the whole catalog, exact precision is likely between 61% and 78%".
+40 evaluated records, in two strata of 30 and 10, with exact precision 70%. Each redraw takes 30 records at random, with repeats, from the first stratum's 30, and 10 from the second's 10, and computes exact precision on them. Of the 1,000 values, the middle 95% run from 61% to 78%. The report says: "for the whole catalog, exact precision is likely between 61% and 78%".
 
 ## Sources
 
@@ -394,10 +394,10 @@ An upper bound on recall, set by an earlier stage of a pipeline (here, the schem
 
 - Sampling error, the margin of error:
   - The bootstrap, and its percentile range: Efron & Tibshirani, *An Introduction to the Bootstrap* (1993).
-  - Drawing whole records rather than single triples, since a record's triples succeed or fail together, is the cluster (or block) bootstrap; drawing within each sampling group is the stratified bootstrap: Davison & Hinkley, *Bootstrap Methods and their Application* (1997).
+  - Drawing whole records rather than single triples, since a record's triples succeed or fail together, is the cluster (or block) bootstrap; drawing within each stratum is the stratified bootstrap: Davison & Hinkley, *Bootstrap Methods and their Application* (1997).
   - The threshold of 20 records: a rule of thumb, with no source found.
   - Below 5% of the catalog evaluated, drawing with repeats from a finite catalog is negligible: Cochran, *Sampling Techniques* (1977), chapter 2.
-  - A sampling group with only 1 evaluated record gives no estimate of its spread: the single-unit stratum of survey sampling (Cochran, 1977).
+  - A stratum with only 1 evaluated record gives no estimate of its spread: the single-unit stratum of survey sampling (Cochran, 1977).
   - A percentile range is too narrow near 0% or 100%: Efron & Tibshirani (1993).
 - The sample's mix of maintainers: stratified sampling with proportional allocation, Cochran (1977), chapter 5. The 10-point warning: a rule of thumb, with no source found.
 - Small-sample bias of a ratio: the ratio estimator, biased by an amount that shrinks faster than its sampling error as the sample grows, Cochran (1977), chapter 6.
