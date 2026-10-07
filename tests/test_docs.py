@@ -272,7 +272,7 @@ def first_uses_unlinked() -> list:
                     continue
                 if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:|-]+\|$", lines[i + 1]):
                     continue
-                for m in re.finditer(r"\[([^\]\n]*)\]\([^)]*terminology\.md#[\w-]+\)", line):
+                for m in re.finditer(r"\[([^\]\n]*)\]\([^)\n]+\)", line):           # to terminology.md, or to the term's home
                     linked |= {t for t, rx in forms if rx.fullmatch(m.group(1))}
                 plain = TermLinks.PROTECT.sub(lambda m: " " * len(m.group(0)), line)
                 taken = []

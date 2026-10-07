@@ -12,8 +12,8 @@ Two versions.
 
 | Version | Pairs counted | Formula |
 |---|---|---|
-| exact entity-class accuracy | exact pairs | \|exact pairs ∩ strict pairs\| ÷ \|exact pairs\| |
-| partial entity-class accuracy | exact pairs ∪ partial pairs | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|exact pairs ∪ partial pairs\| |
+| exact entity-class accuracy | [exact pairs](pairs.md) | \|exact pairs ∩ [strict pairs](pairs.md)\| ÷ \|exact pairs\| |
+| partial entity-class accuracy | exact pairs ∪ [partial pairs](pairs.md) | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|exact pairs ∪ partial pairs\| |
 
 Each version is a number from 0 to 1; with no pairs counted across the [records](../../docs/terminology.md#1-records-and-their-text), it is undefined.
 

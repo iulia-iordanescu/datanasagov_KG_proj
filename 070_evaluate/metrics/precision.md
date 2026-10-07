@@ -12,9 +12,9 @@ Four versions.
 
 | Version | An extracted triple counts as correct when it… | Formula |
 |---|---|---|
-| exact precision | forms an exact [pair](pairs.md) | \|exact pairs\| ÷ \|extracted triples\| |
-| partial precision | forms an exact or a partial pair | \|exact pairs ∪ partial pairs\| ÷ \|extracted triples\| |
-| strict exact precision | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ strict pairs\| ÷ \|extracted triples\| |
+| exact precision | forms an [exact pair](pairs.md) | \|exact pairs\| ÷ \|extracted triples\| |
+| partial precision | forms an exact or a [partial pair](pairs.md) | \|exact pairs ∪ partial pairs\| ÷ \|extracted triples\| |
+| strict exact precision | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ [strict pairs](pairs.md)\| ÷ \|extracted triples\| |
 | strict partial precision | (forms an exact or a partial pair) ∧ (the pair is strict) | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|extracted triples\| |
 
 Each version is a number from 0 to 1; with no extracted triples across the [records](../../docs/terminology.md#1-records-and-their-text), it is undefined.
@@ -26,8 +26,8 @@ Let *p* be the value of one version of precision. It reads two ways: what was co
 **What was computed** (the evaluated records)
 
 1. *p* is the proportion of the evaluated records' extracted triples that are correct, where "correct" is defined by the version (table above).
-2. Partial precision minus exact precision is the proportion of the extracted triples that form a partial pair but not an exact pair. In such a pair, the two [triples](../../docs/terminology.md#2-triples) have the same [predicate](../../docs/terminology.md#3-schemas), but (their [subject instances](../../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) ∨ (their [object instances](../../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) (e.g. "MODIS" vs "Moderate Resolution Imaging Spectroradiometer (MODIS)").
-3. Precision minus strict precision, at the same pair level, is the proportion of the extracted triples that form a pair at that level but not a strict one. In such a pair, (the two triples' [subject classes](../../docs/terminology.md#2-triples) differ) ∨ (the two triples' [object classes](../../docs/terminology.md#2-triples) differ).
+2. Partial precision minus exact precision is the proportion of the extracted triples that form a partial pair.
+3. Precision minus strict precision, at the same [pair level](pairs.md), is the proportion of the extracted triples that form a pair at that level but not a strict one.
 
 **What it means for the knowledge graph** (the whole catalog, approximately)
 
@@ -50,7 +50,7 @@ Worked example: [Precision: example](#example). Sources: [Precision: sources](#s
 
 ## Example
 
-*Micro-averaging.* [Record](../../docs/terminology.md#1-records-and-their-text) A: 4 [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), 3 of them correct. Record B: 1 extracted triple, correct. Precision = (3 + 1) ÷ (4 + 1) = 80%. Averaging the records' own precisions (75% and 100%) would give 87.5% instead, letting record B's single extracted triple weigh as much as record A's four. This holds for every version: only what "correct" means changes, that is, which [pairs](pairs.md) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
+*Micro-averaging.* [Record](../../docs/terminology.md#1-records-and-their-text) A: 4 [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), 3 of them correct. Record B: 1 extracted triple, correct. Precision = (3 + 1) ÷ (4 + 1) = 80%. Averaging the records' own precisions (75% and 100%) would give 87.5% instead, letting record B's single extracted triple weigh as much as record A's four. This holds for every version: only what "correct" means changes, that is, which [pairs](pairs.md) count (by [pair level](pairs.md): exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
 
 *Triples vs distinct facts.* 3 records each give the extracted triple "MODIS" ABOARD "Aqua", which is correct, and 1 record gives "AIRS" ABOARD "Terra", which is not. Precision = 3 ÷ 4 = 75%. If each extracted triple becomes one [edge](../../docs/terminology.md#8-the-pipeline), 3 of the 4 edges are correct: 75%, as *p* says. If the 3 repeats are merged into one edge, 1 of the 2 edges is correct: 50%.
 

@@ -12,9 +12,9 @@ Four versions.
 
 | Version | A ground truth triple counts as found when it… | Formula |
 |---|---|---|
-| exact recall | forms an exact [pair](pairs.md) | \|exact pairs\| ÷ \|ground truth triples\| |
-| partial recall | forms an exact or a partial pair | \|exact pairs ∪ partial pairs\| ÷ \|ground truth triples\| |
-| strict exact recall | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ strict pairs\| ÷ \|ground truth triples\| |
+| exact recall | forms an [exact pair](pairs.md) | \|exact pairs\| ÷ \|ground truth triples\| |
+| partial recall | forms an exact or a [partial pair](pairs.md) | \|exact pairs ∪ partial pairs\| ÷ \|ground truth triples\| |
+| strict exact recall | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ [strict pairs](pairs.md)\| ÷ \|ground truth triples\| |
 | strict partial recall | (forms an exact or a partial pair) ∧ (the pair is strict) | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|ground truth triples\| |
 
 Each version is a number from 0 to 1; with no ground truth triples across the [records](../../docs/terminology.md#1-records-and-their-text), it is undefined.
@@ -26,8 +26,8 @@ Let *r* be the value of one version of recall. It reads two ways: what was compu
 **What was computed** (the evaluated records)
 
 1. *r* is the proportion of the evaluated records' ground truth triples that are found, where "found" is defined by the version (table above).
-2. Partial recall minus exact recall is the proportion of the ground truth triples that form a partial pair but not an exact pair. In such a pair, the two [triples](../../docs/terminology.md#2-triples) have the same [predicate](../../docs/terminology.md#3-schemas), but (their [subject instances](../../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) ∨ (their [object instances](../../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) (e.g. "MODIS" vs "Moderate Resolution Imaging Spectroradiometer (MODIS)").
-3. Recall minus strict recall, at the same pair level, is the proportion of the ground truth triples that form a pair at that level but not a strict one. In such a pair, (the two triples' [subject classes](../../docs/terminology.md#2-triples) differ) ∨ (the two triples' [object classes](../../docs/terminology.md#2-triples) differ).
+2. Partial recall minus exact recall is the proportion of the ground truth triples that form a partial pair.
+3. Recall minus strict recall, at the same [pair level](pairs.md), is the proportion of the ground truth triples that form a pair at that level but not a strict one.
 
 **What it means for the knowledge graph** (the whole catalog, approximately)
 
@@ -49,7 +49,7 @@ Worked example: [Recall: example](#example). Sources: [Recall: sources](#sources
 
 ## Example
 
-*Micro-averaging.* [Record](../../docs/terminology.md#1-records-and-their-text) A: the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has 5 [triples](../../docs/terminology.md#2-triples), 3 of them found. Record B: it has 2, 1 found. Recall = (3 + 1) ÷ (5 + 2) = 57%. Averaging the records' own recalls (60% and 50%) would give 55% instead, letting record B's 2 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples) weigh as much as record A's 5. This holds for every version: only what "found" means changes, that is, which [pairs](pairs.md) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
+*Micro-averaging.* [Record](../../docs/terminology.md#1-records-and-their-text) A: the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has 5 [triples](../../docs/terminology.md#2-triples), 3 of them found. Record B: it has 2, 1 found. Recall = (3 + 1) ÷ (5 + 2) = 57%. Averaging the records' own recalls (60% and 50%) would give 55% instead, letting record B's 2 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples) weigh as much as record A's 5. This holds for every version: only what "found" means changes, that is, which [pairs](pairs.md) count (by [pair level](pairs.md): exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
 
 *Triples vs distinct facts.* 3 records each state "MODIS" ABOARD "Aqua", and extraction finds it in all 3; 1 record states "AIRS" ABOARD "Terra", and extraction misses it. Recall = 3 ÷ 4 = 75%. Counting each [fact](../../docs/terminology.md#2-triples) once per record that states it, the [knowledge graph](../../docs/terminology.md#8-the-pipeline) holds 3 of 4: 75%, as *r* says, whether or not graph building merges the 3 repeats into one [edge](../../docs/terminology.md#8-the-pipeline). Counting distinct facts, it holds 1 of 2: 50%, also whether or not the repeats are merged.
 
