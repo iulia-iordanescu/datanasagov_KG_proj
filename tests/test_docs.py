@@ -161,9 +161,10 @@ class Vocabulary(unittest.TestCase):
 #: terminology.md itself, the plan kept as written, TODO.md, and the person-made files of annotations/).
 LINKED_DOCS = ["README.md", "070_evaluate/metrics.md", "annotations/README.md", "helpers/audit.md", "tests/README.md",
                "docs/running_on_nasa_laptop.md", "docs/virtual_environment_setup.md"] + [f"{s}/{s}.md" for s in STEPS]
-#: Multi-word terms whose bold in terminology.md marks emphasis or an everyday phrase, not a separate term.
+#: Multi-word terms whose bold in terminology.md marks emphasis or an everyday phrase, not a separate term;
+#: and terms that also read as an everyday phrase ("records outside the ground truth only"), checked by hand.
 NOT_TERMS = {"same fact", "not the same fact", "now exists", "whole records", "within the pool's strata", "main moves",
-             "relationship type", "ground truth triples"}
+             "relationship type", "ground truth triples", "ground truth only", "extracted only"}
 
 
 def slug(heading: str) -> str:
