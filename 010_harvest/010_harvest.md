@@ -90,7 +90,7 @@ Two [stages](../docs/terminology.md#8-the-pipeline), in `010_harvest/run.py`'s `
    - An empty page before the target is reached ends the download early, with a warning.
 2. **Check it's complete** (`check_complete`). Every saved record is counted and its `id` collected: the number saved is compared with the number the run aimed for; ids that appear twice and records with no id are counted; the catalog's size, as each page reported it, must not change; and every [batch file](../docs/terminology.md#1-records-and-their-text) must have its [request block](../docs/terminology.md#1-records-and-their-text).
 
-**Then the results** (`results`): the batch files are already on disk; the [report](../docs/terminology.md#8-the-pipeline) gives record counts, batch files downloaded vs. kept, batch files with their request block, the harvest date, and any warnings.
+**Then the results** (`results`): the batch files are already on disk; the [report](../docs/terminology.md#8-the-pipeline) gives record counts, batch files downloaded vs. kept, batch files with their request block, the [harvest date](../docs/terminology.md#1-records-and-their-text), and any warnings.
 
 The code: `010_harvest/` holds `run.py` (the [control panel](../docs/terminology.md#8-the-pipeline): inputs, [settings](../docs/terminology.md#8-the-pipeline) and the moves, in order); `010_harvest/010_harvest_helpers/` holds `moves.py` (the moves, and writing the results), `ckan_client.py` (the API requests) and `batches.py` (the batch files). Shared with other steps: `common/common_helpers/files.py` (saving files).
 
@@ -123,7 +123,7 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 | *data.nasa.gov returned a page that isn't JSON for start=N …* | The API answered with something else, e.g. a maintenance page. | Retry later. |
 | *page_size must be at least 1* / *max_records must be at least 0* / *pause_seconds must be at least 0* | A [setting](../docs/terminology.md#8-the-pipeline) is out of range. | Fix the setting. |
 
-**Harvest date.** Recorded in the report and the [manifest](../docs/terminology.md#8-the-pipeline), and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at` (for a file without a [request block](../docs/terminology.md#1-records-and-their-text), the day the file was last changed), or a range of days if pages were kept from earlier runs.
+**[Harvest date](../docs/terminology.md#1-records-and-their-text).** Recorded in the report and the [manifest](../docs/terminology.md#8-the-pipeline), and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at` (for a file without a [request block](../docs/terminology.md#1-records-and-their-text), the day the file was last changed), or a range of days if pages were kept from earlier runs.
 
 ## Audit trail
 

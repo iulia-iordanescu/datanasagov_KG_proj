@@ -41,7 +41,7 @@ In `outputs/intermediate_results/020_clean/`:
 | File | Contents |
 |---|---|
 | `records.jsonl` | One cleaned [record](../docs/terminology.md#1-records-and-their-text) per line, in [harvest](../docs/terminology.md#1-records-and-their-text) order ([batch files](../docs/terminology.md#1-records-and-their-text) in order, records in their order within each file). |
-| `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), [settings](../docs/terminology.md#8-the-pipeline), input files and their hashes, output files and their hashes, headline numbers and the harvest date. Written when a [run](../docs/terminology.md#8-the-pipeline) finishes. |
+| `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), [settings](../docs/terminology.md#8-the-pipeline), input files and their hashes, output files and their hashes, headline numbers and the [harvest date](../docs/terminology.md#1-records-and-their-text). Written when a [run](../docs/terminology.md#8-the-pipeline) finishes. |
 
 One record:
 

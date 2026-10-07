@@ -157,5 +157,101 @@ class Vocabulary(unittest.TestCase):
         self.assertEqual(sorted(t for t in set(terms) if terms.count(t) > 1), [])
 
 
+#: The docs whose terms link to docs/terminology.md (every non-code doc except the prompts,
+#: terminology.md itself, the plan kept as written, TODO.md, and the person-made files of annotations/).
+LINKED_DOCS = ["README.md", "070_evaluate/metrics.md", "annotations/README.md", "helpers/audit.md", "tests/README.md",
+               "docs/running_on_nasa_laptop.md", "docs/virtual_environment_setup.md"] + [f"{s}/{s}.md" for s in STEPS]
+#: Multi-word terms whose bold in terminology.md marks emphasis or an everyday phrase, not a separate term.
+NOT_TERMS = {"same fact", "not the same fact", "now exists", "whole records", "within the pool's strata", "main moves",
+             "relationship type", "ground truth triples"}
+
+
+def slug(heading: str) -> str:
+    """GitHub's anchor for a heading."""
+    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
+
+
+def multiword_terms() -> list:
+    """The multi-word terms of docs/terminology.md (first column, and those defined in bold inside an entry):
+    unambiguous enough for a test to tell a use of the term from an everyday phrase."""
+    text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
+    names = set()
+    for line in text.splitlines():
+        m = re.match(r"^\| (.*?) \| (.*) \|$", line)
+        if m and "**" in m.group(1):
+            names |= {n for n in re.findall(r"\*\*([^*]+)\*\*", line) if " " in n.strip()}
+    return sorted({n.strip().lower() for n in names} - NOT_TERMS, key=len, reverse=True)
+
+
+class TermLinks(unittest.TestCase):
+    """Each term has one home (docs/terminology.md, or the doc it points to); the docs link to it."""
+
+    PROTECT = re.compile(r"`[^`\n]*`|\[[^\]\n]*\]\([^)\n]*\)|<[^>\n]+>|https?://\S+|(?<![*\w])\*(?!\*)[^*\n]+\*(?![*\w])")
+
+    def test_anchors_exist(self):
+        """Every link to a heading of a doc (e.g. terminology.md#2-triples) lands on a heading that exists."""
+        bad = []
+        for rel in LINKED_DOCS + ["docs/terminology.md"]:
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            for m in re.finditer(r"\]\(([^)#\s]+\.md)?#([\w-]+)\)", text):
+                target = ((ROOT / rel).parent / m.group(1)).resolve() if m.group(1) else (ROOT / rel)
+                headings = {slug(h) for h in re.findall(r"^#{1,6} (.+)$", target.read_text(encoding="utf-8"), re.M)}
+                if m.group(2) not in headings:
+                    bad.append(f"{rel}: #{m.group(2)} not a heading of {target.name}")
+        self.assertEqual(sorted(set(bad)), [])
+
+    def test_first_use_linked(self):
+        """In each section (headings of level 1 to 3), the first use of a multi-word term is a link
+        (code, headings, table header rows, and italic names don't count)."""
+        self.assertEqual(first_uses_unlinked(), [])
+
+
+def term_homes() -> dict:
+    """{term: the doc that defines it}, for the entries of terminology.md that point elsewhere ("See [`x.md`…")."""
+    homes = {}
+    for line in (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^\| (.*?) \| (?:[^|]*?)?[Ss]ee \[`([^`]+\.md)`", line)
+        if m:
+            for n in re.findall(r"\*\*([^*]+)\*\*", line):
+                homes[n.strip().lower()] = m.group(2)
+    return homes
+
+
+def first_uses_unlinked() -> list:
+    """[(doc, line, term, column)]: first uses of a multi-word term, per section, that aren't a link."""
+    if True:
+        terms = multiword_terms()
+        homes = term_homes()
+        forms = [(t, re.compile(r"(?<![\w\-/.#`\[_])(" + re.escape(t) + r"(?:e?s)?)(?![\w\-`\]_])", re.I)) for t in terms]
+        missing = []
+        for rel in LINKED_DOCS:
+            lines = (ROOT / rel).read_text(encoding="utf-8").split("\n")
+            linked, fence = set(), False
+            for i, line in enumerate(lines):
+                if line.lstrip().startswith("```"):
+                    fence = not fence
+                    continue
+                h = re.match(r"^(#{1,6}) ", line)
+                if fence or re.match(r"^( {4}|\t)(?![-*\d])", line) or h:
+                    if h and len(h.group(1)) <= 3:
+                        linked = set()
+                    continue
+                if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:|-]+\|$", lines[i + 1]):
+                    continue
+                for m in re.finditer(r"\[([^\]\n]*)\]\([^)]*terminology\.md#[\w-]+\)", line):
+                    linked |= {t for t, rx in forms if rx.fullmatch(m.group(1))}
+                plain = TermLinks.PROTECT.sub(lambda m: " " * len(m.group(0)), line)
+                taken = []
+                for t, rx in forms:
+                    for m in rx.finditer(plain):
+                        if any(a < m.end() and m.start() < b for a, b in taken):
+                            continue
+                        taken.append(m.span())
+                        if t not in linked and homes.get(t) != rel:
+                            missing.append((rel, i + 1, t, m.start()))
+                            linked.add(t)
+        return missing
+
+
 if __name__ == "__main__":
     unittest.main()
