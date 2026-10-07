@@ -4,7 +4,7 @@ How to find out what a [run](../docs/terminology.md#8-the-pipeline) did, what it
 
 ## Where to look
 
-Every [run](../docs/terminology.md#8-the-pipeline) of a [step](../docs/terminology.md#8-the-pipeline) has a run id, e.g. `020_clean_2026-09-27_1030`: the step name and the minute it started, plus `-2`, `-3`, … for a second or third run started in the same minute. Everything the run leaves behind uses that id:
+Every [run](../docs/terminology.md#8-the-pipeline) of a [step](../docs/terminology.md#8-the-pipeline) has a [run id](../docs/terminology.md#8-the-pipeline), e.g. `020_clean_2026-09-27_1030`: the step name and the minute it started, plus `-2`, `-3`, … for a second or third run started in the same minute. Everything the run leaves behind uses that id:
 
 | File | Answers | Kept |
 |---|---|---|

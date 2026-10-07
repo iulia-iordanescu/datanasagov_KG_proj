@@ -35,7 +35,7 @@ In `outputs/intermediate_results/010_harvest/`:
 | File | Contents |
 |---|---|
 | `batch_00000.json`, `batch_01000.json`, … | One file per page: the raw CKAN [records](../docs/terminology.md#1-records-and-their-text), exactly as the API returned them, wrapped with the request that returned them (see Audit trail). The number is the position of the page's first record. |
-| `_manifest.json` | Run id, settings, input files and their hashes, output files and their hashes, headline numbers (records harvested) and the [harvest](../docs/terminology.md#1-records-and-their-text) date, which later [steps](../docs/terminology.md#8-the-pipeline) carry forward. Written when a run finishes. |
+| `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), settings, input files and their hashes, output files and their hashes, headline numbers (records harvested) and the [harvest](../docs/terminology.md#1-records-and-their-text) date, which later [steps](../docs/terminology.md#8-the-pipeline) carry forward. Written when a run finishes. |
 
 One [batch file](../docs/terminology.md#1-records-and-their-text), shortened:
 
