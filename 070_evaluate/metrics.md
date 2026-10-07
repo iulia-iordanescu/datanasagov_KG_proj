@@ -25,8 +25,8 @@ Two triples count as stating the same fact when, at the…
   - the same [object instance](../docs/terminology.md#2-triples), once evened out.
 - **partial pair level** (only for triples left without an exact partner), all three hold:
   - the same predicate;
-  - (the two subject instances are equal) ∨ (one appears inside the other as whole words, either way round);
-  - (the two object instances are equal) ∨ (one appears inside the other as whole words, either way round).
+  - (the same subject instance, once evened out) ∨ (one subject instance appears inside the other as whole words, either way round);
+  - (the same object instance, once evened out) ∨ (one object instance appears inside the other as whole words, either way round).
 
 Strict is an extra condition on a pair at either level: a **strict pair** is an exact or partial pair with (the same subject classes) ∧ (the same object classes).
 
