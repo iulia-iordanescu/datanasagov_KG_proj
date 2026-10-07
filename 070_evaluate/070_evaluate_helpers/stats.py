@@ -137,6 +137,32 @@ def with_margins(records: list) -> dict:
     return point
 
 
+#: Below this proportion of the catalog evaluated, drawing with repeats from a
+#: finite catalog changes the margin negligibly (a rule of survey sampling:
+#: Cochran, Sampling Techniques, 1977, chapter 2).
+FINITE_NEGLIGIBLE = 0.05
+
+
+def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
+    """The margin of error's assumptions that can be checked on the evaluated
+    records (070_evaluate/metrics.md, Sampling error): sampling groups with
+    only one evaluated record (they add no spread to the redraws), metrics
+    whose range reaches 0% or 100% (where a percentile range is unreliable),
+    the largest record's proportion of the triples, and the proportion of the
+    catalog evaluated."""
+    sizes = collections.Counter(r["group"] for r in records)
+    alone = sorted(g or "(no group)" for g, k in sizes.items() if k == 1)
+    at_bound = [label for path, label in WITH_MARGIN
+                if (m := _get(point, path)) and m.get("low") is not None and (m["low"] <= 0 or m["high"] >= 1)]
+    largest = {}
+    for key, what in (("extracted", "extracted triples"), ("gt", "ground truth triples")):
+        total = sum(r["compared"]["counts"][key] for r in records)
+        top = max(records, key=lambda r: r["compared"]["counts"][key])
+        largest[what] = {"record": top["id"], "proportion": _ratio(top["compared"]["counts"][key], total)}
+    return {"single_record_groups": alone, "at_bound": at_bound, "largest_record": largest,
+            "catalog_proportion": _ratio(len(records), catalog_records)}
+
+
 def by_part(evaluated) -> dict:
     return {part: [r for r in evaluated.records if r["part"] == part] for part in ("tuning", "held-out")}
 
@@ -177,8 +203,11 @@ def compute_metrics(evaluated, settings: dict) -> dict:
     result = {}
     for part in shown:
         recs = parts[part]
-        result[part] = {"numbers": with_margins(recs) if recs else None,
+        numbers = with_margins(recs) if recs else None
+        result[part] = {"numbers": numbers,
                         "groups": group_table(recs, evaluated.pool_groups) if recs else [],
-                        "confusion": describes_confusion(recs)}
+                        "confusion": describes_confusion(recs),
+                        "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
+                        if numbers and numbers["margins"] else None}
     result["kept_aside"] = {p: len(parts[p]) for p in ("tuning", "held-out") if p not in shown}
     return result

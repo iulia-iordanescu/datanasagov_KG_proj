@@ -143,6 +143,8 @@ class Vocabulary(unittest.TestCase):
                 line = text[start:text.find("\n", m.start())]
                 if self.QUALIFIED.search(text[max(0, m.start() - 40):m.start()]):
                     continue
+                if text[m.start() - 1:m.start()] == '"' and text[m.end():m.end() + 1] == '"':
+                    continue                                                   # the word itself, quoted
                 if f.endswith((".py", ".html")) and re.search(r"^\s*class \w|\bclass\s*[=:]|className|dataclass", line):
                     continue                                                   # Python and HTML's own word
                 found.append(f"{f}:{text.count(chr(10), 0, m.start()) + 1}: {line.strip()[:120]}")

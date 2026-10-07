@@ -320,6 +320,39 @@ class Margins(unittest.TestCase):
         self.assertEqual((p["low"], p["value"], p["high"]), (39 / 40, 39 / 40, 39 / 40))
 
 
+class MarginChecks(unittest.TestCase):
+
+    def records(self, groups, extracted=2):
+        out = []
+        for i, g in enumerate(groups):
+            r = counts_record(extracted, 2, i % 3, 0, group=g)
+            r["id"] = f"r{i}"
+            out.append(r)
+        return out
+
+    def test_all_hold(self):
+        recs = self.records(["a", "b"] * 20)
+        checks = stats.margin_checks(recs, stats.with_margins(recs), catalog_records=10_000)
+        self.assertEqual(checks["single_record_groups"], [])
+        self.assertNotIn("exact: precision", checks["at_bound"])
+        self.assertAlmostEqual(checks["catalog_proportion"], 40 / 10_000)
+        self.assertAlmostEqual(checks["largest_record"]["extracted triples"]["proportion"], 1 / 40)
+
+    def test_failures_found(self):
+        recs = self.records(["a"] * 38 + ["b", ""])
+        recs[0]["compared"]["counts"]["extracted"] = 41                    # one record with half the extracted triples
+        point = stats.with_margins(recs)
+        checks = stats.margin_checks(recs, point, catalog_records=200)
+        self.assertEqual(checks["single_record_groups"], ["(no group)", "b"])
+        self.assertIn("exact: strict_precision", checks["at_bound"])        # 0 strict pairs: the range is 0% to 0%
+        self.assertEqual(checks["largest_record"]["extracted triples"], {"record": "r0", "proportion": 41 / 119})
+        self.assertGreater(checks["catalog_proportion"], stats.FINITE_NEGLIGIBLE)
+        import moves
+        text = "\n".join(moves._margin_check_lines(checks))
+        self.assertEqual(text.count("doesn't hold"), 3)
+        self.assertIn("(no group), b", text)
+
+
 class Parts(unittest.TestCase):
 
     def evaluated(self):

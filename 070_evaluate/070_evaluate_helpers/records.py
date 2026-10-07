@@ -41,6 +41,7 @@ class Evaluated:
     unfinished: int = 0                            # ground truth records not finished yet
     reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/common_helpers/partial_reviews.py)
     extraction_made: dict = field(default_factory=dict)  # 060's run: run id, model, settings (from its details file)
+    catalog_records: int = 0                       # records in 020's records.jsonl: the whole catalog
 
 
 def _triples(rows: list) -> tuple:
@@ -79,7 +80,9 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     extracted = {}
     for position, row in enumerate(read_csv(Path(inputs["extracted_triples"]))):
         extracted.setdefault(row["id"], []).append({**row, "_position": position})
-    titles = {rid: (r.get("title") or "") for rid, r in load_records(inputs["records"]).items()}
+    catalog = load_records(inputs["records"])
+    evaluated.catalog_records = len(catalog)
+    titles = {rid: (r.get("title") or "") for rid, r in catalog.items()}
 
     finished = {rid for rid, r in gt.records.items() if r["finished"]}
     evaluated.unfinished = len(gt.records) - len(finished)

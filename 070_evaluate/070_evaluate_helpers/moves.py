@@ -71,6 +71,33 @@ def _with_margin(n: dict) -> str:
     return f"{readings.pct(n['value'])} ({readings.pct(n['low'])}–{readings.pct(n['high'])})"
 
 
+def _margin_check_lines(checks: dict | None) -> list:
+    """The margin of error's assumptions, each with its check (070_evaluate/metrics.md, Sampling error)."""
+    if not checks:
+        return []
+    ok = lambda good: "holds" if good else "**doesn't hold**"           # noqa: E731
+    alone, bound = checks["single_record_groups"], checks["at_bound"]
+    big = checks["largest_record"]
+    share = checks["catalog_proportion"] or 0
+    return ["#### The margin of error's assumptions, checked", "",
+            "| Assumption | Check | Result |", "|---|---|---|",
+            "| The evaluated records are a random sample of the catalog | only the fair sample is evaluated | holds (by design) |",
+            "| Whole records vary, independently of each other | records are redrawn whole | holds (by design) |",
+            f"| Enough records | at least {stats.MIN_RECORDS} evaluated | holds |",
+            f"| Every sampling group adds spread | sampling groups with only 1 evaluated record: "
+            f"{len(alone)}{' (' + named(alone, 5) + ')' if alone else ''} | {ok(not alone)}: such a group's "
+            f"record is in every redraw, so the ranges come out too narrow |",
+            f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
+            f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow |",
+            f"| No one record dominates | the largest record's proportion of the extracted triples: "
+            f"{readings.pct(big['extracted triples']['proportion'])} (`{big['extracted triples']['record']}`); of the "
+            f"ground truth triples: {readings.pct(big['ground truth triples']['proportion'])} "
+            f"(`{big['ground truth triples']['record']}`) | for reading: no established threshold |",
+            f"| A small proportion of the catalog is evaluated | {readings.pct(share)} | "
+            f"{ok(share <= stats.FINITE_NEGLIGIBLE)} (below {100 * stats.FINITE_NEGLIGIBLE:.0f}%, its effect is "
+            f"negligible; above, the ranges come out somewhat too wide) |", ""]
+
+
 def _triple(f: dict) -> str:
     return f"{f['subject']} ({f['subject_class']}) {f['predicate']} {f['object']} ({f['object_class']})"
 
@@ -218,7 +245,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                  "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
         "left_out": evaluated.left_out,
-        "parts": {p: {"numbers": v["numbers"], "groups": v["groups"],
+        "parts": {p: {"numbers": v["numbers"], "groups": v["groups"], "margin_checks": v["margin_checks"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
                   for p, v in metrics.items() if p != "kept_aside"},
@@ -242,6 +269,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                  for g in v["groups"]):
             warnings.append(f"{part}: some sampling group's share of the evaluated records differs from its share "
                             f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the group table.")
+        checks = v["margin_checks"]
+        if checks and (checks["single_record_groups"] or checks["at_bound"]
+                       or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
+            warnings.append(f"{part}: an assumption of the margin of error doesn't hold, so some ranges are less "
+                            f"trustworthy; see the report's section on the margin of error's assumptions.")
     if translation.suggested:
         warnings.append(f"The model suggests {len(translation.suggested)} row(s) of component_class_mapping.csv that say (none) may "
                         f"now have a counterpart in the ground truth vocabulary: "
@@ -358,6 +390,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
+        lines += _margin_check_lines(v["margin_checks"])
     lines += ["A margin of error covers only which records happened to be evaluated: not mistakes in the ground "
               "truth, not the model answering differently on another run, and not changes made while looking at "
               "these records. The metrics assume the ground truth lists every fact the records state.", "",
