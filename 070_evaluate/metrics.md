@@ -17,10 +17,16 @@ Formulas use the usual set symbols: \|…\| is the number of members, ∪ is uni
 
 A **pair** is one [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../docs/terminology.md#2-triples), once the extracted triple's [predicate](../docs/terminology.md#3-schemas), [subject class](../docs/terminology.md#2-triples) and [object class](../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)). Each [triple](../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs. There are two **pair levels**, exact and partial, and when two triples count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
 
-| Pair level | Two triples count as stating the same fact when… |
-|---|---|
-| exact | (same predicate) ∧ (same [subject instance](../docs/terminology.md#2-triples)) ∧ (same [object instance](../docs/terminology.md#2-triples)), once [evened out](../docs/terminology.md#2-triples) |
-| partial | (same predicate) ∧ ((the two subject instances are equal) ∨ (one subject instance appears inside the other as whole words, either way round)) ∧ ((the two object instances are equal) ∨ (one object instance appears inside the other as whole words, either way round)). Only triples left without an exact partner can form one. |
+Two triples count as stating the same fact when, at the…
+
+- **exact pair level**, all three hold:
+  - the same predicate;
+  - the same [subject instance](../docs/terminology.md#2-triples), once [evened out](../docs/terminology.md#2-triples);
+  - the same [object instance](../docs/terminology.md#2-triples), once evened out.
+- **partial pair level** (only for triples left without an exact partner), all three hold:
+  - the same predicate;
+  - (the two subject instances are equal) ∨ (one appears inside the other as whole words, either way round);
+  - (the two object instances are equal) ∨ (one appears inside the other as whole words, either way round).
 
 Strict is an extra condition on a pair at either level: a **strict pair** is an exact or partial pair with (the same subject classes) ∧ (the same object classes).
 
