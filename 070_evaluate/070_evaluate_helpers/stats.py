@@ -145,7 +145,7 @@ FINITE_NEGLIGIBLE = 0.05
 
 def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
     """The margin of error's assumptions that can be checked on the evaluated
-    records (070_evaluate/metrics.md, Sampling error): strata with
+    records (070_evaluate/metrics/approximately.md, Sampling error): strata with
     only one evaluated record (they add no spread to the redraws), metrics
     whose range reaches 0% or 100% (where a percentile range is unreliable),
     the largest record's proportion of the triples, and the proportion of the

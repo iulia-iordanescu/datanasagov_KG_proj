@@ -1,0 +1,72 @@
+# What the metrics count: pairs
+
+Part of [Evaluation metrics](../metrics.md), which explains the notation and lists every metric.
+
+## <ins>Definition</ins>
+
+A **pair** is one [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../../docs/terminology.md#2-triples), once the extracted triple's [predicate](../../docs/terminology.md#3-schemas), [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)). Each [triple](../../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs. There are two **pair levels**, exact and partial, and when two triples count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
+
+Two triples count as stating the same fact when, at the…
+
+- **exact pair level**, all three hold:
+  - the same predicate;
+  - the same [subject instance](../../docs/terminology.md#2-triples), once [evened out](../../docs/terminology.md#2-triples);
+  - the same [object instance](../../docs/terminology.md#2-triples), once evened out.
+- **partial pair level** (only for triples left without an exact partner), all three hold:
+  - the same predicate;
+  - (the same subject instance, once evened out) ∨ (one subject instance appears inside the other as whole words, either way round);
+  - (the same object instance, once evened out) ∨ (one object instance appears inside the other as whole words, either way round).
+
+Strict is an extra condition on a pair at either level: a **strict pair** is an exact or partial pair with (the same subject classes) ∧ (the same object classes).
+
+So every pair is exactly one of these four:
+
+| | strict ((same subject classes) ∧ (same object classes)) | not strict |
+|---|---|---|
+| exact pair | exact pairs ∩ strict pairs | exact pairs, not strict |
+| partial pair | partial pairs ∩ strict pairs | partial pairs, not strict |
+
+All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are some of each.
+
+A triple left without a partner is **extracted only** (an extracted triple) or **[ground truth](../../docs/terminology.md#4-ground-truth-and-samples) only** (a ground truth triple).
+
+## <ins>Assumes and can't see</ins>
+
+- Containment can be fooled: "MODIS" is inside "MODIS Terra", a different instrument. On tuning records you review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*); two triples marked "not the same fact" are never paired. Held-out records' partial pairs are never reviewed (that would mean looking at them).
+- Two [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the ground truth vocabulary can't be told apart.
+
+Worked example: [Pairs: example](#example). Sources: [Pairs: sources](#sources).
+
+## Example
+
+One [record](../../docs/terminology.md#1-records-and-their-text). Its [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples):
+
+| | Subject instance (subject class) | Predicate | Object instance (object class) |
+|---|---|---|---|
+| G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) |
+| G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) |
+| G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY | MODIS (Instrument) |
+| G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) |
+| G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) |
+
+Its [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), after translation, and what each becomes:
+
+| | Subject instance (subject class) | Predicate | Object instance (object class) | Outcome |
+|---|---|---|---|---|
+| E1 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | exact pair with G1 ("the" is ignored); strict |
+| E2 | AIRS (Dataset) | ABOARD | Aqua (Spacecraft) | exact pair with G2; not strict ([subject class](../../docs/terminology.md#2-triples) Dataset, not Instrument) |
+| E3 | MODIS Snow Cover 5-Min L2 Swath (Dataset) | ACQUIRED_BY | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | partial pair with G3 ("MODIS Snow Cover" is inside the [subject instance](../../docs/terminology.md#2-triples), "MODIS" inside the [object instance](../../docs/terminology.md#2-triples)); strict |
+| E4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | the period 2002–2023 (Dataset) | partial pair with G4 ("2002–2023" is inside the object instance); not strict ([object class](../../docs/terminology.md#2-triples) Dataset, not TimeSpan) |
+| E5 | MODIS (Instrument) | ABOARD | Terra (Spacecraft) | extracted only: no ground truth triple has the [object](../../docs/terminology.md#2-triples) Terra |
+| E6 | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: it would form a partial pair with G1, but G1 already has an exact partner, E1, and a [triple](../../docs/terminology.md#2-triples) has at most one |
+
+And G5 (CERES ABOARD Aqua) has no partner: [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) only, a missed [fact](../../docs/terminology.md#2-triples).
+
+In all: 6 extracted triples, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2–G2 not); 2 partial pairs (E3–G3 strict, E4–G4 not); so 2 strict pairs, one at each pair level; 2 extracted only (E5, E6); 1 ground truth only (G5).
+
+## Sources
+
+- *Exact* and *partial*: the WebNLG 2020 challenge's evaluation of text-to-triples extraction (Castro Ferreira et al., 2020, [paper](https://aclanthology.org/2020.webnlg-1.7.pdf)). Ours is stricter on partial: whole words, not any overlap.
+- Credit: here a partial pair counts as fully right. The SemEval-2013 scoring convention ([nervaluate](https://github.com/MantisAI/nervaluate)) gives a partial match half credit: partial [precision](precision.md) = (exact + 0.5 × partial) ÷ extracted. Full credit fits our meaning of a partial pair, the same [fact](../../docs/terminology.md#2-triples) named differently (on tuning [records](../../docs/terminology.md#1-records-and-their-text), confirmed by your review), but our partial numbers are higher than that convention's and not directly comparable with published partial scores.
+- *Strict*, meaning right relation and right entity types: the "Strict" [setting](../../docs/terminology.md#8-the-pipeline) of end-to-end relation extraction (Bekoulis et al., 2018, as described by Taillé et al., 2020, [paper](https://aclanthology.org/2020.emnlp-main.301/)). WebNLG's "strict" means something else (the element's role must match), so it isn't the source here.
+- At most one partner per [triple](../../docs/terminology.md#2-triples), largest set of pairs: a maximum matching (Kuhn's algorithm, `070_evaluate/070_evaluate_helpers/pairing.py`).

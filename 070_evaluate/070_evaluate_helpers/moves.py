@@ -72,7 +72,7 @@ def _with_margin(n: dict) -> str:
 
 
 def _margin_check_lines(checks: dict | None) -> list:
-    """The margin of error's assumptions, each with its check (070_evaluate/metrics.md, Sampling error)."""
+    """The margin of error's assumptions, each with its check (070_evaluate/metrics/approximately.md, Sampling error)."""
     if not checks:
         return []
     ok = lambda good: "holds" if good else "**doesn't hold**"           # noqa: E731

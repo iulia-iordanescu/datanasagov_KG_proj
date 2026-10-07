@@ -1,5 +1,5 @@
 """Evaluation: pairing (070_evaluate_helpers/pairing.py) and the metrics
-(stats.py), checked against the examples in 070_evaluate/metrics.md and
+(stats.py), checked against the examples in 070_evaluate/metrics/ and
 against the cases that would catch a wrong pairing."""
 import unittest
 
@@ -52,7 +52,7 @@ def counts_record(extracted, gt, pairs, strict, stratum="g", **more):
             "compared": {"counts": c, "describes": more.get("describes", {"truth": None, "said": None, "right": False})}}
 
 
-# metrics.md, "Pairs: example"
+# metrics/pairs.md, Example
 G = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
      triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
      triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument"),
@@ -68,7 +68,7 @@ E = [triple("the MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
 
 
 class PairsExample(unittest.TestCase):
-    """metrics.md's Pairs example, outcome by outcome."""
+    """metrics/pairs.md's example, outcome by outcome."""
 
     def setUp(self):
         self.c = pairing.compare_record(record(G, E), translation())["compared"]
@@ -198,7 +198,7 @@ class Pairing(unittest.TestCase):
 
 
 class Reach(unittest.TestCase):
-    """metrics.md, "Recall upper bound: example"."""
+    """metrics/recall_upper_bound.md's example."""
 
     def test_example(self):
         t = translation(reachable_entity=["Instrument", "Spacecraft", "TimeSpan"],
@@ -246,7 +246,7 @@ class Mismatches(unittest.TestCase):
 
 
 class Formulas(unittest.TestCase):
-    """metrics.md's Precision, Recall, F1, and Entity-class accuracy examples:
+    """The examples of metrics/precision.md, recall.md, f1.md, and entity_class_accuracy.md:
     micro-averaged, so the records' counts are added before dividing."""
 
     def setUp(self):
