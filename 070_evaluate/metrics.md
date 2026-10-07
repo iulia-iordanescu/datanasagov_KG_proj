@@ -63,28 +63,45 @@ Four versions.
 
 Each version is a number from 0 to 1; with no extracted triples across the [records](../docs/terminology.md#1-records-and-their-text), it is undefined.
 
+In every version, an extracted triple is not correct when one or more of these hold:
+
+- the [text](../docs/terminology.md#1-records-and-their-text) doesn't state the [fact](../docs/terminology.md#2-triples) (a mistake of extraction);
+- it repeats a fact already extracted (a mistake of extraction): another extracted triple of the same record could pair with the same [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples), that is, it has the same predicate, and a [subject instance](../docs/terminology.md#2-triples) and an [object instance](../docs/terminology.md#2-triples) that also match that ground truth triple's at this pair level, whatever its wording, [subject class](../docs/terminology.md#2-triples), or [object class](../docs/terminology.md#2-triples). A triple has at most one partner, so only one of the two forms a pair. Example: [Precision: example](#precision-example), *A repeated fact*;
+- it's true but missing from the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) (a mistake in the ground truth);
+- it states the same fact as a ground truth triple, but differs from it, after translation, as the table below says. That comes from (a mistake of extraction) ∨ (a wrong row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070), which can turn a correct triple into a wrong one) ∨ (a mistake in the ground truth triple). Examples: [Precision: example](#precision-example), *A wrong component class* and *A wrong row of the translation table*.
+
+| Version | An extracted triple is also not correct when… |
+|---|---|
+| exact precision | (its predicate differs) ∨ (its subject instance differs, once [evened out](../docs/terminology.md#2-triples)) ∨ (its object instance differs, once evened out) |
+| partial precision | (its predicate differs) ∨ (its subject instance neither equals the ground truth triple's subject instance, nor contains it, nor is contained in it, as whole words) ∨ (its object instance neither equals the ground truth triple's object instance, nor contains it, nor is contained in it, as whole words) |
+| strict exact precision | (its predicate differs) ∨ (its subject instance differs, once evened out) ∨ (its object instance differs, once evened out) ∨ (its subject class differs) ∨ (its object class differs) |
+| strict partial precision | (its predicate differs) ∨ (its subject instance neither equals the ground truth triple's subject instance, nor contains it, nor is contained in it, as whole words) ∨ (its object instance neither equals the ground truth triple's object instance, nor contains it, nor is contained in it, as whole words) ∨ (its subject class differs) ∨ (its object class differs) |
+
 #### <ins>Interpretations</ins>
 
-Let *p* be the value of one version of precision. Then, *p* is the proportion of extracted triples that are correct, where "correct" is defined by the version (table above). So in a [knowledge graph](../docs/terminology.md#8-the-pipeline) built from the whole catalog's extracted triples, approximately 1 − *p* of its [edges](../docs/terminology.md#8-the-pipeline) would not be correct.
+Let *p* be the value of one version of precision. It reads two ways: what was computed, on the evaluated records, and what it means for the [knowledge graph](../docs/terminology.md#8-the-pipeline), for the whole catalog. Each item of the second is the counterpart of the item with the same number in the first.
 
-- Partial precision minus exact precision: the proportion of the extracted triples that form a partial pair but not an exact pair. In such a pair, the two [triples](../docs/terminology.md#2-triples) have the same [predicate](../docs/terminology.md#3-schemas), but (their [subject instances](../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) ∨ (their [object instances](../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) (e.g. "MODIS" vs "Moderate Resolution Imaging Spectroradiometer (MODIS)").
-- Precision minus strict precision, at the same pair level: the proportion of the extracted triples that form a pair at that level but not a strict one. In such a pair, (the two triples' [subject classes](../docs/terminology.md#2-triples) differ) ∨ (the two triples' [object classes](../docs/terminology.md#2-triples) differ).
-- In every version, an extracted triple is not correct when (the [text](../docs/terminology.md#1-records-and-their-text) doesn't state the [fact](../docs/terminology.md#2-triples)) ∨ (it repeats a fact already extracted) ∨ (it's true but missing from the [ground truth](../docs/terminology.md#4-ground-truth-and-samples)). The first two are mistakes of extraction; the third, a mistake in the ground truth. A triple has at most one partner, so of two extracted triples stating one fact, only one can form a pair. It is also not correct when, compared with the [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) stating the same fact (after translation), it differs as below. Such a difference comes from (a mistake of extraction) ∨ (a wrong row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070)) ∨ (a mistake in the ground truth triple).
+**What was computed** (the evaluated records)
 
-  | Version | An extracted triple is also not correct when… |
-  |---|---|
-  | exact precision | (its predicate differs) ∨ (its subject instance differs, once [evened out](../docs/terminology.md#2-triples)) ∨ (its object instance differs, once evened out) |
-  | partial precision | (its predicate differs) ∨ (its subject instance neither equals the ground truth triple's subject instance, nor contains it, nor is contained in it, as whole words) ∨ (its object instance neither equals the ground truth triple's object instance, nor contains it, nor is contained in it, as whole words) |
-  | strict exact precision | (its predicate differs) ∨ (its subject instance differs, once evened out) ∨ (its object instance differs, once evened out) ∨ (its subject class differs) ∨ (its object class differs) |
-  | strict partial precision | (its predicate differs) ∨ (its subject instance neither equals the ground truth triple's subject instance, nor contains it, nor is contained in it, as whole words) ∨ (its object instance neither equals the ground truth triple's object instance, nor contains it, nor is contained in it, as whole words) ∨ (its subject class differs) ∨ (its object class differs) |
-- Read with [recall](#recall): each alone can be fooled (see *F1*, *Interpretations*).
+1. *p* is the proportion of the evaluated records' extracted triples that are correct, where "correct" is defined by the version (table above).
+2. Partial precision minus exact precision is the proportion of the extracted triples that form a partial pair but not an exact pair. In such a pair, the two [triples](../docs/terminology.md#2-triples) have the same [predicate](../docs/terminology.md#3-schemas), but (their subject instances are worded differently, one inside the other as whole words) ∨ (their object instances are worded differently, one inside the other as whole words) (e.g. "MODIS" vs "Moderate Resolution Imaging Spectroradiometer (MODIS)").
+3. Precision minus strict precision, at the same pair level, is the proportion of the extracted triples that form a pair at that level but not a strict one. In such a pair, (the two triples' subject classes differ) ∨ (the two triples' object classes differ).
+
+**What it means for the knowledge graph** (the whole catalog, approximately)
+
+Say the knowledge graph is built from the whole catalog's extracted triples, one [edge](../docs/terminology.md#8-the-pipeline) per extracted triple. Then:
+
+1. Approximately 1 − *p* of its edges would not be correct.
+2. Approximately (partial precision minus exact precision) of its edges would state a fact the ground truth also states, by partial pairing, but with (the subject's [node](../docs/terminology.md#8-the-pipeline) named differently from the ground truth) ∨ (the object's node named differently from the ground truth), e.g. a node "Moderate Resolution Imaging Spectroradiometer (MODIS)" where the ground truth says "MODIS".
+3. Approximately (precision minus strict precision) of its edges would state a fact the ground truth also states, at that pair level, but with (the subject's node of the wrong [entity class](../docs/terminology.md#3-schemas)) ∨ (the object's node of the wrong entity class).
 
 #### <ins>Assumes and can't see</ins>
 
 - That the ground truth lists every fact the records state: an extracted triple that is true but missing from the ground truth counts as not correct, so it lowers *p*.
-- Above, *Interpretations* states that approximately 1 − *p* of the knowledge graph's edges would not be correct, where *p* is any one version of precision. It is approximate for two kinds of reason:
+- *What it means for the knowledge graph* is approximate for two kinds of reason:
   - the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *p*'s [margin of error](#sampling-error);
-  - one of precision's own: if graph building ([step](../docs/terminology.md#8-the-pipeline) 080, not built yet) merges repeated extracted triples into one edge, the proportion of edges that are not correct can differ from 1 − *p*. Merging turns a fact that many records state into one edge, but leaves a fact that one record states as one edge. Example: [Precision: example](#precision-example), *Triples vs distinct facts*.
+  - one of precision's own: if graph building ([step](../docs/terminology.md#8-the-pipeline) 080, not built yet) merges repeated extracted triples into one edge, the proportions of edges above can differ from what was computed. Merging turns a fact that many records state into one edge, but leaves a fact that one record states as one edge. Example: [Precision: example](#precision-example), *Triples vs distinct facts*.
+- Alone, *p* can be fooled: read it with [recall](#recall) (see *F1*, *Interpretations*).
 
 Worked example: [Precision: example](#precision-example). Sources: [Precision: sources](#precision-sources).
 
@@ -113,7 +130,11 @@ Let *r* be the value of one version of recall. Then, *r* is the proportion of gr
 
 - Partial recall minus exact recall: the proportion of the ground truth triples that form a partial pair but not an exact pair. In such a pair, the two [triples](../docs/terminology.md#2-triples) have the same [predicate](../docs/terminology.md#3-schemas), but (their [subject instances](../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) ∨ (their [object instances](../docs/terminology.md#2-triples) are worded differently, one inside the other as whole words) (e.g. "MODIS" vs "Moderate Resolution Imaging Spectroradiometer (MODIS)").
 - Recall minus strict recall, at the same pair level: the proportion of the ground truth triples that form a pair at that level but not a strict one. In such a pair, (the two triples' [subject classes](../docs/terminology.md#2-triples) differ) ∨ (the two triples' [object classes](../docs/terminology.md#2-triples) differ).
-- In every version, a ground truth triple is not found when (the [text](../docs/terminology.md#1-records-and-their-text) doesn't state the fact) ∨ (it repeats a fact the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) already lists) ∨ (no extracted triple states the fact). The first two are mistakes in the ground truth; the third, a mistake of extraction. A triple has at most one partner, so of two ground truth triples stating one fact, only one can form a pair. The third includes the facts whose predicate the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) has no counterpart for (see *Recall upper bound*). It is also not found when, compared with the extracted triple stating the same fact (after translation), they differ as below. Such a difference comes from (a mistake of extraction) ∨ (a wrong row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070)) ∨ (a mistake in the ground truth triple).
+- In every version, a ground truth triple is not found when one or more of these hold:
+  - the [text](../docs/terminology.md#1-records-and-their-text) doesn't state the fact (a mistake in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples));
+  - it repeats a fact the ground truth already lists (a mistake in the ground truth): another ground truth triple of the same record could pair with the same extracted triple, that is, it has the same predicate, and a subject instance and an object instance that also match that extracted triple's at this pair level, whatever its wording, subject class, or object class. A triple has at most one partner, so only one of the two forms a pair. Example: [Recall: example](#recall-example), *A repeated fact*;
+  - no extracted triple states the fact (a mistake of extraction, or a limit of the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060): see [Recall upper bound](#recall-upper-bound));
+  - an extracted triple states the same fact, but differs from it, after translation, as the table below says. That comes from (a mistake of extraction) ∨ (a wrong row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070), which can turn a correct extracted triple into a wrong one) ∨ (a mistake in the ground truth triple). Examples: [Recall: example](#recall-example), *A wrong component class* and *A wrong row of the translation table*.
 
   | Version | A ground truth triple is also not found when… |
   |---|---|
@@ -334,11 +355,23 @@ In all: 6 extracted triples, 5 ground truth triples; 2 exact pairs (E1–G1 stri
 
 *Triples vs distinct facts.* 3 records each give the extracted triple "MODIS" ABOARD "Aqua", which is correct, and 1 record gives "AIRS" ABOARD "Terra", which is not. Precision = 3 ÷ 4 = 75%, so 1 − *p* = 25%. If each extracted triple becomes one [edge](../docs/terminology.md#8-the-pipeline), 1 of the 4 edges is not correct: 25%, as 1 − *p* says. If the 3 repeats are merged into one edge, 1 of the 2 edges is not correct: 50%.
 
+*A repeated fact.* The [ground truth](../docs/terminology.md#4-ground-truth-and-samples) has "MODIS ABOARD Aqua" once. Extraction gives it twice: "MODIS ABOARD Aqua" and "the MODIS instrument ABOARD Aqua". The [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) pairs with one of them; the other has no partner left, so it counts as not correct, though what it says is true.
+
+*A wrong component class.* The text says MODIS is aboard Aqua. The ground truth has "MODIS (Instrument) ABOARD Aqua (Spacecraft)". Extraction gives "MODIS (Dataset) ABOARD Aqua (Spacecraft)": the same fact, with the wrong [subject class](../docs/terminology.md#2-triples). The [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) and the ground truth are both right: the mistake is extraction's. For strict exact precision it counts as not correct, since the subject classes differ.
+
+*A wrong row of the translation table.* Extraction gives "MODIS MOUNTED_ON Aqua", which is right: MOUNTED_ON is the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060)'s word for ABOARD. But the table's row says MOUNTED_ON → ACQUIRED_BY. After translation the triple reads "MODIS ACQUIRED_BY Aqua", while the ground truth says "MODIS ABOARD Aqua": the predicates differ, so it counts as not correct, though extraction did nothing wrong.
+
 ### Recall: example
 
 *Micro-averaging.* [Record](../docs/terminology.md#1-records-and-their-text) A: the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) has 5 [triples](../docs/terminology.md#2-triples), 3 of them found. Record B: it has 2, 1 found. Recall = (3 + 1) ÷ (5 + 2) = 57%. Averaging the records' own recalls (60% and 50%) would give 55% instead, letting record B's 2 [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) weigh as much as record A's 5. This holds for every version: only what "found" means changes, that is, which [pairs](#what-the-metrics-count-pairs) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
 
 *Triples vs distinct facts.* 3 records each state "MODIS" ABOARD "Aqua", and extraction finds it in all 3; 1 record states "AIRS" ABOARD "Terra", and extraction misses it. Recall = 3 ÷ 4 = 75%. Counting each [fact](../docs/terminology.md#2-triples) once per record that states it, the [knowledge graph](../docs/terminology.md#8-the-pipeline) holds 3 of 4: 75%, as *r* says, whether or not graph building merges the 3 repeats into one [edge](../docs/terminology.md#8-the-pipeline). Counting distinct facts, it holds 1 of 2: 50%, also whether or not the repeats are merged.
+
+*A repeated fact.* The ground truth of one record lists the same fact twice: "MODIS ABOARD Aqua" and "the MODIS instrument ABOARD Aqua". Extraction gives it once. The [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) pairs with one of them; the other has no partner left, so it counts as not found, though extraction found the fact.
+
+*A wrong component class.* The ground truth has "MODIS (Instrument) ABOARD Aqua (Spacecraft)". Extraction gives "MODIS (Dataset) ABOARD Aqua (Spacecraft)": the same fact, with the wrong [subject class](../docs/terminology.md#2-triples). For strict exact recall the ground truth triple counts as not found, since the subject classes differ; the mistake is extraction's.
+
+*A wrong row of the translation table.* The ground truth has "MODIS ABOARD Aqua". Extraction gives "MODIS MOUNTED_ON Aqua", which is right, but the table's row says MOUNTED_ON → ACQUIRED_BY. After translation the extracted triple reads "MODIS ACQUIRED_BY Aqua": the predicates differ, so the ground truth triple counts as not found, though extraction found it.
 
 ### F1: example
 
