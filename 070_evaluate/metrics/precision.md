@@ -33,7 +33,7 @@ Let *p* be the value of one version of precision. It reads two ways: what was co
 
 Say the knowledge graph is built from the whole catalog's extracted triples, one [edge](../../docs/terminology.md#8-the-pipeline) per extracted triple. Then:
 
-1. Approximately 1 − *p* of its edges would not be correct.
+1. Approximately *p* of its edges would be correct.
 2. Approximately (partial precision minus exact precision) of its edges would state a fact the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) also states, by partial pairing, but with (the subject's [node](../../docs/terminology.md#8-the-pipeline) named differently from the ground truth) ∨ (the object's node named differently from the ground truth), e.g. a node "Moderate Resolution Imaging Spectroradiometer (MODIS)" where the ground truth says "MODIS".
 3. Approximately (precision minus strict precision) of its edges would state a fact the ground truth also states, at that pair level, but with (the subject's node of the wrong [entity class](../../docs/terminology.md#3-schemas)) ∨ (the object's node of the wrong entity class).
 
@@ -52,7 +52,7 @@ Worked example: [Precision: example](#example). Sources: [Precision: sources](#s
 
 *Micro-averaging.* [Record](../../docs/terminology.md#1-records-and-their-text) A: 4 [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), 3 of them correct. Record B: 1 extracted triple, correct. Precision = (3 + 1) ÷ (4 + 1) = 80%. Averaging the records' own precisions (75% and 100%) would give 87.5% instead, letting record B's single extracted triple weigh as much as record A's four. This holds for every version: only what "correct" means changes, that is, which [pairs](pairs.md) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
 
-*Triples vs distinct facts.* 3 records each give the extracted triple "MODIS" ABOARD "Aqua", which is correct, and 1 record gives "AIRS" ABOARD "Terra", which is not. Precision = 3 ÷ 4 = 75%, so 1 − *p* = 25%. If each extracted triple becomes one [edge](../../docs/terminology.md#8-the-pipeline), 1 of the 4 edges is not correct: 25%, as 1 − *p* says. If the 3 repeats are merged into one edge, 1 of the 2 edges is not correct: 50%.
+*Triples vs distinct facts.* 3 records each give the extracted triple "MODIS" ABOARD "Aqua", which is correct, and 1 record gives "AIRS" ABOARD "Terra", which is not. Precision = 3 ÷ 4 = 75%. If each extracted triple becomes one [edge](../../docs/terminology.md#8-the-pipeline), 3 of the 4 edges are correct: 75%, as *p* says. If the 3 repeats are merged into one edge, 1 of the 2 edges is correct: 50%.
 
 *A repeated fact.* The [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has "MODIS ABOARD Aqua" once. Extraction gives it twice: "MODIS ABOARD Aqua" and "the MODIS instrument ABOARD Aqua". The [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) pairs with one of them; the other has no partner left, so it counts as not correct, though what it says is true.
 

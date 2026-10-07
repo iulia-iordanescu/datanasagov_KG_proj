@@ -87,8 +87,8 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"- Of the {E} extracted triples of these records, {_of(ex['pairs'], E)} are correct at the exact "
             f"level, and {_of(pa['pairs'], E)} at the partial level.",
             f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
-            f"{pct(1 - ex['precision']['value']) if E else '–'} of those edges would not be correct at the exact "
-            f"level ({pct(1 - pa['precision']['value']) if E else '–'} at the partial level): an estimate, since "
+            f"{pct(ex['precision']['value']) if E else '–'} of those edges would be correct at the exact "
+            f"level ({pct(pa['precision']['value']) if E else '–'} at the partial level): an estimate, since "
             f"precision is measured on the evaluated records only.",
             f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], E)} of the extracted triples are correct only "
             f"once wording differences are forgiven (e.g. \"MODIS\" vs its full name).",
