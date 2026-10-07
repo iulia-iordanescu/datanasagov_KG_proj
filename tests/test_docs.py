@@ -206,6 +206,39 @@ class TermLinks(unittest.TestCase):
         (code, headings, table header rows, and italic names don't count)."""
         self.assertEqual(first_uses_unlinked(), [])
 
+    def test_one_link_per_term_per_section(self):
+        """A term links once per section, and never from its own home back to terminology.md (which only
+        points back): there it links within the page, or not at all in its own section."""
+        homes, extra = term_homes(), []
+        for rel in LINKED_DOCS:
+            seen = set()
+            for i, line in enumerate((ROOT / rel).read_text(encoding="utf-8").split("\n"), 1):
+                if is_section_heading(line):
+                    seen = set()
+                for m in re.finditer(r"\[([^\]\n]*)\]\([^)]*terminology\.md#[\w-]+\)", line):
+                    t = term_key(m.group(1))
+                    if homes.get(t) == rel:
+                        extra.append(f"{rel}:{i}: {m.group(1)} links to terminology.md from its own home")
+                    elif t in seen:
+                        extra.append(f"{rel}:{i}: {m.group(1)} linked twice in one section")
+                    seen.add(t)
+        self.assertEqual(extra, [])
+
+
+def is_section_heading(line: str) -> bool:
+    """A heading that starts a section for linking: level 1 to 3, and not a part heading such as
+    *Definition* or *Assumes and can't see* (written <ins>…</ins>), which stays in its section."""
+    h = re.match(r"^(#{1,6}) (.*)", line)
+    return bool(h) and len(h.group(1)) <= 3 and "<ins>" not in h.group(2)
+
+
+def term_key(text: str) -> str:
+    """The term a link's text names, plurals and case folded ("Records" -> "record")."""
+    t = text.lower().strip()
+    t = {"strata": "stratum", "entries": "entry"}.get(t, t)
+    t = re.sub(r"classes$", "class", t)
+    return re.sub(r"(?<!s)s$", "", t)
+
 
 def term_homes() -> dict:
     """{term: the doc that defines it}, for the entries of terminology.md that point elsewhere ("See [`x.md`…")."""
@@ -234,7 +267,7 @@ def first_uses_unlinked() -> list:
                     continue
                 h = re.match(r"^(#{1,6}) ", line)
                 if fence or re.match(r"^( {4}|\t)(?![-*\d])", line) or h:
-                    if h and len(h.group(1)) <= 3:
+                    if is_section_heading(line):
                         linked = set()
                     continue
                 if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:|-]+\|$", lines[i + 1]):

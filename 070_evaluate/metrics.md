@@ -15,7 +15,7 @@ Formulas use the usual set symbols: \|…\| is the number of members, ∪ is uni
 
 ### <ins>Definition</ins>
 
-A **[pair](../docs/terminology.md#7-evaluating-extraction-step-070)** is one [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../docs/terminology.md#2-triples), once the extracted triple's [predicate](../docs/terminology.md#3-schemas), [subject class](../docs/terminology.md#2-triples) and [object class](../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)). Each [triple](../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs. There are two **pair levels**, exact and partial, and when two triples count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
+A **pair** is one [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../docs/terminology.md#2-triples), once the extracted triple's [predicate](../docs/terminology.md#3-schemas), [subject class](../docs/terminology.md#2-triples) and [object class](../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)). Each [triple](../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs. There are two **pair levels**, exact and partial, and when two triples count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
 
 | Pair level | Two triples count as stating the same fact when… |
 |---|---|
@@ -37,8 +37,8 @@ A triple left without a partner is **extracted only** (an extracted triple) or *
 
 ### <ins>Assumes and can't see</ins>
 
-- Containment can be fooled: "MODIS" is inside "MODIS Terra", a different instrument. On tuning [records](../docs/terminology.md#1-records-and-their-text) you review partial [pairs](../docs/terminology.md#7-evaluating-extraction-step-070) in the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*); two [triples](../docs/terminology.md#2-triples) marked "not the same [fact](../docs/terminology.md#2-triples)" are never paired. Held-out records' partial pairs are never reviewed (that would mean looking at them).
-- Two [component classes](../docs/terminology.md#3-schemas) of the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) can't be told apart.
+- Containment can be fooled: "MODIS" is inside "MODIS Terra", a different instrument. On tuning records you review partial pairs in the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*); two triples marked "not the same fact" are never paired. Held-out records' partial pairs are never reviewed (that would mean looking at them).
+- Two [component classes](../docs/terminology.md#3-schemas) of the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the ground truth vocabulary can't be told apart.
 
 Worked example: [Pairs: example](#pairs-example). Sources: [Pairs: sources](#pairs-sources).
 
@@ -56,7 +56,7 @@ Four versions.
 
 | Version | An extracted triple counts as correct when it… | Formula |
 |---|---|---|
-| exact [precision](../docs/terminology.md#7-evaluating-extraction-step-070) | forms an exact [pair](../docs/terminology.md#7-evaluating-extraction-step-070) | \|exact pairs\| ÷ \|extracted triples\| |
+| exact precision | forms an exact [pair](#what-the-metrics-count-pairs) | \|exact pairs\| ÷ \|extracted triples\| |
 | partial precision | forms an exact or a partial pair | \|exact pairs ∪ partial pairs\| ÷ \|extracted triples\| |
 | strict exact precision | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ strict pairs\| ÷ \|extracted triples\| |
 | strict partial precision | (forms an exact or a partial pair) ∧ (the pair is strict) | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|extracted triples\| |
@@ -77,13 +77,13 @@ Let *p* be the value of one version of precision. Then, *p* is the proportion of
   | partial precision | (its predicate differs) ∨ (its subject instance neither equals the ground truth triple's subject instance, nor contains it, nor is contained in it, as whole words) ∨ (its object instance neither equals the ground truth triple's object instance, nor contains it, nor is contained in it, as whole words) |
   | strict exact precision | (its predicate differs) ∨ (its subject instance differs, once evened out) ∨ (its object instance differs, once evened out) ∨ (its subject class differs) ∨ (its object class differs) |
   | strict partial precision | (its predicate differs) ∨ (its subject instance neither equals the ground truth triple's subject instance, nor contains it, nor is contained in it, as whole words) ∨ (its object instance neither equals the ground truth triple's object instance, nor contains it, nor is contained in it, as whole words) ∨ (its subject class differs) ∨ (its object class differs) |
-- Read with [recall](../docs/terminology.md#7-evaluating-extraction-step-070): each alone can be fooled (see *F1*, *Interpretations*).
+- Read with [recall](#recall): each alone can be fooled (see *F1*, *Interpretations*).
 
 #### <ins>Assumes and can't see</ins>
 
 - That the ground truth lists every fact the records state: an extracted triple that is true but missing from the ground truth counts as not correct, so it lowers *p*.
 - Above, *Interpretations* states that approximately 1 − *p* of the knowledge graph's edges would not be correct, where *p* is any one version of precision. It is approximate for two kinds of reason:
-  - the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *p*'s [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070);
+  - the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *p*'s [margin of error](#sampling-error);
   - one of precision's own: if graph building ([step](../docs/terminology.md#8-the-pipeline) 080, not built yet) merges repeated extracted triples into one edge, the proportion of edges that are not correct can differ from 1 − *p*. Merging turns a fact that many records state into one edge, but leaves a fact that one record states as one edge. Example: [Precision: example](#precision-example), *Triples vs distinct facts*.
 
 Worked example: [Precision: example](#precision-example). Sources: [Precision: sources](#precision-sources).
@@ -100,7 +100,7 @@ Four versions.
 
 | Version | A ground truth triple counts as found when it… | Formula |
 |---|---|---|
-| exact [recall](../docs/terminology.md#7-evaluating-extraction-step-070) | forms an exact [pair](../docs/terminology.md#7-evaluating-extraction-step-070) | \|exact pairs\| ÷ \|ground truth triples\| |
+| exact recall | forms an exact [pair](#what-the-metrics-count-pairs) | \|exact pairs\| ÷ \|ground truth triples\| |
 | partial recall | forms an exact or a partial pair | \|exact pairs ∪ partial pairs\| ÷ \|ground truth triples\| |
 | strict exact recall | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ strict pairs\| ÷ \|ground truth triples\| |
 | strict partial recall | (forms an exact or a partial pair) ∧ (the pair is strict) | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|ground truth triples\| |
@@ -121,12 +121,12 @@ Let *r* be the value of one version of recall. Then, *r* is the proportion of gr
   | partial recall | (the extracted triple's predicate differs from its predicate) ∨ (the extracted triple's subject instance neither equals its subject instance, nor contains it, nor is contained in it, as whole words) ∨ (the extracted triple's object instance neither equals its object instance, nor contains it, nor is contained in it, as whole words) |
   | strict exact recall | (the extracted triple's predicate differs from its predicate) ∨ (the extracted triple's subject instance differs from its subject instance, once evened out) ∨ (the extracted triple's object instance differs from its object instance, once evened out) ∨ (the extracted triple's subject class differs from its subject class) ∨ (the extracted triple's object class differs from its object class) |
   | strict partial recall | (the extracted triple's predicate differs from its predicate) ∨ (the extracted triple's subject instance neither equals its subject instance, nor contains it, nor is contained in it, as whole words) ∨ (the extracted triple's object instance neither equals its object instance, nor contains it, nor is contained in it, as whole words) ∨ (the extracted triple's subject class differs from its subject class) ∨ (the extracted triple's object class differs from its object class) |
-- Read with [precision](../docs/terminology.md#7-evaluating-extraction-step-070): each alone can be fooled (see *F1*, *Interpretations*).
+- Read with [precision](#precision): each alone can be fooled (see *F1*, *Interpretations*).
 
 #### <ins>Assumes and can't see</ins>
 
 - That the ground truth lists every fact the records state: a fact missing from it isn't counted at all, neither found nor missed.
-- Above, *Interpretations* states that a knowledge graph built from the whole catalog's extracted triples would hold approximately *r* of the facts the records state, each fact counted once per record that states it, where *r* is any one version of recall. It is approximate for the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *r*'s [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070). Unlike precision's reading, it doesn't depend on graph building: merging repeated extracted triples into one [edge](../docs/terminology.md#8-the-pipeline) changes how many edges there are, not which facts the knowledge graph holds.
+- Above, *Interpretations* states that a knowledge graph built from the whole catalog's extracted triples would hold approximately *r* of the facts the records state, each fact counted once per record that states it, where *r* is any one version of recall. It is approximate for the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *r*'s [margin of error](#sampling-error). Unlike precision's reading, it doesn't depend on graph building: merging repeated extracted triples into one [edge](../docs/terminology.md#8-the-pipeline) changes how many edges there are, not which facts the knowledge graph holds.
 - *r* counts a fact once per record that states it. The proportion of distinct facts the knowledge graph holds, each counted once, is a different number, and can differ from *r*. Example: [Recall: example](#recall-example), *Triples vs distinct facts*.
 
 Worked example: [Recall: example](#recall-example). Sources: [Recall: sources](#recall-sources).
@@ -135,7 +135,7 @@ Worked example: [Recall: example](#recall-example). Sources: [Recall: sources](#
 
 #### <ins>Definition</ins>
 
-[Precision](../docs/terminology.md#7-evaluating-extraction-step-070) and [recall](../docs/terminology.md#7-evaluating-extraction-step-070) combined into one number, high only when both are.
+[Precision](#precision) and [recall](#recall) combined into one number, high only when both are.
 
 #### <ins>Formula</ins>
 
@@ -143,12 +143,12 @@ Four versions, each from the precision and recall of the same version.
 
 | Version | Formula |
 |---|---|
-| exact [F1](../docs/terminology.md#7-evaluating-extraction-step-070) | 2 × exact precision × exact recall ÷ (exact precision + exact recall) |
+| exact F1 | 2 × exact precision × exact recall ÷ (exact precision + exact recall) |
 | partial F1 | 2 × partial precision × partial recall ÷ (partial precision + partial recall) |
 | strict exact F1 | 2 × strict exact precision × strict exact recall ÷ (strict exact precision + strict exact recall) |
 | strict partial F1 | 2 × strict partial precision × strict partial recall ÷ (strict partial precision + strict partial recall) |
 
-The code computes the same number as 2 × \|[pairs](../docs/terminology.md#7-evaluating-extraction-step-070) counted\| ÷ (\|[extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060)\| + \|[ground truth triples](../docs/terminology.md#4-ground-truth-and-samples)\|), which also settles the edge cases: F1 is 0 when no pair is counted (even with no extracted triples, where precision is undefined).
+The code computes the same number as 2 × \|[pairs](#what-the-metrics-count-pairs) counted\| ÷ (\|[extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060)\| + \|[ground truth triples](../docs/terminology.md#4-ground-truth-and-samples)\|), which also settles the edge cases: F1 is 0 when no pair is counted (even with no extracted triples, where precision is undefined).
 
 Each version is a number from 0 to 1; with neither extracted triples nor ground truth triples across the [records](../docs/terminology.md#1-records-and-their-text), it is undefined.
 
@@ -163,7 +163,7 @@ Let *f* be the value of one version of F1. Then, *f* is the harmonic mean of tha
 
 - It weighs precision and recall equally. If one matters more (for a graph, a wrong statement is often worse than a missing one), read precision and recall themselves.
 - It doesn't show which of the two is low.
-- Read for the whole catalog, *f* is approximate for the the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *f*'s [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070).
+- Read for the whole catalog, *f* is approximate for the the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *f*'s [margin of error](#sampling-error).
 
 Worked example: [F1: example](#f1-example). Sources: [F1: sources](#f1-sources).
 
@@ -171,7 +171,7 @@ Worked example: [F1: example](#f1-example). Sources: [F1: sources](#f1-sources).
 
 #### <ins>Definition</ins>
 
-Among the [pairs](../docs/terminology.md#7-evaluating-extraction-step-070) counted, the proportion that are strict. Which pairs are counted depends on the version.
+Among the [pairs](#what-the-metrics-count-pairs) counted, the proportion that are strict. Which pairs are counted depends on the version.
 
 #### <ins>Formula</ins>
 
@@ -179,7 +179,7 @@ Two versions.
 
 | Version | Pairs counted | Formula |
 |---|---|---|
-| exact [entity-class accuracy](../docs/terminology.md#7-evaluating-extraction-step-070) | exact pairs | \|exact pairs ∩ strict pairs\| ÷ \|exact pairs\| |
+| exact entity-class accuracy | exact pairs | \|exact pairs ∩ strict pairs\| ÷ \|exact pairs\| |
 | partial entity-class accuracy | exact pairs ∪ partial pairs | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|exact pairs ∪ partial pairs\| |
 
 Each version is a number from 0 to 1; with no pairs counted across the [records](../docs/terminology.md#1-records-and-their-text), it is undefined.
@@ -188,14 +188,14 @@ Each version is a number from 0 to 1; with no pairs counted across the [records]
 
 Let *a* be the value of one version of entity-class accuracy. Then, *a* is the proportion of the pairs counted that are strict, where the pairs counted are defined by the version (table above). So of the [knowledge graph](../docs/terminology.md#8-the-pipeline)'s correct [edges](../docs/terminology.md#8-the-pipeline), approximately *a* would also have both [nodes](../docs/terminology.md#8-the-pipeline)' [entity classes](../docs/terminology.md#3-schemas) right.
 
-- Read with [precision](../docs/terminology.md#7-evaluating-extraction-step-070) and [recall](../docs/terminology.md#7-evaluating-extraction-step-070): they say whether [facts](../docs/terminology.md#2-triples) are found; this says whether the things in them are classed right.
+- Read with [precision](#precision) and [recall](#recall): they say whether [facts](../docs/terminology.md#2-triples) are found; this says whether the things in them are classed right.
 
 #### <ins>Assumes and can't see</ins>
 
 - Only paired [triples](../docs/terminology.md#2-triples) are judged: the [subject class](../docs/terminology.md#2-triples) and [object class](../docs/terminology.md#2-triples) of a triple without a partner aren't counted anywhere.
 - Two [component classes](../docs/terminology.md#3-schemas) of the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) look the same, so mixing them up isn't seen.
 - Above, *Interpretations* states that approximately *a* of the knowledge graph's correct edges would also have both nodes' entity classes right, where *a* is any one version of entity-class accuracy. It is approximate for two kinds of reason:
-  - the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *a*'s [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070);
+  - the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *a*'s [margin of error](#sampling-error);
   - one of its own: if graph building ([step](../docs/terminology.md#8-the-pipeline) 080, not built yet) merges repeated [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060) into one edge, the proportion of correct edges whose entity classes are right can differ from *a*, for the reason given under *Precision*, *Assumes and can't see*.
 
 Worked example: [Entity-class accuracy: example](#entity-class-accuracy-example). Sources: [Entity-class accuracy: sources](#entity-class-accuracy-sources).
@@ -204,7 +204,7 @@ Worked example: [Entity-class accuracy: example](#entity-class-accuracy-example)
 
 #### <ins>Definition</ins>
 
-The proportion of the [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) can express at all: the most [recall](../docs/terminology.md#7-evaluating-extraction-step-070) any extraction with this [schema](../docs/terminology.md#3-schemas) and [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) could get. A ground truth triple is **[within reach](../docs/terminology.md#7-evaluating-extraction-step-070)** when its [predicate](../docs/terminology.md#3-schemas) is one that some checked row of the translation table translates to. It is **[within strict reach](../docs/terminology.md#7-evaluating-extraction-step-070)** when (it is within reach) ∧ (its [subject class](../docs/terminology.md#2-triples) is one that some checked row translates to) ∧ (its [object class](../docs/terminology.md#2-triples) is one that some checked row translates to). Which ground truth triples count depends on the version.
+The proportion of the [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) can express at all: the most recall any extraction with this [schema](../docs/terminology.md#3-schemas) and [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) could get. A ground truth triple is **within reach** when its [predicate](../docs/terminology.md#3-schemas) is one that some checked row of the translation table translates to. It is **within strict reach** when (it is within reach) ∧ (its [subject class](../docs/terminology.md#2-triples) is one that some checked row translates to) ∧ (its [object class](../docs/terminology.md#2-triples) is one that some checked row translates to). Which ground truth triples count depends on the version.
 
 #### <ins>Formula</ins>
 
@@ -212,7 +212,7 @@ Two versions.
 
 | Version | A ground truth triple counts when it is… | Formula |
 |---|---|---|
-| [recall upper bound](../docs/terminology.md#7-evaluating-extraction-step-070) | within reach | \|ground truth triples within reach\| ÷ \|ground truth triples\| |
+| recall upper bound | within reach | \|ground truth triples within reach\| ÷ \|ground truth triples\| |
 | strict recall upper bound | within strict reach | \|ground truth triples within strict reach\| ÷ \|ground truth triples\| |
 
 Each version is a number from 0 to 1; with no ground truth triples across the [records](../docs/terminology.md#1-records-and-their-text), it is undefined.
@@ -229,7 +229,7 @@ Let *u* be the value of one version of the recall upper bound. Then, *u* is the 
 
 - Within reach means only that the schema has the component classes: not that the [model](../docs/terminology.md#8-the-pipeline) could find the [fact](../docs/terminology.md#2-triples) in the [text](../docs/terminology.md#1-records-and-their-text).
 - It depends on the translation table: a row wrongly saying `(none)` lowers it.
-- Read for the whole catalog, *u* is approximate for the the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *u*'s [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070).
+- Read for the whole catalog, *u* is approximate for the the [reasons every metric shares](#why-approximately-reasons-every-metric-shares); the [report](../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *u*'s [margin of error](#sampling-error).
 
 Worked example: [Recall upper bound: example](#recall-upper-bound-example). Sources: [Recall upper bound: sources](#recall-upper-bound-sources).
 
@@ -246,9 +246,9 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 **What it means.** Another sample of the same size would give a somewhat different value.
 
-**How the [report](../docs/terminology.md#8-the-pipeline) checks or limits it: the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070).** A range around each metric's value that says how much the value could change with another sample of the same size. Every metric gets one, except the describes baseline and the describes per-entity-class average. Example: [Sampling error: example](#sampling-error-example).
+**How the [report](../docs/terminology.md#8-the-pipeline) checks or limits it: the margin of error.** A range around each metric's value that says how much the value could change with another sample of the same size. Every metric gets one, except the describes baseline and the describes per-entity-class average. Example: [Sampling error: example](#sampling-error-example).
 
-- **How it is computed**, by the [bootstrap](../docs/terminology.md#7-evaluating-extraction-step-070), with fixed numbers in `070_evaluate/070_evaluate_helpers/stats.py`:
+- **How it is computed**, by the bootstrap, with fixed numbers in `070_evaluate/070_evaluate_helpers/stats.py`:
   1. Redraw the evaluated [records](../docs/terminology.md#1-records-and-their-text): within each [stratum](../docs/terminology.md#4-ground-truth-and-samples), draw at random, with repeats, as many records as the stratum has. Whole records are drawn, never single [triples](../docs/terminology.md#2-triples).
   2. Compute the metric on the redrawn records, adding up their counts as on the real ones. A redraw where the metric is undefined (e.g. no [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060)) is skipped.
   3. Repeat 1,000 times (`REDRAWS`), from a fixed seed (`SEED = 70`), so a rerun gives the same range.
@@ -285,7 +285,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 **What it means.** Each metric is a ratio of two counts that both vary from sample to sample. Such a ratio is slightly biased in small samples: averaged over many samples, it isn't exactly the whole catalog's value.
 
-**How the [report](../docs/terminology.md#8-the-pipeline) checks or limits it.** It doesn't check it. The bias shrinks as the sample grows, faster than the sampling error does, so it is small next to the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070).
+**How the [report](../docs/terminology.md#8-the-pipeline) checks or limits it.** It doesn't check it. The bias shrinks as the sample grows, faster than the sampling error does, so it is small next to the [margin of error](#sampling-error).
 
 ### Tuning on the evaluated records
 
@@ -317,7 +317,7 @@ Its [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-0
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | Outcome |
 |---|---|---|---|---|
-| E1 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | exact [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with G1 ("the" is ignored); strict |
+| E1 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | exact [pair](#what-the-metrics-count-pairs) with G1 ("the" is ignored); strict |
 | E2 | AIRS (Dataset) | ABOARD | Aqua (Spacecraft) | exact pair with G2; not strict ([subject class](../docs/terminology.md#2-triples) Dataset, not Instrument) |
 | E3 | MODIS Snow Cover 5-Min L2 Swath (Dataset) | ACQUIRED_BY | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | partial pair with G3 ("MODIS Snow Cover" is inside the [subject instance](../docs/terminology.md#2-triples), "MODIS" inside the [object instance](../docs/terminology.md#2-triples)); strict |
 | E4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | the period 2002–2023 (Dataset) | partial pair with G4 ("2002–2023" is inside the object instance); not strict ([object class](../docs/terminology.md#2-triples) Dataset, not TimeSpan) |
@@ -330,70 +330,70 @@ In all: 6 extracted triples, 5 ground truth triples; 2 exact pairs (E1–G1 stri
 
 ### Precision: example
 
-*Micro-averaging.* [Record](../docs/terminology.md#1-records-and-their-text) A: 4 [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060), 3 of them correct. Record B: 1 extracted triple, correct. [Precision](../docs/terminology.md#7-evaluating-extraction-step-070) = (3 + 1) ÷ (4 + 1) = 80%. Averaging the records' own precisions (75% and 100%) would give 87.5% instead, letting record B's single extracted triple weigh as much as record A's four. This holds for every version: only what "correct" means changes, that is, which [pairs](../docs/terminology.md#7-evaluating-extraction-step-070) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
+*Micro-averaging.* [Record](../docs/terminology.md#1-records-and-their-text) A: 4 [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060), 3 of them correct. Record B: 1 extracted triple, correct. Precision = (3 + 1) ÷ (4 + 1) = 80%. Averaging the records' own precisions (75% and 100%) would give 87.5% instead, letting record B's single extracted triple weigh as much as record A's four. This holds for every version: only what "correct" means changes, that is, which [pairs](#what-the-metrics-count-pairs) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
 
 *Triples vs distinct facts.* 3 records each give the extracted triple "MODIS" ABOARD "Aqua", which is correct, and 1 record gives "AIRS" ABOARD "Terra", which is not. Precision = 3 ÷ 4 = 75%, so 1 − *p* = 25%. If each extracted triple becomes one [edge](../docs/terminology.md#8-the-pipeline), 1 of the 4 edges is not correct: 25%, as 1 − *p* says. If the 3 repeats are merged into one edge, 1 of the 2 edges is not correct: 50%.
 
 ### Recall: example
 
-*Micro-averaging.* [Record](../docs/terminology.md#1-records-and-their-text) A: the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) has 5 [triples](../docs/terminology.md#2-triples), 3 of them found. Record B: it has 2, 1 found. [Recall](../docs/terminology.md#7-evaluating-extraction-step-070) = (3 + 1) ÷ (5 + 2) = 57%. Averaging the records' own recalls (60% and 50%) would give 55% instead, letting record B's 2 [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) weigh as much as record A's 5. This holds for every version: only what "found" means changes, that is, which [pairs](../docs/terminology.md#7-evaluating-extraction-step-070) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
+*Micro-averaging.* [Record](../docs/terminology.md#1-records-and-their-text) A: the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) has 5 [triples](../docs/terminology.md#2-triples), 3 of them found. Record B: it has 2, 1 found. Recall = (3 + 1) ÷ (5 + 2) = 57%. Averaging the records' own recalls (60% and 50%) would give 55% instead, letting record B's 2 [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) weigh as much as record A's 5. This holds for every version: only what "found" means changes, that is, which [pairs](#what-the-metrics-count-pairs) count (by pair level: exact, or exact or partial; by strictness: any, or strict only; see the table under *Formula*).
 
 *Triples vs distinct facts.* 3 records each state "MODIS" ABOARD "Aqua", and extraction finds it in all 3; 1 record states "AIRS" ABOARD "Terra", and extraction misses it. Recall = 3 ÷ 4 = 75%. Counting each [fact](../docs/terminology.md#2-triples) once per record that states it, the [knowledge graph](../docs/terminology.md#8-the-pipeline) holds 3 of 4: 75%, as *r* says, whether or not graph building merges the 3 repeats into one [edge](../docs/terminology.md#8-the-pipeline). Counting distinct facts, it holds 1 of 2: 50%, also whether or not the repeats are merged.
 
 ### F1: example
 
-With the [records](../docs/terminology.md#1-records-and-their-text) of the examples above: 4 [pairs](../docs/terminology.md#7-evaluating-extraction-step-070), 5 [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060), 7 [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples). [Precision](../docs/terminology.md#7-evaluating-extraction-step-070) 80%, [recall](../docs/terminology.md#7-evaluating-extraction-step-070) 57%, [F1](../docs/terminology.md#7-evaluating-extraction-step-070) = 2 × 0.80 × 0.57 ÷ (0.80 + 0.57) = 67%.
+With the [records](../docs/terminology.md#1-records-and-their-text) of the examples above: 4 [pairs](#what-the-metrics-count-pairs), 5 [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060), 7 [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples). [Precision](#precision) 80%, [recall](#recall) 57%, F1 = 2 × 0.80 × 0.57 ÷ (0.80 + 0.57) = 67%.
 
 *Pulled toward the lower.* Precision 100% and recall 10% give F1 = 2 × 1.00 × 0.10 ÷ (1.00 + 0.10) = 18%, not the 55% of the plain average.
 
 ### Entity-class accuracy: example
 
-4 [pairs](../docs/terminology.md#7-evaluating-extraction-step-070), 3 of them strict: [entity-class accuracy](../docs/terminology.md#7-evaluating-extraction-step-070) = 3 ÷ 4 = 75%.
+4 [pairs](#what-the-metrics-count-pairs), 3 of them strict: entity-class accuracy = 3 ÷ 4 = 75%.
 
 ### Recall upper bound: example
 
 The [record](../docs/terminology.md#1-records-and-their-text) of the *Pairs* example has 5 [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples), with the [predicates](../docs/terminology.md#3-schemas) ABOARD (G1, G2, G5), ACQUIRED_BY (G3) and HAS_TIME_SPAN (G4). Say the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) has counterparts for ABOARD and ACQUIRED_BY but not HAS_TIME_SPAN, and none for the [entity class](../docs/terminology.md#3-schemas) Dataset.
 
-- [Within reach](../docs/terminology.md#7-evaluating-extraction-step-070): G1, G2, G3, G5 (G4's predicate has no counterpart). [Recall upper bound](../docs/terminology.md#7-evaluating-extraction-step-070) = 4 ÷ 5 = 80%.
-- [Within strict reach](../docs/terminology.md#7-evaluating-extraction-step-070): G1, G2, G5 (G3's [subject class](../docs/terminology.md#2-triples), Dataset, has no counterpart either). Strict recall upper bound = 3 ÷ 5 = 60%.
+- Within reach: G1, G2, G3, G5 (G4's predicate has no counterpart). Recall upper bound = 4 ÷ 5 = 80%.
+- Within strict reach: G1, G2, G5 (G3's [subject class](../docs/terminology.md#2-triples), Dataset, has no counterpart either). Strict recall upper bound = 3 ÷ 5 = 60%.
 
 ### Sampling error: example
 
-40 evaluated [records](../docs/terminology.md#1-records-and-their-text), in two [strata](../docs/terminology.md#4-ground-truth-and-samples) of 30 and 10, with exact [precision](../docs/terminology.md#7-evaluating-extraction-step-070) 70%. Each redraw takes 30 records at random, with repeats, from the first stratum's 30, and 10 from the second's 10, and computes exact precision on them. Of the 1,000 values, the middle 95% run from 61% to 78%. The [report](../docs/terminology.md#8-the-pipeline) says: "for the whole catalog, exact precision is likely between 61% and 78%".
+40 evaluated [records](../docs/terminology.md#1-records-and-their-text), in two [strata](../docs/terminology.md#4-ground-truth-and-samples) of 30 and 10, with exact [precision](#precision) 70%. Each redraw takes 30 records at random, with repeats, from the first stratum's 30, and 10 from the second's 10, and computes exact precision on them. Of the 1,000 values, the middle 95% run from 61% to 78%. The [report](../docs/terminology.md#8-the-pipeline) says: "for the whole catalog, exact precision is likely between 61% and 78%".
 
 ## Sources
 
 ### Pairs: sources
 
 - *Exact* and *partial*: the WebNLG 2020 challenge's evaluation of text-to-triples extraction (Castro Ferreira et al., 2020, [paper](https://aclanthology.org/2020.webnlg-1.7.pdf)). Ours is stricter on partial: whole words, not any overlap.
-- Credit: here a partial [pair](../docs/terminology.md#7-evaluating-extraction-step-070) counts as fully right. The SemEval-2013 scoring convention ([nervaluate](https://github.com/MantisAI/nervaluate)) gives a partial match half credit: partial [precision](../docs/terminology.md#7-evaluating-extraction-step-070) = (exact + 0.5 × partial) ÷ extracted. Full credit fits our meaning of a partial pair, the same [fact](../docs/terminology.md#2-triples) named differently (on tuning [records](../docs/terminology.md#1-records-and-their-text), confirmed by your review), but our partial numbers are higher than that convention's and not directly comparable with published partial scores.
+- Credit: here a partial [pair](#what-the-metrics-count-pairs) counts as fully right. The SemEval-2013 scoring convention ([nervaluate](https://github.com/MantisAI/nervaluate)) gives a partial match half credit: partial [precision](#precision) = (exact + 0.5 × partial) ÷ extracted. Full credit fits our meaning of a partial pair, the same [fact](../docs/terminology.md#2-triples) named differently (on tuning [records](../docs/terminology.md#1-records-and-their-text), confirmed by your review), but our partial numbers are higher than that convention's and not directly comparable with published partial scores.
 - *Strict*, meaning right relation and right entity types: the "Strict" [setting](../docs/terminology.md#8-the-pipeline) of end-to-end relation extraction (Bekoulis et al., 2018, as described by Taillé et al., 2020, [paper](https://aclanthology.org/2020.emnlp-main.301/)). WebNLG's "strict" means something else (the element's role must match), so it isn't the source here.
 - At most one partner per [triple](../docs/terminology.md#2-triples), largest set of pairs: a maximum matching (Kuhn's algorithm, `070_evaluate/070_evaluate_helpers/pairing.py`).
 
 ### Precision: sources
 
-The standard definition of [precision](../docs/terminology.md#7-evaluating-extraction-step-070), summed over all items before dividing (*micro-averaging*), as opposed to averaging per [record](../docs/terminology.md#1-records-and-their-text) (*macro-averaging*): Manning, Raghavan & Schütze, *Introduction to Information Retrieval* (2008), sections 8.3 and 13.6 ([book](https://nlp.stanford.edu/IR-book/)). Micro-averaging fits precision's interpretation: every [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) weighs the same, as every [edge](../docs/terminology.md#8-the-pipeline) would in the [knowledge graph](../docs/terminology.md#8-the-pipeline). Macro-averaging answers another question (for a typical record, what proportion of its extracted triples is correct). The WebNLG+ 2020 challenge reports its text-to-triples scores macro-averaged (Castro Ferreira et al., 2020, Table 10, [paper](https://aclanthology.org/2020.webnlg-1.7.pdf)), so our numbers aren't directly comparable with its published ones.
+The standard definition of precision, summed over all items before dividing (*micro-averaging*), as opposed to averaging per [record](../docs/terminology.md#1-records-and-their-text) (*macro-averaging*): Manning, Raghavan & Schütze, *Introduction to Information Retrieval* (2008), sections 8.3 and 13.6 ([book](https://nlp.stanford.edu/IR-book/)). Micro-averaging fits precision's interpretation: every [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) weighs the same, as every [edge](../docs/terminology.md#8-the-pipeline) would in the [knowledge graph](../docs/terminology.md#8-the-pipeline). Macro-averaging answers another question (for a typical record, what proportion of its extracted triples is correct). The WebNLG+ 2020 challenge reports its text-to-triples scores macro-averaged (Castro Ferreira et al., 2020, Table 10, [paper](https://aclanthology.org/2020.webnlg-1.7.pdf)), so our numbers aren't directly comparable with its published ones.
 
 ### Recall: sources
 
-The standard definition of [recall](../docs/terminology.md#7-evaluating-extraction-step-070), micro-averaged like [precision](../docs/terminology.md#7-evaluating-extraction-step-070): Manning, Raghavan & Schütze (2008), sections 8.3 and 13.6. As for precision, the WebNLG+ 2020 challenge reports recall macro-averaged (Castro Ferreira et al., 2020, Table 10), so our numbers aren't directly comparable with its published ones.
+The standard definition of recall, micro-averaged like [precision](#precision): Manning, Raghavan & Schütze (2008), sections 8.3 and 13.6. As for precision, the WebNLG+ 2020 challenge reports recall macro-averaged (Castro Ferreira et al., 2020, Table 10), so our numbers aren't directly comparable with its published ones.
 
 ### F1: sources
 
-The F-measure of van Rijsbergen, *Information Retrieval* (1979), with [precision](../docs/terminology.md#7-evaluating-extraction-step-070) and [recall](../docs/terminology.md#7-evaluating-extraction-step-070) weighted equally; Manning, Raghavan & Schütze (2008), section 8.3. The standard headline metric in relation extraction.
+The F-measure of van Rijsbergen, *Information Retrieval* (1979), with [precision](#precision) and [recall](#recall) weighted equally; Manning, Raghavan & Schütze (2008), section 8.3. The standard headline metric in relation extraction.
 
 ### Entity-class accuracy: sources
 
-No single standard name. It separates the two [settings](../docs/terminology.md#8-the-pipeline) end-to-end relation extraction reports side by side, "Strict" (with entity types) and "Boundaries" (without), described by Taillé et al. (2020): here, strict [pairs](../docs/terminology.md#7-evaluating-extraction-step-070) ÷ all pairs.
+No single standard name. It separates the two [settings](../docs/terminology.md#8-the-pipeline) end-to-end relation extraction reports side by side, "Strict" (with entity types) and "Boundaries" (without), described by Taillé et al. (2020): here, strict [pairs](#what-the-metrics-count-pairs) ÷ all pairs.
 
 ### Recall upper bound: sources
 
-An upper bound on [recall](../docs/terminology.md#7-evaluating-extraction-step-070), set by an earlier stage of a pipeline (here, the [schema](../docs/terminology.md#3-schemas)), is standard: Pink, Nothman & Curran (2014), "Analysing recall loss in named entity slot filling", EMNLP ([paper](https://aclanthology.org/D14-1089.pdf)): "the recall of a system's coarse candidate generation process sets a hard upper bound on performance". As there, the bound uses the same matching rule as the metric it bounds: a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) needs only the [predicate](../docs/terminology.md#3-schemas), so the [recall upper bound](../docs/terminology.md#7-evaluating-extraction-step-070) counts only the predicate; a strict pair also needs the [entity classes](../docs/terminology.md#3-schemas), so the strict recall upper bound counts them too. The name "recall upper bound" is the established one; no paper found uses a schema-specific term.
+An upper bound on recall, set by an earlier stage of a pipeline (here, the [schema](../docs/terminology.md#3-schemas)), is standard: Pink, Nothman & Curran (2014), "Analysing recall loss in named entity slot filling", EMNLP ([paper](https://aclanthology.org/D14-1089.pdf)): "the recall of a system's coarse candidate generation process sets a hard upper bound on performance". As there, the bound uses the same matching rule as the metric it bounds: a [pair](#what-the-metrics-count-pairs) needs only the [predicate](../docs/terminology.md#3-schemas), so the recall upper bound counts only the predicate; a strict pair also needs the [entity classes](../docs/terminology.md#3-schemas), so the strict recall upper bound counts them too. The name "recall upper bound" is the established one; no paper found uses a schema-specific term.
 
 ### Why "approximately": sources
 
-- Sampling error, the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070):
-  - The [bootstrap](../docs/terminology.md#7-evaluating-extraction-step-070), and its percentile range: Efron & Tibshirani, *An Introduction to the Bootstrap* (1993).
+- Sampling error, the [margin of error](#sampling-error):
+  - The [bootstrap](#sampling-error), and its percentile range: Efron & Tibshirani, *An Introduction to the Bootstrap* (1993).
   - Drawing whole [records](../docs/terminology.md#1-records-and-their-text) rather than single [triples](../docs/terminology.md#2-triples), since a record's triples succeed or fail together, is the cluster (or block) bootstrap; drawing within each [stratum](../docs/terminology.md#4-ground-truth-and-samples) is the stratified bootstrap: Davison & Hinkley, *Bootstrap Methods and their Application* (1997).
   - The threshold of 20 records: a rule of thumb, with no source found.
   - Below 5% of the catalog evaluated, drawing with repeats from a finite catalog is negligible: Cochran, *Sampling Techniques* (1977), chapter 2.
