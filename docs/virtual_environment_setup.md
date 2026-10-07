@@ -23,7 +23,7 @@ Then create the `.env` file (part 6) and run the checks (part 7).
 |---|---|
 | Python | **3.14** (part 1 checks for it) |
 | Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `common/common_helpers/llm.py` to read your Ask Sage key from `.env`. Everything else comes with Python |
-| Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a model need it |
+| Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a [model](terminology.md#8-the-pipeline) need it |
 
 ## Part 1: Check that Python 3.14 is installed
 
@@ -105,7 +105,7 @@ Then commit `requirements.txt`.
 
 ## Part 6: Add your Ask Sage credentials
 
-Skip this part if you only need the pipeline steps that call no model (010 to 030) and the audit tool.
+Skip this part if you only need the pipeline [steps](terminology.md#8-the-pipeline) that call no [model](terminology.md#8-the-pipeline) (010 to 030) and the audit tool.
 
 Create a file named `.env` in the repo root, containing these two lines with your own values:
 
@@ -118,7 +118,7 @@ Don't add quotes or spaces around the `=`.
 
 `.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/common_helpers/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`) and 060 (`060_extract/run.py`), and 070 (`070_evaluate/run.py`) when it needs to propose component class translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
+The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`) and 060 (`060_extract/run.py`), and 070 (`070_evaluate/run.py`) when it needs to propose [component class](terminology.md#3-schemas) translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
 ## Part 7: Check the setup
 
@@ -140,7 +140,7 @@ If the path points somewhere else, the environment isn't active. Go back to part
 
 ## Part 8: Run the scripts
 
-The usage examples in the scripts and in the steps' guides use `py`, for example `py helpers/audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
+The usage examples in the scripts and in the [steps](terminology.md#8-the-pipeline)' guides use `py`, for example `py helpers/audit.py <record id>`. While the environment is active, `py` without a version number uses the environment's Python, so you can copy those examples as they are. `python` works the same way.
 
 **Pipeline steps.** These find their files relative to the repo, so the folder you run them from doesn't matter. Running them from the repo root is simplest:
 

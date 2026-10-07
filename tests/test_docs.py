@@ -1,6 +1,6 @@
 """The docs say what the code does: each step guide's Inputs, Settings and
 Prompts tables match its run.py and its prompts folder; every file path
-named in the docs and code exists; the glossary defines each term once; and
+named in the docs and code exists; docs/terminology.md defines each term once; and
 "class" never stands alone (docs/terminology.md: say entity class, subject
 class, object class, or component class)."""
 import ast
@@ -150,7 +150,7 @@ class Vocabulary(unittest.TestCase):
                 found.append(f"{f}:{text.count(chr(10), 0, m.start()) + 1}: {line.strip()[:120]}")
         self.assertEqual(found, [])
 
-    def test_glossary_terms_once(self):
+    def test_terms_defined_once(self):
         text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
         terms = [t.lower() for t in re.findall(r"^\| \*\*([^*]+)\*\*", text, re.M)]
         self.assertGreater(len(terms), 30)
