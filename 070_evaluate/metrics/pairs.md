@@ -28,7 +28,7 @@ So every pair is exactly one of these four:
 
 All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are some of each.
 
-Each [triple](../../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs: partners are picked so that as many triples as possible get one (a *maximum matching*). Example: [Example](#example), *The largest set of pairs*.
+Meeting a pair level's requirements makes two such aforementioned triples able to pair, not paired: each [triple](../../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs: partners are picked so that as many triples as possible get one (a *maximum matching*). Example: [Example](#example), *The largest set of pairs*.
 
 A triple left without a partner is **extracted only** (an extracted triple) or **ground truth only** (a ground truth triple).
 
