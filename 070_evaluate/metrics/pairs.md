@@ -4,9 +4,11 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 ## <ins>Definition</ins>
 
-A **pair** is one [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../../docs/terminology.md#2-triples), once the extracted triple's [predicate](../../docs/terminology.md#3-schemas), [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)). There are two **pair levels**, exact and partial, and when two such aforementioned [triples](../../docs/terminology.md#2-triples) count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
+A **pair** is one [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../../docs/terminology.md#2-triples), once the extracted triple's [predicate](../../docs/terminology.md#3-schemas), [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)).
 
-- An extracted triple (after its [component classes](../../docs/terminology.md#3-schemas) are translated) and a ground truth triple of the same record can form an **exact pair** when all three hold:
+There are two **pair levels**, exact and partial, that define when an extracted triple (after its [component classes](../../docs/terminology.md#3-schemas) are translated) and a ground truth triple of the same record count as stating the same fact.
+
+- They can form an **exact pair** when all three hold:
   - the same predicate;
   - the same [subject instance](../../docs/terminology.md#2-triples), once [evened out](../../docs/terminology.md#2-triples);
   - the same [object instance](../../docs/terminology.md#2-triples), once evened out.
@@ -26,7 +28,7 @@ So every pair is exactly one of these four:
 
 All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are some of each.
 
-Each triple has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs: partners are picked so that as many triples as possible get one (a *maximum matching*). Example: [Example](#example), *The largest set of pairs*.
+Each [triple](../../docs/terminology.md#2-triples) has at most one partner. Evaluation finds the largest possible set of exact pairs, then, among the triples left, the largest possible set of partial pairs: partners are picked so that as many triples as possible get one (a *maximum matching*). Example: [Example](#example), *The largest set of pairs*.
 
 A triple left without a partner is **extracted only** (an extracted triple) or **ground truth only** (a ground truth triple).
 
