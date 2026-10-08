@@ -28,7 +28,7 @@ So every pair is exactly one of these four:
 
 All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are some of each.
 
-A triple left without a partner is **extracted only** (an extracted triple) or **[ground truth](../../docs/terminology.md#4-ground-truth-and-samples) only** (a ground truth triple).
+A triple left without a partner is **extracted only** (an extracted triple) or **ground truth only** (a ground truth triple).
 
 Pairs are what precision and recall count: an extracted triple in a pair the version counts is [correct](precision.md), and a ground truth triple in one is [found](recall.md).
 

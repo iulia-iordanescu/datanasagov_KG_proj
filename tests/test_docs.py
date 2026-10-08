@@ -254,8 +254,10 @@ def term_homes() -> dict:
 def first_uses_unlinked() -> list:
     """[(doc, line, term, column)]: first uses of a multi-word term, per section, that aren't a link."""
     if True:
-        terms = multiword_terms()
         homes = term_homes()
+        # the NOT_TERMS phrases are matched too, as units, so no shorter term counts inside them
+        # ("ground truth" in "ground truth only"), but they are never reported
+        terms = sorted(set(multiword_terms()) | NOT_TERMS, key=len, reverse=True)
         forms = [(t, re.compile(r"(?<![\w\-/.#`\[_])(" + re.escape(t) + r"(?:e?s)?)(?![\w\-`\]_])", re.I)) for t in terms]
         missing = []
         for rel in LINKED_DOCS:
@@ -281,7 +283,7 @@ def first_uses_unlinked() -> list:
                         if any(a < m.end() and m.start() < b for a, b in taken):
                             continue
                         taken.append(m.span())
-                        if t not in linked and homes.get(t) != rel:
+                        if t not in linked and t not in NOT_TERMS and homes.get(t) != rel:
                             missing.append((rel, i + 1, t, m.start()))
                             linked.add(t)
         return missing
