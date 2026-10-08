@@ -4,24 +4,31 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 ## <ins>Definition</ins>
 
-Each record has two associated sets: its [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and its [set of ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples). Each [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and each [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of a record has at most one partner, always from the record's other set.
+Each record in evaluation has two associated sets: its [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and its [set of ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples). Before comparing these two sets of a record in evaluation, each [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) is translated into a [translated extracted triple](../../docs/terminology.md#7-evaluating-extraction-step-070). The result of this translation operation on the set of extracted triples is a collection of translated extracted triples. This collection is a multiset, not a set: two extracted triples can translate to the same translated extracted triple. Example: [Pairs: example](#example), *A multiset of translated extracted triples*.
 
-A **pair** is an extracted triple and a ground truth triple of the same record that evaluation makes partners, taking them to state the same fact once the extracted triple's predicate, [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)). A **set of pairs** is one choice of partners in a record; a record often has several possible sets of pairs.
+For each record in evaluation, each occurrence in its multiset of translated extracted triples is given at most one partner from its set of ground truth triples, and each of its ground truth triples is given at most one partner from that multiset. We call two such partners a **pair**.
 
-Evaluation pairs [a record's extracted triples and [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) triples] in two passes, one per **pair level**: exact first, then partial, among [the extracted triples and ground truth triples the exact pass left without a partner]. Each pass has two steps.
+Evaluation forms a pair between a translated extracted triple and a [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same record when it takes them to state the same fact, and there are two ways to define "same fact", distinguished by pair level.
 
-1. **Eligible.** An extracted triple (after its [component classes](../../docs/terminology.md#3-schemas) are translated) and a ground truth triple are eligible to pair when they meet the level's requirements, unless you marked them "not the same fact" when reviewing partial pairs (*When a pair isn't the same fact*, below, row 1):
-   - exact: all three hold:
-     - the same predicate;
-     - the same subject instance, once evened out;
-     - the same object instance, once evened out.
-   - partial: all three hold:
-     - the same predicate;
-     - (the same subject instance, once evened out) ∨ (one subject instance appears inside the other as whole words, either way round);
-     - (the same object instance, once evened out) ∨ (one object instance appears inside the other as whole words, either way round).
-2. **Paired.** Being eligible doesn't make an extracted triple and a ground truth triple a pair, since each can have only one partner. Among the eligible ones, evaluation takes the largest possible set of pairs, so that as many of [the record's extracted triples and ground truth triples] as possible get a partner (a *maximum matching*); when several sets of pairs are equally large (have as many pairs), it takes one with the most strict pairs (defined below). Examples: [Example](#example), *The largest set of pairs* and *Equally large sets of pairs*.
+There are two **pair levels**, exact and partial. A translated extracted triple and a ground truth triple of the same record are **eligible** to pair at a pair level when they meet the pair level's requirements:
 
-A pair made in the exact pass is an **exact pair**; one made in the partial pass is a **partial pair**. A pair of either level is a **strict pair** when it also has (the same subject classes) ∧ (the same object classes). So every pair is exactly one of these four:
+- exact: all three hold:
+  - the same predicate;
+  - the same [subject instance](../../docs/terminology.md#2-triples), once [evened out](../../docs/terminology.md#2-triples);
+  - the same [object instance](../../docs/terminology.md#2-triples), once evened out.
+- partial: all three hold:
+  - the same predicate;
+  - (the same subject instance, once evened out) ∨ (one subject instance appears inside the other as whole words, either way round);
+  - (the same object instance, once evened out) ∨ (one object instance appears inside the other as whole words, either way round).
+
+Being eligible doesn't make a translated extracted triple and a ground truth triple a pair, since each can have only one partner. A **set of pairs** is one choice of partners in a record; a record often has several possible sets of pairs. Evaluation picks a record's pairs in this order:
+
+1. **Exact pairs.** Among the extracted triples and ground truth triples eligible at the exact level, evaluation takes the largest possible set of pairs, so that as many of them as possible get a partner (a *maximum matching*); when several sets of pairs are equally large (have as many pairs), it takes one with the most strict pairs (defined below). These are the record's **exact pairs**.
+2. **Partial pairs.** Then, among [the extracted triples and ground truth triples still without a partner], it does the same at the partial level. These are the record's **partial pairs**.
+
+Examples: [Example](#example), *The largest set of pairs* and *Equally large sets of pairs*. Evaluation never pairs an extracted triple and a ground truth triple you marked "not the same fact" when reviewing partial pairs (*When a pair isn't the same fact*, below, row 1).
+
+A pair of either level is a **strict pair** when it also has (the same [subject classes](../../docs/terminology.md#2-triples)) ∧ (the same [object classes](../../docs/terminology.md#2-triples)). So every pair is exactly one of these four:
 
 | | strict ((same subject classes) ∧ (same object classes)) | not strict |
 |---|---|---|
@@ -36,7 +43,7 @@ Precision and recall are computed from pairs. Each has versions that differ in w
 
 ## <ins>Assumes and can't see</ins>
 
-- A pair can be wrong: containment can be fooled ("MODIS" is inside "MODIS Terra", a different instrument), and two component classes of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the ground truth vocabulary can't be told apart. All the causes: *When a pair isn't the same fact*, below.
+- A pair can be wrong: containment can be fooled ("MODIS" is inside "MODIS Terra", a different instrument), and two [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) can't be told apart. All the causes: *When a pair isn't the same fact*, below.
 - An extracted triple and a ground truth triple that state the same fact in different words never pair, so both count against the metrics. Example: [Pairs: example](#example), *The same fact in different words*.
 
 ## <ins>When a pair isn't the same fact</ins>
@@ -47,15 +54,41 @@ A pair counts its extracted triple as correct, for precision, and its ground tru
 |---|---|---|---|---|---|
 | 1 | Containment fooled at the partial level | "MODIS" ABOARD "Aqua" pairs with "MODIS Terra" ABOARD "Aqua", a different instrument | partial versions | pairing | review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*; tuning records only): one you mark "not the same fact" is never paired; the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s are never reviewed, so read its partial versions with that in mind |
 | 2 | A partial pair you marked "same fact" by mistake | you marked "MODIS" vs "MODIS Terra" as the same fact (a "same fact" verdict changes nothing: only "not the same fact" keeps an extracted triple and a ground truth triple from pairing) | partial versions | your review | mark it "not the same fact" instead (annotation tool, *Partial pairs*) |
-| 3 | The ground truth and extraction make the same mistake | both say "MODIS" ABOARD "Terra", which the text doesn't state | all | ground truth (and extraction) | check the ground truth against the text; use different models for drafting (050) and extraction (060), since models alike make mistakes alike |
-| 4 | A wrong row of the translation table makes a wrong extracted triple pair | extraction says "MODIS" ACQUIRED_BY "Aqua" (wrong), and the row ACQUIRED_BY → ABOARD makes it pair with "MODIS" ABOARD "Aqua" | all | translation table | fix the row |
+| 3 | The [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) and extraction make the same mistake | both say "MODIS" ABOARD "Terra", which the text doesn't state | all | ground truth (and extraction) | check the ground truth against the text; use different models for drafting (050) and extraction (060), since models alike make mistakes alike |
+| 4 | A wrong row of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) makes a wrong extracted triple pair | extraction says "MODIS" ACQUIRED_BY "Aqua" (wrong), and the row ACQUIRED_BY → ABOARD makes it pair with "MODIS" ABOARD "Aqua" | all | translation table | fix the row |
 | 5 | Two component classes of the current schema translate to one | `Sensor` and `Instrument` both → `Instrument`: an extracted triple with the wrong one of the two still counts as strict | strict versions | the two vocabularies differ | none: evaluation can't tell them apart |
 
 Worked example: [Pairs: example](#example). Sources: [Pairs: sources](#sources).
 
 ## Example
 
-One [record](../../docs/terminology.md#1-records-and-their-text). Its [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples):
+*A multiset of translated extracted triples.* A record has two [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), E1 and E2, and the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) says:
+
+| Kind | Component class of the current schema | Translates to (ground truth vocabulary) |
+|---|---|---|
+| predicate | MOUNTED_ON | ABOARD |
+| predicate | ABOARD | ABOARD |
+| [entity class](../../docs/terminology.md#3-schemas) | `Sensor` | `Instrument` |
+| entity class | `Instrument` | `Instrument` |
+| entity class | `Satellite` | `Spacecraft` |
+
+```mermaid
+flowchart LR
+  subgraph S["A record's set of extracted triples (current schema)"]
+    E1["E1: MODIS (Sensor) MOUNTED_ON Aqua (Satellite)"]
+    E2["E2: MODIS (Instrument) ABOARD Aqua (Satellite)"]
+  end
+  subgraph M["Its multiset of translated extracted triples (ground truth vocabulary)"]
+    T1["MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+    T2["MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+  end
+  E1 -- translated --> T1
+  E2 -- translated --> T2
+```
+
+E1 and E2 are two elements of the [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060). Their [translated extracted triples](../../docs/terminology.md#7-evaluating-extraction-step-070) read the same, so they are one element of the multiset, call it *t* = "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft), and the multiset is {*t*, *t*}. Each single time an element is in a multiset is an **occurrence** of it, and how many occurrences a multiset element has is its **multiplicity**: here *t* has two occurrences, so its multiplicity is 2. Pairing gives each occurrence its own partner, at most one: one occurrence of *t* can pair with a [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples), and the other can pair with a different ground truth triple or be left without a partner.
+
+*Every outcome in one record.* Another [record](../../docs/terminology.md#1-records-and-their-text). Its ground truth triples:
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) |
 |---|---|---|---|
@@ -65,7 +98,7 @@ One [record](../../docs/terminology.md#1-records-and-their-text). Its [ground tr
 | G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) |
 | G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) |
 
-Its [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), after translation, and what each becomes:
+Its extracted triples, after translation, and what each becomes:
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | Outcome |
 |---|---|---|---|---|
