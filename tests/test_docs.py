@@ -187,7 +187,7 @@ def multiword_terms() -> list:
 class TermLinks(unittest.TestCase):
     """Each term has one home (docs/terminology.md, or the doc it points to); the docs link to it."""
 
-    PROTECT = re.compile(r"`[^`\n]*`|\[[^\]\n]*\]\([^)\n]*\)|<[^>\n]+>|https?://\S+|(?<![*\w])\*(?!\*)[^*\n]+\*(?![*\w])")
+    PROTECT = re.compile(r"`[^`\n]*`|\[[^\[\]\n]*\]\([^)\n]*\)|<[^>\n]+>|https?://\S+|(?<![*\w])\*(?!\*)[^*\n]+\*(?![*\w])")
 
     def test_anchors_exist(self):
         """Every link to a heading of a doc (e.g. terminology.md#2-triples) lands on a heading that exists."""
@@ -215,7 +215,7 @@ class TermLinks(unittest.TestCase):
             for i, line in enumerate((ROOT / rel).read_text(encoding="utf-8").split("\n"), 1):
                 if is_section_heading(line):
                     seen = set()
-                for m in re.finditer(r"\[([^\]\n]*)\]\([^)]*terminology\.md#[\w-]+\)", line):
+                for m in re.finditer(r"\[([^\[\]\n]*)\]\([^)]*terminology\.md#[\w-]+\)", line):
                     t = term_key(m.group(1))
                     if homes.get(t) == rel:
                         extra.append(f"{rel}:{i}: {m.group(1)} links to terminology.md from its own home")
@@ -274,7 +274,7 @@ def first_uses_unlinked() -> list:
                     continue
                 if line.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:|-]+\|$", lines[i + 1]):
                     continue
-                for m in re.finditer(r"\[([^\]\n]*)\]\([^)\n]+\)", line):           # to terminology.md, or to the term's home
+                for m in re.finditer(r"\[([^\[\]\n]*)\]\([^)\n]+\)", line):           # to terminology.md, or to the term's home
                     linked |= {t for t, rx in forms if rx.fullmatch(m.group(1))}
                 plain = TermLinks.PROTECT.sub(lambda m: " " * len(m.group(0)), line)
                 taken = []
