@@ -40,12 +40,48 @@ Say the knowledge graph is built from the whole catalog's extracted triples, one
 ## <ins>Assumes and can't see</ins>
 
 - That the ground truth lists every fact the records state: an extracted triple that is true but missing from the ground truth counts as not correct, so it lowers *p*.
-- Not correct means not in a pair the version counts, which isn't the same as false. Examples: [Precision: example](#example), *A repeated fact*, *A wrong component class*, and *A wrong row of the translation table*; and [Pairs: example](pairs.md#example), *The same fact in different words*.
+- Not correct means not in a pair the version counts, which isn't the same as false: see *When an extracted triple counts as not correct*, below. The opposite mistake happens too: see *When an extracted triple counts as correct but isn't*.
 - Only the extracted triples step 060 kept: those it removed are counted in neither part of the fraction, and don't reach the knowledge graph either. How many were removed, and why, is in 060's report.
 - *What it means for the knowledge graph* is approximate for two kinds of reason:
   - the [reasons every metric shares](approximately.md); the [report](../../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *p*'s [margin of error](approximately.md#sampling-error);
   - one of precision's own: if graph building ([step](../../docs/terminology.md#8-the-pipeline) 080, not built yet) merges repeated extracted triples into one edge, the proportions of edges above can differ from what was computed. Merging turns a fact that many records state into one edge, but leaves a fact that one record states as one edge. Example: [Precision: example](#example), *Extracted triples vs distinct facts*.
 - Alone, *p* can be fooled: read it with [recall](recall.md) (see [F1](f1.md), *Interpretations*).
+
+## <ins>When an extracted triple counts as not correct</ins>
+
+Under a version, an extracted triple counts as not correct in exactly two situations: (A) it has no partner at all (it is extracted only), or (B) it has a partner, but the version doesn't count that kind of pair. The extracted triples step 060 removed aren't counted at all, so they aren't here.
+
+| # | Cause | Example | Versions it lowers | Whose doing | Is "not correct" the right verdict? | What to do |
+|---|---|---|---|---|---|---|
+| | **(A) No partner** | | | | | |
+| 1 | The text doesn't state it | "MODIS" ABOARD "Terra", where Terra is nowhere in the text | all | extraction | yes | improve extraction (prompt, model, schema) |
+| 2 | The text states something else | "Aqua" ABOARD "MODIS" (subject and object swapped) | all | extraction | yes | improve extraction |
+| 3 | A repeat of a fact already paired | "the MODIS instrument" ABOARD "Aqua", after "MODIS" ABOARD "Aqua" took the only partner (*A repeated fact*, below) | all | extraction (it said the fact twice) | yes, by design: each fact counts once | nothing |
+| 4 | The same fact in different words | "the imaging spectroradiometer" ABOARD "the Aqua satellite" ([Pairs: example](pairs.md#example), *The same fact in different words*) | all | pairing (it can't see synonyms) | no | Raise With Mentors: check a sample of extracted-only triples (`070_evaluate/070_evaluate.md`, *To do*) |
+| 5 | A fact the ground truth lacks | the text states it, but the person annotating missed it | all | ground truth | no | add the fact to the ground truth (tuning records only) |
+| 6 | Facts split differently | "MODIS and AIRS" ABOARD "Aqua", where the ground truth has two [classed triples](../../docs/terminology.md#2-triples) | all | whichever side broke the rule "one fact per classed triple" | yes if extraction broke it; no if the ground truth did | improve extraction, or split the ground truth's classed triple |
+| 7 | A wrong predicate row of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) | MOUNTED_ON → ACQUIRED_BY, where it should be ABOARD (*A wrong row of the translation table*, below) | all | translation table | no | fix the row (the report's *Component class mismatches* shows it) |
+| 8 | Its predicate translates to `(none)` | the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) has LAUNCHED_BY; the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) has nothing like it | all | the two vocabularies differ | usually no: the fact may be true | if the fact is true, add it to the ground truth (tuning records only), which coins the predicate; then give the row that counterpart |
+| 9 | You marked the partial pair "not the same fact" | "MODIS" vs "MODIS Terra" | partial versions | your review | yes, unless the review was wrong | if it was wrong, take the verdict back ([annotation tool](../../docs/terminology.md#4-ground-truth-and-samples), *Partial pairs*) |
+| | **(B) A partner the version doesn't count** | | | | | |
+| 10 | A partial pair, under an exact version | "Moderate Resolution Imaging Spectroradiometer (MODIS)" vs "MODIS" | exact versions | none: the version asks for the same [subject instance](../../docs/terminology.md#2-triples) and [object instance](../../docs/terminology.md#2-triples) | yes, by the version's definition | nothing: the partial versions count it |
+| 11 | A wrong entity class, from extraction | "MODIS" (Dataset), where the ground truth has (Instrument) (*A wrong component class*, below) | strict versions | extraction | yes | improve extraction |
+| 12 | A wrong entity class in the ground truth | the ground truth says (Dataset) by mistake | strict versions | ground truth | no | fix the ground truth |
+| 13 | A wrong entity-class row of the translation table | `Satellite` → `Mission`, where it should be `Spacecraft` | strict versions | translation table | no | fix the row |
+| 14 | Its entity class translates to `(none)` | the current schema has `Constellation`; the ground truth vocabulary has nothing like it | strict versions | the two vocabularies differ | usually no: the entity class may be right | if the entity class is right, add the fact to the ground truth (tuning records only), which coins the entity class; then give the row that counterpart |
+| 15 | The current schema's entity class is broader | the current schema has only `Instrument`; the ground truth uses `Instrument` and `Sensor`; a [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) with `Sensor` never agrees | strict versions | the two vocabularies differ: a [component class](../../docs/terminology.md#3-schemas) has one translation | no | none yet: a known limit (`070_evaluate/070_evaluate.md`, *Known limits*) |
+
+## <ins>When an extracted triple counts as correct but isn't</ins>
+
+The opposite mistake: an extracted triple in a pair the version counts, though it doesn't state the fact its partner states, or the fact itself is false.
+
+| # | Cause | Example | Versions it raises | Whose doing | What to do |
+|---|---|---|---|---|---|
+| 1 | Containment fooled at the partial level | "MODIS" ABOARD "Aqua" pairs with "MODIS Terra" ABOARD "Aqua", a different instrument | partial versions | pairing | review partial pairs (tuning records); the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s are never reviewed, so read its partial versions with that in mind |
+| 2 | A wrong "same fact" verdict on a partial pair | you marked "MODIS" vs "MODIS Terra" as the same fact | partial versions | your review | take the verdict back (annotation tool, *Partial pairs*) |
+| 3 | The ground truth and extraction make the same mistake | both say "MODIS" ABOARD "Terra", which the text doesn't state | all | ground truth (and extraction) | check the ground truth against the text; use different models for drafting (050) and extraction (060), since models alike make mistakes alike |
+| 4 | A wrong row of the translation table makes a wrong triple pair | extraction says "MODIS" ACQUIRED_BY "Aqua" (wrong), and the row ACQUIRED_BY → ABOARD makes it pair with "MODIS" ABOARD "Aqua" | all | translation table | fix the row |
+| 5 | Two component classes of the current schema translate to one | `Sensor` and `Instrument` both → `Instrument`: an extracted triple with the wrong one of the two still counts as strict | strict versions | the two vocabularies differ | none: evaluation can't tell them apart (see [Pairs](pairs.md), *Assumes and can't see*) |
 
 Worked example: [Precision: example](#example). Sources: [Precision: sources](#sources).
 
