@@ -40,7 +40,8 @@ Say the knowledge graph is built from the whole catalog's extracted triples, one
 ## <ins>Assumes and can't see</ins>
 
 - That the ground truth lists every fact the records state: an extracted triple that is true but missing from the ground truth counts as not correct, so it lowers *p*.
-- Not correct means not in a pair the version counts, which isn't the same as false. Examples: [Precision: example](#example), *A repeated fact*, *A wrong component class*, and *A wrong row of the translation table*.
+- Not correct means not in a pair the version counts, which isn't the same as false. Examples: [Precision: example](#example), *A repeated fact*, *A wrong component class*, and *A wrong row of the translation table*; and [Pairs: example](pairs.md#example), *The same fact in different words*.
+- Only the extracted triples step 060 kept: those it removed are counted in neither part of the fraction, and don't reach the knowledge graph either. How many were removed, and why, is in 060's report.
 - *What it means for the knowledge graph* is approximate for two kinds of reason:
   - the [reasons every metric shares](approximately.md); the [report](../../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *p*'s [margin of error](approximately.md#sampling-error);
   - one of precision's own: if graph building ([step](../../docs/terminology.md#8-the-pipeline) 080, not built yet) merges repeated extracted triples into one edge, the proportions of edges above can differ from what was computed. Merging turns a fact that many records state into one edge, but leaves a fact that one record states as one edge. Example: [Precision: example](#example), *Extracted triples vs distinct facts*.
