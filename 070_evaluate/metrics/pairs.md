@@ -38,7 +38,20 @@ Precision and recall are computed from pairs. Each has versions that differ in w
 
 - Containment can be fooled: "MODIS" is inside "MODIS Terra", a different instrument. On tuning records you review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*); an extracted triple and a ground truth triple marked "not the same fact" are never paired. Held-out records' partial pairs are never reviewed (that would mean looking at them).
 - Two component classes of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the ground truth vocabulary can't be told apart.
+- A pair can be wrong: see *When a pair isn't the same fact*, below.
 - Two classed triples that state the same fact in different words never pair, so both count against the metrics. Example: [Pairs: example](#example), *The same fact in different words*.
+
+## <ins>When a pair isn't the same fact</ins>
+
+A pair counts its extracted triple as correct, for precision, and its ground truth triple as found, for recall. When the two don't state the same fact, or the fact they state is false, both counts are wrong: the pair raises a version of precision and the same version of recall.
+
+| # | Cause | Example | Versions of precision and recall it raises | Whose doing | What to do |
+|---|---|---|---|---|---|
+| 1 | Containment fooled at the partial level | "MODIS" ABOARD "Aqua" pairs with "MODIS Terra" ABOARD "Aqua", a different instrument | partial versions | pairing | review partial pairs (tuning records); the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s are never reviewed, so read its partial versions with that in mind |
+| 2 | A wrong "same fact" verdict on a partial pair | you marked "MODIS" vs "MODIS Terra" as the same fact | partial versions | your review | take the verdict back (annotation tool, *Partial pairs*) |
+| 3 | The [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) and extraction make the same mistake | both say "MODIS" ABOARD "Terra", which the text doesn't state | all | ground truth (and extraction) | check the ground truth against the text; use different models for drafting (050) and extraction (060), since models alike make mistakes alike |
+| 4 | A wrong row of the translation table makes a wrong triple pair | extraction says "MODIS" ACQUIRED_BY "Aqua" (wrong), and the row ACQUIRED_BY → ABOARD makes it pair with "MODIS" ABOARD "Aqua" | all | translation table | fix the row |
+| 5 | Two component classes of the current schema translate to one | `Sensor` and `Instrument` both → `Instrument`: an extracted triple with the wrong one of the two still counts as strict | strict versions | the two vocabularies differ | none: evaluation can't tell them apart (see *Assumes and can't see*, above) |
 
 Worked example: [Pairs: example](#example). Sources: [Pairs: sources](#sources).
 

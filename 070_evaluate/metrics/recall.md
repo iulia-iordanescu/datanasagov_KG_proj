@@ -39,11 +39,34 @@ Say the knowledge graph is built from the whole catalog's [extracted triples](..
 
 ## <ins>Assumes and can't see</ins>
 
-- That the ground truth lists every fact the records state: a fact missing from it isn't counted at all, neither found nor missed.
-- Not found means not in a pair the version counts, which isn't the same as missed by extraction. Examples: [Recall: example](#example), *A repeated fact*, *A wrong component class*, and *A wrong row of the translation table*.
+- That the ground truth lists every fact the records state: a fact missing from it isn't counted at all, neither found nor missed. So recall is likely overstated: facts the drafting model (step 050) missed tend to be missing from the ground truth, since a person correcting a draft rarely adds what it lacks, and an extraction model like it tends to miss the same ones.
+- Not found means not in a pair the version counts, which isn't the same as missed by extraction: see *When a ground truth triple counts as not found*, below. The opposite mistake happens too: see [Pairs](pairs.md), *When a pair isn't the same fact*.
 - *What it means for the knowledge graph* is approximate for the [reasons every metric shares](approximately.md); the report measures one of them, sampling error, with *r*'s [margin of error](approximately.md#sampling-error). Unlike precision's, it doesn't depend on graph building: merging repeated extracted triples into one edge changes how many edges there are, not which facts the graph holds.
 - *r* counts a fact once per record that states it. The proportion of distinct facts the knowledge graph holds, each counted once, is a different number, and can differ from *r*. Example: [Recall: example](#example), *Ground truth triples vs distinct facts*.
 - Alone, *r* can be fooled: read it with [precision](precision.md) (see [F1](f1.md), *Interpretations*).
+
+## <ins>When a ground truth triple counts as not found</ins>
+
+Under a version, a ground truth triple counts as not found in exactly two situations: (A) it has no partner at all (it is ground truth only), or (B) it has a partner, but the version doesn't count that kind of pair. A fact missing from the ground truth is never counted at all, so it isn't here (see *Assumes and can't see*).
+
+| # | Cause | Example | Versions it lowers | Whose doing | Is "not found" the right verdict? | What to do |
+|---|---|---|---|---|---|---|
+| | **(A) No partner** | | | | | |
+| 1 | Extraction didn't state the fact | the text says MODIS is aboard Aqua; no extracted triple says it | all | extraction | yes | improve extraction (prompt, model, schema) |
+| 2 | Extraction stated it, but step 060 removed that extracted triple | its [source text](../../docs/terminology.md#1-records-and-their-text) was copied slightly wrong, so a check removed it | all | 060's checks | no | read `outputs/intermediate_results/060_extract/extracted_triples_removed.csv`; if many removed extracted triples are true, loosen the check |
+| 3 | Outside the schema's reach: no [component class](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) translates to its predicate | the ground truth says LAUNCHED_BY; the current schema has nothing like it | all | the current schema | no: extraction couldn't state it | add the predicate to the schema (from tuning records or outside knowledge); the [recall upper bound](recall_upper_bound.md) measures how often this happens |
+| 4 | The same fact in different words | ground truth "MODIS" ABOARD "Aqua"; extracted "the imaging spectroradiometer" ABOARD "the Aqua satellite" ([Pairs: example](pairs.md#example), *The same fact in different words*) | all | pairing (it can't see synonyms) | no | Raise With Mentors: check a sample of extracted-only triples (`070_evaluate/070_evaluate.md`, *To do*) |
+| 5 | A near-repeat in the ground truth | the ground truth has "MODIS" ABOARD "Aqua" and "the MODIS instrument" ABOARD "Aqua"; extraction states the fact once, so only one of them can pair (*A repeated fact*, below) | all | ground truth | no | delete one of the two from the ground truth |
+| 6 | The ground truth triple is wrong | the text doesn't state it | all | ground truth | no: it isn't a fact | fix the ground truth |
+| 7 | Facts split differently | the ground truth has "MODIS and AIRS" ABOARD "Aqua", where extraction has two [classed triples](../../docs/terminology.md#2-triples) | all | whichever side broke the rule "one fact per classed triple" | yes if extraction broke it; no if the ground truth did | improve extraction, or split the ground truth's classed triple |
+| 8 | A wrong predicate row of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) | MOUNTED_ON → ACQUIRED_BY, or → `(none)`, where it should be ABOARD (*A wrong row of the translation table*, below) | all | translation table | no | fix the row (the report's *Component class mismatches* shows it) |
+| 9 | You marked the partial pair "not the same fact" | "MODIS" vs "MODIS Terra" | partial versions | your review | yes, unless the review was wrong | if it was wrong, take the verdict back ([annotation tool](../../docs/terminology.md#4-ground-truth-and-samples), *Partial pairs*) |
+| | **(B) A partner the version doesn't count** | | | | | |
+| 10 | A partial pair, under an exact version | "MODIS" vs "Moderate Resolution Imaging Spectroradiometer (MODIS)" | exact versions | none: the version asks for the same [subject instance](../../docs/terminology.md#2-triples) and [object instance](../../docs/terminology.md#2-triples) | yes, by the version's definition | nothing: the partial versions count it |
+| 11 | A wrong entity class, from extraction | extracted (Dataset), where the ground truth has (Instrument) (*A wrong component class*, below) | strict versions | extraction | yes | improve extraction |
+| 12 | A wrong entity class in the ground truth | the ground truth says (Dataset) by mistake | strict versions | ground truth | no | fix the ground truth |
+| 13 | A wrong entity-class row of the translation table | `Satellite` → `Mission`, or → `(none)`, where it should be `Spacecraft` | strict versions | translation table | no | fix the row |
+| 14 | Outside strict reach: no component class of the current schema translates to its entity class | the ground truth uses `Sensor`; the current schema has only `Instrument`, which translates to `Instrument` | strict versions | the two vocabularies differ | no | add the entity class to the schema, or accept it as a known limit (`070_evaluate/070_evaluate.md`, *Known limits*: one translation per component class) |
 
 Worked example: [Recall: example](#example). Sources: [Recall: sources](#sources).
 
