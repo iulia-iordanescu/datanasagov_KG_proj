@@ -65,14 +65,18 @@ E = [triple("the MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
             "Moderate Resolution Imaging Spectroradiometer (MODIS)", "Instrument"),
      triple("MODIS Snow Cover", "Dataset", "HAS_TIME_SPAN", "the period 2002–2023", "Dataset"),
      triple("MODIS", "Instrument", "ABOARD", "Terra", "Spacecraft"),
-     triple("Moderate Resolution Imaging Spectroradiometer (MODIS)", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+     triple("Moderate Resolution Imaging Spectroradiometer (MODIS)", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+     triple("the MODIS", "Sensor", "MOUNTED_ON", "Aqua", "Satellite")]          # E7: as extracted; translates to E1
+#: The example's translation table: every component class translates to itself, plus these rows (for E7).
+EXAMPLE_TRANSLATION = dict(extra_entity={"Sensor": "Instrument", "Satellite": "Spacecraft"},
+                           extra_predicates={"MOUNTED_ON": ("ABOARD", False)})
 
 
 class PairsExample(unittest.TestCase):
     """metrics/pairs.md's example, outcome by outcome."""
 
     def setUp(self):
-        self.c = pairing.compare_record(record(G, E), translation())["compared"]
+        self.c = pairing.compare_record(record(G, E), translation(**EXAMPLE_TRANSLATION))["compared"]
 
     def test_pairs(self):
         self.assertEqual(sorted(self.c["pairs"]),
@@ -80,7 +84,7 @@ class PairsExample(unittest.TestCase):
 
     def test_counts(self):
         n = self.c["counts"]
-        self.assertEqual((n["extracted"], n["gt"]), (6, 5))
+        self.assertEqual((n["extracted"], n["gt"]), (7, 5))
         self.assertEqual((n["exact_pairs"], n["exact_strict_pairs"]), (2, 1))
         self.assertEqual((n["partial_pairs"], n["partial_strict_pairs"]), (4, 2))   # partial counts both passes
 
@@ -88,7 +92,14 @@ class PairsExample(unittest.TestCase):
         paired_g = {g for g, _, _ in self.c["pairs"]}
         paired_e = {e for _, e, _ in self.c["pairs"]}
         self.assertEqual(set(range(5)) - paired_g, {4})          # G5: ground truth only
-        self.assertEqual(set(range(6)) - paired_e, {4, 5})       # E5, E6: extracted only
+        self.assertEqual(set(range(7)) - paired_e, {4, 5, 6})    # E5, E6, E7: extracted only
+
+    def test_repeated_occurrence(self):
+        # E7 translates to exactly what E1 does: the multiset holds that element twice, and G1 takes one occurrence
+        t = translation(**EXAMPLE_TRANSLATION)
+        same = lambda x: {k: x[k] for k in ("subject", "subject_class", "predicate", "object", "object_class")}  # noqa: E731
+        self.assertEqual(same(pairing.translate(E[6], t)), same(pairing.translate(E[0], t)))
+        self.assertIn((0, 0, "exact"), self.c["pairs"])
 
 
 class Pairing(unittest.TestCase):

@@ -82,7 +82,7 @@ flowchart LR
   E2 -- translated --> T2
 ```
 
-E1 and E2 are two elements of the [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060). Their [translated extracted triples](../../docs/terminology.md#7-evaluating-extraction-step-070) read the same, so they are one element of the multiset, call it *t* = "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft), and the multiset is {*t*, *t*}. Each single time an element is in a multiset is an **occurrence** of it, and how many occurrences a multiset element has is its **multiplicity**: here *t* has two occurrences, so its multiplicity is 2. Pairing gives each occurrence its own partner, at most one: one occurrence of *t* can pair with a [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples), and the other can pair with a different ground truth triple or be left without a partner.
+E1 and E2 are two elements of the [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060). Their [translated extracted triples](../../docs/terminology.md#7-evaluating-extraction-step-070) read the same, so they are one element of the multiset, call it *t* = "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft), and the multiset is {*t*, *t*}. Each single time an element is in a multiset is an **occurrence** of it, and how many occurrences a multiset element has is its **multiplicity**: here *t* has two occurrences, so its multiplicity is 2. Pairing gives each occurrence at most one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) partner (see *Every outcome in one record*, below).
 
 *Every outcome in one record.* Another [record](../../docs/terminology.md#1-records-and-their-text). Its ground truth triples:
 
@@ -94,6 +94,14 @@ E1 and E2 are two elements of the [set of extracted triples](../../docs/terminol
 | G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) |
 | G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) |
 
+The translation table translates every [component class](../../docs/terminology.md#3-schemas) here to itself, except:
+
+| Kind | Component class of the current schema | Translates to (ground truth vocabulary) |
+|---|---|---|
+| predicate | MOUNTED_ON | ABOARD |
+| entity class | `Sensor` | `Instrument` |
+| entity class | `Satellite` | `Spacecraft` |
+
 Its translated extracted triples, and what each becomes:
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | Outcome |
@@ -104,10 +112,37 @@ Its translated extracted triples, and what each becomes:
 | E4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | the period 2002–2023 (Dataset) | partial pair with G4 ("2002–2023" is inside the object instance); not strict ([object class](../../docs/terminology.md#2-triples) Dataset, not TimeSpan) |
 | E5 | MODIS (Instrument) | ABOARD | Terra (Spacecraft) | extracted only: no ground truth triple has the [object](../../docs/terminology.md#2-triples) Terra |
 | E6 | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: it would form a partial pair with G1, but G1 already has an exact partner, E1, and a ground truth triple has at most one partner |
+| E7 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: extracted as "the MODIS" (Sensor) MOUNTED_ON "Aqua" (Satellite), it translates to exactly what E1 translates to, so the record's multiset of translated extracted triples holds that element twice; G1 can have only one partner, and takes the occurrence from E1 (either occurrence would make the same exact, strict pair) |
 
 And G5 (CERES ABOARD Aqua) has no partner: ground truth only, a missed [fact](../../docs/terminology.md#2-triples).
 
-In all: 6 extracted triples, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2–G2 not); 2 partial pairs (E3–G3 strict, E4–G4 not); so 2 strict pairs, one at each pair level; 2 extracted only (E5, E6); 1 ground truth only (G5).
+```mermaid
+flowchart LR
+  subgraph O["The record's multiset of translated extracted triples"]
+    E1["E1: the MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+    E2["E2: AIRS (Dataset) ABOARD Aqua (Spacecraft)"]
+    E3["E3: MODIS Snow Cover 5-Min L2 Swath (Dataset) ACQUIRED_BY Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument)"]
+    E4["E4: MODIS Snow Cover (Dataset) HAS_TIME_SPAN the period 2002–2023 (Dataset)"]
+    E5["E5: MODIS (Instrument) ABOARD Terra (Spacecraft)"]
+    E6["E6: Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) ABOARD Aqua (Spacecraft)"]
+    E7["E7: the MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+  end
+  subgraph GT["Its set of ground truth triples"]
+    G1["G1: MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+    G2["G2: AIRS (Instrument) ABOARD Aqua (Spacecraft)"]
+    G3["G3: MODIS Snow Cover (Dataset) ACQUIRED_BY MODIS (Instrument)"]
+    G4["G4: MODIS Snow Cover (Dataset) HAS_TIME_SPAN 2002–2023 (TimeSpan)"]
+    G5["G5: CERES (Instrument) ABOARD Aqua (Spacecraft)"]
+  end
+  E1 ---|exact, strict| G1
+  E2 ---|exact, not strict| G2
+  E3 ---|partial, strict| G3
+  E4 ---|partial, not strict| G4
+```
+
+Each line is a pair. Without a line: E5, E6, and E7 are extracted only, and G5 is ground truth only.
+
+In all: 7 occurrences, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2–G2 not); 2 partial pairs (E3–G3 strict, E4–G4 not); so 2 strict pairs, one at each pair level; 3 extracted only (E5, E6, E7); 1 ground truth only (G5).
 
 *The largest set of pairs.* At the partial level, the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has "MODIS instrument suite ABOARD Aqua" and "Terra MODIS ABOARD Aqua"; extraction gives "MODIS ABOARD Aqua" and "MODIS instrument ABOARD Aqua". "MODIS instrument suite ABOARD Aqua" could pair with either occurrence; "Terra MODIS ABOARD Aqua" only with "MODIS ABOARD Aqua". Taking each ground truth triple's first possible partner, the first ground truth triple takes "MODIS ABOARD Aqua", and the second is left without one: 1 pair. Evaluation instead pairs "MODIS instrument suite ABOARD Aqua" with "MODIS instrument ABOARD Aqua", and "Terra MODIS ABOARD Aqua" with "MODIS ABOARD Aqua": 2 pairs.
 
