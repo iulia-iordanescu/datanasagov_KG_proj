@@ -9,7 +9,8 @@ triples and the extracted triples are PAIRED: every triple, in either list, ends
 with zero or one partner, always from the other list (so a triple stated twice
 earns one pair, not two). Two passes, each finding the largest possible set
 of pairs (in math, a maximum matching: a pair may be swapped to free a
-partner for another triple), not just each triple's first possible partner:
+partner for another triple), not just each triple's first possible partner,
+and among the largest sets, one with the most strict pairs:
 
   1. exact   subject and object equal once evened out (common/common_helpers/text_match.py
              norm_text: case, spacing, quote marks, dashes, edge punctuation
@@ -118,28 +119,56 @@ def _within_strict_reach(g: dict, translation) -> bool:
         component_class_key(g["object_class"]) in translation.reachable["entity class"]
 
 
-def _max_pairs(can: dict) -> dict:
+def _max_pairs(can: dict, strict) -> dict:
     """The largest pairing {gt index: extracted index}, each triple in either
     list with zero or one partner from the other, each gt triple paired with
-    one of the extracted triples it can pair with (can[gi]): the standard
-    augmenting-path method (Kuhn's algorithm). Taking each gt triple's first
-    free partner instead can leave a triple unpaired that another choice of
-    pairs would have paired. Deterministic: triples are tried in order."""
-    owner = {}                                        # extracted index -> gt index
+    one of the extracted triples it can pair with (can[gi]); among the
+    largest pairings, one with the most strict pairs (strict(gi, ei)).
+    Taking each gt triple's first free partner instead can leave a triple
+    unpaired that another choice would have paired, or pair a triple with a
+    partner whose entity classes differ while another partner's agree.
 
-    def place(gi, seen) -> bool:
-        for ei in can[gi]:
-            if ei in seen:
-                continue
-            seen.add(ei)
-            if ei not in owner or place(owner[ei], seen):
-                owner[ei] = gi
-                return True
-        return False
-
-    for gi in can:
-        place(gi, set())
-    return {gi: ei for ei, gi in owner.items()}
+    The standard method for this: a minimum-cost maximum matching by
+    successive shortest augmenting paths (a pair costs 0 if strict, 1 if
+    not; Bellman-Ford finds each path, since swapping partners along a path
+    can lower the cost). Each augmentation adds one pair at the lowest cost
+    possible, so the result has the most pairs and, among those, the fewest
+    non-strict ones. Deterministic: triples are tried in order."""
+    cost = {(gi, ei): 0 if strict(gi, ei) else 1 for gi in can for ei in can[gi]}
+    partner_of_g, partner_of_e = {}, {}               # the pairing so far, both ways
+    while True:
+        # shortest path from any unpaired gt triple, alternating "pair with
+        # ei" (cost +c) and "ei leaves its partner" (cost -c), to an unpaired ei
+        dist = {("g", gi): 0 for gi in can if gi not in partner_of_g}
+        came = {}
+        changed = True
+        while changed:
+            changed = False
+            for gi in can:
+                if ("g", gi) not in dist:
+                    continue
+                for ei in can[gi]:
+                    if partner_of_g.get(gi) == ei:
+                        continue
+                    d = dist[("g", gi)] + cost[(gi, ei)]
+                    if d < dist.get(("e", ei), float("inf")):
+                        dist[("e", ei)], came[("e", ei)], changed = d, gi, True
+            for ei, gi in partner_of_e.items():
+                if ("e", ei) in dist:
+                    d = dist[("e", ei)] - cost[(gi, ei)]
+                    if d < dist.get(("g", gi), float("inf")):
+                        dist[("g", gi)], came[("g", gi)], changed = d, ei, True
+        ends = sorted((d, k[1]) for k, d in dist.items() if k[0] == "e" and k[1] not in partner_of_e)
+        if not ends:
+            return dict(partner_of_g)
+        ei = ends[0][1]
+        while True:                                   # walk the path back, swapping partners
+            gi = came[("e", ei)]
+            before = partner_of_g.get(gi)
+            partner_of_g[gi], partner_of_e[ei] = ei, gi
+            if ("g", gi) not in came:
+                break
+            ei = before
 
 
 def compare_record(record: dict, translation, reviews: dict | None = None) -> dict:
@@ -158,7 +187,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     for level in LEVELS:
         can = {gi: [ei for ei in sorted(free_e) if _can_pair(gt[gi], ex[ei], level) and allowed(gi, ei)]
                for gi in sorted(free_g)}
-        for gi, ei in sorted(_max_pairs(can).items()):
+        for gi, ei in sorted(_max_pairs(can, lambda gi, ei: classes_agree(gt[gi], ex[ei])).items()):
             pairs.append((gi, ei, level))
             free_g.discard(gi)
             free_e.discard(ei)

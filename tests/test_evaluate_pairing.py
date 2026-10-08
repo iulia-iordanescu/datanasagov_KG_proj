@@ -142,6 +142,56 @@ class Pairing(unittest.TestCase):
         c = self.pairs(g, e)
         self.assertEqual(sorted(c["pairs"]), [(0, 1, "partial"), (1, 0, "partial")])
 
+    def test_strict_partner_preferred(self):
+        # G0 can pair exactly with E0 (subject class Dataset) or E1 (Instrument):
+        # whatever their order, the strict one is its partner.
+        g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        dataset, instrument = (triple("MODIS", c, "ABOARD", "Aqua", "Spacecraft") for c in ("Dataset", "Instrument"))
+        for e, strict_one in [([dataset, instrument], 1), ([instrument, dataset], 0)]:
+            with self.subTest(first=e[0]["subject_class"]):
+                c = self.pairs(g, e)
+                self.assertEqual(c["pairs"], [(0, strict_one, "exact")])
+                self.assertEqual(c["counts"]["exact_strict_pairs"], 1)
+
+    def test_more_pairs_beat_strictness(self):
+        # G0 can pair with E0 (strict) or E1 (not); G1 only with E0 (not).
+        # One strict pair (G0-E0) or two pairs, neither strict: two pairs win.
+        g = [triple("MODIS instrument suite", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("Terra MODIS", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
+        e = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("MODIS instrument", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
+        c = self.pairs(g, e)
+        self.assertEqual(sorted(c["pairs"]), [(0, 1, "partial"), (1, 0, "partial")])
+        self.assertEqual(c["counts"]["partial_strict_pairs"], 0)
+
+    def test_matching_against_every_pairing(self):
+        # random small records: the pairing has the most pairs any pairing has,
+        # and among those the most strict pairs (checked by trying every pairing)
+        import random
+        rng = random.Random(7)
+
+        def best(can, strict, gs, used=frozenset()):
+            if not gs:
+                return (0, 0)
+            gi, rest = gs[0], gs[1:]
+            out = best(can, strict, rest, used)                        # gi left unpaired
+            for ei in can[gi]:
+                if ei not in used:
+                    n, s = best(can, strict, rest, used | {ei})
+                    out = max(out, (n + 1, s + strict(gi, ei)))
+            return out
+
+        for _ in range(2000):
+            ng, ne = rng.randint(0, 5), rng.randint(0, 5)
+            can = {gi: [ei for ei in range(ne) if rng.random() < 0.5] for gi in range(ng)}
+            marks = {(gi, ei): rng.random() < 0.5 for gi in can for ei in can[gi]}
+            strict = lambda gi, ei: marks[(gi, ei)]                     # noqa: E731
+            got = pairing._max_pairs(can, strict)
+            self.assertEqual(len(set(got.values())), len(got))         # one partner each
+            self.assertTrue(all(ei in can[gi] for gi, ei in got.items()))
+            self.assertEqual((len(got), sum(strict(gi, ei) for gi, ei in got.items())),
+                             best(can, strict, list(can)), (can, marks))
+
     def test_exact_before_partial(self):
         # E0 could pair partially with G0, but G1 is its exact partner.
         g = [triple("MODIS on Aqua", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
