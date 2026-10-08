@@ -260,6 +260,8 @@ class Pipeline(unittest.TestCase):
         named = [r for r in extracted if r["predicate"] == "DESCRIBES" and r["id"] in tuning]
         self.assertAlmostEqual(n["describes"]["accuracy"]["value"], sum(r["object_class"] == "Dataset" for r in named) / 8)
         self.assertEqual(read_csv(self.annotations / "held_out_looks.csv"), [])
+        report = max((self.repo / "outputs" / "reports").glob("070_evaluate_*.md"), key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8")
+        self.assertIn("Drafted by a model (step 050) and corrected by a person", report)   # the guide says the report says so
 
     def test_t10_held_out_look_logged(self):
         args = [*NO_CONFIRM, "--component_class_mapping", str(self.repo / "own_table.csv"), "--evaluate_held_out", "true"]

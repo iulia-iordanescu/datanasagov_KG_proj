@@ -60,7 +60,9 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
            "- **Component classes:** extraction's component classes translated into the ground truth vocabulary through "
            "`annotations/component_class_mapping.csv`.",
            f"- **Ground truth:** `annotations/ground_truth/`, the {len(recs)} finished {part} record(s) of the fair "
-           f"sample (pool positions {', '.join(f'#{p}' for p in positions) or '–'}).",
+           f"sample (pool positions {', '.join(f'#{p}' for p in positions) or '–'}). Drafted by a model (step 050) and "
+           f"corrected by a person, not written from scratch, so recall is likely overstated "
+           f"(`070_evaluate/metrics/recall.md`, *Assumes and can't see*).",
            ("- **Partial pairs:** " + (f"{review['unreviewed']} not reviewed yet; pairs your review ruled out (\"not the same "
                                         f"fact\"): {review['rejected']}."
                                         if part == "tuning" else

@@ -39,7 +39,7 @@ Say the knowledge graph is built from the whole catalog's extracted triples, one
 
 ## <ins>Assumes and can't see</ins>
 
-- That the ground truth lists every fact the records state: an extracted triple that is true but missing from the ground truth counts as not correct, so it lowers *p*.
+- That the ground truth lists every fact the records state: when it doesn't, a true extracted triple counts as not correct (row 5 of *When an extracted triple counts as not correct*, below).
 - Not correct means not in a pair the version counts, which isn't the same as false: see *When an extracted triple counts as not correct*, below. The opposite mistake happens too: see [Pairs](pairs.md), *When a pair isn't the same fact*.
 - Only the extracted triples step 060 kept: those it removed are counted in neither part of the fraction, and don't reach the knowledge graph either. How many were removed, and why, is in 060's report.
 - *What it means for the knowledge graph* is approximate for two kinds of reason:
@@ -57,7 +57,7 @@ Under a version, an extracted triple counts as not correct in exactly two situat
 | 1 | The text doesn't state it | "MODIS" ABOARD "Terra", where Terra is nowhere in the text | all | extraction | yes | improve extraction (prompt, model, schema) |
 | 2 | The text states something else | "Aqua" ABOARD "MODIS" (subject and object swapped) | all | extraction | yes | improve extraction |
 | 3 | A repeat of a fact already paired | "the MODIS instrument" ABOARD "Aqua", after "MODIS" ABOARD "Aqua" took the only partner (*A repeated fact*, below) | all | extraction (it said the fact twice) | yes, by design: each fact counts once | nothing |
-| 4 | The same fact in different words | "the imaging spectroradiometer" ABOARD "the Aqua satellite" ([Pairs: example](pairs.md#example), *The same fact in different words*) | all | pairing (it can't see synonyms) | no | Raise With Mentors: check a sample of extracted-only triples (`070_evaluate/070_evaluate.md`, *To do*) |
+| 4 | The same fact in different words | "the imaging spectroradiometer" ABOARD "the Aqua satellite" ([Pairs: example](pairs.md#example), *The same fact in different words*) | all | pairing (it can't see synonyms) | no | Raise With Mentors: check a sample of the extracted triples left extracted only (`070_evaluate/070_evaluate.md`, *To do*) |
 | 5 | A fact the ground truth lacks | the text states it, but the person annotating missed it | all | ground truth | no | add the fact to the ground truth (tuning records only) |
 | 6 | Facts split differently | "MODIS and AIRS" ABOARD "Aqua", where the ground truth has two [classed triples](../../docs/terminology.md#2-triples) | all | whichever side broke the rule "one fact per classed triple" | yes if extraction broke it; no if the ground truth did | improve extraction, or split the ground truth's classed triple |
 | 7 | A wrong predicate row of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) | MOUNTED_ON → ACQUIRED_BY, where it should be ABOARD (*A wrong row of the translation table*, below) | all | translation table | no | fix the row (the report's *Component class mismatches* shows it) |
