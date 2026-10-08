@@ -10,8 +10,8 @@ Read them in this order: what they count first, then each metric, then why each 
 
 | File | What it explains |
 |---|---|
-| [What the metrics count: pairs](metrics/pairs.md) | when an [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) and a [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) count as stating the same fact: exact, partial, and [strict pairs](metrics/pairs.md) |
-| [Precision](metrics/precision.md) | the proportion of the extracted triples that are correct |
+| [What the metrics count: pairs](metrics/pairs.md) | when an occurrence and a [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) count as stating the same fact: exact, partial, and [strict pairs](metrics/pairs.md) |
+| [Precision](metrics/precision.md) | the proportion of the occurrences that are correct |
 | [Recall](metrics/recall.md) | the proportion of the ground truth triples that extraction found |
 | [F1](metrics/f1.md) | precision and recall combined into one number |
 | [Entity-class accuracy](metrics/entity_class_accuracy.md) | among the pairs, the proportion whose [entity classes](../docs/terminology.md#3-schemas) are also right |
