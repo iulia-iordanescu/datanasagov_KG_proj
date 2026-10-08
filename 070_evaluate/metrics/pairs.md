@@ -6,13 +6,11 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 A **pair** is one [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../../docs/terminology.md#2-triples), once the extracted triple's [predicate](../../docs/terminology.md#3-schemas), [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)). There are two **pair levels**, exact and partial, and when two such aforementioned [triples](../../docs/terminology.md#2-triples) count as stating the same fact depends on the level: they form an **exact pair** or a **partial pair**.
 
-Two triples count as stating the same fact when, at the…
-
-- **exact pair level**, all three hold:
+- An extracted triple (after its [component classes](../../docs/terminology.md#3-schemas) are translated) and a ground truth triple of the same record can form an **exact pair** when all three hold:
   - the same predicate;
   - the same [subject instance](../../docs/terminology.md#2-triples), once [evened out](../../docs/terminology.md#2-triples);
   - the same [object instance](../../docs/terminology.md#2-triples), once evened out.
-- **partial pair level** (only for triples left without an exact partner), all three hold:
+- They can form a **partial pair** when neither has an exact partner and all three hold:
   - the same predicate;
   - (the same subject instance, once evened out) ∨ (one subject instance appears inside the other as whole words, either way round);
   - (the same object instance, once evened out) ∨ (one object instance appears inside the other as whole words, either way round).
@@ -37,7 +35,7 @@ Precision and recall are computed from pairs. Each has versions that differ in w
 ## <ins>Assumes and can't see</ins>
 
 - Containment can be fooled: "MODIS" is inside "MODIS Terra", a different instrument. On tuning records you review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*); two triples marked "not the same fact" are never paired. Held-out records' partial pairs are never reviewed (that would mean looking at them).
-- Two [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the ground truth vocabulary can't be told apart.
+- Two component classes of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the ground truth vocabulary can't be told apart.
 
 Worked example: [Pairs: example](#example). Sources: [Pairs: sources](#sources).
 
