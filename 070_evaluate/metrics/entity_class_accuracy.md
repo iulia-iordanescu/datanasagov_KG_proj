@@ -25,7 +25,7 @@ Let *a* be the value of one version of entity-class accuracy. Then, *a* is the p
 
 ## <ins>Assumes and can't see</ins>
 
-- Only paired [triples](../../docs/terminology.md#2-triples) are judged: the [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) of a triple without a partner aren't counted anywhere.
+- Only paired [classed triples](../../docs/terminology.md#2-triples) are judged: the [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) of a classed triple without a partner aren't counted anywhere.
 - Two [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) look the same, so mixing them up isn't seen.
 - Above, *Interpretations* states that approximately *a* of the knowledge graph's correct edges would also have both nodes' entity classes right, where *a* is any one version of entity-class accuracy. It is approximate for two kinds of reason:
   - the [reasons every metric shares](approximately.md); the [report](../../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *a*'s [margin of error](approximately.md#sampling-error);

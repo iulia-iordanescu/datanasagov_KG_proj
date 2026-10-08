@@ -16,7 +16,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it: the margin of error.** A range around each metric's value that says how much the value could change with another sample of the same size. Every metric gets one, except the describes baseline and the describes per-entity-class average. Example: [Sampling error: example](#example).
 
 - **How it is computed**, by the bootstrap, with fixed numbers in `070_evaluate/070_evaluate_helpers/stats.py`:
-  1. Redraw the evaluated [records](../../docs/terminology.md#1-records-and-their-text): within each [stratum](../../docs/terminology.md#4-ground-truth-and-samples), draw at random, with repeats, as many records as the stratum has. Whole records are drawn, never single [triples](../../docs/terminology.md#2-triples).
+  1. Redraw the evaluated [records](../../docs/terminology.md#1-records-and-their-text): within each [stratum](../../docs/terminology.md#4-ground-truth-and-samples), draw at random, with repeats, as many records as the stratum has. Whole records are drawn, never single [classed triples](../../docs/terminology.md#2-triples).
   2. Compute the metric on the redrawn records, adding up their counts as on the real ones. A redraw where the metric is undefined (e.g. no [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060)) is skipped.
   3. Repeat 1,000 times (`REDRAWS`), from a fixed seed (`SEED = 70`), so a rerun gives the same range.
   4. The range is the middle 95% of the 1,000 values: from the 2.5th to the 97.5th percentile.
@@ -31,11 +31,11 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   | Assumption | Why it matters | How the report checks it |
   |---|---|---|
   | The evaluated records are a random sample of the catalog | The redraws stand in for other samples of the catalog. | Only the [fair sample](../../docs/terminology.md#4-ground-truth-and-samples) is evaluated (by design). |
-  | Whole records vary, independently of each other | A record's triples come from one [text](../../docs/terminology.md#1-records-and-their-text) and one [model call](../../docs/terminology.md#8-the-pipeline), so they succeed or fail together; redrawing single triples would make the range too narrow. | Records are redrawn whole (by design). |
+  | Whole records vary, independently of each other | A record's extracted triples come from one [text](../../docs/terminology.md#1-records-and-their-text) and one [model call](../../docs/terminology.md#8-the-pipeline), so they succeed or fail together; redrawing single classed triples would make the range too narrow. | Records are redrawn whole (by design). |
   | Enough records | With very few, the range is itself unreliable, usually too narrow. | No range below 20 evaluated records (a rule of thumb; no source found gives a number). |
   | Every stratum adds spread | A stratum with only 1 evaluated record puts that record in every redraw, so the range comes out too narrow. | Lists the strata with only 1 evaluated record. |
   | The range isn't at 0% or 100% | There, a percentile range is too narrow. | Lists the metrics whose range reaches 0% or 100%. |
-  | No one record dominates | A record with most of the triples sways every redraw it's in. | Gives the largest record's proportion of the extracted triples and of the [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples), for reading (no established threshold). |
+  | No one record dominates | A record with most of the classed triples sways every redraw it's in. | Gives the largest record's proportion of the extracted triples and of the [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples), for reading (no established threshold). |
   | A small proportion of the catalog is evaluated | Redrawing with repeats treats the catalog as endless; for a large proportion, the range comes out somewhat too wide. | Gives the proportion of the catalog evaluated; holds below 5%. |
 - **What it can't see.** Only sampling error: the other four reasons can move the whole catalog's value outside the range.
 
@@ -74,7 +74,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 - Sampling error, the [margin of error](#sampling-error):
   - The [bootstrap](#sampling-error), and its percentile range: Efron & Tibshirani, *An Introduction to the Bootstrap* (1993).
-  - Drawing whole [records](../../docs/terminology.md#1-records-and-their-text) rather than single [triples](../../docs/terminology.md#2-triples), since a record's triples succeed or fail together, is the cluster (or block) bootstrap; drawing within each [stratum](../../docs/terminology.md#4-ground-truth-and-samples) is the stratified bootstrap: Davison & Hinkley, *Bootstrap Methods and their Application* (1997).
+  - Drawing whole [records](../../docs/terminology.md#1-records-and-their-text) rather than single [classed triples](../../docs/terminology.md#2-triples), since a record's [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060) succeed or fail together, is the cluster (or block) bootstrap; drawing within each [stratum](../../docs/terminology.md#4-ground-truth-and-samples) is the stratified bootstrap: Davison & Hinkley, *Bootstrap Methods and their Application* (1997).
   - The threshold of 20 records: a rule of thumb, with no source found.
   - Below 5% of the catalog evaluated, drawing with repeats from a finite catalog is negligible: Cochran, *Sampling Techniques* (1977), chapter 2.
   - A stratum with only 1 evaluated record gives no estimate of its spread: the single-unit stratum of survey sampling (Cochran, 1977).
@@ -82,4 +82,4 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 - The sample's mix of [maintainers](../../docs/terminology.md#1-records-and-their-text): stratified sampling with proportional allocation, Cochran (1977), chapter 5. The 10-point warning: a rule of thumb, with no source found.
 - Small-sample bias of a ratio: the ratio estimator, biased by an amount that shrinks faster than its sampling error as the sample grows, Cochran (1977), chapter 6.
 - Tuning on the evaluated records: a test set used to choose between versions no longer gives an unbiased estimate; a part kept unseen until the end does. Hastie, Tibshirani & Friedman, *The Elements of Statistical Learning* (2nd ed., 2009), section 7.2.
-- An imperfect [ground truth](../../docs/terminology.md#4-ground-truth-and-samples): a reference set missing true triples makes evaluation "overly pessimistic" for methods that extract them, Zhang & Soh, *Extract, Define, Canonicalize* (2024), [paper](https://arxiv.org/abs/2404.03868).
+- An imperfect [ground truth](../../docs/terminology.md#4-ground-truth-and-samples): a reference set missing true facts makes evaluation "overly pessimistic" for methods that extract them, Zhang & Soh, *Extract, Define, Canonicalize* (2024), [paper](https://arxiv.org/abs/2404.03868).

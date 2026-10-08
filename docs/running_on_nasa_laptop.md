@@ -126,7 +126,7 @@ A page opens in your browser: pick the [draft batch](terminology.md#4-ground-tru
 
 ## 8. Tracing where something came from
 
-Any [record](terminology.md#1-records-and-their-text), [triple instance](terminology.md#2-triples) or [schema entry](terminology.md#3-schemas) can be traced back to the API request that first returned it:
+Any record, [triple instance](terminology.md#2-triples), [classed triple](terminology.md#2-triples), or [schema entry](terminology.md#3-schemas) can be traced back to the API request that first returned it:
 
 ```powershell
 py helpers/audit.py <record id>

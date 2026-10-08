@@ -23,7 +23,7 @@ Let *u* be the value of one version of the recall upper bound. Then, *u* is the 
 
 - Read with recall: the gap between the two is what extraction missed although the schema could express it.
 - A low upper bound points at the schema (schema induction, or the [schema additions](../../docs/terminology.md#3-schemas)) or at the translation table (a row that says `(none)`, or a missing row).
-- The strict version is the limit for strict recall: a [triple](../../docs/terminology.md#2-triples) can be within reach but not within strict reach when (the schema has no counterpart for its subject class) ∨ (it has none for its object class).
+- The strict version is the limit for strict recall: a ground truth triple can be within reach but not within strict reach when (the schema has no counterpart for its subject class) ∨ (it has none for its object class).
 
 ## <ins>Assumes and can't see</ins>
 
