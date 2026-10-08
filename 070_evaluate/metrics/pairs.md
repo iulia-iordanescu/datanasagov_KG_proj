@@ -30,7 +30,7 @@ All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are so
 
 A triple left without a partner is **extracted only** (an extracted triple) or **ground truth only** (a ground truth triple).
 
-Pairs are what precision and recall count: an extracted triple in a pair the version counts is [correct](precision.md), and a ground truth triple in one is [found](recall.md).
+Precision and recall are computed from pairs. Each has versions that differ in which pairs they count (by pair level and strictness: see [precision](precision.md) and [recall](recall.md)). An extracted triple in a pair that a version of precision counts is called [*correct*](precision.md); a ground truth triple in a pair that a version of recall counts is called [*found*](recall.md).
 
 ## <ins>Assumes and can't see</ins>
 
