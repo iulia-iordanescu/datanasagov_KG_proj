@@ -30,6 +30,8 @@ All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are so
 
 A triple left without a partner is **extracted only** (an extracted triple) or **[ground truth](../../docs/terminology.md#4-ground-truth-and-samples) only** (a ground truth triple).
 
+Pairs are what precision and recall count: an extracted triple in a pair the version counts is [correct](precision.md), and a ground truth triple in one is [found](recall.md).
+
 ## <ins>Assumes and can't see</ins>
 
 - Containment can be fooled: "MODIS" is inside "MODIS Terra", a different instrument. On tuning records you review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*); two triples marked "not the same fact" are never paired. Held-out records' partial pairs are never reviewed (that would mean looking at them).
