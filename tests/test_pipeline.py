@@ -269,6 +269,35 @@ class Pipeline(unittest.TestCase):
         looks = read_csv(self.annotations / "held_out_looks.csv")
         self.assertEqual([int(x["held_out_records"]) for x in looks], [1])
 
+    def test_t10b_evaluate_refuses_a_repeat(self):
+        """A classed triple twice in a record stops evaluation; the same subject
+        instance, predicate, and object instance with different entity classes
+        only warns, before anything is evaluated."""
+        path = self.annotations / "ground_truth" / "batch_001.csv"
+        before = path.read_bytes()
+        fact = next(r for r in self.ground_truth if r["predicate"] != "DESCRIBES")
+        args = [*NO_CONFIRM, "--component_class_mapping", str(self.repo / "own_table.csv")]
+        try:
+            # entity classes differing only in case: the same classed triple
+            write_csv(path, self.ground_truth + [{**fact, "subject": "the " + fact["subject"],
+                                                  "subject_class": fact["subject_class"].lower()}], COLUMNS)
+            out, _ = self.run_step("070_evaluate", *args, expect=2)
+            self.assertIn("Step 070 can't evaluate: 1 classed triple appears twice in a record of the ground truth, "
+                          "and only one copy could be paired.", out)
+            self.assertIn(f"1. Record {fact['id']} (batch_001.csv): lines", out)
+            write_csv(path, self.ground_truth + [{**fact, "object_class": "Other"}], COLUMNS)
+            out, _ = self.run_step("070_evaluate", *args)
+            self.assertIn("Step 070 found 1 warning:\n1. Ground truth, record", out)
+            warning = out.index("with different entity classes")
+            self.assertLess(warning, out.index("compared "), "warned only after comparing")
+            # with someone to ask: the run stops at the question (no keyboard here: cancelled), before comparing
+            out, _ = self.run_step("070_evaluate", "--component_class_mapping", str(self.repo / "own_table.csv"), expect=2)
+            self.assertIn("Press Enter to evaluate anyway", out)
+            self.assertIn("with different entity classes", out)
+            self.assertNotIn("compared ", out)
+        finally:
+            path.write_bytes(before)
+
     def test_t11_every_run_reported(self):
         reports = sorted((self.repo / "outputs" / "reports").glob("*.md"))
         logs = sorted((self.repo / "outputs" / "logs").glob("*.log"))

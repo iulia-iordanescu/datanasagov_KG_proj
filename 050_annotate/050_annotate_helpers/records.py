@@ -109,7 +109,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     chosen.coined = vocabulary(hand, chosen.ground_truth)["coined"]
     chosen.schema_text = vocabulary_text(Path(inputs["hand_schema"]).read_text(encoding="utf-8-sig").strip(),
                                          chosen.coined)
-    chosen.notes += [f"Ground truth: {p}" for p in chosen.ground_truth.problems]
+    chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
     chosen.done = {r["id"] for r in chosen.ground_truth.rows}
     chosen.waiting, highest = _waiting(output)
     gt_numbers = [int(m.group(1)) for f in gt_files if (m := NUMBERED.fullmatch(f.name))]

@@ -2,6 +2,12 @@
 records.py -- stage 1: which records are evaluated, and what is known about
 each.
 
+Evaluation refuses to run while the ground truth has the same classed triple
+twice in a record (common/common_helpers/ground_truth.py, gt.repeats). Every
+other warning found here (ground truth problems, records left out, …) is
+shown before anything is evaluated, and the person is asked whether to go
+ahead (unless confirm_paid_calls is false).
+
 A record is evaluated when a person has finished it in the ground truth (all
 triples extracted, on every row) AND step 060's last run extracted from it.
 Of those, only the FAIR SAMPLE is evaluated: the longest run of the pool's first
@@ -22,6 +28,7 @@ from pathlib import Path
 
 from common.files import read_csv
 from common.ground_truth import fair_prefix, read_ground_truth, read_pool
+from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
@@ -33,7 +40,7 @@ from common.triples_io import is_describes
 class Evaluated:
     records: list = field(default_factory=list)    # see pick_records
     left_out: dict = field(default_factory=dict)   # {reason: [ids]}
-    notes: list = field(default_factory=list)      # shown before paying (mapping calls) and in the report
+    notes: list = field(default_factory=list)      # shown (and asked about) before evaluating, and in the report
     pool: list = field(default_factory=list)       # the pool's ids, in order
     pool_strata: dict = field(default_factory=dict)  # {stratum: pool records in it}
     ground_truth: object = None                    # common.ground_truth.GroundTruth
@@ -57,12 +64,25 @@ def _triples(rows: list) -> tuple:
     return triples, describes
 
 
+def refusal(repeats: list) -> str:
+    """Why evaluation can't run: every classed triple that appears more than
+    once in a record (common.ground_truth's gt.repeats), numbered."""
+    n = len(repeats)
+    how_often = "twice" if all(r["copies"] == 2 for r in repeats) else "more than once"
+    head = (f"Step 070 can't evaluate: {n} classed triple{'s' if n != 1 else ''} "
+            f"{'appear' if n != 1 else 'appears'} {how_often} in a record of the ground truth, and only one "
+            f"copy could be paired.")
+    return head + "\n" + numbered([r["message"][0].upper() + r["message"][1:] for r in repeats])
+
+
 def pick_records(inputs: dict, settings: dict) -> Evaluated:
     check_settings(settings, {})
     evaluated = Evaluated()
     gt_files = input_files(Path(inputs["ground_truth"]))
     gt = evaluated.ground_truth = read_ground_truth(gt_files[0].parent)        # run_step made sure there is one
-    evaluated.notes += [f"Ground truth: {p}" for p in gt.problems]
+    evaluated.notes += [f"Ground truth, {p}" for p in gt.problems]
+    if gt.repeats:
+        raise SystemExit(refusal(gt.repeats))
     pool_rows = read_pool(inputs["splits"])
     if any("part" not in r for r in pool_rows):
         raise ValueError("splits.json has no tuning / held-out part for its records: rebuild it with 030 "
@@ -122,5 +142,9 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     if not evaluated.records:
         raise SystemExit("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
                          "fair sample. " + " ".join(evaluated.notes))
+    if evaluated.notes:                            # before anything is evaluated, even on a run that pays nothing
+        show_warnings("070", evaluated.notes)
+        if settings["confirm_paid_calls"]:
+            confirm("Press Enter to evaluate anyway, or anything else to cancel.")
     evaluated.reviews = read_reviews(Path(inputs["partial_reviews"]))
     return evaluated

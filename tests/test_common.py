@@ -57,16 +57,34 @@ class GroundTruthFiles(unittest.TestCase):
                                              row("b", "MODIS", "I", "ABOARD", "Aqua", "S", "x", "1"),
                                              row("b", "AIRS", "I", "ABOARD", "Aqua", "S", "x", "0"),
                                              row("c", "The MODIS", "I", "aboard", "Aqua.", "S", "x"),
-                                             row("c", "modis", "Other", "ABOARD", "aqua", "S", "y")])
+                                             row("c", "modis", "Other", "ABOARD", "aqua", "S", "y"),
+                                             row("d", "AIRS", "Instrument", "ABOARD", "Aqua", "S", "x"),
+                                             row("d", "the AIRS", "instrument", "aboard", "Aqua", "s", "y"),
+                                             row("d", "AIRS", "Other", "ABOARD", "Aqua", "S", "z")])
         gt_file(self.tmp, "batch_001.csv", [row("a", "AIRS", "I", "ABOARD", "Aqua", "S", "x")])
         gt_file(self.tmp, "batch_002.csv", [["a", "b"]], columns=["id", "subject"])
         gt = ground_truth.read_ground_truth(self.tmp)
-        self.assertEqual(len(gt.problems), 4)
+        self.assertEqual(len(gt.problems), 6)
         self.assertNotIn("a", gt.records)                                         # in two files: kept out
         joined = "\n".join(gt.problems)
         self.assertIn("record a is in batch_000.csv and batch_001.csv", joined)
-        self.assertIn("record b in batch_000.csv: all_facts_extracted", joined)
-        self.assertIn("record c in batch_000.csv: lines 5 and 6 are the same triple", joined)
+        self.assertIn("record b (batch_000.csv): all_facts_extracted", joined)
+        self.assertIn("record c (batch_000.csv): lines 5 and 6 state the same subject instance, predicate, and object "
+                      "instance, with different entity classes.", joined)
+        # entity classes differing only in case are the same: lines 7 and 8 are one classed triple twice
+        self.assertEqual(len(gt.repeats), 1)
+        self.assertEqual(gt.repeats[0], {"copies": 2, "message":
+                         "record d (batch_000.csv): lines 7 and 8 are the same classed triple.\n"
+                         "- Line 7: AIRS (Instrument) ABOARD Aqua (S)\n"
+                         "- Line 8: the AIRS (instrument) aboard Aqua (s)\n\n"
+                         "Delete one of the two lines (py helpers/annotate.py), then rerun."})
+        self.assertIn(gt.repeats[0]["message"], gt.problems)
+        self.assertIn("record d (batch_000.csv): lines 7, 8, and 9 state the same subject instance, predicate, and "
+                      "object instance, with different entity classes.\n"
+                      "- Line 7: AIRS (Instrument) ABOARD Aqua (S)\n"
+                      "- Line 8: the AIRS (instrument) aboard Aqua (s)\n"
+                      "- Line 9: AIRS (Other) ABOARD Aqua (S)\n\n"
+                      "If they state one fact, delete the line with the wrong entity classes.", gt.problems)
         self.assertIn("batch_002.csv lacks the column(s)", joined)
 
     def test_check_rows(self):

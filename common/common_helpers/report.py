@@ -150,7 +150,9 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
     lines += ["## Warnings", ""]
     warnings = results.warnings if results is not None else []
     if warnings:
-        lines += [f"- {w}" for w in warnings]
+        # a warning's further lines (e.g. a ground truth problem's lines of a file) stay inside its item
+        lines += ["- " + "\n".join(("  " + x) if x and j else x for j, x in enumerate(w.split("\n")))
+                  for w in warnings]
     else:
         lines.append("None.")
     lines.append("")

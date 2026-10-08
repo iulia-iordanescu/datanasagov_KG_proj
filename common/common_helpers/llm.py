@@ -267,9 +267,10 @@ class PaidCalls:
     puts them in its report's warnings, where they're read on runs that
     needed no call or had nobody at the keyboard."""
 
-    def __init__(self, confirm: bool, notes: list = ()):
+    def __init__(self, confirm: bool, notes: list = (), step: str = ""):
         self.confirm = confirm
         self.notes = list(notes)
+        self.step = step                    # the step's folder name, e.g. 070_evaluate
         self.started = False
         self.made = 0                       # calls made by the stages
         self.test_calls = 0                 # 1 once the run has started paying
@@ -281,14 +282,11 @@ class PaidCalls:
         log.info(plan)
         log.info(f"model: {MODEL}")
         if self.notes:
-            log.warning("Before you pay: this run can't do exactly what you asked:")
-            for n in self.notes:
-                log.warning(f"  - {n}")
+            show_warnings(self.step, self.notes)
         if self.confirm:
-            confirm("Press Enter to start (1 test call first), anything else to cancel:"
+            confirm("Press Enter to start (1 test call first), or anything else to cancel."
                     if not self.notes else
-                    "Press Enter to go ahead anyway (1 test call first), anything else to cancel "
-                    "and fix the request:")
+                    "Press Enter to go ahead anyway (1 test call first), or anything else to cancel.")
         try:
             call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
         except Exception as e:                              # noqa: BLE001
@@ -318,7 +316,7 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     if not name:
         raise ValueError("model must name a model (py helpers/models.py lists them)")
     MODEL = name
-    return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes),
+    return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
                  cache_dir=Path(output) / "cache")
 
 
@@ -346,6 +344,23 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:
                  f"{stop_note}")
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
+
+
+def warning_list(step: str, notes: list) -> str:
+    """'Step 070 found 2 warnings:', then the notes numbered; a note's further
+    lines are indented under it."""
+    head = f"Step {step.split('_')[0]} found {len(notes)} warning{'s' if len(notes) != 1 else ''}:"
+    return head + "\n" + numbered(notes)
+
+
+def numbered(notes: list) -> str:
+    """'1. …', '2. …'; a note's further lines indented under it."""
+    return "\n".join(f"{i}. " + "\n".join(("   " + x) if x and j else x for j, x in enumerate(n.split("\n")))
+                     for i, n in enumerate(notes, 1))
+
+
+def show_warnings(step: str, notes: list) -> None:
+    log.warning(warning_list(step, notes), extra={"as_written": True})
 
 
 def confirm(question: str) -> None:

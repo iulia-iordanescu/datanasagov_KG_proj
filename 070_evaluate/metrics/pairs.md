@@ -4,9 +4,7 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 ## <ins>Definition</ins>
 
-Every record has two sets of [classed triples](../../docs/terminology.md#2-triples) associated with it: its set of [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and its set of ground truth triples. Each classed triple is its own element, even when two state the same fact.
-
-A **pair** is one extracted triple and one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../../docs/terminology.md#2-triples), once the extracted triple's [predicate](../../docs/terminology.md#3-schemas), [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)).
+A **pair** is one [extracted triple](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same [record](../../docs/terminology.md#1-records-and-their-text) that evaluation takes to state the same [fact](../../docs/terminology.md#2-triples), once the extracted triple's [predicate](../../docs/terminology.md#3-schemas), [subject class](../../docs/terminology.md#2-triples) and [object class](../../docs/terminology.md#2-triples) are translated into the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) (through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), [`annotations/component_class_mapping.csv`](../../annotations/component_class_mapping.csv)).
 
 There are two **pair levels**, exact and partial, that define when an extracted triple (after its [component classes](../../docs/terminology.md#3-schemas) are translated) and a ground truth triple of the same record count as stating the same fact.
 
@@ -30,7 +28,7 @@ So every pair is exactly one of these four:
 
 All pairs = exact pairs ∪ partial pairs (no pair is both). Strict pairs are some of each.
 
-Meeting a pair level's requirements makes two such aforementioned classed triples able to pair, not paired: each extracted triple and each ground truth triple of a record has at most one partner, always from the other set. Evaluation finds the largest possible set of exact pairs, then, among the classed triples left, the largest possible set of partial pairs: partners are picked so that as many classed triples as possible get one (a *maximum matching*). Example: [Example](#example), *The largest set of pairs*.
+Meeting a pair level's requirements makes two such aforementioned [classed triples](../../docs/terminology.md#2-triples) able to pair, not paired: each extracted triple and each ground truth triple of a record has at most one partner, always from the record's other set (its [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060) or its [set of ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples)). Evaluation finds the largest possible set of exact pairs, then, among the classed triples left, the largest possible set of partial pairs: partners are picked so that as many classed triples as possible get one (a *maximum matching*). Example: [Example](#example), *The largest set of pairs*.
 
 A classed triple left without a partner is **extracted only** (an extracted triple) or **ground truth only** (a ground truth triple).
 

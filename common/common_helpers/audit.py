@@ -83,7 +83,10 @@ def sha256(files) -> str:
 class _Console(logging.Formatter):
     def format(self, record):
         msg = record.getMessage()
-        return msg if record.levelno < logging.WARNING else f"{record.levelname}: {msg}"
+        # extra={"as_written": True}: a message that says itself what it is (common.llm.warning_list)
+        if record.levelno < logging.WARNING or getattr(record, "as_written", False):
+            return msg
+        return f"{record.levelname}: {msg}"
 
 
 def start_log(path: Path, step_name: str) -> logging.FileHandler:

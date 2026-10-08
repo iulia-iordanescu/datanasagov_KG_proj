@@ -46,7 +46,7 @@ def pick_records(inputs, settings):
 
 
 def paid_calls(evaluated, settings, output) -> llm.Calls:
-    return llm.paid_calls(settings, output, notes=evaluated.notes)
+    return llm.paid_calls(settings, output)         # evaluated.notes were shown, and asked about, by pick_records
 
 
 def translate_component_classes(inputs, evaluated, calls):

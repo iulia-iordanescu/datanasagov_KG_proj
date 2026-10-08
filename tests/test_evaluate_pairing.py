@@ -7,6 +7,7 @@ from support import use_step
 
 use_step("070_evaluate")
 import pairing                                   # noqa: E402
+import records                                   # noqa: E402
 import stats                                     # noqa: E402
 from component_classes import Translation        # noqa: E402
 from common.partial_reviews import NOT_SAME, SAME, pair_key   # noqa: E402
@@ -383,6 +384,22 @@ class Parts(unittest.TestCase):
         self.assertAlmostEqual(rows["a"]["share_pool"], 3 / 8)
         self.assertEqual(rows["c"]["records"], 0)
         self.assertIsNone(rows["a"]["numbers"])                     # fewer than MIN_RECORDS
+
+
+class Refusal(unittest.TestCase):
+    """records.refusal: why evaluation can't run, for one or several classed triples repeated."""
+
+    def test_one_and_several(self):
+        two = {"copies": 2, "message": "record a (batch_001.csv): lines 2 and 3 are the same classed triple.\n- Line 2: …"}
+        three = {"copies": 3, "message": "record b (batch_001.csv): lines 4, 5, and 6 are the same classed triple."}
+        self.assertEqual(records.refusal([two]),
+                         "Step 070 can't evaluate: 1 classed triple appears twice in a record of the ground truth, "
+                         "and only one copy could be paired.\n"
+                         "1. Record a (batch_001.csv): lines 2 and 3 are the same classed triple.\n   - Line 2: …")
+        both = records.refusal([two, {**two, "message": two["message"].replace("record a", "record c")}, three])
+        self.assertTrue(both.startswith("Step 070 can't evaluate: 3 classed triples appear more than once"), both)
+        self.assertIn("\n2. Record c (batch_001.csv)", both)
+        self.assertIn("\n3. Record b (batch_001.csv): lines 4, 5, and 6", both)
 
 
 if __name__ == "__main__":

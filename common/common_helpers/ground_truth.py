@@ -27,6 +27,7 @@ progress. A row with an id but an empty subject, predicate and object says
     gt.rows        [{..., "_origin": ["annotations/ground_truth/batch_000.csv#4"]}, …]
     gt.records     {record id: {"file", "rows", "finished"}}
     gt.problems    ["…"]: what a person must fix (see below)
+    gt.repeats     [{"message", "copies"}]: the problems that stop 070 (a classed triple twice in a record)
     fair_sample, fair_prefix  whether ids are the pool's first records (below)
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
     vocabulary(hand_schema, gt)  the ground truth vocabulary: the hand-built
@@ -41,12 +42,21 @@ Problems, each listed, none silently resolved:
   - a record in more than one file: annotated twice, and code can't tell
     which is right (both are kept out of gt.records until fixed);
   - a record whose rows disagree on all_facts_extracted (some 1, some 0);
-  - the same triple twice in a record (same subject, predicate and object,
-    compared as common/common_helpers/triples_io.triple_key does): only one
-    copy can be paired, so 070 would count the other as missed;
+  - the same classed triple twice in a record: the same subject instance,
+    predicate and object instance (compared as
+    common/common_helpers/triples_io.triple_key does) and the same subject
+    class and object class (as triples_io.component_class_key does). Only
+    one copy can be paired, so 070 would count the other as missed. Also in
+    gt.repeats: 070 refuses to run while there is one;
+  - the same subject instance, predicate and object instance twice in a
+    record, with different entity classes: likely one fact given two entity
+    classes by mistake;
+A problem about lines of a file shows each of them on a line of its own
+(the message has several lines).
   - a file missing one of the columns above.
 050, 060 and 070 list them in their report's warnings (and before paying);
-the annotation tool shows them on its page.
+070 also shows them before it evaluates and asks whether to go ahead; the
+annotation tool shows them on its page.
 
 Shared by the steps that read ground truth (050, to know which records are
 done and to check the files; 060, which records are finished; 070, to evaluate
@@ -63,7 +73,7 @@ from pathlib import Path
 
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
-from common.triples_io import is_describes, triple_key
+from common.triples_io import component_class_key, is_describes, triple_key
 
 GROUND_TRUTH_DIR = ANNOTATIONS_DIR / "ground_truth"
 PATTERN = "batch_*.csv"
@@ -93,6 +103,7 @@ class GroundTruth:
     records: dict = field(default_factory=dict)    # {id: {"file", "rows", "finished"}}
     files: list = field(default_factory=list)      # the files read, in order
     problems: list = field(default_factory=list)   # what a person must fix
+    repeats: list = field(default_factory=list)    # of those, a classed triple twice in a record: stops 070
 
 
 #: Each row's line in its file, as read (blank lines and source texts spanning lines counted).
@@ -130,22 +141,43 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
             continue
         marks = {r["all_facts_extracted"] for r in rows}
         if len(marks) > 1:
-            gt.problems.append(f"record {rid} in {in_files[rid][0]}: all_facts_extracted is "
+            gt.problems.append(f"record {rid} ({in_files[rid][0]}): all_facts_extracted is "
                                f"{' on some rows, '.join(sorted(marks))} on others; set it the same on every row")
         gt.records[rid] = {"file": in_files[rid][0], "rows": len(rows), "finished": marks == {"1"}}
-        first = {}                                 # triple key -> its first row's line
+        groups = {}                                # triple key -> {(subject class, object class) keys: [rows]}
         for row in rows:
             if not (row["subject"] and row["predicate"] and row["object"]) or is_describes(row):
                 continue
-            line = row[LINE_FIELD]
-            k = triple_key(row)
-            if k in first:
-                gt.problems.append(f"record {rid} in {in_files[rid][0]}: lines {first[k]} and {line} are the "
-                                   f"same triple ({row['subject']} {row['predicate']} {row['object']}): only one "
-                                   f"can be paired, so the other would count as missed; delete one")
-            else:
-                first[k] = line
+            entity_classes = (component_class_key(row["subject_class"]), component_class_key(row["object_class"]))
+            groups.setdefault(triple_key(row), {}).setdefault(entity_classes, []).append(row)
+        where = f"record {rid} ({in_files[rid][0]})"
+        for by_classes in groups.values():
+            for same in by_classes.values():
+                if len(same) > 1:
+                    message = (f"{where}: {_lines(same)} are the same classed triple.\n{_shown(same)}\n\n"
+                               + ("Delete one of the two lines" if len(same) == 2 else "Delete all but one of these lines")
+                               + " (py helpers/annotate.py), then rerun.")
+                    gt.problems.append(message)
+                    gt.repeats.append({"message": message, "copies": len(same)})
+            if len(by_classes) > 1:
+                different = [r for same in by_classes.values() for r in same]
+                different.sort(key=lambda r: r[LINE_FIELD])
+                gt.problems.append(f"{where}: {_lines(different)} state the same subject instance, predicate, and "
+                                   f"object instance, with different entity classes.\n{_shown(different)}\n\n"
+                                   f"If they state one fact, delete the line with the wrong entity classes.")
     return gt
+
+
+def _lines(rows: list) -> str:
+    """'lines 7 and 9', 'lines 7, 9, and 12'."""
+    n = [str(r[LINE_FIELD]) for r in rows]
+    return "lines " + (" and ".join(n) if len(n) == 2 else ", ".join(n[:-1]) + ", and " + n[-1])
+
+
+def _shown(rows: list) -> str:
+    """One line per row: '- Line 7: MODIS (Instrument) ABOARD Aqua (Spacecraft)'."""
+    return "\n".join(f"- Line {r[LINE_FIELD]}: {r['subject']} ({r['subject_class']}) {r['predicate']} "
+                     f"{r['object']} ({r['object_class']})" for r in rows)
 
 
 # --------------------------------------------------------------------------

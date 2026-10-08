@@ -44,7 +44,7 @@ INPUTS = {
 SETTINGS = {
     "evaluate_held_out":     False,  # also show the held-out part's numbers (for the end; each look is logged)
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)
-    "confirm_paid_calls": True,   # stop and ask before the first model call; false for unattended runs
+    "confirm_paid_calls": True,   # stop and ask before evaluating with warnings, and before the first model call; false for unattended runs
 }
 
 evaluate = load_moves("070_evaluate")
