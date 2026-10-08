@@ -75,7 +75,7 @@ WHAT TO PASS, WHAT COMES BACK
 
 `value` is anything: str, bytes (decoded UTF-8), None ("") or other
 (str()). It need not contain markup; text without any is returned with
-only whitespace normalised.
+only whitespace normalized.
 
 `mapping` is any dict-like record. `fields=` names which keys to clean
 and defaults to DEFAULT_FIELDS, i.e. ("notes", "title").
@@ -618,7 +618,7 @@ def clean_note(raw) -> CleanedNote:
     text = _as_text(raw)
 
     # Fast path. Without "<" or "&" there is no markup and no escaping,
-    # so cleaning can only normalise whitespace -- which cannot drop a
+    # so cleaning can only normalize whitespace -- which cannot drop a
     # token, so the check is unnecessary too. This is most inputs, and
     # it skips both the parse and the tokenisation. Verified in the
     # self-test to give byte-identical results to the full path.
@@ -911,7 +911,7 @@ SELFTESTS = [
     ("newline inside an attribute value",
      '&lt;img src="\n https://c3.nasa.gov/y.png"&gt;',
      ["https://c3.nasa.gov/y.png"]),
-    ("angle-bracket maths is not a tag",
+    ("angle-bracket math is not a tag",
      'starbursts (&lt;log(L&lt;sub&gt;IR&lt;/sub&gt;/L&lt;sub&gt;sun&lt;/sub&gt;)&gt; ~ 11.2)',
      ["log(L_IR/L_sun)", "11.2"]),
     ("less-than sign survives",

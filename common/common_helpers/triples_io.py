@@ -42,7 +42,7 @@ OPTIONAL = ("subject_class", "object_class", "source_text")
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
            "object_class", "source_text"]
 
-# ------------------------------ normalisation ------------------------------
+# ------------------------------ normalization -----------------------------
 #
 # norm_text (a component instance or free text, evened out for comparison) is defined once,
 # in common/common_helpers/text_match.py, and shared with the fact checks in
@@ -50,7 +50,7 @@ COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
 
 
 def norm_predicate(s) -> str:
-    """Normalise a predicate: as norm_text, and _ - space are equivalent."""
+    """Normalize a predicate: as norm_text, and _ - space are equivalent."""
     return re.sub(r"[\s_\-]+", " ", norm_text(s)).strip()
 
 

@@ -152,6 +152,6 @@ Values cleaned by the *conservative* method are complete but may read less well;
 
 - **Middle names, initials and Jr./Sr. aren't joined.** "Lola Olsen" and "Lola M. Olsen" stay two [maintainers](../docs/terminology.md#1-records-and-their-text), even if they are one person: joining them needs a rule someone would have to choose, and joining two people is worse than keeping one person's spellings apart.
 - **A maintainer written only one way is left as written**, titles and capitals included: e.g. `DAVID, DR. DINER`, `Dr. Natalia Papitashvili`. Only joined names are rewritten in "John Doe" form.
-- **Formats and tags are not normalised.** They are copied as the catalog spells them; nothing would join `csv` and `CSV`. On 2026-09-27 no format was spelled two ways by case, and no [record](../docs/terminology.md#1-records-and-their-text) listed a tag twice.
+- **Formats and tags are not normalized.** They are copied as the catalog spells them; nothing would join `csv` and `CSV`. On 2026-09-27 no format was spelled two ways by case, and no [record](../docs/terminology.md#1-records-and-their-text) listed a tag twice.
 - **Only the text [fields](../docs/terminology.md#1-records-and-their-text) are cleaned.** Tags, formats and the other structured fields are not checked for HTML.
 - **A repeated id keeps its first copy.** If the catalog changed the record between the two pages, the later version is lost; only a fresh [harvest](../docs/terminology.md#1-records-and-their-text) fixes that. On 2026-09-27 all 12 pairs were identical.

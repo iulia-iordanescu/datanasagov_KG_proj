@@ -8,7 +8,7 @@ object (and their entity classes). Then, per record, the ground truth's
 triples and the extracted triples are PAIRED: every triple, in either list, ends
 with zero or one partner, always from the other list (so a triple stated twice
 earns one pair, not two). Two passes, each finding the largest possible set
-of pairs (in maths, a maximum matching: a pair may be swapped to free a
+of pairs (in math, a maximum matching: a pair may be swapped to free a
 partner for another triple), not just each triple's first possible partner:
 
   1. exact   subject and object equal once evened out (common/common_helpers/text_match.py
