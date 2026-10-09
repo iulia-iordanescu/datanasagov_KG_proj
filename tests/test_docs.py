@@ -258,7 +258,8 @@ def first_uses_unlinked() -> list:
         # the NOT_TERMS phrases are matched too, as units, so no shorter term counts inside them
         # ("ground truth" in "ground truth only"), but they are never reported
         terms = sorted(set(multiword_terms()) | NOT_TERMS, key=len, reverse=True)
-        forms = [(t, re.compile(r"(?<![\w\-/.#`\[_])(" + re.escape(t) + r"(?:e?s)?)(?![\w\-`\]_])", re.I)) for t in terms]
+        # a term may sit at the edge of a [unit] (metrics.md: square brackets mark one unit), but not of a link's text
+        forms = [(t, re.compile(r"(?<![\w\-/.#`_])(" + re.escape(t) + r"(?:e?s)?)(?![\w\-`_]|\]\()", re.I)) for t in terms]
         missing = []
         for rel in LINKED_DOCS:
             lines = (ROOT / rel).read_text(encoding="utf-8").split("\n")
