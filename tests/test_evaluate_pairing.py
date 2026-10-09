@@ -219,6 +219,13 @@ class Pairing(unittest.TestCase):
         self.assertEqual({k: e1[k] for k in keys}, {k: e2[k] for k in keys})
         self.assertEqual({k: e1[k] for k in keys}, triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"))
 
+    def test_whole_words_not_any_overlap(self):
+        # metrics/pairs.md, Example, "Whole words inside, not any overlap": a shared word isn't enough
+        g = [triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")]
+        self.assertEqual(self.pairs(g, [triple("MODIS Land Surface Temperature", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")])["pairs"], [])
+        self.assertEqual(self.pairs(g, [triple("MODIS Snow Cover 5-Min L2 Swath", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")])["pairs"],
+                         [(0, 0, "partial")])
+
     def test_exact_pairs_first_can_cost_partial_pairs(self):
         # exact pairs are picked first: E0-G0 exact leaves G1 and E1 unpairable, though pairing both levels
         # together could have made two partial pairs (E1-G0, E0-G1)
