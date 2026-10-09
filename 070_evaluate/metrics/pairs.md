@@ -11,11 +11,11 @@ For each record in evaluation, each occurrence in its multiset of translated ext
 Evaluation forms a pair between an [occurrence in a record's multiset of translated extracted triples](../../docs/terminology.md#7-evaluating-extraction-step-070) and a [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) of the same record when it takes them to state the same fact. What counts as the same fact depends on the **pair level**, exact or partial: the two are **eligible** to pair at a pair level when they meet the pair level's requirements:
 
 - Exact pair eligibility is met when the following three hold for an occurrence in a record's multiset of translated extracted triples and a ground truth triple of the same record:
-  - they have the same predicate;
+  - they have the same predicate, by [loose match](../../docs/terminology.md#3-schemas);
   - they have the same [subject instance](../../docs/terminology.md#2-triples), once [evened out](../../docs/terminology.md#2-triples);
   - they have the same [object instance](../../docs/terminology.md#2-triples), once evened out.
 - Partial pair eligibility is met when the following three hold for an occurrence in a record's multiset of translated extracted triples and a ground truth triple of the same record:
-  - they have the same predicate;
+  - they have the same predicate, by loose match;
   - at least one of these holds for their subject instances, once evened out:
     - the two are the same;
     - the occurrence's subject instance appears, as whole words, inside the ground truth triple's subject instance;
@@ -32,7 +32,7 @@ Being eligible doesn't make an occurrence in a record's multiset of translated e
 
 After this pairing process, an occurrence in the record's multiset of translated extracted triples still without a partner is **extracted only**, and a ground truth triple still without a partner is **ground truth only**. They aren't dropped: precision divides by every occurrence, so each extracted only occurrence lowers precision, and recall divides by every ground truth triple, so each ground truth only triple lowers recall.
 
-A pair of either level is a **strict pair** when it also has (the same [subject classes](../../docs/terminology.md#2-triples)) ∧ (the same [object classes](../../docs/terminology.md#2-triples)). So every pair is exactly one of these four:
+A pair of either level is a **strict pair** when it also has, by loose match, (the same [subject classes](../../docs/terminology.md#2-triples)) ∧ (the same [object classes](../../docs/terminology.md#2-triples)). So every pair is exactly one of these four:
 
 | | strict ((same subject classes) ∧ (same object classes)) | not strict |
 |---|---|---|
@@ -47,6 +47,7 @@ Precision and recall are computed from pairs. Each has versions that differ in w
 
 - A pair can be wrong: containment can be fooled ("MODIS" is inside "MODIS Terra", a different instrument), and two [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one component class of the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) can't be told apart. All the causes: *When a pair isn't the same fact*, below.
 - An occurrence and a ground truth triple that state the same fact in different words never pair, so both count against the metrics. Example: [Pairs: example](#example), *The same fact in different words*.
+- Exact pairs are picked first, and partial pairs only among what's left, so the partial level can end with fewer pairs than pairing both levels together would make. In exchange, an exact pair is never given up to make room for partial ones. Example: [Pairs: example](#example), *Exact pairs first*.
 
 ## <ins>When a pair isn't the same fact</ins>
 
@@ -154,6 +155,15 @@ In all: 7 occurrences, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2
 
 *Equally large sets of pairs.* A record's ground truth has G1, "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). Extraction gives E1, "MODIS" (Dataset) ABOARD "Aqua" (Spacecraft), then E2, "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). Each can form an exact pair with G1, which can have only one partner, so the record has two possible sets of pairs: {E1–G1}, leaving E2 extracted only, and {E2–G1}, leaving E1 extracted only. Both have 1 pair: they are equally large. Evaluation takes {E2–G1}, whose pair is strict. Which of E1 and E2 comes first in the file doesn't matter.
 
+*Exact pairs first.* A record's ground truth has G0, "MODIS" ABOARD "Aqua", and G1, "Terra MODIS" ABOARD "Aqua". Extraction gives E0, "MODIS" ABOARD "Aqua", and E1, "MODIS instrument" ABOARD "Aqua" (every entity class the same).
+
+| | G0: "MODIS" | G1: "Terra MODIS" |
+|---|---|---|
+| E0: "MODIS" | eligible: exact | eligible: partial ("MODIS" is inside "Terra MODIS") |
+| E1: "MODIS instrument" | eligible: partial ("MODIS" is inside "MODIS instrument") | not eligible (neither is inside the other) |
+
+Evaluation first makes the exact pair E0–G0. That leaves E1 and G1, which aren't eligible, so the record has 1 pair: exact precision 1 of 2, and partial precision 1 of 2. Pairing both levels together could make 2 partial pairs, E1–G0 and E0–G1: exact precision 0 of 2, and partial precision 2 of 2, though E0 and G0 state exactly the same thing.
+
 *The same fact in different words.* A record's ground truth has "MODIS" ABOARD "Aqua". Extraction gives "the imaging spectroradiometer" ABOARD "the Aqua satellite".
 
 - Both state the same fact, but neither pair level pairs them: neither subject instance contains the other.
@@ -172,3 +182,4 @@ There are two ways to catch it:
 - *Strict*, meaning right relation and right entity types: the "Strict" [setting](../../docs/terminology.md#8-the-pipeline) of end-to-end relation extraction (Bekoulis et al., 2018, as described by Taillé et al., 2020, [paper](https://aclanthology.org/2020.emnlp-main.301/)). WebNLG's "strict" means something else (the element's role must match), so it isn't the source here.
 - The same fact in different words ([Pairs: example](#example), *The same fact in different words*): Wadhwa, Amir & Wallace, "Revisiting Relation Extraction in the era of Large Language Models", ACL 2023 ([paper](https://aclanthology.org/2023.acl-long.868/)), §5.
 - At most one partner per occurrence and per ground truth triple, largest set of pairs, and among those the most strict pairs: a minimum-cost maximum matching, each non-strict pair costing 1 and each strict pair 0 (successive shortest augmenting paths, `070_evaluate/070_evaluate_helpers/pairing.py`). Choosing among alignments by weight, not just by size, is how coreference's CEAF does it (Luo, 2005, paper: a maximum-weight bipartite matching, by the Kuhn–Munkres algorithm).
+- Exact pairs first: our own ordering. The standard methods pick one pairing with the best total score, where an exact match earns full credit and a partial match less: WebNLG's scoring script tries every way of lining up the triples and keeps the one with the best average score (Castro Ferreira et al., 2020), and CEAF takes the pairing with the highest total similarity (Luo, 2005). Their credit already favors exact matches; ours makes the preference absolute, since here a partial pair counts as fully right, and without it any trade of one exact pair for two partial ones would win.

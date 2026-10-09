@@ -203,6 +203,31 @@ class Pairing(unittest.TestCase):
             self.assertEqual((len(got), sum(strict(gi, ei) for gi, ei in got.items())),
                              best(can, strict, list(can)), (can, marks))
 
+    def test_same_fact_in_different_words(self):
+        # metrics/pairs.md, Example, "The same fact in different words": the objects contain each other, the subjects don't
+        c = self.pairs([triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")],
+                       [triple("the imaging spectroradiometer", "Instrument", "ABOARD", "the Aqua satellite", "Spacecraft")])
+        self.assertEqual(c["pairs"], [])
+
+    def test_multiset_example(self):
+        # metrics/pairs.md, Example, "A multiset of translated extracted triples": E1 and E2 translate to the same element
+        t = translation(extra_entity={"Sensor": "Instrument", "Satellite": "Spacecraft"},
+                        extra_predicates={"MOUNTED_ON": ("ABOARD", False)})
+        keys = ("subject", "subject_class", "predicate", "object", "object_class")
+        e1, e2 = (pairing.translate(x, t) for x in (triple("MODIS", "Sensor", "MOUNTED_ON", "Aqua", "Satellite"),
+                                                    triple("MODIS", "Instrument", "ABOARD", "Aqua", "Satellite")))
+        self.assertEqual({k: e1[k] for k in keys}, {k: e2[k] for k in keys})
+        self.assertEqual({k: e1[k] for k in keys}, triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"))
+
+    def test_exact_pairs_first_can_cost_partial_pairs(self):
+        # exact pairs are picked first: E0-G0 exact leaves G1 and E1 unpairable, though pairing both levels
+        # together could have made two partial pairs (E1-G0, E0-G1)
+        g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("Terra MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        e = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("MODIS instrument", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        self.assertEqual(self.pairs(g, e)["pairs"], [(0, 0, "exact")])
+
     def test_exact_before_partial(self):
         # E0 could pair partially with G0, but G1 is its exact partner.
         g = [triple("MODIS on Aqua", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
