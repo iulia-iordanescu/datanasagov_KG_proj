@@ -17,8 +17,9 @@ and among the largest sets, one with the most strict pairs:
              and a leading "the/a/an" ignored), predicate the same
   2. partial among the triples still unpaired: the same, except that the
              subject (or object) may be CONTAINED in the other one as whole
-             words, either way round: "MODIS" in "Moderate Resolution Imaging
-             Spectroradiometer (MODIS)". It can be fooled ("MODIS" in "MODIS
+             words, the extracted one in the ground truth one or the
+             ground truth one in the extracted one: "MODIS" in "Moderate
+             Resolution Imaging Spectroradiometer (MODIS)". It can be fooled ("MODIS" in "MODIS
              Terra"), so a person can review partial pairs (annotation tool,
              Partial pairs; common/common_helpers/partial_reviews.py): two triples marked "not
              the same fact" are never paired.
