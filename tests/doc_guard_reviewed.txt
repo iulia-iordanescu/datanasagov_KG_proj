@@ -1,0 +1,29 @@
+# Links dropped on purpose, reviewed: tests/doc_guard.py history skips these. One per line: commit<TAB>doc<TAB>[text](url)<TAB>why
+fb0cbf2	README.md	[docs/terminology.md](docs/terminology.md)	README sentence removed on purpose (file map replaced it)
+f673b34	070_evaluate/metrics.md	[pairs](../docs/terminology.md#7-evaluating-extraction-step-070)	metrics.md links to terminology.md replaced by in-page links
+da36ac2	070_evaluate/metrics.md	[The metrics](#the-metrics)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[triples](../docs/terminology.md#2-triples)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[pairs](#what-the-metrics-count-pairs)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[fact](../docs/terminology.md#2-triples)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[reasons every metric shares](#why-approximately-reasons-every-metric-shares)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[schema](../docs/terminology.md#3-schemas)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[triple](../docs/terminology.md#2-triples)	metrics.md split into one file per metric
+da36ac2	070_evaluate/metrics.md	[Sources](#sources)	metrics.md split into one file per metric
+8ed5181	070_evaluate/metrics/precision.md	[triples](../../docs/terminology.md#2-triples)	bare "triple" retired as a term
+78922ab	070_evaluate/metrics/pairs.md	[triples](../../docs/terminology.md#2-triples)	bare "triple" retired as a term
+56842a9	050_annotate/050_annotate.md	[triple](../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	060_extract/060_extract.md	[triples](../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	060_extract/060_extract.md	[triple](../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/070_evaluate.md	[triples](../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/070_evaluate.md	[triple](../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/metrics/approximately.md	[triples](../../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/metrics/entity_class_accuracy.md	[triples](../../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/metrics/f1.md	[triple](../../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/metrics/pairs.md	[triple](../../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/metrics/recall.md	[triples](../../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	070_evaluate/metrics/recall_upper_bound.md	[triple](../../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	README.md	[triples](docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	README.md	[triple](docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+56842a9	annotations/README.md	[triple](../docs/terminology.md#2-triples)	bare "triple" retired as a term (classed triple sweep)
+e204444	070_evaluate/070_evaluate.md	[object](../docs/terminology.md#2-triples)	sentence removed on purpose (its term entry says it)
+e204444	070_evaluate/070_evaluate.md	[subject](../docs/terminology.md#2-triples)	sentence removed on purpose (its term entry says it)

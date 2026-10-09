@@ -11,7 +11,7 @@ It prints one line per test file, then the failures in full. Exit code 0 means e
 
 Nothing here calls the [model](../docs/terminology.md#8-the-pipeline) or data.nasa.gov, and nothing is written into the repository: the tests work in temporary folders, and `run_all.py` fails if `git status` differs after the [run](../docs/terminology.md#8-the-pipeline).
 
-`doc_guard.py` is not a test: it checks that the docs changed only as agreed since the last commit. Every agreed doc edit is made through its `edit(file, old, new)`, which records it in `.git/doc_guard_ledger.json` (never committed). `py tests/doc_guard.py check` then fails on any change that no recorded edit explains, and on any link that is gone while its words remain; `py tests/doc_guard.py clear` starts a new ledger after a commit.
+`doc_guard.py` is not a test: it checks that the docs changed only as agreed since the last commit. Every agreed doc edit is made through its `edit(file, old, new)`, which records it in `.git/doc_guard_ledger.json` (never committed). `py tests/doc_guard.py check` then fails on any change that no recorded edit explains, and on any link that is gone while its words remain; `py tests/doc_guard.py clear` starts a new ledger after a commit. `py tests/doc_guard.py history` scans every commit for a link that was dropped while its words stayed and is still missing; the ones dropped on purpose are listed, with the reason, in `doc_guard_reviewed.txt`, and anything else is reported.
 
 ## What each file checks
 

@@ -118,8 +118,59 @@ def check() -> bool:
     return ok
 
 
+def history() -> list:
+    """Every link any commit dropped while its words stayed, and that is still missing: [(commit, doc, text, url)].
+    A web link counts as missing when its address is nowhere in the doc now; another link counts as missing when
+    nothing in the doc links the same term (any target, singular or plural) now. Words that a later edit removed,
+    and links into docs or anchors that were split or renumbered on purpose, show up too: read each before acting."""
+    def git(*a):
+        return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace").stdout
+
+    def term(t):
+        """The term's singular, lowercased: "classes" -> "class", "triples" -> "triple", "class" stays."""
+        t = re.sub(r"[*`]", "", t).lower()
+        if t.endswith(("sses", "xes", "ches", "shes")):
+            return t[:-2]
+        return t[:-1] if t.endswith("s") and not t.endswith("ss") else t
+
+    found, seen = [], set()
+    for c in git("log", "--format=%H", "--reverse", "--", "*.md").split():
+        for rel in git("diff-tree", "--no-commit-id", "--name-only", "-r", c, "--", "*.md").split():
+            if rel.startswith("to_be_reshaped/") or not (ROOT / rel).exists():
+                continue
+            before, after = git("show", f"{c}^:{rel}"), git("show", f"{c}:{rel}")
+            if not before or not after:
+                continue
+            now = (ROOT / rel).read_text(encoding="utf-8")
+            links_now, words_now = LINK.findall(now), plain(now)
+            for text, url in set(LINK.findall(before)) - set(LINK.findall(after)):
+                if (rel, text, url) in seen:
+                    continue
+                seen.add((rel, text, url))
+                words = re.sub(r"[*`]", "", text)
+                if not re.search(r"(?<![\w])" + re.escape(words) + r"(?![\w])", words_now, re.I):
+                    continue
+                if url.startswith("http"):
+                    missing = all(u != url for _, u in links_now)
+                else:
+                    missing = all(term(t) != term(text) for t, _ in links_now)
+                if missing:
+                    found.append((c[:7], rel, text, url))
+    return found
+
+
 if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "check"
+    if what == "history":
+        reviewed_file = ROOT / "tests" / "doc_guard_reviewed.txt"
+        reviewed = {tuple(l.split("\t")[:3]) for l in reviewed_file.read_text(encoding="utf-8").split("\n")
+                    if l and not l.startswith("#")} if reviewed_file.exists() else set()
+        new = [(c, rel, text, url) for c, rel, text, url in history() if (c, rel, f"[{text}]({url})") not in reviewed]
+        for c, rel, text, url in new:
+            print(f"{c}  {rel}: [{text}]({url})")
+        print(f"{len(new)} dropped link(s) not reviewed yet (reviewed ones: tests/doc_guard_reviewed.txt)")
+        sys.exit(1 if new else 0)
     if what == "clear":
         LEDGER.unlink(missing_ok=True)
         print("ledger cleared")
