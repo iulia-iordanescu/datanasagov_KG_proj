@@ -16,14 +16,16 @@ A [model](../docs/terminology.md#8-the-pipeline) reads a sample of texts and lis
 
 ### Every step
 
-- **Run it** after the [steps](../docs/terminology.md#8-the-pipeline) before it, and again whenever their outputs change (see *How to run*).
-- **Before a step pays for [model calls](../docs/terminology.md#8-the-pipeline),** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no [model](../docs/terminology.md#8-the-pipeline) don't ask.)
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
-- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
 
 ### This step
 
+#### Before running
+
 - **Before the real [run](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** the strongest one Ask Sage lets you use (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
+
+#### After running
+
 - **Review the merges** listed in the [report](../docs/terminology.md#8-the-pipeline) (`outputs/reports/040_induce_schema_<date>_<time>.md`, section *Triple instances and labels*), and the [spelling folds](../docs/terminology.md#3-schemas) in `outputs/intermediate_results/040_induce_schema/induction_evidence.json` (under `spelling_folds`). A wrong merge (two different ideas made one) is the one mistake code can't catch: it just looks like a single [entity class](../docs/terminology.md#3-schemas) with high [support](../docs/terminology.md#5-learning-the-schema-step-040).
 
 ## Inputs

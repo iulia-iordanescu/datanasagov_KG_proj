@@ -40,6 +40,19 @@ class Edit(unittest.TestCase):
         doc_guard.edit("doc.md", "one", "five", count=2)
         self.assertEqual(self.doc.read_text(encoding="utf-8"), "five two five")
 
+    def test_edit_block_moves_whole_lines(self):
+        self.doc.write_text("# A\n\n- one [x](x.md)\n- two\n\n# B\n", encoding="utf-8")
+        doc_guard.edit_block("doc.md", "- one [x](x.md)\n- two\n", "- two\n- one [x](x.md)\n")
+        self.assertEqual(self.doc.read_text(encoding="utf-8"), "# A\n\n- two\n- one [x](x.md)\n\n# B\n")
+        self.assertEqual(json.loads(doc_guard.LEDGER.read_text(encoding="utf-8"))[0]["old"], "- one x\n- two\n")
+        with self.assertRaises(AssertionError):
+            doc_guard.edit_block("doc.md", "- three\n", "- four\n")
+
+    def test_words_inside_another_link_dont_count(self):
+        text = "No [model calls](t.md#m) here; a [model](t.md#m) there."
+        self.assertNotIn("model", doc_guard.outside_links("No [model calls](t.md#m) here."))
+        self.assertIn("there", doc_guard.outside_links(text))
+
     def test_records_each_edit(self):
         self.doc.write_text("alpha beta", encoding="utf-8")
         doc_guard.edit("doc.md", "beta", "gamma")

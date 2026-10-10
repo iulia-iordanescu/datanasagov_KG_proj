@@ -12,15 +12,17 @@ The schema is 040's [induced schema](../docs/terminology.md#5-learning-the-schem
 
 ### Every step
 
-- **Run it** after the [steps](../docs/terminology.md#8-the-pipeline) before it, and again whenever their outputs change (see *How to run*).
-- **Before a step pays for [model calls](../docs/terminology.md#8-the-pipeline),** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no [model](../docs/terminology.md#8-the-pipeline) don't ask.)
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
-- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
 
 ### This step
 
+#### Before running
+
 - **Before the real [runs](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** from a different maker than annotation's, so the two don't share blind spots; for the run over every [record](../docs/terminology.md#1-records-and-their-text), the cheapest whose metrics are within the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
 - **Rerun it after finishing more [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records:** by default it extracts only the finished ones, and evaluation can evaluate only what it extracted.
+
+#### After running
+
 - **Read the [report](../docs/terminology.md#8-the-pipeline)'s table *[Component classes](../docs/terminology.md#3-schemas) outside the [schema](../docs/terminology.md#3-schemas)*** (`outputs/reports/060_extract_<date>_<time>.md`): [entity classes](../docs/terminology.md#3-schemas) and [predicates](../docs/terminology.md#3-schemas) the model used that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For one that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed component class has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every component class listed is fair to add.
 - **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A component class learned from the ground truth must come from tuning records only, named by [pool](../docs/terminology.md#4-ground-truth-and-samples) position (`source: ground truth tuning #12`); the [step](../docs/terminology.md#8-the-pipeline) leaves out any other.
 - **Now and then, read the removed [classed triples](../docs/terminology.md#2-triples)** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good [facts](../docs/terminology.md#2-triples) is a sign the schema, or the prompt, needs work.

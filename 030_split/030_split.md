@@ -21,15 +21,17 @@ No record is ever in both lists. 070 measures how well extraction works on [text
 
 ### Every step
 
-- **Run it** after the [steps](../docs/terminology.md#8-the-pipeline) before it, and again whenever their outputs change (see *How to run*).
-- **Before a step pays for [model calls](../docs/terminology.md#8-the-pipeline),** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no [model](../docs/terminology.md#8-the-pipeline) don't ask.)
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
-- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
 
 ### This step
 
-- **Never edit or reorder `annotations/ground_truth_candidates.csv`** (the [pool](../docs/terminology.md#4-ground-truth-and-samples)) while annotation is in progress: the order is what makes the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) a [fair sample](../docs/terminology.md#4-ground-truth-and-samples).
+#### Before running
+
 - `outputs/intermediate_results/030_split/splits.json` is written once and then kept. Delete it and rerun only if you mean to rebuild it (e.g. after a new [harvest](../docs/terminology.md#1-records-and-their-text)); the pool's order and parts stay the same.
+
+#### After running
+
+- **Never edit or reorder `annotations/ground_truth_candidates.csv`** (the [pool](../docs/terminology.md#4-ground-truth-and-samples)) while annotation is in progress: the order is what makes the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) a [fair sample](../docs/terminology.md#4-ground-truth-and-samples).
 
 ## Inputs
 

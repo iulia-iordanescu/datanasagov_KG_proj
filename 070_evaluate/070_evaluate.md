@@ -24,12 +24,15 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 
 ### Every step
 
-- **Run it** after the [steps](../docs/terminology.md#8-the-pipeline) before it, and again whenever their outputs change (see *How to run*).
-- **Before a step pays for [model calls](../docs/terminology.md#8-the-pipeline),** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no [model](../docs/terminology.md#8-the-pipeline) don't ask.)
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
-- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
 
 ### This step
+
+#### Before running
+
+- **Look at the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070) only at the end** (`--evaluate_held_out true`), and commit `annotations/held_out_looks.csv` after each look.
+
+#### After running
 
 - **Check the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) ([`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)) whenever this [step](../docs/terminology.md#8-the-pipeline) adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060). A wrong translation silently turns right extracted triples into wrong ones, or the reverse. Then **rerun** this step.
 - **Act on the [row states](../docs/terminology.md#7-evaluating-extraction-step-070)** there and in the [report](../docs/terminology.md#8-the-pipeline) (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are [stale](../docs/terminology.md#7-evaluating-extraction-step-070) (the [component class](../docs/terminology.md#3-schemas)'s definition changed), [now exists](../docs/terminology.md#7-evaluating-extraction-step-070) or [suggested](../docs/terminology.md#7-evaluating-extraction-step-070) (the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) gained a counterpart), or [repeated](../docs/terminology.md#7-evaluating-extraction-step-070).
@@ -37,7 +40,6 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 - **Read the report's *Component class mismatches*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: component classes that share a translation are ones the metrics can't tell apart; if that distinction matters to you, make it in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples).
 - **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the [partial pairs](metrics/pairs.md) and the extracted triples "extracted, but not in the ground truth": some may be real facts you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favours extraction).
 - **[Margins of error](../docs/terminology.md#7-evaluating-extraction-step-070) need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
-- **Look at the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070) only at the end** (`--evaluate_held_out true`), and commit `annotations/held_out_looks.csv` after each look.
 - **Add [schema additions](../docs/terminology.md#3-schemas) (`annotations/schema_additions.txt`) only from the tuning part**, or from outside knowledge: adding [entity classes](../docs/terminology.md#3-schemas) or [predicates](../docs/terminology.md#3-schemas) because of what held-out records need is tuning on them.
 - **Raise With Mentors: checking a sample of the occurrences left extracted only,** to see how far precision and recall are understated ([`metrics/pairs.md`](metrics/pairs.md), *The same fact in different words*). It's an involved process: such an occurrence can be the same fact in different words as a [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) left ground truth only, a repeat of a fact already paired, a fact the ground truth lacks, the result of a wrong translation, or actually wrong, and each means something different.
 

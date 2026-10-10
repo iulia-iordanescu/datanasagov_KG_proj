@@ -14,15 +14,17 @@ Each run also checks your ground truth files for [errors](../docs/terminology.md
 
 ### Every step
 
-- **Run it** after the [steps](../docs/terminology.md#8-the-pipeline) before it, and again whenever their outputs change (see *How to run*).
-- **Before a step pays for [model calls](../docs/terminology.md#8-the-pipeline),** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no [model](../docs/terminology.md#8-the-pipeline) don't ask.)
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in *Checks and warnings* below.
-- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
+The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
 
 ### This step
 
+#### Before running
+
 - **Before the real [runs](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** the strongest one Ask Sage lets you use, and from a different maker than extraction's (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
 - **Draft and correct batches in [pool](../docs/terminology.md#4-ground-truth-and-samples) order, without skipping:** a [record](../docs/terminology.md#1-records-and-their-text) after a gap falls out of the [fair sample](../docs/terminology.md#4-ground-truth-and-samples), the only records evaluation evaluates.
+
+#### After running
+
 - **Correct every [draft batch](../docs/terminology.md#4-ground-truth-and-samples)** with `py helpers/annotate.py`: read each record's [text](../docs/terminology.md#1-records-and-their-text) first, then fix, delete or add rows until every [fact](../docs/terminology.md#2-triples) it states is there, and tick *All facts extracted*. The tool saves your corrections to `annotations/ground_truth/batch_<NNN>.csv`; never correct the draft itself (`outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv`): it can be deleted and rebuilt. Commit each corrected batch.
 - **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: [recall](../docs/terminology.md#7-evaluating-extraction-step-070) comes out higher than it should.
 - **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for [component classes](../docs/terminology.md#3-schemas) you'd add to the [schema](../docs/terminology.md#3-schemas) (see extraction's *To do*).

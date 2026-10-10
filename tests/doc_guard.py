@@ -45,6 +45,12 @@ def plain(text: str) -> str:
     return LINK.sub(r"\1", text)
 
 
+def outside_links(text: str) -> str:
+    """The text with every link left out: a term whose words occur only inside another link (model, in a link of
+    model calls) isn't left unlinked."""
+    return LINK.sub(" ", text)
+
+
 def _ledger() -> list:
     return json.loads(LEDGER.read_text(encoding="utf-8")) if LEDGER.exists() else []
 
@@ -78,6 +84,16 @@ def edit(rel: str, old: str, new: str, count: int = 1) -> None:
         lines[n] = line
     path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     _record(rel, old, new, count)
+
+
+def edit_block(rel: str, old: str, new: str) -> None:
+    """Replace the exact text `old` (whole lines, links and all, found once) by `new`, and record it. For moving and
+    regrouping whole lines: they keep their links because they are copied as they are."""
+    path = ROOT / rel
+    text = path.read_text(encoding="utf-8")
+    assert text.count(old) == 1, (rel, old[:80], text.count(old))
+    path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+    _record(rel, plain(old), new, 1)
 
 
 def _docs_changed() -> list:
@@ -116,7 +132,7 @@ def check() -> bool:
                     print("   ", d[:300])
         lost = sorted(set(LINK.findall(before)) - set(LINK.findall(now)))
         gained = sorted(set(LINK.findall(now)) - set(LINK.findall(before)))
-        words_now = plain(now)
+        words_now = outside_links(now)
         terms_now = {term(t) for t, _ in LINK.findall(now)}
         # a link counts as lost when its words remain but nothing links that term (singular or plural) any more:
         # the link fixer only removes duplicates, never a term's last link; a web link counts by its address
@@ -149,7 +165,7 @@ def history() -> list:
             if not before or not after:
                 continue
             now = (ROOT / rel).read_text(encoding="utf-8")
-            links_now, words_now = LINK.findall(now), plain(now)
+            links_now, words_now = LINK.findall(now), outside_links(now)
             for text, url in set(LINK.findall(before)) - set(LINK.findall(after)):
                 if (rel, text, url) in seen:
                     continue
