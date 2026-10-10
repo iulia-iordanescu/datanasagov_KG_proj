@@ -262,6 +262,22 @@ class D_Mapping(unittest.TestCase):
                                                              "component_class": "Satellite"})["error"])
         self.assertEqual(self.path.read_bytes(), before)
 
+    def test_automatic_row_can_be_changed(self):
+        # a row accepted automatically (same spelling) keeps that status unchanged; changed by hand, it needs checking
+        cols = component_class_mapping.COLUMNS
+        with open(self.path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(cols)
+            w.writerows([["entity class", "Spacecraft", "Spacecraft", "", "same component class", ""],
+                         ["entity class", "Instrument", "Instrument", "", "same component class", ""]])
+        sent = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Spacecraft",
+                 "component_class_in_gtt": "Spacecraft", "checked": "same component class"},
+                {"kind": "entity class", "component_class_from_past_or_crt_schema": "Instrument",
+                 "component_class_in_gtt": "Spacecraft", "checked": "same component class"}]   # an old page's status
+        self.assertEqual(post("/api/mapping/save", {"rows": sent}), {"saved": True})
+        self.assertEqual([(r["component_class_in_gtt"], r["checked"]) for r in self.read()],
+                         [("Spacecraft", "same component class"), ("Spacecraft", "no")])
+
     def test_delete_repeat(self):
         self.assertEqual(post("/api/mapping/delete", {"line": 5, "kind": "entity class", "component_class": "craft"}),
                          {"deleted": True})

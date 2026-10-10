@@ -485,6 +485,9 @@ def save_mapping(data: Data, sent: list) -> None:
         row["swap_subject_and_object"] = "yes" if swap else "no"
         checked = str(s.get("checked") or "no")
         row["checked"] = checked if checked in ("yes", "no", "same component class") else "no"
+        if row["checked"] == "same component class" and (name == NONE or component_class_key(name) !=
+                                                          component_class_key(row["component_class_from_past_or_crt_schema"])):
+            row["checked"] = "no"                      # changed by hand: no longer the same spelling, so it needs checking
         if row["checked"] in CHECKED and crt is not None and not s.get("keep_definition"):
             row["definition_from_past_or_crt_schema"] = \
                 crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
