@@ -363,6 +363,23 @@ def show_warnings(step: str, notes: list) -> None:
     log.warning(warning_list(step, notes), extra={"as_written": True})
 
 
+#: Who makes a model, by a word of its family in the model's name. Ask Sage's names start with the host
+#: ("google-claude-sonnet-5" is Anthropic's Claude served through Google), so the family word decides.
+MAKERS = (("Anthropic", ("claude",)), ("OpenAI", ("gpt", "o1", "o3", "o4")), ("Google", ("gemini", "gemma")),
+          ("Meta", ("llama",)), ("Mistral", ("mistral", "mixtral", "codestral")), ("Amazon", ("nova", "titan")),
+          ("Cohere", ("command",)))
+
+
+def maker(model: str) -> str | None:
+    """The maker of a model, from its name ("google-claude-sonnet-5" -> "Anthropic"); None when the name says no
+    family this table knows."""
+    words = re.split(r"[-_./: ]+", (model or "").lower())
+    for name, families in MAKERS:
+        if any(w.startswith(f) for w in words for f in families):
+            return name
+    return None
+
+
 def confirm(question: str) -> None:
     """Stop until the person presses Enter (or types y); exit on anything
     else.

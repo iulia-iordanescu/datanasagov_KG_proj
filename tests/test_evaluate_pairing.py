@@ -144,12 +144,11 @@ class Pairing(unittest.TestCase):
         self.assertEqual(c["counts"]["extracted"], 2)            # the repeat stays, extracted only
 
     def test_largest_pairing(self):
-        # G0 can pair with E0 or E1; G1 only with E0. Taking G0's first
-        # partner (E0) would leave G1 unpaired; the largest pairing pairs both.
-        g = [triple("MODIS instrument suite", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-             triple("Terra MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
-        e = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-             triple("MODIS instrument", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        # metrics/pairs.md, Example, "The largest set of pairs": G0 can pair with E0 or E1; G1 only with E0.
+        # Taking G0's first partner (E0) would leave G1 unpaired; the largest pairing pairs both.
+        acquired = lambda o: triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", o, "Instrument")  # noqa: E731
+        g = [acquired("Aqua MODIS"), acquired("Terra MODIS")]
+        e = [acquired("MODIS"), acquired("the Aqua MODIS instrument")]
         c = self.pairs(g, e)
         self.assertEqual(sorted(c["pairs"]), [(0, 1, "partial"), (1, 0, "partial")])
 
@@ -226,13 +225,24 @@ class Pairing(unittest.TestCase):
         self.assertEqual(self.pairs(g, [triple("MODIS Snow Cover 5-Min L2 Swath", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")])["pairs"],
                          [(0, 0, "partial")])
 
+    def test_wrong_pair(self):
+        # metrics/pairs.md, Example, "A wrong pair": E1 ("MODIS Terra") pairs wrongly with G1; in case 2 it takes the
+        # place of E2, which states G1's fact; a "not the same fact" verdict on E1-G1 lets E2 pair instead
+        g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        e1 = triple("MODIS Terra", "Instrument", "ABOARD", "Aqua", "Spacecraft")
+        e2 = triple("the MODIS instrument", "Instrument", "ABOARD", "Aqua", "Spacecraft")
+        self.assertEqual(self.pairs(g, [e1])["pairs"], [(0, 0, "partial")])                      # case 1
+        self.assertEqual(self.pairs(g, [e1, e2])["pairs"], [(0, 0, "partial")])                  # case 2
+        verdict = {pair_key("r1", g[0], pairing.translate(e1, translation())): NOT_SAME}
+        self.assertEqual(self.pairs(g, [e1], reviews=verdict)["pairs"], [])
+        self.assertEqual(self.pairs(g, [e1, e2], reviews=verdict)["pairs"], [(0, 1, "partial")])
+
     def test_exact_pairs_first_can_cost_partial_pairs(self):
-        # exact pairs are picked first: E0-G0 exact leaves G1 and E1 unpairable, though pairing both levels
-        # together could have made two partial pairs (E1-G0, E0-G1)
-        g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-             triple("Terra MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
-        e = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-             triple("MODIS instrument", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        # metrics/pairs.md, Example, "Exact pairs first": E0-G0 exact leaves G1 and E1 unpairable, though pairing
+        # both levels together could have made two partial pairs (E1-G0, E0-G1; E0-G1 a wrong one)
+        by_modis = lambda s: triple(s, "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")  # noqa: E731
+        g = [by_modis("MODIS Snow Cover"), by_modis("MODIS Snow Cover Daily")]
+        e = [by_modis("MODIS Snow Cover"), by_modis("the MODIS Snow Cover product")]
         self.assertEqual(self.pairs(g, e)["pairs"], [(0, 0, "exact")])
 
     def test_exact_before_partial(self):

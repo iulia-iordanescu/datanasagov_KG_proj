@@ -288,6 +288,48 @@ class Reviews(unittest.TestCase):
             shutil.rmtree(tmp)
 
 
+class SameModel(unittest.TestCase):
+    """Who drafted the ground truth (column drafted_by) against extraction's model: llm.maker and 060's note."""
+
+    def test_maker(self):
+        from common.llm import maker
+        self.assertEqual(maker("google-claude-sonnet-5"), "Anthropic")      # the host first, the family decides
+        self.assertEqual(maker("claude-opus-4"), "Anthropic")
+        self.assertEqual(maker("gpt-4o"), "OpenAI")
+        self.assertEqual(maker("o3-mini"), "OpenAI")
+        self.assertEqual(maker("google-gemini-2.5-pro"), "Google")
+        self.assertEqual(maker("llama-3.1-70b"), "Meta")
+        self.assertIsNone(maker("some-new-model"))
+        self.assertIsNone(maker(""))
+
+    def test_drafted_by_read(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            write_csv(tmp / "batch_000.csv", ground_truth.COLUMNS, [dict(zip(ground_truth.COLUMNS, row("a", "MODIS", "I", "ABOARD", "Aqua", "S", "x")))])
+            write_csv(tmp / "batch_001.csv", ground_truth.FILE_COLUMNS,
+                      [{**dict(zip(ground_truth.COLUMNS, row("b", "AIRS", "I", "ABOARD", "Aqua", "S", "x"))), "drafted_by": "gpt-4o"}])
+            gt = ground_truth.read_ground_truth(tmp)
+            self.assertEqual(gt.problems, [])                                  # the column is optional
+            self.assertEqual({r["id"]: r["drafted_by"] for r in gt.rows}, {"a": "", "b": "gpt-4o"})
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_note(self):
+        from support import use_step
+        use_step("060_extract")
+        from records import same_model_notes                                   # 060_extract_helpers/records.py
+        rows = [{"id": "a", "drafted_by": "google-claude-sonnet-5"}, {"id": "a", "drafted_by": ""},
+                {"id": "b", "drafted_by": "claude-opus-4"}, {"id": "c", "drafted_by": "gpt-4o"}, {"id": "d", "drafted_by": ""}]
+        gt = type("GT", (), {"rows": rows})
+        same = same_model_notes(gt, {"a", "b", "c", "d"}, "google-claude-sonnet-5")
+        self.assertEqual(len(same), 2)                                         # a: same model; b: same maker; c: other maker
+        self.assertIn("drafted (step 050) by claude-opus-4, a model from the same maker (Anthropic)", same[0])
+        self.assertIn("drafted (step 050) by google-claude-sonnet-5, the same model as this run's", same[1])
+        self.assertEqual(same_model_notes(gt, {"c", "d"}, "google-claude-sonnet-5"), [])   # other maker; written by a person
+        self.assertEqual(same_model_notes(gt, {"a"}, "gpt-4o"), [])
+        self.assertEqual(len(same_model_notes(gt, {"b"}, "some-new-model")), 0)            # unknown maker: only the same name
+
+
 class AnnotationsReadCleanly(unittest.TestCase):
     """The real annotations/ files read without problems (read only)."""
 

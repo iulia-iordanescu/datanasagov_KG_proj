@@ -62,6 +62,7 @@ The draft batch's columns are the ground truth's, plus two:
 |---|---|
 | `id` | The record. |
 | `subject`, `subject_class`, `predicate`, `object`, `object_class` | The classed triple, as the model wrote it. |
+| `drafted_by` | The model that drafted the row (the setting `model`). The [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) keeps it in the ground truth, and leaves it empty on a row you add; step 060 reads it to warn when it would extract with the same model, or one from the same maker. |
 | `source_text` | The passage of the record's [text](../docs/terminology.md#1-records-and-their-text) that states it, as the model copied it. `(record structure)` on the DESCRIBES row. |
 | `all_facts_extracted` | Always `0` in a draft: you set it to 1 (the tool's "All [facts](../docs/terminology.md#2-triples) extracted" box) once a record is finished. |
 | `flags` | Every check the row failed (see *Checks on each row*). Not kept in the ground truth: the tool recomputes the checks as you edit. |

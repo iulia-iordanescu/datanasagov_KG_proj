@@ -96,7 +96,7 @@ def check() -> bool:
                 print(f"FAIL {rel}: a recorded edit no longer applies: {e['old'][:100]!r}")
                 ok = False
                 continue
-            expected = expected.replace(e["old"], e["new"])
+            expected = expected.replace(e["old"], plain(e["new"]))   # an edit may bring a link: compared as its words
         if expected != plain(now):
             ok = False
             print(f"FAIL {rel}: changes no recorded edit explains:")

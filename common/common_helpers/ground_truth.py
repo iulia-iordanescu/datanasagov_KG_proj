@@ -15,9 +15,11 @@ Every file has the columns
     id, subject, subject_class, predicate, object, object_class, source_text,
     all_facts_extracted
 
-one row per triple instance, grouped by record (id). Any other column (e.g.
-the `flags` column of a draft batch) is ignored, so a corrected draft batch
-can be saved as it is. all_facts_extracted is 1 on every row of a record the
+one row per classed triple, grouped by record (id). A file may also have the
+column drafted_by: the model that drafted the row (step 050), empty for a row
+a person wrote; batch_000.csv, annotated before the pipeline, has no such
+column. Any other column (e.g. the `flags` column of a draft batch) is
+ignored, so a corrected draft batch can be saved as it is. all_facts_extracted is 1 on every row of a record the
 person has finished (every fact of its text is there), 0 while it is in
 progress. A row with an id but an empty subject, predicate and object says
 "this record was annotated and states no facts".
@@ -95,6 +97,11 @@ def draft_name(n: int) -> str:
 #: The columns every ground truth file has, in this order.
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class",
            "source_text", "all_facts_extracted"]
+#: The model that drafted a row (050's draft batches; the annotation tool keeps it); empty when a person wrote it.
+#: Optional: a file without it (batch_000.csv) reads as written by a person.
+DRAFTED_BY = "drafted_by"
+#: Every column a ground truth file may have, in this order.
+FILE_COLUMNS = COLUMNS + [DRAFTED_BY]
 
 
 @dataclass
@@ -123,7 +130,7 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
                 gt.problems.append(f"{path.name} lacks the column(s) {', '.join(missing)}; not read")
                 continue
             for position, raw in enumerate(reader):
-                row = {c: (raw.get(c) or "").strip() for c in COLUMNS}
+                row = {c: (raw.get(c) or "").strip() for c in FILE_COLUMNS}
                 if not row["id"]:
                     continue                       # a blank line
                 row[ORIGIN_FIELD] = [f"{ref_path(path)}#{position}"]

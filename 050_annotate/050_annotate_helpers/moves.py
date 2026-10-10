@@ -22,14 +22,14 @@ import records as records_stage
 from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, ROW_ERRORS, check_rows, draft_name, fair_words,
+from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
                                  file_name)
 from common.report import cell, counted, model_calls, named
 from common.step import Results
 from common.triples_io import ENTRY_PREDICATE
 
 #: A draft batch's columns: the ground truth's, then the checks, then where each row came from.
-COLUMNS = GROUND_TRUTH_COLUMNS + ["flags", ORIGIN_COLUMN]
+COLUMNS = GROUND_TRUTH_COLUMNS + [DRAFTED_BY, "flags", ORIGIN_COLUMN]
 SHOW = 20                        # rows listed in the report before "…"
 
 
@@ -92,7 +92,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     for item in chosen.items:
         for r in drafts.rows.get(item["id"], []):
             csv_rows.append({**{c: r.get(c, "") for c in GROUND_TRUTH_COLUMNS}, "all_facts_extracted": "0",
-                             "flags": " ".join(r["errors"] + r["flags"]),
+                             DRAFTED_BY: llm.MODEL, "flags": " ".join(r["errors"] + r["flags"]),
                              ORIGIN_COLUMN: audit.origin("records", item["id"])})
     if csv_rows:
         write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a draft batch is never overwritten

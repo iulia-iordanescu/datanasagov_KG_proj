@@ -20,7 +20,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import read_ground_truth, read_pool
+from common.ground_truth import DRAFTED_BY, read_ground_truth, read_pool
+from common.llm import maker
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.step import check_settings, input_files
@@ -90,4 +91,28 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                                 f"so skipped: {named(rids)}.")
     if not chosen.items:
         raise SystemExit("Nothing to extract. " + " ".join(chosen.notes))
+    chosen.notes += same_model_notes(gt, {i["id"] for i in chosen.items}, settings["model"])
     return chosen
+
+
+def same_model_notes(gt, ids: set, model: str) -> list:
+    """A note when the ground truth of the records chosen was drafted (050, column drafted_by) by this run's model,
+    or by another model of the same maker: facts that model misses tend to be missing from both the ground truth
+    and the extraction, so recall would look better than it is (070_evaluate/metrics/recall.md)."""
+    by_drafter = {}
+    for r in gt.rows:
+        if r["id"] in ids and r.get(DRAFTED_BY):
+            by_drafter.setdefault(r[DRAFTED_BY], set()).add(r["id"])
+    notes, mine = [], maker(model)
+    for drafter, rids in sorted(by_drafter.items()):
+        if drafter == model:
+            how = f"the same model as this run's ({model})"
+        elif mine and maker(drafter) == mine:
+            how = f"a model from the same maker ({mine}) as this run's {model}"
+        else:
+            continue
+        notes.append(f"The ground truth of {len(rids)} of the records chosen was drafted (step 050) by {drafter}, "
+                     f"{how}: facts that model misses tend to be missing from both the ground truth and the "
+                     f"extraction, so recall would look better than it is. To avoid it, run with --model naming a "
+                     f"model from another maker (py helpers/models.py lists them).")
+    return notes

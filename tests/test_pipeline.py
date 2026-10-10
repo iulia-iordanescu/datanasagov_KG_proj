@@ -23,7 +23,8 @@ from stand_ins import StandInCatalog
 from support import temp_repo
 
 HERE = Path(__file__).resolve().parent
-COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class", "source_text", "all_facts_extracted"]
+COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class", "source_text", "all_facts_extracted",
+           "drafted_by"]                                                       # as the annotation tool writes them
 NO_CONFIRM = ["--confirm_paid_calls", "false"]
 
 
@@ -175,15 +176,17 @@ class Pipeline(unittest.TestCase):
                          "object_class": "Dataset" if r["object_class"] == "X" else r["object_class"]})
         title = keep[0]["object"]                                               # record 0: a fact only a person saw
         keep.insert(2, {**keep[0], "subject": title, "subject_class": "Dataset", "predicate": "ACQUIRED_BY",
-                        "object": "MODIS", "object_class": "Instrument", "source_text": title})
+                        "object": "MODIS", "object_class": "Instrument", "source_text": title,
+                        "drafted_by": ""})                                      # a row the person wrote
         write_csv(self.annotations / "ground_truth" / "batch_001.csv", keep, COLUMNS)
         type(self).ground_truth = keep
 
     # ---------------------------------------------------------------- 060
 
     def test_t07_extract(self):
-        _, prompts = self.run_step("060_extract", *NO_CONFIRM)
+        out, prompts = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(prompts, 10)                                           # 9 records, 1 test call
+        self.assertIn("was drafted (step 050) by google-claude-sonnet-5, the same model as this run's", out)
         kept = read_csv(self.output("060_extract", "extracted_triples.csv"))
         removed = read_csv(self.output("060_extract", "extracted_triples_removed.csv"))
         self.assertEqual(len({r["id"] for r in kept}), 9)

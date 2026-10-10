@@ -68,7 +68,7 @@ The [ground truth](../docs/terminology.md#4-ground-truth-and-samples) is every `
 
 Their columns:
 
-`id, subject, subject_class, predicate, object, object_class, source_text, all_facts_extracted` (a draft's `flags` column may stay). One row per [classed triple](../docs/terminology.md#2-triples), grouped by record. A row with an `id` but an empty subject, [predicate](../docs/terminology.md#3-schemas), and object says "this record was annotated and states no [facts](../docs/terminology.md#2-triples)".
+`id, subject, subject_class, predicate, object, object_class, source_text, all_facts_extracted` (a draft's `flags` column may stay), and `drafted_by`: the model that drafted the row (step 050 writes it; the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) keeps it, and leaves it empty on a row you add). `batch_000.csv`, annotated before the pipeline, has no `drafted_by` column. Step 060 reads it to warn when it would extract with the model that drafted the ground truth, or one from the same maker. One row per [classed triple](../docs/terminology.md#2-triples), grouped by record. A row with an `id` but an empty subject, [predicate](../docs/terminology.md#3-schemas), and object says "this record was annotated and states no [facts](../docs/terminology.md#2-triples)".
 
 ### What the pipeline checks
 

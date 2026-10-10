@@ -54,8 +54,8 @@ def setUpModule():
             ["r3", "CERES", "Instrument", "ABOARD", "Terra", "Spacecraft", "CERES aboard Terra"]]
     with open(RESULTS / "050_annotate" / "drafted_triples_batch0.csv", "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(ground_truth.COLUMNS[:-1] + ["flags", "origin"])
-        w.writerows(r + ["", ""] for r in rows)
+        w.writerow(ground_truth.COLUMNS[:-1] + [ground_truth.DRAFTED_BY, "flags", "origin"])
+        w.writerows(r + ["test-model", "", ""] for r in rows)                  # drafted_by: as 050 writes it
     global SERVER
     SERVER = server.serve(0)
     threading.Thread(target=SERVER.serve_forever, daemon=True).start()
@@ -122,6 +122,7 @@ class B_Batch(unittest.TestCase):
         b = get("/api/batch?n=0")
         self.assertEqual([r["id"] for r in b["records"]], ["r0", "r1", "r2", "r3"])
         self.assertEqual(len(gt_rows()), 6)
+        self.assertEqual({r["drafted_by"] for r in gt_rows()}, {"test-model"})   # the copy keeps who drafted each row
         r1 = b["records"][1]
         codes = [p["code"] for row in r1["rows"] for p in row["problems"]]
         self.assertIn("describes_undecided", codes)
@@ -148,7 +149,9 @@ class B_Batch(unittest.TestCase):
         rows = gt_rows()
         self.assertEqual([r["id"] for r in rows], ["r0", "r0", "r1", "r1", "r2", "r3"])
         self.assertEqual(rows[0]["subject"], "r0")
-        self.assertEqual(rows[4], {**{c: "" for c in ground_truth.COLUMNS}, "id": "r2", "all_facts_extracted": "1"})
+        self.assertEqual(rows[4], {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r2", "all_facts_extracted": "1"})
+        self.assertEqual([r["drafted_by"] for r in rows], ["test-model"] * 4 + ["", "test-model"])  # kept; empty on r2's
+                                                                                                # row the tool wrote
         self.assertEqual([r["all_facts_extracted"] for r in rows], ["1", "1", "1", "1", "1", "0"])
         gt = ground_truth.read_ground_truth(TMP / "annotations" / "ground_truth")
         self.assertEqual(gt.problems, [])
@@ -196,7 +199,7 @@ class C_HandSchema(unittest.TestCase):
         rows = gt_rows()
         rows[-1]["object_class"] = "Moonlet"                                  # r3: held-out
         with open(TMP / "annotations" / "ground_truth" / "batch_000.csv", "w", encoding="utf-8", newline="") as fh:
-            w = csv.DictWriter(fh, ground_truth.COLUMNS)
+            w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
             w.writeheader()
             w.writerows(rows)
         added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Moonlet", "definition": "small"})

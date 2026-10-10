@@ -96,7 +96,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from common.chunking import full_text
 from common.files import write_csv, write_text
-from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
+from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, read_pool, vocabulary)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  is_stale, read_mapping, repeats)
@@ -196,7 +196,7 @@ class Data:
 
 def _read_rows(path: Path) -> list:
     with open(path, encoding="utf-8-sig", newline="") as fh:
-        return [{c: (row.get(c) or "").strip() for c in COLUMNS} for row in csv.DictReader(fh)
+        return [{c: (row.get(c) or "").strip() for c in FILE_COLUMNS} for row in csv.DictReader(fh)
                 if (row.get("id") or "").strip()]
 
 
@@ -375,7 +375,7 @@ def open_batch(n: int) -> Path:
         draft = DRAFTS_DIR / draft_name(n)
         if not draft.exists():
             raise FileNotFoundError(f"no draft batch {n} and no {gt.name}")
-        write_csv(gt, COLUMNS, _read_rows(draft))
+        write_csv(gt, FILE_COLUMNS, _read_rows(draft))
     return gt
 
 
@@ -391,16 +391,16 @@ def save_batch(data: Data, n: int, records: list) -> list:
         title = (data.records.get(rec["id"]) or {}).get("title") or ""
         written, found = [], []
         for r in rec.get("rows", []):
-            row = {c: str(r.get(c) or "").strip() for c in COLUMNS}
+            row = {c: str(r.get(c) or "").strip() for c in FILE_COLUMNS}      # drafted_by: kept; empty on a row you add
             row["id"], row["all_facts_extracted"] = rec["id"], mark
             if is_describes(row):
                 row["subject"], row["source_text"] = rec["id"], ENTRY_SOURCE
             found.append(check_row(data, row, title))
             if not _is_blank(row):
                 written.append(row)
-        out.extend(written or [{c: "" for c in COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
+        out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
-    write_csv(GROUND_TRUTH_DIR / file_name(n), COLUMNS, out)
+    write_csv(GROUND_TRUTH_DIR / file_name(n), FILE_COLUMNS, out)
     return problems
 
 
