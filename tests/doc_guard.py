@@ -32,6 +32,14 @@ LEDGER = ROOT / ".git" / "doc_guard_ledger.json"
 LINK = re.compile(r"\[([^\[\]\n]*)\]\(([^)\n]*)\)")
 
 
+def term(t: str) -> str:
+    """A linked term's singular, lowercased: "classes" -> "class", "triples" -> "triple", "class" stays."""
+    t = re.sub(r"[*`]", "", t).lower()
+    if t.endswith(("sses", "xes", "ches", "shes")):
+        return t[:-2]
+    return t[:-1] if t.endswith("s") and not t.endswith("ss") else t
+
+
 def plain(text: str) -> str:
     """The text with every link reduced to its words."""
     return LINK.sub(r"\1", text)
@@ -61,8 +69,9 @@ def edit(rel: str, old: str, new: str, count: int = 1) -> None:
         links = LINK.findall(lines[n])
         line = plain(lines[n]).replace(old, new)
         for text, url in links:                        # put back each link whose words are still there, first use
-            protect = [m.span() for m in re.finditer(r"\[[^\[\]\n]*\]\([^)\n]*\)|`[^`\n]*`", line)]
-            for m in re.finditer(r"(?<![\w\[*])" + re.escape(text) + r"(?![\w\]])", line):
+            # only an existing link is off limits: a link's words may sit inside **bold** or be `code` themselves
+            protect = [m.span() for m in LINK.finditer(line)]
+            for m in re.finditer(r"(?<![\w\[])" + re.escape(text) + r"(?![\w\]])", line):
                 if not any(a <= m.start() < b for a, b in protect):
                     line = line[:m.start()] + f"[{text}]({url})" + line[m.end():]
                     break
@@ -108,8 +117,12 @@ def check() -> bool:
         lost = sorted(set(LINK.findall(before)) - set(LINK.findall(now)))
         gained = sorted(set(LINK.findall(now)) - set(LINK.findall(before)))
         words_now = plain(now)
-        lost_kept = [t for t, _ in lost if re.search(r"(?<![\w])" + re.escape(t) + r"(?![\w])", words_now)]
-        if lost_kept:                                  # the link fixer only removes duplicates, never a link's last copy
+        terms_now = {term(t) for t, _ in LINK.findall(now)}
+        # a link counts as lost when its words remain but nothing links that term (singular or plural) any more:
+        # the link fixer only removes duplicates, never a term's last link; a web link counts by its address
+        lost_kept = [t for t, u in lost if re.search(r"(?<![\w])" + re.escape(t) + r"(?![\w])", words_now)
+                     and (all(u != u2 for _, u2 in LINK.findall(now)) if u.startswith("http") else term(t) not in terms_now)]
+        if lost_kept:
             ok = False
             print(f"FAIL {rel}: links gone whose words remain: {lost_kept}")
         if gained:
@@ -126,13 +139,6 @@ def history() -> list:
     def git(*a):
         return subprocess.run(["git", *a], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                               errors="replace").stdout
-
-    def term(t):
-        """The term's singular, lowercased: "classes" -> "class", "triples" -> "triple", "class" stays."""
-        t = re.sub(r"[*`]", "", t).lower()
-        if t.endswith(("sses", "xes", "ches", "shes")):
-            return t[:-2]
-        return t[:-1] if t.endswith("s") and not t.endswith("ss") else t
 
     found, seen = [], set()
     for c in git("log", "--format=%H", "--reverse", "--", "*.md").split():
