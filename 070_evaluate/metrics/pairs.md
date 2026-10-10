@@ -51,7 +51,14 @@ Precision and recall are computed from pairs. Each has versions that differ in w
 
 ## <ins>When a pair isn't the same fact</ins>
 
-A pair counts its occurrence as correct, for precision, and its ground truth triple as found, for recall. When the two don't state the same fact, or the fact they state is false, the occurrence is counted as correct and the ground truth triple as found, though neither should be. Usually that makes precision and recall come out higher than they should, so extraction looks better than it is (higher precision and recall mean better extraction; see [Pairs: example](#example), *A wrong pair*).
+A pair counts its occurrence as correct, for precision, and its ground truth triple as found, for recall. When the two don't state the same fact, or the fact they state is false, the occurrence is counted as correct and the ground truth triple as found, though neither should be. What that does to precision and recall depends on what would have paired without the wrong pair (higher precision and recall mean better extraction):
+
+- usually it adds a pair that wouldn't exist otherwise, so they come out higher than they should, and extraction looks better than it is;
+- sometimes it takes a right pair's place, so they come out unchanged, though two triples are judged wrongly;
+- rarely, a wrong exact pair takes two triples that each had a right partial partner, so the partial versions come out one pair lower than they should;
+- the strict versions can move either way, even by more than one pair, because a wrong pair can change which of several equally large sets of pairs evaluation takes.
+
+A wrong pair never lowers the exact versions, and never moves the other versions by more than one pair. Each case, with numbers: [Pairs: example](#example), *A wrong pair*.
 
 | # | Cause | Example | Versions of precision and recall it affects | Caused by | What to do |
 |---|---|---|---|---|---|
@@ -198,7 +205,32 @@ Both come out too high.
 
 The numbers are the same, but two occurrences are judged wrongly: E1's is counted correct, and E2's is counted not correct.
 
-Your review of partial pairs fixes both cases: marking E1–G1 "not the same fact" stops that pair. In case 1, E1 and G1 are then left without a partner; in case 2, E2 pairs with G1.
+**Case 3: one pair fewer, at the partial level (rare).** It takes a wrong *exact* pair, which only a shared mistake or a wrong row of the translation table can make (rows 3 and 4 of *When a pair isn't the same fact*). A record has occurrences O1 and O2 and ground truth triples G1 and G2:
+
+| | G1 | G2 |
+|---|---|---|
+| O1 | eligible: exact (wrongly) | eligible: partial (rightly) |
+| O2 | eligible: partial (rightly) | not eligible |
+
+Exact pairs come first, so evaluation pairs O1 with G1. That leaves O2 and G2, which aren't eligible: 1 pair. Without the wrong exact pair, O1 would pair with G2 and O2 with G1: 2 pairs, both right.
+
+| | As evaluated (O1–G1) | Right (O1–G2 and O2–G1) |
+|---|---|---|
+| Exact precision and exact recall | 1 ÷ 2 = 50% | 0 ÷ 2 = 0% |
+| Partial precision and partial recall | 1 ÷ 2 = 50% | 2 ÷ 2 = 100% |
+
+The exact versions come out too high, and the partial versions too low.
+
+**Case 4: only the strict versions move.** As in case 2, but E2, the right occurrence, has the wrong subject class: "the MODIS instrument" (Dataset) ABOARD "Aqua" (Spacecraft). E1, the wrong occurrence, has G1's entity classes. Both possible sets of pairs have 1 pair, so evaluation takes the one with more strict pairs: {E1–G1}, the wrong one.
+
+| | As evaluated (E1–G1) | Right (E2–G1) |
+|---|---|---|
+| Partial precision | 1 ÷ 2 = 50% | 1 ÷ 2 = 50% |
+| Strict partial precision | 1 ÷ 2 = 50% | 0 ÷ 2 = 0% |
+
+The other versions are unchanged, and the strict ones come out too high. In bigger records a wrong pair can move the strict versions by more than one pair, either way.
+
+In cases 1, 2, and 4 the wrong pair is a partial pair, so your review of partial pairs fixes it: marking E1–G1 "not the same fact" stops that pair. In case 1, E1 and G1 are then left without a partner; in cases 2 and 4, E2 pairs with G1. In case 3 the wrong pair is exact, and the review shows only partial pairs: fix its cause instead (rows 3 and 4 of *When a pair isn't the same fact*).
 
 *The same fact in different words.* A record's ground truth has "MODIS" ABOARD "Aqua". Extraction gives "the imaging spectroradiometer" ABOARD "the Aqua satellite".
 

@@ -237,6 +237,66 @@ class Pairing(unittest.TestCase):
         self.assertEqual(self.pairs(g, [e1], reviews=verdict)["pairs"], [])
         self.assertEqual(self.pairs(g, [e1, e2], reviews=verdict)["pairs"], [(0, 1, "partial")])
 
+    def test_wrong_pair_case_3(self):
+        # metrics/pairs.md, Example, "A wrong pair", case 3: a wrong exact pair (O1-G1) takes two triples that each had
+        # a right partial partner (O1-G2, O2-G1); blocking it (a "not the same fact" verdict blocks both levels) gives 2
+        g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("Aqua MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        e = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("MODIS sensor", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        self.assertEqual(self.pairs(g, e)["pairs"], [(0, 0, "exact")])
+        verdict = {pair_key("r1", g[0], pairing.translate(e[0], translation())): NOT_SAME}
+        self.assertEqual(sorted(self.pairs(g, e, reviews=verdict)["pairs"]), [(0, 1, "partial"), (1, 0, "partial")])
+
+    def test_wrong_pair_case_4(self):
+        # case 4: the wrong E1 has G1's entity classes, the right E2 doesn't; equally large sets of pairs, so the strict
+        # one wins, and the wrong pair is picked: plain numbers unchanged, strict ones too high
+        g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        e = [triple("MODIS Terra", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+             triple("the MODIS instrument", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
+        c = self.pairs(g, e)
+        self.assertEqual(c["pairs"], [(0, 0, "partial")])
+        self.assertEqual(c["counts"]["partial_strict_pairs"], 1)
+
+    def test_what_one_wrong_pair_can_do(self):
+        # metrics/pairs.md, "When a pair isn't the same fact": over many random records, run through compare_record,
+        # one extra (wrong) eligible pair changes the number of exact pairs by 0 or +1, of all pairs by -1, 0 or +1
+        # (-1 only when the wrong pair is exact), and the strict counts either way, by more than one
+        import random
+        rng = random.Random(3)
+        real_can_pair, real_agree = pairing._can_pair, pairing.classes_agree
+        seen = {"exact": set(), "all": set(), "all, wrong pair partial": set(), "strict": set()}
+        try:
+            for _ in range(4000):
+                ng, ne = rng.randint(1, 4), rng.randint(1, 4)
+                cells = [(g, e) for g in range(ng) for e in range(ne)]
+                exact = {c for c in cells if rng.random() < 0.25}
+                partial = exact | {c for c in cells if rng.random() < 0.3}
+                strict = {c for c in cells if rng.random() < 0.5}
+                w = rng.choice(cells)
+                if w in partial:
+                    continue
+                w_exact = rng.random() < 0.5
+                gt = [triple(f"g{i}", "C", "P", "o", "C") for i in range(ng)]
+                ex = [triple(f"e{i}", "C", "P", "o", "C") for i in range(ne)]
+                counts = []
+                for ex_set, part_set in ((exact, partial), (exact | ({w} if w_exact else set()), partial | {w})):
+                    pairing._can_pair = lambda gt_t, ex_t, level, E=ex_set, Pa=part_set: (
+                        int(gt_t["subject"][1:]), int(ex_t["subject"][1:])) in (E if level == "exact" else Pa)
+                    pairing.classes_agree = lambda gt_t, ex_t: (int(gt_t["subject"][1:]), int(ex_t["subject"][1:])) in strict
+                    n = pairing.compare_record(record(gt, ex), translation())["compared"]["counts"]
+                    counts.append((n["exact_pairs"], n["partial_pairs"], n["exact_strict_pairs"], n["partial_strict_pairs"]))
+                (e0, a0, se0, sa0), (e1, a1, se1, sa1) = counts
+                seen["exact"].add(e1 - e0)
+                seen["all" if w_exact else "all, wrong pair partial"].add(a1 - a0)
+                seen["strict"] |= {se1 - se0, sa1 - sa0}
+        finally:
+            pairing._can_pair, pairing.classes_agree = real_can_pair, real_agree
+        self.assertEqual(seen["exact"], {0, 1})
+        self.assertEqual(seen["all"], {-1, 0, 1})
+        self.assertEqual(seen["all, wrong pair partial"], {0, 1})
+        self.assertTrue(min(seen["strict"]) <= -2 and max(seen["strict"]) >= 2, seen["strict"])
+
     def test_exact_pairs_first_can_cost_partial_pairs(self):
         # metrics/pairs.md, Example, "Exact pairs first": E0-G0 exact leaves G1 and E1 unpairable, though pairing
         # both levels together could have made two partial pairs (E1-G0, E0-G1; E0-G1 a wrong one)
