@@ -144,6 +144,17 @@ class Checks(unittest.TestCase):
         self.assertEqual(text_match.norm_text("  The MODIS, "), "modis")
         self.assertEqual(text_match.norm_text("Theory"), "theory")                    # "the" only as a word
 
+    def test_inner_punctuation_in_a_lookup(self):
+        # a passage copied without (or with an extra) comma is still found; punctuation counts as a space, not nothing
+        t = text_match.Text("The MODIS, aboard Aqua, measures snow (daily). Version 2.5 since 2002.")
+        for needle in ["MODIS aboard Aqua", "MODIS, aboard Aqua", "MODIS aboard Aqua measures", "snow daily",
+                       "measures snow (daily)", "Version 2.5", "aboard Aqua; measures"]:
+            self.assertTrue(t.contains(needle), needle)
+        for needle in ["Version 25", "MODIS aboard Terra", "snowdaily", "MODIS Aqua"]:
+            self.assertFalse(t.contains(needle), needle)
+        # comparing two component instances (pairing) keeps inner punctuation
+        self.assertNotEqual(text_match.norm_text("MODIS, Aqua"), text_match.norm_text("MODIS Aqua"))
+
     def test_keys(self):
         self.assertEqual(triples_io.component_class_key("physical quantity"), triples_io.component_class_key("PhysicalQuantity"))
         self.assertEqual(triples_io.component_class_key("HAS_VERSION"), triples_io.component_class_key("has-version"))

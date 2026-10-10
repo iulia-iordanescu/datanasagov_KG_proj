@@ -14,7 +14,11 @@ both sides first, and nothing else:
              and "Earth's" still matches "Earth’s". On the component
              instance or source text being looked for, also punctuation at
              either end and a leading "the", "a" or "an". So "the Aqua
-             satellite." is found in "…aboard Aqua Satellite…".
+             satellite." is found in "…aboard Aqua Satellite…". And when a
+             passage is looked up in a text (Text.contains), punctuation
+             inside either one counts as a space, so "MODIS aboard Aqua" is
+             found in "The MODIS, aboard Aqua". Two component instances being
+             compared (norm_text) keep their inner punctuation.
     not same anything else: "MODIS" is not "Moderate Resolution Imaging
              Spectroradiometer", "on Aqua" is not "aboard Aqua", and digits
              are kept, so "Level-2" is not "Level 3".
@@ -73,14 +77,25 @@ def norm_text(s) -> str:
     return _LEADING.sub("", s) if _LEADING else s
 
 
+#: Inside a passage being looked up, and in the text it's looked up in, these count as a space: a model copying a
+#: passage often drops or adds a comma ("MODIS aboard Aqua" for "MODIS, aboard Aqua"). A space, not nothing, so
+#: "2.5" (as "2 5") is still not found as "25".
+INNER = ".,;:!?()[]{}"
+_INNER = str.maketrans(dict.fromkeys(INNER, " "))
+
+
+def _lookup_form(s: str) -> str:
+    return re.sub(r" +", " ", s.translate(_INNER)).strip()
+
+
 class Text:
     """One record's text, evened out once, to look things up in."""
 
     def __init__(self, text: str):
-        self.flat = even(text)
+        self.flat = _lookup_form(even(text))
 
     def contains(self, needle) -> bool:
-        """Whether needle is in the text. A needle that is blank once evened
-        out is never found."""
-        n = norm_text(needle)
+        """Whether needle is in the text, punctuation inside either counting as a space (INNER). A needle that is
+        blank once evened out is never found."""
+        n = _lookup_form(norm_text(needle))
         return bool(n) and n in self.flat
