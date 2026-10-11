@@ -88,7 +88,9 @@ where the layout has no place for one).
 from __future__ import annotations
 
 import csv
+import io
 import json
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -103,7 +105,7 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
 from common.schema_io import add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
-    ground_truth_source_problem, pattern_key, read_hand_schema, read_schema
+    ground_truth_source_problem, pattern_key, read_hand_schema, read_schema, redefine_in_hand_schema, rename_in_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
@@ -121,7 +123,8 @@ README = ANNOTATIONS_DIR / "README.md"
 HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "mapping": "### Checking the translation table",
                  "partial": "### Reviewing partial pairs",
-                 "additions": "### Adding to the schema additions"}
+                 "additions": "### Adding to the schema additions",
+                 "vocab": "### The ground truth vocabulary"}
 EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
@@ -700,6 +703,220 @@ def save_review(data: Data, item: dict) -> None:
 
 
 # --------------------------------------------------------------------------
+# the ground truth vocabulary: definitions, renaming, merging
+# --------------------------------------------------------------------------
+# A rename or merge changes several of the person's files at once. plan_vocab
+# works out every file's new content without writing anything, so the page
+# can show what would change; apply_vocab works it out again (never trusting
+# the page) and writes all the files, putting every one back if any write
+# fails.
+
+#: Component classes written by code, never renamed here.
+FIXED = {component_class_key(n) for n in ("CatalogEntry", "DESCRIBES", "X")}
+#: The ground truth files' columns that hold each kind of component class.
+GT_COLUMNS = {"entity class": ("subject_class", "object_class"), "predicate": ("predicate",)}
+
+
+def vocab_view(data: Data) -> dict:
+    """Every component class of the ground truth vocabulary, by kind: its
+    definition (empty if coined and not yet in the hand-built schema), how many
+    ground truth rows and files use it, and how many rows of the translation
+    table translate to it."""
+    data.read_hand()                                   # the file as it is now: it may have been edited by hand
+    gt = read_ground_truth()
+    vocab = vocabulary(data.hand, gt)
+    table = read_mapping(MAPPING_PATH) if MAPPING_PATH.exists() else []
+    files = {}
+    for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN)):
+        for r in _read_rows(p):
+            for kind, columns in GT_COLUMNS.items():
+                for c in columns:
+                    files.setdefault((kind, component_class_key(r.get(c))), set()).add(p.name)
+    out = {}
+    for kind, key in KIND_KEYS.items():
+        coined = {component_class_key(n) for n in vocab["coined"][key]}
+        out[kind] = [{"component_class": n, "definition": d or "", "in_hand": component_class_key(n) not in coined,
+                      "uses": len(_using(gt, kind, n)),
+                      "files": sorted(files.get((kind, component_class_key(n)), [])),
+                      "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
+                                          if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)]}
+                     for n, d in sorted(vocab[key].items(), key=lambda kv: kv[0].lower())]
+    return {"file": f"annotations/{HAND_SCHEMA.name}", "vocabulary": out}
+
+
+def _csv_bytes(columns: list, rows: list) -> bytes:
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, columns, extrasaction="ignore", lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return buf.getvalue().encode("utf-8")
+
+
+def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
+    """(what the page is shown, {path: new bytes}) for renaming `old` to `new`,
+    or merging `old` into `new` when `new` is already in the ground truth
+    vocabulary."""
+    if kind not in KIND_KEYS:
+        raise ValueError("kind must be entity class or predicate")
+    old, new = str(old or "").strip(), str(new or "").strip()
+    data.read_hand()                                   # the file as it is now: it may have been edited by hand
+    gt = read_ground_truth()
+    vocab = vocabulary(data.hand, gt)[KIND_KEYS[kind]]
+    spelled = {component_class_key(n): n for n in vocab}
+    if component_class_key(old) not in spelled:
+        raise ValueError(f"{old} isn't {'an entity class' if kind == 'entity class' else 'a predicate'} of the ground "
+                         f"truth vocabulary")
+    old = spelled[component_class_key(old)]
+    if component_class_key(old) in FIXED or component_class_key(new) in FIXED:
+        raise ValueError("CatalogEntry, DESCRIBES and X are written by code and can't be renamed")
+    if new == old:
+        raise ValueError("the new component class is the same as the old one")
+    merging = component_class_key(new) in spelled and component_class_key(new) != component_class_key(old)
+    target = spelled[component_class_key(new)] if merging else new
+    if not component_class_key(target) or any(c.isspace() for c in target) or target.startswith("#") \
+            or ";" in target or "->" in target:
+        raise ValueError("the new component class must be one word, with letters or digits, no spaces, and no ; or ->")
+    k = component_class_key(old)
+    files, changes, notes = {}, [], []
+
+    # 1. the ground truth files: every cell holding the component class, in any spelling
+    for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN)):
+        with open(p, encoding="utf-8-sig", newline="") as fh:
+            reader = csv.DictReader(fh)
+            columns, rows = list(reader.fieldnames or []), list(reader)
+        cells = 0
+        for r in rows:
+            for c in GT_COLUMNS[kind]:
+                if c in r and component_class_key(r[c]) == k:
+                    r[c], cells = target, cells + 1
+        if cells:
+            files[p] = _csv_bytes(columns, rows)
+            changes.append({"file": f"annotations/ground_truth/{p.name}", "what": f"{cells} cell(s): {old} → {target}"})
+    # 2. the hand-built schema
+    hand_bytes, how = rename_in_hand_schema(HAND_SCHEMA, kind, old, target)
+    if how != "unchanged":
+        files[HAND_SCHEMA] = hand_bytes
+        changes.append({"file": f"annotations/{HAND_SCHEMA.name}", "what": {
+            "renamed": f"the entry {old} renamed {target}, and every pattern naming it",
+            "merged": f"the entry {old} deleted (its definition and source line too); every pattern naming it now "
+                      f"names {target}" + ("; its patterns moved under " + target if kind == "predicate" else ""),
+            "patterns only": f"every pattern naming {old} now names {target}"}[how]})
+    # 3. the translation table: rows translating to the component class
+    if MAPPING_PATH.exists():
+        table = read_mapping(MAPPING_PATH)
+        hit = [r for r in table if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == k]
+        if hit:
+            new_hand = gtt_definitions(vocabulary(read_schema_bytes(hand_bytes), gt))
+            for r in hit:
+                r["component_class_in_gtt"] = target
+            stale = [r["component_class_from_past_or_crt_schema"] for r in hit
+                     if r["checked"] in CHECKED and is_stale_gtt(r, new_hand)]
+            files[MAPPING_PATH] = _csv_bytes(MAPPING_COLUMNS, table)
+            changes.append({"file": f"annotations/{MAPPING_PATH.name}",
+                            "what": f"{len(hit)} row(s) translating to {old} now translate to {target}"})
+            if stale:
+                notes.append(f"{len(stale)} row(s) of the translation table will then be stale, since {target}'s "
+                             f"definition isn't the one they were checked against: {', '.join(stale)} (current or past "
+                             f"schema). Check them again in Translation table.")
+    # 4. partial pair reviews, filed under the predicate's spelling
+    if kind == "predicate" and REVIEWS_PATH.exists():
+        reviews = _read_reviews_rows()
+        cells = 0
+        for r in reviews:
+            for c in ("ground_truth_predicate", "translated_predicate"):
+                if component_class_key(r[c]) == k:
+                    r[c], cells = target, cells + 1
+        if cells:
+            kept, verdicts = [], {}
+            for r in reviews:
+                key_ = row_key(r)
+                if key_ in verdicts:
+                    if verdicts[key_] != r["verdict"]:
+                        raise ValueError(f"merging {old} into {target} would make two of your partial pair reviews "
+                                         f"the same pair with different verdicts (record {r['record_id']}); take "
+                                         f"one back in Partial pairs first")
+                    continue
+                verdicts[key_] = r["verdict"]
+                kept.append(r)
+            files[REVIEWS_PATH] = _csv_bytes(REVIEW_COLUMNS, kept)
+            changes.append({"file": f"annotations/{REVIEWS_PATH.name}",
+                            "what": f"{cells} cell(s): {old} → {target}, so your verdicts still apply"})
+    # drafts not opened yet are never changed (they're step 050's output)
+    unopened = []
+    if DRAFTS_DIR.exists():
+        opened = {int(m.group(1)) for p in GROUND_TRUTH_DIR.glob(PATTERN) if (m := NUMBERED.fullmatch(p.name))}
+        for p in sorted(DRAFTS_DIR.glob(DRAFT_PATTERN)):
+            m = DRAFT_NUMBERED.fullmatch(p.name)
+            if m and int(m.group(1)) not in opened and any(
+                    component_class_key(r.get(c)) == k for r in _read_rows(p) for c in GT_COLUMNS[kind]):
+                unopened.append(p.name)
+    if unopened:
+        notes.append(f"Draft batch(es) not opened yet still use {old}: {', '.join(unopened)} (step 050's output, never "
+                     f"changed here). Once opened, the tool flags {old} there: change it to {target}.")
+    if not files:
+        raise ValueError(f"nothing uses {old}: there is nothing to change")
+    return {"kind": kind, "old": old, "new": target, "merge": merging, "changes": changes, "notes": notes}, files
+
+
+def plan_vocab(data: Data, item: dict) -> dict:
+    with HAND_LOCK:
+        return _plan(data, item.get("kind"), item.get("old"), item.get("new"))[0]
+
+
+def _write_all(files: dict) -> None:
+    """Write every file, or none: if a write fails, every file already written is put back."""
+    originals = {p: p.read_bytes() for p in files}
+    done = []
+    try:
+        for p, content in files.items():
+            tmp = p.with_name(p.name + ".part")
+            tmp.write_bytes(content)
+            os.replace(tmp, p)
+            done.append(p)
+    except Exception:
+        for p in done:
+            p.write_bytes(originals[p])
+        raise
+
+
+def apply_vocab(data: Data, item: dict) -> dict:
+    """Rename or merge, as plan_vocab showed (worked out again, then written)."""
+    with HAND_LOCK:
+        shown, files = _plan(data, item.get("kind"), item.get("old"), item.get("new"))
+        _write_all(files)
+        data.read_hand()
+        return shown
+
+
+def define_vocab(data: Data, item: dict) -> dict:
+    """Change the definition of an entity class or predicate of the hand-built schema."""
+    kind, name = item.get("kind"), str(item.get("component_class") or "").strip()
+    if kind not in KIND_KEYS:
+        raise ValueError("kind must be entity class or predicate")
+    with HAND_LOCK:
+        content = redefine_in_hand_schema(HAND_SCHEMA, kind, name, item.get("definition") or "")
+        stale = []
+        if MAPPING_PATH.exists():
+            now = gtt_definitions(vocabulary(read_schema_bytes(content), read_ground_truth()))
+            stale = [r["component_class_from_past_or_crt_schema"] for r in read_mapping(MAPPING_PATH)
+                     if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(name)
+                     and r["checked"] in CHECKED and is_stale_gtt(r, now)]
+        _write_all({HAND_SCHEMA: content})
+        data.read_hand()
+    return {"saved": True, "stale": stale}
+
+
+def read_schema_bytes(content: bytes) -> dict:
+    """The hand-built schema as it would read with these bytes (written to a temporary file next to it)."""
+    tmp = HAND_SCHEMA.with_name(HAND_SCHEMA.name + ".read")
+    tmp.write_bytes(content)
+    try:
+        return read_hand_schema(tmp)
+    finally:
+        tmp.unlink()
+
+
+# --------------------------------------------------------------------------
 # the server
 # --------------------------------------------------------------------------
 
@@ -739,6 +956,8 @@ def make_handler(data: Data):
                     self._json(help_text(q["view"][0]))
                 elif url.path == "/api/additions":
                     self._json(additions_view(data))
+                elif url.path == "/api/vocab":
+                    self._json(vocab_view(data))
                 elif url.path == "/api/batch":
                     n = int(q["n"][0])
                     self._json(batch_view(data, n, open_batch(n)))
@@ -766,6 +985,12 @@ def make_handler(data: Data):
                 elif url.path == "/api/partial/review":
                     save_review(data, body)
                     self._json({"saved": True})
+                elif url.path == "/api/vocab/plan":
+                    self._json(plan_vocab(data, body))
+                elif url.path == "/api/vocab/apply":
+                    self._json(apply_vocab(data, body))
+                elif url.path == "/api/vocab/define":
+                    self._json(define_vocab(data, body))
                 elif url.path == "/api/mapping/delete":
                     delete_mapping_row(int(body["line"]), body["kind"], body["component_class"])
                     self._json({"deleted": True})

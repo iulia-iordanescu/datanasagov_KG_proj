@@ -102,6 +102,7 @@
   <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
   <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
   <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
+  <button id="vocab" title="annotations/schema_derived_from_manual_annotation.txt">Ground truth vocabulary</button>
   <button id="helpbutton" title="annotations/README.md">Help</button>
   <span id="status"></span>
 </header>
@@ -167,6 +168,7 @@ async function loadBatches() {
   if (wanted.has("m")) { await openMapping(); return; }
   if (wanted.has("p")) { await openPartial(); return; }
   if (wanted.has("a")) { await openAdditions(); return; }
+  if (wanted.has("v")) { await openVocab(); return; }
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0));
@@ -174,7 +176,7 @@ async function loadBatches() {
 }
 async function openBatch(n, at) {
   await flush();
-  mapping = null; partial = null; additions = null;
+  mapping = null; partial = null; additions = null; vocab = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
   $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
@@ -188,6 +190,7 @@ $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBa
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
+$("vocab").addEventListener("click", () => openVocab().catch(fail));
 $("helpbutton").addEventListener("click", () => showHelp());
 
 // ---------------------------------------------------------------- saving
@@ -479,7 +482,7 @@ const toCheck = (r) => r.stale || r.stale_gtt || (r.checked !== "yes" && r.check
 
 async function openMapping() {
   await flush();
-  batch = null; partial = null; additions = null;
+  batch = null; partial = null; additions = null; vocab = null;
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
@@ -665,7 +668,7 @@ let partial = null, onlyUnreviewed = true;
 
 async function openPartial() {
   await flush();
-  batch = null; mapping = null; additions = null;
+  batch = null; mapping = null; additions = null; vocab = null;
   $("batch").value = "";
   status("Opening…");
   partial = await api("/api/partial");
@@ -736,7 +739,7 @@ let additions = null, editing = null;
 
 async function openAdditions(prefill) {
   await flush();
-  batch = null; mapping = null; partial = null;
+  batch = null; mapping = null; partial = null; vocab = null;
   $("batch").value = "";
   status("Opening…");
   additions = await api("/api/additions");
@@ -847,8 +850,111 @@ function additionForm(e) {
 
 // ---------------------------------------------------------------- help
 // The section of annotations/README.md about the view you're on.
+// ---------------------------------------------------------------- the ground truth vocabulary
+// Every entity class and predicate of the ground truth vocabulary: change a definition (in the
+// hand-built schema), or rename one, or merge it into another, everywhere at once. A rename or
+// merge is shown first (every file and what changes in it) and done only after "Do it".
+let vocab = null, vocabPlan = null;
+
+async function openVocab() {
+  await flush();
+  batch = null; mapping = null; partial = null; additions = null;
+  $("batch").value = "";
+  status("Opening…");
+  vocab = await api("/api/vocab");
+  vocabPlan = null;
+  location.hash = "v";
+  status(`Ground truth vocabulary (definitions in ${vocab.file})`, "saved");
+  drawVocab();
+}
+
+async function planVocab(kind, old, input) {
+  const name = input.value.trim();
+  if (!name) { status("Type the new component class first (or an existing one, to merge into it).", "failed"); return; }
+  try {
+    vocabPlan = await api("/api/vocab/plan", { kind, old, new: name });
+    drawVocab();
+    window.scrollTo(0, 0);
+  } catch (e) { fail(e); }
+}
+
+async function applyVocab() {
+  try {
+    const done = await api("/api/vocab/apply", { kind: vocabPlan.kind, old: vocabPlan.old, new: vocabPlan.new });
+    vocab = await api("/api/vocab");
+    vocabPlan = null;
+    status(`${done.merge ? "Merged" : "Renamed"} ${done.old} → ${done.new} (${done.kind}) at ${new Date().toLocaleTimeString()}. Commit the changed files.`, "saved");
+    drawVocab();
+    drawGaps(await api("/api/gaps"));                // the bar of component classes the hand-built schema lacks
+  } catch (e) { fail(e); }
+}
+
+async function defineVocab(kind, name, input) {
+  try {
+    const done = await api("/api/vocab/define", { kind, component_class: name, definition: input.value });
+    vocab = await api("/api/vocab");
+    status(`Saved the definition of ${name} at ${new Date().toLocaleTimeString()}` +
+           (done.stale.length ? `. ${done.stale.length} row(s) of the translation table now need checking again: ${done.stale.join(", ")}.` : "."),
+           "saved");
+    drawVocab();
+  } catch (e) { fail(e); }
+}
+
+function planCard() {
+  const p = vocabPlan;
+  return el("section", { class: "card todo" },
+    el("h3", {}, `${p.merge ? "Merge" : "Rename"} ${p.old} → ${p.new} (${p.kind})`),
+    el("p", { class: "meta" }, p.merge
+      ? `${p.new} is already in the ground truth vocabulary, so ${p.old} is merged into it: every use of ${p.old} becomes ${p.new}.`
+      : `${p.old} is renamed ${p.new} everywhere.`),
+    el("p", {}, "What would change (nothing has changed yet):"),
+    el("ul", {}, p.changes.map(c => el("li", {}, el("code", {}, c.file), ": ", c.what))),
+    p.notes.length ? el("ul", { class: "problems" }, p.notes.map(n => el("li", { class: "flag" }, "⚑ " + n))) : null,
+    el("div", { class: "bar" },
+      el("button", { onclick: applyVocab }, "Do it"), " ",
+      el("button", { onclick: () => { vocabPlan = null; drawVocab(); } }, "Cancel")));
+}
+
+function vocabEntry(kind, v) {
+  const def = el("input", { value: v.definition, style: "width:100%", "aria-label": `definition of ${v.component_class}`,
+                            placeholder: "one-line definition" });
+  const rename = el("input", { placeholder: "new component class, or an existing one to merge into", style: "width:60%",
+                               "aria-label": `rename ${v.component_class}` });
+  return el("div", { class: "row" },
+    el("div", {}, el("span", { class: "kind" }, kind), el("b", {}, v.component_class),
+       el("span", { class: "meta" }, `  ${v.in_hand ? "in the hand-built schema" : "coined while annotating, not in the hand-built schema yet"}` +
+         ` · ${v.uses} ground truth row(s)` + (v.files.length ? ` in ${v.files.join(", ")}` : "") +
+         (v.translated_from.length ? ` · translated to from ${v.translated_from.join(", ")} (current or past schema)` : ""))),
+    el("div", { class: "bar" }, def, " ",
+       v.in_hand
+         ? el("button", { onclick: () => defineVocab(kind, v.component_class, def) }, "Save definition")
+         : el("button", { onclick: async () => {
+             try { await api("/api/hand/add", { entry_type: kind, component_class: v.component_class, definition: def.value });
+                   vocab = await api("/api/vocab"); status(`Added ${v.component_class} to the hand-built schema`, "saved"); drawVocab();
+             } catch (e) { fail(e); } } }, "Add to the hand-built schema")),
+    el("div", { class: "bar" }, rename, " ",
+       el("button", { onclick: () => planVocab(kind, v.component_class, rename) }, "Rename or merge…")));
+}
+
+function drawVocab() {
+  const count = (k) => vocab.vocabulary[k].length;
+  $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+    el("h3", {}, "Ground truth vocabulary"),
+    el("p", { class: "meta" }, `${count("entity class")} entity class(es) and ${count("predicate")} predicate(s): every one ` +
+      "in the hand-built schema, plus every one the ground truth uses that it lacks (coined)."),
+    el("p", { class: "meta" }, "Changing a definition makes the translation table's rows that translate to that " +
+      "component class need checking again. Renaming or merging changes every file that uses the component class, after showing you what " +
+      "it would change.")));
+  const cards = [];
+  if (vocabPlan) cards.push(planCard());
+  for (const kind of ["entity class", "predicate"])
+    cards.push(el("section", { class: "card" }, el("h3", {}, kind === "entity class" ? "Entity classes" : "Predicates"),
+      vocab.vocabulary[kind].map(v => vocabEntry(kind, v))));
+  $("record").replaceChildren(...cards);
+}
+
 function currentView() {
-  return additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
+  return vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
 }
 
 function inline(text) {                  // `code`, **bold**, *italic*, on escaped text

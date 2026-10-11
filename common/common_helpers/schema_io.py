@@ -392,3 +392,170 @@ def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_
 
     _edit_text(path, edit, {**before, "patterns": before["patterns"] + [(pair[0], name, pair[1])]},
                f"{pair[0]} -> {pair[1]} to {name}")
+
+
+
+# --------------------------------------------------------------------------
+# changing the hand-built schema (the annotation tool's Ground truth vocabulary view)
+# --------------------------------------------------------------------------
+# Each function returns the file's new bytes without writing them: the caller
+# writes them together with the other files a change touches. The new text is
+# read back first, and must read as exactly the expected schema (patterns
+# compared as a set: a merge can make two patterns one).
+
+KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
+
+
+def _file_lines(path) -> tuple:
+    raw = Path(path).read_bytes()
+    bom = "﻿" if raw.startswith(b"\xef\xbb\xbf") else ""
+    newline = "\r\n" if b"\r\n" in raw else "\n"
+    return bom, newline, raw.decode("utf-8-sig").split(newline)
+
+
+def _as_read(schema: dict) -> tuple:
+    return (schema["entity_classes"], schema["predicates"], set(schema["patterns"]), schema["sources"],
+            sorted(u.split(": ", 1)[-1] for u in schema["unread"]))
+
+
+def _checked(path, bom: str, newline: str, lines: list, expected: dict, what: str) -> bytes:
+    """The new bytes, once they read as expected; else ValueError (nothing written)."""
+    new = (bom + newline.join(lines)).encode("utf-8")
+    tmp = Path(path).with_name(Path(path).name + ".check")
+    tmp.write_bytes(new)
+    try:
+        got = _read_text(tmp)
+    finally:
+        tmp.unlink()
+    if _as_read(got) != _as_read(expected):
+        raise ValueError(f"{what} would have changed something else in {Path(path).name}; nothing was changed")
+    return new
+
+
+def _spelled(names, name: str):
+    return next((n for n in names if component_class_key(n) == component_class_key(name)), None)
+
+
+def _entry_line(lines: list, start: int, end: int, name: str) -> int:
+    return next(j for j in range(start, end) if (m := ENTRY.match(lines[j])) and m.group(1) == name)
+
+
+def _is_pairs_line(line: str) -> bool:
+    """An indented line listing patterns: "Subject -> Object; …"."""
+    return line[:1].isspace() and bool(line.strip()) and all(PAIR.match(p) for p in line.strip().split(";"))
+
+
+def _pairs_of(line: str) -> list:
+    return [PAIR.match(p).groups() for p in line.strip().split(";")]
+
+
+def _indent(line: str) -> str:
+    return line[:len(line) - len(line.lstrip())]
+
+
+def redefine_in_hand_schema(path, kind: str, name: str, definition: str) -> bytes:
+    """The hand-built schema with one entity class's or predicate's definition
+    replaced (nothing else changes)."""
+    key = KIND_KEYS[kind]
+    definition = " ".join(str(definition).split())
+    if not definition:
+        raise ValueError(f"{name} needs a one-line definition")
+    before = _read_text(path)
+    spelled = _spelled(before[key], name)
+    if spelled is None:
+        raise ValueError(f"{name} isn't {'an entity class' if key == 'entity_classes' else 'a predicate'} of the "
+                         f"hand-built schema: add it first")
+    bom, newline, lines = _file_lines(path)
+    start, end = _section(lines, key, path)
+    i = _entry_line(lines, start, end, spelled)
+    m = ENTRY.match(lines[i])
+    lines[i] = lines[i][:m.start(2)] + definition
+    return _checked(path, bom, newline, lines, {**before, key: {**before[key], spelled: definition}},
+                    f"changing the definition of {spelled}")
+
+
+def rename_in_hand_schema(path, kind: str, old: str, new: str) -> tuple:
+    """The hand-built schema with the entity class or predicate `old` renamed
+    to `new`, or, when `new` is already in it, merged into `new`: `old`'s
+    entry (and the lines under it, such as its source) is deleted, and a
+    merged predicate's patterns are moved to `new`. Every pattern naming
+    `old` names `new` instead (a pattern repeated on one line is then
+    written once). `old` may be missing from the file (a component class
+    coined in the ground truth): then only patterns can change. Returns
+    (new bytes, "renamed" | "merged" | "patterns only" | "unchanged")."""
+    key = KIND_KEYS[kind]
+    new = str(new).strip()
+    if not component_class_key(new) or any(c.isspace() for c in new) or new.startswith("#") or ";" in new or "->" in new:
+        raise ValueError("the new component class must be one word, with letters or digits, no spaces, and no ; or ->")
+    before = _read_text(path)
+    old_spelled, new_spelled = _spelled(before[key], old), _spelled(before[key], new)
+    merging = new_spelled is not None and component_class_key(new) != component_class_key(old)
+    target = new_spelled if merging else new
+    k = component_class_key(old)
+
+    def swap(t):
+        return target if component_class_key(t) == k else t
+
+    bom, newline, lines = _file_lines(path)
+    moved = []                                     # a merged predicate's patterns, to go under the target
+    if old_spelled is not None:
+        start, end = _section(lines, key, path)
+        i = _entry_line(lines, start, end, old_spelled)
+        if merging:
+            last = _under(lines, i, end)
+            if key == "predicates":
+                moved = [pair for j in range(i + 1, last + 1) if _is_pairs_line(lines[j]) for pair in _pairs_of(lines[j])]
+            del lines[i:last + 1]
+        else:
+            m = ENTRY.match(lines[i])
+            lines[i] = target.ljust(max(m.start(2), len(target) + 2)) + m.group(2)
+    if key == "entity_classes":                    # every pattern under a predicate
+        p_start, p_end = _section(lines, "predicates", path)
+        for j in range(p_start, p_end):
+            if _is_pairs_line(lines[j]):
+                pairs = [(swap(s), swap(o)) for s, o in _pairs_of(lines[j])]
+                lines[j] = _indent(lines[j]) + _pairs_text(list(dict.fromkeys(pairs)))
+    if moved:
+        p_start, p_end = _section(lines, "predicates", path)
+        t = _entry_line(lines, p_start, p_end, target)
+        for j in range(t + 1, _under(lines, t, p_end) + 1):
+            if _is_pairs_line(lines[j]):
+                lines[j] = _indent(lines[j]) + _pairs_text(list(dict.fromkeys(_pairs_of(lines[j]) + moved)))
+                break
+        else:
+            lines.insert(t + 1, " " * ENTRY.match(lines[t]).start(2) + _pairs_text(list(dict.fromkeys(moved))))
+    heads = [i for i, line in enumerate(lines) if line.strip() in SECTIONS]
+    pat = next((i for i in heads if SECTIONS[lines[i].strip()] == "patterns"), None)
+    if pat is not None:                            # the PATTERNS section, if there is one
+        end = next((i for i in heads if i > pat), len(lines))
+        for j in range(pat + 1, end):
+            m = PATTERN_LINE.match(lines[j].strip()) if not lines[j][:1].isspace() else None
+            if m:
+                s, p, o = m.groups()
+                lines[j] = " ".join((swap(s), p, swap(o)) if key == "entity_classes" else (s, swap(p), o))
+
+    def trio(t):
+        s, p, o = t
+        return (swap(s), p, swap(o)) if key == "entity_classes" else (s, swap(p), o)
+
+    def renamed(d: dict) -> dict:
+        out = {}
+        for n, v in d.items():
+            if old_spelled is not None and n == old_spelled:
+                if not merging:
+                    out[target] = v
+            else:
+                out[n] = v
+        return out
+
+    patterns = [trio(t) for t in before["patterns"]]
+    expected = {**before, key: renamed(before[key]), "patterns": patterns,
+                "sources": {**before["sources"], key: renamed(before["sources"][key]),
+                            "patterns": {pattern_key(trio(tuple(n.split(" ")))): v
+                                         for n, v in before["sources"]["patterns"].items()}}}
+    data = _checked(path, bom, newline, lines, expected, f"renaming {old} to {target}")
+    if old_spelled is None:
+        how = "patterns only" if set(patterns) != set(before["patterns"]) else "unchanged"
+    else:
+        how = "merged" if merging else "renamed"
+    return data, how

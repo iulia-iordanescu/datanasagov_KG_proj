@@ -375,5 +375,154 @@ class F_Partial(unittest.TestCase):
         self.assertIn("verdict", post("/api/partial/review", {**item, "verdict": "maybe"})["error"])
 
 
+class G_Vocabulary(unittest.TestCase):
+    """The Ground truth vocabulary view: definitions, renaming, merging, every file at once or none."""
+
+    GT_ROWS = [["r0", "r0", "CatalogEntry", "DESCRIBES", "Title r0", "Satelite", "(record structure)", "1", "m"],
+               ["r0", "MODIS", "Instrument", "ABOARD", "Aqua", "Satelite", "MODIS aboard Aqua", "1", "m"],
+               ["r1", "AIRS", "Instrument", "aboard", "Aqua", "Spacecraft", "AIRS aboard Aqua", "1", "m"],
+               ["r1", "Aqua", "satelite", "ORBITS", "Earth", "Planet", "Aqua orbits Earth", "1", "m"]]
+    HAND = HAND + "ORBITS            goes around\n                  Spacecraft -> Planet\n" \
+        .replace("Spacecraft -> Planet", "Satelite -> Planet")
+
+    def setUp(self):
+        self.files = [TMP / "annotations" / "ground_truth" / "batch_000.csv", server.HAND_SCHEMA,
+                      server.MAPPING_PATH, server.REVIEWS_PATH]
+        self.saved = {p: p.read_bytes() if p.exists() else None for p in self.files}
+        with open(self.files[0], "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(ground_truth.FILE_COLUMNS)
+            w.writerows(self.GT_ROWS)
+        server.HAND_SCHEMA.write_text(self.HAND.replace("Dataset           a collection of data",
+                                                        "Dataset           a collection of data\n"
+                                                        "Satelite          a craft in orbit"), encoding="utf-8")
+        cols = component_class_mapping.COLUMNS
+        with open(server.MAPPING_PATH, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(cols)
+            w.writerow(["entity class", "Satellite", "Satelite", "no", "yes", "an orbiting craft", "a craft in orbit"])
+            w.writerow(["predicate", "MOUNTED_ON", "ABOARD", "no", "yes", "sits on", "is carried on"])
+        with open(server.REVIEWS_PATH, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(partial_reviews.COLUMNS)
+            w.writerow(["r1", "AIRS", "ORBITS", "Aqua", "the AIRS", "ORBITS", "Aqua", "same fact"])
+
+    def tearDown(self):
+        for p, content in self.saved.items():
+            if content is None:
+                p.unlink(missing_ok=True)
+            else:
+                p.write_bytes(content)
+
+    def snapshot(self):
+        return {p: p.read_bytes() for p in self.files if p.exists()}
+
+    def test_view(self):
+        v = get("/api/vocab")["vocabulary"]
+        sat = next(e for e in v["entity class"] if e["component_class"] == "Satelite")
+        self.assertEqual((sat["definition"], sat["in_hand"], sat["uses"], sat["files"], sat["translated_from"]),
+                         ("a craft in orbit", True, 3, ["batch_000.csv"], ["Satellite"]))
+        planet = next(e for e in v["entity class"] if e["component_class"] == "Planet")
+        self.assertFalse(planet["in_hand"])                                   # coined, no definition
+
+    def test_plan_writes_nothing(self):
+        before = self.snapshot()
+        plan = post("/api/vocab/plan", {"kind": "entity class", "old": "Satelite", "new": "Spacecraft"})
+        self.assertTrue(plan["merge"])
+        self.assertEqual([c["file"] for c in plan["changes"]],
+                         ["annotations/ground_truth/batch_000.csv", f"annotations/{server.HAND_SCHEMA.name}",
+                          f"annotations/{server.MAPPING_PATH.name}"])
+        self.assertIn("3 cell(s)", plan["changes"][0]["what"])
+        self.assertTrue(any("stale" in n for n in plan["notes"]))             # Spacecraft's definition differs
+        self.assertEqual(self.snapshot(), before)
+
+    def test_merge_entity_class(self):
+        done = post("/api/vocab/apply", {"kind": "entity class", "old": "satelite", "new": "spacecraft"})
+        self.assertEqual((done["old"], done["new"], done["merge"]), ("Satelite", "Spacecraft", True))
+        rows = gt_rows()
+        self.assertEqual([r["object_class"] for r in rows][:2], ["Spacecraft", "Spacecraft"])   # DESCRIBES too
+        self.assertEqual(rows[3]["subject_class"], "Spacecraft")                                 # any spelling
+        self.assertEqual([r["subject"] for r in rows], ["r0", "MODIS", "AIRS", "Aqua"])          # nothing else
+        self.assertEqual([r["drafted_by"] for r in rows], ["m"] * 4)
+        hand = schema_io.read_hand_schema(server.HAND_SCHEMA)
+        self.assertNotIn("Satelite", hand["entity_classes"])
+        self.assertEqual(hand["entity_classes"]["Spacecraft"], "a vehicle in space")
+        self.assertIn(("Spacecraft", "ORBITS", "Planet"), hand["patterns"])
+        table = component_class_mapping.read_mapping(server.MAPPING_PATH)
+        self.assertEqual(table[0]["component_class_in_gtt"], "Spacecraft")
+        self.assertEqual(table[0]["definition_in_gtt"], "a craft in orbit")    # kept: so the row is stale
+        self.assertTrue(get("/api/mapping")["rows"][0]["stale_gtt"])
+        self.assertEqual(table[1]["component_class_in_gtt"], "ABOARD")          # other rows untouched
+
+    def test_rename_predicate_keeps_reviews(self):
+        done = post("/api/vocab/apply", {"kind": "predicate", "old": "ORBITS", "new": "CIRCLES"})
+        self.assertFalse(done["merge"])
+        self.assertEqual(gt_rows()[3]["predicate"], "CIRCLES")
+        self.assertIn("CIRCLES", schema_io.read_hand_schema(server.HAND_SCHEMA)["predicates"])
+        reviews = partial_reviews.read_reviews(server.REVIEWS_PATH)
+        self.assertEqual(list(reviews.values()), ["same fact"])
+        self.assertEqual(list(reviews)[0][2], partial_reviews.norm_text("CIRCLES"))
+
+    def test_merge_predicate_moves_patterns(self):
+        post("/api/vocab/apply", {"kind": "predicate", "old": "ORBITS", "new": "ABOARD"})
+        hand = schema_io.read_hand_schema(server.HAND_SCHEMA)
+        self.assertNotIn("ORBITS", hand["predicates"])
+        self.assertEqual(sorted(p for p in hand["patterns"] if p[1] == "ABOARD"),
+                         [("Instrument", "ABOARD", "Spacecraft"), ("Satelite", "ABOARD", "Planet")])
+        self.assertEqual([r["predicate"] for r in gt_rows()], ["DESCRIBES", "ABOARD", "aboard", "ABOARD"])
+
+    def test_conflicting_reviews_refused(self):
+        with open(server.REVIEWS_PATH, "a", encoding="utf-8", newline="") as fh:
+            csv.writer(fh).writerow(["r1", "AIRS", "ABOARD", "Aqua", "the AIRS", "ABOARD", "Aqua", "not the same fact"])
+        before = self.snapshot()
+        self.assertIn("different verdicts",
+                      post("/api/vocab/apply", {"kind": "predicate", "old": "ORBITS", "new": "ABOARD"})["error"])
+        self.assertEqual(self.snapshot(), before)
+
+    def test_refusals(self):
+        before = self.snapshot()
+        for body, words in [({"kind": "entity class", "old": "Rocket", "new": "Craft"}, "isn't an entity class"),
+                            ({"kind": "entity class", "old": "Satelite", "new": "Space ship"}, "one word"),
+                            ({"kind": "entity class", "old": "Satelite", "new": "Satelite"}, "the same"),
+                            ({"kind": "entity class", "old": "Satelite", "new": "CatalogEntry"}, "written by code"),
+                            ({"kind": "thing", "old": "Satelite", "new": "Craft"}, "kind")]:
+            with self.subTest(body=body):
+                self.assertIn(words, post("/api/vocab/plan", body)["error"])
+                self.assertIn(words, post("/api/vocab/apply", body)["error"])
+        self.assertEqual(self.snapshot(), before)
+
+    def test_all_files_or_none(self):
+        before = self.snapshot()
+        real = server.os.replace
+        calls = []
+
+        def fail_second(src, dst):
+            calls.append(dst)
+            if len(calls) == 2:
+                raise OSError("disk full")
+            return real(src, dst)
+
+        server.os.replace = fail_second
+        try:
+            self.assertIn("disk full", post("/api/vocab/apply", {"kind": "entity class", "old": "Satelite",
+                                                                 "new": "Spacecraft"})["error"])
+        finally:
+            server.os.replace = real
+            for p in self.files:
+                p.with_name(p.name + ".part").unlink(missing_ok=True)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_define(self):
+        done = post("/api/vocab/define", {"kind": "predicate", "component_class": "aboard", "definition": "is  anywhere on"})
+        self.assertEqual(done, {"saved": True, "stale": ["MOUNTED_ON"]})
+        hand = schema_io.read_hand_schema(server.HAND_SCHEMA)
+        self.assertEqual(hand["predicates"]["ABOARD"], "is anywhere on")
+        self.assertEqual(hand["patterns"].count(("Instrument", "ABOARD", "Spacecraft")), 1)
+        self.assertIn("add it first", post("/api/vocab/define", {"kind": "entity class", "component_class": "Planet",
+                                                                 "definition": "a world"})["error"])
+        self.assertIn("definition", post("/api/vocab/define", {"kind": "entity class", "component_class": "Dataset",
+                                                               "definition": "  "})["error"])
+
+
 if __name__ == "__main__":
     unittest.main()
