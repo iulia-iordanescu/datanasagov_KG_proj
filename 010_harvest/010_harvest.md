@@ -26,7 +26,7 @@ Only metadata is downloaded (titles, descriptions, [maintainers](../docs/termino
 
 #### Before running
 
-- **Don't make a small trial [harvest](../docs/terminology.md#1-records-and-their-text) first** (`--max_records`): splitting writes its file (`outputs/intermediate_results/030_split/splits.json`) only once, so a trial catalog would stay in it.
+- **A trial [harvest](../docs/terminology.md#1-records-and-their-text)** (`--max_records`) only checks that harvesting works: step 030 won't split a trial catalog, since it writes its file (`outputs/intermediate_results/030_split/splits.json`) only once. Run the full harvest before steps 020 and 030.
 
 #### After running
 
@@ -65,7 +65,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the [report](../docs/termino
 | Setting | Default | What it does | When to change it |
 |---|---|---|---|
 | `page_size` | 1000 | [Records](../docs/terminology.md#1-records-and-their-text) per request | Rarely. 1000 is CKAN's usual maximum. Changing it means most [batch files](../docs/terminology.md#1-records-and-their-text) are downloaded again (see below). |
-| `max_records` | 0 | Stop after this many records; 0 means the whole catalog | For a quick trial, e.g. `3` or `2000`. The folder is made to match the trial (see below); a later full [run](../docs/terminology.md#8-the-pipeline) keeps the pages that still fit and fetches the rest. |
+| `max_records` | 0 | Stop after this many records; 0 means the whole catalog | For a quick trial, e.g. `3` or `2000`. The folder is made to match the trial (see below); a later full [run](../docs/terminology.md#8-the-pipeline) keeps the pages that still fit and fetches the rest. The run is recorded as a trial harvest, and step 030 won't split it. |
 | `pause_seconds` | 0.5 | Wait after each page downloaded | Raise it if the server starts refusing requests. |
 
 ## How to run

@@ -114,6 +114,20 @@ class Split(unittest.TestCase):
         self.assertTrue(any("differs" in w for w in changed.warnings))
         self.assertEqual((out / moves.OUTPUT_NAME).read_text(encoding="utf-8"), written)   # kept as it was
 
+    def test_never_from_a_trial_harvest(self):
+        """Records whose manifest says they come from a trial harvest: splits.json isn't written, and a kept
+        one is left as it is."""
+        out = self.tmp / "out"
+        out.mkdir()
+        pool, induction = self.split()
+        (self.tmp / "_manifest.json").write_text(json.dumps({"harvest_partial": True}), encoding="utf-8")
+        with self.assertRaisesRegex(SystemExit, "trial harvest"):
+            moves.results(pool, induction, self.inputs, SETTINGS, out)
+        self.assertFalse((out / moves.OUTPUT_NAME).exists())
+        (self.tmp / "_manifest.json").write_text(json.dumps({"harvest_partial": False}), encoding="utf-8")
+        moves.results(pool, induction, self.inputs, SETTINGS, out)                        # the full harvest: written
+        self.assertTrue((out / moves.OUTPUT_NAME).exists())
+
 
 if __name__ == "__main__":
     unittest.main()

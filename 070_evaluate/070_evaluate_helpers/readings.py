@@ -4,7 +4,7 @@ numbers in them, for the report (see the guide's section *Reading the
 metrics*).
 
 A metric is a ratio; these bullets say what it counts, in this run's terms:
-what the triples are and where they came from (once per part, in "Where
+what the classed triples are and where they came from (once per part, in "Where
 these numbers come from"), then, per metric, the counts behind it, how to
 read it as a chance and for the knowledge graph where that holds, how sure
 it is (the margin of error, or why there is none), and what it assumes. A
@@ -86,20 +86,22 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     # precision
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
             f"(exact and partial pairs)", "",
-            f"- Of the {E} extracted triples of these records, {_of(ex['pairs'], E)} are correct at the exact "
-            f"level, and {_of(pa['pairs'], E)} at the partial level.",
+            f"- Of the {E} occurrences of these records (one per extracted triple, translated into the ground "
+            f"truth vocabulary), {_of(ex['pairs'], E)} are correct at the exact level, and {_of(pa['pairs'], E)} at "
+            f"the partial level.",
             f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
             f"{pct(ex['precision']['value']) if E else '–'} of those edges would be correct at the exact "
             f"level ({pct(pa['precision']['value']) if E else '–'} at the partial level): an estimate, since "
             f"precision is measured on the evaluated records only.",
-            f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], E)} of the extracted triples are correct only "
-            f"once wording differences are forgiven (e.g. \"MODIS\" vs its full name).",
-            f"- Precision minus strict precision: {_of(ex['pairs'] - ex['strict_pairs'], E)} of the extracted "
-            f"triples state the right fact but with a wrong subject class or object class (exact level; "
+            f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], E)} of the occurrences form a partial pair: "
+            f"correct only at the partial level, where a subject instance or object instance may be inside the "
+            f"other's as whole words (e.g. \"MODIS\" inside its full name).",
+            f"- Precision minus strict precision: {_of(ex['pairs'] - ex['strict_pairs'], E)} of the occurrences "
+            f"state the right fact but with a wrong subject class or object class (exact level; "
             f"{_of(pa['pairs'] - pa['strict_pairs'], E)} at the partial level).",
             _sure(n, ex["precision"], "exact precision"),
-            "- Assumes the ground truth lists every fact these records state: a true triple missing from it "
-            "counts against precision.", ""]
+            "- Assumes the ground truth lists every fact these records state: an occurrence stating a true "
+            "fact the ground truth lacks counts as not correct.", ""]
 
     # recall
     out += [f"#### Recall: {pct(ex['recall']['value'])} (exact pairs), {pct(pa['recall']['value'])} "
@@ -130,7 +132,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"- The same, counting only strict pairs: pairs whose two entity classes also agree, after translation. "
             f"{ex['strict_pairs']} of the {ex['pairs']} exact pairs are strict ({pa['strict_pairs']} of the "
             f"{pa['pairs']} counting partial pairs).",
-            f"- Strict precision: {ex['strict_pairs']} of the {E} extracted triples "
+            f"- Strict precision: {ex['strict_pairs']} of the {E} occurrences "
             f"({pct(ex['strict_precision']['value'])}); strict recall: {ex['strict_pairs']} of the {G} ground "
             f"truth triples ({pct(ex['strict_recall']['value'])}).",
             f"- Strict F1: {pct(ex['strict_f1']['value'])} (exact pairs).",
@@ -151,7 +153,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"= precision × entity-class accuracy, and strict recall = recall × entity-class accuracy, at the same "
             f"pair level (exact: {pct(ex['strict_precision']['value'])} = {pct(ex['precision']['value'])} × "
             f"{pct(ex['entity_class_accuracy']['value'])}).",
-            "- Only pairs are judged: the entity classes of an extracted triple left without a partner (wrong, or a "
+            "- Only pairs are judged: the entity classes of an occurrence left without a partner (wrong, or a "
             "repeat of a fact already paired) aren't counted.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
@@ -180,7 +182,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"(exact: {pct(ex['recall']['value'])} = {pct(n['recall_upper_bound']['value'])} × "
             f"{pct(ex['recall_within_reach']['value'])}): the first factor is the schema's part, the second extraction's.",
             "- Read with the recall upper bound: a low upper bound points at the schema; a low recall within reach points "
-            "at extraction (its model, prompt or checks), since those triples could have been found.",
+            "at extraction (its model, prompt or checks), since those ground truth triples could have been found.",
             _sure(n, ex["recall_within_reach"], "exact recall within reach"), ""]
 
     # describes

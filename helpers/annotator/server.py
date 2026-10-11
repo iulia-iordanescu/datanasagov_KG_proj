@@ -58,7 +58,7 @@ about the view you're on (HELP_SECTIONS), so the tool's explanation lives in
 one place.
 
 Partial pairs (common/common_helpers/partial_reviews.py): evaluation's last run's partial
-pairs of TUNING records, each with both triples and the record's text, for a
+pairs of TUNING records, each with its two triples and the record's text, for a
 person to mark "same fact" or "not the same fact"; pairs ruled out earlier
 are shown too, so a verdict can be changed. Held-out records are never
 shown or accepted (reviewing them would mean looking at held-out results).

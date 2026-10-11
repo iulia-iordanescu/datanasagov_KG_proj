@@ -19,12 +19,17 @@ The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every st
 #### Before running
 
 - **Before the real [runs](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** from a different maker than annotation's, so the two don't share blind spots; for the run over every [record](../docs/terminology.md#1-records-and-their-text), the cheapest whose metrics are within the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-- **Rerun it after finishing more [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records:** by default it extracts only the finished ones, and evaluation can evaluate only what it extracted.
+
+#### Before running again
+
+Each run extracts the finished [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records. Before the next run:
+
+- **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can evaluate only what it extracted.
+- **Read the [report](../docs/terminology.md#8-the-pipeline)'s table *[Component classes](../docs/terminology.md#3-schemas) outside the [schema](../docs/terminology.md#3-schemas)*** (`outputs/reports/060_extract_<date>_<time>.md`): [entity classes](../docs/terminology.md#3-schemas) and [predicates](../docs/terminology.md#3-schemas) the model used that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For one that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed component class has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every component class listed is fair to add.
+- **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A component class learned from the ground truth must come from tuning records only, named by [pool](../docs/terminology.md#4-ground-truth-and-samples) position (`source: ground truth tuning #12`); the [step](../docs/terminology.md#8-the-pipeline) leaves out any other.
 
 #### After running
 
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s table *[Component classes](../docs/terminology.md#3-schemas) outside the [schema](../docs/terminology.md#3-schemas)*** (`outputs/reports/060_extract_<date>_<time>.md`): [entity classes](../docs/terminology.md#3-schemas) and [predicates](../docs/terminology.md#3-schemas) the model used that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For one that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed component class has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every component class listed is fair to add.
-- **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A component class learned from the ground truth must come from tuning records only, named by [pool](../docs/terminology.md#4-ground-truth-and-samples) position (`source: ground truth tuning #12`); the [step](../docs/terminology.md#8-the-pipeline) leaves out any other.
 - **Now and then, read the removed [classed triples](../docs/terminology.md#2-triples)** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good [facts](../docs/terminology.md#2-triples) is a sign the schema, or the prompt, needs work.
 
 ## Inputs

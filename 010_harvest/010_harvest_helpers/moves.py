@@ -235,4 +235,5 @@ def results(harvest: Harvest, check: Check) -> Results:
         details=details,
         warnings=warnings,
         harvest_date=harvest_date,
+        harvest_partial=harvest.target < harvest.reported,
     )

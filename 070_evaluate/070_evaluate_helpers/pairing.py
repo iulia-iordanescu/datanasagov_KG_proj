@@ -34,7 +34,7 @@ needs. The DESCRIBES rows are compared on their entity class only, apart from
 the triples, since code writes the rest of them.
 
 COMPONENT CLASS MISMATCHES (component_class_mismatches): a wrong or missing row of the
-translation table leaves a trace in the triples. Extraction found the triple,
+translation table leaves a trace in the triples. Extraction stated the fact,
 but a component class differs:
   - a paired triple whose entity class differs from the ground truth's: the
     current schema's entity class may translate to the wrong one (or to (none));

@@ -23,7 +23,9 @@ The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every st
 - **Before the real [runs](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** the strongest one Ask Sage lets you use, and from a different maker than extraction's (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
 - **Draft and correct batches in [pool](../docs/terminology.md#4-ground-truth-and-samples) order, without skipping:** a [record](../docs/terminology.md#1-records-and-their-text) after a gap falls out of the [fair sample](../docs/terminology.md#4-ground-truth-and-samples), the only records evaluation evaluates.
 
-#### After running
+#### Before running again
+
+Each run drafts the next batch. Before drafting another, finish the last one:
 
 - **Correct every [draft batch](../docs/terminology.md#4-ground-truth-and-samples)** with `py helpers/annotate.py`: read each record's [text](../docs/terminology.md#1-records-and-their-text) first, then fix, delete or add rows until every [fact](../docs/terminology.md#2-triples) it states is there, and tick *All facts extracted*. The tool saves your corrections to `annotations/ground_truth/batch_<NNN>.csv`; never correct the draft itself (`outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv`): it can be deleted and rebuilt. Commit each corrected batch.
 - **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: [recall](../docs/terminology.md#7-evaluating-extraction-step-070) comes out higher than it should.
@@ -31,7 +33,6 @@ The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every st
 - **When you coin an [entity class](../docs/terminology.md#3-schemas) or [predicate](../docs/terminology.md#3-schemas)**, add it with a one-line definition to the [hand-built schema](../docs/terminology.md#3-schemas) (`annotations/schema_derived_from_manual_annotation.txt`): in the tool, press the button under its [flag](../docs/terminology.md#2-triples). Until then the next drafts reuse it, but the model sees it without a definition, and the tool keeps flagging it (it could be a typo); the tool's page and this [step](../docs/terminology.md#8-the-pipeline)'s [report](../docs/terminology.md#8-the-pipeline) list every such component class.
 - **Fix the [errors](../docs/terminology.md#2-triples) and problems** the tool and this step's report point out in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) (`annotations/ground_truth/`).
 - **To rename a component class of the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070), merge two that mean the same thing, or change a definition**, use `py helpers/annotate.py`, *Ground truth vocabulary* (`annotations/README.md`, *The ground truth vocabulary*): it changes every file at once, after showing you what it would change. Then commit the changed files. Everything else the tool can and can't do: `annotations/README.md`, *What the tool can do* and *What the tool can't do*.
-- **Report any metric** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
 
 ## Inputs
 

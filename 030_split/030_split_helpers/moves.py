@@ -66,7 +66,7 @@ from common.audit import ORIGIN_FIELD, check_origins, log, origin
 from common.files import write_json
 from common.records_io import has_text, load_records as read_records
 from common.report import cell
-from common.step import Results, input_files
+from common.step import MANIFEST_NAME, Results, input_files
 
 OUTPUT_NAME = "splits.json"
 CANDIDATES = "ground_truth_candidates"      # the pool, in splits.json and messages
@@ -191,6 +191,16 @@ def _lists(pool: Candidates, induction: Induction) -> dict:
             INDUCTION: {"maintainers": induction.maintainers, "records": induction.records}}
 
 
+def _from_trial_harvest(inputs: dict) -> bool:
+    """Whether the records come from a trial harvest: the run that made them
+    says so in its manifest (harvest_partial, passed on from 010)."""
+    manifest = Path(inputs["records"]).parent / MANIFEST_NAME
+    try:
+        return bool(json.loads(manifest.read_text(encoding="utf-8")).get("harvest_partial"))
+    except (OSError, ValueError):
+        return False
+
+
 def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict,
             output: Path) -> Results:
     path = output / OUTPUT_NAME
@@ -209,6 +219,11 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
                             f"since it was written. Work in progress relies on the kept file; to "
                             f"replace it, delete it and rerun.")
     else:
+        if _from_trial_harvest(inputs):
+            raise SystemExit(f"The records come from a trial harvest (part of the catalog only, --max_records), and "
+                             f"{OUTPUT_NAME} is written once and then kept, so it isn't written from a trial: the "
+                             f"trial's records would stay in it. Run the full harvest (py 010_harvest/run.py), then "
+                             f"020, then 030 again.")
         document = {**drawn, "drawn": {
             "run_id": audit.current_run_id(), "settings": settings,
             "inputs": {name: audit.ref_path(input_files(Path(p))[0]) for name, p in inputs.items()}}}

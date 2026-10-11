@@ -82,6 +82,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(m["headline"], {"records harvested": 40})
         self.assertEqual(m["warnings"], 2)                                      # a repeated id, a record with no id
         self.assertEqual(len(m["outputs"]), 4)
+        self.assertIs(m["harvest_partial"], False)                              # the whole catalog
 
     def test_t02_clean(self):
         self.run_step("020_clean")
@@ -97,6 +98,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual({r["maintainer"] for r in records},
                          {"Kristan Morgan", "Jane Roe", "Earthdata Forum", "Ames Team", "undefined"})
         self.assertEqual(self.manifest("020_clean")["inputs"][0]["run_id"], self.manifest("010_harvest")["run_id"])
+        self.assertIs(self.manifest("020_clean")["harvest_partial"], False)    # passed on from 010
 
     def test_t03_split(self):
         records = [json.loads(x) for x in self.output("020_clean", "records.jsonl").read_text(encoding="utf-8").splitlines()]

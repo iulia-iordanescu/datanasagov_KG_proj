@@ -76,7 +76,8 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
               f"| Finished | {run['finished']} |",
               f"| Duration | {_duration(run['duration_s'])} |",
               f"| Git commit | {run['git_commit']} |",
-              f"| Harvest date | {run['harvest_date'] or 'unknown'} |",
+              f"| Harvest date | {run['harvest_date'] or 'unknown'}"
+              f"{' (a trial harvest: part of the catalog only)' if run.get('harvest_partial') else ''} |",
               f"| Log | {_link(run['log'], path)} |",
               "",
               "The run's full recipe: the Git commit above (the code), its Settings (the model among them), "

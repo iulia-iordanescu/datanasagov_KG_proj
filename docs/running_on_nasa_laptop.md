@@ -65,6 +65,8 @@ Each [step](terminology.md#8-the-pipeline) reads what the one before it wrote, s
 
 Each step ends by printing where its [report](terminology.md#8-the-pipeline) is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`<step>/<step>.md`) says what every warning means and what to do.
 
+**Or all in order:** `py run_pipeline.py` runs the steps above one after the other, each exactly as its command would (`--from 040`, `--to 060`, or `--only 070` for part of them). Each step that pays still asks before paying. It stops at the first step that doesn't finish; 050 drafts a new batch only when no batch is waiting for you to correct; 060 and 070 wait until the ground truth has a [finished record](terminology.md#4-ground-truth-and-samples). At the end it prints where its own report is (`outputs/reports/000_pipeline_<date>_<time>.md`): each step's status, headline numbers, warnings, and report, and what needs you. For the test run (section 5), run the steps one by one: their tiny settings differ from step to step.
+
 ## 5. The steps that cost money: 040, 050, 060, 070
 
 Each sends [texts](terminology.md#1-records-and-their-text) to the AI [model](terminology.md#8-the-pipeline), and each request is a [paid call](terminology.md#8-the-pipeline). Before its first call, each one prints its plan (how many calls, which model) and waits: **Enter** goes ahead, anything else stops, having spent nothing. If the [run](terminology.md#8-the-pipeline) can't do exactly what you asked, it says so above that question. Its first call is a one-line test that your key and the model work, so a mistake costs one call, not hundreds.
@@ -75,7 +77,7 @@ Every model answer is kept in the [step](terminology.md#8-the-pipeline)'s `cache
 
 The cheapest way to check that everything works, about 20 [paid calls](terminology.md#8-the-pipeline) in all:
 
-1. **010, 020, 030: run them for real** (section 4). They cost nothing. Don't make a "quick trial" [harvest](terminology.md#1-records-and-their-text) (`--max_records`): 030 writes its file only once, so a trial catalog would stay in it until you delete `outputs/intermediate_results/030_split/splits.json`.
+1. **010, 020, 030: run them for real** (section 4). They cost nothing. A "quick trial" [harvest](terminology.md#1-records-and-their-text) (`--max_records`) only checks that harvesting works: 030 writes its file only once, so it won't split a trial catalog. Run the full harvest before 020 and 030.
 2. **040–070: tiny runs**, in order:
 
    | [Step](terminology.md#8-the-pipeline) | Command | Paid calls, roughly |

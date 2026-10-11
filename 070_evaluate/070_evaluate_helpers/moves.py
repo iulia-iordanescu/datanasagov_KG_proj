@@ -112,10 +112,11 @@ def _log_look(evaluated, schema_file: str) -> int:
 
 def _per_record(records: list, hidden: int) -> str:
     lines = ["# Per record", "",
-             "Each evaluated record: its pairs (✓ exact / ≈ partial, with both triples), extracted but not "
-             "in the ground truth (count against precision), and in the ground truth but not extracted (count "
-             "against recall). Extracted triples are shown translated into the ground truth vocabulary. Terms: "
-             "docs/terminology.md, section *Evaluating extraction*.", ""]
+             "Each evaluated record: its pairs (✓ exact / ≈ partial), each with its ground truth triple and its "
+             "occurrence; its occurrences left extracted only (each counts against precision); and its ground "
+             "truth triples left ground truth only (each counts against recall). Occurrences are shown translated "
+             "into the ground truth vocabulary. Terms: docs/terminology.md, section *Evaluating extraction*; "
+             "pairs: 070_evaluate/metrics/pairs.md.", ""]
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
                   f"(`--evaluate_held_out true` lists them, and logs the look).", ""]
@@ -150,7 +151,7 @@ def _per_record(records: list, hidden: int) -> str:
             lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: no predicate of the current schema translates to this one")
                       for f, reach in missed] + [""]
         if not (c["pairs"] or extra or missed):
-            lines += ["No triples in the ground truth, and none extracted.", ""]
+            lines += ["No ground truth triples, and no extracted triples.", ""]
     return "\n".join(lines)
 
 
@@ -188,18 +189,20 @@ def _compared_rows(records: list) -> list:
 def _mismatch_lines(mismatches: list) -> list:
     """The report's list of component class mismatches (pairing.component_class_mismatches)."""
     lines = ["### Component class mismatches", "",
-             "A mismatch: extraction found the triple, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
+             "A mismatch: extraction stated the fact, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
              "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, Translation table). Seen once, it may just be "
              "extraction choosing the wrong component class.", "",
              "How to read a row of the table below, e.g. *entity class | Body | Spacecraft | CelestialBody | 9*: "
              "these events, "
              "counted together, happened 9 times:", "",
-             "- **entity class, subject:** extraction used `Body` (current schema) as the entity class of a "
-             "triple's subject, translated to `Spacecraft` (ground truth vocabulary), while the ground truth triple paired with it (a pair, "
+             "- **entity class, subject:** extraction used `Body` (current schema) as the entity class of an "
+             "extracted triple's subject, translated to `Spacecraft` (ground truth vocabulary), while the ground truth triple paired with it (a pair, "
              "exact or partial) had `CelestialBody` (ground truth vocabulary) as its subject's entity class;",
-             "- **entity class, object:** the same, for the object's entity class. One triple can count twice, "
-             "once per slot;",
+             "- **entity class, object:** extraction used a component class of the current schema as the entity "
+             "class of an extracted triple's object, translated to one component class of the ground truth "
+             "vocabulary, while the ground truth triple paired with it had another as its object's entity class. "
+             "One pair can count twice: once for the subjects' entity classes, once for the objects';",
              "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject and "
              "object, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
              "predicate (ground truth vocabulary). With subject and object the other way round, the "
@@ -292,7 +295,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
         warnings.append(f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times where extraction "
-                        f"found the triple but a component class differed: a translation in component_class_mapping.csv may be wrong or "
+                        f"stated the fact but a component class differed: a translation in component_class_mapping.csv may be wrong or "
                         f"missing. See Component class mismatches.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
@@ -351,9 +354,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         lines += ["| Pair level | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
         for level in pairing.LEVELS:
             L = n[level]
-            lines.append(f"| {level} | triples | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} "
+            lines.append(f"| {level} | all pairs | {_with_margin(L['precision'])} | {_with_margin(L['recall'])} "
                          f"| {_with_margin(L['f1'])} |")
-            lines.append(f"| {level} | triples with entity classes (strict) | {_with_margin(L['strict_precision'])} "
+            lines.append(f"| {level} | strict pairs (entity classes too) | {_with_margin(L['strict_precision'])} "
                          f"| {_with_margin(L['strict_recall'])} | {_with_margin(L['strict_f1'])} |")
         recs = [r for r in evaluated.records if r["part"] == part]
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
@@ -393,7 +396,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     lines += ["A margin of error covers only which records happened to be evaluated: not mistakes in the ground "
               "truth, not the model answering differently on another run, and not changes made while looking at "
               "these records. The metrics assume the ground truth lists every fact the records state.", "",
-              f"Every record's triples, side by side: `{PER_RECORD_NAME}`; one row per triple: `{COMPARED_NAME}`; "
+              f"Every record's ground truth triples and occurrences, side by side: `{PER_RECORD_NAME}`; one row per "
+              f"pair, per occurrence left extracted only, and per ground truth triple left ground truth only: "
+              f"`{COMPARED_NAME}`; "
               f"every number: `{METRICS_NAME}`.", ""]
     lines += model_calls([("propose component class translations", translation.calls, None),
                           ("suggest counterparts for (none) rows", translation.suggest_calls, None)],

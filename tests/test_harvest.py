@@ -89,8 +89,10 @@ class Harvest(unittest.TestCase):
         h, c = self.harvest(max_records=12)
         self.assertEqual((h.target, c.records), (12, 12))
         self.assertEqual(len(batches.load_batch(self.out / "batch_00010.json")["records"]), 2)
+        self.assertTrue(moves.results(h, c).harvest_partial)                    # passed on, so 030 won't split it
         h, c = self.harvest()
         self.assertEqual((h.reused, h.replaced, c.records), (1, 1, 25))
+        self.assertFalse(moves.results(h, c).harvest_partial)
 
     def test_smaller_trial_removes_extra(self):
         self.harvest()

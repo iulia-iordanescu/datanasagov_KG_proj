@@ -78,6 +78,8 @@ class Results:
     details: str = ""                               # Markdown for the report's Results section
     warnings: list = field(default_factory=list)    # one sentence each
     harvest_date: str | None = None                 # set by 010; later steps inherit it
+    harvest_partial: bool | None = None             # set by 010: True for a trial harvest (fewer records than the
+                                                    # catalog has, --max_records); later steps inherit it
 
 
 #: The lowest allowed value of settings several steps share, so a setting
@@ -203,8 +205,9 @@ def _check_inputs(inputs: dict, defaults: dict, may_be_empty=()) -> None:
 def _describe_inputs(inputs: dict) -> tuple:
     """For each input: its files, their hash, and the run that produced them
     (from the manifest beside them, if any). Returns (rows, warnings,
-    harvest_dates)."""
-    rows, warnings, harvest_dates = [], [], set()
+    harvest_dates, harvest_partial): harvest_partial is True if any input
+    comes from a trial harvest, None if no input says."""
+    rows, warnings, harvest_dates, harvest_partial = [], [], set(), None
     for key, path in inputs.items():
         files = input_files(path)
         where = files[0] if files else path          # an input allowed to have no files yet: its pattern
@@ -224,6 +227,8 @@ def _describe_inputs(inputs: dict) -> tuple:
                 origin = run_id or f"{m.get('step', '?')}, finished {m.get('finished', '?')}"
                 if m.get("harvest_date"):
                     harvest_dates.add(m["harvest_date"])
+                if m.get("harvest_partial") is not None:
+                    harvest_partial = bool(harvest_partial) or bool(m["harvest_partial"])
             except (ValueError, OSError):
                 origin = "unknown (manifest unreadable)"
         if run_id is None and not in_git and files:
@@ -236,7 +241,7 @@ def _describe_inputs(inputs: dict) -> tuple:
         log.info(f"input {key}: {row['path']} ({len(files)} file{'s' if len(files) != 1 else ''}), "
                  f"from {origin}")
         log.debug(f"input {key}: sha256 {row['sha256']}")
-    return rows, warnings, harvest_dates
+    return rows, warnings, harvest_dates, harvest_partial
 
 
 def _name_in(folder: Path, f) -> str:
@@ -285,6 +290,7 @@ def _write_manifest(output: Path, run: dict, settings: dict, input_rows: list,
         "finished": run["finished"],
         "git_commit": run["git_commit"],
         "harvest_date": run["harvest_date"],
+        "harvest_partial": run["harvest_partial"],
         "settings": settings,
         "prompts": run.get("prompts", []),
         "inputs": input_rows,
@@ -359,6 +365,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
 
     run = {"run_id": run_id, "step": step_name, "started": _stamp(started), "finished": None,
            "duration_s": None, "git_commit": git_commit(), "harvest_date": None,
+           "harvest_partial": None,
            "status": "running", "report": _rel(report), "log": _rel(log_file),
            "settings_changed": changed}
 
@@ -372,7 +379,8 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     old_manifest = None                  # nothing to restore if the run stops before taking it
     try:
         _check_inputs(chosen_inputs, inputs, may_be_empty)
-        input_rows, input_warnings, harvest_dates = _describe_inputs(chosen_inputs)
+        input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs)
+        run["harvest_partial"] = harvest_partial              # what the inputs say (010 replaces it below)
         output.mkdir(parents=True, exist_ok=True)
         # The old manifest may no longer describe this folder once the run
         # starts writing, so it is removed; if the run fails, it is put back
@@ -388,6 +396,8 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         results.warnings = input_warnings + list(results.warnings)
         run["harvest_date"] = results.harvest_date or (
             ", ".join(sorted(harvest_dates)) if harvest_dates else None)
+        if results.harvest_partial is not None:
+            run["harvest_partial"] = results.harvest_partial
         output_rows = _describe_outputs(output, results)
         run["status"] = "done"
     except InputMissing as exc:

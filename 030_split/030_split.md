@@ -148,6 +148,7 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 
 | Message | Meaning | What to do |
 |---|---|---|
+| *The records come from a trial harvest (part of the catalog only, --max_records) …* | Step 010 ran with `--max_records`, so the records are part of the catalog only; `splits.json` is written once, so it isn't written from them. | Run the full harvest (`py 010_harvest/run.py`), then 020, then 030 again. An existing `splits.json` is never affected. |
 | *… lists these ids more than once* | The pool file repeats an id. | Fix `annotations/ground_truth_candidates.csv`. |
 | *… needs the columns id and maintainer* | The pool file isn't in the expected form. | Check the file. |
 | *missing input files: candidates …* | The pool file isn't there. 030 never draws a pool. | Put the pool in `annotations/ground_truth_candidates.csv`, or pass `--candidates`. |
