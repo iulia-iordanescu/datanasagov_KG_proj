@@ -29,20 +29,20 @@ from common.llm import MODEL
 from common.step import load_moves, run_step
 
 INPUTS = {
-    "records":            "020_clean/records.jsonl",
-    "splits":             "030_split/splits.json",
-    "extracted_triples":  "060_extract/extracted_triples.csv",
+    "records":                   "020_clean/records.jsonl",
+    "splits":                    "030_split/splits.json",
+    "extracted_triples":         "060_extract/extracted_triples.csv",
     "extracted_triples_details": "060_extract/extracted_triples_details.json",
-    "schema_used":        "060_extract/schema_used.json",
-    "candidates":         "./annotations/ground_truth_candidates.csv",
-    "hand_schema":        "./annotations/schema_derived_from_manual_annotation.txt",
-    "ground_truth":       "./annotations/ground_truth/batch_*.csv",
-    "component_class_mapping":       "./annotations/component_class_mapping.csv",
-    "partial_reviews":    "./annotations/partial_pair_reviews.csv",
+    "schema_used":               "060_extract/schema_used.json",
+    "candidates":                "./annotations/ground_truth_candidates.csv",
+    "hand_schema":               "./annotations/schema_derived_from_manual_annotation.txt",
+    "ground_truth":              "./annotations/ground_truth/batch_*.csv",
+    "component_class_mapping":   "./annotations/component_class_mapping.csv",
+    "partial_reviews":           "./annotations/partial_pair_reviews.csv",
 }
 
 SETTINGS = {
-    "evaluate_held_out":     False,  # also show the held-out part's numbers (for the end; each look is logged)
+    "evaluate_held_out":  False,  # also show the held-out part's numbers (for the end; each look is logged)
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)
     "confirm_paid_calls": True,   # stop and ask before evaluating with warnings, and before the first model call; false for unattended runs
 }
@@ -51,12 +51,12 @@ evaluate = load_moves("070_evaluate")
 
 
 def main(inputs, settings, output):
-    evaluated = evaluate.pick_records(inputs, settings)              # code: finished, extracted, in the fair sample
-    calls     = evaluate.paid_calls(evaluated, settings, output)     # code: asks before paying; keeps every answer in cache/
-    translation     = evaluate.translate_component_classes(inputs, evaluated, calls)   # LLM: Satellite → Spacecraft, new component classes only (+ suggestions for (none) rows); you check
-    evaluated = evaluate.compare(evaluated, translation)                   # code: per record, exact pairs / partial pairs / extracted only / ground truth only
-    metrics   = evaluate.compute_metrics(evaluated, settings)        # code: the numbers, with margins, per part and stratum
-    # writes metrics.json, per_record.md, compared_triples.csv; the report
+    evaluated   = evaluate.pick_records(inputs, settings)                      # code: finished, extracted, in the fair sample
+    calls       = evaluate.paid_calls(evaluated, settings, output)             # code: asks before paying; keeps every answer in cache/
+    translation = evaluate.translate_component_classes(inputs, evaluated, calls)  # LLM: Satellite → Spacecraft, new ones only; you check
+    evaluated   = evaluate.compare(evaluated, translation)                     # code: per record, exact pairs / partial pairs / extracted only / ground truth only
+    metrics     = evaluate.compute_metrics(evaluated, settings)                # code: the numbers, with margins, per part and stratum
+    # writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
     return evaluate.results(evaluated, translation, metrics, calls, settings, output)
 
 

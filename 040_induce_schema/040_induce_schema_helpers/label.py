@@ -42,16 +42,17 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, key
-from common import llm
+from common.cache import Cache, ask_cached
 from common.audit import log
-from common import prompt_files
 from common.prompt_files import fill, load
 
 #: The two kinds of component instance, by slot: "entity" for subject and
 #: object slots (labeled with entity classes), "predicate" for the predicate
 #: slot (labeled with predicates).
 KINDS = ("entity", "predicate")
+#: What each kind of label becomes: the labels of entity component instances
+#: are entity classes; those of predicate component instances are predicates.
+BECOMES = {"entity": "entity class", "predicate": "predicate"}
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
 PROMPTS = {"entity": load(PROMPTS_DIR / "label_entity_instances.txt"),
@@ -72,7 +73,9 @@ class Labels:
     merges: list = field(default_factory=list)      # filled by stage 4
     merge_issues: dict = field(default_factory=dict)
     calls: int = 0                                  # model calls made by stage 3
+    reused: int = 0                                 # stage 3's batches answered from the cache
     merge_calls: int = 0                            # model calls made by stage 4
+    merge_reused: int = 0                           # stage 4's calls answered from the cache
 
 
 def component_instances(triples) -> dict:
@@ -145,16 +148,10 @@ def label_component_instances(triples, calls) -> Labels:
 
         def ask(items: dict) -> dict:
             """The labels for one batch: from the cache, else from the model."""
-            k = key(prompt_files.text(prompt), kind, items, vocabulary)
-            reply = cache.get(k)
-            if reply is None:
-                calls.paid.start("  040 needs model calls to label component instances")
-                reply = llm.call_llm_json(fill(prompt, vocabulary=json.dumps(vocabulary, ensure_ascii=False),
-                                               items=json.dumps(items, ensure_ascii=False, indent=0)))
-                calls.paid.made_call()
-                reply = reply.get("labels") if isinstance(reply.get("labels"), dict) else {}
-                cache.put(k, reply)
-            return reply
+            reply = ask_cached(cache, calls, fill(prompt, vocabulary=json.dumps(vocabulary, ensure_ascii=False),
+                                                  items=json.dumps(items, ensure_ascii=False, indent=0)),
+                               f"  040 will ask the model to label component instances, {LABEL_BATCH} per call")
+            return reply.get("labels") if isinstance(reply.get("labels"), dict) else {}
 
         for start in range(0, len(order), LABEL_BATCH):
             batch = order[start:start + LABEL_BATCH]
@@ -168,10 +165,10 @@ def label_component_instances(triples, calls) -> Labels:
             vocabulary += new
             labels.update(got)
             unlabeled += missing
-            result.batches.append({"kind": {"entity": "entity class", "predicate": "predicate"}[kind], "component_instances": len(batch), "new_labels": new,
+            result.batches.append({"kind": BECOMES[kind], "component_instances": len(batch), "new_labels": new,
                                    "reused": len(set(got.values())) - len(new)})
         result.of[kind], result.vocabulary[kind], result.unlabeled[kind] = labels, vocabulary, unlabeled
         log.info(f"  {kind} component instances: {len(labels):,} labeled with {len(vocabulary):,} labels"
                  + (f"; {len(unlabeled)} left unlabeled" if unlabeled else ""))
-    result.calls = calls.paid.made - before
+    result.calls, result.reused = calls.paid.made - before, cache.reused
     return result

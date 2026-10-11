@@ -33,6 +33,7 @@ from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
 from common.step import check_settings, input_files
+from common.stop import Stop
 from common.triples_io import is_describes
 
 
@@ -82,10 +83,10 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     gt = evaluated.ground_truth = read_ground_truth(gt_files[0].parent)        # run_step made sure there is one
     evaluated.notes += [f"Ground truth, {p}" for p in gt.problems]
     if gt.repeats:
-        raise SystemExit(refusal(gt.repeats))
+        raise Stop(refusal(gt.repeats))
     pool_rows = read_pool(inputs["splits"])
     if any("part" not in r for r in pool_rows):
-        raise ValueError("splits.json has no tuning / held-out part for its records: rebuild it with 030 "
+        raise Stop("splits.json has no tuning / held-out part for its records: rebuild it with 030 "
                          "(delete 030's splits.json, then run py 030_split/run.py)")
     evaluated.pool = [r["id"] for r in pool_rows]
     by_id = {r["id"]: r for r in pool_rows}
@@ -140,7 +141,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         evaluated.notes.append(f"{len(missing_stratum)} evaluated record(s) have no stratum in the pool file, so "
                             f"the per-stratum numbers show them as the stratum \"(no stratum)\": {named(missing_stratum)}.")
     if not evaluated.records:
-        raise SystemExit("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
+        raise Stop("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
                          "fair sample. " + " ".join(evaluated.notes))
     if evaluated.notes:                            # before anything is evaluated, even on a run that pays nothing
         show_warnings("070", evaluated.notes)

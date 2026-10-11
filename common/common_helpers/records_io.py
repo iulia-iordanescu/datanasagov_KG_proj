@@ -17,6 +17,9 @@ import json
 import re
 from pathlib import Path
 
+from common.audit import ref_path
+from common.stop import Stop
+
 #: The free-text fields every record has (020 always writes them).
 TEXT_FIELDS = ("title", "notes")
 
@@ -33,7 +36,7 @@ def load_records(path) -> dict:
             record = json.loads(line)
             rid = record["id"]
             if rid in records:
-                raise ValueError(f"{Path(path).name} line {number}: id {rid} appears twice")
+                raise Stop(f"{ref_path(path)} line {number}: id {rid} appears twice (rerun the step that wrote it)")
             records[rid] = record
     return records
 
@@ -55,7 +58,7 @@ def read_ids(value: str) -> list:
     if looks_like_file:
         path = Path(value)
         if not path.is_file():
-            raise ValueError(f"ids names the file {value}, which doesn't exist")
+            raise Stop(f"ids names the file {value}, which doesn't exist")
         ids = []
         for line in path.read_text(encoding="utf-8-sig").splitlines():
             first = line.split(",")[0].strip().strip('"')

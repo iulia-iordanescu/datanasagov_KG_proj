@@ -41,11 +41,12 @@ from common import extraction
 from common.audit import log
 from common.prompt_files import load
 from common.text_match import Text
+from common.triples_io import REQUIRED
 from common.validate import check_triple_instance
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
 PROMPT = load(PROMPTS_DIR / "extract.txt")
-SLOTS = ("subject", "predicate", "object")
+SLOTS = REQUIRED                                  # subject, predicate, object
 
 
 @dataclass
@@ -53,6 +54,7 @@ class TripleInstances:
     texts: list = field(default_factory=list)     # {"id", "maintainer", "title", "describes_class",
                                                   #  "triple_instances", "unverified"}
     failed: dict = field(default_factory=dict)    # {text id: why}: left out whole, asked again on the next run
+    failed_note: str | None = None                # the report's warning about them
     malformed: int = 0                            # items in replies that weren't a triple instance
     errors: dict = field(default_factory=dict)    # {check: triple instances left out for it}
     flags: dict = field(default_factory=dict)     # {check: verified triple instances that raised it}
@@ -77,15 +79,14 @@ def _from_reply(reply: dict) -> tuple:
     return good, len(items) - len(good), describes
 
 
-def prompt_for(item: dict, piece: str) -> str:
-    return extraction.prompt(PROMPT, "", item["record"], piece, with_classes=False)
-
-
 def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
+    def prompt_for(item, piece):
+        return extraction.prompt(PROMPT, "", item["record"], piece, with_classes=False)
     replies = extraction.ask_model(texts.items, prompt_for, calls, settings["workers"], "extract",
                                    "040 will extract triple instances (then make a few more calls to label, merge "
                                    "and define what it finds, all counted in the report)", "extracting")
-    result = TripleInstances(failed=dict(replies.failed), calls=replies.calls, reused=replies.reused)
+    result = TripleInstances(failed=dict(replies.failed), failed_note=extraction.failed_note(replies, "the evidence"),
+                             calls=replies.calls, reused=replies.reused)
 
     errors, flags = collections.Counter(), collections.Counter()
     for t in texts.items:

@@ -25,6 +25,7 @@ from common.llm import maker
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.step import check_settings, input_files
+from common.stop import Stop
 
 MODES = ("ground_truth", "all")
 
@@ -43,7 +44,7 @@ class Chosen:
 def pick_records(inputs: dict, settings: dict) -> Chosen:
     check_settings(settings, {})
     if settings["extract_from"] not in MODES:
-        raise ValueError(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}); "
+        raise Stop(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}); "
                          f"to name records, use ids")
     chosen = Chosen(records=load_records(inputs["records"]))
     chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in read_pool(inputs["splits"])}
@@ -90,7 +91,7 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
             chosen.notes.append(f"{len(rids)} {who} {'are' if len(rids) > 1 else 'is'} {reason}, "
                                 f"so skipped: {named(rids)}.")
     if not chosen.items:
-        raise SystemExit("Nothing to extract. " + " ".join(chosen.notes))
+        raise Stop("Nothing to extract. " + " ".join(chosen.notes))
     chosen.notes += same_model_notes(gt, {i["id"] for i in chosen.items}, settings["model"])
     return chosen
 

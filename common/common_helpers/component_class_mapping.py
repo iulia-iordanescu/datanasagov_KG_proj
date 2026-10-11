@@ -56,7 +56,9 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from common.audit import ref_path
 from common.step import ANNOTATIONS_DIR
+from common.stop import Stop
 from common.triples_io import component_class_key
 
 MAPPING_PATH = ANNOTATIONS_DIR / "component_class_mapping.csv"
@@ -126,7 +128,7 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
         reader = csv.DictReader(fh)
         missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
         if missing:
-            raise ValueError(f"{Path(path).name} lacks the column(s) {', '.join(missing)}")
+            raise Stop(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}: restore its header")
         rows = []
         for r in reader:
             if (r.get("component_class_from_past_or_crt_schema") or "").strip():

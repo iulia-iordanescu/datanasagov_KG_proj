@@ -6,7 +6,7 @@ moves.py -- the main moves of 050_annotate, as called by 050_annotate/run.py.
     stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
     stage 3  (here)      build_rows          code: DESCRIBES row, duplicates out, every row checked
     stage 4  (here)      check_ground_truth  code: errors in the ground truth files
-    -        (here)      results             writes the draft batch; the report
+    -        (here)      results             writes drafted_triples_batch<N>.csv and drafted_triples_batch<N>_details.json; the report
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet.
@@ -113,9 +113,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
 
     warnings = list(chosen.notes)                  # shown before paying too, if the run paid
     if replies.failed:
-        warnings.append(f"{len(replies.failed)} record(s) failed and are not in the batch: "
-                        f"{named(list(replies.failed), 3)}. "
-                        f"Run the step again: only those are asked again; every answer already paid for is reused.")
+        warnings.append(extraction.failed_note(replies, "the batch"))
     if not csv_rows:
         warnings.append("No record was drafted, so no batch was written.")
     coined = [n for kind in ("entity_classes", "predicates") for n in chosen.coined[kind]]
@@ -166,7 +164,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         if len(typos) > SHOW:
             lines.append(f"| … {len(typos) - SHOW} more | | |")
         lines.append("")
-    lines += model_calls([("draft triple instances (one per text piece)", replies.calls, replies.reused)],
+    lines += model_calls([("stage 2: draft triple instances (one call per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.MODEL)
 
     return Results(

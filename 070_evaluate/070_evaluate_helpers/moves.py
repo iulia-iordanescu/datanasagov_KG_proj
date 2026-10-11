@@ -1,12 +1,12 @@
 """
 moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
 
-    stage 1  records.py  pick_records     code: which records are evaluated (finished, extracted, in the fair sample)
-    -        (here)      paid_calls       code: asks before paying; keeps every answer in cache/
+    stage 1  records.py            pick_records                 code: which records are evaluated (finished, extracted, in the fair sample)
+    -        (here)                paid_calls                   code: asks before paying; keeps every answer in cache/
     stage 2  component_classes.py  translate_component_classes  LLM: current schema's component classes → ground truth vocabulary, new ones only (+ suggestions for (none) rows); you check
-    stage 3  pairing.py    compare          code: record by record, exact and partial pairs, strict, within reach
-    stage 4  stats.py    compute_metrics  code: the numbers, each with its margin of error, per part and stratum
-    -        (here)      results          writes metrics.json, per_record.md and compared_triples.csv; the report
+    stage 3  pairing.py            compare                      code: record by record, exact and partial pairs, strict, within reach
+    stage 4  stats.py              compute_metrics              code: the numbers, each with its margin of error, per part and stratum
+    -        (here)                results                      writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet.
@@ -277,14 +277,14 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             warnings.append(f"{part}: an assumption of the margin of error doesn't hold, so some ranges are less "
                             f"trustworthy; see the report's section on the margin of error's assumptions.")
     if translation.suggested:
-        warnings.append(f"The model suggests {len(translation.suggested)} row(s) of component_class_mapping.csv that say (none) may "
+        warnings.append(f"The model suggests {len(translation.suggested)} row(s) of annotations/component_class_mapping.csv that say (none) may "
                         f"now have a counterpart in the ground truth vocabulary: "
                         + named([f"{s['component_class_from_past_or_crt_schema']} (current schema) --> {s['component_class_in_gtt']} "
                                  f"(ground truth vocabulary)" for s in translation.suggested], 5, "; ")
                         + ". Rows aren't changed: check them (py helpers/annotate.py, Translation table, shows the "
                           "suggestion).")
     if translation.outdated:
-        warnings.append(f"{len(translation.outdated)} row(s) of component_class_mapping.csv translate to (none) though the ground "
+        warnings.append(f"{len(translation.outdated)} row(s) of annotations/component_class_mapping.csv translate to (none) though the ground "
                         f"truth vocabulary now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
                         f"date: check them (py helpers/annotate.py, Translation table); keep (none) only if the ground "
                         f"truth's component class means something else.")
@@ -295,7 +295,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
         warnings.append(f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times where extraction "
-                        f"stated the fact but a component class differed: a translation in component_class_mapping.csv may be wrong or "
+                        f"stated the fact but a component class differed: a translation in annotations/component_class_mapping.csv may be wrong or "
                         f"missing. See Component class mismatches.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
@@ -400,8 +400,10 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
               f"pair, per occurrence left extracted only, and per ground truth triple left ground truth only: "
               f"`{COMPARED_NAME}`; "
               f"every number: `{METRICS_NAME}`.", ""]
-    lines += model_calls([("propose component class translations", translation.calls, None),
-                          ("suggest counterparts for (none) rows", translation.suggest_calls, None)],
+    lines += model_calls([("stage 2: propose component class translations (one call)", translation.calls,
+                           translation.reused),
+                          ("stage 2: suggest counterparts for (none) rows (one call)", translation.suggest_calls,
+                           translation.suggest_reused)],
                          calls.paid.test_calls, llm.MODEL)
 
     tuning = metrics.get("tuning", {}).get("numbers")

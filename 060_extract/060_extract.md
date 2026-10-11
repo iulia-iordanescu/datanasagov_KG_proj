@@ -222,7 +222,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N record(s) failed and are not in the output* | Their [model calls](../docs/terminology.md#8-the-pipeline) failed (after the model client's own retries). | Run the [step](../docs/terminology.md#8-the-pipeline) again: only those are asked again, and every answer already paid for is reused. |
+| *N record(s) failed: a model call for one of their text pieces failed, so each is left out of the output whole* | A [model call](../docs/terminology.md#8-the-pipeline) for a [text piece](../docs/terminology.md#1-records-and-their-text) of those records failed (after the model client's own retries), so each is left out whole, never half extracted. The report gives each record's id and why. | Run the step again: only the failed pieces are asked again, and every answer already paid for is reused. |
 | *N of M rows have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:

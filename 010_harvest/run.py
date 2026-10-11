@@ -32,7 +32,7 @@ harvest = load_moves("010_harvest")
 def main(inputs, settings, output):
     pages = harvest.download_catalog(settings, output)   # code: every page, skipping pages on disk
     check = harvest.check_complete(pages)                # code: saved = reported? any repeated ids?
-    # writes the batch files; the report
+    # writes the batch files (already on disk); the report
     return harvest.results(pages, check)
 
 

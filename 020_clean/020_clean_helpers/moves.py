@@ -32,11 +32,12 @@ from pathlib import Path
 
 import maintainers
 import note_cleaning
-from common.audit import ORIGIN_FIELD, check_origins, log, origin
+from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_jsonl
 from common.records_io import TEXT_FIELDS
 from common.report import cell
 from common.step import Results, input_files
+from common.stop import Stop
 
 OUTPUT_NAME = "records.jsonl"
 CLEANING_FIELD = "_cleaning"         # which method cleaned each text field
@@ -89,7 +90,7 @@ def _text_fields(settings: dict) -> tuple:
     extra = settings["extra_text_fields"].split()
     clashes = [name for name in extra if name in STRUCTURED_FIELDS]
     if clashes:
-        raise ValueError(f"extra_text_fields names {', '.join(clashes)}, which 020 already writes "
+        raise Stop(f"extra_text_fields names {', '.join(clashes)}, which 020 already writes "
                          f"as a field of its own; a text field of that name would overwrite it.")
     # title and notes named again are harmless: each field is listed once.
     return tuple(dict.fromkeys(TEXT_FIELDS + tuple(extra)))
@@ -103,8 +104,8 @@ def load_raw(inputs: dict, settings: dict) -> Catalog:
     for path in files:
         batch = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(batch, dict) or "records" not in batch:
-            raise ValueError(f"{path.name} is in the old batch format (a bare list, with no "
-                             f"request block). Rerun 010_harvest to fetch it again.")
+            raise Stop(f"{ref_path(path)} is in the old batch format (a bare list, with no "
+                       f"request block). Run py 010_harvest/run.py again to fetch it again.")
         for position, raw in enumerate(batch["records"]):
             catalog.read += 1
             rid = str(raw.get("id") or "").strip()

@@ -35,12 +35,11 @@ import collections
 import json
 from pathlib import Path
 
-from common.cache import Cache, key
-from common import llm
+from common.cache import Cache, ask_cached
 from common.audit import log
-from common import prompt_files
 from common.prompt_files import fill, load
-from label import KINDS
+from common.stop import Stop
+from label import BECOMES, KINDS
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
 PROMPTS = {"entity": load(PROMPTS_DIR / "merge_entity_classes.txt"),
@@ -53,10 +52,6 @@ MAX_LABELS_ONE_CALL = 800
 
 #: Example component instances shown for each label.
 EXAMPLES = 3
-
-#: What each kind of label becomes: the labels of entity component instances
-#: are entity classes; those of predicate component instances are predicates.
-BECOMES = {"entity": "entity class", "predicate": "predicate"}
 
 
 def _final(decided: dict, label: str) -> str:
@@ -82,7 +77,7 @@ def merge_labels(labels, triples, calls):
                         texts_with[labels.of[kind][value]].add(t["id"])
         sent = sorted(labels.vocabulary[kind])
         if len(sent) > MAX_LABELS_ONE_CALL:
-            raise ValueError(f"{len(sent)} {kind} labels are more than one call takes "
+            raise Stop(f"{len(sent)} {kind} labels are more than one call takes "
                              f"({MAX_LABELS_ONE_CALL}). Merging them in separate groups would let "
                              f"synonyms miss each other; group them by meaning first (see "
                              f"040_induce_schema/040_induce_schema.md, Known limits).")
@@ -91,15 +86,9 @@ def merge_labels(labels, triples, calls):
         if len(sent) > 1:
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
                         "examples": [v for v, _ in instances_of[lbl].most_common(EXAMPLES)]} for lbl in sent]
-            k = key(prompt_files.text(PROMPTS[kind]), kind, listing)
-            reply = cache.get(k)
-            if reply is None:
-                calls.paid.start("  040 needs model calls to merge synonymous labels")
-                reply = llm.call_llm_json(fill(PROMPTS[kind],
-                                               labels=json.dumps(listing, ensure_ascii=False, indent=0)),
-                                          read_timeout=600)
-                calls.paid.made_call()
-                cache.put(k, reply)
+            reply = ask_cached(cache, calls, fill(PROMPTS[kind], labels=json.dumps(listing, ensure_ascii=False, indent=0)),
+                               "  040 will ask the model to merge synonymous labels, one call per kind",
+                               read_timeout=600)
             decided = {}
             for m in reply.get("merges") if isinstance(reply.get("merges"), list) else []:
                 if not isinstance(m, dict):
@@ -129,5 +118,5 @@ def merge_labels(labels, triples, calls):
         labels.merge_issues[kind] = issues
         merged = sum(1 for m in labels.merges if m["kind"] == BECOMES[kind])
         log.info(f"  {BECOMES[kind]} labels: {merged} of {len(sent)} merged into others")
-    labels.merge_calls = calls.paid.made - before
+    labels.merge_calls, labels.merge_reused = calls.paid.made - before, cache.reused
     return labels

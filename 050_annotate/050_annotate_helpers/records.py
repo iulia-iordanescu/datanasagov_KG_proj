@@ -43,6 +43,7 @@ from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
 from common.step import check_settings, input_files
+from common.stop import Stop
 from common.validate import SchemaEntries
 
 
@@ -174,5 +175,5 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
                             " Fine for a closer look at chosen records, but step 070 evaluates only the fair "
                             "sample, so they won't be evaluated until the records before them are annotated.")
     if not chosen.items:
-        raise SystemExit("Nothing to draft. " + " ".join(chosen.notes))
+        raise Stop("Nothing to draft. " + " ".join(chosen.notes))
     return chosen

@@ -49,7 +49,7 @@ Draft batches already in 050's output folder are read too: their records are wai
 
 In `outputs/intermediate_results/050_annotate/`:
 
-**On a rerun:** a new numbered batch is added; a batch already there is never overwritten.
+**On a rerun:** a new numbered batch is added; a batch already there is never overwritten. `cache/` keeps every answer, so a run stopped partway pays again only for what it didn't get.
 
 | File | Contents |
 |---|---|
@@ -176,7 +176,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N record(s) failed and are not in the batch* | Their [model calls](../docs/terminology.md#8-the-pipeline) failed (after the [model](../docs/terminology.md#8-the-pipeline) client's own retries). | Run the [step](../docs/terminology.md#8-the-pipeline) again: only those are asked again, and every answer already paid for is reused. The next [run](../docs/terminology.md#8-the-pipeline) drafts them first. |
+| *N record(s) failed: a model call for one of their text pieces failed, so each is left out of the batch whole* | A [model call](../docs/terminology.md#8-the-pipeline) for a [text piece](../docs/terminology.md#1-records-and-their-text) of those records failed (after the model client's own retries), so each is left out whole, never half drafted. The report gives each record's id and why. | Run the step again: only the failed pieces are asked again, and every answer already paid for is reused. The next run drafts them first. |
 | *No record was drafted, so no batch was written.* | Every call failed. | Check the connection; run again. |
 | *N component class(es) used in the ground truth aren't in the hand-built schema, so the model saw them without a definition* | Entity classes or predicates you [coined](../docs/terminology.md#7-evaluating-extraction-step-070) while annotating (or typos). The model was shown them to reuse, but with no definition to go on. | Add each one you mean to keep, with a one-line definition, to the [hand-built schema](../docs/terminology.md#3-schemas) (the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s buttons do it); fix any typo in the ground truth. |
 | *N row(s) of the ground truth have something to fix* | [Errors](../docs/terminology.md#2-triples), listed under *Your ground truth* with file and line: an id that isn't in the catalog, a subject, predicate or object partly empty, no [source text](../docs/terminology.md#1-records-and-their-text) or one not in the record's [text](../docs/terminology.md#1-records-and-their-text), a [DESCRIBES row](../docs/terminology.md#2-triples) without an entity class or whose subject isn't the record's id. | Fix them with the tool or any editor. |

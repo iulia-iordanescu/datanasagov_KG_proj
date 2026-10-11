@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 
 from common.audit import log
 from common.triples_io import component_class_key
-from merge import BECOMES
+from label import BECOMES
 
 #: Examples kept per entity class (the component instances that most often got it) and per predicate (the
 #: triple instances that most often state it, "subject -- predicate -- object": a predicate's examples need its

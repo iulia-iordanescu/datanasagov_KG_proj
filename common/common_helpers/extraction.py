@@ -13,6 +13,7 @@ and 060 is evaluated against 050 on equal terms.
     wrap(piece)                a text piece between BEGIN/END RECORD lines
     ask_model(...)             one cached model call per text piece; a record
                                with a failed call is left out whole
+    failed_note(replies, where)   the report's warning for those records
     build_rows(...)            a record's replies -> checked rows + removed items
                                (050, 060: rows with entity classes)
 
@@ -50,6 +51,7 @@ from common.audit import log
 from common.cache import Cache, key
 from common.chunking import text_fields
 from common.prompt_files import fill, load
+from common.report import named
 from common.text_match import Text
 from common.triples_io import (clean_triple, describes_row, component_class_key, triple_key)
 from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
@@ -194,3 +196,13 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     log.info(f"  {len(result.of)} record(s) answered, {len(result.failed)} failed "
              f"({result.calls} calls, {result.reused} text piece(s) from the cache)")
     return result
+
+
+def failed_note(replies: Replies, where: str) -> str | None:
+    """The warning for the records ask_model left out, with why, or None.
+    where: what they are missing from ("the batch", "the output", …)."""
+    if not replies.failed:
+        return None
+    return (f"{len(replies.failed)} record(s) failed: a model call for one of their text pieces failed, so each "
+            f"is left out of {where} whole ({named([f'{i}: {why}' for i, why in replies.failed.items()], 3, '; ')}). "
+            f"Run the step again: only the failed pieces are asked again; every answer already paid for is reused.")

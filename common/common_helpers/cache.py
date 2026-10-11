@@ -4,7 +4,7 @@ reuses it.
 
     outputs/intermediate_results/<step>/cache/<stage>.json
 
-Shared by the steps that call a model (040, 050 and 060).
+Shared by the steps that call a model (040, 050, 060 and 070).
 
 Each file maps a KEY to an answer. The key is a fingerprint of everything
 that decides the answer: the model, the exact prompt text, and what was sent
@@ -59,3 +59,21 @@ class Cache:
         with self._lock:                          # extraction stores from several threads
             self.answers[k] = answer
             write_json(self.path, self.answers, indent=None)
+
+
+def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = 180) -> dict:
+    """The model's answer to one filled prompt, from this stage's cache if it
+    holds it, else from one model call (the run's first paid call shows plan
+    and asks first: common/common_helpers/llm.py, PaidCalls), stored at once.
+    The key is the prompt exactly as sent, so every value filled into it
+    counts. Shared by every stage that asks one prompt at a time: 040's
+    labeling, merging and defining, and 070's translation table. (Extraction
+    asks many text pieces at once: common/common_helpers/extraction.ask_model.)"""
+    k = key(prompt)
+    reply = cache.get(k)
+    if reply is None:
+        calls.paid.start(plan)
+        reply = llm.call_llm_json(prompt, read_timeout=read_timeout)
+        calls.paid.made_call()
+        cache.put(k, reply)
+    return reply

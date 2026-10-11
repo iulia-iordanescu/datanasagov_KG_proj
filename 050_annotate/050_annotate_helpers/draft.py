@@ -26,12 +26,9 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "050_annotate_prompts"   # 0
 PROMPT = load(PROMPTS_DIR / "draft.txt")
 
 
-def prompt_for(chosen, item: dict, piece: str) -> str:
-    return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece)
-
-
 def ask_model(chosen, calls, settings: dict) -> extraction.Replies:
-    return extraction.ask_model(chosen.items, lambda item, piece: prompt_for(chosen, item, piece), calls,
-                                settings["workers"], "draft",
+    def prompt_for(item, piece):
+        return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece)
+    return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "draft",
                                 f"050 will draft {len(chosen.items)} record(s) into batch {chosen.batch}",
                                 "drafting")

@@ -6,7 +6,7 @@ moves.py -- the main moves of 060_extract, as called by 060_extract/run.py.
     -        (here)      paid_calls     code: asks before paying; keeps every answer in cache/
     stage 3  extract.py  ask_model      LLM: the facts each record states that the schema can express
     stage 4  extract.py  sort_rows      code: every row checked; kept, or removed with its reason
-    -        (here)      results        writes the kept and removed triple instances, the current schema; the report
+    -        (here)      results        writes extracted_triples.csv, extracted_triples_removed.csv, schema_used.json, and extracted_triples_details.json; the report
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet. Every file is
@@ -17,7 +17,7 @@ from __future__ import annotations
 import extract as extract_stage
 import records as records_stage
 import schema as schema_stage
-from common import audit, llm
+from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.report import cell, counted, model_calls, named
@@ -135,9 +135,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
 
     warnings = list(chosen.notes) + list(schema.notes)       # shown before paying too, if the run paid
     if replies.failed:
-        warnings.append(f"{len(replies.failed)} record(s) failed and are not in the output: "
-                        f"{named(list(replies.failed), 3)}. "
-                        f"Run the step again: only those are asked again; every answer already paid for is reused.")
+        warnings.append(extraction.failed_note(replies, "the output"))
     missing = check_origins(kept + removed, "rows")
     if missing:
         warnings.append(missing)
@@ -177,7 +175,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         if len(new_component_classes) > SHOW:
             lines.append(f"| … {len(new_component_classes) - SHOW} more, in `{DETAILS_NAME}` | | | |")
         lines.append("")
-    lines += model_calls([("extract triple instances (one per text piece)", replies.calls, replies.reused)],
+    lines += model_calls([("stage 3: extract triple instances (one call per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.MODEL)
 
     return Results(

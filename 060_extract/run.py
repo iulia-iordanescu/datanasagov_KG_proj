@@ -50,7 +50,7 @@ def main(inputs, settings, output):
     calls   = extract.paid_calls(chosen, schema, settings, output)   # code: asks before paying; keeps every answer in cache/
     replies = extract.ask_model(chosen, schema, calls, settings)     # LLM: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft)
     rows    = extract.sort_rows(chosen, schema, replies)             # code: checked; kept, or removed with a reason
-    # writes the kept and removed rows, the current schema, the details; the report
+    # writes extracted_triples.csv, extracted_triples_removed.csv, schema_used.json, and extracted_triples_details.json; the report
     return extract.results(chosen, schema, replies, rows, calls, settings, output)
 
 

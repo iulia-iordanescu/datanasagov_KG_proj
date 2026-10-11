@@ -111,11 +111,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
     warnings = list(calls.paid.notes)          # shown before paying too, if the run paid
-    if triples.failed:
-        warnings.append(f"{len(triples.failed)} text(s) failed extraction and were left out whole "
-                        f"({named([f'{i} ({why})' for i, why in triples.failed.items()], 3)}). "
-                        f"Run the step again: only the failed pieces are asked again; every answer already paid "
-                        f"for is reused.")
+    if triples.failed_note:
+        warnings.append(triples.failed_note)
     empty = [t["id"] for t in triples.texts if not t["triple_instances"]]
     if empty:
         warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}.")
@@ -203,10 +200,11 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               "| Entity class | Support | Maintainers | Examples |", "|---|---:|---:|---|"]
     lines += [f"| {cell(c['component_class'])} | {c['support']} | {len(c['maintainers'])} | "
               f"{cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
-    lines += [""] + model_calls([("stage 2: extract triple instances", triples.calls, triples.reused),
-                                 ("stage 3: label component instances", labels.calls, None),
-                                 ("stage 4: merge labels", labels.merge_calls, None),
-                                 ("stage 6: write definitions", definitions.calls, None)],
+    lines += [""] + model_calls([("stage 2: extract triple instances (one call per text piece)", triples.calls, triples.reused),
+                                 (f"stage 3: label component instances ({label.LABEL_BATCH} per call)", labels.calls, labels.reused),
+                                 ("stage 4: merge labels (one call per kind)", labels.merge_calls, labels.merge_reused),
+                                 (f"stage 6: write definitions ({define.DEFINE_BATCH} per call)", definitions.calls,
+                                  definitions.reused)],
                                 calls.paid.test_calls, llm.MODEL)
 
     return Results(

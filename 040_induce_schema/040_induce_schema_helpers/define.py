@@ -25,14 +25,14 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, key
-from common import llm
+from common.cache import Cache, ask_cached
 from common.audit import log
-from common import prompt_files
 from common.prompt_files import fill, load
 
 #: The two kinds of schema entry that get a definition.
 KINDS = ("entity_classes", "predicates")
+#: The words for KINDS in the output files ("kind", "entry_type").
+WORD = {"entity_classes": "entity class", "predicates": "predicate"}
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
 PROMPTS = {"entity_classes": load(PROMPTS_DIR / "define_entity_classes.txt"),
@@ -49,6 +49,7 @@ class Definitions:
     too_vague: dict = field(default_factory=dict)   # {"entity_classes": {entity class: reason}, ...}
     unknown: list = field(default_factory=list)     # schema entries in replies that weren't sent
     calls: int = 0                                  # model calls made by this stage
+    reused: int = 0                                 # batches answered from the cache
 
 
 def write_definitions(counts, settings: dict, calls) -> Definitions:
@@ -61,26 +62,20 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
         for start in range(0, len(wanted), DEFINE_BATCH):
             batch = [{"component_class": e["component_class"], "texts": e["support"], "examples": e["examples"]}
                      for e in wanted[start:start + DEFINE_BATCH]]
-            k = key(prompt_files.text(PROMPTS[kind]), kind, batch)
-            reply = cache.get(k)
-            if reply is None:
-                calls.paid.start("  040 needs model calls to define the schema's entries")
-                reply = llm.call_llm_json(fill(PROMPTS[kind],
-                                               entries=json.dumps(batch, ensure_ascii=False, indent=0)),
-                                          read_timeout=600)
-                calls.paid.made_call()
-                cache.put(k, reply)
+            reply = ask_cached(cache, calls, fill(PROMPTS[kind], entries=json.dumps(batch, ensure_ascii=False, indent=0)),
+                               f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call",
+                               read_timeout=600)
             sent = {e["component_class"] for e in batch}
             for field_name, target in (("definitions", result.of[kind]),
                                        ("too_vague", result.too_vague[kind])):
                 given = reply.get(field_name) if isinstance(reply.get(field_name), dict) else {}
                 for name, text in given.items():
                     if name not in sent:
-                        result.unknown.append({"kind": {"entity_classes": "entity class", "predicates": "predicate"}[kind], "component_class": name})
+                        result.unknown.append({"kind": WORD[kind], "component_class": name})
                     elif isinstance(text, str) and text.strip() and name not in result.of[kind] \
                             and name not in result.too_vague[kind]:
                         target[name] = " ".join(text.split())
         log.info(f"  {kind.replace('_', ' ')}: {len(result.of[kind]):,} defined, "
                  f"{len(result.too_vague[kind])} too vague")
-    result.calls = calls.paid.made - before
+    result.calls, result.reused = calls.paid.made - before, cache.reused
     return result

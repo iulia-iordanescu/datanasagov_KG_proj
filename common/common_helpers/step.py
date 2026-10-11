@@ -25,8 +25,9 @@ only has to show the step's main moves:
     7. bookkeeping    _manifest.json: input and output files with hashes (each
                       input file's own hash too, so helpers/audit.py can tell which
                       one changed); outputs/reports/<run id>.md for people
-    8. failure        on an error, Ctrl+C or a stop on purpose (e.g. paid
-                      calls declined), the log says why (with the full
+    8. failure        on an error, Ctrl+C or a stop on purpose (paid calls
+                      declined, or a check that found something the person
+                      must fix: common/common_helpers/stop.py), the log says why (with the full
                       traceback on an error), the report is marked failed,
                       interrupted or stopped, the
                       previous manifest is put back if every output file it lists
@@ -59,6 +60,7 @@ from pathlib import Path
 
 from common import audit, prompt_files
 from common.files import write_text
+from common.stop import Stop
 from common.audit import log
 
 ROOT = Path(__file__).resolve().parents[2]      # common/common_helpers/step.py -> the repository folder
@@ -93,7 +95,7 @@ def check_settings(settings: dict, minimums: dict) -> None:
     wanted = {**{k: v for k, v in SHARED_MINIMUMS.items() if k in settings}, **minimums}
     for name, lowest in wanted.items():
         if settings[name] < lowest:
-            raise ValueError(f"{name} must be at least {lowest} (got {settings[name]})")
+            raise Stop(f"{name} must be at least {lowest} (got {settings[name]})")
 
 
 class InputMissing(Exception):
@@ -408,6 +410,9 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         # A helper that stops the run on purpose (e.g. the person declined the
         # paid calls) must still leave a report and a log.
         run["status"], error = "stopped", RunError(str(exc.code or "stopped"))
+    except Stop as exc:
+        # A check found a problem the person can fix (common/common_helpers/stop.py).
+        run["status"], error = "stopped", RunError(str(exc))
     except Exception as exc:  # noqa: BLE001 -- any failure must still produce a report
         run["status"], error = "failed", RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:

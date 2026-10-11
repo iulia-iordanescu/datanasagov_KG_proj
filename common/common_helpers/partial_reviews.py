@@ -28,9 +28,10 @@ from pathlib import Path
 
 from common.step import ANNOTATIONS_DIR
 from common.text_match import norm_text
+from common.triples_io import REQUIRED
 
 REVIEWS_PATH = ANNOTATIONS_DIR / "partial_pair_reviews.csv"
-SLOTS = ("subject", "predicate", "object")
+SLOTS = REQUIRED                                  # subject, predicate, object
 COLUMNS = (["record_id"] + [f"ground_truth_{s}" for s in SLOTS] + [f"translated_{s}" for s in SLOTS]
            + ["verdict"])
 SAME, NOT_SAME = "same fact", "not the same fact"

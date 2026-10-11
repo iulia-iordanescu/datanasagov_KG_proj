@@ -55,7 +55,7 @@ def main(inputs, settings, output):
     replies = annotate.ask_model(chosen, calls, settings)         # LLM: every fact each record states
     drafts  = annotate.build_rows(chosen, replies)                # code: DESCRIBES row, duplicates out, checks
     typos   = annotate.check_ground_truth(chosen)                 # code: rows of your ground truth to fix
-    # writes the draft batch; the report
+    # writes drafted_triples_batch<N>.csv and drafted_triples_batch<N>_details.json; the report
     return annotate.results(chosen, replies, drafts, typos, calls, settings, output)
 
 

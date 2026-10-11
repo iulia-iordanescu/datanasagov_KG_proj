@@ -20,6 +20,7 @@ from common.chunking import full_text, pieces
 from common.records_io import load_records
 from common.report import named
 from common.step import check_settings
+from common.stop import Stop
 
 
 @dataclass
@@ -45,7 +46,7 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
         if m in wanted and row["position"] < per:
             record = records.get(row["id"])
             if record is None:
-                raise ValueError(f"induction candidate {row['id']} is not in 020's records; "
+                raise Stop(f"induction candidate {row['id']} is not in 020's records; "
                                  f"splits.json and records.jsonl are out of step (delete 030's splits.json, then run py 030_split/run.py)")
             texts.items.append({"id": row["id"], "maintainer": m, "record": record,   # record: for the prompt's field names
                                 "title": " ".join((record.get("title") or "").split()),   # as a component instance

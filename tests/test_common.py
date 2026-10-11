@@ -296,6 +296,31 @@ class TranslationTable(unittest.TestCase):
         component_class_mapping.read_mapping()
 
 
+class AskCached(unittest.TestCase):
+    """common/common_helpers/cache.ask_cached: one model call per new prompt, the answer kept; the same prompt again
+    is answered from the cache (and counted), any change to the filled prompt asks again."""
+
+    def test_asks_once_per_prompt(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        from common import cache as cache_module, llm
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            started, answers = [], iter([{"n": 1}, {"n": 2}])
+            paid = SimpleNamespace(made=0, start=started.append)
+            paid.made_call = lambda: setattr(paid, "made", paid.made + 1)
+            calls = SimpleNamespace(paid=paid)
+            c = cache_module.Cache(tmp, "stage")
+            with mock.patch.object(llm, "call_llm_json", lambda prompt, read_timeout=180: next(answers)):
+                self.assertEqual(cache_module.ask_cached(c, calls, "prompt A", "plan"), {"n": 1})
+                self.assertEqual(cache_module.ask_cached(c, calls, "prompt A", "plan"), {"n": 1})   # from the cache
+                self.assertEqual(cache_module.ask_cached(c, calls, "prompt B", "plan"), {"n": 2})   # changed: asked
+            self.assertEqual((paid.made, c.reused, started), (2, 1, ["plan", "plan"]))
+            self.assertEqual(cache_module.Cache(tmp, "stage").answers, c.answers)                   # kept on disk
+        finally:
+            shutil.rmtree(tmp)
+
+
 class Reviews(unittest.TestCase):
 
     def test_reviews(self):

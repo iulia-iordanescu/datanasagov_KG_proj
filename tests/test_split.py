@@ -121,7 +121,7 @@ class Split(unittest.TestCase):
         out.mkdir()
         pool, induction = self.split()
         (self.tmp / "_manifest.json").write_text(json.dumps({"harvest_partial": True}), encoding="utf-8")
-        with self.assertRaisesRegex(SystemExit, "trial harvest"):
+        with self.assertRaisesRegex(moves.Stop, "trial harvest"):
             moves.results(pool, induction, self.inputs, SETTINGS, out)
         self.assertFalse((out / moves.OUTPUT_NAME).exists())
         (self.tmp / "_manifest.json").write_text(json.dumps({"harvest_partial": False}), encoding="utf-8")

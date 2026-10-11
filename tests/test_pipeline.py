@@ -121,6 +121,15 @@ class Pipeline(unittest.TestCase):
 
     # ------------------------------------------------------------------- 040
 
+    def test_t03z_a_fixable_problem_stops(self):
+        """A setting out of range is something the person can fix: the run is stopped (exit code 2), with the
+        message, not failed with a traceback; its report says stopped."""
+        out, prompts = self.run_step("040_induce_schema", "--workers", "0", expect=2)
+        self.assertIn("workers must be at least 1", out)
+        self.assertEqual(prompts, 0)
+        report = max(self.repo.glob("outputs/reports/040_induce_schema_*.md"), key=lambda p: p.stat().st_mtime)
+        self.assertIn("| Status | stopped |", report.read_text(encoding="utf-8"))
+
     def test_t04_induce_schema(self):
         _, prompts = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
                                    "--texts_per_maintainer", "4")

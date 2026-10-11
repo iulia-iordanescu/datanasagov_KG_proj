@@ -7,7 +7,7 @@ moves.py -- the main moves of 030_split, as called by 030_split/run.py.
     stage 3  (here)  induction_candidates     code: every maintainer's records that may be learned from (not in
                                               the pool, with text), in a fixed random order
     stage 4  (here)  check_disjoint           code: no record is in both
-    -        (here)  results                  writes splits.json, once; the report
+    -        (here)  results                  writes splits.json (once); the report
 
 Terms are as defined in docs/terminology.md.
 
@@ -62,11 +62,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common import audit
-from common.audit import ORIGIN_FIELD, check_origins, log, origin
+from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_json
 from common.records_io import has_text, load_records as read_records
 from common.report import cell
 from common.step import MANIFEST_NAME, Results, input_files
+from common.stop import Stop
 
 OUTPUT_NAME = "splits.json"
 CANDIDATES = "ground_truth_candidates"      # the pool, in splits.json and messages
@@ -115,11 +116,11 @@ def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
     with open(path, encoding="utf-8-sig", newline="") as fh:
         rows = list(csv.DictReader(fh))
     if not rows or "id" not in rows[0] or "maintainer" not in rows[0]:
-        raise ValueError(f"{path.name} needs the columns id and maintainer")
+        raise Stop(f"{ref_path(path)} needs the columns id and maintainer: fix the file")
     ids = [row["id"].strip() for row in rows]
     repeated = sorted(i for i, n in collections.Counter(ids).items() if n > 1)
     if repeated:
-        raise ValueError(f"{path.name} lists these ids more than once: {', '.join(repeated[:5])}")
+        raise Stop(f"{ref_path(path)} lists these ids more than once: {', '.join(repeated[:5])}: fix the file")
 
     pool = Candidates(in_file=len(rows), pool_ids=set(ids))
     for position, row in enumerate(rows):
@@ -220,7 +221,7 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
                             f"replace it, delete it and rerun.")
     else:
         if _from_trial_harvest(inputs):
-            raise SystemExit(f"The records come from a trial harvest (part of the catalog only, --max_records), and "
+            raise Stop(f"The records come from a trial harvest (part of the catalog only, --max_records), and "
                              f"{OUTPUT_NAME} is written once and then kept, so it isn't written from a trial: the "
                              f"trial's records would stay in it. Run the full harvest (py 010_harvest/run.py), then "
                              f"020, then 030 again.")

@@ -49,6 +49,7 @@ from common.audit import log, ref_path
 from common.ground_truth import read_pool
 from common.report import named
 from common.schema_io import ground_truth_source_problem, pattern_key, read_schema, schema_text
+from common.stop import Stop
 from common.triples_io import component_class_key
 from common.validate import SchemaEntries
 
@@ -77,7 +78,7 @@ def load_schema(inputs: dict) -> Schema:
     base, extra = read_schema(inputs["schema"]), read_schema(inputs["additions"])
     result = Schema(files={"schema": ref_path(inputs["schema"]), "additions": ref_path(inputs["additions"])})
     if not base["entity_classes"] or not base["predicates"]:
-        raise ValueError(f"{Path(inputs['schema']).name} has no entity classes or no predicates: "
+        raise Stop(f"{ref_path(inputs['schema'])} has no entity classes or no predicates: "
                          f"is it a schema? (see 060_extract/060_extract.md for the shapes it can have)")
 
     parts = {r["position"]: r.get("part") for r in read_pool(inputs["splits"])}

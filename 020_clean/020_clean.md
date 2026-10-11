@@ -21,6 +21,8 @@ The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every st
 
 ### This step
 
+#### After running
+
 - Nothing else: the [step](../docs/terminology.md#8-the-pipeline) runs on its own.
 
 ## Inputs

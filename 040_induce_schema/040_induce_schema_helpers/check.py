@@ -33,13 +33,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from common.audit import ORIGIN_FIELD, log, origin
-from define import KINDS
+from define import KINDS, WORD
 
 MISSING_DEFINITION = "(no definition: the model didn't return one for this schema entry)"
 
-
-#: The words for KINDS in the output files ("kind", "entry_type").
-WORD = {"entity_classes": "entity class", "predicates": "predicate"}
 
 @dataclass
 class Schema:
