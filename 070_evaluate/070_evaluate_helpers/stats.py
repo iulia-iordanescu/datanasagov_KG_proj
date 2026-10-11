@@ -177,6 +177,17 @@ def describes_confusion(records: list) -> dict:
     return dict(c)
 
 
+def twins(records: list) -> dict | None:
+    """The twins among records (records.py) and the numbers without them: {"records": [ids], "without":
+    with_margins(the others), or None when there is no twin or no other}. None when which records are twins isn't
+    known."""
+    if any(r.get("twin") is None for r in records):
+        return None
+    twin = [r["id"] for r in records if r["twin"]]
+    rest = [r for r in records if not r["twin"]]
+    return {"records": twin, "without": with_margins(rest) if twin and rest else None}
+
+
 def compute_metrics(evaluated, settings: dict) -> dict:
     """Every number, per part: the tuning part always; the held-out part only
     with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion"},
@@ -191,6 +202,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
                         "strata": strata_table(recs, evaluated.pool_strata) if recs else [],
                         "confusion": describes_confusion(recs),
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
-                        if numbers and numbers["margins"] else None}
+                        if numbers and numbers["margins"] else None,
+                        "twins": twins(recs)}
     result["kept_aside"] = {p: len(parts[p]) for p in ("tuning", "held-out") if p not in shown}
     return result

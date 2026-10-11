@@ -1,1 +1,1 @@
-date,run_id,schema,held_out_records
+date,run_id,schema,held_out_records,extraction_run_id,translation_sha256,held_out_ground_truth_sha256

@@ -74,6 +74,7 @@ def _schema_used(schema) -> dict:
                          for p in content["patterns"]],
             "left_out_additions": schema.left_out,
             "left_out_not_tuning": schema.not_tuning,
+            "learned_from": schema.learned_from,
             "made": {"run_id": audit.current_run_id(), "schema": schema.files["schema"],
                      "additions": schema.files["additions"]}}
 

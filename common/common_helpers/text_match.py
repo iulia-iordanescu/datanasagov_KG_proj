@@ -23,6 +23,15 @@ both sides first, and nothing else:
              Spectroradiometer", "on Aqua" is not "aboard Aqua", and digits
              are kept, so "Level-2" is not "Level 3".
 
+What is looked up in a text is found only as whole words and whole numbers
+(Text.contains): a match may not cut a word or a number in two. So "Aqua" is
+not found in "Aquarius", "5 minutes" not in "25 minutes", "500 m" not in
+"500 meter". Two exceptions: a plural ending ("s", "es") may follow, so
+"Aqua satellite" is found in "Aqua satellites"; and a letter next to a digit
+counts as a break between words, so "67P" is found in "Comet67P", where the
+text lost a space. Text that lost a space between two words ("thecomet") still
+hides a word; a component instance there gets a flag a person looks at.
+
     from common.text_match import Text, norm_text
     text = Text(record_text)            # evened out once per record
     text.contains("the Aqua satellite") # True / False
@@ -41,6 +50,7 @@ marks are now ignored rather than evened out: the old code couldn't find
 """
 from __future__ import annotations
 
+import functools
 import re
 import unicodedata
 
@@ -77,6 +87,26 @@ def norm_text(s) -> str:
     return _LEADING.sub("", s) if _LEADING else s
 
 
+#: Endings that may follow a word looked up in a text, so "Aqua satellite" is found in "Aqua satellites". English
+#: only; () turns it off.
+PLURAL_ENDINGS = ("es", "s")
+
+_PLURAL = "(?:%s)?" % "|".join(map(re.escape, PLURAL_ENDINGS)) if PLURAL_ENDINGS else ""
+_NOT_AFTER = {"letter": r"(?<![^\W\d_])", "digit": r"(?<!\d)"}       # a match may not start inside a word / number
+_NOT_BEFORE = {"letter": _PLURAL + r"(?![^\W\d_])", "digit": r"(?!\d)"}  # nor end inside one
+
+
+def _kind(c: str) -> str:
+    return "digit" if c.isdigit() else "letter" if c.isalpha() else ""
+
+
+@functools.lru_cache(maxsize=4096)
+def _whole(n: str) -> re.Pattern:
+    """n as a pattern that matches only whole words and whole numbers: a letter at either end of n may not touch
+    another letter in the text, a digit another digit."""
+    return re.compile(_NOT_AFTER.get(_kind(n[0]), "") + re.escape(n) + _NOT_BEFORE.get(_kind(n[-1]), ""))
+
+
 #: Inside a passage being looked up, and in the text it's looked up in, these count as a space: a model copying a
 #: passage often drops or adds a comma ("MODIS aboard Aqua" for "MODIS, aboard Aqua"). A space, not nothing, so
 #: "2.5" (as "2 5") is still not found as "25".
@@ -95,7 +125,15 @@ class Text:
         self.flat = _lookup_form(even(text))
 
     def contains(self, needle) -> bool:
-        """Whether needle is in the text, punctuation inside either counting as a space (INNER). A needle that is
-        blank once evened out is never found."""
+        """Whether needle is in the text as whole words and whole numbers, punctuation inside either counting as a
+        space (INNER). A needle that is blank once evened out is never found.
+
+        >>> Text("Salinity from Aquarius and the Aqua satellites.").contains("aqua satellite")
+        True
+        >>> Text("Salinity from Aquarius.").contains("Aqua"), Text("in 25 minutes").contains("5 minutes")
+        (False, False)
+        >>> Text("near Comet67P").contains("67P"), Text("starting at noon").contains("START")
+        (True, False)
+        """
         n = _lookup_form(norm_text(needle))
-        return bool(n) and n in self.flat
+        return bool(n) and n in self.flat and bool(_whole(n).search(self.flat))

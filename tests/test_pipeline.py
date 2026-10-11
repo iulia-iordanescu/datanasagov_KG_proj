@@ -208,6 +208,9 @@ class Pipeline(unittest.TestCase):
         schema = json.loads(self.output("040_induce_schema", "the_schema.json").read_text(encoding="utf-8"))
         self.assertEqual({e["component_class"] for e in used["entity_classes"]},
                          {e["component_class"] for e in schema["entity_classes"]})
+        evidence = json.loads(self.output("040_induce_schema", "induction_evidence.json").read_text(encoding="utf-8"))
+        self.assertTrue(used["learned_from"]["known"])                          # 040's schema: the texts it learned from
+        self.assertEqual(set(used["learned_from"]["ids"]), {x["id"] for x in evidence["texts"]})
         _, again = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(again, 0, "a rerun paid again")
 
@@ -295,6 +298,13 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(read_csv(self.annotations / "held_out_looks.csv"), [])
         report = max((self.repo / "outputs" / "reports").glob("070_evaluate_*.md"), key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8")
         self.assertIn("Drafted by a model (step 050) and corrected by a person", report)   # the guide says the report says so
+        # the hand-built schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
+        compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
+        first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}
+        twins = metrics["parts"]["tuning"]["twins"]
+        self.assertTrue(first and first <= set(twins["records"]))
+        self.assertEqual(twins["without"]["records"], 8 - len(twins["records"]))
+        self.assertIn("#### Twins", report)
 
     def test_t10_held_out_look_logged(self):
         args = [*NO_CONFIRM, "--component_class_mapping", str(self.repo / "own_table.csv"), "--evaluate_held_out", "true"]
@@ -303,6 +313,15 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(metrics["parts"]["held-out"]["numbers"]["records"], 1)
         looks = read_csv(self.annotations / "held_out_looks.csv")
         self.assertEqual([int(x["held_out_records"]) for x in looks], [1])
+        self.assertTrue(all(looks[0][k] for k in ("extraction_run_id", "translation_sha256", "held_out_ground_truth_sha256")))
+        self.assertEqual(metrics["held_out_looks"], {"count": 1, "changed_since_previous": None})
+        # a second look with nothing changed: the same fingerprints, and the report says so
+        out, _ = self.run_step("070_evaluate", *args)
+        looks = read_csv(self.annotations / "held_out_looks.csv")
+        self.assertEqual(len(looks), 2)
+        for k in ("schema", "extraction_run_id", "translation_sha256", "held_out_ground_truth_sha256"):
+            self.assertEqual(looks[0][k], looks[1][k], k)
+        self.assertIn("nothing that sets the held-out numbers changed", out)
 
     def test_t10b_evaluate_refuses_a_repeat(self):
         """A classed triple twice in a record stops evaluation; the same subject

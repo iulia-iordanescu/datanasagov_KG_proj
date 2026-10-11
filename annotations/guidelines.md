@@ -17,6 +17,8 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 3. **Not the field names.** The record's text is split into fields (`title:`, `notes:`, …); the names are formatting, not facts.
 4. **Not "is a" facts.** "MODIS is a spectroradiometer" says what kind of thing MODIS is: that belongs in its [entity class](../docs/terminology.md#3-schemas), not in a [classed triple](../docs/terminology.md#2-triples) of its own.
 5. **Not opinions.** Leave out words such as "great".
+6. **Not negated facts.** A row always says that something is so; a row can't say "not". *Suppose:* a record says "Data are not available before 2001." *Then:* no row. A row with the [object instance](../docs/terminology.md#2-triples) "before 2001" would say the data are available before 2001, the opposite of the text. Don't rewrite it as "available from 2001" either: the text doesn't say that, it only follows from it. No row means the graph says nothing about it, which is not the same as saying it's false.
+7. **Not uncertain facts.** *Suppose:* a record says "The collection may include data from Terra." *Then:* no row: the record doesn't state that it does. The same for "might", "possibly", "is expected to". A value given as approximate is stated, though: *suppose* a record says "a resolution of approximately 250 m"; *then* that is one row, with "approximately 250 m" as its object instance.
 
 ## Writing a classed triple
 
@@ -27,6 +29,7 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 5. **One fact per row.** A sentence that states two facts gives two rows.
 6. **Each fact once**, even if the record states it twice or in other words. (Two rows with the same [classed triple](../docs/terminology.md#2-triples) in one record stop step 070 until one is deleted: `annotations/README.md`, *What the pipeline checks*.)
 7. **[Source text](../docs/terminology.md#1-records-and-their-text): the shortest passage that states the fact, copied exactly.** Select it in the record's text and press **Use selection**, so it is copied exactly.
+8. **A number with a unit: the object instance is the number and its unit, as written.** *Suppose:* a record says "MODIS has a spatial resolution of 250 m." *Then:* the object instance is "250 m", and the predicate says what the number measures (a spatial resolution); coin one if the hand-built schema has none.
 
 ### Examples
 
@@ -51,11 +54,3 @@ Every record has one row that no text states, written by code: the record's id D
 - **A record that states no facts:** delete every row; the tool keeps one row with only the record's id, which means "annotated, states no facts". Still tick *All facts extracted*.
 - **Fix what the tool marks:** ✖ must be fixed (e.g. a [source text](../docs/terminology.md#1-records-and-their-text) that isn't in the record's text); ⚑ is worth a look (e.g. a [subject instance](../docs/terminology.md#2-triples) that isn't in the text, which may be a typo or a deliberate rewording).
 - **Commit the file to Git** (`annotations/ground_truth/batch_<NNN>.csv`).
-
-## Cases with no rule yet
-
-These come up, and no rule decides them yet. Until one does, annotate what the text states plainly, and note the record's id.
-
-- **Raise With Mentors: negated facts** ("data are not available before 2001"): one row, or none?
-- **Raise With Mentors: uncertain facts** ("may include", "approximately"): one row, or none?
-- **Raise With Mentors: numbers with units** ("a resolution of 250 m"): what the [subject instance](../docs/terminology.md#2-triples), predicate, and [object instance](../docs/terminology.md#2-triples) are.

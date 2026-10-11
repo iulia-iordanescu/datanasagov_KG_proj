@@ -39,6 +39,26 @@ def _sure(n: dict, metric: dict, what: str) -> str:
             f"(the margin of error: the middle 95% of {stats.REDRAWS:,} redraws of these {n['records']} records).")
 
 
+#: What a held-out look saw, besides its date and run (columns of annotations/held_out_looks.csv), as a message names
+#: it. Two looks can show different held-out numbers only if one of these differs, or the code.
+LOOK_INPUTS = {"schema": "the current schema", "extraction_run_id": "060's run (the extracted triples)",
+               "translation_sha256": "the translation (the rows of the translation table used)",
+               "held_out_ground_truth_sha256": "the held-out records' ground truth",
+               "held_out_records": "the number of held-out records evaluated"}
+
+
+def since_previous(looks: dict) -> str:
+    """What changed since the previous held-out look (moves._log_look), as a sentence."""
+    if looks["changed"] is None:
+        return "This is the first look."
+    p = looks["previous"]
+    when = f"the previous look ({p.get('date') or 'no date'}, run {p.get('run_id') or 'unknown'})"
+    if not looks["changed"]:
+        return (f"Since {when}, nothing that sets the held-out numbers changed, except perhaps the code (each run's "
+                f"report in outputs/reports/, section *Run*, gives its code version), so they should be the same.")
+    return f"Since {when}, changed: {'; '.join(looks['changed'])}."
+
+
 def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
     """Once per part: what these numbers were computed from."""
     made = evaluated.extraction_made
@@ -69,9 +89,10 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
                                         "never reviewed for the held-out part (that would mean looking at it).")),
            ]
     if part == "held-out":
-        out.append(f"- **Held-out looks:** the held-out numbers have been shown {looks} time(s), this run "
-                   f"included (`annotations/held_out_looks.csv`). A change made after seeing them lets these "
-                   f"records influence the pipeline, so they no longer measure records it was never adjusted to.")
+        out.append(f"- **Held-out looks:** the held-out numbers have been shown {looks['count']} time(s), this run "
+                   f"included (`annotations/held_out_looks.csv`). {since_previous(looks)} A change made after seeing "
+                   f"them lets these records influence the pipeline, so they no longer measure records it was never "
+                   f"adjusted to.")
     out += ["- **The full recipe** of each run (code version, settings, prompts with their fingerprints, inputs "
             "and the runs that made them): that run's report in `outputs/reports/`, sections Run, Settings, "
             "Prompts and Inputs.", ""]

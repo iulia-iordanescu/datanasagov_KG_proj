@@ -64,6 +64,7 @@ from pathlib import Path
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_json
+from common.ground_truth import HAND_SCHEMA_FROM
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
 from common.step import repo_path
@@ -76,7 +77,7 @@ INDUCTION = "induction_candidates"
 SHOW = 20                                   # rows listed in the report before "…"
 #: The tuning / held-out rule (see above). Fixed, not settings: changing them
 #: after metrics have been looked at would defeat the held-out part.
-ALL_TUNING_BEFORE = 6                       # positions 0-5: tuning
+ALL_TUNING_BEFORE = HAND_SCHEMA_FROM        # positions 0-5: tuning (the hand-built schema was written from them)
 HELD_OUT_EVERY = 3                          # from there on, every third position is held-out
 
 

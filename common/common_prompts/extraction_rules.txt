@@ -6,6 +6,12 @@
 - source_text: the shortest passage copied EXACTLY from the record that
   states the fact.
 - One fact per triple. Leave out opinion words such as "great".
+- No triple for a fact the record states as NOT so ("data are not available
+  before 2001"), and none for one it states only as possible ("may include",
+  "might"). Don't rewrite either into a fact it doesn't state. A value given
+  as approximate is stated: "approximately 250 m" is the object.
+- A number with a unit: the object is the number and its unit, as written
+  ("250 m"); the predicate says what the number measures.
 - Each fact once, even if the record states it twice or in other words.
 - Only facts the record states. Never use outside knowledge, and never
   infer what an unexplained code or acronym stands for.

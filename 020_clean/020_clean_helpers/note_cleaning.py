@@ -188,21 +188,36 @@ INLINE_TAGS = frozenset({
 # Patterns. All depend on HTML *syntax*, never on particular content.
 # --------------------------------------------------------------------
 
-#: A real tag name is an identifier. Anything else shaped like a tag --
-#: "<log(L_IR/L_sun)>", "<see Fig. 3>" -- is prose using angle brackets.
-VALID_TAG_NAME = re.compile(r"^[a-zA-Z][a-zA-Z0-9:._-]*$")
+#: Every element name of HTML (the HTML Living Standard's elements, plus
+#: obsolete ones still met in web text). A tag is markup only if its name is
+#: one of these, or a namespaced name such as Word's "o:p". Anything else
+#: shaped like a tag -- "<z> = 0.345", "<kT>", "<YYYYDDD>", "<log(L/L)>",
+#: "<see Fig. 3>" -- is prose using angle brackets, and is kept as text.
+HTML_ELEMENTS = frozenset("""
+    a abbr acronym address applet area article aside audio b base basefont bdi bdo bgsound big blink
+    blockquote body br button canvas caption center cite code col colgroup data datalist dd del details
+    dfn dialog dir div dl dt em embed fieldset figcaption figure font footer form frame frameset h1 h2
+    h3 h4 h5 h6 head header hgroup hr html i iframe image img input ins isindex kbd keygen label legend
+    li link listing main map mark marquee math menu menuitem meta meter multicol nav nextid nobr
+    noembed noframes noscript object ol optgroup option output p param picture plaintext pre progress
+    q rb rp rt rtc ruby s samp script search section select slot small source spacer span strike strong
+    style sub summary sup svg table tbody td template textarea tfoot th thead time title tr track tt u
+    ul var video wbr xmp
+""".split())
+_NAME = "(?:" + "|".join(sorted(HTML_ELEMENTS, key=len, reverse=True)) + r"|[A-Za-z][A-Za-z0-9._-]*:[A-Za-z0-9._-]+)"
 
-#: A syntactically well-formed tag: identifier name, and anything after
-#: the name separated from it by whitespace.
-WELL_FORMED_TAG = re.compile(
-    r"</?([A-Za-z][A-Za-z0-9:._-]*)((?:\s[^<>]*)?)/?>")
+#: A real tag name: an HTML element, or a namespaced name.
+VALID_TAG_NAME = re.compile(r"^" + _NAME + r"$", re.I)
+
+#: A well-formed tag: a real tag name, and anything after the name
+#: separated from it by whitespace.
+WELL_FORMED_TAG = re.compile(r"</?(" + _NAME + r")(?=[\s/>])((?:\s[^<>]*)?)/?>", re.I)
 
 #: "<" that does not begin a well-formed tag, comment or declaration.
 #: The HTML specification treats such a "<" as literal text; Python's
-#: parser is more lenient and would read "<log(L/L)>" as a tag, so this
-#: restores the stricter rule before parsing.
-STRAY_LT = re.compile(
-    r"<(?!(?:/?[A-Za-z][A-Za-z0-9:._-]*(?:\s[^<>]*)?/?>|!--|!|\?))")
+#: parser is more lenient and would read "<log(L/L)>" or "<z>" as a tag,
+#: so this restores the stricter rule before parsing.
+STRAY_LT = re.compile(r"<(?!(?:/?" + _NAME + r"(?=[\s/>])(?:\s[^<>]*)?/?>|!--|!|\?))", re.I)
 
 COMMENT = re.compile(r"<!--.*?-->", re.S)
 DROP_BLOCK = re.compile(r"<(script|style)\b[^>]*>.*?</\1\s*>", re.I | re.S)
@@ -875,6 +890,12 @@ def clean_record(record, fields: Iterable[str] = DEFAULT_FIELDS
 #: Every entry is either a bug that was once real or a property that
 #: must hold. Add to this list rather than trusting a fix by eye.
 SELFTESTS = [
+    ("angle-bracket placeholders are text, not tags",
+     'Values &lt;x&gt; and &lt;T&gt; measured at &lt;z&gt; = 0.345; files &lt;YYYYDDD&gt;.nc, energy &lt;kT&gt;',
+     ["<x>", "<T>", "<z> = 0.345", "<YYYYDDD>.nc", "<kT>"]),
+    ("real tags still removed, any case; namespaced tags too",
+     'A &lt;B&gt;bold&lt;/B&gt; word&lt;o:p&gt;&lt;/o:p&gt; here',
+     ["A bold word here"]),
     ("link address kept",
      '&lt;a href="https://nsidc.org/d/x"&gt;the docs&lt;/a&gt;',
      ["the docs", "https://nsidc.org/d/x"]),

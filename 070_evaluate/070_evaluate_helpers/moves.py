@@ -15,6 +15,8 @@ Terms are as defined in docs/terminology.md.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
+import json
 
 import pairing
 import readings
@@ -25,13 +27,15 @@ from common import audit, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, this_report
+from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, repo_path
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
 COMPARED_NAME = "compared_triples.csv"
 LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
-LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records"]
+LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records", "extraction_run_id", "translation_sha256",
+                 "held_out_ground_truth_sha256"]
 TRIPLE = ("subject", "subject_class", "predicate", "object", "object_class")
 SHOW = 20                        # rows listed in the report before "…"
 TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a person checks the translation table
@@ -101,17 +105,69 @@ def _margin_check_lines(checks: dict | None) -> list:
 
 
 
+def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
+    """The report's table of the numbers without the twins (docs/terminology.md; stats.twins)."""
+    lines = ["#### Twins", "",
+             "A twin is an evaluated record whose description is the same as that of a record the current schema "
+             "was learned from (docs/terminology.md, section *Evaluating extraction*), so the schema has seen most "
+             "of its text. Learned from: " + ("; ".join(learned.get("how") or []) or "not known") + ".", ""]
+    t = v["twins"]
+    if t is None:
+        return lines + ["Not known: which records the current schema was learned from isn't known, so no record "
+                        "is marked (the warning at the top of this report says why, and what to do).", ""]
+    if not t["records"]:
+        return lines + [f"None of the {len(recs)} evaluated {part} records is a twin, so the numbers above are "
+                        f"all on records the schema wasn't learned from.", ""]
+    position = {r["id"]: r["position"] for r in recs}
+    lines += [f"{len(t['records'])} of the {len(recs)} evaluated {part} records are twins: "
+              + ", ".join(f"#{position[i]} `{i}`" for i in t["records"]) + ".", ""]
+    w = t["without"]
+    if w is None:
+        return lines + ["Every evaluated record is a twin, so there are no numbers without them.", ""]
+    n = v["numbers"]
+    lines += [f"| Pair level | Number | All {len(recs)} records | Without the twins ({w['records']} records) |",
+              "|---|---|---:|---:|"]
+    for level in pairing.LEVELS:
+        for key, label in (("precision", "Precision"), ("recall", "Recall"), ("f1", "F1")):
+            lines.append(f"| {level} | {label} | {_with_margin(n[level][key])} | {_with_margin(w[level][key])} |")
+    return lines + ["", "If the two columns differ by more than their margins, the numbers above flatter extraction "
+                        "on text the schema wasn't learned from; report the column without the twins.", ""]
+
+
 def _triple(f: dict) -> str:
     return f"{f['subject']} ({f['subject_class']}) {f['predicate']} {f['object']} ({f['object_class']})"
 
 
-def _log_look(evaluated, schema_file: str) -> int:
-    """Add one line to annotations/held_out_looks.csv (never changing a line
-    already there) and return how many looks it now holds."""
-    held = sum(r["part"] == "held-out" for r in evaluated.records)
-    append_csv(LOOKS, LOOKS_COLUMNS, [{"date": dt.date.today().isoformat(), "run_id": audit.current_run_id() or "",
-                                       "schema": schema_file, "held_out_records": held}])
-    return len(read_csv(LOOKS))
+def _fingerprint(value) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def _log_look(evaluated, translation, schema_file: str) -> dict:
+    """Add one line to annotations/held_out_looks.csv (never changing a line already there): what the look saw (the
+    current schema, 060's run, fingerprints of the translation used and of the held-out records' ground truth).
+    Returns {"count": looks so far, "changed": [what differs from the previous look, as readings.LOOK_INPUTS names
+    it] or None for a first look, "previous": that look's row or None}."""
+    held = sorted((r for r in evaluated.records if r["part"] == "held-out"), key=lambda r: r["id"])
+    rows = [[{k: t.get(k, "") for k in TRIPLE + ("source_text",)} for t in r["gt"] + [r["gt_describes"] or {}]]
+            for r in held]
+    look = {"date": dt.date.today().isoformat(), "run_id": audit.current_run_id() or "", "schema": schema_file,
+            "held_out_records": str(len(held)),
+            "extraction_run_id": str(evaluated.schema_used.get("made", {}).get("run_id") or ""),
+            "translation_sha256": _fingerprint({"entity class": sorted(translation.entity.items()),
+                                                "predicate": sorted(translation.predicate.items())}),
+            "held_out_ground_truth_sha256": _fingerprint([[r["id"] for r in held], rows])}
+    if LOOKS.exists():
+        header = LOOKS.read_text(encoding="utf-8-sig").split("\n", 1)[0].strip()
+        if header != ",".join(LOOKS_COLUMNS):
+            raise Stop(f"{repo_path(LOOKS)} has the columns {header}, not the ones 070 writes "
+                       f"({','.join(LOOKS_COLUMNS)}), so a look added now would land in the wrong columns. Its first "
+                       f"line was probably edited: restore it from Git (`git diff {repo_path(LOOKS)}`), {AGAIN}")
+    before = read_csv(LOOKS) if LOOKS.exists() else []
+    append_csv(LOOKS, LOOKS_COLUMNS, [look])
+    previous = before[-1] if before else None
+    changed = None if previous is None else [why for k, why in readings.LOOK_INPUTS.items()
+                                             if (previous.get(k) or "") != look[k]]
+    return {"count": len(before) + 1, "changed": changed, "previous": previous}
 
 
 def _per_record(records: list, hidden: int) -> str:
@@ -193,6 +249,7 @@ def _compared_rows(records: list) -> list:
 def _mismatch_lines(mismatches: list) -> list:
     """The report's list of component class mismatches (pairing.component_class_mismatches)."""
     lines = ["### Component class mismatches", "",
+             "Counted over the tuning records only: held-out records never say what to change.", "",
              "A mismatch: extraction stated the fact, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
              "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, view *Translation table*). Seen once, it may just be "
@@ -233,14 +290,16 @@ def _mismatch_lines(mismatches: list) -> list:
 
 def results(evaluated, translation, metrics, calls, settings, output) -> Results:
     schema_file = evaluated.schema_used.get("made", {}).get("schema", "?")
-    looks = _log_look(evaluated, schema_file) if settings["evaluate_held_out"] else None
+    looks = _log_look(evaluated, translation, schema_file) if settings["evaluate_held_out"] else None
     per_record_path, compared_path, metrics_path = (output / PER_RECORD_NAME, output / COMPARED_NAME,
                                                   output / METRICS_NAME)
     # Only the parts whose numbers are shown: the held-out records' triples stay
     # unseen too, unless --evaluate_held_out true.
     shown = [r for r in evaluated.records if r["part"] in metrics]
-    mismatches = pairing.component_class_mismatches(shown)
     tuning = [r for r in shown if r["part"] == "tuning"]
+    # Mismatches say which rows of the translation table to change, so they come from tuning records only: changing
+    # a row because of a held-out record would let the held-out records influence the pipeline.
+    mismatches = pairing.component_class_mismatches(tuning)
     unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
     rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
     compared_rows = _compared_rows(shown)
@@ -251,11 +310,13 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                  "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
         "left_out": evaluated.left_out,
+        "learned_from": evaluated.learned_from,
         "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
+                      "twins": v["twins"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
                   for p, v in metrics.items() if p != "kept_aside"},
-        "held_out_looks": looks,
+        "held_out_looks": looks and {"count": looks["count"], "changed_since_previous": looks["changed"]},
         "component_class_mismatches": mismatches,
         "translation_suggestions": translation.suggested,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
@@ -334,10 +395,10 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                           f"into misses. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: {this_report()}, section *Results*, subsection "
                           f"*Component class mismatches*.")
     if looks is not None:
-        warnings.append(f"The held-out part was looked at: {looks} time(s) so far, each logged in "
-                        f"annotations/held_out_looks.csv. A change made after a look lets the held-out records "
-                        f"influence the pipeline, and then their numbers flatter it. Commit annotations/held_out_looks.csv, so "
-                        f"every look stays counted.")
+        warnings.append(f"The held-out part was looked at: {looks['count']} time(s) so far, each logged in "
+                        f"annotations/held_out_looks.csv. {readings.since_previous(looks)} A change made after a look "
+                        f"lets the held-out records influence the pipeline, and then their numbers flatter it. Commit "
+                        f"annotations/held_out_looks.csv, so every look stays counted.")
     missing = check_origins(compared_rows, "compared triples")
     if missing:
         warnings.append(missing)
@@ -434,6 +495,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
+        lines += _twin_lines(part, v, recs, evaluated.learned_from)
         lines += _margin_check_lines(v["margin_checks"])
     lines += ["A margin of error covers only which records happened to be evaluated: not mistakes in the ground "
               "truth, not the model answering differently on another run, and not changes made while looking at "

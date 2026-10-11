@@ -38,15 +38,20 @@ paying.
 
 The merged schema is what the model is shown, what every row is checked
 against, and what is written to schema_used.json, so 070 (and 080, once
-built) read exactly the schema this run used.
+built) read exactly the schema this run used. schema_used.json also says which
+records the schema was learned from (learned_from, below), so 070 can find the
+twins (docs/terminology.md): evaluated records with the same description as one
+of them.
 """
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.audit import log, ref_path
-from common.ground_truth import read_pool
+from common.ground_truth import HAND_SCHEMA, HAND_SCHEMA_FROM, read_pool
 from common.report import named
 from common.schema_io import ground_truth_source_problem, pattern_key, read_schema, schema_text
 from common.step import repo_path
@@ -68,6 +73,54 @@ class Schema:
     notes: list = field(default_factory=list)      # shown before paying, and in the report
     left_out: list = field(default_factory=list)   # {"kind", "component_class", "kept"}: additions already there
     not_tuning: list = field(default_factory=list) # {"entry_type", "schema_entry", "source", "why"}: from ground truth, not tuning only
+    learned_from: dict = field(default_factory=dict)  # the records the schema was learned from (learned_from, below)
+
+#: 040's file of the texts it learned from, written beside its schema (040_induce_schema/040_induce_schema_helpers/moves.py).
+EVIDENCE_NAME = "induction_evidence.json"
+
+
+def _made(path: Path) -> dict:
+    """A JSON file's "made" block (the run that wrote it), or {}."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get("made") or {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
+    """The records the schema was learned from, for 070's twins (docs/terminology.md): {"known", "ids", "how":
+    [sentences]}.
+      - 040's schema: the texts the same run of 040 learned from, in its induction_evidence.json, beside the schema;
+      - the hand-built schema: pool positions 0 to HAND_SCHEMA_FROM - 1, which it was written while annotating;
+      - either way, also the pool records an entry's source line names ("source: ground truth tuning #12").
+    Any other schema file: not known ("known": False), unless an induction_evidence.json of the same run is beside it."""
+    path = Path(inputs["schema"])
+    by_position = {r["position"]: r["id"] for r in pool}
+    ids, how = set(), []
+    if path.resolve() == HAND_SCHEMA.resolve():
+        ids |= {by_position[p] for p in range(HAND_SCHEMA_FROM) if p in by_position}
+        how.append(f"the hand-built schema was written while annotating pool positions 0 to {HAND_SCHEMA_FROM - 1}")
+    else:
+        evidence = path.with_name(EVIDENCE_NAME)
+        run = _made(path).get("run_id")
+        if not (run and evidence.is_file() and _made(evidence).get("run_id") == run):
+            return {"known": False, "ids": [],
+                    "how": [f"{repo_path(path)} has no {EVIDENCE_NAME} beside it written by the same run, so which "
+                            f"texts the schema was learned from isn't known"]}
+        texts = json.loads(evidence.read_text(encoding="utf-8")).get("texts", [])
+        ids |= {t["id"] for t in texts}
+        how.append(f"040's run {run} learned it from {len(texts)} texts ({repo_path(evidence)}, key texts)")
+    named_positions = set()
+    for sources in (base.get("sources", {}), result.sources):
+        for of_kind in sources.values():
+            for source in of_kind.values():
+                if re.search(r"ground[\s_-]*truth", source.lower()):
+                    named_positions |= {int(n) for n in re.findall(r"#(\d+)", source)}
+    found = sorted(p for p in named_positions if p in by_position)
+    if found:
+        ids |= {by_position[p] for p in found}
+        how.append("source lines of its entries name pool positions " + ", ".join(f"#{p}" for p in found))
+    return {"known": True, "ids": sorted(ids), "how": how}
 
 
 def _source(came_from: str | None) -> str:
@@ -85,7 +138,8 @@ def load_schema(inputs: dict) -> Schema:
                    f"060_extract/060_extract.md (section The shape of a schema), or pass another with --schema, "
                    f"then run `py 060_extract/run.py` again.")
 
-    parts = {r["position"]: r.get("part") for r in read_pool(inputs["splits"])}
+    pool = read_pool(inputs["splits"])
+    parts = {r["position"]: r.get("part") for r in pool}
 
     merged = {kind: dict(base[kind]) for kind in KINDS}
     result.came_from = {kind: {name: "schema" for name in base[kind]} for kind in KINDS}
@@ -145,6 +199,7 @@ def load_schema(inputs: dict) -> Schema:
     result.content = merged
     result.text = schema_text(merged)
     result.schema_entries = SchemaEntries(merged)
+    result.learned_from = learned_from(inputs, base, result, pool)
 
     schema_file, additions_file = repo_path(inputs["schema"]), repo_path(inputs["additions"])
     from_held_out = [f"{name} (schema input; {why})" for kind in KINDS + ("patterns",)

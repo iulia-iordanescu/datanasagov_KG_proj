@@ -155,6 +155,16 @@ class Checks(unittest.TestCase):
         # comparing two component instances (pairing) keeps inner punctuation
         self.assertNotEqual(text_match.norm_text("MODIS, Aqua"), text_match.norm_text("MODIS Aqua"))
 
+    def test_whole_words_in_a_lookup(self):
+        # a match may not cut a word or a number in two; a plural ending may follow; a letter next to a digit is a break
+        t = text_match.Text("Salinity from Aquarius and the Aqua satellites, in 25 minutes at 500 meter, "
+                            "near Comet67P (MOD04_L2), CO2-based, starting at 12.5 km.")
+        for needle in ["Aqua satellite", "Aqua satellites", "Aquarius", "67P", "Comet", "L2", "CO2", "12.5 km", "25 minutes"]:
+            self.assertTrue(t.contains(needle), needle)
+        for needle in ["Aquar", "5 minutes", "500 m", "START", "2.5 km", "sat", "MOD0", "500 meters per"]:
+            self.assertFalse(t.contains(needle), needle)
+        self.assertTrue(text_match.Text("See Aquarius. Aqua too.").contains("Aqua"))     # a later whole-word match
+
     def test_keys(self):
         self.assertEqual(triples_io.component_class_key("physical quantity"), triples_io.component_class_key("PhysicalQuantity"))
         self.assertEqual(triples_io.component_class_key("HAS_VERSION"), triples_io.component_class_key("has-version"))

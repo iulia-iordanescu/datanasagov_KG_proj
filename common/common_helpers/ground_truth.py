@@ -85,6 +85,17 @@ PATTERN = "batch_*.csv"
 NUMBERED = re.compile(r"batch_(\d{3,})\.csv")
 DRAFT_PATTERN = "drafted_triples_batch*.csv"
 DRAFT_NUMBERED = re.compile(r"drafted_triples_batch(\d+)\.csv")
+HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
+#: The hand-built schema was written while annotating the pool's first records, positions 0 to HAND_SCHEMA_FROM - 1:
+#: so they are always tuning (030), and they are the records it was learned from (060's learned_from).
+HAND_SCHEMA_FROM = 6
+
+
+def description_key(record: dict) -> str:
+    """A record's description (its notes), evened out (common/common_helpers/text_match.py), to find twins
+    (docs/terminology.md): two records whose keys are equal and not empty have the same description."""
+    from common.text_match import even
+    return even(record.get("notes") or "").strip()
 
 
 def file_name(n: int) -> str:

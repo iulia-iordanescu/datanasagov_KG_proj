@@ -18,7 +18,10 @@ the pool at all (hand-picked) is left out and listed, with what to do.
 
 For each evaluated record: its pool position, its part (tuning or held-out,
 from 030), its stratum (from the pool file), its title, its ground
-truth triples and DESCRIBES row, and 060's extracted triples and DESCRIBES row.
+truth triples and DESCRIBES row, 060's extracted triples and DESCRIBES row,
+and whether it is a twin (docs/terminology.md): its description is the same
+as that of a record the current schema was learned from (060's
+schema_used.json, learned_from). None when that isn't known.
 """
 from __future__ import annotations
 
@@ -27,7 +30,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.files import read_csv
-from common.ground_truth import fair_prefix, read_ground_truth, read_pool
+from common.ground_truth import description_key, fair_prefix, read_ground_truth, read_pool
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews
 from common.records_io import load_records
@@ -50,6 +53,7 @@ class Evaluated:
     reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/common_helpers/partial_reviews.py)
     extraction_made: dict = field(default_factory=dict)  # 060's run: run id, model, settings (from its details file)
     catalog_records: int = 0                       # records in 020's records.jsonl: the whole catalog
+    learned_from: dict = field(default_factory=dict)  # the records the current schema was learned from (060's schema_used.json)
 
 
 def _triples(rows: list) -> tuple:
@@ -75,6 +79,27 @@ def refusal(repeats: list) -> str:
             f"copy could be paired.")
     return head + "\n" + numbered([r["message"][0].upper() + r["message"][1:] for r in repeats])
 
+
+
+def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
+    """Each evaluated record's "twin": True when its description is the same (common.ground_truth.description_key)
+    as that of a record the current schema was learned from, False when not, None when that isn't known (a note
+    says why, and what to do)."""
+    learned = evaluated.schema_used.get("learned_from") or {}
+    evaluated.learned_from = learned
+    if not learned.get("known"):
+        why = (learned.get("how") or [f"{repo_path(inputs['schema_used'])} doesn't say (an older step 060 wrote it)"])[0]
+        evaluated.notes.append(f"Which records the current schema was learned from isn't known: {why}. So 070 can't "
+                               f"tell which evaluated records are twins (same description as a record the schema was "
+                               f"learned from; docs/terminology.md, section *Evaluating extraction*), and gives no "
+                               f"numbers without them. To get them, extract with 040's schema or the hand-built one "
+                               f"(`py 060_extract/run.py`), then run `py 070_evaluate/run.py` again.")
+        for r in evaluated.records:
+            r["twin"] = None
+        return
+    seen = {description_key(catalog[i]) for i in learned["ids"] if i in catalog} - {""}
+    for r in evaluated.records:
+        r["twin"] = description_key(catalog.get(r["id"], {})) in seen
 
 
 def _first_gap(pool: list, positions: dict, taken: set, finished: set, in_ground_truth) -> str:
@@ -160,6 +185,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
         })
+    _mark_twins(evaluated, catalog, inputs)
     missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]
     if missing_stratum:
         candidates = repo_path(inputs["candidates"])
