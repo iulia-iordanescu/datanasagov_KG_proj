@@ -23,7 +23,7 @@ After running [step](../docs/terminology.md#8-the-pipeline) 050, from the reposi
 py helpers/annotate.py
 ```
 
-It opens a page in your browser (Ctrl+C in the terminal stops it). On any view, **Help** at the top shows this file's section about that view. It runs only on your computer: no internet, no [model calls](../docs/terminology.md#8-the-pipeline), nothing to install.
+It opens a page in your browser (Ctrl+C in the terminal stops it). On any view, **Help** at the top shows this file's section about that view. It runs only on your computer: no internet, no [model calls](../docs/terminology.md#8-the-pipeline), nothing to install. Everything it can and can't do, in one list: *What the tool can do* and *What the tool can't do*, below.
 
 1. **Pick the batch** at the top of the page. The first time you open a [draft batch](../docs/terminology.md#4-ground-truth-and-samples), the tool copies it into `ground_truth/`, renamed by its batch number (`outputs/intermediate_results/050_annotate/drafted_triples_batch1.csv` → `annotations/ground_truth/batch_001.csv`). From then on you're editing that copy; the draft in `outputs/` is never changed.
 2. **Correct each [record](../docs/terminology.md#1-records-and-their-text)**: its heading shows its [pool](../docs/terminology.md#4-ground-truth-and-samples) position and whether it's a **tuning** or **held-out** record (a [component class](../docs/terminology.md#3-schemas) you learn from a held-out record must not go into `schema_additions.txt`). Read its [text](../docs/terminology.md#1-records-and-their-text) first (the [source text](../docs/terminology.md#1-records-and-their-text) of each row is highlighted in it; the row you're on is darker), then fix, delete (🗑) or add (+) rows. [Entity classes](../docs/terminology.md#3-schemas) and [predicates](../docs/terminology.md#3-schemas) suggest the component classes of the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) as you type (the [hand-built schema](../docs/terminology.md#3-schemas)'s, plus any already [coined](../docs/terminology.md#7-evaluating-extraction-step-070) in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples)); you can still type a new one. An entity class or predicate not in the hand-built schema stays flagged (it could be a typo). If it's a typo, fix it; if it's new, press **Add … to the hand-built schema** under the [flag](../docs/terminology.md#2-triples), type a one-line definition and press **Add**. A [pattern](../docs/terminology.md#3-schemas) the hand-built schema doesn't have yet (a predicate between two entity classes it hasn't joined before) is flagged the same way, with an **Add the pattern** button once its [subject class](../docs/terminology.md#2-triples) and [object class](../docs/terminology.md#2-triples) are in the [schema](../docs/terminology.md#3-schemas). The bar above the page lists, from every batch, the component classes the ground truth uses that the hand-built schema lacks, and the patterns it lacks whose component classes are all in it, with the same buttons. The tool adds only that entry or pattern to `schema_derived_from_manual_annotation.txt`, checks nothing else in it changed (otherwise it puts the file back and says so), and gives each component class a `source:` line naming the ground truth records that use it, by part (`source: ground truth tuning #3; held-out #8`). A pattern gets no `source:` line: it is added under its predicate, where the layout has no place for one. To set a source text, select the passage in the text and press **Use selection**. Every change is saved to the file at once, and the checks under each row update as you go (✖ must be fixed, ⚑ worth a look).
@@ -61,6 +61,60 @@ Two shortcuts:
 
 - **On a tuning record's page:** *Add a component class to the schema additions* opens the form with `source: ground truth tuning #<its position>` filled in. On a held-out record the button is greyed out.
 - **Component classes outside the schema:** below the entries, the component classes extraction's last [run](../docs/terminology.md#8-the-pipeline) used that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) doesn't have (held-out records never counted), each with *Add*, which fills in the [kind](../docs/terminology.md#3-schemas), component class, and source. You write the definition.
+
+### What the tool can do
+
+Each view opens with a button at the top of the page. **Help**, at the top of every view, shows this file's section about that view.
+
+| View | What you can do there | Saved to |
+|---|---|---|
+| **Batch** (pick one under *Batch*) | Open a [draft batch](../docs/terminology.md#4-ground-truth-and-samples) from step 050 (the first time, the tool copies it into `ground_truth/`), or a file already in `ground_truth/`. | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Go from record to record (**← Previous**, **Next →**, or the *Records* list). | (nothing) |
+| | Read the record's text, with each row's [source text](../docs/terminology.md#1-records-and-their-text) highlighted (the row you're on darker). | (nothing) |
+| | Change any value of any row: [subject instance](../docs/terminology.md#2-triples), predicate, [object instance](../docs/terminology.md#2-triples), their [entity classes](../docs/terminology.md#3-schemas), source text. Entity classes and predicates suggest the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070)'s as you type. | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Set a row's source text from a passage: select it in the text, then press **Use selection**. | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Add a row (**+ Add a [triple instance](../docs/terminology.md#2-triples)**), or delete one (🗑). Deleting every row of a record keeps one row with only its id: "states no facts". | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Set what the record describes, and its entity class (*This record describes … which is a …*). | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Tick **All facts extracted** once every fact the text states is there (untick it if you're not done). | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Add an entity class or predicate you coined to the [hand-built schema](../docs/terminology.md#3-schemas), with a one-line definition (the button under its ⚑, or in the bar above the page). | `annotations/schema_derived_from_manual_annotation.txt` |
+| | Add a pattern the hand-built schema lacks (**Add the pattern**, under its ⚑, or in the bar above the page). | `annotations/schema_derived_from_manual_annotation.txt` |
+| | On a tuning record: **Add a [component class](../docs/terminology.md#3-schemas) to the [schema additions](../docs/terminology.md#3-schemas)** (opens the form of *Schema additions*, with the source filled in). | `annotations/schema_additions.txt` |
+| | See every check as you type: ✖ must be fixed, ⚑ worth a look. | (nothing) |
+| **[Translation table](../docs/terminology.md#7-evaluating-extraction-step-070)** | See the rows still to check (or all of them; or also the rows only [past schemas](../docs/terminology.md#6-extracting-with-a-schema-step-060) use). | (nothing) |
+| | For each row: choose the component class of the ground truth vocabulary it means, or `(none)`; for a predicate, tick **Swap subject and object**; tick **Checked**. | `annotations/component_class_mapping.csv` |
+| | Change a row accepted automatically (same spelling); it then needs checking like any other. | `annotations/component_class_mapping.csv` |
+| | Check a stale row again (it shows the old definition). | `annotations/component_class_mapping.csv` |
+| | Delete a repeated row (one component class with two rows). | `annotations/component_class_mapping.csv` |
+| **[Partial pairs](../070_evaluate/metrics/pairs.md)** | See step 070's partial pairs of tuning records (or only those not reviewed yet), with the record's text. | (nothing) |
+| | Mark a partial pair **Same fact** or **Not the same fact**; **Take back** a verdict. | `annotations/partial_pair_reviews.csv` |
+| **Schema additions** | Add (**+ Add an entry**), edit, or delete an entry: an entity class, a predicate, or a pattern, each with its source. | `annotations/schema_additions.txt` |
+| | Add a component class extraction used outside the schema (**Add**, below the entries; you write the definition). | `annotations/schema_additions.txt` |
+
+Every change is saved at once. Commit the changed files in `annotations/` to Git.
+
+### What the tool can't do
+
+| You can't, in the tool | Instead |
+|---|---|
+| Change the [draft batches](../docs/terminology.md#4-ground-truth-and-samples) in `outputs/` | Nothing: correct the copy in `ground_truth/` (the tool makes it). |
+| Rename a [component class](../docs/terminology.md#3-schemas) of the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070) everywhere at once, or merge two that mean the same thing | By hand: *Renaming or merging a component class of the ground truth vocabulary*, below. |
+| Change or delete an entry of the [hand-built schema](../docs/terminology.md#3-schemas) (it can only add one) | By hand, in `annotations/schema_derived_from_manual_annotation.txt`. Changing a definition makes the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070)'s rows that translate to that component class stale: check them again (*Translation table*). |
+| Add rows to the translation table, reorder them, or delete one that isn't a repeat | Step 070 adds the rows it needs; a row only [past schemas](../docs/terminology.md#6-extracting-with-a-schema-step-060) use is kept on purpose. |
+| Review the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070)'s [partial pairs](../070_evaluate/metrics/pairs.md) | Nothing until the final evaluation: reviewing them would mean looking at held-out results. |
+| Change the pool (`ground_truth_candidates.csv`) | Never change it: its order is what makes the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) a [fair sample](../docs/terminology.md#4-ground-truth-and-samples). |
+| Run a step | `py <step folder>/run.py` (each step's guide, *How to run*). |
+
+### Renaming or merging a component class of the ground truth vocabulary
+
+The tool can't do this. By hand, for a [component class](../docs/terminology.md#3-schemas) `Old` that should be called `New` (renaming), or that means the same as `New`, which already exists (merging):
+
+1. **The [ground truth](../docs/terminology.md#4-ground-truth-and-samples) files.** In every `annotations/ground_truth/batch_*.csv`, change `Old` to `New` wherever it appears: in `subject_class` and `object_class` for an [entity class](../docs/terminology.md#3-schemas), in `predicate` for a predicate. A file you miss keeps `Old` in the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070), as a coined component class, and its ground truth triples no longer match what the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) translates to.
+2. **The [hand-built schema](../docs/terminology.md#3-schemas)** (`annotations/schema_derived_from_manual_annotation.txt`). Renaming: change the entry's name, and `Old` in its patterns. Merging: delete `Old`'s entry, and move its patterns under `New`.
+3. **The translation table** (`annotations/component_class_mapping.csv`). In every row whose `component_class_in_gtt` is `Old`, write `New`. Step 070 stops on a row naming a component class that's no longer in the ground truth vocabulary, so a row you miss is caught. When merging, a changed row is then stale if `New`'s definition differs from `Old`'s: check it again (*Translation table*).
+4. **For a predicate only:** your [partial pair reviews](../docs/terminology.md#7-evaluating-extraction-step-070) are filed under the predicate's spelling, so the [partial pairs](../070_evaluate/metrics/pairs.md) with `Old` come back as not reviewed: review them again (*Partial pairs*).
+5. Run step 070 again, and commit the changed files.
+
+Example: *Suppose:* while annotating, you coined `Satelite` (a misspelling) in two rows, and added it to the hand-built schema as "a craft in orbit". Step 070 then wrote the translation table row `Satellite` ([current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060)) → `Satelite` (ground truth vocabulary), which you checked. The hand-built schema also has `Spacecraft`, "a craft that operates in space", which means the same. *Then,* to merge `Satelite` into `Spacecraft`: (1) in both rows of the ground truth, change `Satelite` to `Spacecraft`; (2) delete the `Satelite` entry from the hand-built schema; (3) in that translation table row, change `Satelite` to `Spacecraft`. The row is then stale, since the definition it stored ("a craft in orbit") isn't `Spacecraft`'s: check it again.
 
 ## The ground truth files
 
