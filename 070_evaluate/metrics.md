@@ -16,6 +16,6 @@ Read them in this order: what they count first, then each metric, then why each 
 | [F1](metrics/f1.md) | precision and recall combined into one number |
 | [Entity-class accuracy](metrics/entity_class_accuracy.md) | among the pairs, the proportion whose [entity classes](../docs/terminology.md#3-schemas) are also right |
 | [Recall upper bound](metrics/recall_upper_bound.md) | the most recall the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) allows |
-| [Recall within reach](metrics/recall_within_reach.md) | recall over only the ground truth triples [within reach](metrics/recall_upper_bound.md) (whose predicate some row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) translates to): recall ÷ recall upper bound |
+| [Recall within reach](metrics/recall_within_reach.md) | recall over only the ground truth triples [within reach](metrics/recall_upper_bound.md) (whose [predicate](../docs/terminology.md#3-schemas) some row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) translates to): recall ÷ recall upper bound |
 | [What each record describes](metrics/describes.md) | how often extraction names the right [describes class](../docs/terminology.md#2-triples), next to always naming the most common one |
 | [Why "approximately"](metrics/approximately.md) | the reasons every metric shares, including the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) |

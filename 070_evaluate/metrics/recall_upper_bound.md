@@ -4,7 +4,21 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 ## <ins>Definition</ins>
 
-The proportion of the [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples) that the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) can express at all: the most recall any extraction with this [schema](../../docs/terminology.md#3-schemas) and [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) could get. A ground truth triple is **within reach** when its [predicate](../../docs/terminology.md#3-schemas) is one that some checked row of the translation table translates to. It is **within strict reach** when (it is within reach) ∧ (its [subject class](../../docs/terminology.md#2-triples) is one that some checked row translates to) ∧ (its [object class](../../docs/terminology.md#2-triples) is one that some checked row translates to). Which ground truth triples count depends on the version.
+The proportion of the [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples) that are within reach (defined below): the most [recall](recall.md) any extraction could get with this [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and this [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070). Which ground truth triples count depends on the version.
+
+A ground truth triple is **within reach** when the translation table has a checked row that translates a [predicate](../../docs/terminology.md#3-schemas) of the current schema to the ground truth triple's predicate.
+
+- Example: a checked row translates MOUNTED_ON (current schema) to ABOARD ([ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070)). So every ground truth triple with the predicate ABOARD is within reach.
+- Example: no checked row translates any predicate of the current schema to HAS_TIME_SPAN (ground truth vocabulary). So no ground truth triple with the predicate HAS_TIME_SPAN is within reach.
+
+A ground truth triple that isn't within reach can never be found. Extraction writes only predicates of the current schema, and evaluation translates each of them through the predicate's row. So a [translated extracted triple](../../docs/terminology.md#7-evaluating-extraction-step-070) can only have a predicate of the ground truth vocabulary that some checked row translates to. In the second example, no translated extracted triple has the predicate HAS_TIME_SPAN, so no ground truth triple with the predicate HAS_TIME_SPAN can be in a [pair](pairs.md).
+
+A ground truth triple is **within strict reach** when (the ground truth triple is within reach) ∧ (the translation table has a checked row that translates an [entity class](../../docs/terminology.md#3-schemas) of the current schema to the ground truth triple's [subject class](../../docs/terminology.md#2-triples)) ∧ (the translation table has a checked row that translates an entity class of the current schema to the ground truth triple's [object class](../../docs/terminology.md#2-triples)).
+
+- Example: besides the MOUNTED_ON row above, checked rows translate Sensor (current schema) to Instrument (ground truth vocabulary), and Satellite (current schema) to Spacecraft (ground truth vocabulary). So the ground truth triple "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft) is within strict reach.
+- Example: no checked row translates any entity class of the current schema to Dataset (ground truth vocabulary). So the ground truth triple "MODIS Snow Cover" (Dataset) ACQUIRED_BY "MODIS" (Instrument) isn't within strict reach, even when the ground truth triple is within reach.
+
+A ground truth triple that isn't within strict reach can never be in a [strict pair](pairs.md), for the same reason: a translated extracted triple can only have entity classes of the ground truth vocabulary that some checked row translates to.
 
 ## <ins>Formula</ins>
 
@@ -24,7 +38,7 @@ Let *u* be the value of one version of the recall upper bound. It reads two ways
 **What was computed** (the evaluated records)
 
 1. *u* is the proportion of the evaluated records' ground truth triples that are within reach (for the strict version, within strict reach).
-2. No extraction with this schema and translation table can get a [recall](recall.md) above the recall upper bound, or a strict recall above the strict recall upper bound, at either [pair level](pairs.md): a [pair](pairs.md) needs the same predicate, and an occurrence has a predicate of the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) only when a row translates its predicate to one; a [strict pair](pairs.md) also needs the same subject classes and the same object classes, and an occurrence has [entity classes](../../docs/terminology.md#3-schemas) of the ground truth vocabulary only when rows translate its entity classes to them.
+2. No extraction with this schema and translation table can get a [recall](recall.md) above the recall upper bound, or a strict recall above the strict recall upper bound, at either [pair level](pairs.md): a [pair](pairs.md) needs the same predicate, and an occurrence has a predicate of the ground truth vocabulary only when a row translates its predicate to one; a [strict pair](pairs.md) also needs the same subject classes and the same object classes, and an occurrence has entity classes of the ground truth vocabulary only when rows translate its entity classes to them.
 3. Recall upper bound minus strict recall upper bound is the proportion of the ground truth triples that are within reach but not within strict reach: the schema has their predicate, but (no counterpart for their subject class) ∨ (no counterpart for their object class).
 
 **What it means for the knowledge graph** (the whole catalog, approximately)
