@@ -10,6 +10,14 @@ source text, the passage that states it. Nothing tells the model which kinds of 
 relations to look for; that is what the later stages learn. (The prompt says
 "facts": it speaks plainly to the model.)
 
+Everything else is what 050 and 060 use too (common/common_helpers/extraction.py),
+so the schema is learned from the same kind of facts extraction later has to
+produce: the shared extraction rules, the reply format (here without entity
+classes, which stage 3 learns), the record's text between BEGIN/END RECORD
+lines, and the model calls themselves (ask_model: cached, `workers` at a
+time, a text with a failed call left out whole and asked again on the next
+run).
+
 The reply also names describes_class: the kind of thing the text's title
 names ("Dataset", "WebTool", …), judged from the whole text. The first piece
 of a text to name one decides it. Stage 3 uses it as the title's label, so
@@ -22,11 +30,6 @@ that isn't in the text) is unverified: it may be invented, so it is left out
 of everything the later stages count, and kept, with why, in the evidence
 file. One whose component instances are reworded ("the instrument" for
 "MODIS") is verified, and its flags are counted in the report.
-
-A piece whose answer is in the cache is not asked again. Pieces are asked
-`workers` at a time, and each answer is stored the moment it arrives, so an
-interrupted run keeps what it paid for. A call that fails is logged and left
-out; the next run asks it again.
 """
 from __future__ import annotations
 
@@ -34,24 +37,22 @@ import collections
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, key
-from common import llm
+from common import extraction
 from common.audit import log
-from common import prompt_files
-from common.prompt_files import fill, load
+from common.prompt_files import load
 from common.text_match import Text
 from common.validate import check_triple_instance
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
 PROMPT = load(PROMPTS_DIR / "extract.txt")
-END_LINE = "----- END TEXT -----"
 SLOTS = ("subject", "predicate", "object")
 
 
 @dataclass
 class TripleInstances:
     texts: list = field(default_factory=list)     # {"id", "maintainer", "title", "describes_class",
-                                                  #  "triple_instances", "unverified", "failed_pieces"}
+                                                  #  "triple_instances", "unverified"}
+    failed: dict = field(default_factory=dict)    # {text id: why}: left out whole, asked again on the next run
     malformed: int = 0                            # items in replies that weren't a triple instance
     errors: dict = field(default_factory=dict)    # {check: triple instances left out for it}
     flags: dict = field(default_factory=dict)     # {check: verified triple instances that raised it}
@@ -64,68 +65,39 @@ def _from_reply(reply: dict) -> tuple:
     three slots must hold non-empty text), and its describes_class ("" if
     none). The source text is kept as given ("" if missing); the checks
     judge it."""
-    items = reply.get("triples") if isinstance(reply.get("triples"), list) else []
+    items = reply.get("triples") if isinstance(reply, dict) and isinstance(reply.get("triples"), list) else []
     good = []
     for t in items:
         if isinstance(t, dict) and all(isinstance(t.get(k), str) and t[k].strip() for k in SLOTS):
             instance = {k: " ".join(t[k].split()) for k in SLOTS}
             instance["source_text"] = t["source_text"].strip() if isinstance(t.get("source_text"), str) else ""
             good.append(instance)
-    describes = reply.get("describes_class")
+    describes = reply.get("describes_class") if isinstance(reply, dict) else None
     describes = " ".join(describes.split()) if isinstance(describes, str) else ""
     return good, len(items) - len(good), describes
 
 
+def prompt_for(item: dict, piece: str) -> str:
+    return extraction.prompt(PROMPT, "", item["record"], piece, with_classes=False)
+
+
 def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
-    cache = Cache(calls.cache_dir, "extract")
-    answers, todo = {}, {}
-    for t in texts.items:
-        for i, piece in enumerate(t["pieces"]):
-            k = key(prompt_files.text(PROMPT), piece)
-            stored = cache.get(k)
-            if stored is not None:
-                answers[(t["id"], i)] = stored
-            else:
-                todo[(t["id"], i)] = (k, piece)
-
-    result = TripleInstances(reused=len(answers))
-    if todo:
-        calls.paid.start(f"  040 will make {len(todo)} model call(s) to extract triple instances, then a "
-                         f"few more to label, merge and define what it finds (all counted in the report)")
-        before = calls.paid.made
-
-        def ask(k, piece):
-            reply = llm.call_llm_json(fill(PROMPT, text=llm.fence_safe(piece, END_LINE)))
-            calls.paid.made_call()
-            return k, reply
-
-        def handle(n, where, answer, error):
-            if error is not None:
-                log.warning(f"extraction failed for {where[0]} piece {where[1] + 1}: {error}")
-                return
-            k, reply = answer
-            instances, bad, describes = _from_reply(reply)
-            answers[where] = {"triple_instances": instances, "malformed": bad, "describes_class": describes}
-            cache.put(k, answers[where])
-            log.debug(f"extracted {where[0]} piece {where[1] + 1}: {len(instances)} triple instances "
-                      f"({n}/{len(todo)})")
-
-        llm.run_parallel(ask, dict(todo), settings["workers"], handle,
-                         "Answers already received are kept in the cache.")
-        result.calls = calls.paid.made - before
+    replies = extraction.ask_model(texts.items, prompt_for, calls, settings["workers"], "extract",
+                                   "040 will extract triple instances (then make a few more calls to label, merge "
+                                   "and define what it finds, all counted in the report)", "extracting")
+    result = TripleInstances(failed=dict(replies.failed), calls=replies.calls, reused=replies.reused)
 
     errors, flags = collections.Counter(), collections.Counter()
     for t in texts.items:
+        if t["id"] not in replies.of:              # a call failed: left out whole, asked again next run
+            continue
         whole = Text(t["text"])                    # checked against the whole record, every piece
-        verified, unverified, seen, pieces_failed, describes = [], [], set(), [], ""
-        for i in range(len(t["pieces"])):
-            answer = answers.get((t["id"], i))
-            if answer is None:
-                pieces_failed.append(i)
-                continue
-            result.malformed += answer.get("malformed", 0)
-            describes = describes or answer.get("describes_class", "")
-            for instance in answer["triple_instances"]:
+        verified, unverified, seen, describes = [], [], set(), ""
+        for reply in replies.of[t["id"]]:
+            instances, bad, named = _from_reply(reply)
+            result.malformed += bad
+            describes = describes or named
+            for instance in instances:
                 spo = tuple(instance[k] for k in SLOTS)
                 if spo in seen:                    # stated by two pieces of one text: counts once
                     continue
@@ -139,7 +111,7 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
                     verified.append(instance)
         result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "title": t["title"],
                              "describes_class": describes, "triple_instances": verified,
-                             "unverified": unverified, "failed_pieces": pieces_failed})
+                             "unverified": unverified})
     result.errors, result.flags = dict(errors), dict(flags)
     n = sum(len(t["triple_instances"]) for t in result.texts)
     left_out = sum(len(t["unverified"]) for t in result.texts)

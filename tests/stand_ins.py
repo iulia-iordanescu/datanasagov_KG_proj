@@ -151,7 +151,7 @@ def _induce_texts(prompt: str) -> dict:
     """Step 040's extraction: pairs of capitalized words of the text, with the
     passage between them. Faults: an invented passage, a missing one, a
     malformed item."""
-    text = _between(prompt, "----- BEGIN TEXT -----", "----- END TEXT -----")
+    text = _between(prompt, "----- BEGIN RECORD -----", "----- END RECORD -----")
     words = re.findall(r"\b[A-Z][A-Za-z0-9-]{2,}\b", text)[:6]
     verbs = ["is aboard", "is mounted on", "measures", "is part of"]
     triples = []
@@ -220,10 +220,10 @@ def _mapping(prompt: str) -> dict:
 
 def stand_in_model(prompt, attempts=4, read_timeout=180):
     CALLS.append(prompt)
+    if "----- BEGIN RECORD -----" in prompt and '"subject_class"' not in prompt:   # 040: no entity classes asked
+        return json.dumps(_induce_texts(prompt))
     if "----- BEGIN RECORD -----" in prompt:
         return json.dumps(_record_reply(prompt))
-    if "----- BEGIN TEXT -----" in prompt:
-        return json.dumps(_induce_texts(prompt))
     if "(each with one usage example" in prompt:
         return json.dumps(_labels(prompt))
     if '"merges"' in prompt:

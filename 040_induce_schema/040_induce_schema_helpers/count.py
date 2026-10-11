@@ -45,14 +45,16 @@ from common.audit import log
 from common.triples_io import component_class_key
 from merge import BECOMES
 
-#: Example component instances kept per entity class.
+#: Examples kept per entity class (the component instances that most often got it) and per predicate (the
+#: triple instances that most often state it, "subject -- predicate -- object": a predicate's examples need its
+#: subject and object, since the definition says what they are).
 EXAMPLES = 5
 
 
 @dataclass
 class Counts:
     entity_classes: list = field(default_factory=list)  # {"component_class", "support", "texts", "maintainers", "examples"}
-    predicates: list = field(default_factory=list)      # {"component_class", "support", "texts", "maintainers"}
+    predicates: list = field(default_factory=list)      # {"component_class", "support", "texts", "maintainers", "examples"}
     patterns: list = field(default_factory=list)        # {"pattern", "support", "texts", "maintainers"}
     spelling_folds: list = field(default_factory=list)  # {"kind", "into", "folded"}
     unlabeled_slots: dict = field(default_factory=dict) # {slot: component instances without a label}
@@ -99,7 +101,8 @@ def count_support(triples, labels) -> Counts:
 
     ids = {k: collections.defaultdict(set) for k in ("entity class", "predicate", "pattern")}
     maint = {k: collections.defaultdict(set) for k in ("entity class", "predicate", "pattern")}
-    examples = collections.defaultdict(collections.Counter)
+    examples = {"entity class": collections.defaultdict(collections.Counter),
+                "predicate": collections.defaultdict(collections.Counter)}
     unlabeled = collections.Counter()
     for t in triples.texts:
         if t["triple_instances"]:
@@ -116,8 +119,8 @@ def count_support(triples, labels) -> Counts:
                     continue
                 ids[entry][label].add(t["id"])
                 maint[entry][label].add(t["maintainer"])
-                if entry == "entity class":
-                    examples[label][value] += 1
+                examples[entry][label][value if entry == "entity class" else
+                                       f"{ti['subject']} -- {ti['predicate']} -- {ti['object']}"] += 1
             if sc and oc and p:
                 ids["pattern"][(sc, p, oc)].add(t["id"])
                 maint["pattern"][(sc, p, oc)].add(t["maintainer"])
@@ -126,10 +129,11 @@ def count_support(triples, labels) -> Counts:
             counts.texts_with_describes_class += 1
             ids["entity class"][described].add(t["id"])
             maint["entity class"][described].add(t["maintainer"])
-            examples[described][t["title"]] += 1
+            examples["entity class"][described][t["title"]] += 1
 
-    counts.entity_classes = _entries(ids["entity class"], maint["entity class"], "component_class", examples)
-    counts.predicates = _entries(ids["predicate"], maint["predicate"], "component_class")
+    counts.entity_classes = _entries(ids["entity class"], maint["entity class"], "component_class",
+                                     examples["entity class"])
+    counts.predicates = _entries(ids["predicate"], maint["predicate"], "component_class", examples["predicate"])
     counts.patterns = _entries(ids["pattern"], maint["pattern"], "pattern")
     counts.unlabeled_slots = dict(unlabeled)
     log.info(f"  found {len(counts.entity_classes):,} entity classes, {len(counts.predicates):,} "

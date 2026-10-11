@@ -18,6 +18,7 @@ Use only component classes exactly as they are written in the two lists.
 Return ONLY JSON, no prose, with "schema" the component class from SCHEMA
 and "ground_truth" the one from GROUND_TRUTH:
 {"suggestions": [{"kind": "entity class" or "predicate", "schema": "...", "ground_truth": "..."}]}
+Return {"suggestions": []} if you are confident of none.
 
 GROUND_TRUTH
 $ground_truth

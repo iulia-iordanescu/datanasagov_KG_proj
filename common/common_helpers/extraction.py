@@ -1,20 +1,24 @@
 """
 common/common_helpers/extraction.py -- what the steps that ask a model for a record's
-triple instances WITH entity classes share: 050 (drafting ground truth) and
-060 (extracting with a schema), so the one is evaluated against the other on
-equal terms.
+triple instances share: 040 (learning the schema), 050 (drafting ground truth)
+and 060 (extracting with a schema), so they all extract the same kind of facts,
+and 060 is evaluated against 050 on equal terms.
 
     rules_for(record)          the shared rules (common/common_prompts/extraction_rules.txt),
                                with the record's field names filled in
-    REPLY                      the reply format (common/common_prompts/extraction_reply.txt)
+    reply(with_classes)        the reply format (common/common_prompts/extraction_reply.txt):
+                               each triple with its entity classes (050, 060) or
+                               without (040, which learns them in a later stage)
+    prompt(...)                a step's prompt filled with all of the above
     wrap(piece)                a text piece between BEGIN/END RECORD lines
     ask_model(...)             one cached model call per text piece; a record
                                with a failed call is left out whole
     build_rows(...)            a record's replies -> checked rows + removed items
+                               (050, 060: rows with entity classes)
 
-Each step keeps only what is its own: the top of its prompt and how it
-chooses records. (040's extraction asks for no entity classes, since it
-learns them; its prompt is its own.)
+Each step keeps only what is its own: the top of its prompt (040: no
+vocabulary, predicates in the model's own words; 050: a vocabulary to reuse
+or extend; 060: only the schema's) and how it chooses records.
 
 What build_rows does with a record's replies (one per text piece):
 
@@ -45,7 +49,7 @@ from common import llm
 from common.audit import log
 from common.cache import Cache, key
 from common.chunking import text_fields
-from common.prompt_files import fill, load, text as prompt_text
+from common.prompt_files import fill, load
 from common.text_match import Text
 from common.triples_io import (clean_triple, describes_row, component_class_key, triple_key)
 from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
@@ -61,11 +65,17 @@ def rules_for(record: dict) -> str:
     return fill(RULES, field_names=", ".join(f'"{n}:"' for n in text_fields(record)))
 
 
-def prompt(template, schema_text: str, record: dict, piece: str) -> str:
-    """The prompt for one text piece: template (050's draft.txt or 060's
-    extract.txt) filled with the schema, this record's rules, the shared
-    reply format and the piece."""
-    return fill(template, schema=schema_text, rules=rules_for(record), reply=prompt_text(REPLY).strip(),
+def reply(with_classes: bool = True) -> str:
+    """The reply format, each triple with its entity classes or without."""
+    keys = ROW_KEYS if with_classes else ("subject", "predicate", "object", "source_text")
+    return fill(REPLY, fields=", ".join(f'"{k}": "..."' for k in keys)).strip()
+
+
+def prompt(template, schema_text: str, record: dict, piece: str, with_classes: bool = True) -> str:
+    """The prompt for one text piece: template (040's, 050's or 060's) filled
+    with the schema (none for 040), this record's rules, the shared reply
+    format and the piece."""
+    return fill(template, schema=schema_text, rules=rules_for(record), reply=reply(with_classes),
                 text=wrap(piece))
 
 
@@ -120,7 +130,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
 
 
 # --------------------------------------------------------------------------
-# asking the model, one call per text piece (050, 060)
+# asking the model, one call per text piece (040, 050, 060)
 # --------------------------------------------------------------------------
 
 @dataclass

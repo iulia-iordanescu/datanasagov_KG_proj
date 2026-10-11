@@ -74,9 +74,7 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
             if definition is None:
                 definition = MISSING_DEFINITION
                 schema.missing_definitions.append({"kind": WORD[kind], "component_class": e["component_class"]})
-            row = {"component_class": e["component_class"], "definition": definition}
-            if kind == "entity_classes":
-                row["examples"] = e["examples"][:3]
+            row = {"component_class": e["component_class"], "definition": definition, "examples": e["examples"][:3]}
             row.update({"support": e["support"], "maintainers": e["maintainers"],
                         "texts": e["texts"], ORIGIN_FIELD: _origin(e["texts"])})
             target.append(row)

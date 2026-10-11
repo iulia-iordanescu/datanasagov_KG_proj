@@ -97,6 +97,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     write_json(evidence_path, {
         "made": made,
         "texts": [{**t, "pieces": pieces[t["id"]]} for t in triples.texts],
+        "failed_texts": triples.failed,
         "labels": labels.of, "vocabulary": labels.vocabulary, "label_batches": labels.batches,
         "unlabeled": labels.unlabeled, "merges": labels.merges, "merge_issues": labels.merge_issues,
         "spelling_folds": counts.spelling_folds, "unlabeled_slots": counts.unlabeled_slots,
@@ -110,12 +111,12 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
     warnings = list(calls.paid.notes)          # shown before paying too, if the run paid
-    failed = [(t["id"], p) for t in triples.texts for p in t["failed_pieces"]]
-    if failed:
-        warnings.append(f"{len(failed)} text piece(s) failed extraction, so their triple instances are "
-                        f"missing ({named([f'{i} piece {p + 1}' for i, p in failed], 3)}). "
-                        f"Run the step again: only those are asked again; every answer already paid for is reused.")
-    empty = [t["id"] for t in triples.texts if not t["triple_instances"] and not t["failed_pieces"]]
+    if triples.failed:
+        warnings.append(f"{len(triples.failed)} text(s) failed extraction and were left out whole "
+                        f"({named([f'{i} ({why})' for i, why in triples.failed.items()], 3)}). "
+                        f"Run the step again: only the failed pieces are asked again; every answer already paid "
+                        f"for is reused.")
+    empty = [t["id"] for t in triples.texts if not t["triple_instances"]]
     if empty:
         warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}.")
     unlabeled = sum(len(v) for v in labels.unlabeled.values())

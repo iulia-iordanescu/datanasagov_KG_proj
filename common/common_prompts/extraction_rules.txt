@@ -6,10 +6,11 @@
 - source_text: the shortest passage copied EXACTLY from the record that
   states the fact.
 - One fact per triple. Leave out opinion words such as "great".
+- Each fact once, even if the record states it twice or in other words.
 - Only facts the record states. Never use outside knowledge, and never
   infer what an unexplained code or acronym stands for.
-- Do NOT write "is a" triples. What kind of thing something is belongs in
-  its entity class.
+- Do NOT write "is a" triples ("MODIS is a spectroradiometer"): what kind
+  of thing something is isn't a fact to extract.
 - describes_class: the entity class of the thing the record's title names.
 - The record is split into fields, each starting with its name: $field_names.
   The field names are formatting, not facts.

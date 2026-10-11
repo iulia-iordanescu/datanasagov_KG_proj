@@ -3,16 +3,17 @@ define.py -- stage 6: one sentence defining each entity class and each
 predicate.
 
 Every entity class and predicate whose support reaches min_support is sent
-to the model, DEFINE_BATCH at a time, with its support (and, for an entity
-class, its example component instances) (prompts/define_entity_classes.txt,
+to the model, DEFINE_BATCH at a time, with its support and its examples (an
+entity class's component instances; a predicate's triple instances, which show
+its subject and object) (prompts/define_entity_classes.txt,
 define_predicates.txt). The model writes one sentence for each, or, for a
 schema entry too vague to tell anything apart ("Thing", "RELATED_TO"), says
 so with a reason.
 
 This stage only writes words. It merges nothing (merging is stage 4's job,
 done once, over all labels at a time) and chooses nothing: the examples are
-picked by code, from the component instances that most often got each
-entity class (stage 5). Stage 7 checks what the model sent back.
+picked by code (stage 5): the component instances that most often got each
+entity class, the triple instances that most often state each predicate. Stage 7 checks what the model sent back.
 
 Adapted from assemble() in to_be_reshaped/best_induce_schema.py, which also
 merged near-duplicates here, a second merge in batches of 40 where synonyms
@@ -58,8 +59,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
         result.of[kind], result.too_vague[kind] = {}, {}
         wanted = [e for e in getattr(counts, kind) if e["support"] >= settings["min_support"]]
         for start in range(0, len(wanted), DEFINE_BATCH):
-            batch = [{"component_class": e["component_class"], "texts": e["support"],
-                      **({"examples": e["examples"]} if kind == "entity_classes" else {})}
+            batch = [{"component_class": e["component_class"], "texts": e["support"], "examples": e["examples"]}
                      for e in wanted[start:start + DEFINE_BATCH]]
             k = key(prompt_files.text(PROMPTS[kind]), kind, batch)
             reply = cache.get(k)

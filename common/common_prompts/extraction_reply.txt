@@ -1,5 +1,3 @@
 Return ONLY JSON, no prose:
-{"describes_class": "...", "triples": [{"subject": "...",
-"subject_class": "...", "predicate": "...", "object": "...",
-"object_class": "...", "source_text": "..."}]}
+{"describes_class": "...", "triples": [{$fields}]}
 with "triples": [] if there are none to extract.

@@ -166,6 +166,12 @@ class Counting(unittest.TestCase):
         self.assertEqual((ds["support"], ds["examples"]), (2, ["MODIS L2", "AIRS L1"]))
         self.assertEqual((self.c.texts_with_triple_instances, self.c.texts_with_describes_class), (2, 2))
 
+    def test_predicate_examples_are_facts(self):
+        """A predicate's examples are the triple instances that most often state it: they show its subject and
+        object, which its definition must say."""
+        self.assertEqual(self.entry("predicates", "ABOARD")["examples"][0], "MODIS -- is aboard -- Aqua")
+        self.assertIn("AIRS -- flies on -- Aqua", self.entry("predicates", "ABOARD")["examples"])
+
 
 class Checking(unittest.TestCase):
 

@@ -24,7 +24,7 @@ from common.step import check_settings
 
 @dataclass
 class Texts:
-    items: list = field(default_factory=list)        # {"id", "maintainer", "title", "text", "pieces"}
+    items: list = field(default_factory=list)        # {"id", "maintainer", "record", "title", "text", "pieces"}
     maintainers: list = field(default_factory=list)  # {"maintainer", "rank", "records", "eligible", "taken"}
     notes: list = field(default_factory=list)        # where the texts differ from what the settings ask for
 
@@ -47,7 +47,7 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
             if record is None:
                 raise ValueError(f"induction candidate {row['id']} is not in 020's records; "
                                  f"splits.json and records.jsonl are out of step (delete 030's splits.json, then run py 030_split/run.py)")
-            texts.items.append({"id": row["id"], "maintainer": m,
+            texts.items.append({"id": row["id"], "maintainer": m, "record": record,   # record: for the prompt's field names
                                 "title": " ".join((record.get("title") or "").split()),   # as a component instance
                                 "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})
             taken[m] += 1
