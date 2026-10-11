@@ -151,7 +151,7 @@ Each metric below is also read out in sentences, with each run's own counts, in 
 | **precision** | See [`070_evaluate/metrics/precision.md`](../070_evaluate/metrics/precision.md). |
 | **recall** | See [`070_evaluate/metrics/recall.md`](../070_evaluate/metrics/recall.md). |
 | **F1** | See [`070_evaluate/metrics/f1.md`](../070_evaluate/metrics/f1.md). |
-| **entity-class accuracy** | See [`070_evaluate/metrics/entity_class_accuracy.md`](../070_evaluate/metrics/entity_class_accuracy.md). |
+| **entity-class accuracy** | See [`070_evaluate/metrics/entity_class_accuracy.md`](../070_evaluate/metrics/entity_class_accuracy.md): entity-class accuracy, and, by slot, **subject-class accuracy** and **object-class accuracy**. |
 | **within reach** | See [`070_evaluate/metrics/recall_upper_bound.md`](../070_evaluate/metrics/recall_upper_bound.md): within reach and **within strict reach**. |
 | **recall upper bound** | See [`070_evaluate/metrics/recall_upper_bound.md`](../070_evaluate/metrics/recall_upper_bound.md): the recall upper bound and the **strict recall upper bound**. |
 | **recall within reach** | See [`070_evaluate/metrics/recall_within_reach.md`](../070_evaluate/metrics/recall_within_reach.md). |

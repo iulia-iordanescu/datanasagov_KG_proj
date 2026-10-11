@@ -399,6 +399,9 @@ class EntityClassAccuracy(unittest.TestCase):
         self.assertAlmostEqual(n["exact"]["strict_precision"], 2 / 5)
         self.assertAlmostEqual(n["exact"]["strict_recall"], 2 / 4)
         self.assertAlmostEqual(n["partial"]["strict_precision"], 3 / 5)
+        # by slot: E3's subject class is wrong, every object class is right
+        self.assertEqual((n["exact"]["subject_class_accuracy"], n["exact"]["object_class_accuracy"]), (2 / 3, 1.0))
+        self.assertEqual((n["partial"]["subject_class_accuracy"], n["partial"]["object_class_accuracy"]), (3 / 4, 1.0))
 
     def test_wrong_class_on_a_repeat_not_counted(self):
         gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
@@ -426,6 +429,10 @@ class EntityClassAccuracy(unittest.TestCase):
                     continue
                 self.assertAlmostEqual(m["strict_precision"], m["precision"] * m["entity_class_accuracy"])
                 self.assertAlmostEqual(m["strict_recall"], m["recall"] * m["entity_class_accuracy"])
+                # both entity classes right needs each: never above either, never below their overlap's least
+                self.assertLessEqual(m["entity_class_accuracy"], min(m["subject_class_accuracy"], m["object_class_accuracy"]))
+                self.assertGreaterEqual(m["entity_class_accuracy"] + 1e-12,
+                                        m["subject_class_accuracy"] + m["object_class_accuracy"] - 1)
 
 
 class RecallWithinReach(unittest.TestCase):

@@ -147,7 +147,8 @@ def load_schema(inputs: dict) -> Schema:
     result.schema_entries = SchemaEntries(merged)
 
     schema_file, additions_file = repo_path(inputs["schema"]), repo_path(inputs["additions"])
-    from_held_out = [f"{name} (schema input; {why})" for kind in KINDS for name, source in base["sources"][kind].items()
+    from_held_out = [f"{name} (schema input; {why})" for kind in KINDS + ("patterns",)
+                     for name, source in base["sources"].get(kind, {}).items()
                      if (why := ground_truth_source_problem(source, parts))]
     if from_held_out:
         result.notes.append(f"Entries of {schema_file} whose source names ground truth records "

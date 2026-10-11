@@ -17,6 +17,15 @@ Two versions.
 
 Each version is a number from 0 to 1; with no pairs counted across the [records](../../docs/terminology.md#1-records-and-their-text), it is undefined.
 
+**By slot.** Two more numbers, each with both versions, say which [entity class](../../docs/terminology.md#3-schemas) goes wrong. The pairs counted are the same as above:
+
+| Number | A pair counts when it has… | Formula |
+|---|---|---|
+| subject-class accuracy | the same subject classes | \|pairs counted with the same subject classes\| ÷ \|pairs counted\| |
+| object-class accuracy | the same object classes | \|pairs counted with the same object classes\| ÷ \|pairs counted\| |
+
+A strict pair has both, so entity-class accuracy is never above either of the two, and never below (subject-class accuracy + object-class accuracy − 1).
+
 **How it ties to precision and recall.** At the same [pair level](pairs.md), [precision](precision.md) and strict precision divide by the same number of occurrences, and [recall](recall.md) and strict recall by the same number of [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples). So, whenever entity-class accuracy is defined:
 
 - strict exact precision = exact precision × exact entity-class accuracy;
@@ -32,8 +41,9 @@ Let *a* be the value of one version of entity-class accuracy. It reads two ways:
 
 **What was computed** (the evaluated records)
 
-1. *a* is the proportion of the pairs counted that are strict, where the pairs counted are defined by the version (table above): of the [facts](../../docs/terminology.md#2-triples) extraction stated correctly, the proportion it also gave both [entity classes](../../docs/terminology.md#3-schemas) right.
+1. *a* is the proportion of the pairs counted that are strict, where the pairs counted are defined by the version (table above): of the [facts](../../docs/terminology.md#2-triples) extraction stated correctly, the proportion it also gave both entity classes right.
 2. *a* is the factor by which requiring the entity classes too lowers precision and recall, at the same pair level (*How it ties to precision and recall*, above). So 1 − *a* is the proportion of the correct occurrences that stop counting as correct, and equally the proportion of the found ground truth triples that stop counting as found, when the entity classes must also be the same.
+3. Subject-class accuracy and object-class accuracy split *a* by slot: the lower of the two is where extraction gives the wrong entity class more often.
 
 **What it means for the knowledge graph** (the whole catalog, approximately)
 
@@ -41,6 +51,7 @@ Say the knowledge graph is built from the whole catalog's [extracted triples](..
 
 1. Of its correct edges (correct as the version defines it), approximately *a* would also have both nodes of the right entity class.
 2. Of the facts the catalog's records state that the graph would hold, approximately *a* would be held with both nodes of the right entity class.
+3. Of its correct edges, approximately the subject-class accuracy would have the subject's node of the right entity class, and approximately the object-class accuracy the object's node.
 
 ## <ins>Assumes and can't see</ins>
 
@@ -86,6 +97,7 @@ Extraction gives 5 [extracted triples](../../docs/terminology.md#6-extracting-wi
 - Exact precision = 3 ÷ 5 = 60%, and strict exact precision = 2 ÷ 5 = 40% = 60% × 67%.
 - Exact recall = 3 ÷ 4 = 75%, and strict exact recall = 2 ÷ 4 = 50% = 75% × 67%.
 - Partial precision = 4 ÷ 5 = 80%, and strict partial precision = 3 ÷ 5 = 60% = 80% × 75%.
+- By slot: only E3's subject class is wrong. Exact subject-class accuracy = 2 ÷ 3 = 67%, exact object-class accuracy = 3 ÷ 3 = 100%; partial subject-class accuracy = 3 ÷ 4 = 75%, partial object-class accuracy = 4 ÷ 4 = 100%. So the wrong [entity classes](../../docs/terminology.md#3-schemas) are the subject classes.
 
 *A wrong entity class on a repeat.* *Suppose:* a record's text says MODIS is aboard Aqua. Its ground truth has one ground truth triple, G1: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). Extraction gives E1, "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft), and E2, "the MODIS instrument" (Dataset) ABOARD "Aqua" (Spacecraft). *Then:* E1 and G1 form an exact pair, which is strict; E2 is eligible with G1 at the partial pair level, but G1 already has its partner, so E2 is extracted only. Exact entity-class accuracy = 1 ÷ 1 = 100%: E2's wrong subject class isn't counted, though precision counts E2 as not correct (1 ÷ 2 = 50%).
 

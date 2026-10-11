@@ -62,6 +62,10 @@ def numbers(records: list) -> dict:
                       "strict_precision": _ratio(s, total["extracted"]), "strict_recall": _ratio(s, total["gt"]),
                       "strict_f1": _ratio(2 * s, total["extracted"] + total["gt"]),
                       "entity_class_accuracy": _ratio(s, m),
+                      "subject_class_accuracy": _ratio(total[f"{level}_subject_class_pairs"], m),
+                      "object_class_accuracy": _ratio(total[f"{level}_object_class_pairs"], m),
+                      "subject_class_pairs": total[f"{level}_subject_class_pairs"],
+                      "object_class_pairs": total[f"{level}_object_class_pairs"],
                       "recall_within_reach": _ratio(total[f"{level}_pairs_within_reach"], total["within_reach"]),
                       "strict_recall_within_reach": _ratio(sw, total["within_strict_reach"]),
                       "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"],
@@ -78,7 +82,8 @@ def numbers(records: list) -> dict:
 #: The numbers that get a margin: (path in numbers(), label).
 WITH_MARGIN = [((level, key), f"{level}: {key}") for level in LEVELS
                for key in ("precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
-                           "entity_class_accuracy", "recall_within_reach", "strict_recall_within_reach")] + \
+                           "entity_class_accuracy", "subject_class_accuracy", "object_class_accuracy",
+                           "recall_within_reach", "strict_recall_within_reach")] + \
               [(("recall_upper_bound",), "recall upper bound"), (("strict_recall_upper_bound",), "strict recall upper bound"),
                (("describes", "accuracy"), "describes accuracy")]
 

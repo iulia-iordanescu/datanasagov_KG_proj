@@ -190,6 +190,7 @@ class C_HandSchema(unittest.TestCase):
         s = schema_io.read_hand_schema(hand)
         self.assertEqual(s["sources"]["entity_classes"], {"Planet": "ground truth tuning #1"})
         self.assertIn(("Spacecraft", "ORBITS", "Planet"), s["patterns"])
+        self.assertEqual(s["sources"]["patterns"], {"Spacecraft ORBITS Planet": "ground truth tuning #1"})   # where learned
         b = get("/api/batch?n=0")
         flags = [p["code"] for rec in b["records"] for row in rec["rows"] for p in row["problems"] if p["type"] == "flag"
                  and p["code"].endswith("_in_schema")]

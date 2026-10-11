@@ -186,6 +186,30 @@ class HandSchemaEdits(unittest.TestCase):
                 self.assertEqual(s["sources"]["predicates"]["HAS_PART"], "mentor, 2026-10-01")
                 self.assertIn("Instrument -> Spacecraft; Instrument -> Mission; Dataset -> Spacecraft", text)
 
+    def test_pattern_with_source_goes_in_patterns_section(self):
+        """A pattern added with its source goes in the PATTERNS section (made if missing), with its source line;
+        nothing else changes."""
+        without = TEXT[:TEXT.index("PATTERNS")].rstrip("\n") + "\n"
+        for start, has_section in ((TEXT, True), (without, False)):
+            with self.subTest(has_section=has_section):
+                self.start(start.encode("utf-8"))
+                before = schema_io.read_hand_schema(self.path)
+                schema_io.add_pattern_to_hand_schema(self.path, "aboard", "dataset", "spacecraft",
+                                                     source="ground truth held-out #8")
+                schema_io.add_pattern_to_hand_schema(self.path, "ABOARD", "Instrument", "Dataset",
+                                                     source="ground truth tuning #3")
+                s = schema_io.read_hand_schema(self.path)
+                self.assertEqual(s["sources"]["patterns"], {**before["sources"]["patterns"],
+                                                            "Dataset ABOARD Spacecraft": "ground truth held-out #8",
+                                                            "Instrument ABOARD Dataset": "ground truth tuning #3"})
+                self.assertEqual(s["pattern_entries"], before["pattern_entries"] + [("Dataset", "ABOARD", "Spacecraft"),
+                                                                                    ("Instrument", "ABOARD", "Dataset")])
+                self.assertEqual((s["unread"], s["entity_classes"], s["predicates"]),
+                                 (before["unread"], before["entity_classes"], before["predicates"]))
+                text = self.path.read_text(encoding="utf-8")
+                self.assertEqual(text.count("PATTERNS"), 1)
+                self.assertTrue(text.startswith(start.rstrip("\n")))             # everything before kept as it was
+
     def test_refusals_leave_file_alone(self):
         before = self.start(TEXT.encode("utf-8"))
         refused = [lambda: schema_io.add_to_hand_schema(self.path, "entity class", "instrument", "again"),
@@ -230,6 +254,30 @@ class HandSchemaEdits(unittest.TestCase):
         self.assertEqual(len(after["unread"]), len(before["unread"]))
         self.assertEqual(HAND.read_bytes()[:3] == b"\xef\xbb\xbf", self.path.read_bytes()[:3] == b"\xef\xbb\xbf")
 
+
+
+class ExtractionChecksPatternSources(unittest.TestCase):
+    """Step 060 notes every entry of its schema input whose source names ground truth records other than tuning
+    ones, patterns included (060_extract/060_extract_helpers/schema.py, load_schema)."""
+
+    def test_held_out_pattern_noted(self):
+        from support import use_step
+        use_step("060_extract")
+        import schema as extract_schema
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            hand = tmp / "hand.txt"
+            hand.write_text(TEXT, encoding="utf-8")
+            schema_io.add_pattern_to_hand_schema(hand, "ABOARD", "Dataset", "Spacecraft", source="ground truth held-out #8")
+            (tmp / "additions.txt").write_text("", encoding="utf-8")
+            pool = [{"id": f"r{i}", "position": i, "part": "held-out" if i == 8 else "tuning"} for i in range(10)]
+            (tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}), encoding="utf-8")
+            s = extract_schema.load_schema({"schema": hand, "additions": tmp / "additions.txt", "splits": tmp / "splits.json"})
+            noted = [n for n in s.notes if "whose source names ground truth records" in n]
+            self.assertEqual(len(noted), 1)
+            self.assertIn("Dataset ABOARD Spacecraft (schema input;", noted[0])
+        finally:
+            shutil.rmtree(tmp)
 
 if __name__ == "__main__":
     unittest.main()

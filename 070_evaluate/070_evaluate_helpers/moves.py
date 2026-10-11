@@ -404,9 +404,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                        f"*Partial pairs*." if part == "tuning" else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
-        lines += ["", "| Pair level | Entity-class accuracy | Recall within reach | Strict recall within "
-                      "strict reach |", "|---|---:|---:|---:|"]
+        lines += ["", "| Pair level | Entity-class accuracy | Subject-class accuracy | Object-class accuracy | "
+                      "Recall within reach | Strict recall within strict reach |", "|---|---:|---:|---:|---:|---:|"]
         lines += [f"| {level} | {_with_margin(n[level]['entity_class_accuracy'])} | "
+                  f"{_with_margin(n[level]['subject_class_accuracy'])} | "
+                  f"{_with_margin(n[level]['object_class_accuracy'])} | "
                   f"{_with_margin(n[level]['recall_within_reach'])} | "
                   f"{_with_margin(n[level]['strict_recall_within_reach'])} |" for level in pairing.LEVELS]
         d = n["describes"]

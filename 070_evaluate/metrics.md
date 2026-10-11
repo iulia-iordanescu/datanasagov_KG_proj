@@ -14,7 +14,7 @@ Read them in this order: what they count first, then each metric, then why each 
 | [Precision](metrics/precision.md) | the proportion of the occurrences that are correct |
 | [Recall](metrics/recall.md) | the proportion of the ground truth triples that extraction found |
 | [F1](metrics/f1.md) | precision and recall combined into one number |
-| [Entity-class accuracy](metrics/entity_class_accuracy.md) | among the pairs, the proportion whose [entity classes](../docs/terminology.md#3-schemas) are also right |
+| [Entity-class accuracy](metrics/entity_class_accuracy.md) | among the pairs, the proportion whose [entity classes](../docs/terminology.md#3-schemas) are also right; and, by slot, the proportion whose [subject classes](../docs/terminology.md#2-triples) are right, and whose [object classes](../docs/terminology.md#2-triples) are right |
 | [Recall upper bound](metrics/recall_upper_bound.md) | the most recall the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) allows |
 | [Recall within reach](metrics/recall_within_reach.md) | recall over only the ground truth triples [within reach](metrics/recall_upper_bound.md) (whose [predicate](../docs/terminology.md#3-schemas) some row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) translates to): recall ÷ recall upper bound |
 | [What each record describes](metrics/describes.md) | how often extraction names the right [describes class](../docs/terminology.md#2-triples), next to always naming the most common one |

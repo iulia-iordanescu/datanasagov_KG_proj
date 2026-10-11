@@ -352,10 +352,16 @@ def add_to_hand(data: Data, item: dict) -> str:
     undo each other."""
     with HAND_LOCK:
         if item.get("entry_type") == "pattern":
-            add_pattern_to_hand_schema(HAND_SCHEMA, item["predicate"], item["subject_class"], item["object_class"])
+            k = component_class_key
+            trio = [k(item.get(c)) for c in ("subject_class", "predicate", "object_class")]
+            rows = [r for r in read_ground_truth().rows
+                    if [k(r["subject_class"]), k(r["predicate"]), k(r["object_class"])] == trio]
+            source = _learned_from(data, rows)
+            add_pattern_to_hand_schema(HAND_SCHEMA, item["predicate"], item["subject_class"], item["object_class"],
+                                       source=source)
             data.read_hand()
             return (f"Added the pattern {item['subject_class']} -> {item['object_class']} to {item['predicate']} "
-                    f"in {HAND_SCHEMA.name}")
+                    f"in {HAND_SCHEMA.name}" + (f" (source: {source})" if source else ""))
         kind = item.get("entry_type")
         if kind not in KIND_KEYS:
             raise ValueError("entry_type must be entity class, predicate, or pattern")

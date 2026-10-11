@@ -46,11 +46,13 @@ shapes:
    object) it has been used with, separated by ";"; each pair is a pattern.
    A pattern can also stand on its own, in the PATTERNS section: subject
    class, predicate and object class on one line (used by the additions
-   file, to add a pattern to a predicate the schema already has). An
+   file, to add a pattern to a predicate the schema already has, and by the
+   annotation tool, to add a pattern to the hand-built schema with its
+   source). An
    indented line starting "source:" under any entry (entity class,
    predicate or pattern) says where the idea for it came from (used by the
-   additions file, and by the component classes the annotation tool adds to
-   the hand-built schema). Lines starting with # are comments.
+   additions file, and by the component classes and patterns the annotation
+   tool adds to the hand-built schema). Lines starting with # are comments.
 
 Several steps read it: 040 compares the induced schema with the hand-built
 one; 050 shows the hand-built one to the model and checks every drafted row
@@ -372,11 +374,14 @@ def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: li
     _edit_text(path, edit, expected, name)
 
 
-def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_class: str) -> None:
-    """Add one pattern to a predicate of the hand-built schema: to the end of
-    its patterns line, or on a new line just under it if it has none. The
-    predicate and both entity classes must be in the schema already, and are
-    written in its spelling."""
+def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_class: str, source: str = "") -> None:
+    """Add one pattern to the hand-built schema. The predicate and both entity
+    classes must be in the schema already, and are written in its spelling.
+    With a source (where the pattern was learned, e.g. "ground truth tuning #3;
+    held-out #8"), it goes in the PATTERNS section (made at the end if there is
+    none), with its "source:" line under it, since a predicate's patterns line
+    has no place for one; without, at the end of the predicate's patterns line
+    (or on a new line just under the predicate if it has none)."""
     before = _read_text(path)
     name = next((n for n in before["predicates"] if component_class_key(n) == component_class_key(predicate)), None)
     if name is None:
@@ -390,17 +395,34 @@ def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_
            for s, p, o in before["patterns"]):
         raise ValueError(f"{pair[0]} -> {pair[1]} is already a pattern of {name}")
 
+    source = " ".join(str(source).split())
+    trio = (pair[0], name, pair[1])
+
     def edit(lines):
         start, end = _section(lines, "predicates", path)
         i = next(j for j in range(start, end) if (m := ENTRY.match(lines[j])) and m.group(1) == name)
+        indent = " " * ENTRY.match(lines[i]).start(2)
+        if source:
+            new = [pattern_key(trio), indent + "source: " + source]
+            heads = [k for k, line in enumerate(lines) if line.strip() in SECTIONS]
+            pat = next((k for k in heads if SECTIONS[lines[k].strip()] == "patterns"), None)
+            if pat is None:                        # no PATTERNS section yet: one at the end
+                while lines and not lines[-1].strip():
+                    lines = lines[:-1]
+                return lines + ["", "PATTERNS", "--------"] + new + [""]
+            stop = next((k for k in heads if k > pat), len(lines))
+            last = max([k for k in range(pat + 1, stop) if lines[k].strip() and set(lines[k].strip()) != {"-"}],
+                       default=pat + 1)
+            return lines[:last + 1] + new + lines[last + 1:]
         for j in range(i + 1, _under(lines, i, end) + 1):
             if all(PAIR.match(p) for p in lines[j].split(";")):
                 return lines[:j] + [lines[j].rstrip() + "; " + _pairs_text([pair])] + lines[j + 1:]
-        indent = " " * ENTRY.match(lines[i]).start(2)
         return lines[:i + 1] + [indent + _pairs_text([pair])] + lines[i + 1:]
 
-    _edit_text(path, edit, {**before, "patterns": before["patterns"] + [(pair[0], name, pair[1])]},
-               f"{pair[0]} -> {pair[1]} to {name}")
+    expected = {**before, "patterns": before["patterns"] + [trio]}
+    if source:
+        expected["sources"] = {**before["sources"], "patterns": {**before["sources"]["patterns"], pattern_key(trio): source}}
+    _edit_text(path, edit, expected, f"{pair[0]} -> {pair[1]} to {name}")
 
 
 

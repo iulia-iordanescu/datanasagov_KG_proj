@@ -201,6 +201,9 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         counts[f"{level}_pairs"] = len(used)
         strict = [(gi, ei) for gi, ei in used if classes_agree(gt[gi], ex[ei])]
         counts[f"{level}_strict_pairs"] = len(strict)
+        for slot in ("subject_class", "object_class"):           # each entity class alone: which slot goes wrong
+            counts[f"{level}_{slot}_pairs"] = sum(component_class_key(gt[gi][slot]) == component_class_key(ex[ei][slot])
+                                                  for gi, ei in used)
         counts[f"{level}_pairs_within_reach"] = sum(reach[gi] for gi, _ in used)
         counts[f"{level}_strict_pairs_within_strict_reach"] = sum(strict_reach[gi] for gi, _ in strict)
 

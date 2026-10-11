@@ -69,7 +69,6 @@ WHAT TO PASS, WHAT COMES BACK
     clean_note(value)           -> CleanedNote
     clean_many(values)          -> iterator of CleanedNote
     clean_record(mapping)       -> CleanedRecord
-    clean_records(mappings)     -> iterator of CleanedRecord
     verify(value, cleaned_str)  -> Counter of what is missing
     summarize(notes_or_records) -> CleanReport
 
@@ -80,8 +79,8 @@ only whitespace normalized.
 `mapping` is any dict-like record. `fields=` names which keys to clean
 and defaults to DEFAULT_FIELDS, i.e. ("notes", "title").
 
-Order and length are preserved exactly. `clean_many` and `clean_records`
-yield one result per input, in input order, and stream rather than
+Order and length are preserved exactly. `clean_many` yields one result
+per input, in input order, and stream rather than
 accumulate -- safe over a whole catalog. Field order in `fields=` sets
 the order of `CleanedRecord.fields` and therefore the column order of
 `.to_dict()`; it has no other effect. A field a record lacks is listed
@@ -90,11 +89,10 @@ than `fields` -- pad it yourself if you need a fixed CSV header.
 Cleaning one value is independent of every other: same input, same
 output, whatever else is in the batch.
 
-    >>> rows = list(clean_records([{"title": "A &lt;b&gt;B&lt;/b&gt;", "notes": "n"}],
-    ...                           fields=("notes", "title")))
-    >>> list(rows[0].to_dict())          # column order follows fields=
+    >>> row = clean_record({"title": "A &lt;b&gt;B&lt;/b&gt;", "notes": "n"}, fields=("notes", "title"))
+    >>> list(row.to_dict())              # column order follows fields=
     ['notes', 'notes_clean', 'notes_clean_method', 'title', 'title_clean', 'title_clean_method']
-    >>> rows[0].text("title"), rows[0].tier("title")
+    >>> row.text("title"), row.tier("title")
     ('A B', 'parsed')
 
 
@@ -135,7 +133,7 @@ from typing import Iterable, Iterator
 
 __all__ = [
     "clean", "clean_note", "clean_many", "verify", "summarize", "selftest",
-    "clean_record", "clean_records", "DEFAULT_FIELDS",
+    "clean_record", "DEFAULT_FIELDS",
     "CleanedNote", "CleanedRecord", "CleanReport",
     "TIER_PARSED", "TIER_CONSERVATIVE", "TIER_SOURCE",
     "__version__",
@@ -687,7 +685,7 @@ def clean_many(raws: Iterable) -> Iterator[CleanedNote]:
 
 
 def summarize(notes: Iterable[CleanedNote]) -> CleanReport:
-    """Tally results from `clean_many` or `clean_records`.
+    """Tally results from `clean_many` or `clean_record`.
 
     Parameters
     ----------
@@ -867,31 +865,6 @@ def clean_record(record, fields: Iterable[str] = DEFAULT_FIELDS
             continue
         cleaned[name] = clean_note(record.get(name))
     return CleanedRecord(cleaned, tuple(missing))
-
-
-def clean_records(records: Iterable, fields: Iterable[str] = DEFAULT_FIELDS
-                  ) -> Iterator[CleanedRecord]:
-    """Clean many records, lazily: one CleanedRecord per input, in order.
-
-    Parameters
-    ----------
-    records : iterable of Mapping
-    fields : iterable of str
-        As for `clean_record`.
-
-    Yields
-    ------
-    CleanedRecord
-
-    Examples
-    --------
-    >>> rows = clean_records([{"notes": "&lt;b&gt;x&lt;/b&gt;"}], fields=("notes",))
-    >>> [r.text("notes") for r in rows]
-    ['x']
-    """
-    fields = tuple(fields)
-    for record in records:
-        yield clean_record(record, fields)
 
 
 # --------------------------------------------------------------------

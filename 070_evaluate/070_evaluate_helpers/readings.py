@@ -153,6 +153,9 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"= precision × entity-class accuracy, and strict recall = recall × entity-class accuracy, at the same "
             f"pair level (exact: {pct(ex['strict_precision']['value'])} = {pct(ex['precision']['value'])} × "
             f"{pct(ex['entity_class_accuracy']['value'])}).",
+            f"- Which entity class goes wrong: of the {ex['pairs']} exact pairs, {_of(ex['subject_class_pairs'], ex['pairs'])} "
+            f"have the right subject class (subject-class accuracy) and {_of(ex['object_class_pairs'], ex['pairs'])} the "
+            f"right object class (object-class accuracy). Entity-class accuracy needs both, so it is never above either.",
             "- Only pairs are judged: the entity classes of an occurrence left without a partner (wrong, or a "
             "repeat of a fact already paired) aren't counted.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
