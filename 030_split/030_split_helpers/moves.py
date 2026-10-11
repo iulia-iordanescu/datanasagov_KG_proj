@@ -64,7 +64,7 @@ from pathlib import Path
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_json
-from common.ground_truth import HAND_SCHEMA_FROM
+from common.ground_truth import HAND_SCHEMA_FROM, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
 from common.step import repo_path
@@ -212,7 +212,7 @@ def _from_trial_harvest(inputs: dict) -> bool:
         return False
 
 
-def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict,
+def results(pool: Candidates, induction: Induction, records: dict, inputs: dict, settings: dict,
             output: Path) -> Results:
     path = output / OUTPUT_NAME
     drawn = _lists(pool, induction)
@@ -315,7 +315,17 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
               "| Rank | Maintainer | Records | Induction candidates |", "|---:|---|---:|---:|"]
     lines += [f"| {m['rank']} | {cell(m['maintainer'])} | {m['records']:,} | {m['eligible']:,} |"
               for m in induction.maintainers[:SHOW]]
-    lines += ["", "Records in both lists: **0** (checked)."]
+    lines += ["", "Records in both lists: **0** (checked).", "",
+              "### Twins in the pool", "",
+              "A pool record with the same title, description, or both as a record the schema is learned from is a "
+              "twin (docs/terminology.md, section *Evaluating extraction*): the schema has seen some or most of its "
+              "text. No record is in both lists, but two records can still share text. Step 040 learns from only "
+              "some induction candidates, so its report counts the twins that matter; the counts below, against "
+              "every induction candidate, are the most there can be.", ""]
+    lines += twin_table({r["id"]: records[r["id"]] for r in pool.records if r["id"] in records},
+                        [(f"all {len(induction.records):,} induction candidates",
+                          f"the {len(induction.records):,} induction candidates",
+                          [records[r["id"]] for r in induction.records])])
 
     return Results(
         files=[path],

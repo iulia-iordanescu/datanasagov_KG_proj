@@ -155,6 +155,17 @@ class Checks(unittest.TestCase):
         # comparing two component instances (pairing) keeps inner punctuation
         self.assertNotEqual(text_match.norm_text("MODIS, Aqua"), text_match.norm_text("MODIS Aqua"))
 
+    def test_twin_kinds(self):
+        # one kind each, the one sharing the most text: whole text, description only, title only; empty fields never match
+        import doctest
+        runner = doctest.DocTestRunner()
+        for test in doctest.DocTestFinder().find(ground_truth.twin_kinds, globs={"twin_kinds": ground_truth.twin_kinds}):
+            runner.run(test)
+        self.assertEqual(runner.summarize(verbose=False), (0, 2))
+        learned = [{"title": "Snow, Aqua", "notes": ""}, {"title": "", "notes": ""}]
+        self.assertEqual(ground_truth.twin_kinds({"a": {"title": "Snow, Aqua", "notes": ""}, "b": {"title": "", "notes": ""}},
+                                                  learned), {"a": "title only", "b": ""})
+
     def test_whole_words_in_a_lookup(self):
         # a match may not cut a word or a number in two; a plural ending may follow; a letter next to a digit is a break
         t = text_match.Text("Salinity from Aquarius and the Aqua satellites, in 25 minutes at 500 meter, "

@@ -101,16 +101,18 @@ class Split(unittest.TestCase):
         out = self.tmp / "out"
         out.mkdir()
         pool, induction = self.split()
-        moves.results(pool, induction, self.inputs, SETTINGS, out)
+        moves.results(pool, induction, moves.load_records(self.inputs), self.inputs, SETTINGS, out)
         written = (out / moves.OUTPUT_NAME).read_text(encoding="utf-8")
         data = json.loads(written)
         self.assertEqual([r["part"] for r in data[moves.CANDIDATES]["records"]], ["tuning"] * 3)
-        again = moves.results(pool, induction, self.inputs, SETTINGS, out)
+        again = moves.results(pool, induction, moves.load_records(self.inputs), self.inputs, SETTINGS, out)
         self.assertFalse(any("differs" in w for w in again.warnings))
+        self.assertIn("### Twins in the pool", again.details)                      # the twin table (common.ground_truth)
+        self.assertIn("| **all twins** |", again.details)
         records = moves.load_records(self.inputs)
         pool2 = moves.ground_truth_candidates(self.inputs, records)
         changed = moves.results(pool2, moves.induction_candidates(records, pool2, {"induction_seed": 8}),
-                                self.inputs, SETTINGS, out)
+                                records, self.inputs, SETTINGS, out)
         self.assertTrue(any("differs" in w for w in changed.warnings))
         self.assertEqual((out / moves.OUTPUT_NAME).read_text(encoding="utf-8"), written)   # kept as it was
 
@@ -122,10 +124,10 @@ class Split(unittest.TestCase):
         pool, induction = self.split()
         (self.tmp / "_manifest.json").write_text(json.dumps({"harvest_partial": True}), encoding="utf-8")
         with self.assertRaisesRegex(moves.Stop, "trial harvest"):
-            moves.results(pool, induction, self.inputs, SETTINGS, out)
+            moves.results(pool, induction, moves.load_records(self.inputs), self.inputs, SETTINGS, out)
         self.assertFalse((out / moves.OUTPUT_NAME).exists())
         (self.tmp / "_manifest.json").write_text(json.dumps({"harvest_partial": False}), encoding="utf-8")
-        moves.results(pool, induction, self.inputs, SETTINGS, out)                        # the full harvest: written
+        moves.results(pool, induction, moves.load_records(self.inputs), self.inputs, SETTINGS, out)                        # the full harvest: written
         self.assertTrue((out / moves.OUTPUT_NAME).exists())
 
 

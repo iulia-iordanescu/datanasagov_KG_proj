@@ -178,12 +178,12 @@ def describes_confusion(records: list) -> dict:
 
 
 def twins(records: list) -> dict | None:
-    """The twins among records (records.py) and the numbers without them: {"records": [ids], "without":
-    with_margins(the others), or None when there is no twin or no other}. None when which records are twins isn't
-    known."""
+    """The twins among records (records.py) and the numbers without them: {"records": [{"id", "kind"}],
+    "without": with_margins(the others), or None when there is no twin or no other}. None when which records are
+    twins isn't known."""
     if any(r.get("twin") is None for r in records):
         return None
-    twin = [r["id"] for r in records if r["twin"]]
+    twin = [{"id": r["id"], "kind": r["twin"]} for r in records if r["twin"]]
     rest = [r for r in records if not r["twin"]]
     return {"records": twin, "without": with_margins(rest) if twin and rest else None}
 

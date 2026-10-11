@@ -302,7 +302,7 @@ class Pipeline(unittest.TestCase):
         compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}
         twins = metrics["parts"]["tuning"]["twins"]
-        self.assertTrue(first and first <= set(twins["records"]))
+        self.assertTrue(first and first <= {x["id"] for x in twins["records"] if x["kind"] == "whole text"})
         self.assertEqual(twins["without"]["records"], 8 - len(twins["records"]))
         self.assertIn("#### Twins", report)
 

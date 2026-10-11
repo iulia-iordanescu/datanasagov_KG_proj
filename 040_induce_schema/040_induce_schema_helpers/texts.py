@@ -29,6 +29,8 @@ class Texts:
     items: list = field(default_factory=list)        # {"id", "maintainer", "record", "title", "text", "pieces"}
     maintainers: list = field(default_factory=list)  # {"maintainer", "rank", "records", "eligible", "taken"}
     notes: list = field(default_factory=list)        # where the texts differ from what the settings ask for
+    pool: dict = field(default_factory=dict)         # {id: record}: the ground truth candidates pool, for the twin table
+    candidates: list = field(default_factory=list)   # every induction candidate's record, for the twin table
 
 
 def pick_texts(inputs: dict, settings: dict) -> Texts:
@@ -41,6 +43,8 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
     per = settings["texts_per_maintainer"]
 
     texts = Texts()
+    texts.pool = {r["id"]: records[r["id"]] for r in splits["ground_truth_candidates"]["records"] if r["id"] in records}
+    texts.candidates = [records[r["id"]] for r in induction["records"] if r["id"] in records]
     taken = {m: 0 for m in wanted}
     for row in induction["records"]:                  # grouped by maintainer, each in its order
         m = row["maintainer"]

@@ -45,7 +45,7 @@ def main(inputs, settings, output):
     induction = split.induction_candidates(records, pool, settings)   # code: each maintainer's other records, shuffled
     split.check_disjoint(pool, induction)                             # code: no record in both
     # writes splits.json (once); the report
-    return split.results(pool, induction, inputs, settings, output)
+    return split.results(pool, induction, records, inputs, settings, output)
 
 
 if __name__ == "__main__":

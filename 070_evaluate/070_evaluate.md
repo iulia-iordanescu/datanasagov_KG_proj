@@ -167,9 +167,9 @@ How it is computed, what it assumes, and how the [report](../docs/terminology.md
 
 ### Twins
 
-A [twin](../docs/terminology.md#7-evaluating-extraction-step-070) is an evaluated record whose description is the same as that of a record the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) was learned from. Step 030 keeps the pool and the [induction candidates](../docs/terminology.md#4-ground-truth-and-samples) apart, so that 070 measures extraction on text the schema was not learned from. But two different records can carry the same description: a series of datasets often repeats one description under different titles. The schema has then seen most of a twin's text, and its numbers may flatter extraction.
+A [twin](../docs/terminology.md#7-evaluating-extraction-step-070) is an evaluated record with the same title, description, or both as a record the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) was learned from. Step 030 keeps the pool and the [induction candidates](../docs/terminology.md#4-ground-truth-and-samples) apart, so that 070 measures extraction on text the schema was not learned from. But two different records can carry the same description: a series of datasets often repeats one description under different titles, and sometimes one title over different descriptions. The schema has then seen some or most of a twin's text, and its numbers may flatter extraction.
 
-**What 070 does.** In each part's subsection *Metrics: … part* of the report (`outputs/reports/070_evaluate_<date>_<time>.md`, section *Results*), the table *Twins* names the twins by [pool position](../docs/terminology.md#4-ground-truth-and-samples) and id, and gives precision, recall, and F1 for all evaluated records beside the same numbers without the twins. If the two columns differ by more than their margins, report the column without the twins. `metrics.json` has the same, under each part's `twins`.
+**What 070 does.** In each part's subsection *Metrics: … part* of the report (`outputs/reports/070_evaluate_<date>_<time>.md`, section *Results*), the table *Twins* names the twins by [pool position](../docs/terminology.md#4-ground-truth-and-samples) and id, each with its [twin kind](../docs/terminology.md#7-evaluating-extraction-step-070), and gives precision, recall, and F1 for all evaluated records beside the same numbers without the twins of every kind. If the two columns differ by more than their margins, report the column without the twins. `metrics.json` has the same, under each part's `twins`. The headline (top of the report, and the pipeline report's table *Pipeline at a glance*) gives the number of twins among the evaluated tuning records. Steps 030 and 040 count the twins in the whole pool, in the same table (code: `common/common_helpers/ground_truth.py`, `twin_table`): 030 against every induction candidate (the most there can be), 040 against the texts it learned from as well (section *Results*, subsection *Twins in the pool*, of each step's report).
 
 **Which records the current schema was learned from.** Step 060 writes them in `schema_used.json`, key `learned_from`:
 
@@ -179,17 +179,23 @@ A [twin](../docs/terminology.md#7-evaluating-extraction-step-070) is an evaluate
 
 For any other schema file (e.g. an older schema kept elsewhere), they aren't known, unless 040's `induction_evidence.json` of the same run is beside it. The report then warns, marks no record, and gives no numbers without twins.
 
-**What "the same description" means.** The two records' descriptions (the `notes` field) are equal once [evened out](../docs/terminology.md#2-triples): case, spacing, quote marks, and dashes are ignored, nothing else. An empty description is never the same as another.
+**Twin kinds.** Each compares the pool record with one record the schema was learned from. Titles and descriptions (the `notes` field) are compared [evened out](../docs/terminology.md#2-triples): case, spacing, quote marks, and dashes are ignored, nothing else; an empty one is never the same as another.
 
-**Why the description, and why only the records the schema was learned from.** Two choices had to be made: which field or fields to compare, and against which records. Counted on 2026-10-11 (the 2026-09-27 harvest, 999 pool records), each number a count of pool records:
+- *whole text*: the same title and the same description;
+- *description only*: the same description, a different title;
+- *title only*: the same title, a different description.
 
-- Compared with all 35,376 induction candidates: 388 have the same whole text (title and description) as one of them; 517 have the same description.
-- Compared with the 150 texts 040 learns from (default settings): 1 has the same whole text as one of them; 16 have the same description.
+A record with two kinds, with two different records, gets the one that shares more text: whole text, then description only, then title only. *Suppose:* pool record A has the same description as learned-from record X, and the same title as learned-from record Y. *Then:* A is *description only*, since the description holds more of the facts. Code: `common/common_helpers/ground_truth.py`, `twin_kinds`.
+
+**Why these kinds, and why only the records the schema was learned from.** Two choices had to be made: which fields to compare, and against which records. Counted on 2026-10-11 (the 2026-09-27 harvest, 999 pool records), each number a count of pool records:
+
+- Compared with all 35,376 induction candidates: 388 are whole-text twins of one of them, 129 description-only, and 24 title-only (541 twins).
+- Compared with the 150 texts 040 learns from (default settings): 1 is a whole-text twin of one of them, 15 description-only, and none title-only (16 twins).
 - Compared with the records the hand-built schema was written from (pool positions 0–5): only those 6 records themselves.
 
-Only the records the schema was learned from matter: a pool record that repeats an induction candidate 040 never read can't flatter the schema. And the description is compared rather than the whole text, because most facts are stated in the description: of the 150 rows of the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) and of the old drafts (`annotations/archive/`) that have a [source text](../docs/terminology.md#1-records-and-their-text), 140 had it in the description and 10 in the title. Two records with different titles and the same description share most of their facts' wording; comparing whole texts would miss them (1 record instead of 16).
+Only the records the schema was learned from matter: a pool record that repeats an induction candidate 040 never read can't flatter the schema. The twin kinds say how much of a twin's text the schema saw. Most facts are stated in the description: of the 150 rows of the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) and of the old drafts (`annotations/archive/`) that have a [source text](../docs/terminology.md#1-records-and-their-text), 140 had it in the description and 10 in the title. So a description-only twin shares most of its facts' wording, and a title-only twin a few (e.g. a version, "V1.0"). Comparing whole texts alone would miss both (1 twin instead of 16, on 040's texts).
 
-**What it can't see.** A description that is nearly the same (one number or one word different, as in a series of datasets) doesn't make a twin. Such near-twins may flatter extraction too; nothing measures them yet.
+**What it can't see.** A title or description that is nearly the same (one number or one word different, as in a series of datasets) doesn't make a twin. Such near-twins may flatter extraction too; nothing measures them yet.
 
 ## Prompts
 

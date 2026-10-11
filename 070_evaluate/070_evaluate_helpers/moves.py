@@ -108,9 +108,11 @@ def _margin_check_lines(checks: dict | None) -> list:
 def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
     """The report's table of the numbers without the twins (docs/terminology.md; stats.twins)."""
     lines = ["#### Twins", "",
-             "A twin is an evaluated record whose description is the same as that of a record the current schema "
-             "was learned from (docs/terminology.md, section *Evaluating extraction*), so the schema has seen most "
-             "of its text. Learned from: " + ("; ".join(learned.get("how") or []) or "not known") + ".", ""]
+             "A twin is an evaluated record with the same title, description, or both as a record the current "
+             "schema was learned from (docs/terminology.md, section *Evaluating extraction*), so the schema has seen "
+             "some or most of its text. Its twin kind says what it shares with one such record: whole text (title and "
+             "description), description only, or title only. Learned from: "
+             + ("; ".join(learned.get("how") or []) or "not known") + ".", ""]
     t = v["twins"]
     if t is None:
         return lines + ["Not known: which records the current schema was learned from isn't known, so no record "
@@ -119,13 +121,15 @@ def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
         return lines + [f"None of the {len(recs)} evaluated {part} records is a twin, so the numbers above are "
                         f"all on records the schema wasn't learned from.", ""]
     position = {r["id"]: r["position"] for r in recs}
-    lines += [f"{len(t['records'])} of the {len(recs)} evaluated {part} records are twins: "
-              + ", ".join(f"#{position[i]} `{i}`" for i in t["records"]) + ".", ""]
+    lines += [f"{len(t['records'])} of the {len(recs)} evaluated {part} records are twins:", "",
+              "| Pool position | Record id | Twin kind |", "|---:|---|---|"]
+    lines += [f"| {position[x['id']]} | `{x['id']}` | {x['kind']} |" for x in t["records"]]
+    lines.append("")
     w = t["without"]
     if w is None:
         return lines + ["Every evaluated record is a twin, so there are no numbers without them.", ""]
     n = v["numbers"]
-    lines += [f"| Pair level | Number | All {len(recs)} records | Without the twins ({w['records']} records) |",
+    lines += [f"| Pair level | Number | All {len(recs)} records | Without the twins, every kind ({w['records']} records) |",
               "|---|---|---:|---:|"]
     for level in pairing.LEVELS:
         for key, label in (("precision", "Precision"), ("recall", "Recall"), ("f1", "F1")):
@@ -515,5 +519,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     if tuning:
         headline = {"precision (tuning, exact)": readings.pct(tuning["exact"]["precision"]["value"]),
                     "recall (tuning, exact)": readings.pct(tuning["exact"]["recall"]["value"])}
+        twins = metrics["tuning"]["twins"]
+        headline["twins (tuning)"] = ("not known" if twins is None else
+                                      f"{len(twins['records'])} of {tuning['records']} evaluated")
     return Results(files=[metrics_path, per_record_path, compared_path], headline=headline,
                    details="\n".join(lines), warnings=warnings)

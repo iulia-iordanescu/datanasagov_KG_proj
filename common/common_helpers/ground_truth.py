@@ -67,6 +67,7 @@ files.
 """
 from __future__ import annotations
 
+import collections
 import csv
 import json
 import re
@@ -91,11 +92,67 @@ HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
 HAND_SCHEMA_FROM = 6
 
 
-def description_key(record: dict) -> str:
-    """A record's description (its notes), evened out (common/common_helpers/text_match.py), to find twins
-    (docs/terminology.md): two records whose keys are equal and not empty have the same description."""
+#: The twin kinds (docs/terminology.md, twin): what a twin shares with one record the schema was learned from, the kind
+#: that shares the most text first. A record with two kinds (with two different records) gets the one listed first.
+TWIN_KINDS = ("whole text", "description only", "title only")
+
+
+def twin_kinds(records: dict, learned: list) -> dict:
+    """{id: its twin kind (TWIN_KINDS), or "" when it isn't a twin} for each of records ({id: record}), against
+    learned (the records the schema was learned from). Title and description are compared evened out
+    (common/common_helpers/text_match.py); an empty one is never the same as another.
+
+    >>> learned = [{"title": "Snow, Aqua", "notes": "Daily snow."}, {"title": "Fire", "notes": "Burned area."}]
+    >>> twin_kinds({"a": {"title": "snow,  AQUA", "notes": "Daily snow."}, "b": {"title": "Snow, Terra", "notes": "Daily snow."},
+    ...              "c": {"title": "Fire", "notes": "Fire counts."}, "d": {"title": "Fire", "notes": "Daily snow."},
+    ...              "e": {"title": "Ice", "notes": ""}}, learned)
+    {'a': 'whole text', 'b': 'description only', 'c': 'title only', 'd': 'description only', 'e': ''}
+    """
     from common.text_match import even
-    return even(record.get("notes") or "").strip()
+
+    def keys(r):
+        return even(r.get("title") or "").strip(), even(r.get("notes") or "").strip()
+
+    pairs = {keys(r) for r in learned}
+    titles = {t for t, _ in pairs} - {""}
+    descriptions = {d for _, d in pairs} - {""}
+    out = {}
+    for rid, r in records.items():
+        t, d = keys(r)
+        out[rid] = ("whole text" if t and d and (t, d) in pairs else "description only" if d in descriptions
+                    else "title only" if t in titles else "")
+    return out
+
+
+#: The rows of the twin table (twin_table): each twin kind, as the table names it.
+TWIN_ROWS = {"whole text": "whole text (same title and same description)",
+             "description only": "description only (same description, different title)",
+             "title only": "title only (same title, different description)"}
+
+
+def twin_table(pool: dict, columns: list) -> list:
+    """Report lines: how many pool records are twins of each kind (twin_kinds), against the records of each column.
+    pool: {id: record}; columns: [(heading, what, [records])], e.g. ("the 150 texts this run learned from",
+    "the 150 texts this run of step 040 learned from", [...]). Shared by 030, 040, and 070, so the table reads the
+    same in every report."""
+    counts = [collections.Counter(twin_kinds(pool, learned).values()) for _, _, learned in columns]
+    lines = ["| Twin kind | " + " | ".join(f"Pool records, compared with {heading}" for heading, _, _ in columns) + " |",
+             "|---|" + "---:|" * len(columns)]
+    for kind, label in TWIN_ROWS.items():
+        lines.append(f"| {label} | " + " | ".join(f"{c[kind]:,}" for c in counts) + " |")
+    lines.append("| **all twins** | " + " | ".join(f"**{sum(c[k] for k in TWIN_ROWS):,}**" for c in counts) + " |")
+    lines.append("| not a twin | " + " | ".join(f"{c['']:,}" for c in counts) + " |")
+    heading, what, _ = columns[0]
+    n = counts[0]["description only"]
+    lines += ["", f"*How to read a cell, e.g. row \"description only\", column \"Pool records, compared with {heading}\", {n:,}:* "
+                  f"{n:,} of the {len(pool):,} pool records each have the same description as one of {what}, and a "
+                  f"different title. Each pool record is counted in one row only. A pool record that shares text in two "
+                  f"ways (with two different records) is counted under the twin kind that shares more text: whole "
+                  f"text, then description only, then title only. Titles and descriptions are compared evened out "
+                  f"(docs/terminology.md, section *Triples*); twins: docs/terminology.md, section *Evaluating "
+                  f"extraction*; why they matter: 070_evaluate/070_evaluate.md, section *How it works*, subsection "
+                  f"*Twins*.", ""]
+    return lines
 
 
 def file_name(n: int) -> str:

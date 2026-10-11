@@ -30,6 +30,7 @@ import texts as texts_stage
 from common import audit, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
+from common.ground_truth import twin_kinds, twin_table
 from common.schema_io import read_hand_schema
 from common.report import cell, counted, model_calls, named
 from common.step import Results, repo_path
@@ -163,6 +164,17 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         + (f"; {split} were split into text pieces" if split else "") + ".", "",
         "| Maintainer | Records | Texts used |", "|---|---:|---:|"]
     lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
+    learned = [t["record"] for t in texts.items if t["id"] in {x["id"] for x in triples.texts}]
+    lines += ["", "### Twins in the pool", "",
+              f"A pool record with the same title, description, or both as one of the {len(learned)} texts this run "
+              f"learned from is a twin (docs/terminology.md, section *Evaluating extraction*): the schema has seen "
+              f"some or most of its text, so step 070 gives its numbers with and without the twins. The second "
+              f"column, against every induction candidate, is the most there can be (as in step 030's report).", ""]
+    lines += twin_table(texts.pool, [(f"the {len(learned)} texts this run learned from",
+                                      f"the {len(learned)} texts this run of step 040 learned from", learned),
+                                     (f"all {len(texts.candidates):,} induction candidates",
+                                      f"the {len(texts.candidates):,} induction candidates", texts.candidates)])
+    twins = sum(1 for k in twin_kinds(texts.pool, learned).values() if k)
     lines += ["", "### Triple instances and labels", "",
               f"- {n_verified:,} verified triple instances from {counts.texts_with_triple_instances} texts: "
               f"each one's source text is in its record's text (checked in code, `common/common_helpers/validate.py`).",
@@ -222,7 +234,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     return Results(
         files=[schema_path, evidence_path],
         headline={"entity classes": len(schema.entity_classes), "predicates": len(schema.predicates),
-                  "patterns": len(schema.patterns)},
+                  "patterns": len(schema.patterns), "twins in the pool": f"{twins} of {len(texts.pool):,}"},
         details="\n".join(lines),
         warnings=warnings,
     )
