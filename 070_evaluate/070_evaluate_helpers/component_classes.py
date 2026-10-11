@@ -10,10 +10,10 @@ current schema's entity classes and predicates is translated to a component clas
 the ground truth vocabulary, through the table a person checks:
 
     annotations/component_class_mapping.csv
-    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema
-    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.
-    predicate,CARRIES,ABOARD,yes,yes,Has on board.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device. <- nothing in the ground truth means this
+    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
+    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
+    predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
+    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth means this
 
 (columns: common/common_helpers/component_class_mapping.py)
 
@@ -27,9 +27,10 @@ changed or deleted. This is one of two narrow exceptions to "no step writes
 into annotations/" (the other is held_out_looks.csv). After adding rows the
 step stops, so the person can look at them; it evaluates only when every row it
 needs is checked ("yes" or "same component class"), was checked against the
-current schema's definition of its component class (else it is stale: a later
-schema may mean something else by it), and names a component class of the
-ground truth vocabulary or (none).
+current schema's definition of its component class and the hand-built schema's
+definition of its component class of the ground truth vocabulary (else it is
+stale: either may since mean something else), and names a component class of
+the ground truth vocabulary or (none).
 
 Every message names where each component class comes from: the current schema, the
 ground truth vocabulary, or a row of the table (a past or the current
@@ -45,7 +46,8 @@ from common import llm
 from common.cache import Cache, key
 from common.files import append_csv
 from common.ground_truth import vocabulary
-from common.component_class_mapping import CHECKED, COLUMNS, KINDS, NONE, crt_definitions, is_stale, read_mapping, repeats
+from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions, is_stale,
+                                            is_stale_gtt, read_mapping, repeats)
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_hand_schema
@@ -85,7 +87,7 @@ def gtt_vocabulary(hand_schema_path, ground_truth) -> dict:
             for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
 
 
-def _propose(missing: list, gtt: dict, schema_used: dict, calls) -> tuple:
+def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict) -> tuple:
     """Rows proposed by the model for (kind, component class) pairs, and notes."""
     definitions = {("entity class", e["component_class"]): e.get("definition", "") for e in schema_used["entity_classes"]}
     definitions.update({("predicate", e["component_class"]): e.get("definition", "") for e in schema_used["predicates"]})
@@ -118,6 +120,7 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls) -> tuple:
             strays.append(f"{name} (current schema) --> {mine} (not in the ground truth vocabulary)")
         rows.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": gtt_name or NONE,
                      "definition_from_past_or_crt_schema": definitions.get((kind, name), ""),
+                     "definition_in_gtt": gtt_defs[kind].get(component_class_key(gtt_name), "") if gtt_name else "",
                      "swap_subject_and_object": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
     notes = [f"The model proposed {len(strays)} component class(es) that aren't in the ground truth vocabulary, written as "
@@ -147,6 +150,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
              [("predicate", e["component_class"]) for e in evaluated.schema_used["predicates"]]
     gtt_key = {k: {component_class_key(n): n for n in v} for k, v in translation.gtt.items()}
     now = crt_definitions(evaluated.schema_used)
+    gtt_now = gtt_definitions(vocabulary(read_hand_schema(inputs["hand_schema"]), evaluated.ground_truth))
     same, missing = [], []
     handled = set(have)                     # a component class spelled two ways in the schema gets one row
     for kind, name in needed:
@@ -157,12 +161,13 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         if mine:
             same.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": mine, "swap_subject_and_object": "no",
                          "checked": "same component class",
-                         "definition_from_past_or_crt_schema": now[kind].get(component_class_key(name), "")})
+                         "definition_from_past_or_crt_schema": now[kind].get(component_class_key(name), ""),
+                         "definition_in_gtt": gtt_now[kind].get(component_class_key(mine), "")})
         else:
             missing.append((kind, name))
     proposed, notes = [], []
     if missing:
-        proposed, notes, translation.calls = _propose(missing, translation.gtt, evaluated.schema_used, calls)
+        proposed, notes, translation.calls = _propose(missing, translation.gtt, evaluated.schema_used, calls, gtt_now)
     if same or proposed:
         append_csv(path, COLUMNS, same + proposed)
         raise SystemExit(f"Added {len(same) + len(proposed)} row(s) to {path.name} for component classes of the current "
@@ -173,13 +178,15 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          + ". Check those rows (py helpers/annotate.py, Translation table), then run 070 again. "
                          + " ".join(notes))
 
-    unchecked, stale, unknown = [], [], []
+    unchecked, stale, stale_gtt, unknown = [], [], [], []
     for kind, name in needed:
         r = have[(kind, component_class_key(name))]
         if r["checked"].lower() not in CHECKED:
             unchecked.append(name)
         elif is_stale(r, now):
             stale.append(name)
+        elif is_stale_gtt(r, gtt_now):
+            stale_gtt.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (ground truth vocabulary)")
         elif r["component_class_in_gtt"] != NONE and component_class_key(r["component_class_in_gtt"]) not in gtt_key[kind]:
             unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth vocabulary)")
     if unchecked:
@@ -191,6 +198,12 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"the component class differently, so they may no longer be right: "
                          f"{named([f'{n} (current schema)' for n in stale], 5, '; ')}. Check them again "
                          f"(py helpers/annotate.py, Translation table, shows both definitions), then run 070 again.")
+    if stale_gtt:
+        raise SystemExit(f"{len(stale_gtt)} checked row(s) of {path.name} were checked when the hand-built schema "
+                         f"(annotations/schema_derived_from_manual_annotation.txt) defined the component class of the "
+                         f"ground truth vocabulary differently, or before it had a definition, so they may no longer be "
+                         f"right: {named(stale_gtt, 5, '; ')}. Check them again (py helpers/annotate.py, Translation "
+                         f"table, shows the old and new definitions), then run 070 again.")
     if unknown:
         raise SystemExit(f"{len(unknown)} checked row(s) of {path.name} translate to a component class that isn't in the "
                          f"ground truth vocabulary (a typo, or one since renamed): {named(unknown, 5, '; ')}. "

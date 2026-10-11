@@ -255,6 +255,23 @@ class TranslationTable(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp)
 
+    def test_stale_gtt(self):
+        """A checked row is stale when the hand-built schema's definition of its component class of the ground truth
+        vocabulary differs from the one stored when the row was checked, including a first definition."""
+        gtt = component_class_mapping.gtt_definitions(
+            {"entity_classes": {"Spacecraft": "a vehicle  in space", "Probe": ""}, "predicates": {"ABOARD": "is on"}})
+        row = lambda kind, gtt_name, stored: {"kind": kind, "component_class_in_gtt": gtt_name,   # noqa: E731
+                                              "definition_in_gtt": stored}
+        cases = [(row("entity class", "Spacecraft", "a vehicle in space"), False),        # spacing aside
+                 (row("entity class", "spacecraft", "a vehicle in space"), False),        # loose match
+                 (row("entity class", "Spacecraft", "a craft"), True),                    # redefined
+                 (row("entity class", "Probe", ""), False),                               # coined, still undefined
+                 (row("predicate", "ABOARD", ""), True),                                  # given its first definition
+                 (row("entity class", "(none)", ""), False)]                              # nothing to compare
+        for r, stale in cases:
+            with self.subTest(r=r):
+                self.assertEqual(component_class_mapping.is_stale_gtt(r, gtt), stale)
+
     def test_read_stale_repeats(self):
         cols = component_class_mapping.COLUMNS
         path = self.tmp / "m.csv"

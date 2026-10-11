@@ -233,6 +233,25 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(n["gt_triples"], n["partial"]["pairs"] + status.count("ground truth only"))
         return n
 
+    def test_t09b_redefined_ground_truth_component_class(self):
+        """A row checked against one definition in the hand-built schema stops evaluation once that definition changes."""
+        self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "schema_derived_from_manual_annotation.txt"))
+        table = self.repo / "redefined_table.csv"
+        table.write_text((self.annotations / "component_class_mapping.csv").read_text(encoding="utf-8").splitlines()[0] + "\n",
+                         encoding="utf-8")
+        hand = self.repo / "redefined_hand_schema.txt"
+        hand.write_text((self.annotations / "schema_derived_from_manual_annotation.txt").read_text(encoding="utf-8-sig"),
+                        encoding="utf-8")
+        args = [*NO_CONFIRM, "--component_class_mapping", str(table), "--hand_schema", str(hand)]
+        self.run_step("070_evaluate", *args, expect=2)                          # rows added, each with both definitions
+        aboard = [r for r in read_csv(table) if r["component_class_in_gtt"] == "ABOARD"]
+        self.assertEqual([r["definition_in_gtt"] for r in aboard], ["is carried on"])
+        self.run_step("070_evaluate", *args)                                   # evaluates
+        hand.write_text(hand.read_text(encoding="utf-8").replace("is carried on", "is anywhere on"), encoding="utf-8")
+        out, _ = self.run_step("070_evaluate", *args, expect=2)
+        self.assertIn("hand-built schema", out)
+        self.assertIn("ABOARD (ground truth vocabulary)", out)
+
     def test_t09_known_numbers(self):
         """Extraction with the hand-built schema, evaluated with a table of
         its own: worked out by hand, 8 tuning records with one fact each,

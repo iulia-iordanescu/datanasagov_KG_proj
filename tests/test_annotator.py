@@ -249,6 +249,25 @@ class D_Mapping(unittest.TestCase):
         post("/api/mapping/save", {"rows": sent})
         self.assertEqual(self.read()[0]["definition_from_past_or_crt_schema"], "an orbiting craft")
 
+    def test_stale_gtt(self):
+        """The hand-built schema defines Spacecraft as "a vehicle in space"; the row stored another definition."""
+        cols = component_class_mapping.COLUMNS
+        with open(self.path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(cols)
+            w.writerow(["entity class", "Satellite", "Spacecraft", "no", "yes", "an orbiting craft", "an old meaning"])
+            w.writerow(["entity class", "Craft", "Spacecraft", "no", "yes", "a craft", "a vehicle in space"])
+        v = get("/api/mapping")
+        self.assertEqual([(r["stale"], r["stale_gtt"]) for r in v["rows"]], [(False, True), (False, False)])
+        sent = [{"kind": "entity class", "component_class_from_past_or_crt_schema": n, "component_class_in_gtt": "Spacecraft",
+                 "checked": "yes", "keep_definition": True} for n in ("Satellite", "Craft")]
+        post("/api/mapping/save", {"rows": sent})
+        self.assertEqual(self.read()[0]["definition_in_gtt"], "an old meaning")              # not ticked: still stale
+        sent[0].pop("keep_definition")
+        post("/api/mapping/save", {"rows": sent})
+        self.assertEqual(self.read()[0]["definition_in_gtt"], "a vehicle in space")          # ticked: stores it
+        self.assertFalse(get("/api/mapping")["rows"][0]["stale_gtt"])
+
     def test_refusals(self):
         before = self.path.read_bytes()
         bad_name = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite",

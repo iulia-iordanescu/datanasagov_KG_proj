@@ -99,7 +99,7 @@ from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  draft_name, file_name, read_ground_truth, read_pool, vocabulary)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
-                                 is_stale, read_mapping, repeats)
+                                 gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
 from common.schema_io import add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
@@ -414,6 +414,12 @@ def _gtt(data: Data) -> dict:
     return {"entity class": vocab["entity_classes"], "predicate": vocab["predicates"]}
 
 
+def _gtt_definitions(gtt: dict) -> dict:
+    """_gtt's result as common/common_helpers/component_class_mapping.gtt_definitions gives it:
+    {kind: {component_class_key(component class): definition}}."""
+    return gtt_definitions({"entity_classes": gtt["entity class"], "predicates": gtt["predicate"]})
+
+
 def _crt() -> dict | None:
     """The current schema's definitions (common/common_helpers/component_class_mapping.crt_definitions),
     or None if extraction's schema_used.json isn't there."""
@@ -424,8 +430,9 @@ def _crt() -> dict | None:
 
 def mapping_view(data: Data) -> dict:
     """The table as the page shows it: every row, with the current schema's
-    definition, whether the row is stale (checked against another
-    definition), an example triple for a predicate (the first one extraction
+    definition, whether the row is stale (checked against another definition
+    in the current schema: "stale"; in the hand-built schema: "stale_gtt"),
+    an example triple for a predicate (the first one extraction
     kept with it), and the ground truth vocabulary to choose from."""
     if not MAPPING_PATH.exists():
         return {"found": False, "rows": [], "gtt": {}}
@@ -438,6 +445,7 @@ def mapping_view(data: Data) -> dict:
                     examples.setdefault(component_class_key(r.get("predicate")),
                                         {"subject": r.get("subject") or "", "object": r.get("object") or ""})
     gtt = _gtt(data)
+    gtt_now = _gtt_definitions(gtt)
     table = read_mapping(MAPPING_PATH)
     repeated = repeats(table)
     extra = {line for r in repeated for line in r["lines"]}
@@ -451,6 +459,7 @@ def mapping_view(data: Data) -> dict:
              "suggested_gtt": suggested.get((r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"]))),
              "in_crt": crt is not None and component_class_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {}), "crt_definition": (crt or {}).get(r["kind"], {}).get(component_class_key(r["component_class_from_past_or_crt_schema"])),
              "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
+             "stale_gtt": r["checked"] in CHECKED and is_stale_gtt(r, gtt_now),
              "example": examples.get(component_class_key(r["component_class_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
             for r in table]
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
@@ -464,15 +473,18 @@ def save_mapping(data: Data, sent: list) -> None:
     kinds and component classes of the current schema must still be the file's
     first rows, in order; rows added after them (by step 070) are kept as
     they are. A row saved as checked stores the current schema's definition
-    of its component class, unless the page says keep_definition: a stale
-    row the person hasn't ticked again keeps its checked value and its old
-    definition, so it stays stale."""
+    of its component class and the hand-built schema's definition of its
+    component class of the ground truth vocabulary, unless the page says
+    keep_definition: a stale row the person hasn't ticked again keeps its
+    checked value and its old definitions, so it stays stale."""
     rows = read_mapping(MAPPING_PATH)
     crt = _crt()
     if [(r["kind"], r["component_class_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
             [(r.get("kind"), r.get("component_class_from_past_or_crt_schema")) for r in sent]:
         raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
-    gtt = {kind: {component_class_key(n): n for n in names} for kind, names in _gtt(data).items()}
+    vocab = _gtt(data)
+    gtt_now = _gtt_definitions(vocab)
+    gtt = {kind: {component_class_key(n): n for n in names} for kind, names in vocab.items()}
     for row, s in zip(rows, sent):
         name = str(s.get("component_class_in_gtt") or "").strip()
         if name != NONE:
@@ -488,9 +500,11 @@ def save_mapping(data: Data, sent: list) -> None:
         if row["checked"] == "same component class" and (name == NONE or component_class_key(name) !=
                                                           component_class_key(row["component_class_from_past_or_crt_schema"])):
             row["checked"] = "no"                      # changed by hand: no longer the same spelling, so it needs checking
-        if row["checked"] in CHECKED and crt is not None and not s.get("keep_definition"):
-            row["definition_from_past_or_crt_schema"] = \
-                crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
+        if row["checked"] in CHECKED and not s.get("keep_definition"):
+            if crt is not None:
+                row["definition_from_past_or_crt_schema"] = \
+                    crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
+            row["definition_in_gtt"] = gtt_definition(row, gtt_now)
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
 
 

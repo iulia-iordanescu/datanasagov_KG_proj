@@ -3,10 +3,10 @@ common/common_helpers/component_class_mapping.py -- the translation table, annot
 which component class of the ground truth vocabulary each component class of
 the current schema (the one step 060 used) means.
 
-    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema
-    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.
-    predicate,CARRIES,ABOARD,yes,yes,Has on board.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device. <- nothing in the ground truth means this
+    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
+    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
+    predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
+    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth means this
 
     kind                     "entity class" or "predicate"
     component_class_from_past_or_crt_schema
@@ -24,12 +24,22 @@ the current schema (the one step 060 used) means.
     definition_from_past_or_crt_schema
                              that schema's definition of the component class
                              when the row was written or last checked
+    definition_in_gtt        the hand-built schema's definition of
+                             component_class_in_gtt when the row was written or
+                             last checked (empty for (none), and for a
+                             component class coined in the ground truth that
+                             had no definition yet)
 
-A row is only as good as the meaning it was checked against: a later schema
-may give the same component class another meaning. So a checked row whose
-stored definition differs from the current schema's (spacing aside) is STALE:
-step 070 won't evaluate until a person checks it again, and the annotation tool
-shows both definitions. Checking it again stores the current definition.
+A row is only as good as the meanings it was checked against: a later schema
+may give the same component class another meaning, and the hand-built schema
+may give the ground truth vocabulary's component class another one. So a
+checked row is STALE when (its definition_from_past_or_crt_schema differs from
+the current schema's definition) or (its definition_in_gtt differs from the
+hand-built schema's definition now), spacing aside; a coined component class
+that has since been given its first definition counts as differing too. Step
+070 won't evaluate until a person checks a stale row again, and the annotation
+tool shows the old and new definitions. Checking it again stores both
+definitions as they are then.
 
 One component class, one row: two rows with the same kind and the same
 component_class_from_past_or_crt_schema (compared like every component class,
@@ -51,7 +61,7 @@ from common.triples_io import component_class_key
 
 MAPPING_PATH = ANNOTATIONS_DIR / "component_class_mapping.csv"
 COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt", "swap_subject_and_object", "checked",
-           "definition_from_past_or_crt_schema"]
+           "definition_from_past_or_crt_schema", "definition_in_gtt"]
 KINDS = {"entity class": "entity_classes", "predicate": "predicates"}   # {kind: the schema's key}
 NONE = "(none)"
 CHECKED = ("yes", "same component class")                                          # what 070 accepts as checked
@@ -64,11 +74,37 @@ def crt_definitions(schema_used: dict) -> dict:
             for kind, key in KINDS.items()}
 
 
+def gtt_definitions(vocab: dict) -> dict:
+    """{kind: {component_class_key(component class): definition}} of the ground truth
+    vocabulary (common.ground_truth.vocabulary's result; a coined component class
+    has an empty definition)."""
+    return {kind: {component_class_key(n): d or "" for n, d in vocab.get(key, {}).items()} for kind, key in KINDS.items()}
+
+
+def _same(a: str, b: str) -> bool:
+    return " ".join(a.split()) == " ".join(b.split())
+
+
 def is_stale(row: dict, definitions: dict) -> bool:
     """True if the row's stored definition differs from the current
     schema's definition of its component class (spacing aside)."""
     now = definitions.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
-    return " ".join(row["definition_from_past_or_crt_schema"].split()) != " ".join(now.split())
+    return not _same(row["definition_from_past_or_crt_schema"], now)
+
+
+def gtt_definition(row: dict, gtt: dict) -> str:
+    """The hand-built schema's definition, now, of the row's component class of the
+    ground truth vocabulary ("" for (none) or a coined one without a definition)."""
+    if row["component_class_in_gtt"] == NONE:
+        return ""
+    return gtt.get(row["kind"], {}).get(component_class_key(row["component_class_in_gtt"]), "")
+
+
+def is_stale_gtt(row: dict, gtt: dict) -> bool:
+    """True if the row's stored definition_in_gtt differs from the hand-built
+    schema's definition now of its component class of the ground truth
+    vocabulary (spacing aside)."""
+    return not _same(row["definition_in_gtt"], gtt_definition(row, gtt))
 
 
 def repeats(rows: list) -> list:

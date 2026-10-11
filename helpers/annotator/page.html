@@ -475,7 +475,7 @@ let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyTo
 // A row "of the current schema": its component class is in the current schema
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
-const toCheck = (r) => r.stale || (r.checked !== "yes" && r.checked !== "same component class");
+const toCheck = (r) => r.stale || r.stale_gtt || (r.checked !== "yes" && r.checked !== "same component class");
 
 async function openMapping() {
   await flush();
@@ -483,9 +483,10 @@ async function openMapping() {
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
-  // A stale row (checked against another definition of its component class) is shown, and
-  // counts, as unchecked until ticked again; ticking stores the current definition. Untouched,
-  // it is saved as it is in the file, so it stays stale.
+  // A stale row (checked against another definition of its component class in the current schema, or
+  // of its component class of the ground truth vocabulary in the hand-built schema) is shown, and
+  // counts, as unchecked until ticked again; ticking stores both definitions as they are now.
+  // Untouched, it is saved as it is in the file, so it stays stale.
   location.hash = "m";
   if (!mapping.found) {
     $("records").replaceChildren();
@@ -586,6 +587,10 @@ function mappingRow(r, i) {
        "⚑ This row was checked when the component class was defined as: “" +
        (r.definition_from_past_or_crt_schema || "(no definition)") +
        "”. Its meaning may have changed: check the translation again.")) : null,
+    r.stale_gtt ? el("div", { class: "problems" }, el("li", { class: "flag" },
+       "⚑ This row was checked when the hand-built schema defined " + r.component_class_in_gtt +
+       " (ground truth vocabulary) as: “" + (r.definition_in_gtt || "(no definition)") +
+       "”. It is now defined as shown below, under “In the ground truth”: check the translation again.")) : null,
     el("div", { class: "means" },
       el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
       el("select", { id: `m${i}`, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
@@ -610,12 +615,13 @@ function mappingRow(r, i) {
                     onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
       " Swap subject and object (the ground truth's predicate states the relation the other way round)") : null,
     exampleLine(r),
-    el("div", { class: "bar" }, same
+    el("div", { class: "bar" }, same && !r.stale && !r.stale_gtt
       ? el("span", { class: "meta" }, "Accepted automatically: the same spelling in both. Compare the two definitions " +
            "above; if they mean different things, pick the right translation.")
       : el("label", { class: "finished" },
-          el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale,
-                        onchange: (e) => { r.stale = false; update("checked", e.target.checked ? "yes" : "no"); } }),
+          el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale && !r.stale_gtt,
+                        onchange: (e) => { r.stale = false; r.stale_gtt = false;
+                                           update("checked", e.target.checked ? "yes" : "no"); } }),
           "Checked: this translation is right")));
 }
 
@@ -644,7 +650,7 @@ async function saveMapping() {
   try {
     await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
       component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
-      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: !!r.stale })) });
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: !!(r.stale || r.stale_gtt) })) });
     status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
   } catch (e) {
     mapDirty = true;
