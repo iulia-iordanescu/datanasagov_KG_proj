@@ -24,6 +24,7 @@ SETTINGS = {
     "page_size":     1000,  # records per request (CKAN's usual maximum)
     "max_records":   0,     # 0 = whole catalog; e.g. 2000 for a quick trial run
     "pause_seconds": 0.5,   # wait between requests, to be polite to the server
+    "new_harvest":   False, # true: replace a complete saved harvest (set aside, never deleted); false keeps it
 }
 
 harvest = load_moves("010_harvest")

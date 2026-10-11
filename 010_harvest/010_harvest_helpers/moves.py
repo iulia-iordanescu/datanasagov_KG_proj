@@ -8,6 +8,15 @@ moves.py -- the main moves of 010_harvest, as called by 010_harvest/run.py.
 The API requests are in ckan_client.py, the batch files in batches.py.
 Terms are as defined in docs/terminology.md.
 
+A COMPLETE HARVEST IS KEPT. Once the batch files hold every record the
+catalog reported when they were fetched, a rerun keeps them and asks the
+catalog nothing: every later step (the pool, the split, the ground truth) is
+built on them, and the live catalog may have changed since. Only
+--new_harvest true replaces them, and then they are set aside in a folder
+replaced_<date>/ beside the new ones, never deleted. A harvest that isn't
+complete (a trial with max_records, an interrupted run) is continued as
+before.
+
 ORIGIN. 010 is where every item's origin starts. Each batch file wraps its
 records with the request that returned them (see batches.py), so the records
 themselves stay exactly as the API sent them. A batch kept from an earlier
@@ -16,6 +25,7 @@ run keeps the request block, and the run id, of the run that fetched it.
 from __future__ import annotations
 
 import datetime as dt
+import shutil
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -43,6 +53,8 @@ class Harvest:
     ran_dry: bool = False                        # API returned an empty page early
     replaced: int = 0                            # batch files on disk that didn't fit, fetched again
     removed: list = field(default_factory=list)  # batch files outside this run's range, deleted
+    kept: bool = False                           # a complete harvest was saved, so this run kept it and asked nothing
+    set_aside: str = ""                          # --new_harvest true: where the replaced harvest's batch files went
 
 
 @dataclass
@@ -59,6 +71,35 @@ class Check:
 
 # --------------------------------------------------------------------------
 
+def saved_harvest(folder: Path) -> Harvest | None:
+    """The batch files on disk as a Harvest, if they are a COMPLETE harvest: they hold at least as many records as
+    the catalog reported when the first page was fetched. None otherwise (no files, a trial, an interrupted run)."""
+    files = batches.all_batches(folder)
+    if not files:
+        return None
+    first = batches.load_batch(files[0])
+    reported = first.get("catalog_count")
+    saved = sum(len(batches.load_batch(p)["records"]) for p in files)
+    if not reported or saved < reported:
+        return None
+    return Harvest(folder=folder, reported=reported, target=reported, page_size=len(first["records"]),
+                   files=files, reused=len(files), kept=True)
+
+
+def _set_aside(saved: Harvest) -> str:
+    """Move a complete harvest's batch files into replaced_<date it was fetched>/ beside them; returns that folder's
+    name. Never deletes: the replaced harvest may be what every later step was built on."""
+    fetched = batches.load_batch(saved.files[0]).get("fetched_at", "")[:10] or dt.date.today().isoformat()
+    target, n = saved.folder / f"replaced_{fetched}", 2
+    while target.exists():
+        target, n = saved.folder / f"replaced_{fetched}-{n}", n + 1
+    target.mkdir()
+    for p in saved.files:
+        shutil.move(str(p), str(target / p.name))
+    log.info(f"  --new_harvest true: moved the {len(saved.files)} batch files of the saved harvest to {target.name}/")
+    return target.name
+
+
 def download_catalog(settings: dict, output: Path) -> Harvest:
     check_settings(settings, {"page_size": 1, "max_records": 0, "pause_seconds": 0})
     page_size = settings["page_size"]
@@ -72,13 +113,22 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
         old_lineage.unlink()
         log.info(f"  removed {OLD_LINEAGE_FILE} (replaced by the request block in each batch file)")
 
+    saved = saved_harvest(output)
+    set_aside = ""
+    if saved and not settings.get("new_harvest"):
+        log.info(f"  a complete harvest is saved ({len(saved.files)} batch files, {saved.reported:,} records); "
+                 f"kept, and the catalog not asked (--new_harvest true replaces it)")
+        return saved
+    if saved:
+        set_aside = _set_aside(saved)
+
     session = ckan_client.make_session()
     first, first_request = ckan_client.fetch_page(session, 0, page_size)
     reported = first["count"]
     target = min(reported, max_records) if max_records > 0 else reported
     log.info(f"  catalog reports {reported} records; harvesting {target} in pages of {page_size}")
 
-    harvest = Harvest(folder=output, reported=reported, target=target, page_size=page_size)
+    harvest = Harvest(folder=output, reported=reported, target=target, page_size=page_size, set_aside=set_aside)
 
     for start in range(0, target, page_size):
         path = batches.batch_path(output, start)
@@ -221,10 +271,25 @@ def results(harvest: Harvest, check: Check) -> Results:
     else:
         harvest_date = f"{check.first_saved} to {check.last_saved}"
 
-    details = "\n".join([
+    kept_note = []
+    if harvest.kept:
+        kept_note = [f"**The saved harvest was kept.** Its batch files hold every record the catalog reported when "
+                     f"they were fetched ({check.first_saved}), so this run asked the catalog nothing, and its "
+                     f"settings page_size and max_records had no effect. Every later step (the pool, the split, "
+                     f"the ground truth) is built on these files. To replace them on purpose: "
+                     f"`py 010_harvest/run.py --new_harvest true`; they are then moved to "
+                     f"`{_shown(harvest.folder)}/replaced_<date>/`, never deleted, and every later step must be "
+                     f"run again (030 drops pool records no longer in the catalog). Details: "
+                     f"010_harvest/010_harvest.md, section *How it works*.", ""]
+    elif harvest.set_aside:
+        kept_note = [f"**The saved harvest was replaced** (`--new_harvest true`): its batch files were moved to "
+                     f"`{_shown(harvest.folder)}/{harvest.set_aside}/`, not deleted. Every later step must be run "
+                     f"again on the new harvest: `py run_pipeline.py --from 020`.", ""]
+    details = "\n".join(kept_note + [
         "### What this run worked on", "",
         "| | |", "|---|---|",
-        f"| Records the catalog reports | {harvest.reported:,} |",
+        f"| Records the catalog {'reported when the saved pages were fetched' if harvest.kept else 'reports'} | "
+        f"{harvest.reported:,} |",
         f"| Records aimed for this run | {harvest.target:,} |",
         f"| Records saved | {check.records:,} |",
         f"| Distinct record ids | {check.unique_ids:,} |",

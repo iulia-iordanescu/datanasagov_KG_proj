@@ -29,8 +29,9 @@ class Harvest(unittest.TestCase):
         self.cat.__exit__()
         shutil.rmtree(self.out)
 
-    def harvest(self, page_size=10, max_records=0):
-        h = moves.download_catalog({"page_size": page_size, "max_records": max_records, "pause_seconds": 0}, self.out)
+    def harvest(self, page_size=10, max_records=0, new_harvest=False):
+        h = moves.download_catalog({"page_size": page_size, "max_records": max_records, "pause_seconds": 0,
+                                    "new_harvest": new_harvest}, self.out)
         return h, moves.check_complete(h)
 
     def names(self):
@@ -52,11 +53,42 @@ class Harvest(unittest.TestCase):
         self.assertTrue(any("appears twice" in w for w in r.warnings))
         self.assertTrue(any("has no id" in w for w in r.warnings))
 
-    def test_rerun_keeps_pages(self):
+    def test_complete_harvest_kept(self):
+        """A complete harvest is kept: a rerun asks the catalog nothing, even when the catalog shrank since, or the
+        rerun asks for another page size or a trial; nothing is replaced or removed."""
         self.harvest()
+        before = {p.name: p.read_bytes() for p in batches.all_batches(self.out)}
         self.cat.requests.clear()
-        h, _ = self.harvest()
-        self.assertEqual((h.new, h.reused, h.replaced), (0, 3, 0))
+        self.cat.count = 12                                 # the live catalog shrank
+        for settings in ({}, {"page_size": 20}, {"max_records": 10}):
+            h, c = self.harvest(**settings)
+            self.assertTrue(h.kept)
+            self.assertEqual((h.new, h.reused, h.replaced, h.removed, c.records), (0, 3, 0, [], 25))
+        self.assertEqual(self.cat.requests, [])
+        self.assertEqual({p.name: p.read_bytes() for p in batches.all_batches(self.out)}, before)
+        r = moves.results(h, c)
+        self.assertIn("The saved harvest was kept", r.details)
+        self.assertFalse(r.harvest_partial)
+
+    def test_new_harvest_sets_aside(self):
+        """--new_harvest true: the saved harvest is moved to replaced_<date>/, never deleted, and a new one fetched."""
+        self.harvest()
+        before = {p.name: p.read_bytes() for p in batches.all_batches(self.out)}
+        self.cat.count = 12
+        h, c = self.harvest(new_harvest=True)
+        self.assertFalse(h.kept)
+        self.assertTrue(h.set_aside.startswith("replaced_"))
+        self.assertEqual({p.name: p.read_bytes() for p in (self.out / h.set_aside).glob("batch_*.json")}, before)
+        self.assertEqual((h.reported, h.new, c.records), (12, 2, 12))
+        self.assertIn(h.set_aside, moves.results(h, c).details)
+        self.harvest(new_harvest=True)                      # a second replacement: its own folder
+        self.assertEqual(len(list(self.out.glob("replaced_*"))), 2)
+
+    def test_rerun_of_a_trial_keeps_pages(self):
+        self.harvest(max_records=20)
+        self.cat.requests.clear()
+        h, _ = self.harvest(max_records=20)
+        self.assertEqual((h.new, h.reused, h.replaced), (0, 2, 0))
         self.assertEqual(self.cat.requests, [0])          # only the first page, for the catalog size
 
     def test_interrupted_run_resumes(self):
@@ -80,10 +112,10 @@ class Harvest(unittest.TestCase):
             self.harvest()
 
     def test_other_page_size_replaces(self):
-        self.harvest()
+        self.harvest(max_records=20)                        # a trial: not complete, so not kept
         h, c = self.harvest(page_size=20)
         self.assertEqual(self.names(), ["batch_00000.json", "batch_00020.json"])
-        self.assertEqual((h.replaced, h.removed, c.records), (2, ["batch_00010.json"], 25))
+        self.assertEqual((h.replaced, h.removed, c.records), (1, ["batch_00010.json"], 25))
 
     def test_trial_then_whole(self):
         h, c = self.harvest(max_records=12)
@@ -95,10 +127,10 @@ class Harvest(unittest.TestCase):
         self.assertFalse(moves.results(h, c).harvest_partial)
 
     def test_smaller_trial_removes_extra(self):
-        self.harvest()
+        self.harvest(max_records=20)
         h, c = self.harvest(max_records=10)
         self.assertEqual(self.names(), ["batch_00000.json"])
-        self.assertEqual(sorted(h.removed), ["batch_00010.json", "batch_00020.json"])
+        self.assertEqual(sorted(h.removed), ["batch_00010.json"])
 
     def test_catalog_grew(self):
         self.harvest(max_records=10)
@@ -132,7 +164,7 @@ class Harvest(unittest.TestCase):
 
     def test_bad_setting(self):
         with self.assertRaises(ValueError):
-            moves.download_catalog({"page_size": 0, "max_records": 0, "pause_seconds": 0}, self.out)
+            moves.download_catalog({"page_size": 0, "max_records": 0, "pause_seconds": 0, "new_harvest": False}, self.out)
 
 
 class SamePage(unittest.TestCase):
