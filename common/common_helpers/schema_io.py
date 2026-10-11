@@ -85,7 +85,12 @@ import os
 import re
 from pathlib import Path
 
+from common.audit import ref_path
 from common.triples_io import component_class_key
+
+#: What a component class must look like, said the same way wherever one is typed (the annotation tool).
+ONE_WORD = ("the component class must be one word: letters or digits, no spaces, no ; and no -> "
+            "(e.g. SpaceMission, PART_OF_MISSION)")
 
 ENTRY = re.compile(r"^(\S+) {2,}(\S.*)$")         # "Instrument  definition"
 PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
@@ -158,7 +163,9 @@ def _read_json(path) -> dict:
     data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
     where = Path(path).name
     if not isinstance(data, dict):
-        raise ValueError(f"{where}: a JSON schema must be an object with entity_classes and predicates")
+        raise ValueError(f"{where}: a JSON schema must be an object with entity_classes and predicates, so it can't "
+                         f"be read. Give a schema in the shape of "
+                         f"outputs/intermediate_results/040_induce_schema/the_schema.json.")
     schema = _empty()
     for kind in ("entity_classes", "predicates"):
         items = data.get(kind)
@@ -225,12 +232,13 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
         return "says ground truth but names no record (write: ground truth tuning #12)"
     held = [p for p in positions if parts.get(p) == "held-out"]
     if held:
-        return "comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
+        return ("comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
+                + ", which must not shape the schema (name only tuning records, or delete the entry)")
     if not re.search(r"\btuning\b", source.lower()):
         return "names ground truth records but doesn't say tuning (write: ground truth tuning #12)"
     unknown = [p for p in positions if p not in parts]
     if unknown:
-        return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position"
+        return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position: check the number"
     return None
 
 
@@ -299,8 +307,8 @@ def _edit_text(path, edit, expected: dict, what: str) -> None:
     os.replace(tmp, path)
     if _comparable(_read_text(path)) != _comparable(expected):
         Path(path).write_bytes(raw)
-        raise ValueError(f"adding {what} would have changed something else in {Path(path).name}; "
-                         f"the file was left as it was")
+        raise ValueError(f"adding {what} would have changed something else in {ref_path(path)}, so the file was "
+                         f"left as it was. Add it by hand in a text editor instead.")
 
 
 def _section(lines: list, key: str, path) -> tuple:
@@ -308,7 +316,8 @@ def _section(lines: list, key: str, path) -> tuple:
     heads = [i for i, line in enumerate(lines) if line.strip() in SECTIONS]
     start = next((i for i in heads if SECTIONS[lines[i].strip()] == key), None)
     if start is None:
-        raise ValueError(f"{Path(path).name} has no {'ENTITY CLASSES' if key == 'entity_classes' else 'PREDICATES'} section")
+        raise ValueError(f"{ref_path(path)} has no {'ENTITY CLASSES' if key == 'entity_classes' else 'PREDICATES'} "
+                         f"section, so nothing can be added to it. Put the section's heading line back by hand.")
     return start, next((i for i in heads if i > start), len(lines))
 
 
@@ -338,15 +347,15 @@ def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: li
     name, definition, source = str(name).strip(), " ".join(str(definition).split()), " ".join(str(source).split())
     patterns = [(str(s).strip(), str(o).strip()) for s, o in patterns] if key == "predicates" else []
     if not component_class_key(name) or any(c.isspace() for c in name) or name.startswith("#") or ";" in name or "->" in name:
-        raise ValueError("the component class must be one word, with letters or digits, no spaces, and no ; or ->")
+        raise ValueError(ONE_WORD)
     if not definition:
         raise ValueError(f"{name} needs a one-line definition")
     if not all(PAIR.match(f"{s} -> {o}") for s, o in patterns):
-        raise ValueError(f"{name}: each pattern is two entity classes, one word each")
+        raise ValueError(f"{name}: each pattern is two entity classes, one word each (Subject -> Object)")
     before = _read_text(path)
     same = [n for n in before[key] if component_class_key(n) == component_class_key(name)]
     if same:
-        raise ValueError(f"{same[0]} is already in the hand-built schema")
+        raise ValueError(f"{same[0]} is already in the hand-built schema: nothing to add")
 
     def edit(lines):
         start, end = _section(lines, key, path)
@@ -428,7 +437,8 @@ def _checked(path, bom: str, newline: str, lines: list, expected: dict, what: st
     finally:
         tmp.unlink()
     if _as_read(got) != _as_read(expected):
-        raise ValueError(f"{what} would have changed something else in {Path(path).name}; nothing was changed")
+        raise ValueError(f"{what} would have changed something else in {ref_path(path)}, so nothing was changed. "
+                         f"Make the change by hand in a text editor instead.")
     return new
 
 
@@ -486,7 +496,7 @@ def rename_in_hand_schema(path, kind: str, old: str, new: str) -> tuple:
     key = KIND_KEYS[kind]
     new = str(new).strip()
     if not component_class_key(new) or any(c.isspace() for c in new) or new.startswith("#") or ";" in new or "->" in new:
-        raise ValueError("the new component class must be one word, with letters or digits, no spaces, and no ; or ->")
+        raise ValueError("the new " + ONE_WORD[4:])
     before = _read_text(path)
     old_spelled, new_spelled = _spelled(before[key], old), _spelled(before[key], new)
     merging = new_spelled is not None and component_class_key(new) != component_class_key(old)

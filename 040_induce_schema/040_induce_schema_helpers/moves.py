@@ -33,6 +33,7 @@ from common.files import write_json
 from common.schema_io import read_hand_schema
 from common.report import cell, counted, model_calls, named
 from common.step import Results
+from common.step import repo_path
 
 SCHEMA_NAME = "the_schema.json"
 EVIDENCE_NAME = "induction_evidence.json"
@@ -111,31 +112,43 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
     warnings = list(calls.paid.notes)          # shown before paying too, if the run paid
+    evidence_shown = repo_path(evidence_path)
     if triples.failed_note:
         warnings.append(triples.failed_note)
     empty = [t["id"] for t in triples.texts if not t["triple_instances"]]
     if empty:
-        warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}.")
+        warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}. They add "
+                        f"no support to any schema entry. Nothing to do if they are very short records; otherwise "
+                        f"look at each one's `unverified` list in {evidence_shown}.")
     unlabeled = sum(len(v) for v in labels.unlabeled.values())
     if unlabeled:
-        warnings.append(f"{unlabeled} component instance(s) were left unlabeled even after a second try; "
-                        f"they count toward no schema entry. Listed in {EVIDENCE_NAME} under unlabeled.")
+        left = [v for kind in label.KINDS for v in labels.unlabeled.get(kind, [])]
+        warnings.append(f"{unlabeled} component instance(s) were left unlabeled even after a second try: "
+                        f"{named(left, 5)}. They count toward no schema entry. Nothing to do if few; all are "
+                        f"listed in {evidence_shown} under `unlabeled`.")
     issues = {k: sum(len(v[k]) for v in labels.merge_issues.values())
               for k in ("into_not_a_label", "not_sent", "merged_twice", "cycle")}
     if any(issues.values()):
         warnings.append(f"The merge reply had items code ignored: {issues['into_not_a_label']} merge(s) "
                         f"into something that isn't a label, {issues['not_sent']} label(s) that weren't "
-                        f"sent, {issues['merged_twice']} label(s) merged twice and {issues['cycle']} merge(s) that "
-                        f"would close a cycle (the first merge kept each time). "
-                        f"Listed in {EVIDENCE_NAME} under merge_issues.")
+                        f"sent, {issues['merged_twice']} label(s) merged twice, and {issues['cycle']} merge(s) that "
+                        f"would close a cycle (the first merge kept each time). An ignored merge can leave two "
+                        f"labels that mean the same thing as two schema entries. Nothing to do; all are listed in "
+                        f"{evidence_shown} under `merge_issues`.")
     if schema.missing_definitions:
         n = len(schema.missing_definitions)
         warnings.append(f"{n} schema entr{'ies have' if n != 1 else 'y has'} no definition (the model "
-                        f"didn't return one); they stay in the schema. Delete cache/define.json and rerun "
-                        f"to ask again.")
+                        f"didn't return one): "
+                        + named([f"{d['component_class']} ({d['kind']})" for d in schema.missing_definitions], 5)
+                        + f". They stay in the schema, marked \"no definition\", so when step 060 extracts with "
+                        f"this schema, its model sees only the entity class or predicate itself. To ask again, delete "
+                        f"{repo_path(calls.cache_dir / 'define.json')}, then run `py 040_induce_schema/run.py` again.")
     if definitions.unknown:
         warnings.append(f"The definition replies named {len(definitions.unknown)} schema entr(ies) that "
-                        f"weren't sent; ignored. Listed in {EVIDENCE_NAME} under unknown_schema_entries.")
+                        f"weren't sent: "
+                        + named([f"{d['component_class']} ({d['kind']})" for d in definitions.unknown], 5)
+                        + f". They were ignored, so they change nothing in the schema. Nothing to do; all are "
+                        f"listed in {evidence_shown} under `unknown_schema_entries`.")
     for items, what in ((schema.entity_classes, "entity classes"), (schema.predicates, "predicates"),
                         (schema.patterns, "patterns")):
         missing = check_origins(items, what)

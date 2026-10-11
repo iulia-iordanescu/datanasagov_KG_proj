@@ -17,7 +17,7 @@ import json
 import re
 from pathlib import Path
 
-from common.audit import ref_path
+from common.step import repo_path
 from common.stop import Stop
 
 #: The free-text fields every record has (020 always writes them).
@@ -36,7 +36,9 @@ def load_records(path) -> dict:
             record = json.loads(line)
             rid = record["id"]
             if rid in records:
-                raise Stop(f"{ref_path(path)} line {number}: id {rid} appears twice (rerun the step that wrote it)")
+                raise Stop(f"{repo_path(path)} line {number}: id {rid} appears twice, so the step can't tell which "
+                           f"record is right (020_clean writes each record once: the file was edited, or isn't "
+                           f"020_clean's output). Run `py 020_clean/run.py` again, then run the step again.")
             records[rid] = record
     return records
 
@@ -58,7 +60,9 @@ def read_ids(value: str) -> list:
     if looks_like_file:
         path = Path(value)
         if not path.is_file():
-            raise Stop(f"ids names the file {value}, which doesn't exist")
+            raise Stop(f"The setting ids names the file {value}, which doesn't exist, so the step can't tell which "
+                       f"records to take. Give the file's path from the repository folder, or the ids themselves "
+                       f"separated by commas, with --ids, then run the step again.")
         ids = []
         for line in path.read_text(encoding="utf-8-sig").splitlines():
             first = line.split(",")[0].strip().strip('"')

@@ -75,7 +75,10 @@ def _asksage_token():
         load_dotenv()
         email, key = os.getenv("ASKSAGE_EMAIL"), os.getenv("ASKSAGE_API_KEY")
         if not (email and key):
-            sys.exit("Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).")
+            unset = " and ".join(n for n, v in (("ASKSAGE_EMAIL", email), ("ASKSAGE_API_KEY", key)) if not v)
+            sys.exit(f"{unset} {'are' if ' and ' in unset else 'is'}n't set, so no model can be called. Put "
+                     f"ASKSAGE_EMAIL and ASKSAGE_API_KEY in the file .env in the repository folder "
+                     f"(docs/running_on_nasa_laptop.md), then run the command again.")
         login = requests.post(f"{USER_BASE}/get-token-with-api-key",
                               json={"email": email, "api_key": key},
                               timeout=(5, 60))
@@ -193,7 +196,8 @@ def call_llm(prompt, attempts=4, read_timeout=180):
             if attempt == attempts - 1:
                 raise
             wait = 2 ** attempt * 5          # 5s, 10s, 20s
-            log.warning(f"transient API error ({e}), retrying in {wait}s")
+            log.warning(f"Model call to {MODEL} failed ({e}); trying again in {wait} s (attempt {attempt + 2} of "
+                        f"{attempts}). Nothing to do: rate limits and server errors usually pass.")
             time.sleep(wait)
 
 
@@ -229,7 +233,8 @@ def call_llm_json(prompt, retries=1, read_timeout=180):
         except (json.JSONDecodeError, BadReply) as e:
             if attempt == retries:
                 raise
-            log.warning(f"unusable reply ({e}); re-asking once")
+            log.warning(f"The model's reply isn't a JSON object ({e}); asking once more, reminding it to reply with "
+                        f"the JSON object only. Nothing to do.")
             prompt += ("\n\nYour last reply was not a valid JSON object. "
                        "Return ONLY the JSON object, no fences, no prose.")
 
@@ -291,7 +296,10 @@ class PaidCalls:
         try:
             call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
         except Exception as e:                              # noqa: BLE001
-            sys.exit(f"Test call to {MODEL} failed, so nothing else was called: {e}")
+            again = f"`py {self.step}/run.py`" if self.step else "the step"
+            sys.exit(f"Test call to {MODEL} failed ({e}), so no other model call was made. If Ask Sage says the model "
+                     f"isn't allowed, give another with --model <name> (`py helpers/models.py` lists them); otherwise "
+                     f"check your key in .env and that you're on NASA's network. Then run {again} again.")
         self.started = True
         self.test_calls = 1
 
@@ -315,7 +323,8 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     global MODEL
     name = str(settings.get("model") or "").strip()
     if not name:
-        raise ValueError("model must name a model (py helpers/models.py lists them)")
+        raise ValueError(f"The setting model is empty, so no model can be called. Give one with --model <name> "
+                         f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
     MODEL = name
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
                  cache_dir=Path(output) / "cache")
@@ -341,7 +350,7 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:
             handle(n, futures[future], result, error)
     except KeyboardInterrupt:
         pool.shutdown(wait=False, cancel_futures=True)
-        sys.exit(f"\nStopped. Calls not yet started were cancelled. "
+        sys.exit(f"\nStopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. "
                  f"{stop_note}")
     finally:
         pool.shutdown(wait=False, cancel_futures=True)

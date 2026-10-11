@@ -95,7 +95,8 @@ def check_settings(settings: dict, minimums: dict) -> None:
     wanted = {**{k: v for k, v in SHARED_MINIMUMS.items() if k in settings}, **minimums}
     for name, lowest in wanted.items():
         if settings[name] < lowest:
-            raise Stop(f"{name} must be at least {lowest} (got {settings[name]})")
+            raise Stop(f"The setting {name} must be at least {lowest}, but is {settings[name]}, so the step can't "
+                       f"run. Give --{name} {lowest} or more, then run the step again.")
 
 
 class InputMissing(Exception):
@@ -198,10 +199,12 @@ def _check_inputs(inputs: dict, defaults: dict, may_be_empty=()) -> None:
     for key, path in inputs.items():
         if not input_files(path) and key not in may_be_empty:
             producer = defaults[key].split("/")[0]
-            hint = f"run {producer} first, or pass --{key}" if producer[:3].isdigit() else f"pass --{key}"
-            missing.append(f"  {key}: {_rel(path)}  ({hint})")
+            hint = (f"run `py {producer}/run.py` first, or give another file with --{key}" if producer[:3].isdigit()
+                    else f"give the file with --{key}")
+            missing.append(f"  {key}: {repo_path(path)}  ({hint})")
     if missing:
-        raise InputMissing("missing input files:\n" + "\n".join(missing))
+        raise InputMissing("missing input files, so the step can't run:\n" + "\n".join(missing)
+                           + "\nThen run the step again.")
 
 
 def _describe_inputs(inputs: dict) -> tuple:
@@ -234,9 +237,11 @@ def _describe_inputs(inputs: dict) -> tuple:
             except (ValueError, OSError):
                 origin = "unknown (manifest unreadable)"
         if run_id is None and not in_git and files:
-            warnings.append(f"Input `{key}` ({_rel(path)}) has no readable manifest, so the run "
-                            f"that produced it is not recorded.")
-        row = {"name": key, "path": _rel(path), "files": len(files),
+            producer = where.resolve().relative_to(RESULTS_DIR.resolve()).parts[0]
+            warnings.append(f"Input `{key}` ({repo_path(path)}) has no readable manifest, so the run "
+                            f"that produced it is not recorded. Nothing to do if you know where it came from; "
+                            f"otherwise run `py {producer}/run.py` again, which writes a new one.")
+        row = {"name": key, "path": repo_path(path), "files": len(files),
                "sha256": audit.sha256(files), "run_id": run_id, "origin": origin,
                "file_hashes": {audit.ref_path(f): audit.sha256([f]) for f in files}}
         rows.append(row)
@@ -248,10 +253,12 @@ def _describe_inputs(inputs: dict) -> tuple:
 
 def _name_in(folder: Path, f) -> str:
     f = Path(f).resolve()
-    return f.relative_to(folder.resolve()).as_posix() if f.is_relative_to(folder.resolve()) else _rel(f)
+    return f.relative_to(folder.resolve()).as_posix() if f.is_relative_to(folder.resolve()) else repo_path(f)
 
 
-def _rel(path) -> str:
+def repo_path(path) -> str:
+    """A file's path from the repository folder, with forward slashes (as messages and reports
+    name files); its full path if it is elsewhere."""
     path = Path(path).resolve()
     return path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else path.as_posix()
 
@@ -368,7 +375,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     run = {"run_id": run_id, "step": step_name, "started": _stamp(started), "finished": None,
            "duration_s": None, "git_commit": git_commit(), "harvest_date": None,
            "harvest_partial": None,
-           "status": "running", "report": _rel(report), "log": _rel(log_file),
+           "status": "running", "report": repo_path(report), "log": repo_path(log_file),
            "settings_changed": changed}
 
     log.info(f"{step_name}: run {run_id} started")
@@ -388,7 +395,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         # starts writing, so it is removed; if the run fails, it is put back
         # only if every output file it lists is still unchanged (see _restore_manifest).
         old_manifest = _take_manifest(output)
-        log.debug(f"output folder: {_rel(output)}")
+        log.debug(f"output folder: {repo_path(output)}")
         audit.begin_run(run_id, chosen_inputs)
         prompt_files.reset_prompts()
 

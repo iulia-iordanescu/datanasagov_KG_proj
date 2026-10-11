@@ -78,9 +78,14 @@ def fetch_page(session: requests.Session, start: int, rows: int) -> tuple:
         body = resp.json()
     except ValueError:                      # e.g. a maintenance page served with status 200
         raise RuntimeError(f"data.nasa.gov returned a page that isn't JSON for start={start} "
-                           f"({resp.headers.get('Content-Type', 'no content type')}): retry later") from None
+                           f"({resp.headers.get('Content-Type', 'no content type')}), e.g. a maintenance page, "
+                           f"so 010 can't save it. Pages already saved are kept: run `py 010_harvest/run.py` "
+                           f"again later, and it fetches only the missing pages.") from None
     if not isinstance(body, dict) or not body.get("success", True) or "result" not in body:
-        raise RuntimeError(f"CKAN reported failure for start={start}: {body.get('error') if isinstance(body, dict) else body}")
+        raise RuntimeError(f"CKAN reported failure for start={start}: "
+                           f"{body.get('error') if isinstance(body, dict) else body}, so 010 can't save this "
+                           f"page. Check the address (URL in 010_harvest/010_harvest_helpers/ckan_client.py), "
+                           f"then run `py 010_harvest/run.py` again later; pages already saved are kept.")
     request = {"request": f"GET {resp.url}", "fetched_at": fetched_at,
                "http_status": resp.status_code}
     return body["result"], request

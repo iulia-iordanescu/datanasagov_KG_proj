@@ -161,7 +161,7 @@ async function loadBatches() {
     pick.append(el("option", { value: b.n }, `Batch ${b.n} (${what})`));
   }
   const warnings = [...data.problems];
-  if (!data.records_found) warnings.unshift("records.jsonl wasn't found, so records' texts can't be shown or checked: run steps 010 and 020 first.");
+  if (!data.records_found) warnings.unshift("outputs/intermediate_results/020_clean/records.jsonl wasn't found, so records' texts can't be shown or checked. Run py 010_harvest/run.py and py 020_clean/run.py, then restart the tool (py helpers/annotate.py).");
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
   drawGaps(data.gaps);
   const wanted = new URLSearchParams(location.hash.slice(1));
@@ -277,7 +277,7 @@ function show(i) {
   const text = el("section", { class: "card" },
     el("h3", {}, "The record's text"),
     rec.text === null
-      ? el("p", { class: "empty" }, "This record isn't in records.jsonl, so its text can't be shown.")
+      ? el("p", { class: "empty" }, "This record's id isn't in outputs/intermediate_results/020_clean/records.jsonl (a typo, or a record since removed), so its text can't be shown and its rows can't be checked against it.")
       : el("div", { id: "text" }),
     el("p", { class: "hint" },
       "Yellow: the source texts of the rows below; the row you're on is darker. Click one to go to its row. " +
@@ -351,7 +351,7 @@ function setActive(j) {
 function addRow(rec) {
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
-                  problems: [{ type: "error", code: "empty", message: "Subject, predicate and object must all be filled in." }] });
+                  problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a row states a fact only with all three. Fill in the empty ones, or delete the row." }] });
   show(current);
   const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);
   if (inputs.length) inputs[0].focus();
@@ -494,7 +494,7 @@ async function openMapping() {
   if (!mapping.found) {
     $("records").replaceChildren();
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
-      "annotations/component_class_mapping.csv wasn't found.")));
+      "annotations/component_class_mapping.csv wasn't found, so there is no translation table to check. It is kept in Git: restore it (git checkout -- annotations/component_class_mapping.csv), then open Translation table again.")));
     status("");
     return;
   }
@@ -535,7 +535,7 @@ function drawMapping() {
       "schema's) and delete the others below. Evaluation won't evaluate until then."))));
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
-      "Extraction's schema_used.json wasn't found, so the current schema's definitions can't be shown.")));
+      "outputs/intermediate_results/060_extract/schema_used.json wasn't found, so the current schema's definitions can't be shown. Run py 060_extract/run.py, then open Translation table again.")));
   mapping.rows.forEach((r, i) => {
     if (r.repeated || ((isCurrent(r) || showPast) && (!onlyToCheck || toCheck(r)))) cards.push(mappingRow(r, i));
   });
@@ -676,7 +676,7 @@ async function openPartial() {
   if (!partial.found) {
     $("records").replaceChildren();
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
-      "Evaluation's compared_triples.csv wasn't found: run py 070_evaluate/run.py first.")));
+      "outputs/intermediate_results/070_evaluate/compared_triples.csv wasn't found, so there are no partial pairs to review. Run py 070_evaluate/run.py, then open Partial pairs again.")));
     status("");
     return;
   }
@@ -793,7 +793,7 @@ function drawAdditions() {
       ? `Component classes the model used that the current schema doesn't have, counted over ${additions.counted_over} ` +
         "(held-out records are never counted). Every one here is fair to add; add only those that name a real " +
         `kind of thing or relation. ${left} not added yet.`
-      : "Extraction hasn't run yet (outputs/intermediate_results/060_extract/extracted_triples_details.json)."),
+      : "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so extraction's component classes outside the schema can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
     additions.new_component_classes.map(n => el("div", { class: "row" },
       el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",

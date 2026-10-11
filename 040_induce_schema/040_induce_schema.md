@@ -161,7 +161,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *N texts gave no verified triple instance* | The model found none, or none it listed could be verified in the text. | Look at the texts and their `unverified` list in the [evidence](../docs/terminology.md#5-learning-the-schema-step-040) file; usually very short records. |
 | *N component instances were left unlabeled even after a second try* | The model skipped them twice. They count toward no [schema entry](../docs/terminology.md#3-schemas). | Nothing, if few. Listed in `induction_evidence.json` under `unlabeled`. |
 | *The merge reply had items code ignored* | The model proposed a merge into something that isn't a [label](../docs/terminology.md#5-learning-the-schema-step-040), named labels it wasn't sent, merged a label twice, or merged a label into one already merged into it (a cycle: A into B, then B into A). Each time the first merge is kept. | Nothing: they were ignored. Listed in `induction_evidence.json` under `merge_issues`. |
-| *N schema entries have no definition* | The model didn't define them. They stay in the [schema](../docs/terminology.md#3-schemas), marked. | Delete `cache/define.json` and rerun to ask again. |
+| *N schema entries have no definition* | The model didn't define them. They stay in the [schema](../docs/terminology.md#3-schemas), marked. | To ask again, delete `outputs/intermediate_results/040_induce_schema/cache/define.json`, then run `py 040_induce_schema/run.py` again. |
 | *The definition replies named N schema entries that weren't sent* | Ignored. | Nothing. Listed under `unknown_schema_entries`. |
 | *N of M entity classes (or predicates, or patterns) have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
@@ -169,10 +169,10 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *… labels are more than one call takes* | Over 800 labels of one [kind](../docs/terminology.md#3-schemas): too many to merge in one call. | See Known limits. |
-| *missing input files … (run 020_clean or 030_split first, or pass --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
+| *… labels are more than one call takes* | Over 800 labels of one [kind](../docs/terminology.md#3-schemas): too many to merge in one call. | Learn from fewer texts (lower `--texts_per_maintainer` or `--induction_maintainers`), then run `py 040_induce_schema/run.py` again (see *Known limits*). |
+| *missing input files, so the step can't run: … (run `py 020_clean/run.py` or `py 030_split/run.py` first, or give another file with --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A [setting](../docs/terminology.md#8-the-pipeline) is out of range: `induction_maintainers`, `texts_per_maintainer`, `min_support` or `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
-| *induction candidate … is not in 020's records; splits.json and records.jsonl are out of step* | 020 was rerun on a different [harvest](../docs/terminology.md#1-records-and-their-text) after 030 wrote `splits.json`. | Delete 030's `splits.json`, then run `py 030_split/run.py` (it writes the file only once). |
+| *Induction candidate … is not in 020's records (…): … and the records are out of step* | 020 was rerun on a different [harvest](../docs/terminology.md#1-records-and-their-text) after 030 wrote `splits.json`. | Delete 030's `splits.json`, then run `py 030_split/run.py` (it writes the file only once), then run `py 040_induce_schema/run.py` again. |
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |

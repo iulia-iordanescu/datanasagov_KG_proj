@@ -151,7 +151,7 @@ py 060_extract/run.py --ids 3122be4c-…,cfd6ec3f-…             exactly these 
 py 060_extract/run.py --confirm_paid_calls false              don't ask (unattended runs)
 ```
 
-060 needs 040's `the_schema.json`. Until 040 has run, it stops with *missing input files … run 040_induce_schema first, or pass --schema*.
+060 needs 040's `the_schema.json`. Until 040 has run, it stops with *missing input files, so the step can't run: … run `py 040_induce_schema/run.py` first, or give another file with --schema*.
 
 **Paying.** Before its first [model call](../docs/terminology.md#8-the-pipeline), 060 logs its plan (how many [records](../docs/terminology.md#1-records-and-their-text), how many calls, the [model](../docs/terminology.md#8-the-pipeline)) and waits: Enter starts, anything else stops the [run](../docs/terminology.md#8-the-pipeline) having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Step 060 found N warnings:*, then each one, numbered; they're listed under *Checks and warnings*). Its first call is a one-line test that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: one per record, plus one per extra piece of a long [text](../docs/terminology.md#1-records-and-their-text), plus the test call.
 
@@ -209,8 +209,8 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *Ground truth, batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 | *N record(s) you listed is/are not in the catalog / without text, so skipped* | With `ids`. | Check for typos. |
 | *N ground truth record(s) is/are not in the catalog / without text, so skipped* | With `extract_from` = `ground_truth` (the default): a ground truth id that isn't in 020's records, or a record with no [text](../docs/terminology.md#1-records-and-their-text) to read. | Check the id in `annotations/ground_truth/` for typos; a record without text can't be extracted. |
-| *extract_from (…) is ignored, because ids names the records.* | Both were given. | Drop one. |
-| *N addition(s) … are already there (in the schema, or an earlier addition), so that entry is kept* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
+| *extract_from (…) is ignored, because the setting ids names the records* | Both were given. | Nothing to do if you meant the ids; to extract from the records `extract_from` names instead, leave `ids` empty. |
+| *N addition(s) … are already there (in the schema input, or an earlier addition, ignoring case and punctuation), so each is left out and the entry already there is used* | A clash, ignoring case and punctuation. | Remove or rename the addition. |
 | *N line(s) of schema_additions.txt aren't read as an entry, a source or patterns …* | The first 5 are listed with their line numbers: usually an entity class or predicate with a space in it, one space before the definition, a [pattern](../docs/terminology.md#3-schemas) line not in the `Subject -> Object; …` form, or a repeated entry (the first is kept; the repeat and the lines under it are listed). Such a line adds nothing. | Fix the line (see *The shape of a schema*). |
 | *N addition(s) … say they come from the ground truth but don't show they come from tuning records only, so they are left out* | Each is listed with why: it doesn't say `tuning`, or names a held-out record, a position not in the [pool](../docs/terminology.md#4-ground-truth-and-samples), or no record. | Take the addition out, or (if it really came from tuning records) list their [pool positions](../docs/terminology.md#4-ground-truth-and-samples): `source: ground truth tuning #12`. |
 | *Entries of … whose source names ground truth records other than tuning ones (N)* | The [schema](../docs/terminology.md#3-schemas) given with `--schema` (e.g. the [hand-built schema](../docs/terminology.md#3-schemas)) has entries whose `source:` line names the ground truth but fails the check additions get: it names a held-out record, doesn't say `tuning`, names a position not in the pool, or names no record. Usually [component classes](../docs/terminology.md#3-schemas) learned from held-out records: the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) gives each one it adds there a `source:` line naming the records that use it (patterns get none, so a pattern learned from a held-out record isn't caught). They are kept. | Fine for tuning numbers. Don't trust this [run](../docs/terminology.md#8-the-pipeline)'s held-out numbers: extract with a schema that didn't learn from held-out records (040's, by default). |
@@ -229,11 +229,11 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *missing input files … schema … run 040_induce_schema first, or pass --schema* | 040 hasn't run. | Run 040 (or pass `--schema`). |
-| *… has no entity classes or no predicates: is it a schema?* | The `--schema` file isn't in either shape. | Check the file against *The shape of a schema* (Inputs). |
+| *missing input files, so the step can't run: … schema … run `py 040_induce_schema/run.py` first, or give another file with --schema* | 040 hasn't run. | Run 040 (or pass `--schema`). |
+| *… has no entity classes or no predicates (…), so 060 can't extract with it* | The `--schema` file isn't in either shape. | Check the file against *The shape of a schema* (Inputs). |
 | *"entity_classes" must be a list …* / *… entry N has no "component_class"* / *patterns entry N must be …* | A JSON schema that doesn't follow the shape above. | Fix the file (see *The shape of a schema*). |
 | *extract_from must be one of ground_truth, all* | A typo in the [setting](../docs/terminology.md#8-the-pipeline). | Use `ground_truth` or `all`. |
-| *Nothing to extract. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
+| *Nothing to extract: none of the records chosen can be extracted from …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |

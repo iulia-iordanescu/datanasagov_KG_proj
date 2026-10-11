@@ -104,7 +104,7 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
-from common.schema_io import add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
+from common.schema_io import ONE_WORD, add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
     ground_truth_source_problem, pattern_key, read_hand_schema, read_schema, redefine_in_hand_schema, rename_in_hand_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
 from common.text_match import Text
@@ -134,13 +134,23 @@ KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 #: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
 #: words for the page; each {placeholder} is filled with the component class concerned.
 MESSAGES = {
-    "no_source_text": "No source text: select the passage in the record's text that states this, then press \"Use selection\".",
-    "source_not_in_text": "The source text isn't in the record's text: check it was copied exactly.",
-    "subject_not_in_text": "The subject isn't in the record's text (fine if it's reworded on purpose).",
-    "object_not_in_text": "The object isn't in the record's text (fine if it's reworded on purpose).",
-    "subject_not_in_source": "The subject isn't in its source text.",
-    "object_not_in_source": "The object isn't in its source text.",
-    "subject_equals_object": "The subject and the object are the same.",
+    "no_source_text": "No source text: without one, this row can't be checked against the record's text. Select the "
+                      "passage in the record's text that states this fact, then press \"Use selection\".",
+    "source_not_in_text": "The source text isn't in the record's text: it may have been retyped or cut, so this row "
+                          "can't be checked. Select the passage in the record's text, then press \"Use selection\" to "
+                          "copy it exactly.",
+    "subject_not_in_text": "The subject instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
+                           "reworded on purpose, nothing to do.",
+    "object_not_in_text": "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
+                          "reworded on purpose, nothing to do.",
+    "subject_not_in_source": "The subject instance isn't in this row's source text: the source text may be the wrong "
+                             "passage, or too short. Select a passage that states the whole fact, then press \"Use "
+                             "selection\"; if the text states the fact without naming it there, nothing to do.",
+    "object_not_in_source": "The object instance isn't in this row's source text: the source text may be the wrong "
+                            "passage, or too short. Select a passage that states the whole fact, then press \"Use "
+                            "selection\"; if the text states the fact without naming it there, nothing to do.",
+    "subject_equals_object": "The subject instance and the object instance are the same: a fact relates two different "
+                             "things, so one of them is probably wrong. Correct it.",
     "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the hand-built schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
                                    "If it's new, add it to the hand-built schema with the button below, "
@@ -156,8 +166,10 @@ MESSAGES = {
     "pattern_not_in_schema": "The hand-built schema never uses {predicate} between {subject_class} and "
                              "{object_class}: a new pattern, or a wrong entity class. If it's right, add it to the "
                              "hand-built schema with the button below (shown once both entity classes are in it).",
-    "empty": "Subject, predicate and object must all be filled in.",
-    "describes_undecided": "Choose the entity class of what the title names.",
+    "empty": "Subject, predicate, or object is empty: a row states a fact only with all three. Fill in the empty "
+             "ones, or delete the row.",
+    "describes_undecided": "No entity class yet for what this record describes (the DESCRIBES row's object class is "
+                           "X or empty). Type or pick the entity class of the thing the title names.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
                                      "If it's new, add it to the hand-built schema with the button below, "
@@ -346,7 +358,7 @@ def add_to_hand(data: Data, item: dict) -> str:
                     f"in {HAND_SCHEMA.name}")
         kind = item.get("entry_type")
         if kind not in KIND_KEYS:
-            raise ValueError("entry_type must be entity class, predicate or pattern")
+            raise ValueError("entry_type must be entity class, predicate, or pattern")
         name = str(item.get("component_class") or "").strip()
         source = _learned_from(data, _using(read_ground_truth(), kind, name))
         add_to_hand_schema(HAND_SCHEMA, kind, name, item.get("definition") or "", source=source)
@@ -377,7 +389,9 @@ def open_batch(n: int) -> Path:
     if not gt.exists():
         draft = DRAFTS_DIR / draft_name(n)
         if not draft.exists():
-            raise FileNotFoundError(f"no draft batch {n} and no {gt.name}")
+            raise FileNotFoundError(f"batch {n} has no draft (outputs/intermediate_results/050_annotate/{draft.name}) "
+                                f"and no ground truth file (annotations/ground_truth/{gt.name}), so there is nothing "
+                                f"to open. Pick another batch, or draft one with py 050_annotate/run.py.")
         write_csv(gt, FILE_COLUMNS, _read_rows(draft))
     return gt
 
@@ -484,7 +498,9 @@ def save_mapping(data: Data, sent: list) -> None:
     crt = _crt()
     if [(r["kind"], r["component_class_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
             [(r.get("kind"), r.get("component_class_from_past_or_crt_schema")) for r in sent]:
-        raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
+        raise ValueError(f"annotations/{MAPPING_PATH.name} has changed since the page was loaded (step 070 or a "
+                         f"hand edit), so saving could overwrite it: reload the page, then make your last change "
+                         f"again.")
     vocab = _gtt(data)
     gtt_now = _gtt_definitions(vocab)
     gtt = {kind: {component_class_key(n): n for n in names} for kind, names in vocab.items()}
@@ -493,7 +509,8 @@ def save_mapping(data: Data, sent: list) -> None:
         if name != NONE:
             if component_class_key(name) not in gtt.get(row["kind"], {}):
                 raise ValueError(f"\"{name}\" isn't {'an' if row['kind'] == 'entity class' else 'a'} {row['kind']} "
-                                 f"of the ground truth vocabulary")
+                                 f"of the ground truth vocabulary, so nothing can translate to it. Pick one from "
+                                 f"the list, or {NONE}.")
             name = gtt[row["kind"]][component_class_key(name)]
         row["component_class_in_gtt"] = name
         swap = row["kind"] == "predicate" and s.get("swap_subject_and_object") == "yes"
@@ -517,9 +534,12 @@ def delete_mapping_row(line: int, kind: str, name: str) -> None:
     rows = read_mapping(MAPPING_PATH)
     target = next((r for r in rows if r["_line"] == line), None)
     if target is None or (target["kind"], target["component_class_from_past_or_crt_schema"]) != (kind, name):
-        raise ValueError(f"{MAPPING_PATH.name} has changed since the page was loaded: reload the page")
+        raise ValueError(f"annotations/{MAPPING_PATH.name} has changed since the page was loaded (step 070 or a "
+                         f"hand edit), so the row to delete can't be told for sure: reload the page, then delete it "
+                         f"again.")
     if not any(line in r["lines"] for r in repeats(rows)):
-        raise ValueError("only a component class's extra rows can be deleted here")
+        raise ValueError("only a component class's extra rows can be deleted here, so that no translation is lost. "
+                         "To delete another row, edit annotations/component_class_mapping.csv by hand.")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, [r for r in rows if r is not target])
 
 
@@ -593,19 +613,21 @@ def check_addition(data: Data, e: dict) -> str | None:
     pattern), or None."""
     if e.get("entry_type") == "pattern":
         if not all(_one_word(e.get(k)) for k in ("subject_class", "predicate", "object_class")):
-            return "a pattern is a subject class, a predicate and an object class, one word each"
+            return ("a pattern needs a subject class, a predicate, and an object class, one word each: fill in "
+                    "all three")
         name = pattern_key(str(e[k]).strip() for k in ("subject_class", "predicate", "object_class"))
     elif e.get("entry_type") not in KIND_KEYS:
-        return "entry_type must be entity class, predicate or pattern"
+        return "entry_type must be entity class, predicate, or pattern"
     else:
         name = str(e.get("component_class") or "").strip()
         if not _one_word(name):
-            return "the component class must be one word, with no spaces (e.g. SpaceMission, PART_OF_MISSION)"
+            return ONE_WORD
         if not str(e.get("definition") or "").strip():
             return f"{name} (additions file) needs a one-line definition"
     source = str(e.get("source") or "").strip()
     if not source:
-        return f"{name} (additions file) needs a source: where the idea came from"
+        return (f"{name} (additions file) needs a source: where the idea came from (e.g. mentor; ground truth "
+                f"tuning #12)")
     parts = {data.positions[i]: part for i, part in data.parts.items() if i in data.positions}
     problem = ground_truth_source_problem(source, parts)
     if problem:
@@ -620,8 +642,9 @@ def save_additions(data: Data, entries: list) -> None:
     """Rewrite the additions file with these entries, keeping its comments."""
     _, unread = _additions()
     if unread:
-        raise ValueError(f"{ADDITIONS.name} has line(s) its layout can't read ({'; '.join(unread[:3])}): fix them "
-                         f"by hand first, so saving here doesn't lose them")
+        raise ValueError(f"annotations/{ADDITIONS.name} has line(s) its layout can't read "
+                         f"({'; '.join(unread[:3])}), so saving here would lose them. Fix them by hand in a text "
+                         f"editor first.")
     seen = set()
     clean = []
     for e in entries:
@@ -634,7 +657,7 @@ def save_additions(data: Data, entries: list) -> None:
         else:
             key, shown = (e["entry_type"], component_class_key(e["component_class"])), e["component_class"]
         if key in seen:
-            raise ValueError(f"{shown} (additions file) is there twice")
+            raise ValueError(f"{shown} (additions file) is there twice: delete one of them")
         seen.add(key)
         if e["entry_type"] == "pattern":
             clean.append({"entry_type": "pattern", "subject_class": triple[0], "predicate": triple[1],
@@ -765,17 +788,19 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
     spelled = {component_class_key(n): n for n in vocab}
     if component_class_key(old) not in spelled:
         raise ValueError(f"{old} isn't {'an entity class' if kind == 'entity class' else 'a predicate'} of the ground "
-                         f"truth vocabulary")
+                         f"truth vocabulary, so it can't be renamed or merged: reload the page to see the vocabulary "
+                         f"as it is now.")
     old = spelled[component_class_key(old)]
     if component_class_key(old) in FIXED or component_class_key(new) in FIXED:
-        raise ValueError("CatalogEntry, DESCRIBES and X are written by code and can't be renamed")
+        raise ValueError("CatalogEntry, DESCRIBES, and X are written by code (the DESCRIBES row), so they can't be "
+                         "renamed, merged, or used as a new component class")
     if new == old:
-        raise ValueError("the new component class is the same as the old one")
+        raise ValueError("the new component class is the same as the old one: nothing to change. Type another one")
     merging = component_class_key(new) in spelled and component_class_key(new) != component_class_key(old)
     target = spelled[component_class_key(new)] if merging else new
     if not component_class_key(target) or any(c.isspace() for c in target) or target.startswith("#") \
             or ";" in target or "->" in target:
-        raise ValueError("the new component class must be one word, with letters or digits, no spaces, and no ; or ->")
+        raise ValueError("the new " + ONE_WORD[4:])
     k = component_class_key(old)
     files, changes, notes = {}, [], []
 

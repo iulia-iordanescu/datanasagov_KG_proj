@@ -32,7 +32,7 @@ from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
-from common.step import check_settings, input_files
+from common.step import check_settings, input_files, repo_path
 from common.stop import Stop
 from common.triples_io import is_describes
 
@@ -76,6 +76,21 @@ def refusal(repeats: list) -> str:
     return head + "\n" + numbered([r["message"][0].upper() + r["message"][1:] for r in repeats])
 
 
+
+def _first_gap(pool: list, positions: dict, taken: set, finished: set, in_ground_truth) -> str:
+    """The first pool record not taken, why, and what brings it in (for messages); "" if none."""
+    gap = next((rid for rid in pool if rid not in taken), None)
+    if gap is None:
+        return ""
+    where = f"pool position #{positions[gap]} (`{gap}`)"
+    if gap in finished:
+        return f"The first pool record missing from the fair sample is {where}: finished, but not extracted by 060's last run. Run `py 060_extract/run.py`"
+    if gap in in_ground_truth:
+        return f"The first pool record missing from the fair sample is {where}: not finished in the ground truth. Finish it in `py helpers/annotate.py` (tick *All facts extracted*), run `py 060_extract/run.py`"
+    return (f"The first pool record missing from the fair sample is {where}: not in the ground truth yet. Draft it with "
+            f"`py 050_annotate/run.py`, correct and finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
+
+
 def pick_records(inputs: dict, settings: dict) -> Evaluated:
     check_settings(settings, {})
     evaluated = Evaluated()
@@ -86,8 +101,10 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         raise Stop(refusal(gt.repeats))
     pool_rows = read_pool(inputs["splits"])
     if any("part" not in r for r in pool_rows):
-        raise Stop("splits.json has no tuning / held-out part for its records: rebuild it with 030 "
-                         "(delete 030's splits.json, then run py 030_split/run.py)")
+        splits = repo_path(inputs["splits"])
+        raise Stop(f"{splits} has no tuning / held-out part for its records (an older step 030 wrote it), so 070 "
+                   f"can't keep the held-out part apart. Delete {splits}, run `py 030_split/run.py`, then run "
+                   f"`py 070_evaluate/run.py` again.")
     evaluated.pool = [r["id"] for r in pool_rows]
     by_id = {r["id"]: r for r in pool_rows}
     strata = {r["id"].strip(): (r.get("stratum") or "").strip() for r in read_csv(Path(inputs["candidates"]))}
@@ -115,13 +132,20 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         "finished, but not extracted by 060's last run": not_extracted,
         "outside the fair sample (after an unfinished or unextracted pool record, or not in the pool)": outside,
     }.items() if v}
+    positions = {r["id"]: r["position"] for r in pool_rows}
+    gap = _first_gap(evaluated.pool, positions, taken, finished, gt.records)
     if not_extracted:
         evaluated.notes.append(f"{len(not_extracted)} finished ground truth record(s) weren't extracted by 060's "
-                            f"last run, so can't be evaluated: {named(not_extracted)}. Run py 060_extract/run.py.")
+                            f"last run, so this run leaves them out: {named(not_extracted)}. To evaluate them, run "
+                            f"`py 060_extract/run.py`, then run `py 070_evaluate/run.py` again.")
     if outside:
+        not_in_pool = [rid for rid in outside if rid not in positions]
         evaluated.notes.append(f"{len(outside)} record(s) are left out because they aren't in the fair sample (the "
-                            f"pool's first records, with none skipped): {named(outside)}. Finish (or extract) "
-                            f"the pool records before them to bring them in.")
+                            f"pool's first records, with none skipped), so this run doesn't evaluate them: "
+                            f"{named(outside)}."
+                            + (f" {gap}, then run `py 070_evaluate/run.py` again." if len(not_in_pool) < len(outside) else "")
+                            + (f" {len(not_in_pool)} of them aren't in the pool at all (hand-picked): {named(not_in_pool)}. "
+                               f"Nothing to do for those: only pool records can form a fair sample." if not_in_pool else ""))
 
     rows_of = {}
     for r in gt.rows:
@@ -138,11 +162,17 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         })
     missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]
     if missing_stratum:
-        evaluated.notes.append(f"{len(missing_stratum)} evaluated record(s) have no stratum in the pool file, so "
-                            f"the per-stratum numbers show them as the stratum \"(no stratum)\": {named(missing_stratum)}.")
+        candidates = repo_path(inputs["candidates"])
+        evaluated.notes.append(f"{len(missing_stratum)} evaluated record(s) have no stratum in the pool file "
+                            f"({candidates}, column stratum), so the per-stratum numbers show them as the stratum "
+                            f"\"(no stratum)\"; the other numbers count them as usual: {named(missing_stratum)}. That "
+                            f"file was written with a stratum for every pool record, so it was probably edited: "
+                            f"compare it with Git's copy (`git diff {candidates}`).")
     if not evaluated.records:
         raise Stop("Nothing to evaluate yet: no finished ground truth record that 060 extracted is in the "
-                         "fair sample. " + " ".join(evaluated.notes))
+                   "fair sample, so 070 can't evaluate. "
+                   + (f"{gap}, then run `py 070_evaluate/run.py` again. " if gap else "")
+                   + " ".join(evaluated.notes))
     if evaluated.notes:                            # before anything is evaluated, even on a run that pays nothing
         show_warnings("070", evaluated.notes)
         if settings["confirm_paid_calls"]:

@@ -28,7 +28,8 @@ def main() -> None:
     for name in names:
         print(f"  {name}{'   <- the default' if name == llm.MODEL else ''}")
     if llm.MODEL not in names:
-        print(f"\nThe default, {llm.MODEL} (common/common_helpers/llm.py), isn't in the list.")
+        print(f"\nThe default, {llm.MODEL} (common/common_helpers/llm.py), isn't in the list, so a step run without "
+              f"--model may be refused at its test call. Give one of the models above with --model <name>.")
 
 
 if __name__ == "__main__":

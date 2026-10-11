@@ -164,7 +164,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *You asked for N records (records_per_batch), but only M are left in the pool from position P on.* | The rest of the [pool](../docs/terminology.md#4-ground-truth-and-samples) is done or waiting. | Nothing, or a lower `start_position`. |
 | *N record(s) you listed is not in the catalog / without text / already in the ground truth / waiting in a draft batch to be corrected (batch K), so skipped* | With `ids`: those [records](../docs/terminology.md#1-records-and-their-text) can't or needn't be drafted. | Check for typos; a record waiting in a [draft batch](../docs/terminology.md#4-ground-truth-and-samples) is drafted again only if you delete that draft batch (both its files) before correcting it. |
 | *You listed N records that can be drafted, but records_per_batch is M* | Only the first M are drafted now. | Raise `records_per_batch`, or run again for the rest. |
-| *start_position (N) is ignored, because ids names the records.* | The two [settings](../docs/terminology.md#8-the-pipeline) can't both apply. | Drop one. |
+| *start_position (N) is ignored, because the setting ids names the records* | The two [settings](../docs/terminology.md#8-the-pipeline) can't both apply. | Nothing to do if you meant the ids; to draft from a [pool position](../docs/terminology.md#4-ground-truth-and-samples) instead, leave `ids` empty. |
 | *With this batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 evaluates only the [fair sample](../docs/terminology.md#4-ground-truth-and-samples) (the pool's first records, with none skipped), so records after the gap are not evaluated until the records before them are annotated too. |
 | *Ground truth, record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) until fixed. | Keep it in one file. |
 | *Ground truth, record … (batch_…): all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
@@ -186,9 +186,9 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *Nothing to draft. …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
+| *Nothing to draft: none of the records chosen can be drafted …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *ids names the file …, which doesn't exist* | A typo in the file name. | Fix the file name. |
-| *missing input files … (run 020_clean or 030_split first, or pass --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
+| *missing input files, so the step can't run: … (run `py 020_clean/run.py` or `py 030_split/run.py` first, or give another file with --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A setting is out of range: `records_per_batch` or `workers` under 1, `start_position` under 0, or `max_chars` under 1,000. | Fix the setting. |
 | *model must name a model* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |

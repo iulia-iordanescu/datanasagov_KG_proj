@@ -65,7 +65,8 @@ from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_json
 from common.records_io import has_text, load_records as read_records
-from common.report import cell
+from common.report import cell, named
+from common.step import repo_path
 from common.step import MANIFEST_NAME, Results, input_files
 from common.stop import Stop
 
@@ -116,11 +117,16 @@ def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
     with open(path, encoding="utf-8-sig", newline="") as fh:
         rows = list(csv.DictReader(fh))
     if not rows or "id" not in rows[0] or "maintainer" not in rows[0]:
-        raise Stop(f"{ref_path(path)} needs the columns id and maintainer: fix the file")
+        has = f"its columns are {', '.join(rows[0])}" if rows else "it has no rows"
+        raise Stop(f"{ref_path(path)} needs the columns id and maintainer ({has}), so 030 can't read the "
+                   f"ground truth candidates pool. Fix the file, or pass the right one with --candidates, "
+                   f"then run `py 030_split/run.py` again.")
     ids = [row["id"].strip() for row in rows]
     repeated = sorted(i for i, n in collections.Counter(ids).items() if n > 1)
     if repeated:
-        raise Stop(f"{ref_path(path)} lists these ids more than once: {', '.join(repeated[:5])}: fix the file")
+        raise Stop(f"{ref_path(path)} lists these ids more than once: {named(repeated)}, so 030 can't give "
+                   f"each record one pool position. Fix the file so each id is listed once, then run "
+                   f"`py 030_split/run.py` again.")
 
     pool = Candidates(in_file=len(rows), pool_ids=set(ids))
     for position, row in enumerate(rows):
@@ -181,7 +187,10 @@ def check_disjoint(pool: Candidates, induction: Induction) -> None:
     shared = pool.pool_ids & {r["id"] for r in induction.records}
     if shared:
         raise ValueError(f"{len(shared)} records are both ground truth candidates and induction "
-                         f"candidates, e.g. {sorted(shared)[:3]}; the two must never overlap")
+                         f"candidates: {named(sorted(shared))}, so 040 could learn the schema from records "
+                         f"that 070 evaluates; the two must never overlap. A code change broke "
+                         f"induction_candidates in 030_split/030_split_helpers/moves.py: fix it, then run "
+                         f"`py 030_split/run.py` again.")
 
 
 # --------------------------------------------------------------------------
@@ -215,16 +224,19 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
         log.info(f"  {OUTPUT_NAME} already exists: kept as it is"
                  + ("" if same else " (this run's draw differs)"))
         if not same:
-            warnings.append(f"{OUTPUT_NAME} already exists and was kept, but this run's draw "
-                            f"differs from it: the records, the pool file or the settings changed "
-                            f"since it was written. Work in progress relies on the kept file; to "
-                            f"replace it, delete it and rerun.")
+            differs = " and ".join("the ground truth candidates pool" if k == CANDIDATES else "the induction candidates"
+                                   for k in drawn if existing.get(k) != drawn[k])
+            warnings.append(f"{repo_path(path)} already exists and was kept, but this run's draw "
+                            f"differs from it in {differs}: the records, the pool file, or the settings "
+                            f"changed since it was written. Usually nothing to do: work in progress relies "
+                            f"on the kept file. To take the change, delete {repo_path(path)} and run "
+                            f"`py 030_split/run.py` again.")
     else:
         if _from_trial_harvest(inputs):
-            raise Stop(f"The records come from a trial harvest (part of the catalog only, --max_records), and "
-                             f"{OUTPUT_NAME} is written once and then kept, so it isn't written from a trial: the "
-                             f"trial's records would stay in it. Run the full harvest (py 010_harvest/run.py), then "
-                             f"020, then 030 again.")
+            raise Stop(f"The records come from a trial harvest (part of the catalog only, --max_records), so "
+                       f"030 can't write {repo_path(path)}: it is written once and then kept, so the trial's "
+                       f"records would stay in it. Run the full harvest (`py 010_harvest/run.py` without "
+                       f"--max_records), then `py 020_clean/run.py`, then run `py 030_split/run.py` again.")
         document = {**drawn, "drawn": {
             "run_id": audit.current_run_id(), "settings": settings,
             "inputs": {name: audit.ref_path(input_files(Path(p))[0]) for name, p in inputs.items()}}}
@@ -233,13 +245,19 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
 
     if pool.dropped:
         n = len(pool.dropped)
+        gone = [f"#{d['position']} ({d['id']})" for d in pool.dropped]
         warnings.append(f"{n} ground truth candidate{'s are' if n != 1 else ' is'} no longer in "
-                        f"the catalog and {'were' if n != 1 else 'was'} dropped; the others keep "
-                        f"their positions. Listed in the report.")
+                        f"the catalog and {'were' if n != 1 else 'was'} dropped: {named(gone)} (pool "
+                        f"position and record id). If one was already annotated, its ground truth no "
+                        f"longer has a text to evaluate against. Otherwise nothing to do: the others "
+                        f"keep their pool positions.")
     if pool.renamed:
-        warnings.append(f"{len(pool.renamed)} ground truth candidates have a different maintainer "
+        n = len(pool.renamed)
+        changed = [f"{r['id']} ({r['in_pool']} → {r['now']})" for r in pool.renamed]
+        warnings.append(f"{n} ground truth candidate{'s have' if n != 1 else ' has'} a different maintainer "
                         f"in 020's records than in the pool file (e.g. a spelling now joined "
-                        f"differently); the records' maintainer is used. Listed in the report.")
+                        f"differently): {named(changed, sep='; ')}. Nothing to do: 030 uses the maintainer "
+                        f"in 020's records.")
     for items, what in ((pool.records, "ground truth candidates"),
                         (induction.records, "induction candidates")):
         missing = check_origins(items, what)

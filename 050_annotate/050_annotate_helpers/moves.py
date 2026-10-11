@@ -115,17 +115,23 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if replies.failed:
         warnings.append(extraction.failed_note(replies, "the batch"))
     if not csv_rows:
-        warnings.append("No record was drafted, so no batch was written.")
+        warnings.append(f"No record was drafted, so no batch was written: the model calls for all "
+                        f"{len(chosen.items)} record(s) chosen failed (the warning before this one says why for "
+                        f"each). Fix the cause if it's yours (e.g. the connection to Ask Sage), then run "
+                        f"`py 050_annotate/run.py` again.")
     coined = [n for kind in ("entity_classes", "predicates") for n in chosen.coined[kind]]
     if coined:
         warnings.append(f"{len(coined)} component class(es) used in the ground truth aren't in the hand-built schema, so the model "
                         f"saw them without a definition: "
                         f"{named([f'{n} (ground truth vocabulary)' for n in coined], 5, '; ')}. "
                         f"Add each one you mean to keep, with a one-line definition, to the hand-built "
-                        f"schema (the annotation tool's buttons do it); fix any typo in the ground truth.")
+                        f"schema, annotations/schema_derived_from_manual_annotation.txt (the buttons of the "
+                        f"annotation tool, `py helpers/annotate.py`, do it); fix any typo in the ground truth.")
     if typos:
-        warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix; listed in the "
-                        f"report under Your ground truth.")
+        warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix, listed with file and "
+                        f"line in this report under Your ground truth: the ground truth is what step 070 "
+                        f"evaluates against, so a wrong row makes its metrics wrong. Fix them with "
+                        f"`py helpers/annotate.py` or any editor.")
     missing = check_origins(csv_rows, "draft rows")
     if missing:
         warnings.append(missing)

@@ -35,7 +35,8 @@ import note_cleaning
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_jsonl
 from common.records_io import TEXT_FIELDS
-from common.report import cell
+from common.report import cell, named
+from common.step import repo_path
 from common.step import Results, input_files
 from common.stop import Stop
 
@@ -91,7 +92,9 @@ def _text_fields(settings: dict) -> tuple:
     clashes = [name for name in extra if name in STRUCTURED_FIELDS]
     if clashes:
         raise Stop(f"extra_text_fields names {', '.join(clashes)}, which 020 already writes "
-                         f"as a field of its own; a text field of that name would overwrite it.")
+                   f"as a field of its own, so 020 can't add a text field of that name without overwriting "
+                   f"it. Remove {', '.join(clashes)} from extra_text_fields (--extra_text_fields, or the "
+                   f"setting in 020_clean/run.py), then run `py 020_clean/run.py` again.")
     # title and notes named again are harmless: each field is listed once.
     return tuple(dict.fromkeys(TEXT_FIELDS + tuple(extra)))
 
@@ -104,8 +107,9 @@ def load_raw(inputs: dict, settings: dict) -> Catalog:
     for path in files:
         batch = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(batch, dict) or "records" not in batch:
-            raise Stop(f"{ref_path(path)} is in the old batch format (a bare list, with no "
-                       f"request block). Run py 010_harvest/run.py again to fetch it again.")
+            raise Stop(f"{repo_path(path)} is in the old batch format (a bare list, with no "
+                       f"request block), so 020 can't read its records. Run `py 010_harvest/run.py` again "
+                       f"(it downloads that file again), then run `py 020_clean/run.py` again.")
         for position, raw in enumerate(batch["records"]):
             catalog.read += 1
             rid = str(raw.get("id") or "").strip()
@@ -224,18 +228,26 @@ def results(catalog: Catalog, output: Path) -> Results:
     warnings = []
     if catalog.dropped_no_id:
         n = len(catalog.dropped_no_id)
+        where = [f"{d['file']} #{d['position']}" for d in catalog.dropped_no_id]
         warnings.append(f"{n:,} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} "
-                        f"no id and {'were' if n != 1 else 'was'} dropped; every later step "
-                        f"tells records apart by id. All are listed in the report under "
-                        f"What this run worked on, and in the log.")
+                        f"no id and {'were' if n != 1 else 'was'} dropped: {named(where)} (batch file "
+                        f"and position). Every later step tells records apart by id, so they aren't in "
+                        f"{repo_path(path)}. Nothing to do: the catalog gave them no id; each is listed, "
+                        f"with its title, in this report under What this run worked on.")
     uncleaned = sum(c[note_cleaning.TIER_SOURCE] for c in catalog.tiers.values())
     if uncleaned:
+        kept_raw = [f"{f['id']} ({f['field']})" for f in catalog.fallbacks
+                    if f["method"] == note_cleaning.TIER_SOURCE]
         warnings.append(f"{uncleaned:,} text values could not be cleaned without losing content, "
-                        f"so they were kept as decoded, markup included. Their ids are listed "
-                        f"in the report under Cleaning.")
+                        f"so they were kept as decoded, markup included: {named(kept_raw)}. The model "
+                        f"will read that markup in those records' texts. Look at them; if the markup "
+                        f"matters, add a case to SELFTESTS in 020_clean/020_clean_helpers/note_cleaning.py "
+                        f"and improve the cleaner, then run `py 020_clean/run.py` again.")
     if catalog.joined and catalog.maintainers_after == 1 and written > 1:
-        warnings.append("Every record has the same maintainer, so 040 would learn the schema "
-                        "from one maintainer only.")
+        warnings.append(f"Every record has the same maintainer ({catalog.records[0]['maintainer']}), so "
+                        f"040 would learn the schema from one maintainer only. Usually a sign of a broken "
+                        f"or trial harvest: check outputs/intermediate_results/010_harvest/, run "
+                        f"`py 010_harvest/run.py` again if needed, then run `py 020_clean/run.py` again.")
     missing = check_origins(catalog.records, "records")
     if missing:
         warnings.append(missing)

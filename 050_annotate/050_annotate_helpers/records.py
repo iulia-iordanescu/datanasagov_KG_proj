@@ -42,7 +42,7 @@ from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_s
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_hand_schema
-from common.step import check_settings, input_files
+from common.step import check_settings, input_files, repo_path
 from common.stop import Stop
 from common.validate import SchemaEntries
 
@@ -133,14 +133,16 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     if ids:
         chosen.how = f"the {len(ids)} id(s) given in the setting ids"
         if settings["start_position"]:
-            chosen.notes.append(f"start_position ({settings['start_position']}) is ignored, because ids "
-                                f"names the records.")
+            chosen.notes.append(f"start_position ({settings['start_position']}) is ignored, because the setting "
+                                f"ids names the records: this run drafts the records listed in ids. To draft "
+                                f"from a pool position instead, leave ids empty.")
         ok = [i for i in ids if usable(i)]
         picked = ok[:per]
         if len(ok) > per:
             chosen.notes.append(f"You listed {len(ok)} records that can be drafted, but records_per_batch "
-                                f"is {per}: the first {per} are drafted now, and these {len(ok) - per} "
-                                f"wait for a later run: {named(ok[per:])}.")
+                                f"is {per}, so this run drafts the first {per}, and these {len(ok) - per} "
+                                f"wait for a later run: {named(ok[per:])}. To draft all {len(ok)} now, "
+                                f"set --records_per_batch {len(ok)}.")
     else:
         start = settings["start_position"]
         chosen.how = f"the next records of the pool from position {start}"
@@ -150,17 +152,29 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
             if chosen.positions[rid] >= start and usable(rid):
                 picked.append(rid)
         if len(picked) < per:
+            passed = "; ".join(f"{len(v)} {k}" for k, v in skipped.items() if v) or "none"
             chosen.notes.append(f"You asked for {per} records (records_per_batch), but only {len(picked)} "
-                                f"are left in the pool from position {start} on.")
+                                f"are left in the pool from position {start} on, so this batch has "
+                                f"{len(picked)}. The other pool records from position {start} on: {passed}. "
+                                + (f"To draft records before position {start}, set a lower --start_position."
+                                   if start else "Nothing to do: the pool has no other record to draft."))
 
     chosen.skipped = {reason: rids for reason, rids in skipped.items() if rids}
+    to_do = {      # what to do about records skipped for each reason (the first two worded as in 060)
+        "not in the catalog": f"Check these ids in the setting ids for typos: each must be a record id in "
+                              f"{repo_path(inputs['records'])}.",
+        "without text": "Nothing to do: a record without text has nothing for the model to read.",
+        "already in the ground truth": "Nothing to do: they are already annotated in annotations/ground_truth/.",
+        "waiting in a draft batch to be corrected": f"Correct them with `py helpers/annotate.py`; to draft one "
+                                                    f"again instead, delete its draft batch (both files) from "
+                                                    f"{repo_path(output)}/ before correcting it."}
     for reason, rids in chosen.skipped.items():
         if ids:                                    # by default, passing over done records is expected
             where = ""
             if reason == "waiting in a draft batch to be corrected":
                 where = " (" + ", ".join(sorted({f"batch {chosen.waiting[r]}" for r in rids})) + ")"
             chosen.notes.append(f"{len(rids)} record(s) you listed {'are' if len(rids) > 1 else 'is'} "
-                                f"{reason}{where}, so skipped: {named(rids)}.")
+                                f"{reason}{where}, so skipped: {named(rids)}. {to_do[reason]}")
 
     for rid in picked:
         record = chosen.records[rid]
@@ -172,8 +186,12 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     if before["fair"] and not chosen.fair["fair"] and picked:
         chosen.notes.append("With this batch, the ground truth is no longer the first records of the pool "
                             "(a fair sample of the catalog): " + fair_words(chosen.fair, chosen.positions) +
-                            " Fine for a closer look at chosen records, but step 070 evaluates only the fair "
-                            "sample, so they won't be evaluated until the records before them are annotated.")
+                            " Step 070 evaluates only the fair sample, so the records after the first one not "
+                            "taken won't be evaluated until the records before them are annotated. Nothing to "
+                            "do if you chose these records on purpose; otherwise leave ids empty and set "
+                            "--start_position 0, so the batch takes the pool's next records.")
     if not chosen.items:
-        raise Stop("Nothing to draft. " + " ".join(chosen.notes))
+        raise Stop("Nothing to draft: none of the records chosen can be drafted, so 050 can't write a batch. "
+                   + " ".join(chosen.notes) + " Change the settings as these reasons say, then run "
+                   "`py 050_annotate/run.py` again.")
     return chosen

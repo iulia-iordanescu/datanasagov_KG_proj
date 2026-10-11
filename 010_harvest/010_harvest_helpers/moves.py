@@ -110,7 +110,8 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
         records = page["results"][:expected]
         if not records:
             harvest.ran_dry = True
-            log.warning(f"empty page at start={start}; stopping")
+            log.warning(f"empty page at start={start}, before the {target} records aimed for; the harvest "
+                        f"stops here. Run `py 010_harvest/run.py` again later to fetch the remaining pages.")
             break
 
         header = {**request, "catalog_count": page["count"], "run_id": current_run_id()}
@@ -168,43 +169,50 @@ def _shown(folder: Path) -> str:
 
 def results(harvest: Harvest, check: Check) -> Results:
     warnings = []
+    fresh = f"delete {_shown(harvest.folder)}/ and run `py 010_harvest/run.py` again"
     if check.records < harvest.target:
-        warnings.append(f"Saved {check.records} records but expected {harvest.target}. Either "
-                        "some pages weren't fetched (rerun to fetch them), or records were deleted "
-                        "from the catalog during the harvest: each deletion shifts the later pages "
-                        "back by one, so one record is missed. For a complete snapshot, delete the "
-                        "folder and rerun.")
+        warnings.append(f"Saved {check.records} records but expected {harvest.target}, so the harvest "
+                        f"misses {harvest.target - check.records}. Either some pages weren't fetched "
+                        f"(run `py 010_harvest/run.py` again to fetch them), or records were deleted from "
+                        f"the catalog during the harvest: each deletion shifts the later pages back by "
+                        f"one, so one record is missed. For a complete snapshot, {fresh}.")
     if harvest.ran_dry:
-        warnings.append("The API returned an empty page before the reported count was reached; "
-                        "the catalog may have shrunk during the harvest.")
+        warnings.append(f"The API returned an empty page before the reported count ({harvest.reported:,} "
+                        f"records) was reached, so the harvest stopped there; the catalog may have shrunk "
+                        f"during the harvest. Run `py 010_harvest/run.py` again later to fetch the "
+                        f"remaining pages.")
     if len(check.catalog_sizes) > 1:
         warnings.append(f"The catalog's size changed while the pages were fetched (from "
                         f"{min(check.catalog_sizes):,} to {max(check.catalog_sizes):,} records, as the "
                         f"pages reported it). A record deleted meanwhile shifts the later pages back "
                         f"by one, so one record is missed, even when a record added meanwhile keeps "
-                        f"the total right. For an exact snapshot, delete the folder and rerun.")
+                        f"the total right. For an exact snapshot, {fresh}.")
     if check.duplicate_ids:
         n = check.duplicate_ids
         warnings.append(f"{n} record{'s' if n != 1 else ''} appear{'' if n != 1 else 's'} twice. "
                         f"Pages are requested oldest record first, so a new or edited record "
                         f"shifts nothing; a repeat means a record reappeared in the middle of the "
                         f"order during the harvest (e.g. one restored after deletion), or that "
-                        f"batch files kept from an earlier run overlap. 020_clean drops the "
-                        f"repeats; for a clean snapshot, delete the folder and rerun.")
+                        f"batch files kept from an earlier run overlap. `py 020_clean/run.py` keeps "
+                        f"the first copy of each; for a clean snapshot, {fresh}.")
     if check.missing_ids:
         n = check.missing_ids
-        warnings.append(f"{n} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} no id.")
+        warnings.append(f"{n} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} no id, so no "
+                        f"later step can tell {'them' if n != 1 else 'it'} apart from other records; "
+                        f"`py 020_clean/run.py` drops {'them' if n != 1 else 'it'}. Nothing to do: 020's "
+                        f"report lists each one (batch file, position, and title).")
     if harvest.reused and check.first_saved != check.last_saved:
         warnings.append(f"{harvest.reused} of {len(harvest.files)} batch files "
                         f"{'were' if harvest.reused != 1 else 'was'} kept from an "
                         f"earlier run, so this harvest mixes pages saved between "
-                        f"{check.first_saved} and {check.last_saved}. For a single-day snapshot, "
-                        f"delete {_shown(harvest.folder)}/ and rerun.")
+                        f"{check.first_saved} and {check.last_saved}. Fine for development; for a "
+                        f"single-day snapshot, {fresh}.")
     if check.without_request:
         shown = named(check.without_request)
         n = len(check.without_request)
         warnings.append(f"{n} batch file{'s have' if n != 1 else ' has'} no request block, so the "
-                        f"request that returned their records is not recorded: {shown}. Rerun to "
+                        f"request that returned their records is not recorded, and `py helpers/audit.py` "
+                        f"can't trace them back to it: {shown}. Run `py 010_harvest/run.py` again to "
                         f"fetch them again.")
 
     if check.first_saved == check.last_saved:

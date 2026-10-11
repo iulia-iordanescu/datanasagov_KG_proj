@@ -56,6 +56,8 @@ from common.triples_io import component_class_key
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "070_evaluate_prompts"   # 070_evaluate/070_evaluate_prompts/
 PROMPT = load(PROMPTS_DIR / "map_component_classes.txt")
+TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a person checks the translation table
+AGAIN = "then run `py 070_evaluate/run.py` again."
 SUGGEST_PROMPT = load(PROMPTS_DIR / "suggest_component_classes.txt")
 
 
@@ -120,10 +122,17 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
                      "definition_in_gtt": gtt_defs[kind].get(component_class_key(gtt_name), "") if gtt_name else "",
                      "swap_subject_and_object": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
-    notes = [f"The model proposed {len(strays)} component class(es) that aren't in the ground truth vocabulary, written as "
-             f"(none): {named(strays, 5, '; ')}."] \
+    notes = [f"The model proposed {len(strays)} component class(es) that aren't in the ground truth vocabulary, so "
+             f"their rows say (none) instead: {named(strays, 5, '; ')}. When you check those rows, choose a component "
+             f"class of the ground truth vocabulary if one means the same, else keep (none)."] \
         if strays else []
     return rows, notes, made, cache.reused
+
+
+def _row(name: str, r: dict) -> str:
+    """A row of the translation table, for messages: where each component class comes from."""
+    to = r["component_class_in_gtt"]
+    return f"{name} (current schema) --> " + ("(none)" if to == NONE else f"{to} (ground truth vocabulary)")
 
 
 def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
@@ -132,16 +141,19 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     rows = read_mapping(path)
     repeated = repeats(rows)
     if repeated:
-        raise Stop(f"{ref_path(path)} has {len(repeated)} component class(es) with more than one row: "
+        raise Stop(f"{ref_path(path)} has {len(repeated)} component class(es) with more than one row, so 070 can't "
+                         f"tell which translation counts: "
                          + named([f"{r['kind']} {r['component_class']} (a past or the current schema; lines "
                                   f"{', '.join(map(str, r['lines']))})" for r in repeated], 5, "; ")
-                         + ". Keep one row per component class (py helpers/annotate.py, Translation table, can delete the extra "
-                           "ones), then run 070 again.")
+                         + f". Keep one row per component class: delete the extra ones ({TABLE}, shows a *Delete "
+                           f"this row* button on each repeated row), {AGAIN}")
     have = {(r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])): r for r in rows}
-    bad_kind = [r["component_class_from_past_or_crt_schema"] for r in rows if r["kind"] not in KINDS]
+    bad_kind = [r for r in rows if r["kind"] not in KINDS]
     if bad_kind:
-        raise Stop(f"{ref_path(path)}: kind must be 'entity class' or 'predicate' for: "
-                         f"{named([f'{n} (a past or the current schema)' for n in bad_kind], 5, '; ')}.")
+        raise Stop(f"{ref_path(path)}: kind must be 'entity class' or 'predicate', but {len(bad_kind)} row(s) say "
+                   f"something else, so 070 can't tell what they translate: "
+                   f"{named([f'''{r['component_class_from_past_or_crt_schema']} (a past or the current schema; line {r['_line']}, kind '{r['kind']}')''' for r in bad_kind], 5, '; ')}. "
+                   f"Fix the kind column of each row in {ref_path(path)}, {AGAIN}")
 
     needed = [("entity class", e["component_class"]) for e in evaluated.schema_used["entity_classes"]] + \
              [("predicate", e["component_class"]) for e in evaluated.schema_used["predicates"]]
@@ -168,43 +180,49 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     if same or proposed:
         append_csv(path, COLUMNS, same + proposed)
         raise Stop(f"Added {len(same) + len(proposed)} row(s) to {ref_path(path)} for component classes of the current "
-                         f"schema: {len(same)} with the same component class in the ground truth vocabulary (nothing to "
-                         f"check), {len(proposed)} proposed by the model (checked = no): "
-                         + named([f"{r['component_class_from_past_or_crt_schema']} (current schema) --> {r['component_class_in_gtt']} "
-                                  f"(ground truth vocabulary)" for r in proposed], 5, "; ")
-                         + ". Check those rows (py helpers/annotate.py, Translation table), then run 070 again. "
+                         f"schema that had none, so 070 stops for you to look at them before evaluating: {len(same)} "
+                         f"with the same component class in the ground truth vocabulary (checked = same component "
+                         f"class), {len(proposed)} proposed by the model (checked = no): "
+                         + named([_row(r["component_class_from_past_or_crt_schema"], r) for r in proposed or same], 5, "; ")
+                         + (f". Check those rows: {TABLE}, shows each with both definitions (or in the file: fix "
+                            f"component_class_in_gtt and swap_subject_and_object where wrong, then set checked to yes), "
+                            f"{AGAIN} " if proposed else
+                            f". Nothing to check (you may still change a row whose two definitions mean different "
+                            f"things: {TABLE}); {AGAIN} ")
                          + " ".join(notes))
 
     unchecked, stale, stale_gtt, unknown = [], [], [], []
     for kind, name in needed:
         r = have[(kind, component_class_key(name))]
         if r["checked"].lower() not in CHECKED:
-            unchecked.append(name)
+            unchecked.append(_row(name, r))
         elif is_stale(r, now):
-            stale.append(name)
+            stale.append(_row(name, r))
         elif is_stale_gtt(r, gtt_now):
-            stale_gtt.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (ground truth vocabulary)")
+            stale_gtt.append(_row(name, r))
         elif r["component_class_in_gtt"] != NONE and component_class_key(r["component_class_in_gtt"]) not in gtt_key[kind]:
             unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth vocabulary)")
     if unchecked:
-        raise Stop(f"{len(unchecked)} row(s) of {ref_path(path)} still need checking (py helpers/annotate.py, "
-                         f"Translation table): {named([f'{n} (current schema)' for n in unchecked], 5, '; ')}. "
-                         f"Evaluation waits until all are checked.")
+        raise Stop(f"{len(unchecked)} row(s) of {ref_path(path)} still need checking, so 070 can't evaluate (it "
+                         f"translates only through checked rows): {named(unchecked, 5, '; ')}. Check them: {TABLE} (or "
+                         f"in the file: fix component_class_in_gtt and swap_subject_and_object where wrong, then set "
+                         f"checked to yes), {AGAIN}")
     if stale:
         raise Stop(f"{len(stale)} checked row(s) of {ref_path(path)} were checked when the current schema defined "
-                         f"the component class differently, so they may no longer be right: "
-                         f"{named([f'{n} (current schema)' for n in stale], 5, '; ')}. Check them again "
-                         f"(py helpers/annotate.py, Translation table, shows both definitions), then run 070 again.")
+                         f"the component class differently, so they may no longer be right, and 070 can't evaluate "
+                         f"with them: {named(stale, 5, '; ')}. Check them again: {TABLE}, shows both definitions; "
+                         f"{AGAIN}")
     if stale_gtt:
         raise Stop(f"{len(stale_gtt)} checked row(s) of {ref_path(path)} were checked when the hand-built schema "
-                         f"(annotations/schema_derived_from_manual_annotation.txt) defined the component class of the "
+                         f"({ref_path(inputs['hand_schema'])}) defined the component class of the "
                          f"ground truth vocabulary differently, or before it had a definition, so they may no longer be "
-                         f"right: {named(stale_gtt, 5, '; ')}. Check them again (py helpers/annotate.py, Translation "
-                         f"table, shows the old and new definitions), then run 070 again.")
+                         f"right, and 070 can't evaluate with them: {named(stale_gtt, 5, '; ')}. Check them again: "
+                         f"{TABLE}, shows the old and new definitions; {AGAIN}")
     if unknown:
         raise Stop(f"{len(unknown)} checked row(s) of {ref_path(path)} translate to a component class that isn't in the "
-                         f"ground truth vocabulary (a typo, or one since renamed): {named(unknown, 5, '; ')}. "
-                         f"Choose a component class of the ground truth vocabulary, or (none).")
+                         f"ground truth vocabulary (a typo, or one since renamed), so 070 can't translate with them: "
+                         f"{named(unknown, 5, '; ')}. In each, choose a component class of the ground truth vocabulary, "
+                         f"or (none) (column component_class_in_gtt; {TABLE}), {AGAIN}")
 
     translation.reachable = {"entity class": set(), "predicate": set()}
     for kind, name in needed:

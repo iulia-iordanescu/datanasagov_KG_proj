@@ -25,7 +25,7 @@ from common import audit, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named
-from common.step import ANNOTATIONS_DIR, Results
+from common.step import ANNOTATIONS_DIR, Results, repo_path
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
@@ -34,6 +34,8 @@ LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records"]
 TRIPLE = ("subject", "subject_class", "predicate", "object", "object_class")
 SHOW = 20                        # rows listed in the report before "…"
+TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a person checks the translation table
+AGAIN = "then run `py 070_evaluate/run.py` again."
 COMPARED_COLUMNS = (["record_id", "position", "part", "stratum", "status", "entity_classes_right", "within_reach", "within_strict_reach"]
                  + [f"extracted_{c}" for c in TRIPLE] + [f"translated_{c}" for c in TRIPLE]
                  + [f"ground_truth_{c}" for c in TRIPLE] + [ORIGIN_COLUMN])
@@ -87,7 +89,8 @@ def _margin_check_lines(checks: dict | None) -> list:
             "| The redraws vary as other samples would | records are redrawn from all strata together, since "
             "how many evaluated records come from each stratum is itself random | holds (by design) |",
             f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
-            f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow |",
+            f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow"
+            f"{'; more evaluated records make this rarer' if bound else ''} |",
             f"| No one record dominates | the largest record's proportion of the extracted triples: "
             f"{readings.pct(big['extracted triples']['proportion'])} (`{big['extracted triples']['record']}`); of the "
             f"ground truth triples: {readings.pct(big['ground truth triples']['proportion'])} "
@@ -95,6 +98,7 @@ def _margin_check_lines(checks: dict | None) -> list:
             f"| A small proportion of the catalog is evaluated | {readings.pct(share)} | "
             f"{ok(share <= stats.FINITE_NEGLIGIBLE)} (below {100 * stats.FINITE_NEGLIGIBLE:.0f}%, its effect is "
             f"negligible; above, the ranges come out somewhat too wide) |", ""]
+
 
 
 def _triple(f: dict) -> str:
@@ -191,7 +195,7 @@ def _mismatch_lines(mismatches: list) -> list:
     lines = ["### Component class mismatches", "",
              "A mismatch: extraction stated the fact, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
              "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
-             "likely wrong: check that row (`py helpers/annotate.py`, Translation table). Seen once, it may just be "
+             "likely wrong: check that row (`py helpers/annotate.py`, view *Translation table*). Seen once, it may just be "
              "extraction choosing the wrong component class.", "",
              "How to read a row of the table below, e.g. *entity class | Body | Spacecraft | CelestialBody | 9*: "
              "these events, "
@@ -263,43 +267,76 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         if part == "kept_aside" or v["numbers"] is None:
             continue
         n = v["numbers"]
+        drifted = [g for g in v["strata"]
+                   if g["share_evaluated"] is not None and abs(g["share_evaluated"] - g["share_pool"]) > stats.SHARE_GAP]
         if not n["margins"]:
-            warnings.append(f"{part}: only {n['records']} record(s) evaluated, fewer than {stats.MIN_RECORDS}: the "
-                            f"numbers are shown without a margin of error, and are too few to draw conclusions "
-                            f"from.")
-        elif any(g["share_evaluated"] is not None and abs(g["share_evaluated"] - g["share_pool"]) > stats.SHARE_GAP
-                 for g in v["strata"]):
-            warnings.append(f"{part}: some stratum's share of the evaluated records differs from its share "
-                            f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the strata table.")
+            warnings.append(f"The {part} part: only {n['records']} record(s) evaluated, fewer than {stats.MIN_RECORDS}, "
+                            f"so its numbers are shown without a margin of error, and are too few to draw conclusions "
+                            f"from. Draft (`py 050_annotate/run.py`) and finish (`py helpers/annotate.py`) more "
+                            f"records of the pool, in order, run "
+                            f"`py 060_extract/run.py`, {AGAIN} Until then, read {repo_path(per_record_path)} rather "
+                            f"than the numbers.")
+        elif drifted:
+            warnings.append(f"The {part} part: {len(drifted)} stratum(s) whose share of the evaluated records differs "
+                            f"from its share of the pool by more than {100 * stats.SHARE_GAP:.0f} points: "
+                            + named([f"{g['stratum']} ({readings.pct(g['share_evaluated'])} of the evaluated records, "
+                                     f"{readings.pct(g['share_pool'])} of the pool)" for g in drifted], 5, "; ")
+                            + ". The numbers lean toward the strata with more than their share, by chance (the fair "
+                              "sample is random). Nothing to do: the gap usually shrinks as more records are "
+                              "evaluated; read the numbers with it in mind (table *Per stratum*).")
         checks = v["margin_checks"]
         if checks and (checks["at_bound"]
                        or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
-            warnings.append(f"{part}: an assumption of the margin of error doesn't hold, so some ranges are less "
-                            f"trustworthy; see the report's section on the margin of error's assumptions.")
+            share = checks["catalog_proportion"] or 0
+            why = []
+            if checks["at_bound"]:
+                why.append(f"the range of {named(checks['at_bound'], 5)} reaches 0% or 100%, where a percentile range "
+                           f"is too narrow (more evaluated records make this rarer)")
+            if share > stats.FINITE_NEGLIGIBLE:
+                why.append(f"{readings.pct(share)} of the catalog is evaluated, above "
+                           f"{100 * stats.FINITE_NEGLIGIBLE:.0f}%, so the ranges come out somewhat too wide (nothing "
+                           f"to do: they err on the safe side)")
+            warnings.append(f"The {part} part: an assumption of the margin of error doesn't hold, so some ranges are "
+                            f"less trustworthy: {'; and '.join(why)}. Details: table *The margin of error's "
+                            f"assumptions, checked*.")
     if translation.suggested:
         warnings.append(f"The model suggests {len(translation.suggested)} row(s) of annotations/component_class_mapping.csv that say (none) may "
                         f"now have a counterpart in the ground truth vocabulary: "
                         + named([f"{s['component_class_from_past_or_crt_schema']} (current schema) --> {s['component_class_in_gtt']} "
                                  f"(ground truth vocabulary)" for s in translation.suggested], 5, "; ")
-                        + ". Rows aren't changed: check them (py helpers/annotate.py, Translation table, shows the "
-                          "suggestion).")
+                        + f". While a row says (none), extracted triples that use its component class can't form "
+                          f"pairs (a predicate) or strict pairs (an entity class). Rows aren't changed: check them "
+                          f"({TABLE}, shows the suggestion), take the suggestion if right, else keep (none); {AGAIN}")
     if translation.outdated:
         warnings.append(f"{len(translation.outdated)} row(s) of annotations/component_class_mapping.csv translate to (none) though the ground "
                         f"truth vocabulary now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
-                        f"date: check them (py helpers/annotate.py, Translation table); keep (none) only if the ground "
-                        f"truth's component class means something else.")
+                        f"date, and extracted triples that use those component classes can't form pairs (a predicate) "
+                        f"or strict pairs (an entity class). Check them ({TABLE}, marked *now exists*); keep (none) "
+                        f"only if the ground truth vocabulary's component class means something else; {AGAIN}")
     if unreviewed:
-        warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, so the partial "
-                        f"level may count pairs that aren't the same fact (e.g. MODIS vs MODIS Terra). Review "
-                        f"them: py helpers/annotate.py, Partial pairs.")
+        waiting = [r["id"] for r in tuning if r["compared"]["partial_review"]["unreviewed"]]
+        warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, in {len(waiting)} "
+                        f"record(s): {named(waiting)}. So the partial level may count pairs that aren't the same fact "
+                        f"(e.g. MODIS vs MODIS Terra). Review them (`py helpers/annotate.py`, view *Partial pairs*), "
+                        f"{AGAIN}")
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
         warnings.append(f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times where extraction "
-                        f"stated the fact but a component class differed: a translation in annotations/component_class_mapping.csv may be wrong or "
-                        f"missing. See Component class mismatches.")
+                        f"stated the fact but a component class differed: "
+                        + named([f"{c['kind']} {c['crt_component_class']} (current schema) --> "
+                                 + ("(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION)
+                                    else f"{c['translated_to']} (ground truth vocabulary)")
+                                 + f", where the ground truth triple says {c['gtt_component_class']} (ground truth "
+                                   f"vocabulary), {c['count']} times" for c in frequent], 5, "; ")
+                        + f". A row of annotations/component_class_mapping.csv may translate wrong, to (none) when a "
+                          f"component class fits, or with the wrong swap_subject_and_object, which turns stated facts "
+                          f"into misses. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: section "
+                          f"*Component class mismatches*.")
     if looks is not None:
-        warnings.append(f"The held-out part was looked at: {looks} time(s) so far "
-                        f"(annotations/held_out_looks.csv; commit it). Each look is a chance to tune on it.")
+        warnings.append(f"The held-out part was looked at: {looks} time(s) so far, each logged in "
+                        f"annotations/held_out_looks.csv. A change made after a look lets the held-out records "
+                        f"influence the pipeline, and then their numbers flatter it. Commit annotations/held_out_looks.csv, so "
+                        f"every look stays counted.")
     missing = check_origins(compared_rows, "compared triples")
     if missing:
         warnings.append(missing)
@@ -319,7 +356,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     lines += ["### The translation table", "",
               "Rows of `annotations/component_class_mapping.csv` that say `(none)`, and component classes of the ground truth vocabulary "
               "that no row translates to. The ground truth vocabulary grows as you annotate: if a `(none)` row "
-              "should now point to one of its component classes, fix that row.", "",
+              "should now point to one of its component classes, fix that row (`py helpers/annotate.py`, view "
+              "*Translation table*).", "",
               "| Kind | Current schema's component classes translated to (none) | Ground truth vocabulary's component classes nothing "
               "translates to |", "|---|---|---|"]
     lines += [f"| {kind} | {cell(named(translation.to_none[kind], 20)) or '–'} | {cell(named(translation.untranslated[kind], 20)) or '–'} |"

@@ -186,7 +186,8 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
             log.debug(f"{verb} {where[0]} piece {where[1] + 1} ({n}/{len(todo)})")
 
         llm.run_parallel(ask, dict(todo), workers, handle,
-                         "Answers already received are kept in the cache; nothing else was written.")
+                         "Answers already received are kept in the cache; nothing else was written. Run the step "
+                         "again to ask the rest: the answers already received are reused, not paid for again.")
         result.calls = calls.paid.made - before
 
     for item in items:

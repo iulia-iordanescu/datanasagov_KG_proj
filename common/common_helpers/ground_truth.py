@@ -127,7 +127,9 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
             reader = csv.DictReader(fh)
             missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
             if missing:
-                gt.problems.append(f"{path.name} lacks the column(s) {', '.join(missing)}; not read")
+                gt.problems.append(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so none of its rows "
+                                   f"were read. Restore its header line, which names the columns: "
+                                   f"{', '.join(COLUMNS)}.")
                 continue
             for position, raw in enumerate(reader):
                 row = {c: (raw.get(c) or "").strip() for c in FILE_COLUMNS}
@@ -143,13 +145,16 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
 
     for rid, rows in by_record.items():
         if len(in_files[rid]) > 1:
-            gt.problems.append(f"record {rid} is in {' and '.join(in_files[rid])}: annotated twice; "
-                               f"keep it in one file")
+            gt.problems.append(f"record {rid} is in {' and '.join(in_files[rid])}: annotated twice, and which "
+                               f"annotation is right can't be told, so the record is left out until fixed. Delete its "
+                               f"rows from all files but one (by hand: the annotation tool can't remove a record).")
             continue
         marks = {r["all_facts_extracted"] for r in rows}
         if len(marks) > 1:
             gt.problems.append(f"record {rid} ({in_files[rid][0]}): all_facts_extracted is "
-                               f"{' on some rows, '.join(sorted(marks))} on others; set it the same on every row")
+                               f"{' on some rows, '.join(sorted(marks))} on others, so the record counts as not "
+                               f"finished. In the annotation tool (`py helpers/annotate.py`), tick All facts extracted on "
+                               f"the record if every fact is there (untick it again if not): saving sets every row.")
         gt.records[rid] = {"file": in_files[rid][0], "rows": len(rows), "finished": marks == {"1"}}
         groups = {}                                # triple key -> {(subject class, object class) keys: [rows]}
         for row in rows:
@@ -195,12 +200,15 @@ def _shown(rows: list) -> str:
 #: matters of judgement (a reworded subject or object instance is fine in
 #: ground truth).
 ROW_ERRORS = {
-    "id_not_in_records": "its id isn't a record of the catalog (a typo, or a record since removed)",
-    "incomplete": "subject, predicate or object is empty, but not all three",
-    "no_source_text": "it has no source text",
-    "source_not_in_text": "its source text isn't in the record's text",
-    "describes_subject_not_id": "the DESCRIBES row's subject isn't the record's id",
-    "describes_undecided": "the DESCRIBES row has no entity class (X)",
+    "id_not_in_records": "its id isn't a record of the catalog (a typo, or a record since removed): correct the id, "
+                         "or delete the row",
+    "incomplete": "subject, predicate, or object is empty, but not all three: fill in the empty ones, or delete the row",
+    "no_source_text": "it has no source text: in the annotation tool, select the passage that states it and press "
+                      "\"Use selection\"",
+    "source_not_in_text": "its source text isn't in the record's text: in the annotation tool, select the passage and "
+                          "press \"Use selection\" to copy it exactly",
+    "describes_subject_not_id": "the DESCRIBES row's subject isn't the record's id: write the record's id there",
+    "describes_undecided": "the DESCRIBES row has no entity class (X): choose the entity class of what the title names",
 }
 
 

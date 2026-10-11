@@ -47,7 +47,9 @@ sys.path.insert(0, str(ROOT))
 from common.audit import new_run_id                                                    # noqa: E402
 from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,  # noqa: E402
                                  read_ground_truth)
+from common.report import named                                                        # noqa: E402
 from common.step import LOGS_DIR, MANIFEST_NAME, REPORTS_DIR, RESULTS_DIR, git_commit   # noqa: E402
+from common.step import repo_path  # noqa: E402
 
 STEPS = ["010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract",
          "070_evaluate"]
@@ -62,17 +64,21 @@ def chosen_steps(args) -> list:
     def find(name):
         hit = [s for s in STEPS if s == name or s.split("_")[0] == name]
         if not hit:
-            raise SystemExit(f"no step {name!r}: the steps are {', '.join(s.split('_')[0] for s in STEPS)}")
+            raise SystemExit(f"There is no step {name!r}, so run_pipeline.py can't tell which steps to run: the "
+                             f"steps are {', '.join(s.split('_')[0] for s in STEPS)}. Name one of them (e.g. "
+                             f"--from 040), then run `py run_pipeline.py` again.")
         return STEPS.index(hit[0])
 
     if args.only:
         if args.start or args.to:
-            raise SystemExit("--only can't be combined with --from or --to")
+            raise SystemExit("--only can't be combined with --from or --to: --only runs one step, --from and --to "
+                             "a range. Give one or the other, then run `py run_pipeline.py` again.")
         return [STEPS[find(args.only)]]
     first = find(args.start) if args.start else 0
     last = find(args.to) if args.to else len(STEPS) - 1
     if first > last:
-        raise SystemExit(f"--from {args.start} comes after --to {args.to}")
+        raise SystemExit(f"--from {args.start} comes after --to {args.to}, so no step is in that range. Swap them "
+                         f"(--from {args.to} --to {args.start}), then run `py run_pipeline.py` again.")
     return STEPS[first:last + 1]
 
 
@@ -85,10 +91,13 @@ def batch_waiting() -> str | None:
         for p in sorted(drafts_dir.glob(DRAFT_PATTERN)):
             m = DRAFT_NUMBERED.fullmatch(p.name)
             if m and int(m.group(1)) not in opened:
-                return f"draft batch {int(m.group(1))} isn't opened yet in the annotation tool (py helpers/annotate.py)"
-    unfinished = sorted({r["file"] for r in read_ground_truth().records.values() if not r["finished"]})
+                return f"draft batch {int(m.group(1))} isn't opened yet in the annotation tool"
+    unfinished = {rid: r["file"] for rid, r in read_ground_truth().records.items() if not r["finished"]}
     if unfinished:
-        return f"{', '.join(unfinished)} has a record not finished yet (py helpers/annotate.py)"
+        files = [repo_path(GROUND_TRUTH_DIR / f) for f in sorted(set(unfinished.values()))]
+        n = len(unfinished)
+        return (f"{named(files)} {'has' if len(files) == 1 else 'have'} "
+                f"{'a record' if n == 1 else f'{n} records'} not finished yet ({named(sorted(unfinished))})")
     return None
 
 
@@ -103,11 +112,14 @@ def gate(step: str, forced: bool) -> tuple:
     if step == "050_annotate":
         why = batch_waiting()
         if why:
-            return "kept", (f"no new batch drafted: {why}. 050 drafts the next batch once it's done (to draft one "
-                           f"anyway: py run_pipeline.py --only 050)")
+            return "kept", (f"no new batch drafted: {why}. Finish it in the annotation tool (`py helpers/annotate.py`); "
+                           f"050 drafts the next batch once it's done. To draft one anyway: "
+                           f"`py run_pipeline.py --only 050`")
     if step in ("060_extract", "070_evaluate") and not any_finished():
-        return "skipped", ("the ground truth has no finished record yet: annotate one (py helpers/annotate.py), "
-                           "then run again")
+        return "skipped", ("the ground truth has no finished record yet, and by default 060 extracts and 070 "
+                           "evaluates only finished records. Finish one in the annotation tool "
+                           "(`py helpers/annotate.py`, tick All facts extracted), then run `py run_pipeline.py` "
+                           "again")
     return None, None
 
 
@@ -170,8 +182,11 @@ def report_text(run: dict, rows: list) -> str:
     for r in rows:
         report = f" ([{r['report'].name}]({r['report'].name}))" if r["report"] else ""
         if r["status"] in ("failed", "stopped", "interrupted"):
-            attention.append(f"- **{r['step']} {r['status']}**{report}: read the end of its report for why; the steps "
-                             f"after it didn't run.")
+            why = ("it was interrupted (Ctrl+C)" if r["status"] == "interrupted" else
+                   "its report ends with why, and what to do" if r["report"] else
+                   f"the terminal and its log (outputs/logs/{r['step']}_<date>_<time>.log) show why")
+            attention.append(f"- **{r['step']} {r['status']}**{report}: {why}. The steps after it didn't run: once "
+                             f"it's solved, run `py run_pipeline.py --from {r['step'].split('_')[0]}`.")
         elif r["status"] in ("kept", "skipped"):
             attention.append(f"- **{r['step']} {r['status']}:** {r['why']}.")
         elif r["warnings"]:

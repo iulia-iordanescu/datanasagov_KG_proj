@@ -77,10 +77,12 @@ def merge_labels(labels, triples, calls):
                         texts_with[labels.of[kind][value]].add(t["id"])
         sent = sorted(labels.vocabulary[kind])
         if len(sent) > MAX_LABELS_ONE_CALL:
-            raise Stop(f"{len(sent)} {kind} labels are more than one call takes "
-                             f"({MAX_LABELS_ONE_CALL}). Merging them in separate groups would let "
-                             f"synonyms miss each other; group them by meaning first (see "
-                             f"040_induce_schema/040_induce_schema.md, Known limits).")
+            raise Stop(f"{len(sent)} {BECOMES[kind]} labels are more than one call takes "
+                       f"({MAX_LABELS_ONE_CALL}), so 040 can't merge them: merging them in separate groups "
+                       f"would let synonyms miss each other. Learn from fewer texts (lower "
+                       f"`--texts_per_maintainer` or `--induction_maintainers`), then run "
+                       f"`py 040_induce_schema/run.py` again; learning from this many would first need the labels "
+                       f"grouped by meaning, which isn't built (040_induce_schema/040_induce_schema.md, Known limits).")
         issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": [], "cycle": []}
         mapping = {label: label for label in sent}
         if len(sent) > 1:

@@ -33,7 +33,8 @@ def main() -> int:
 
     hits = find(key=args.key, step=args.step, file=args.file, position=args.position)
     if not hits:
-        print("Not found in any step's output.")
+        print("Not found in any step's output (outputs/intermediate_results/), so there is nothing to trace. Check "
+              "the key (e.g. a record id); if you gave --step, try without it.")
         return 1
     if len(hits) > 1:
         print(f"{len(hits)} items match; showing each.\n")

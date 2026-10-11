@@ -234,4 +234,5 @@ def check_origins(items, what: str) -> str | None:
     if not missing:
         return None
     return (f"{missing:,} of {len(items):,} {what} have no origin, so they can't be "
-            f"traced to the input they came from.")
+            f"traced to the input they came from (`py helpers/audit.py` stops at them). Nothing to do in your "
+            f"files: the step's code didn't record their origin.")

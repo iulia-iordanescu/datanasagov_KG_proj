@@ -24,7 +24,7 @@ from common.ground_truth import DRAFTED_BY, read_ground_truth, read_pool
 from common.llm import maker
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
-from common.step import check_settings, input_files
+from common.step import check_settings, input_files, repo_path
 from common.stop import Stop
 
 MODES = ("ground_truth", "all")
@@ -44,8 +44,9 @@ class Chosen:
 def pick_records(inputs: dict, settings: dict) -> Chosen:
     check_settings(settings, {})
     if settings["extract_from"] not in MODES:
-        raise Stop(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}); "
-                         f"to name records, use ids")
+        raise Stop(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}), so 060 "
+                   f"can't choose records. Set --extract_from to {' or '.join(MODES)} (or name the records with "
+                   f"--ids), then run `py 060_extract/run.py` again.")
     chosen = Chosen(records=load_records(inputs["records"]))
     chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in read_pool(inputs["splits"])}
     gt_files = input_files(Path(inputs["ground_truth"]))
@@ -58,7 +59,9 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     if ids:
         chosen.how = f"the {len(ids)} id(s) given in the setting ids"
         if settings["extract_from"] != "ground_truth":
-            chosen.notes.append(f"extract_from ({settings['extract_from']}) is ignored, because ids names the records.")
+            chosen.notes.append(f"extract_from ({settings['extract_from']}) is ignored, because the setting ids "
+                                f"names the records: this run extracts from the records listed in ids. To extract "
+                                f"from {settings['extract_from']} records instead, leave ids empty.")
         wanted = ids
     elif settings["extract_from"] == "ground_truth":
         finished = [rid for rid, r in gt.records.items() if r["finished"]]
@@ -80,18 +83,26 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                                  "pieces": pieces(record, settings["max_chars"])})
     chosen.skipped = {k: v for k, v in skipped.items() if v}
 
+    to_do = {      # what to do about records skipped for each reason (worded as in 050)
+        "not in the catalog": f"Check these ids in {'the setting ids' if ids else 'annotations/ground_truth/'} "
+                              f"for typos: each must be a record id in {repo_path(inputs['records'])}.",
+        "without text": "Nothing to do: a record without text has nothing for the model to read."}
     for reason, rids in chosen.skipped.items():
         if reason == "without text" and not ids and settings["extract_from"] == "all":
             continue                                             # expected: most catalogs have a few
         if reason == "not finished in the ground truth":
             chosen.notes.append(f"{len(rids)} record(s) of the ground truth aren't finished yet (all facts "
-                                f"extracted not ticked), so skipped: {named(rids)}.")
+                                f"extracted not ticked), so skipped: {named(rids)}. Step 070 evaluates only "
+                                f"finished records. To include them, finish them in `py helpers/annotate.py` "
+                                f"(tick All facts extracted), then run `py 060_extract/run.py` again.")
         else:
             who = "record(s) you listed" if ids else "ground truth record(s)"
             chosen.notes.append(f"{len(rids)} {who} {'are' if len(rids) > 1 else 'is'} {reason}, "
-                                f"so skipped: {named(rids)}.")
+                                f"so skipped: {named(rids)}. {to_do[reason]}")
     if not chosen.items:
-        raise Stop("Nothing to extract. " + " ".join(chosen.notes))
+        raise Stop("Nothing to extract: none of the records chosen can be extracted from, so 060 can't write "
+                   "extracted triples. " + " ".join(chosen.notes) + " Change the settings as these reasons say, "
+                   "then run `py 060_extract/run.py` again.")
     chosen.notes += same_model_notes(gt, {i["id"] for i in chosen.items}, settings["model"])
     return chosen
 
@@ -114,6 +125,6 @@ def same_model_notes(gt, ids: set, model: str) -> list:
             continue
         notes.append(f"The ground truth of {len(rids)} of the records chosen was drafted (step 050) by {drafter}, "
                      f"{how}: facts that model misses tend to be missing from both the ground truth and the "
-                     f"extraction, so recall would look better than it is. To avoid it, run with --model naming a "
-                     f"model from another maker (py helpers/models.py lists them).")
+                     f"extraction, so recall would look better than it is. To avoid it, run `py 060_extract/run.py` "
+                     f"with --model naming a model from another maker (`py helpers/models.py` lists them).")
     return notes

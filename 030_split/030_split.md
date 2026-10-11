@@ -141,7 +141,7 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 |---|---|---|
 | *N ground truth candidates are no longer in the catalog and were dropped* | [Pool](../docs/terminology.md#4-ground-truth-and-samples) [records](../docs/terminology.md#1-records-and-their-text) that left the catalog since the pool was drawn. Listed in the report. 1 on 2026-09-28 (position 946). | Nothing: the others keep their positions. If a dropped record was already annotated, its [ground truth](../docs/terminology.md#4-ground-truth-and-samples) no longer has a [text](../docs/terminology.md#1-records-and-their-text) to evaluate against. |
 | *N ground truth candidates have a different maintainer in 020's records than in the pool file* | A [maintainer](../docs/terminology.md#1-records-and-their-text)'s spelling is joined differently now, or the record's maintainer changed. Listed in the report. 0 on 2026-09-28. | Usually nothing; 020's maintainer is used. |
-| *splits.json already exists and was kept, but this run's draw differs from it* | The records, the pool file or the [setting](../docs/terminology.md#8-the-pipeline) changed since `splits.json` was written. | Usually nothing: the kept file is what work in progress relies on. To take the change, delete `splits.json` and rerun. |
+| *outputs/intermediate_results/030_split/splits.json already exists and was kept, but this run's draw differs from it* | The records, the pool file or the [setting](../docs/terminology.md#8-the-pipeline) changed since `splits.json` was written. | Usually nothing: the kept file is what work in progress relies on. To take the change, delete it and run `py 030_split/run.py` again. |
 | *N of M ground truth candidates (or induction candidates) have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
@@ -151,7 +151,7 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 | *The records come from a trial harvest (part of the catalog only, --max_records) …* | Step 010 ran with `--max_records`, so the records are part of the catalog only; `splits.json` is written once, so it isn't written from them. | Run the full harvest (`py 010_harvest/run.py`), then 020, then 030 again. An existing `splits.json` is never affected. |
 | *… lists these ids more than once* | The pool file repeats an id. | Fix `annotations/ground_truth_candidates.csv`. |
 | *… needs the columns id and maintainer* | The pool file isn't in the expected form. | Check the file. |
-| *missing input files: candidates …* | The pool file isn't there. 030 never draws a pool. | Put the pool in `annotations/ground_truth_candidates.csv`, or pass `--candidates`. |
+| *missing input files, so the step can't run: candidates …* | The pool file isn't there. 030 never draws a pool. | Put the pool in `annotations/ground_truth_candidates.csv`, or pass `--candidates`. |
 | *N records are both ground truth candidates and induction candidates* | Should never happen: [induction candidates](../docs/terminology.md#4-ground-truth-and-samples) exclude the pool by construction. | A code change broke `induction_candidates`; fix it. |
 
 ## Audit trail
