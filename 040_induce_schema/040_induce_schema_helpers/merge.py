@@ -75,6 +75,11 @@ def merge_labels(labels, triples, calls):
                     if k2 == kind and value in labels.of[kind]:
                         instances_of[labels.of[kind][value]][value] += 1
                         texts_with[labels.of[kind][value]].add(t["id"])
+            # A text's title is labeled with its describes_class (stage 3): it counts, as in stage 5 (count.py),
+            # so a label used only for titles reaches the model with its texts and its titles as examples.
+            if kind == "entity" and t.get("describes_class") and t.get("title") in labels.of["entity"]:
+                instances_of[labels.of["entity"][t["title"]]][t["title"]] += 1
+                texts_with[labels.of["entity"][t["title"]]].add(t["id"])
         sent = sorted(labels.vocabulary[kind])
         if len(sent) > MAX_LABELS_ONE_CALL:
             raise Stop(f"{len(sent)} {BECOMES[kind]} labels are more than one call takes "

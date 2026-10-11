@@ -110,6 +110,21 @@ class Merging(unittest.TestCase):
         self.assertEqual(m.merged_into["entity"]["Sensor"], "Instrument")
         self.assertEqual(m.merged_into["entity"]["Spacecraft"], "Spacecraft")
 
+    def test_titles_count_like_stage_5(self):
+        """A label used only for titles (WebTool here) reaches the model with its texts and its titles as examples."""
+        triples = texts(("t1", "m1", "Giovanni", "WebTool", [("MODIS", "is aboard", "Aqua")]),
+                        ("t2", "m1", "Worldview", "WebTool", []))
+        labels = label.Labels(of={"entity": {"MODIS": "Instrument", "Aqua": "Spacecraft", "Giovanni": "WebTool",
+                                             "Worldview": "WebTool"}, "predicate": {"is aboard": "ABOARD"}},
+                              vocabulary={"entity": ["Instrument", "Spacecraft", "WebTool"], "predicate": ["ABOARD"]})
+        model = Scripted({"merges": {"merges": []}})
+        with model as calls:
+            merge.merge_labels(labels, triples, calls)
+        prompt = next(p for p in model.prompts if "WebTool" in p)
+        listing = json.loads(prompt[prompt.rindex("LABELS:") + len("LABELS:"):])
+        web = next(e for e in listing if e["label"] == "WebTool")
+        self.assertEqual((web["texts"], sorted(web["examples"])), (2, ["Giovanni", "Worldview"]))
+
     def test_one_label_no_call(self):
         labels = label.Labels(of={"entity": {}, "predicate": {}}, vocabulary={"entity": ["A"], "predicate": ["P"]})
         with Scripted({}) as calls:
