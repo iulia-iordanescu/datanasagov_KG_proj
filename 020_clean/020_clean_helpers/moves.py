@@ -35,9 +35,8 @@ import note_cleaning
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_jsonl
 from common.records_io import TEXT_FIELDS
-from common.report import cell, named
-from common.step import repo_path
-from common.step import Results, input_files
+from common.report import cell, named, this_report
+from common.step import Results, input_files, repo_path
 from common.stop import Stop
 
 OUTPUT_NAME = "records.jsonl"
@@ -233,7 +232,8 @@ def results(catalog: Catalog, output: Path) -> Results:
                         f"no id and {'were' if n != 1 else 'was'} dropped: {named(where)} (batch file "
                         f"and position). Every later step tells records apart by id, so they aren't in "
                         f"{repo_path(path)}. Nothing to do: the catalog gave them no id; each is listed, "
-                        f"with its title, in this report under What this run worked on.")
+                        f"with its title, in {this_report()}, section *Results*, subsection *What this run "
+                        f"worked on*.")
     uncleaned = sum(c[note_cleaning.TIER_SOURCE] for c in catalog.tiers.values())
     if uncleaned:
         kept_raw = [f"{f['id']} ({f['field']})" for f in catalog.fallbacks

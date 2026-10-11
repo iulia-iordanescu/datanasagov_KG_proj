@@ -23,7 +23,7 @@ from pathlib import Path
 import batches
 import ckan_client
 from common.audit import current_run_id, log
-from common.report import named
+from common.report import named, this_report
 from common.step import ROOT, Results, check_settings
 
 # Written by versions of this step that kept a separate lineage file. The
@@ -199,8 +199,9 @@ def results(harvest: Harvest, check: Check) -> Results:
         n = check.missing_ids
         warnings.append(f"{n} record{'s' if n != 1 else ''} {'have' if n != 1 else 'has'} no id, so no "
                         f"later step can tell {'them' if n != 1 else 'it'} apart from other records; "
-                        f"`py 020_clean/run.py` drops {'them' if n != 1 else 'it'}. Nothing to do: 020's "
-                        f"report lists each one (batch file, position, and title).")
+                        f"`py 020_clean/run.py` drops {'them' if n != 1 else 'it'}. Nothing to do: "
+                        f"{this_report('020_clean')}, section *Results*, subsection *What this run worked on*, "
+                        f"lists each one (batch file, position, and title).")
     if harvest.reused and check.first_saved != check.last_saved:
         warnings.append(f"{harvest.reused} of {len(harvest.files)} batch files "
                         f"{'were' if harvest.reused != 1 else 'was'} kept from an "

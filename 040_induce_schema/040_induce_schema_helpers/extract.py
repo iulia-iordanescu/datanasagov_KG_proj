@@ -40,6 +40,7 @@ from pathlib import Path
 from common import extraction
 from common.audit import log
 from common.prompt_files import load
+from common.report import this_report
 from common.text_match import Text
 from common.triples_io import REQUIRED
 from common.validate import check_triple_instance
@@ -84,7 +85,8 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
         return extraction.prompt(PROMPT, "", item["record"], piece, with_classes=False)
     replies = extraction.ask_model(texts.items, prompt_for, calls, settings["workers"], "extract",
                                    "040 will extract triple instances (then make a few more calls to label, merge "
-                                   "and define what it finds, all counted in the report)", "extracting")
+                                   f"and define what it finds, all counted in {this_report()}, section *Results*, subsection "
+                                   f"*Model calls*)", "extracting")
     result = TripleInstances(failed=dict(replies.failed), failed_note=extraction.failed_note(replies, "the evidence"),
                              calls=replies.calls, reused=replies.reused)
 

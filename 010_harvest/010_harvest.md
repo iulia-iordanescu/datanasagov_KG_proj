@@ -133,7 +133,7 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 | *data.nasa.gov returned a page that isn't JSON for start=N …* | The API answered with something else, e.g. a maintenance page. | Retry later. |
 | *The setting page_size must be at least 1* / *The setting max_records must be at least 0* / *The setting pause_seconds must be at least 0* | A [setting](../docs/terminology.md#8-the-pipeline) is out of range. | Give a value in range, then run `py 010_harvest/run.py` again. |
 
-**[Harvest date](../docs/terminology.md#1-records-and-their-text).** Recorded in the report and the [manifest](../docs/terminology.md#8-the-pipeline), and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at` (for a file without a [request block](../docs/terminology.md#1-records-and-their-text), the day the file was last changed), or a range of days if pages were kept from earlier runs.
+**[Harvest date](../docs/terminology.md#1-records-and-their-text).** Recorded in the report (`outputs/reports/010_harvest_<date>_<time>.md`), section *Run*, and in the [manifest](../docs/terminology.md#8-the-pipeline), and carried forward to every later step's report. It is the day the pages were fetched, read from each batch file's `fetched_at` (for a file without a [request block](../docs/terminology.md#1-records-and-their-text), the day the file was last changed), or a range of days if pages were kept from earlier runs.
 
 ## Audit trail
 

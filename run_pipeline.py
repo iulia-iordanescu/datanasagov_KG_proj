@@ -183,7 +183,7 @@ def report_text(run: dict, rows: list) -> str:
         report = f" ([{r['report'].name}]({r['report'].name}))" if r["report"] else ""
         if r["status"] in ("failed", "stopped", "interrupted"):
             why = ("it was interrupted (Ctrl+C)" if r["status"] == "interrupted" else
-                   "its report ends with why, and what to do" if r["report"] else
+                   "its report (linked), section *Results*, says why, and what to do" if r["report"] else
                    f"the terminal and its log (outputs/logs/{r['step']}_<date>_<time>.log) show why")
             attention.append(f"- **{r['step']} {r['status']}**{report}: {why}. The steps after it didn't run: once "
                              f"it's solved, run `py run_pipeline.py --from {r['step'].split('_')[0]}`.")
@@ -191,7 +191,7 @@ def report_text(run: dict, rows: list) -> str:
             attention.append(f"- **{r['step']} {r['status']}:** {r['why']}.")
         elif r["warnings"]:
             attention.append(f"- **{r['step']}** has {r['warnings']} warning(s){report}: each is explained, with what "
-                             f"to do, in its guide (`{r['step']}/{r['step']}.md`, *Checks and warnings*).")
+                             f"to do, in its guide (`{r['step']}/{r['step']}.md`, section *Checks and warnings*).")
     lines += attention or ["Nothing."]
     return "\n".join(lines) + "\n"
 

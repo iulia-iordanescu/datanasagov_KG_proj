@@ -271,7 +271,7 @@ def results(pool: Candidates, induction: Induction, inputs: dict, settings: dict
         lines += [f"**{OUTPUT_NAME} already existed and was kept as it is** (write-once). "
                   + ("This run's draw is identical to it, so the numbers below describe the kept file."
                      if same else
-                     "This run's draw DIFFERS from it (see Warnings); the numbers below describe "
+                     "This run's draw DIFFERS from it (see this report's section *Warnings*); the numbers below describe "
                      "this run's draw, not the kept file."), ""]
     lines += [
         "### Ground truth candidates pool", "",

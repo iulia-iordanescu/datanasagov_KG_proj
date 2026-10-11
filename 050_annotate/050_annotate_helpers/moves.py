@@ -24,8 +24,8 @@ from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
                                  file_name)
-from common.report import cell, counted, model_calls, named
-from common.step import Results
+from common.report import cell, counted, model_calls, named, this_report
+from common.step import Results, repo_path
 from common.triples_io import ENTRY_PREDICATE
 
 #: A draft batch's columns: the ground truth's, then the checks, then where each row came from.
@@ -129,7 +129,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"annotation tool, `py helpers/annotate.py`, do it); fix any typo in the ground truth.")
     if typos:
         warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix, listed with file and "
-                        f"line in this report under Your ground truth: the ground truth is what step 070 "
+                        f"line in {this_report()}, section *Results*, subsection *Your ground truth*: the ground truth is what step 070 "
                         f"evaluates against, so a wrong row makes its metrics wrong. Fix them with "
                         f"`py helpers/annotate.py` or any editor.")
     missing = check_origins(csv_rows, "draft rows")
@@ -155,7 +155,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     removed = collections.Counter(x["reason"] for v in drafts.removed.values() for x in v)
     lines += ["", f"- Errors (must be fixed): {counted(drafts.errors)}.",
               f"- Flags (worth a look; a component class not in the schema is often a good new one): {counted(drafts.flags)}.",
-              f"- Removed: {counted(removed)} (listed in `{details_path.name}`).",
+              f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).",
               "", "### Fair sample", "", fair_words(chosen.fair, chosen.positions), ""]
     if chosen.skipped:
         lines += ["Passed over while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())

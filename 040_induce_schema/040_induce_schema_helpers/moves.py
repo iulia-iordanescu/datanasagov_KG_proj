@@ -32,8 +32,7 @@ from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.schema_io import read_hand_schema
 from common.report import cell, counted, model_calls, named
-from common.step import Results
-from common.step import repo_path
+from common.step import Results, repo_path
 
 SCHEMA_NAME = "the_schema.json"
 EVIDENCE_NAME = "induction_evidence.json"
@@ -170,7 +169,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               f"- What the record describes (`describes_class`, the title's entity class): named for "
               f"{counts.texts_with_describes_class} of {len(triples.texts)} texts.",
               f"- Left out as unverified: {sum(triples.errors.values()):,} ({counted(triples.errors)}); "
-              f"listed in `{EVIDENCE_NAME}` under each text's `unverified`.",
+              f"listed in `{repo_path(output / EVIDENCE_NAME)}` under each text's `unverified`.",
               f"- Verified, with flags worth a look: {counted(triples.flags)}.",
               f"- {triples.malformed:,} item(s) in the replies weren't triple instances and were dropped.",
               f"- Labeled: {len(labels.of.get('entity', {})):,} component instances of subjects and objects "

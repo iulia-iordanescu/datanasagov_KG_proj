@@ -174,3 +174,15 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
               f"Model: `{model}`. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet.", ""]
     return lines
+
+
+def this_report(step: str | None = None) -> str:
+    """Where this run's report is, for a message that points into it: "this run's report
+    (outputs/reports/<run id>.md)". With step (e.g. "020_clean"), another step's latest report instead:
+    "020's latest report (outputs/reports/020_clean_<date>_<time>.md)". Follow it with the section, then the
+    subsection or table, so the reader can find what is meant."""
+    from common.audit import current_run_id
+    if step:
+        return f"{step[:3]}'s latest report (outputs/reports/{step}_<date>_<time>.md)"
+    run_id = current_run_id()
+    return f"this run's report (outputs/reports/{run_id}.md)" if run_id else "this run's report (outputs/reports/)"

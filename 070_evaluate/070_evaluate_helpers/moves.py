@@ -24,7 +24,7 @@ import stats
 from common import audit, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
-from common.report import cell, model_calls, named
+from common.report import cell, model_calls, named, this_report
 from common.step import ANNOTATIONS_DIR, Results, repo_path
 
 METRICS_NAME = "metrics.json"
@@ -283,7 +283,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                      f"{readings.pct(g['share_pool'])} of the pool)" for g in drifted], 5, "; ")
                             + ". The numbers lean toward the strata with more than their share, by chance (the fair "
                               "sample is random). Nothing to do: the gap usually shrinks as more records are "
-                              "evaluated; read the numbers with it in mind (table *Per stratum*).")
+                              f"evaluated; read the numbers with it in mind ({this_report()}, section *Results*, "
+                              f"subsection *Metrics: {part} part*, table *Per stratum*).")
         checks = v["margin_checks"]
         if checks and (checks["at_bound"]
                        or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
@@ -297,7 +298,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                            f"{100 * stats.FINITE_NEGLIGIBLE:.0f}%, so the ranges come out somewhat too wide (nothing "
                            f"to do: they err on the safe side)")
             warnings.append(f"The {part} part: an assumption of the margin of error doesn't hold, so some ranges are "
-                            f"less trustworthy: {'; and '.join(why)}. Details: table *The margin of error's "
+                            f"less trustworthy: {'; and '.join(why)}. Details: {this_report()}, section *Results*, subsection *Metrics: {part} part*, table *The margin of error's "
                             f"assumptions, checked*.")
     if translation.suggested:
         warnings.append(f"The model suggests {len(translation.suggested)} row(s) of annotations/component_class_mapping.csv that say (none) may "
@@ -330,7 +331,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                    f"vocabulary), {c['count']} times" for c in frequent], 5, "; ")
                         + f". A row of annotations/component_class_mapping.csv may translate wrong, to (none) when a "
                           f"component class fits, or with the wrong swap_subject_and_object, which turns stated facts "
-                          f"into misses. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: section "
+                          f"into misses. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: {this_report()}, section *Results*, subsection "
                           f"*Component class mismatches*.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks} time(s) so far, each logged in "
@@ -399,7 +400,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         recs = [r for r in evaluated.records if r["part"] == part]
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
         lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; pairs your review "
-                       f"ruled out (\"not the same fact\"): {pr['rejected']}." if part == "tuning" else
+                       f"ruled out (\"not the same fact\"): {pr['rejected']}. Review them in `py helpers/annotate.py`, view "
+                       f"*Partial pairs*." if part == "tuning" else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
         lines += ["", "| Pair level | Entity-class accuracy | Recall within reach | Strict recall within "
@@ -420,8 +422,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
-        lines += [f"Per stratum (numbers once a stratum has {stats.MIN_RECORDS} records; with many strata, "
-                  f"about 1 in 20 margins misses by chance, so one odd stratum is not a finding):", "",
+        lines += ["#### Per stratum", "", f"Numbers once a stratum has {stats.MIN_RECORDS} records; with many strata, "
+                  f"about 1 in 20 margins misses by chance, so one odd stratum is not a finding.", "",
                   "| Stratum | Records | Share evaluated | Share of pool | Precision (exact) | Recall (exact) |",
                   "|---|---:|---:|---:|---:|---:|"]
         for g in v["strata"]:

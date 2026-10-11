@@ -842,7 +842,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
             if stale:
                 notes.append(f"{len(stale)} row(s) of the translation table will then be stale, since {target}'s "
                              f"definition isn't the one they were checked against: {', '.join(stale)} (current or past "
-                             f"schema). Check them again in Translation table.")
+                             f"schema). Check them again: press Translation table at the top of this page.")
     # 4. partial pair reviews, filed under the predicate's spelling
     if kind == "predicate" and REVIEWS_PATH.exists():
         reviews = _read_reviews_rows()
@@ -859,7 +859,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
                     if verdicts[key_] != r["verdict"]:
                         raise ValueError(f"merging {old} into {target} would make two of your partial pair reviews "
                                          f"the same pair with different verdicts (record {r['record_id']}); take "
-                                         f"one back in Partial pairs first")
+                                         f"one back first: press Partial pairs at the top of this page")
                     continue
                 verdicts[key_] = r["verdict"]
                 kept.append(r)
