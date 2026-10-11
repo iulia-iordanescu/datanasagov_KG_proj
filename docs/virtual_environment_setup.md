@@ -22,7 +22,7 @@ Then create the `.env` file (part 6) and run the checks (part 7).
 | Need | Detail |
 |---|---|
 | Python | **3.14** (part 1 checks for it) |
-| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, and `python-dotenv`, used by `common/common_helpers/llm.py` to read your Ask Sage key from `.env`. Everything else comes with Python |
+| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, `python-dotenv`, used by `common/common_helpers/llm.py` to read your Ask Sage key from `.env`, and `ftfy`, used by step 020 to repair garbled characters. Everything else comes with Python |
 | Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a [model](terminology.md#8-the-pipeline) need it |
 
 ## Part 1: Check that Python 3.14 is installed

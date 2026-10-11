@@ -32,6 +32,7 @@ from pathlib import Path
 
 import maintainers
 import note_cleaning
+from ftfy import fix_encoding
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_jsonl
 from common.records_io import TEXT_FIELDS
@@ -76,6 +77,8 @@ class Catalog:
     fallbacks: list = field(default_factory=list)       # {"id", "field", "method"}
     no_text: int = 0                                    # records with every text field empty
     made_one_line: collections.Counter = field(default_factory=collections.Counter)  # {field: values joined into one line}
+    repaired: list = field(default_factory=list)        # {"id", "field", "lost"}: garbled characters repaired; lost: the
+                                                        # catalog had already lost a character, which now shows as \ufffd
     joined: bool = False
     maintainers_before: int = 0
     maintainers_after: int = 0
@@ -176,10 +179,20 @@ def clean_text(catalog: Catalog) -> Catalog:
         methods = {}
         for name in catalog.text_fields:
             note = note_cleaning.clean_note(record[name])
-            record[name] = note.text
+            text = note.text
+            # Garbled characters: text decoded with the wrong encoding before it reached the catalog ("Â®" for
+            # "®", "â€™" for "’", or twice over). ftfy's fix_encoding reverses only that, and only when the
+            # reversal gives valid text; it changes nothing else. After cleaning, so a garbled character
+            # hidden in an HTML code (&Acirc;&reg;) is caught too.
+            repaired = fix_encoding(text)
+            if repaired != text:
+                catalog.repaired.append({"id": record["id"], "field": name,
+                                         "lost": "\ufffd" in repaired and "\ufffd" not in text})
+                text = repaired
+            record[name] = text
             if name in ONE_LINE_FIELDS:
-                one_line = " ".join(note.text.split())
-                catalog.made_one_line[name] += one_line != note.text
+                one_line = " ".join(text.split())
+                catalog.made_one_line[name] += one_line != text
                 record[name] = one_line
             methods[name] = note.tier
             catalog.tiers[name][note.tier] += 1
@@ -294,6 +307,15 @@ def results(catalog: Catalog, output: Path) -> Results:
     if catalog.fallbacks:
         shown = [f"{f['id']} ({f['field']}, {f['method']})" for f in catalog.fallbacks]
         lines += [f"Values that needed a fallback method, worth a look: {_listed(shown)}", ""]
+    if catalog.repaired:
+        shown = [f"{r['id']} ({r['field']})" for r in catalog.repaired]
+        lost = [f"{r['id']} ({r['field']})" for r in catalog.repaired if r["lost"]]
+        lines += [f"Values with garbled characters, repaired ({len(catalog.repaired):,}): text decoded with the wrong "
+                  f"encoding before it reached the catalog (e.g. \"Â®\" for \"®\", \"â€™\" for \"’\"), reversed by "
+                  f"ftfy's fix_encoding, which changes nothing else: "
+                  f"{_listed(shown)}"
+                  + (f" In {len(lost):,} of them, the catalog had already lost a character before it was "
+                     f"harvested; it now shows as \ufffd, since it can't be recovered: {_listed(lost)}" if lost else ""), ""]
 
     lines += ["### Maintainers", ""]
     if catalog.joined:

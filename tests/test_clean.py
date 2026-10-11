@@ -160,6 +160,27 @@ class Moves(unittest.TestCase):
         self.assertEqual(c.no_text, 1)
         self.assertTrue(a["_origin"][0].endswith("batch_00000.json#a"))
 
+    def test_garbled_characters_repaired(self):
+        """Text decoded with the wrong encoding before it reached the catalog is repaired, also when garbled twice,
+        through the Latin-1 variant, or hidden in an HTML code; correct text with accents, curly quotes, and dashes
+        is left alone; a character the catalog already lost shows as the replacement character."""
+        values = {"once": ("The OpenGISÂ® Web Coverage Service", "The OpenGIS® Web Coverage Service"),
+                  "twice": ("cupuaÃƒÂ§u C mineralization", "cupuaçu C mineralization"),
+                  "latin1": ("Validate PACEâ\x80\x99s OCI", "Validate PACE’s OCI"),
+                  "html": ("the Earth&acirc;&#128;&#153;s surface", "the Earth’s surface"),
+                  "correct": ("naïve café: ‘quoted’ — 10°25 S, 5 µm, Ångström", "naïve café: ‘quoted’ — 10°25 S, 5 µm, Ångström"),
+                  "lost": ("less than 2.5 ï¿½m (PM2.5)", "less than 2.5 �m (PM2.5)")}
+        raw = [{"id": k, "title": "t", "notes": v[0], "maintainer": "m"} for k, v in values.items()]
+        (self.tmp / "batch_00000.json").write_text(json.dumps(batch(raw)), encoding="utf-8")
+        (self.tmp / "batch_01000.json").unlink()
+        c = self.run_moves()
+        got = {r["id"]: r["notes"] for r in c.records}
+        for k, (_, expected) in values.items():
+            with self.subTest(k):
+                self.assertEqual(got[k], expected)
+        self.assertEqual(sorted(r["id"] for r in c.repaired), ["html", "latin1", "lost", "once", "twice"])
+        self.assertEqual([r["id"] for r in c.repaired if r["lost"]], ["lost"])
+
     def test_no_join(self):
         c = self.run_moves(join_maintainers=False)
         self.assertEqual({r["maintainer"] for r in c.records}, {"KRISTAN MORGAN", "Kristan Morgan"})
