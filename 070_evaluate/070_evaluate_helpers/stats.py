@@ -2,40 +2,25 @@
 stats.py -- stage 4: the numbers, each with its margin of error. Code only, no model.
 
 Every number is a ratio of sums over the evaluated records (e.g. precision =
-pairs in all records / triples extracted in all records), so a record with
-many triples weighs more than one with few, as each triple is one answer.
+pairs in all records / occurrences in all records), so a record with many
+triples weighs more than one with few, as each triple is one answer. What
+each number is, its formula and how to read it: 070_evaluate/metrics.md and
+the files it lists (precision, recall, F1, entity-class accuracy, the recall
+upper bound, recall within reach, and the describes metrics).
 
-  precision        pairs / extracted triples
-  recall           pairs / ground truth triples
-  F1               2 x precision x recall / (precision + recall), the same as
-                   2 x pairs / (extracted triples + ground truth triples)
-  (all three at the two pair levels, exact and partial, and for all pairs
-   and STRICT pairs, i.e. with both entity classes right too)
-  entity-class accuracy   strict pairs / pairs
-  recall upper bound          ground truth triples within reach (their predicate
-                          has a counterpart in the schema: all a pair needs) / all
-                          of them: the most recall can be
-  strict recall upper bound   the same, within strict reach (predicate and both
-                          entity classes): the most strict recall can be
-  recall within reach     pairs whose ground truth triple is within reach /
-                          ground truth triples within reach; strict recall
-                          within reach likewise, with strict pairs and
-                          strict reach
-  describes accuracy      records whose DESCRIBES entity class is right /
-                          records where the ground truth names one; with
-                          the MAJORITY BASELINE (the share of the most common
-                          kind: what always guessing it would get) and the
-                          PER-ENTITY-CLASS average (each entity class's accuracy, averaged)
-
-MARGIN OF ERROR, by the bootstrap: the numbers are recomputed REDRAWS
-times, each time from records drawn at random, with repeats, from the evaluated
-ones; the middle 95% of the results is the margin. It draws WHOLE RECORDS
-(a record's triples come from one text and one model call, so they succeed or
-fail together; drawing triples one by one would give margins too narrow), and
-draws WITHIN EACH STRATUM, as many as the stratum has, the way the pool
-was drawn. It is valid only for a random sample (records.py evaluates only the
-fair sample) of enough records: below MIN_RECORDS, no margin is given, only a
-plain warning. The draws are seeded, so a rerun gives the same margins.
+MARGIN OF ERROR, by the bootstrap (070_evaluate/metrics/approximately.md,
+Sampling error): the numbers are recomputed REDRAWS times, each time from as
+many records as were evaluated, drawn at random, with repeats, from all the
+evaluated ones together; the middle 95% of the results is the margin. It draws
+WHOLE RECORDS (a record's triples come from one text and one model call, so
+they succeed or fail together; drawing triples one by one would give margins
+too narrow). It draws from all strata together, NOT within each stratum: the
+evaluated records are the first records of the shuffled pool, so how many come
+from each stratum is itself random, and the redraws let it vary the same way
+(redrawing within strata of 1 or 2 records would give margins too narrow). It
+is valid only for a random sample (records.py evaluates only the fair sample)
+of enough records: below MIN_RECORDS, no margin is given, only a plain
+warning. The draws are seeded, so a rerun gives the same margins.
 """
 from __future__ import annotations
 
@@ -82,11 +67,11 @@ def numbers(records: list) -> dict:
                       "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"],
                       "strict_pairs_within_reach": sw}
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
-    kinds = collections.Counter(component_class_key(d["truth"]) for d in known)
-    per_kind = {k: _ratio(sum(d["right"] for d in known if component_class_key(d["truth"]) == k), n) for k, n in kinds.items()}
+    describes_classes = collections.Counter(component_class_key(d["truth"]) for d in known)
+    per_describes_class = {k: _ratio(sum(d["right"] for d in known if component_class_key(d["truth"]) == k), n) for k, n in describes_classes.items()}
     out["describes"] = {"records": len(known), "accuracy": _ratio(sum(d["right"] for d in known), len(known)),
-                        "majority_baseline": _ratio(max(kinds.values(), default=0), len(known)),
-                        "per_entity_class_average": _ratio(sum(per_kind.values()), len(per_kind))}
+                        "majority_baseline": _ratio(max(describes_classes.values(), default=0), len(known)),
+                        "per_entity_class_average": _ratio(sum(per_describes_class.values()), len(per_describes_class))}
     return out
 
 
@@ -112,12 +97,8 @@ def with_margins(records: list) -> dict:
     samples = {path: [] for path, _ in WITH_MARGIN}
     if enough:
         rng = random.Random(SEED)
-        by_stratum = collections.defaultdict(list)
-        for r in records:
-            by_stratum[r["stratum"]].append(r)
-        strata = [by_stratum[g] for g in sorted(by_stratum)]
         for _ in range(REDRAWS):
-            drawn = [rng.choice(g) for g in strata for _ in g]
+            drawn = [rng.choice(records) for _ in records]
             n = numbers(drawn)
             for path, _ in WITH_MARGIN:
                 v = _get(n, path)
@@ -145,13 +126,10 @@ FINITE_NEGLIGIBLE = 0.05
 
 def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
     """The margin of error's assumptions that can be checked on the evaluated
-    records (070_evaluate/metrics/approximately.md, Sampling error): strata with
-    only one evaluated record (they add no spread to the redraws), metrics
+    records (070_evaluate/metrics/approximately.md, Sampling error): metrics
     whose range reaches 0% or 100% (where a percentile range is unreliable),
     the largest record's proportion of the triples, and the proportion of the
     catalog evaluated."""
-    sizes = collections.Counter(r["stratum"] for r in records)
-    alone = sorted(g or "(no stratum)" for g, k in sizes.items() if k == 1)
     at_bound = [label for path, label in WITH_MARGIN
                 if (m := _get(point, path)) and m.get("low") is not None and (m["low"] <= 0 or m["high"] >= 1)]
     largest = {}
@@ -159,7 +137,7 @@ def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
         total = sum(r["compared"]["counts"][key] for r in records)
         top = max(records, key=lambda r: r["compared"]["counts"][key])
         largest[what] = {"record": top["id"], "proportion": _ratio(top["compared"]["counts"][key], total)}
-    return {"single_record_strata": alone, "at_bound": at_bound, "largest_record": largest,
+    return {"at_bound": at_bound, "largest_record": largest,
             "catalog_proportion": _ratio(len(records), catalog_records)}
 
 

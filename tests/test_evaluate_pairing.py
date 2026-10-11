@@ -380,6 +380,105 @@ class Reach(unittest.TestCase):
         self.assertEqual((c["compared"]["within_reach"], c["compared"]["within_strict_reach"]), ([False], [False]))
 
 
+class EntityClassAccuracy(unittest.TestCase):
+    """metrics/entity_class_accuracy.md's examples, and how it ties to precision and recall."""
+
+    def test_both_versions_example(self):
+        gt = [triple(s, "Instrument", "ABOARD", "Aqua", "Spacecraft")
+              for s in ("MODIS", "AIRS", "AMSR-E", "Clouds and the Earth's Radiant Energy System (CERES)")]
+        ex = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("AMSR-E", "Dataset", "ABOARD", "Aqua", "Spacecraft"),
+              triple("CERES", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("MODIS", "Instrument", "ABOARD", "Terra", "Spacecraft")]
+        c = pairing.compare_record(record(gt, ex), translation())["compared"]
+        self.assertEqual(sorted(c["pairs"]), [(0, 0, "exact"), (1, 1, "exact"), (2, 2, "exact"), (3, 3, "partial")])
+        n = stats.numbers([{"compared": c, "stratum": "g"}])
+        self.assertAlmostEqual(n["exact"]["entity_class_accuracy"], 2 / 3)
+        self.assertAlmostEqual(n["partial"]["entity_class_accuracy"], 3 / 4)
+        self.assertAlmostEqual(n["exact"]["strict_precision"], 2 / 5)
+        self.assertAlmostEqual(n["exact"]["strict_recall"], 2 / 4)
+        self.assertAlmostEqual(n["partial"]["strict_precision"], 3 / 5)
+
+    def test_wrong_class_on_a_repeat_not_counted(self):
+        gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        ex = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("the MODIS instrument", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
+        n = stats.numbers([{"compared": pairing.compare_record(record(gt, ex), translation())["compared"],
+                            "stratum": "g"}])
+        self.assertEqual((n["exact"]["entity_class_accuracy"], n["exact"]["precision"]), (1.0, 0.5))
+        self.assertEqual(n["partial"]["pairs"], 1)                         # the repeat is extracted only
+
+    def test_ties_to_precision_and_recall(self):
+        import random
+        rng = random.Random(5)
+        subjects, objects = ["MODIS", "AIRS", "the MODIS", "CERES"], ["Aqua", "Terra", "the Aqua satellite"]
+        for _ in range(300):
+            make = lambda: triple(rng.choice(subjects), rng.choice(ENTITY[:3]), rng.choice(PREDICATES[:2]),  # noqa: E731
+                                  rng.choice(objects), rng.choice(ENTITY[:3]))
+            gt = [make() for _ in range(rng.randint(0, 4))]
+            ex = [make() for _ in range(rng.randint(0, 4))]
+            n = stats.numbers([{"compared": pairing.compare_record(record(gt, ex), translation())["compared"],
+                                "stratum": "g"}])
+            for level in pairing.LEVELS:
+                m = n[level]
+                if m["entity_class_accuracy"] is None:
+                    continue
+                self.assertAlmostEqual(m["strict_precision"], m["precision"] * m["entity_class_accuracy"])
+                self.assertAlmostEqual(m["strict_recall"], m["recall"] * m["entity_class_accuracy"])
+
+
+class RecallWithinReach(unittest.TestCase):
+    """metrics/recall_within_reach.md: every pair's ground truth triple is within reach (a pair needs the same
+    predicate, and an occurrence's predicate is a translation), and every strict pair's is within strict reach;
+    so recall within reach = recall ÷ recall upper bound, and the strict version likewise."""
+
+    def test_every_pair_within_reach(self):
+        import random
+        rng = random.Random(7)
+        subjects, objects = ["MODIS", "AIRS", "the MODIS"], ["Aqua", "Terra"]
+        for _ in range(300):
+            # some rows say (none), as in a real translation table; reachable is what the rows translate to
+            ent = {c: (c if rng.random() < 0.7 else None) for c in ENTITY[:4]}
+            pred = {p: ((p, False) if rng.random() < 0.7 else (None, False)) for p in PREDICATES}
+            t = Translation()
+            t.entity = {component_class_key(k): v for k, v in ent.items()}
+            t.predicate = {component_class_key(k): v for k, v in pred.items()}
+            t.reachable = {"entity class": {component_class_key(v) for v in ent.values() if v},
+                           "predicate": {component_class_key(v[0]) for v in pred.values() if v[0]}}
+            make = lambda: triple(rng.choice(subjects), rng.choice(ENTITY[:4]), rng.choice(PREDICATES),  # noqa: E731
+                                  rng.choice(objects), rng.choice(ENTITY[:4]))
+            gt = [make() for _ in range(rng.randint(0, 4))]
+            ex = [make() for _ in range(rng.randint(0, 4))]
+            c = pairing.compare_record(record(gt, ex), t)["compared"]["counts"]
+            for level in pairing.LEVELS:
+                self.assertEqual(c[f"{level}_pairs_within_reach"], c[f"{level}_pairs"])
+                self.assertEqual(c[f"{level}_strict_pairs_within_strict_reach"], c[f"{level}_strict_pairs"])
+            n = stats.numbers([{"compared": {"counts": c, "describes": {"truth": None}}, "stratum": "g"}])
+            for level in pairing.LEVELS:
+                if n[level]["recall_within_reach"] is not None:
+                    self.assertAlmostEqual(n[level]["recall_within_reach"], n[level]["recall"] / n["recall_upper_bound"])
+                if n[level]["strict_recall_within_reach"] is not None:
+                    self.assertAlmostEqual(n[level]["strict_recall_within_reach"],
+                                           n[level]["strict_recall"] / n["strict_recall_upper_bound"])
+
+    def test_example(self):
+        t = translation(reachable_entity=["Instrument", "Spacecraft", "TimeSpan"],
+                        reachable_predicates=["ABOARD", "ACQUIRED_BY"])
+        gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument"),
+              triple("MODIS Snow Cover", "Dataset", "HAS_TIME_SPAN", "2002–2023", "TimeSpan"),
+              triple("CERES", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        ex = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("CERES", "Spacecraft", "ABOARD", "Aqua", "Spacecraft")]          # a wrong subject class
+        n = stats.numbers([{"compared": pairing.compare_record(record(gt, ex), t)["compared"], "stratum": "g"}])
+        self.assertAlmostEqual(n["exact"]["recall"], 2 / 5)
+        self.assertAlmostEqual(n["exact"]["recall_within_reach"], 2 / 4)
+        self.assertAlmostEqual(n["exact"]["strict_recall"], 1 / 5)
+        self.assertAlmostEqual(n["exact"]["strict_recall_within_reach"], 1 / 3)
+
+
 class Mismatches(unittest.TestCase):
 
     def test_entity_class_and_predicate(self):
@@ -454,6 +553,18 @@ class Formulas(unittest.TestCase):
         self.assertAlmostEqual(n["majority_baseline"], 3 / 4)
         self.assertAlmostEqual(n["per_entity_class_average"], (2 / 3 + 0) / 2)
 
+    def test_describes_example(self):
+        """metrics/describes.md's example: 6 Dataset (all right), 3 WebTool (1 right), 1 Catalog (wrong)."""
+        recs = [pairing.compare_record(record([], [], rid=f"r{i}", gt_class=truth, said_class=said), translation(
+                    entity=["Dataset", "WebTool", "Catalog"]))
+                for i, (truth, said) in enumerate([("Dataset", "Dataset")] * 6 + [("WebTool", "WebTool")]
+                                                  + [("WebTool", "Dataset")] * 2 + [("Catalog", "Dataset")])]
+        n = stats.numbers([{"compared": r["compared"], "stratum": "g"} for r in recs])["describes"]
+        self.assertEqual(n["records"], 10)
+        self.assertAlmostEqual(n["accuracy"], 0.7)
+        self.assertAlmostEqual(n["majority_baseline"], 0.6)
+        self.assertAlmostEqual(n["per_entity_class_average"], (1 + 1 / 3 + 0) / 3)
+
 
 class Margins(unittest.TestCase):
 
@@ -476,12 +587,14 @@ class Margins(unittest.TestCase):
         m = stats.with_margins([counts_record(2, 2, 2, 2) for _ in range(stats.MIN_RECORDS)])
         self.assertEqual(m["exact"]["precision"], {"value": 1.0, "low": 1.0, "high": 1.0})
 
-    def test_each_stratum_keeps_its_size(self):
-        # One record of stratum "a" with precision 0, 39 of stratum "b" with 1:
-        # every redraw keeps one "a" record, so precision never falls below 39/40.
+    def test_strata_drawn_together(self):
+        # One record of stratum "a" with precision 0, 39 of stratum "b" with 1. Redrawn within each stratum,
+        # every redraw would hold exactly one "a" record, and the range would be 39/40 to 39/40. Redrawn from
+        # all records together, a redraw can hold none, one, or several, as another sample of the pool could.
         recs = [counts_record(1, 1, 0, 0, stratum="a")] + [counts_record(1, 1, 1, 1, stratum="b") for _ in range(39)]
         p = stats.with_margins(recs)["exact"]["precision"]
-        self.assertEqual((p["low"], p["value"], p["high"]), (39 / 40, 39 / 40, 39 / 40))
+        self.assertLess(p["low"], 39 / 40)
+        self.assertEqual((p["value"], p["high"]), (39 / 40, 1.0))
 
 
 class MarginChecks(unittest.TestCase):
@@ -497,7 +610,6 @@ class MarginChecks(unittest.TestCase):
     def test_all_hold(self):
         recs = self.records(["a", "b"] * 20)
         checks = stats.margin_checks(recs, stats.with_margins(recs), catalog_records=10_000)
-        self.assertEqual(checks["single_record_strata"], [])
         self.assertNotIn("exact: precision", checks["at_bound"])
         self.assertAlmostEqual(checks["catalog_proportion"], 40 / 10_000)
         self.assertAlmostEqual(checks["largest_record"]["extracted triples"]["proportion"], 1 / 40)
@@ -507,14 +619,13 @@ class MarginChecks(unittest.TestCase):
         recs[0]["compared"]["counts"]["extracted"] = 41                    # one record with half the extracted triples
         point = stats.with_margins(recs)
         checks = stats.margin_checks(recs, point, catalog_records=200)
-        self.assertEqual(checks["single_record_strata"], ["(no stratum)", "b"])
         self.assertIn("exact: strict_precision", checks["at_bound"])        # 0 strict pairs: the range is 0% to 0%
         self.assertEqual(checks["largest_record"]["extracted triples"], {"record": "r0", "proportion": 41 / 119})
         self.assertGreater(checks["catalog_proportion"], stats.FINITE_NEGLIGIBLE)
         import moves
         text = "\n".join(moves._margin_check_lines(checks))
-        self.assertEqual(text.count("doesn't hold"), 3)
-        self.assertIn("(no stratum), b", text)
+        self.assertEqual(text.count("doesn't hold"), 2)
+        self.assertNotIn("Every stratum adds spread", text)
 
 
 class Parts(unittest.TestCase):

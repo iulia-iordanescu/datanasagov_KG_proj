@@ -147,6 +147,12 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"classes right; of the {pa['pairs']} pairs counting partial ones, {_of(pa['strict_pairs'], pa['pairs'])}.",
             f"- Read as a chance: when extraction finds a fact, its subject class and object class are both right with "
             f"a {pct(ex['entity_class_accuracy']['value'])} chance.",
+            f"- It is the factor by which requiring the entity classes too lowers precision and recall: strict precision "
+            f"= precision × entity-class accuracy, and strict recall = recall × entity-class accuracy, at the same "
+            f"pair level (exact: {pct(ex['strict_precision']['value'])} = {pct(ex['precision']['value'])} × "
+            f"{pct(ex['entity_class_accuracy']['value'])}).",
+            "- Only pairs are judged: the entity classes of an extracted triple left without a partner (wrong, or a "
+            "repeat of a fact already paired) aren't counted.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
         out.append("- Can't see mix-ups between component classes of the current schema that translate to the same ground truth component class: "
@@ -170,6 +176,9 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"pair; counting partial pairs too, {_of(pa['pairs_within_reach'], W)}.",
             f"- Strict: of the {SW} within strict reach, {_of(ex['strict_pairs_within_reach'], SW)} have a strict "
             f"exact pair.",
+            "- Every pair's ground truth triple is within reach, so recall = recall upper bound × recall within reach "
+            f"(exact: {pct(ex['recall']['value'])} = {pct(n['recall_upper_bound']['value'])} × "
+            f"{pct(ex['recall_within_reach']['value'])}): the first factor is the schema's part, the second extraction's.",
             "- Read with the recall upper bound: a low upper bound points at the schema; a low recall within reach points "
             "at extraction (its model, prompt or checks), since those triples could have been found.",
             _sure(n, ex["recall_within_reach"], "exact recall within reach"), ""]
@@ -185,9 +194,12 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"- Of the {d['records']} record(s) whose ground truth names a describes class, extraction named "
             f"the same describes class for {_of(right, d['records'])}.",
             (f"- Always guessing the most common describes class, `{common}` (ground truth vocabulary), would get "
-             f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that."
+             f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that. The "
+             f"baseline comes from these records' own ground truth, so it has no margin of error."
              if common else "- No baseline: no record names what it describes."),
-            f"- Averaged per entity class ({len(truths)} entity class(es)): {pct(d['per_entity_class_average'])}, so a rare one counts as "
-            f"much as a common one.",
+            f"- Averaged per describes class ({len(truths)} describes class(es)), each weighing the same (the balanced "
+            f"accuracy): {pct(d['per_entity_class_average'])}, so a rare one counts as much as a common one."
+            + (f" Always naming `{common}` would get {pct(1 / len(truths))} on it." if truths else "")
+            + " No margin of error: a describes class with few records moves it a lot.",
             _sure(n, d["accuracy"], "this accuracy"), ""]
     return out

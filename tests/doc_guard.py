@@ -96,6 +96,16 @@ def edit_block(rel: str, old: str, new: str) -> None:
     _record(rel, plain(old), new, 1)
 
 
+def create(rel: str, text: str) -> None:
+    """Write a new doc `rel` (it must not exist yet), and record it."""
+    path = ROOT / rel
+    assert not path.exists(), rel
+    path.write_text(text, encoding="utf-8", newline="\n")
+    entries = _ledger()
+    entries.append({"file": rel, "old": "", "new": text, "count": 1, "create": True})
+    LEDGER.write_text(json.dumps(entries, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def _docs_changed() -> list:
     out = subprocess.run(["git", "diff", "--name-only", "HEAD", "--", "*.md"], cwd=ROOT, capture_output=True,
                          text=True, encoding="utf-8").stdout.split()
@@ -117,6 +127,12 @@ def check() -> bool:
         before, now = _at_head(rel), (ROOT / rel).read_text(encoding="utf-8")
         expected = plain(before)
         for e in (e for e in entries if e["file"] == rel):
+            if e.get("create"):
+                if before:                       # "created" over a committed doc: never explained
+                    print(f"FAIL {rel}: recorded as a new doc, but it was already committed")
+                    ok = False
+                expected = plain(e["new"])       # a new doc: all of it, as written
+                continue
             if expected.count(e["old"]) < 1:
                 print(f"FAIL {rel}: a recorded edit no longer applies: {e['old'][:100]!r}")
                 ok = False

@@ -53,6 +53,13 @@ class Edit(unittest.TestCase):
         self.assertNotIn("model", doc_guard.outside_links("No [model calls](t.md#m) here."))
         self.assertIn("there", doc_guard.outside_links(text))
 
+    def test_create_writes_a_new_doc_only(self):
+        doc_guard.create("new.md", "# New\n\nSee [x](x.md).\n")
+        self.assertEqual((self.tmp / "new.md").read_text(encoding="utf-8"), "# New\n\nSee [x](x.md).\n")
+        self.assertTrue(json.loads(doc_guard.LEDGER.read_text(encoding="utf-8"))[0]["create"])
+        with self.assertRaises(AssertionError):
+            doc_guard.create("new.md", "again")
+
     def test_records_each_edit(self):
         self.doc.write_text("alpha beta", encoding="utf-8")
         doc_guard.edit("doc.md", "beta", "gamma")

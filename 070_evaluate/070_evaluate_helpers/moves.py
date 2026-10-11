@@ -76,7 +76,7 @@ def _margin_check_lines(checks: dict | None) -> list:
     if not checks:
         return []
     ok = lambda good: "holds" if good else "**doesn't hold**"           # noqa: E731
-    alone, bound = checks["single_record_strata"], checks["at_bound"]
+    bound = checks["at_bound"]
     big = checks["largest_record"]
     share = checks["catalog_proportion"] or 0
     return ["#### The margin of error's assumptions, checked", "",
@@ -84,9 +84,8 @@ def _margin_check_lines(checks: dict | None) -> list:
             "| The evaluated records are a random sample of the catalog | only the fair sample is evaluated | holds (by design) |",
             "| Whole records vary, independently of each other | records are redrawn whole | holds (by design) |",
             f"| Enough records | at least {stats.MIN_RECORDS} evaluated | holds |",
-            f"| Every stratum adds spread | strata with only 1 evaluated record: "
-            f"{len(alone)}{' (' + named(alone, 5) + ')' if alone else ''} | {ok(not alone)}: such a stratum's "
-            f"record is in every redraw, so the ranges come out too narrow |",
+            "| The redraws vary as other samples would | records are redrawn from all strata together, since "
+            "how many evaluated records come from each stratum is itself random | holds (by design) |",
             f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
             f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow |",
             f"| No one record dominates | the largest record's proportion of the extracted triples: "
@@ -270,7 +269,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             warnings.append(f"{part}: some stratum's share of the evaluated records differs from its share "
                             f"of the pool by more than {100 * stats.SHARE_GAP:.0f} points; see the strata table.")
         checks = v["margin_checks"]
-        if checks and (checks["single_record_strata"] or checks["at_bound"]
+        if checks and (checks["at_bound"]
                        or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
             warnings.append(f"{part}: an assumption of the margin of error doesn't hold, so some ranges are less "
                             f"trustworthy; see the report's section on the margin of error's assumptions.")
