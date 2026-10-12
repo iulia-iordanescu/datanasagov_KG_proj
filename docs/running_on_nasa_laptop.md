@@ -93,7 +93,7 @@ Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's rec
 
 ### Choosing a model
 
-Each of 040–070 has a `service` [setting](terminology.md#8-the-pipeline), the service that reaches the model: `asksage` (NASA's Ask Sage, the default) or `litellm` (NASA's LiteLLM, https://proxy.fast.luna.nasa.gov). Each service names its [models](terminology.md#8-the-pipeline) its own way (Ask Sage's `google-claude-sonnet-5` is LiteLLM's `claude-sonnet-5`), and each step has a `model` setting (default `google-claude-sonnet-5`, an Ask Sage name). On 2026-10-12, LiteLLM let this project's key use `claude-opus-5.5`, which Ask Sage refused. To see which models a service lists for your account (free; add `--service litellm` for LiteLLM, whose list shows only the models your key may use):
+Each of 040–070 has a `service` [setting](terminology.md#8-the-pipeline), the service that reaches the model: `litellm` (NASA's LiteLLM, https://proxy.fast.luna.nasa.gov, the default) or `asksage` (NASA's Ask Sage). Each service names its [models](terminology.md#8-the-pipeline) its own way (Ask Sage's `google-claude-sonnet-5` is LiteLLM's `claude-sonnet-5`), and each step has a `model` setting: by default `claude-opus-5.5` for 040, 060 and 070, and `gemini-2.5-pro` for 050 (LiteLLM names). On 2026-10-12, LiteLLM let this project's key use both, and `gemini-3.1-pro-preview`; Ask Sage refused Opus. LiteLLM's `gpt-5.5` refused the pipeline's temperature 0 (it accepts only 1), so GPT-5 models can't be used as the code stands. To see which models a service lists for your account (free; add `--service litellm` for LiteLLM, whose list shows only the models your key may use):
 
 ```powershell
 py helpers/models.py
@@ -105,7 +105,7 @@ Which model where:
 
 - **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the [schema](terminology.md#3-schemas), 050 decides how much you correct by hand, 070's translations decide the metrics.
 - **050 and 060: two different models, from different makers if you can** (e.g. a Claude model for one, a Gemini or GPT model for the other). The [ground truth](terminology.md#4-ground-truth-and-samples) starts as 050's draft; if 060 used the same model, the [facts](terminology.md#2-triples) that model misses would be missing from both, and [recall](terminology.md#7-evaluating-extraction-step-070) would look better than it is. Step 060 warns before paying when it would extract with the model that drafted the ground truth, or one from the same maker.
-- **060 on every [record](terminology.md#1-records-and-their-text) (about 36,000 calls): measure before choosing.** Once 20 or more ground truth records are finished, run 060 on them with two or three models, evaluate each with 070, and use the cheapest whose metrics are within the [margin of error](terminology.md#7-evaluating-extraction-step-070) of the best.
+- **060 on every [record](terminology.md#1-records-and-their-text) (about 36,000 calls): measure before choosing.** Once 20 or more ground truth records are finished, run 060 on them with two or three models, evaluate each with 070, compare them (`py helpers/compare_runs.py`, `helpers/compare_runs.md`), and use the cheapest that the comparison can't tell apart from the best.
 - **Decide before the real runs:** every cached answer is tied to its model, so changing models later means paying for those calls again.
 
 ## 6. Annotating ground truth (after 050, before 060)

@@ -63,7 +63,8 @@ def _record(rel: str, old: str, new: str, count: int) -> None:
 
 def edit(rel: str, old: str, new: str, count: int = 1) -> None:
     """Replace `old` by `new` in the doc `rel` (`count` times, asserted), matching the doc's plain text, and
-    record it. A line whose matched text holds a link keeps every link whose words survive the edit."""
+    record it. A line whose matched text holds a link keeps every link whose words survive the edit, put back on
+    the use of its words nearest where the link was (not the line's first use, which may be a setting's `name`)."""
     path = ROOT / rel
     lines = path.read_text(encoding="utf-8").split("\n")
     hits = [(n, plain(l).count(old)) for n, l in enumerate(lines) if old in plain(l)]
@@ -72,15 +73,25 @@ def edit(rel: str, old: str, new: str, count: int = 1) -> None:
         if old in lines[n]:
             lines[n] = lines[n].replace(old, new)
             continue
-        links = LINK.findall(lines[n])
-        line = plain(lines[n]).replace(old, new)
-        for text, url in links:                        # put back each link whose words are still there, first use
+        old_plain = plain(lines[n])
+        k = old_plain.find(old)
+        links, removed = [], 0
+        for m in LINK.finditer(lines[n]):              # each link, and where its words start in the plain line
+            at = m.start() - removed
+            removed += len(m.group(0)) - len(m.group(1))
+            # where that place is after the edit: shifted when after the edited text; when inside it, as far into
+            # the new text as it was into the old
+            at = at + len(new) - len(old) if at >= k + len(old) else (k + min(at - k, len(new)) if at >= k else at)
+            links.append((m.group(1), m.group(2), at))
+        line = old_plain.replace(old, new)
+        for text, url, at in links:                    # put back each link whose words are still there, nearest use
             # only an existing link is off limits: a link's words may sit inside **bold** or be `code` themselves
             protect = [m.span() for m in LINK.finditer(line)]
-            for m in re.finditer(r"(?<![\w\[])" + re.escape(text) + r"(?![\w\]])", line):
-                if not any(a <= m.start() < b for a, b in protect):
-                    line = line[:m.start()] + f"[{text}]({url})" + line[m.end():]
-                    break
+            uses = [m for m in re.finditer(r"(?<![\w\[])" + re.escape(text) + r"(?![\w\]])", line)
+                    if not any(a <= m.start() < b for a, b in protect)]
+            if uses:
+                m = min(uses, key=lambda u: abs(u.start() - at))
+                line = line[:m.start()] + f"[{text}]({url})" + line[m.end():]
         lines[n] = line
     path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
     _record(rel, old, new, count)

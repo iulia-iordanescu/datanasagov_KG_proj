@@ -197,7 +197,8 @@ class Pipeline(unittest.TestCase):
     def test_t07_extract(self):
         out, prompts = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(prompts, 10)                                           # 9 records, 1 test call
-        self.assertIn("was drafted (step 050) by google-claude-sonnet-5, the same model as this run's", out)
+        self.assertNotIn("the same model as this run's", out)              # 050 drafts with another maker's model
+        self.assertNotIn("a model from the same maker", out)
         kept = read_csv(self.output("060_extract", "extracted_triples.csv"))
         removed = read_csv(self.output("060_extract", "extracted_triples_removed.csv"))
         self.assertEqual(len({r["id"] for r in kept}), 9)

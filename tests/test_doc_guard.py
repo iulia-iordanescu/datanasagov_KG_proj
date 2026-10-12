@@ -31,6 +31,13 @@ class Edit(unittest.TestCase):
                          "Press **[Partial pairs](a.md)** and read [`b.md`](b.md); each [record](t.md#r) shows here.\n"
                          "Another line stays.")
 
+    def test_link_goes_back_where_it_was(self):
+        # the linked word also appears earlier in the line, as a setting's `name`: the link stays on its own use
+        self.doc.write_text("| `model` | old | The AI [model](t.md#m) to ask. |", encoding="utf-8")
+        doc_guard.edit("doc.md", "| old | The AI model to ask.", "| new | The AI model to ask: by default another.")
+        self.assertEqual(self.doc.read_text(encoding="utf-8"),
+                         "| `model` | new | The AI [model](t.md#m) to ask: by default another. |")
+
     def test_refuses_when_not_found_or_counted_wrong(self):
         self.doc.write_text("one two one", encoding="utf-8")
         with self.assertRaises(AssertionError):

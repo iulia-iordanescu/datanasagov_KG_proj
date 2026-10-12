@@ -425,7 +425,7 @@ class TryModels(unittest.TestCase):
             return '{"ok": true}'
         out = io.StringIO()
         with mock.patch.object(llm, "call_llm", fake), mock.patch("builtins.input", lambda q: ""), redirect_stdout(out):
-            tried = models.try_models(["good", "refuser", "unknown", "good"], ["good", "refuser"])
+            tried = models.try_models(["good", "refuser", "unknown", "good"], ["good", "refuser"], "asksage")
         self.assertEqual(asked, ["good", "refuser", "unknown"])                 # each once, the prompt as a step's first call
         self.assertEqual([(n, ok) for n, ok, _ in tried], [("good", True), ("refuser", False), ("unknown", True)])
         self.assertIn("model_not_permitted", tried[1][2])

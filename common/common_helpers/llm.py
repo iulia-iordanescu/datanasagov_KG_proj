@@ -66,13 +66,18 @@ from common.audit import log
 #: the service shows your account (a listed model may still refuse you: the
 #: run's first call, a one-line test, finds out for the price of that call).
 #: It is part of every cache key (common/common_helpers/cache.py), so changing it asks again.
-MODEL = "google-claude-sonnet-5"
+#: The default of 040, 060 and 070 (a LiteLLM name: the default service is LiteLLM).
+MODEL = "claude-opus-5.5"
+
+#: The default model of step 050, which drafts the ground truth: from another maker than MODEL, so the facts one
+#: model misses aren't missing from both the ground truth and the extraction (060 warns when they're the same maker).
+DRAFTING_MODEL = "gemini-2.5-pro"
 
 #: The service that reaches the model: the default of every step's `service` setting, which paid_calls() puts here
 #: for the run. "asksage": NASA's Ask Sage (ASKSAGE_EMAIL and ASKSAGE_API_KEY in .env); "litellm": NASA's LiteLLM
 #: proxy (LITELLM_API_KEY in .env). A model's name is the service's own: Ask Sage's "google-claude-sonnet-5" is
 #: LiteLLM's "claude-sonnet-5".
-SERVICE = "asksage"
+SERVICE = "litellm"
 SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 
 #: Every call asks for the model's most likely answer, the same each time as far as the model allows.
