@@ -15,6 +15,7 @@ import check                                      # noqa: E402
 import count                                      # noqa: E402
 import label                                      # noqa: E402
 import merge                                      # noqa: E402
+import saturation                                 # noqa: E402
 from common import llm                            # noqa: E402
 
 
@@ -217,6 +218,43 @@ class Checking(unittest.TestCase):
         self.assertEqual({d["entry_type"] for d in s.deferred}, {"entity class", "pattern"})
         self.assertTrue(all(x["_origin"] for x in s.entity_classes + s.predicates + s.patterns))
         json.dumps(s.__dict__)                                                # the schema is writable as JSON
+
+
+class Saturation(unittest.TestCase):
+    """The curve is the exact average over every reading order; the breadth table counts maintainers."""
+
+    @staticmethod
+    def counts(found_in: dict, maintainers: dict | None = None):
+        rows = [{"support": len(ts), "texts": sorted(ts), "maintainers": sorted((maintainers or {}).get(k, {"m"}))}
+                for k, ts in found_in.items()]
+        return count.Counts(entity_classes=rows, predicates=[], patterns=[])
+
+    def test_exact_average_over_every_order(self):
+        import itertools
+        found_in = {"Instrument": {"T1", "T2", "T3"}, "Spacecraft": {"T2", "T4"}, "Mission": {"T3"}}
+        texts, s = ["T1", "T2", "T3", "T4"], 2
+        for k in range(1, 5):                           # brute force: every order, the schema after k texts
+            sizes = [sum(len(ts & set(order[:k])) >= s for ts in found_in.values())
+                     for order in itertools.permutations(texts)]
+            exact = sum(saturation.reaches(4, len(ts), k, s) for ts in found_in.values())
+            self.assertAlmostEqual(exact, sum(sizes) / len(sizes), msg=k)
+
+    def test_curve_and_last_texts(self):
+        c = self.counts({f"E{i}": {f"T{j}" for j in range(60)} for i in range(5)})   # 5 entries in every text
+        sat = saturation.curve(c, 60, 2)
+        self.assertEqual(sat["texts"], [25, 50, 60])
+        self.assertEqual([round(v, 6) for v in sat["entity classes"]], [5, 5, 5])
+        self.assertAlmostEqual(sat["added_by_last"]["entity classes"], 0)        # flat: the last 25 add nothing
+        rare = self.counts({"Rare": {"T1", "T2"}})                               # found in 2 of 60: still rising
+        self.assertGreater(saturation.curve(rare, 60, 2)["added_by_last"]["entity classes"], 0.5)
+        self.assertEqual(saturation.curve(self.counts({}), 0, 2)["texts"], [])
+
+    def test_breadth(self):
+        c = self.counts({"A": {"T1", "T2"}, "B": {"T1", "T2", "T3"}, "C": {"T1"}},
+                        {"A": {"PDS"}, "B": {"PDS", "NSIDC", "HEASARC"}, "C": {"PDS"}})
+        self.assertEqual(saturation.breadth(c, 2)["entity classes"], {"1": 1, "2": 0, "3 or more": 1})  # C below 2
+        lines = saturation.report_lines(saturation.curve(c, 3, 2), saturation.breadth(c, 2), 3, 2)
+        self.assertIn("### Saturation", lines)
 
 
 if __name__ == "__main__":

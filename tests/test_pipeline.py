@@ -150,6 +150,10 @@ class Pipeline(unittest.TestCase):
         texts = {t for e in schema["entity_classes"] for t in e["texts"]}
         pool = {r["id"] for r in read_csv(self.annotations / "ground_truth_candidates.csv")}
         self.assertFalse(texts & pool, "the schema was learned from ground truth candidates")
+        evidence = json.loads(self.output("040_induce_schema", "induction_evidence.json").read_text(encoding="utf-8"))
+        sat = evidence["saturation"]["curve"]
+        self.assertEqual(sat["texts"][-1], len(evidence["texts"]))              # the curve ends at every text read
+        self.assertGreaterEqual(round(sat["entity classes"][-1]), len(found))    # before the too-vague check
         _, again = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
                                  "--texts_per_maintainer", "4")
         self.assertEqual(again, 0, "a rerun paid again")

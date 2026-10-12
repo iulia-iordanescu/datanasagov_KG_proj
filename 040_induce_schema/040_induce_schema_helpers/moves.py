@@ -11,6 +11,7 @@ moves.py -- the main moves of 040_induce_schema, as called by
     stage 6  define.py   write_definitions          LLM: one sentence per entity class and predicate
     stage 7  check.py    check_schema               code: builds the schema from the evidence
     -        compare.py  compare_with_hand_schema   code: beside the hand-built schema, for the report
+    -        saturation.py  (in results)            code: would more texts have added schema entries? for the report
     -        (here)      results                    writes the_schema.json and induction_evidence.json; the report
 
 Every model answer is cached in cache/ inside the step's output folder
@@ -26,6 +27,7 @@ import define
 import extract
 import label
 import merge
+import saturation
 import texts as texts_stage
 from common import audit, llm
 from common.audit import check_origins, log, ref_path
@@ -95,6 +97,9 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     calls_made = {"extract": triples.calls, "label": labels.calls, "merge": labels.merge_calls,
                   "define": definitions.calls, "test": calls.paid.test_calls}
     pieces = {t["id"]: len(t["pieces"]) for t in texts.items}
+    # Would more texts have added schema entries? (saturation.py: code only, from the counts)
+    sat = saturation.curve(counts, len(triples.texts), settings["min_support"])
+    wide = saturation.breadth(counts, settings["min_support"])
     write_json(evidence_path, {
         "made": made,
         "texts": [{**t, "pieces": pieces[t["id"]]} for t in triples.texts],
@@ -108,6 +113,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         "unknown_schema_entries": definitions.unknown, "missing_definitions": schema.missing_definitions,
         "calls": {**calls_made, "reused_extractions": triples.reused},
         "compared_with_hand_schema": comparison,
+        "saturation": {"curve": sat, "breadth": wide},
     })
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
@@ -217,6 +223,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         lines += ["Deferred:", "", "| Entry type | Reason | Schema entries |", "|---|---|---:|"]
         lines += [f"| {k} | {r} | {n:,} |" for (k, r), n in sorted(by_reason.items())]
         lines.append("")
+    lines += saturation.report_lines(sat, wide, len(triples.texts), settings["min_support"])
     lines += compare.report_lines(comparison, comparison["hand_schema"], SHOW)
     lines += [f"Schema entries backed by one maintainer only (may be that maintainer's house style): "
               f"{len(schema.single_maintainer):,}.", "",
