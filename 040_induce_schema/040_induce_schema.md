@@ -84,7 +84,8 @@ Each run also leaves `outputs/reports/<run id>.md` (the [report](../docs/termino
 | `min_support` | 1 | A [schema entry](../docs/terminology.md#3-schemas) enters the [schema](../docs/terminology.md#3-schemas) if its [support](../docs/terminology.md#5-learning-the-schema-step-040) is at least this. 1 keeps everything found. | Once 070's metrics can compare values; see Known limits. |
 | `max_chars` | 8000 | A text longer than this is split into [text pieces](../docs/terminology.md#1-records-and-their-text), one [model call](../docs/terminology.md#8-the-pipeline) each (`common/common_helpers/chunking.py`). | Rarely. No text of the default sample is that long (the longest is 5,797 characters). |
 | `workers` | 4 | Model calls made at the same time. | Lower it if Ask Sage refuses calls for coming too fast. |
-| `model` | google-claude-sonnet-5 | The AI [model](../docs/terminology.md#8-the-pipeline) to ask. `py helpers/models.py` lists the models Ask Sage shows your account; a listed one may still refuse you, which the [run](../docs/terminology.md#8-the-pipeline)'s first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model: another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
+| `service` | asksage | The service that reaches the model: `asksage` (NASA's Ask Sage) or `litellm` (NASA's LiteLLM). Each has its own key in `.env` and its own model names. Every cached answer is tied to its service and model. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
+| `model` | google-claude-sonnet-5 | The AI [model](../docs/terminology.md#8-the-pipeline) to ask. `py helpers/models.py --service <service>` lists the models the service shows your account; a listed one may still refuse you, which the [run](../docs/terminology.md#8-the-pipeline)'s first call (the one-line test) finds out for the price of that call. Every cached answer is tied to its model (and service): another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call. | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 ## How to run
@@ -177,7 +178,8 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py --try <name> ...` tells which you may use). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 | *Stopped. Calls not yet started were cancelled. Answers already received are kept in the cache.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
-| *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).* | The Ask Sage credentials aren't set, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`). |
+| *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set, so no model can be called* (or one of them isn't) | The Ask Sage credentials aren't in `.env`, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
+| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | `--service litellm`, but the LiteLLM key isn't in `.env`. | Put it in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
 
 ## Audit trail
 

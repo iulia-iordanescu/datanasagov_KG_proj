@@ -97,7 +97,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if csv_rows:
         write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a draft batch is never overwritten
         write_json(details_path, {
-            "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings},
+            "made": {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings},
             "batch": n, "chosen": chosen.how,
             "records": [{"id": i["id"], "pool_position": i["position"], "title": i["title"],
                          "pieces": len(i["pieces"]),
@@ -171,7 +171,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
             lines.append(f"| … {len(typos) - SHOW} more | | |")
         lines.append("")
     lines += model_calls([("stage 2: draft triple instances (one call per text piece)", replies.calls, replies.reused)],
-                         calls.paid.test_calls, llm.MODEL)
+                         calls.paid.test_calls, llm.model_label())
 
     return Results(
         files=files,

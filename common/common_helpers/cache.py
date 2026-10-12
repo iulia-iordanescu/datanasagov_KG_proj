@@ -29,7 +29,7 @@ from common.files import write_json
 
 def key(*parts) -> str:
     """A fingerprint of the model and everything else that decides an answer."""
-    blob = json.dumps([llm.MODEL, *parts], sort_keys=True, ensure_ascii=False, default=str)
+    blob = json.dumps([llm.cache_identity(), *parts], sort_keys=True, ensure_ascii=False, default=str)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:24]
 
 

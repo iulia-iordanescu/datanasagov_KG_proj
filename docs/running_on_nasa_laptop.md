@@ -45,9 +45,9 @@ If PowerShell says running scripts is disabled, see part 3 of the setup guide.
 
 Every new PowerShell window needs `.\.myvenv\Scripts\Activate.ps1` again; your prompt then starts with `(.myvenv)`.
 
-## 3. Add your Ask Sage key
+## 3. Add your keys
 
-Create the file `.env` with your Ask Sage email and key: part 6 of `docs/virtual_environment_setup.md`.
+Create the file `.env` with your Ask Sage email and key: part 6 of `docs/virtual_environment_setup.md`. For NASA's LiteLLM (the setting `service`, see *Choosing a model*), add a line with your LiteLLM key there too: `LITELLM_API_KEY=sk-...`. A key is made in LiteLLM's dashboard (https://proxy.fast.luna.nasa.gov/ui/, *Virtual Keys*, *Create New Key*; key type *AI APIs*; models left empty for all your team's models). LiteLLM shows the full key once: copy it into `.env` at once, and never into a chat or a file Git tracks.
 
 ## 4. Run the steps, in order
 
@@ -93,7 +93,7 @@ Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's rec
 
 ### Choosing a model
 
-Each of 040–070 has a `model` [setting](terminology.md#8-the-pipeline) (default `google-claude-sonnet-5`). To see which [models](terminology.md#8-the-pipeline) Ask Sage lists for your account (free):
+Each of 040–070 has a `service` [setting](terminology.md#8-the-pipeline), the service that reaches the model: `asksage` (NASA's Ask Sage, the default) or `litellm` (NASA's LiteLLM, https://proxy.fast.luna.nasa.gov). Each service names its [models](terminology.md#8-the-pipeline) its own way (Ask Sage's `google-claude-sonnet-5` is LiteLLM's `claude-sonnet-5`), and each step has a `model` setting (default `google-claude-sonnet-5`, an Ask Sage name). On 2026-10-12, LiteLLM let this project's key use `claude-opus-5.5`, which Ask Sage refused. To see which models a service lists for your account (free; add `--service litellm` for LiteLLM, whose list shows only the models your key may use):
 
 ```powershell
 py helpers/models.py
@@ -121,7 +121,7 @@ A page opens in your browser: pick the [draft batch](terminology.md#4-ground-tru
 | What you see | What it means | What to do |
 |---|---|---|
 | *Test call to … failed* (040, 050, 060 or 070 stops) | The key or the connection is wrong, or Ask Sage refuses you that [model](terminology.md#8-the-pipeline). Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; see *Choosing a model*). Otherwise check `.env`, and that you're on NASA's network (or VPN). |
-| *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY* | `.env` is missing or misspelled. | Section 3. |
+| *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set* / *LITELLM_API_KEY isn't set* | `.env` is missing, or the key's name is misspelled. | Section 3. |
 | *Failed to resolve 'api.asksage.ai.nasa.gov'* | The laptop can't reach Ask Sage. | Connect to NASA's network or VPN. |
 | *missing input files* | An earlier [step](terminology.md#8-the-pipeline) hasn't run yet. | Run the steps in order (section 4). |
 | *running scripts is disabled* | PowerShell's script policy. | Part 3 of `docs/virtual_environment_setup.md`. |

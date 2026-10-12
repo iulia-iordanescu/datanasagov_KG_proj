@@ -310,7 +310,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     write_text(per_record_path, _per_record(shown, len(evaluated.records) - len(shown)))
     write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
     write_json(metrics_path, {
-        "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "schema": schema_file, "settings": settings,
+        "made": {"run_id": audit.current_run_id(), **llm.describe(), "schema": schema_file, "settings": settings,
                  "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
         "left_out": evaluated.left_out,
@@ -512,7 +512,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                            translation.reused),
                           ("stage 2: suggest counterparts for (none) rows (one call)", translation.suggest_calls,
                            translation.suggest_reused)],
-                         calls.paid.test_calls, llm.MODEL)
+                         calls.paid.test_calls, llm.model_label())
 
     tuning = metrics.get("tuning", {}).get("numbers")
     headline = {}

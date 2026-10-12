@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
-from common.llm import MODEL
+from common.llm import MODEL, SERVICE
 from common.step import load_moves, run_step
 
 INPUTS = {
@@ -42,6 +42,7 @@ SETTINGS = {
     "ids":                "",    # or exactly these records: ids separated by commas, or a file with one per line
     "max_chars":          8000,  # a longer text is split into text pieces, one call each
     "workers":            4,     # model calls made at the same time
+    "service":            SERVICE, # the service that reaches the model: asksage or litellm
     "model":              MODEL, # the AI model to ask (py helpers/models.py lists them)
     "confirm_paid_calls": True,  # stop and ask before the first model call; false for unattended runs
 }

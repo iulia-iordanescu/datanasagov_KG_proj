@@ -171,7 +171,7 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
     total = sum(made for _, made, _ in stages) + test_calls
     lines += [f"| the one-line test (first paid call of a run) | {test_calls} | – |",
               f"| **total paid this run** | **{total:,}** | |", "",
-              f"Model: `{model}`. Every answer is kept in the step's `cache/`, so a rerun pays only for "
+              f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet.", ""]
     return lines
 

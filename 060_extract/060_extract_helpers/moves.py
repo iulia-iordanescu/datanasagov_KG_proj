@@ -122,7 +122,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
     write_csv(paths[REMOVED_NAME], REMOVED_COLUMNS, removed)
     write_json(paths[SCHEMA_NAME], _schema_used(schema))
     write_json(paths[DETAILS_NAME], {
-        "made": {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings},
+        "made": {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings},
         "chosen": chosen.how,
         "records": [{"id": i["id"], "pieces": len(i["pieces"]),
                      "status": "extracted" if i["id"] in rows.kept else "failed",
@@ -177,7 +177,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
             lines.append(f"| … {len(new_component_classes) - SHOW} more, in `{DETAILS_NAME}` | | | |")
         lines.append("")
     lines += model_calls([("stage 3: extract triple instances (one call per text piece)", replies.calls, replies.reused)],
-                         calls.paid.test_calls, llm.MODEL)
+                         calls.paid.test_calls, llm.model_label())
 
     return Results(
         files=list(paths.values()),

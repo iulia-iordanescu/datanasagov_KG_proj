@@ -10,16 +10,19 @@ instead of printed.
 
 It holds, in this order:
 
-    THE ASK SAGE CLIENT
+    THE RUN'S MODEL       MODEL, SERVICE; describe and model_label for the
+                          run's record and report; cache_identity
+    THE ASK SAGE CLIENT and THE LITELLM CLIENT: one request each
+    EITHER SERVICE
+        list_models       the model names the service lists (free; see py helpers/models.py)
         call_llm          send a prompt, get the reply text; retries rate
                           limits and server errors with backoff
+        try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         call_llm_json     the same, parsed as a JSON object; re-asks once if
                           the reply is not one
     PROMPT SAFETY
         fence_safe        keeps a record from ending its data block early
     A PAID RUN
-        list_models       the model names Ask Sage lists (free; see py helpers/models.py)
-        try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         PaidCalls         asks once before a run's first paid call (showing
                           any notes about the run first), makes a one-line
                           test call, and counts the calls
@@ -39,7 +42,8 @@ common/common_helpers/extraction.py and common/common_prompts/.
     data = llm.call_llm_json(prompt)                  # a dict, or raises
 
 Needs a .env in the repository folder with ASKSAGE_EMAIL and
-ASKSAGE_API_KEY, and the packages requests and python-dotenv.
+ASKSAGE_API_KEY (Ask Sage) or LITELLM_API_KEY (LiteLLM), and the packages
+requests and python-dotenv.
 """
 
 import json
@@ -59,10 +63,54 @@ from common.audit import log
 
 #: The model the calls use: the default of every step's `model` setting,
 #: which paid_calls() puts here for the run. `py helpers/models.py` lists the models
-#: Ask Sage shows your account (a listed model may still refuse you: the
+#: the service shows your account (a listed model may still refuse you: the
 #: run's first call, a one-line test, finds out for the price of that call).
 #: It is part of every cache key (common/common_helpers/cache.py), so changing it asks again.
 MODEL = "google-claude-sonnet-5"
+
+#: The service that reaches the model: the default of every step's `service` setting, which paid_calls() puts here
+#: for the run. "asksage": NASA's Ask Sage (ASKSAGE_EMAIL and ASKSAGE_API_KEY in .env); "litellm": NASA's LiteLLM
+#: proxy (LITELLM_API_KEY in .env). A model's name is the service's own: Ask Sage's "google-claude-sonnet-5" is
+#: LiteLLM's "claude-sonnet-5".
+SERVICE = "asksage"
+SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
+
+#: Every call asks for the model's most likely answer, the same each time as far as the model allows.
+TEMPERATURE = 0
+
+#: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
+#: Ask Sage's doesn't), for the run's record (describe).
+SERVED = set()
+
+
+def describe() -> dict:
+    """What answered this run's calls, for the run's record (each step's "made"): the service, the model as asked
+    for, the exact model the service said answered (when it says), and the settings every call is sent with."""
+    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), "temperature": TEMPERATURE}
+
+
+def model_label() -> str:
+    """The model in words, for a report: "`claude-opus-5.5` through LiteLLM (answered as `…`)"."""
+    served = [s for s in sorted(SERVED) if s != MODEL]
+    return (f"`{MODEL}` through {SERVICES.get(SERVICE, SERVICE)}"
+            + (f" (answered as {', '.join(f'`{s}`' for s in served)})" if served else ""))
+
+
+def cache_identity() -> str:
+    """The model as the cache key names it (common/common_helpers/cache.py). Ask Sage's is the model name alone, as
+    it was before a second service existed, so answers already paid for stay valid; another service's names the
+    service too, since two services may use one name for different models."""
+    return MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}"
+
+
+def _env(name: str, why: str) -> str:
+    load_dotenv()
+    value = (os.getenv(name) or "").strip()
+    if not value:
+        sys.exit(f"{name} isn't set, so {why}. Put {name}=<your key> in the file .env in the repository folder "
+                 f"(docs/running_on_nasa_laptop.md), then run the command again.")
+    return value
+
 
 # ------------------------------ the Ask Sage client -------------------------
 
@@ -90,9 +138,7 @@ def _asksage_token():
     return _token_cache["token"]
 
 
-def list_models() -> list:
-    """The model names Ask Sage lists for your account. Free: listing is not a
-    model call. Being listed doesn't guarantee access."""
+def _asksage_models() -> list:
     resp = requests.post(f"{SERVER_BASE}/get-models", headers={"x-access-tokens": _asksage_token()},
                          timeout=(5, 60))
     resp.raise_for_status()
@@ -120,20 +166,18 @@ class BadReply(ValueError):
 
 
 class ApiError(Exception):
-    """The gateway accepted the request and answered HTTP 200, but the body
-    carries an error object instead of a completion.
+    """The service refused the request in a way that will not fix itself:
+    a permission or validation failure (e.g. Ask Sage's "model_not_permitted",
+    or LiteLLM's HTTP 400, 401, 403 or 404).
 
-    Deliberately NOT in call_llm's retry tuple. The observed cases are
-    permission and validation failures (e.g. code "model_not_permitted",
-    http_status 400), which will fail identically on every retry; retrying
-    would burn four calls and then report the same thing. Only a 429 or a
-    5xx inside the body is worth another attempt, and that case is converted
-    to RuntimeError below so the normal backoff handles it."""
+    Deliberately NOT in call_llm's retry tuple: it would fail identically on
+    every retry, burning four calls to report the same thing. A rate limit or
+    a server error is raised as RuntimeError instead, so the normal backoff
+    handles it."""
 
 
-def call_llm(prompt, attempts=4, read_timeout=180, model=None):
-    """Ask Sage gateway. Retries with exponential backoff on rate limits and
-    transient server errors.
+def _ask_asksage(prompt: str, model: str, read_timeout: int) -> str:
+    """One request to Ask Sage; the reply text.
 
     dataset/limit_references are set deliberately. Per the Ask Sage API docs
     dataset defaults to 'all' and limit_references defaults to None, meaning
@@ -141,59 +185,131 @@ def call_llm(prompt, attempts=4, read_timeout=180, model=None):
     That is wrong here twice over: the extraction prompt orders the model to
     use nothing but the text in front of it, and retrieved references are
     billed input tokens on all N calls. There is no max-tokens parameter on
-    this endpoint, so output length cannot be capped from here. model: the
-    model to ask, MODEL (the run's) when None."""
-    model = model or MODEL
+    this endpoint, so output length cannot be capped from here."""
+    # Fetched for each request, not once per run: a 401 clears the cache
+    # below, and the next attempt must log in again.
+    resp = requests.post(f"{SERVER_BASE}/query",
+                         headers={"x-access-tokens": _asksage_token()},
+                         json={"message": prompt, "model": model,
+                               "temperature": TEMPERATURE,
+                               "dataset": "none",
+                               "limit_references": 0},
+                         timeout=(5, read_timeout))
+    if resp.status_code == 401:
+        # The token is cached for the whole run, so one expiry would
+        # otherwise fail every remaining call - and each failure still
+        # costs a request. Drop it and log in again on the next try.
+        _token_cache.pop("token", None)
+        raise RuntimeError("HTTP 401 - token dropped, will re-login")
+    if resp.status_code in (429, 500, 502, 503, 504):
+        raise RuntimeError(f"HTTP {resp.status_code}")
+    resp.raise_for_status()
+    body = resp.json()
+    # Ask Sage answers HTTP 200 with status 200 even when the request
+    # was refused, putting the real outcome in an "error" object and
+    # an apology in "message". Observed shape:
+    #   {"status": 200,
+    #    "error": {"code": "model_not_permitted", "http_status": 400,
+    #              "requested_model": "..."},
+    #    "message": "Sorry, this model is not authorized ..."}
+    # Without this check the apology reaches the JSON parser and the
+    # call fails as "Expecting value: line 1 column 1" - once per
+    # text, with nothing naming the real cause.
+    body = body if isinstance(body, dict) else {}
+    err = body.get("error")
+    if isinstance(err, dict) and (err.get("code")
+                                  or err.get("http_status")):
+        code = err.get("code") or "error"
+        inner = err.get("http_status")
+        detail = f"{code} (http_status {inner}): {body.get('message')}"
+        if inner in (429, 500, 502, 503, 504):
+            raise RuntimeError(detail)      # worth retrying
+        raise ApiError(detail)              # will not fix itself
+    # A numeric top-level status of 400 or more is also a refusal.
+    status = body.get("status")
+    if isinstance(status, (int, str)) and str(status).isdigit() \
+            and int(status) >= 400:
+        raise RuntimeError(f"API status {status}: "
+                           f"{str(body.get('message'))[:200]}")
+    # .get("message") can be absent OR present-and-null; either way
+    # callers must never receive None and call .strip() on it.
+    return (body or {}).get("message") or ""
+
+
+# ------------------------------ the LiteLLM client --------------------------
+
+#: NASA's LiteLLM proxy, which speaks the OpenAI API; LITELLM_BASE_URL in .env overrides it.
+LITELLM_BASE = "https://proxy.fast.luna.nasa.gov"
+
+
+def _litellm(path: str) -> tuple:
+    """(address, headers) of a LiteLLM request."""
+    load_dotenv()
+    base = (os.getenv("LITELLM_BASE_URL") or LITELLM_BASE).rstrip("/")
+    key = _env("LITELLM_API_KEY", "no model can be called through LiteLLM")
+    return f"{base}{path}", {"Authorization": f"Bearer {key}"}
+
+
+def _litellm_error(resp) -> str:
+    """The error LiteLLM sent, in words: its message when the body has one, else the start of the body."""
+    try:
+        err = resp.json().get("error")
+        text = err.get("message") if isinstance(err, dict) else err
+    except (ValueError, AttributeError):
+        text = None
+    return f"HTTP {resp.status_code}: {str(text or resp.text)[:300]}"
+
+
+def _litellm_models() -> list:
+    url, headers = _litellm("/v1/models")
+    resp = requests.get(url, headers=headers, timeout=(5, 60))
+    if resp.status_code >= 400:
+        raise ApiError(_litellm_error(resp))
+    names = [str(m.get("id")) for m in resp.json().get("data", []) if isinstance(m, dict) and m.get("id")]
+    if not names:
+        raise ValueError(f"LiteLLM's model list came in a shape this code doesn't read: {resp.text[:300]}")
+    return sorted(set(names))
+
+
+def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
+    """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
+    when the reply names it, goes into SERVED for the run's record."""
+    url, headers = _litellm("/v1/chat/completions")
+    resp = requests.post(url, headers=headers,
+                         json={"model": model, "messages": [{"role": "user", "content": prompt}],
+                               "temperature": TEMPERATURE},
+                         timeout=(5, read_timeout))
+    if resp.status_code in (429, 500, 502, 503, 504):
+        raise RuntimeError(_litellm_error(resp))            # worth retrying
+    if resp.status_code >= 400:
+        raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
+    body = resp.json()
+    try:
+        text = body["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise RuntimeError(f"LiteLLM's reply has no answer in it: {str(body)[:300]}") from None
+    if body.get("model"):
+        SERVED.add(str(body["model"]))
+    return text or ""
+
+
+# ------------------------------ either service ------------------------------
+
+def list_models(service: str | None = None) -> list:
+    """The model names the service lists for your account. Free: listing is not a model call. Being listed doesn't
+    guarantee access."""
+    return _litellm_models() if (service or SERVICE) == "litellm" else _asksage_models()
+
+
+def call_llm(prompt, attempts=4, read_timeout=180, model=None, service=None):
+    """Send prompt to the model, through the service; the reply text. Retries with exponential backoff on rate
+    limits, server errors and lost connections; a refusal that will not fix itself (ApiError) is raised at once.
+    model, service: MODEL and SERVICE (the run's) when None."""
+    model, service = model or MODEL, service or SERVICE
+    ask = _ask_litellm if service == "litellm" else _ask_asksage
     for attempt in range(attempts):
         try:
-            # Fetched inside the loop, not once before it: a 401 clears the
-            # cache below, and the next attempt must log in again.
-            resp = requests.post(f"{SERVER_BASE}/query",
-                                 headers={"x-access-tokens": _asksage_token()},
-                                 json={"message": prompt, "model": model,
-                                       "temperature": 0,
-                                       "dataset": "none",
-                                       "limit_references": 0},
-                                 timeout=(5, read_timeout))
-            if resp.status_code == 401:
-                # The token is cached for the whole run, so one expiry would
-                # otherwise fail every remaining call - and each failure still
-                # costs a request. Drop it and log in again on the next try.
-                _token_cache.pop("token", None)
-                raise RuntimeError("HTTP 401 - token dropped, will re-login")
-            if resp.status_code in (429, 500, 502, 503, 504):
-                raise RuntimeError(f"HTTP {resp.status_code}")
-            resp.raise_for_status()
-            body = resp.json()
-            # Ask Sage answers HTTP 200 with status 200 even when the request
-            # was refused, putting the real outcome in an "error" object and
-            # an apology in "message". Observed shape:
-            #   {"status": 200,
-            #    "error": {"code": "model_not_permitted", "http_status": 400,
-            #              "requested_model": "..."},
-            #    "message": "Sorry, this model is not authorized ..."}
-            # Without this check the apology reaches the JSON parser and the
-            # call fails as "Expecting value: line 1 column 1" - once per
-            # text, with nothing naming the real cause.
-            body = body if isinstance(body, dict) else {}
-            err = body.get("error")
-            if isinstance(err, dict) and (err.get("code")
-                                          or err.get("http_status")):
-                code = err.get("code") or "error"
-                inner = err.get("http_status")
-                detail = f"{code} (http_status {inner}): {body.get('message')}"
-                if inner in (429, 500, 502, 503, 504):
-                    raise RuntimeError(detail)      # worth retrying
-                raise ApiError(detail)              # will not fix itself
-            # A numeric top-level status of 400 or more is also a refusal.
-            status = body.get("status")
-            if isinstance(status, (int, str)) and str(status).isdigit() \
-                    and int(status) >= 400:
-                raise RuntimeError(f"API status {status}: "
-                                   f"{str(body.get('message'))[:200]}")
-            # .get("message") can be absent OR present-and-null; either way
-            # callers must never receive None and call .strip() on it.
-            return (body or {}).get("message") or ""
+            return ask(prompt, model, read_timeout)
         except (RuntimeError, ValueError,
                 requests.ConnectionError, requests.Timeout) as e:
             if attempt == attempts - 1:
@@ -208,11 +324,11 @@ def call_llm(prompt, attempts=4, read_timeout=180, model=None):
 TEST_PROMPT = 'Reply with ONLY this JSON: {"ok": true}'
 
 
-def try_model(name: str) -> tuple:
-    """(usable, why): one test call to the model name. usable is True when the model answered; why is the reason
-    when it didn't (e.g. Ask Sage's "model_not_permitted"). One tiny paid call."""
+def try_model(name: str, service: str | None = None) -> tuple:
+    """(usable, why): one test call to the model name, through the service. usable is True when the model answered;
+    why is the reason when it didn't (e.g. Ask Sage's "model_not_permitted"). One tiny paid call."""
     try:
-        call_llm(TEST_PROMPT, attempts=2, model=name)
+        call_llm(TEST_PROMPT, attempts=2, model=name, service=service)
         return True, ""
     except Exception as e:                                  # noqa: BLE001
         return False, str(e)
@@ -303,7 +419,7 @@ class PaidCalls:
         if self.started:
             return
         log.info(plan)
-        log.info(f"model: {MODEL}")
+        log.info(f"model: {MODEL}, through {SERVICES.get(SERVICE, SERVICE)}")
         if self.notes:
             show_warnings(self.step, self.notes)
         if self.confirm:
@@ -314,9 +430,10 @@ class PaidCalls:
             call_llm(TEST_PROMPT, attempts=2)
         except Exception as e:                              # noqa: BLE001
             again = f"`py {self.step}/run.py`" if self.step else "the step"
-            sys.exit(f"Test call to {MODEL} failed ({e}), so no other model call was made. If Ask Sage says the model "
-                     f"isn't allowed, give another with --model <name> (`py helpers/models.py --try <name> ...` tells which "
-                     f"you may use); otherwise "
+            sys.exit(f"Test call to {MODEL} through {SERVICES.get(SERVICE, SERVICE)} failed ({e}), so no other model "
+                     f"call was made. If {SERVICES.get(SERVICE, SERVICE)} says the model "
+                     f"isn't allowed, give another with --model <name> (`py helpers/models.py --service {SERVICE} --try <name> ...` "
+                     f"tells which you may use); otherwise "
                      f"check your key in .env and that you're on NASA's network. Then run {again} again.")
         self.started = True
         self.test_calls = 1
@@ -335,15 +452,21 @@ class Calls:
 
 
 def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
-    """The Calls of one run: uses the model the setting `model` names; asks
-    before paying (setting confirm_paid_calls), showing notes first; answers
-    kept in cache/ inside the step's output folder."""
-    global MODEL
+    """The Calls of one run: uses the model the setting `model` names, through the service the setting `service`
+    names; asks before paying (setting confirm_paid_calls), showing notes first; answers kept in cache/ inside the
+    step's output folder."""
+    global MODEL, SERVICE
+    service = str(settings.get("service") or SERVICE).strip().lower()
+    if service not in SERVICES:
+        raise ValueError(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
+                         f"model can be called. Give one of {', '.join(SERVICES)} with --service <name>, then run "
+                         f"`py {Path(output).name}/run.py` again.")
     name = str(settings.get("model") or "").strip()
     if not name:
         raise ValueError(f"The setting model is empty, so no model can be called. Give one with --model <name> "
                          f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
-    MODEL = name
+    MODEL, SERVICE = name, service
+    SERVED.clear()
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
                  cache_dir=Path(output) / "cache")
 

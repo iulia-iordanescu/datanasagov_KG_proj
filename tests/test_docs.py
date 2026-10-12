@@ -27,13 +27,14 @@ def tracked(*suffixes) -> list:
 def panel(step: str) -> dict:
     """INPUTS and SETTINGS of a step's run.py, read without running it."""
     tree = ast.parse((ROOT / step / "run.py").read_text(encoding="utf-8"))
-    model = re.search(r'^MODEL = "([^"]+)"', (ROOT / "common" / "common_helpers" / "llm.py").read_text(encoding="utf-8"), re.M)
+    llm = (ROOT / "common" / "common_helpers" / "llm.py").read_text(encoding="utf-8")
+    named = {n: re.search(rf'^{n} = "([^"]+)"', llm, re.M).group(1) for n in ("MODEL", "SERVICE")}  # defaults from llm.py
     out = {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and node.targets[0].id in ("INPUTS", "SETTINGS"):
             values = {}
             for k, v in zip(node.value.keys, node.value.values):
-                values[k.value] = model.group(1) if isinstance(v, ast.Name) and v.id == "MODEL" else ast.literal_eval(v)
+                values[k.value] = named[v.id] if isinstance(v, ast.Name) and v.id in named else ast.literal_eval(v)
             out[node.targets[0].id] = values
     return out
 

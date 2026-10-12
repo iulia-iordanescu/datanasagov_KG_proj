@@ -87,7 +87,7 @@ def compare_with_hand_schema(inputs, schema) -> dict:
 # --------------------------------------------------------------------------
 
 def results(texts, triples, labels, counts, definitions, schema, comparison, calls, settings, output) -> Results:
-    made = {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings,
+    made = {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings,
             "texts": len(texts.items), "maintainers": [m["maintainer"] for m in texts.maintainers]}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
     write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,
@@ -229,7 +229,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                                  ("stage 4: merge labels (one call per kind)", labels.merge_calls, labels.merge_reused),
                                  (f"stage 6: write definitions ({define.DEFINE_BATCH} per call)", definitions.calls,
                                   definitions.reused)],
-                                calls.paid.test_calls, llm.MODEL)
+                                calls.paid.test_calls, llm.model_label())
 
     return Results(
         files=[schema_path, evidence_path],

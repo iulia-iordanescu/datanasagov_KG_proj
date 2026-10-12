@@ -418,7 +418,7 @@ class TryModels(unittest.TestCase):
         spec.loader.exec_module(models)
         asked = []
 
-        def fake(prompt, attempts=4, read_timeout=180, model=None):
+        def fake(prompt, attempts=4, read_timeout=180, model=None, service=None):
             asked.append(model)
             if model == "refuser":
                 raise llm.ApiError("model_not_permitted (http_status 400): Sorry, this model is not authorized")
@@ -433,6 +433,75 @@ class TryModels(unittest.TestCase):
         with mock.patch.object(llm, "call_llm", fake), mock.patch("builtins.input", lambda q: "n"),                 redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
             models.try_models(["all"], ["good", "refuser"])                     # declined: nothing paid
         self.assertEqual(len(asked), 3)
+
+
+class LiteLLM(unittest.TestCase):
+    """The second service: requests in the OpenAI shape, errors that will not fix themselves raised at once, the
+    exact model that answered recorded, and Ask Sage's cache keys unchanged."""
+
+    class Reply:
+        def __init__(self, status, body):
+            self.status_code, self._body = status, body
+            self.text = json.dumps(body)
+
+        def json(self):
+            return self._body
+
+    def setUp(self):
+        from common import llm
+        self.llm = llm
+        self.saved = (llm.MODEL, llm.SERVICE)
+        llm.SERVED.clear()
+
+    def tearDown(self):
+        self.llm.MODEL, self.llm.SERVICE = self.saved
+        self.llm.SERVED.clear()
+
+    def test_call(self):
+        from unittest import mock
+        llm, sent = self.llm, []
+
+        def post(url, headers=None, json=None, timeout=None):
+            sent.append((url, headers, json))
+            return self.Reply(200, {"model": "claude-opus-5-5-20260101",
+                                    "choices": [{"message": {"content": '{"ok": true}'}}]})
+        with mock.patch.dict("os.environ", {"LITELLM_API_KEY": "sk-test", "LITELLM_BASE_URL": ""}), \
+                mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "load_dotenv", lambda: None):
+            self.assertEqual(llm.call_llm("hi", model="claude-opus-5.5", service="litellm"), '{"ok": true}')
+        url, headers, body = sent[0]
+        self.assertEqual(url, "https://proxy.fast.luna.nasa.gov/v1/chat/completions")
+        self.assertEqual(headers, {"Authorization": "Bearer sk-test"})
+        self.assertEqual(body, {"model": "claude-opus-5.5", "messages": [{"role": "user", "content": "hi"}],
+                                "temperature": 0})
+        self.assertEqual(llm.SERVED, {"claude-opus-5-5-20260101"})
+
+    def test_refusal_not_retried(self):
+        from unittest import mock
+        llm, calls = self.llm, []
+
+        def post(url, headers=None, json=None, timeout=None):
+            calls.append(1)
+            return self.Reply(403, {"error": {"message": "key not allowed to access model"}})
+        with mock.patch.dict("os.environ", {"LITELLM_API_KEY": "sk-test"}), \
+                mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "load_dotenv", lambda: None):
+            ok, why = llm.try_model("gpt-6-astra", "litellm")
+        self.assertEqual((ok, len(calls)), (False, 1))
+        self.assertIn("HTTP 403: key not allowed to access model", why)
+
+    def test_cache_and_record(self):
+        llm = self.llm
+        llm.MODEL, llm.SERVICE = "google-claude-sonnet-5", "asksage"
+        self.assertEqual(llm.cache_identity(), "google-claude-sonnet-5")       # as before: paid answers stay valid
+        llm.MODEL, llm.SERVICE = "claude-sonnet-5", "litellm"
+        self.assertEqual(llm.cache_identity(), "litellm:claude-sonnet-5")
+        llm.SERVED.add("claude-sonnet-5-20260101")
+        self.assertEqual(llm.describe(), {"service": "litellm", "model": "claude-sonnet-5",
+                                          "served_as": ["claude-sonnet-5-20260101"], "temperature": 0})
+        self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
+
+    def test_unknown_service(self):
+        with self.assertRaisesRegex(ValueError, "asksage, litellm"):
+            self.llm.paid_calls({"service": "openai", "model": "x", "confirm_paid_calls": False}, Path("060_extract"))
 
 
 class AnnotationsReadCleanly(unittest.TestCase):
