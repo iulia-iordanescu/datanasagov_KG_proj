@@ -423,15 +423,21 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT):
     AttributeError. Both failures are treated the same way here: re-ask once
     with a correction, then give up."""
     for attempt in range(retries + 1):
+        text = call_llm(prompt, read_timeout=read_timeout)
         try:
-            data = _best_effort_json(call_llm(prompt, read_timeout=read_timeout))
+            data = _best_effort_json(text)
             if not isinstance(data, dict):
                 raise BadReply(f"expected a JSON object, got "
                                f"{type(data).__name__}")
             return data
         except (json.JSONDecodeError, BadReply) as e:
+            # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see what broke it.
+            log.debug(f"unusable answer from {MODEL} (attempt {attempt + 1} of {retries + 1}), "
+                      f"{len(text):,} characters, {e}:\n{text}")
             if attempt == retries:
-                raise
+                raise BadReply(f"the model's answer isn't a valid JSON object, {retries + 1} times ({e}); each answer "
+                               f"is in this run's log (outputs/logs/<run id>.log), on a DEBUG line starting "
+                               f"\"unusable answer\"") from None
             log.warning(f"The model's reply isn't a JSON object ({e}); asking once more, reminding it to reply with "
                         f"the JSON object only. Nothing to do.")
             prompt += ("\n\nYour last reply was not a valid JSON object. "
