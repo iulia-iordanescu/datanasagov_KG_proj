@@ -35,7 +35,7 @@ from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
-from common.step import check_settings, input_files, repo_path
+from common.step import MANIFEST_NAME, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.triples_io import is_describes
 
@@ -54,6 +54,7 @@ class Evaluated:
     extraction_made: dict = field(default_factory=dict)  # 060's run: run id, model, settings (from its details file)
     catalog_records: int = 0                       # records in 020's records.jsonl: the whole catalog
     learned_from: dict = field(default_factory=dict)  # the records the current schema was learned from (060's schema_used.json)
+    extraction_manifest: dict = field(default_factory=dict)  # 060's _manifest.json: its run's code version, settings, prompts, inputs
 
 
 def _triples(rows: list) -> tuple:
@@ -139,6 +140,8 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         evaluated.pool_strata[g] = evaluated.pool_strata.get(g, 0) + 1
     details = json.loads(Path(inputs["extracted_triples_details"]).read_text(encoding="utf-8"))
     evaluated.extraction_made = details.get("made") or {}
+    manifest = Path(inputs["extracted_triples"]).parent / MANIFEST_NAME
+    evaluated.extraction_manifest = json.loads(manifest.read_text(encoding="utf-8")) if manifest.is_file() else {}
     extracted_ids = {r["id"] for r in details["records"] if r["status"] == "extracted"}
     evaluated.schema_used = json.loads(Path(inputs["schema_used"]).read_text(encoding="utf-8"))
     extracted = {}

@@ -322,6 +322,18 @@ class Pipeline(unittest.TestCase):
         for k in ("schema", "extraction_run_id", "translation_sha256", "held_out_ground_truth_sha256"):
             self.assertEqual(looks[0][k], looks[1][k], k)
         self.assertIn("nothing that sets the held-out numbers changed", out)
+        # every run keeps its tuning records' counts; two runs of the same version compare as the same
+        kept = sorted((self.results / "070_evaluate" / "evaluations").glob("*.json"))
+        self.assertGreaterEqual(len(kept), 2)
+        last = json.loads(kept[-1].read_text(encoding="utf-8"))
+        self.assertEqual({r["id"] for r in last["records"]}, set(metrics["evaluated"]["tuning"]))   # never held-out ones
+        r = subprocess.run([sys.executable, str(self.repo / "helpers" / "compare_runs.py"), kept[-2].stem, kept[-1].stem],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=self.repo)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Compared 2 runs on 8 tuning records", r.stdout)
+        report = (self.repo / r.stdout.strip().rsplit(": ", 1)[1]).read_text(encoding="utf-8")
+        self.assertIn("Nothing recorded differs.", report)
+        self.assertIn("| exact: precision | 100.0% | 100.0% | +0.0 points | – | the same |", report)
 
     def test_t10b_evaluate_refuses_a_repeat(self):
         """A classed triple twice in a record stops evaluation; the same subject
@@ -353,7 +365,8 @@ class Pipeline(unittest.TestCase):
             path.write_bytes(before)
 
     def test_t11_every_run_reported(self):
-        reports = sorted((self.repo / "outputs" / "reports").glob("*.md"))
+        reports = sorted(p for p in (self.repo / "outputs" / "reports").glob("*.md")
+                         if not p.name.startswith("compare_runs_"))     # a comparison isn't a run: no log
         logs = sorted((self.repo / "outputs" / "logs").glob("*.log"))
         self.assertEqual(len(reports), len(logs))
         self.assertGreaterEqual(len(reports), 15)

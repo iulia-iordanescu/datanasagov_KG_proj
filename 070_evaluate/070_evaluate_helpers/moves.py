@@ -7,6 +7,7 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
     stage 3  pairing.py            compare                      code: record by record, exact and partial pairs, strict, within reach
     stage 4  stats.py              compute_metrics              code: the numbers, each with its margin of error, per part and stratum
     -        (here)                results                      writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
+                                                                 keeps this run's tuning records' counts in evaluations/<run id>.json, for py helpers/compare_runs.py
 
 Every model answer is cached in cache/ inside the step's output folder
 (common/common_helpers/cache.py), so a rerun pays only for what isn't there yet.
@@ -28,11 +29,14 @@ from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, this_report
 from common.stop import Stop
-from common.step import ANNOTATIONS_DIR, Results, repo_path
+from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
 COMPARED_NAME = "compared_triples.csv"
+#: Each run's tuning records' counts and recipe, one file per run, never overwritten: what py helpers/compare_runs.py
+#: compares (helpers/compare_runs.md).
+EVALUATIONS_DIR = "evaluations"
 LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records", "extraction_run_id", "translation_sha256",
                  "held_out_ground_truth_sha256"]
@@ -146,19 +150,57 @@ def _fingerprint(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
+def _ground_truth_rows(r: dict) -> list:
+    """A record's ground truth as it is compared: each triple's components and source text, then its DESCRIBES row."""
+    return [{k: t.get(k, "") for k in TRIPLE + ("source_text",)} for t in r["gt"] + [r["gt_describes"] or {}]]
+
+
+def _translation_fingerprint(translation) -> str:
+    return _fingerprint({"entity class": sorted(translation.entity.items()),
+                         "predicate": sorted(translation.predicate.items())})
+
+
+def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
+    """What made this run's numbers, for py helpers/compare_runs.py to show what differs between runs: 060's run
+    (code version, settings, prompts, and the schema files it read, by fingerprint) and this run (code version, the
+    translation, and the model that proposed it)."""
+    extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
+                  "git_commit": inputs_manifest.get("git_commit"), "settings": inputs_manifest.get("settings", {}),
+                  "prompts": {p["file"]: p["sha256"] for p in inputs_manifest.get("prompts", [])},
+                  "schema": evaluated.schema_used.get("made", {}).get("schema"),
+                  "inputs": {i.get("name"): i.get("sha256") for i in inputs_manifest.get("inputs", [])
+                             if i.get("name") in ("schema", "additions")}}
+    return {"extraction (060)": extraction,
+            "evaluation (070)": {"git_commit": git_commit(), "translation_sha256": _translation_fingerprint(translation),
+                                 **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
+
+
+def _keep_evaluation(evaluated, translation, output, tuning: list, inputs_manifest: dict):
+    """Write this run's tuning records' counts and recipe to evaluations/<run id>.json (never overwritten, one file
+    per run), for py helpers/compare_runs.py. Held-out records are never kept: comparing runs is tuning."""
+    run_id = audit.current_run_id() or dt.datetime.now().strftime("070_evaluate_%Y-%m-%d_%H%M%S")
+    path = output / EVALUATIONS_DIR / f"{run_id}.json"
+    write_json(path, {
+        "run_id": run_id, "recipe": _recipe(evaluated, translation, inputs_manifest),
+        "records": [{"id": r["id"], "position": r["position"], "stratum": r["stratum"], "twin": r.get("twin"),
+                     "ground_truth_sha256": _fingerprint(_ground_truth_rows(r)),
+                     "counts": dict(r["compared"]["counts"]),
+                     "describes": {k: r["compared"]["describes"][k] for k in ("truth", "said", "right")}}
+                    for r in tuning]})
+    return path
+
+
 def _log_look(evaluated, translation, schema_file: str) -> dict:
     """Add one line to annotations/held_out_looks.csv (never changing a line already there): what the look saw (the
     current schema, 060's run, fingerprints of the translation used and of the held-out records' ground truth).
     Returns {"count": looks so far, "changed": [what differs from the previous look, as readings.LOOK_INPUTS names
     it] or None for a first look, "previous": that look's row or None}."""
     held = sorted((r for r in evaluated.records if r["part"] == "held-out"), key=lambda r: r["id"])
-    rows = [[{k: t.get(k, "") for k in TRIPLE + ("source_text",)} for t in r["gt"] + [r["gt_describes"] or {}]]
-            for r in held]
+    rows = [_ground_truth_rows(r) for r in held]
     look = {"date": dt.date.today().isoformat(), "run_id": audit.current_run_id() or "", "schema": schema_file,
             "held_out_records": str(len(held)),
             "extraction_run_id": str(evaluated.schema_used.get("made", {}).get("run_id") or ""),
-            "translation_sha256": _fingerprint({"entity class": sorted(translation.entity.items()),
-                                                "predicate": sorted(translation.predicate.items())}),
+            "translation_sha256": _translation_fingerprint(translation),
             "held_out_ground_truth_sha256": _fingerprint([[r["id"] for r in held], rows])}
     if LOOKS.exists():
         header = LOOKS.read_text(encoding="utf-8-sig").split("\n", 1)[0].strip()
@@ -326,6 +368,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
     log.info(f"  wrote {METRICS_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
+    kept_path = _keep_evaluation(evaluated, translation, output, tuning, evaluated.extraction_manifest)
+    log.info(f"  kept this run's tuning counts in {EVALUATIONS_DIR}/{kept_path.name}")
 
     warnings = list(evaluated.notes)
     for part, v in metrics.items():
@@ -522,5 +566,5 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         twins = metrics["tuning"]["twins"]
         headline["twins (tuning)"] = ("not known" if twins is None else
                                       f"{len(twins['records'])} of {tuning['records']} evaluated")
-    return Results(files=[metrics_path, per_record_path, compared_path], headline=headline,
+    return Results(files=[metrics_path, per_record_path, compared_path, kept_path], headline=headline,
                    details="\n".join(lines), warnings=warnings)

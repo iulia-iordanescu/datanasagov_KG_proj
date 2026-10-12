@@ -683,5 +683,80 @@ class Refusal(unittest.TestCase):
         self.assertIn("\n3. Record b (batch_001.csv): lines 4, 5, and 6", both)
 
 
+class CompareRuns(unittest.TestCase):
+    """py helpers/compare_runs.py: the paired comparison of two runs on the same tuning records."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        from support import ROOT
+        spec = importlib.util.spec_from_file_location("compare_runs", ROOT / "helpers" / "compare_runs.py")
+        cls.cr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.cr)
+
+    @staticmethod
+    def kept(run_id, pairs_of, model, gt="g"):
+        """A kept evaluation: 25 records with 4 extracted and 4 ground truth triples each, pairs_of(i) exact pairs."""
+        records = []
+        for i in range(25):
+            m = pairs_of(i)
+            counts = {"extracted": 4, "gt": 4, "within_reach": 4, "within_strict_reach": 4}
+            for level in pairing.LEVELS:
+                counts.update({f"{level}_pairs": m, f"{level}_strict_pairs": m, f"{level}_subject_class_pairs": m,
+                               f"{level}_object_class_pairs": m, f"{level}_pairs_within_reach": m,
+                               f"{level}_strict_pairs_within_strict_reach": m})
+            records.append({"id": f"r{i:02d}", "position": i, "stratum": "s", "twin": "",
+                            "ground_truth_sha256": gt if i else gt + "-0", "counts": counts,
+                            "describes": {"truth": "Dataset", "said": "Dataset", "right": True}})
+        return {"run_id": run_id, "records": records,
+                "recipe": {"extraction (060)": {"settings": {"model": model}}, "evaluation (070)": {"git_commit": "abc"}}}
+
+    def test_better_same_and_left_out(self):
+        cr = self.cr
+        a = self.kept("A", lambda i: 2, "claude-opus-5.5")
+        b = self.kept("B", lambda i: 3 if i % 2 else 4, "gemini-2.5-pro")       # better on every record
+        c = self.kept("C", lambda i: 2, "claude-opus-5.5")                       # the same as A
+        c["records"][0]["ground_truth_sha256"] = "changed"                     # its ground truth changed: left out
+        c["records"].pop()                                                      # not evaluated in every run
+        ids, left = cr.common_records([a, b, c])
+        self.assertEqual(len(ids), 23)
+        self.assertEqual(left, {"not evaluated in every run": ["r24"], "ground truth changed between the runs": ["r00"]})
+        self.assertEqual(cr.differences([a, b, c]),
+                         [("extraction (060) / settings / model", ["claude-opus-5.5", "gemini-2.5-pro", "claude-opus-5.5"])])
+        base = cr.as_records(a, ids)
+        rows = {r["label"]: r for r in cr.paired(base, cr.as_records(b, ids))}
+        p = rows["exact: precision"]
+        self.assertAlmostEqual(p["a"], 0.5)
+        self.assertGreater(p["diff"], 0)
+        self.assertGreater(p["low"], 0)                                          # higher by more than chance
+        self.assertEqual(cr.verdict(p, "B"), "B higher")
+        same = {r["label"]: r for r in cr.paired(base, cr.as_records(c, ids))}["exact: precision"]
+        self.assertEqual(cr.verdict(same, "C"), "the same")
+        text = cr.report([a, b, c], ids, left)
+        for part in ("## What differs between the runs", "## B compared with A", "## C compared with A",
+                     "| exact: precision | 50.0% |", "B higher", "## How to read a row", "Left out, ground truth changed"):
+            self.assertIn(part, text)
+
+    def test_noise_cant_tell_apart(self):
+        cr = self.cr
+        a = self.kept("A", lambda i: 2 + (i % 3 == 0), "m")
+        b = self.kept("B", lambda i: 2 + (i % 3 == 1), "m")                     # as good, on other records
+        ids, _ = cr.common_records([a, b])
+        row = {r["label"]: r for r in cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))}["exact: recall"]
+        self.assertLess(row["low"], 0)
+        self.assertGreater(row["high"], 0)
+        self.assertEqual(cr.verdict(row, "B"), "can't tell apart")
+
+    def test_too_few_records(self):
+        cr = self.cr
+        a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
+        a["records"], b["records"] = a["records"][:5], b["records"][:5]
+        ids, _ = cr.common_records([a, b])
+        row = cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))[0]
+        self.assertIsNone(row["low"])
+        self.assertEqual(cr.verdict(row, "B"), "no range (too few records)")
+        self.assertIn("Don't draw conclusions from them yet", cr.report([a, b], ids, {}))
+
+
 if __name__ == "__main__":
     unittest.main()
