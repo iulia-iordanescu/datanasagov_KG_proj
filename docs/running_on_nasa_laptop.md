@@ -99,7 +99,7 @@ Each of 040–070 has a `model` [setting](terminology.md#8-the-pipeline) (defaul
 py helpers/models.py
 ```
 
-A listed model may still refuse you. To find out, just use it in a tiny [run](terminology.md#8-the-pipeline), e.g. `py 050_annotate/run.py --model <name> --records_per_batch 1`: if it refuses, the [step](terminology.md#8-the-pipeline) stops at its one-line test call, having spent that call only, and says why. Try the next one.
+A listed model may still refuse you: the list shows what Ask Sage offers, not what your account is approved for. To find out, try the models you're considering, e.g. `py helpers/models.py --try google-claude-sonnet-5 <name> <name>`, with names copied from the list, or `--try all` for every listed one. Each try is the one-line test call a [step](terminology.md#8-the-pipeline) makes first: one tiny [paid call](terminology.md#8-the-pipeline) per model, asked about before paying. It prints each model as usable, or refused with Ask Sage's reason (e.g. `model_not_permitted`).
 
 Which model where:
 

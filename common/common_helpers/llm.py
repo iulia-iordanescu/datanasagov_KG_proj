@@ -19,6 +19,7 @@ It holds, in this order:
         fence_safe        keeps a record from ending its data block early
     A PAID RUN
         list_models       the model names Ask Sage lists (free; see py helpers/models.py)
+        try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         PaidCalls         asks once before a run's first paid call (showing
                           any notes about the run first), makes a one-line
                           test call, and counts the calls
@@ -130,7 +131,7 @@ class ApiError(Exception):
     to RuntimeError below so the normal backoff handles it."""
 
 
-def call_llm(prompt, attempts=4, read_timeout=180):
+def call_llm(prompt, attempts=4, read_timeout=180, model=None):
     """Ask Sage gateway. Retries with exponential backoff on rate limits and
     transient server errors.
 
@@ -140,14 +141,16 @@ def call_llm(prompt, attempts=4, read_timeout=180):
     That is wrong here twice over: the extraction prompt orders the model to
     use nothing but the text in front of it, and retrieved references are
     billed input tokens on all N calls. There is no max-tokens parameter on
-    this endpoint, so output length cannot be capped from here."""
+    this endpoint, so output length cannot be capped from here. model: the
+    model to ask, MODEL (the run's) when None."""
+    model = model or MODEL
     for attempt in range(attempts):
         try:
             # Fetched inside the loop, not once before it: a 401 clears the
             # cache below, and the next attempt must log in again.
             resp = requests.post(f"{SERVER_BASE}/query",
                                  headers={"x-access-tokens": _asksage_token()},
-                                 json={"message": prompt, "model": MODEL,
+                                 json={"message": prompt, "model": model,
                                        "temperature": 0,
                                        "dataset": "none",
                                        "limit_references": 0},
@@ -196,9 +199,23 @@ def call_llm(prompt, attempts=4, read_timeout=180):
             if attempt == attempts - 1:
                 raise
             wait = 2 ** attempt * 5          # 5s, 10s, 20s
-            log.warning(f"Model call to {MODEL} failed ({e}); trying again in {wait} s (attempt {attempt + 2} of "
+            log.warning(f"Model call to {model} failed ({e}); trying again in {wait} s (attempt {attempt + 2} of "
                         f"{attempts}). Nothing to do: rate limits and server errors usually pass.")
             time.sleep(wait)
+
+
+#: The one-line test request: a step's first paid call (PaidCalls.start), and each try of py helpers/models.py --try.
+TEST_PROMPT = 'Reply with ONLY this JSON: {"ok": true}'
+
+
+def try_model(name: str) -> tuple:
+    """(usable, why): one test call to the model name. usable is True when the model answered; why is the reason
+    when it didn't (e.g. Ask Sage's "model_not_permitted"). One tiny paid call."""
+    try:
+        call_llm(TEST_PROMPT, attempts=2, model=name)
+        return True, ""
+    except Exception as e:                                  # noqa: BLE001
+        return False, str(e)
 
 
 def _best_effort_json(text):
@@ -294,11 +311,12 @@ class PaidCalls:
                     if not self.notes else
                     "Press Enter to go ahead anyway (1 test call first), or anything else to cancel.")
         try:
-            call_llm('Reply with ONLY this JSON: {"ok": true}', attempts=2)
+            call_llm(TEST_PROMPT, attempts=2)
         except Exception as e:                              # noqa: BLE001
             again = f"`py {self.step}/run.py`" if self.step else "the step"
             sys.exit(f"Test call to {MODEL} failed ({e}), so no other model call was made. If Ask Sage says the model "
-                     f"isn't allowed, give another with --model <name> (`py helpers/models.py` lists them); otherwise "
+                     f"isn't allowed, give another with --model <name> (`py helpers/models.py --try <name> ...` tells which "
+                     f"you may use); otherwise "
                      f"check your key in .env and that you're on NASA's network. Then run {again} again.")
         self.started = True
         self.test_calls = 1

@@ -252,7 +252,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split/run.py`. |
 | *missing input files, so the step can't run: … run `py 060_extract/run.py` first* | 060 hasn't run. | Run it. |
 | *model must name a model* | The `model` [setting](../docs/terminology.md#8-the-pipeline) is empty. | Give a model's name (`py helpers/models.py` lists them). |
-| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py` lists them). Otherwise check `.env` and the network. |
+| *Test call to … failed* | Ask Sage refuses you that model, the key is wrong, or Ask Sage can't be reached. Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; `py helpers/models.py --try <name> ...` tells which you may use). Otherwise check `.env` and the network. |
 | *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
 | *Set ASKSAGE_EMAIL and ASKSAGE_API_KEY (e.g. in .env).* | The Ask Sage credentials aren't set, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`). |
 

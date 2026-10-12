@@ -404,6 +404,37 @@ class SameModel(unittest.TestCase):
         self.assertEqual(len(same_model_notes(gt, {"b"}, "some-new-model")), 0)            # unknown maker: only the same name
 
 
+class TryModels(unittest.TestCase):
+
+    def test_try(self):
+        """py helpers/models.py --try: one test call per model, usable or refused with the reason, asked first."""
+        import importlib.util
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        from common import llm
+        spec = importlib.util.spec_from_file_location("models_helper", support.ROOT / "helpers" / "models.py")
+        models = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(models)
+        asked = []
+
+        def fake(prompt, attempts=4, read_timeout=180, model=None):
+            asked.append(model)
+            if model == "refuser":
+                raise llm.ApiError("model_not_permitted (http_status 400): Sorry, this model is not authorized")
+            return '{"ok": true}'
+        out = io.StringIO()
+        with mock.patch.object(llm, "call_llm", fake), mock.patch("builtins.input", lambda q: ""), redirect_stdout(out):
+            tried = models.try_models(["good", "refuser", "unknown", "good"], ["good", "refuser"])
+        self.assertEqual(asked, ["good", "refuser", "unknown"])                 # each once, the prompt as a step's first call
+        self.assertEqual([(n, ok) for n, ok, _ in tried], [("good", True), ("refuser", False), ("unknown", True)])
+        self.assertIn("model_not_permitted", tried[1][2])
+        self.assertIn("Not in Ask Sage's list", out.getvalue())
+        with mock.patch.object(llm, "call_llm", fake), mock.patch("builtins.input", lambda q: "n"),                 redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+            models.try_models(["all"], ["good", "refuser"])                     # declined: nothing paid
+        self.assertEqual(len(asked), 3)
+
+
 class AnnotationsReadCleanly(unittest.TestCase):
     """The real annotations/ files read without problems (read only)."""
 
