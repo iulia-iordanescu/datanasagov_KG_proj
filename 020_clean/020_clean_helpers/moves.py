@@ -45,7 +45,7 @@ CLEANING_FIELD = "_cleaning"         # which method cleaned each text field
 SHOW = 20                            # items listed in the report before "…"
 #: Text fields that are one line by nature: every run of line breaks and
 #: spaces inside becomes one space. (notes keeps its line breaks: they
-#: separate paragraphs.) In the 2026-09-27 harvest, 020 made 3,356 of 36,375
+#: separate paragraphs.) In the 2026-10-01 harvest, 020 made 3,361 of 36,406
 #: titles one line, e.g.
 #: "ROSETTA-ORBITER 67P RSI 1/2/3" + a line break + 37 spaces + "COMET ESCORT …".
 ONE_LINE_FIELDS = ("title",)

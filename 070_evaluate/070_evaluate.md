@@ -190,13 +190,13 @@ For any other schema file (e.g. an older schema kept elsewhere), they aren't kno
 
 A record with two kinds, with two different records, gets the one that shares more text: whole text, then description only, then title only. *Suppose:* pool record A has the same description as learned-from record X, and the same title as learned-from record Y. *Then:* A is *description only*, since the description holds more of the facts. Code: `common/common_helpers/ground_truth.py`, `twin_kinds`.
 
-**Why these kinds, and why only the records the schema was learned from.** Two choices had to be made: which fields to compare, and against which records. Counted on 2026-10-11 (the 2026-09-27 harvest, 999 pool records), each number a count of pool records:
+**Why these kinds, and why only the records the schema was learned from.** Two choices had to be made: which fields to compare, and against which records. Counted on 2026-10-12 (the 2026-10-01 harvest, 999 pool records), each number a count of pool records:
 
-- Compared with all 35,376 induction candidates: 388 are whole-text twins of one of them, 129 description-only, and 24 title-only (541 twins).
-- Compared with the 150 texts 040 learns from (default settings): 1 is a whole-text twin of one of them, 15 description-only, and none title-only (16 twins).
+- Compared with all 35,407 induction candidates: 388 are whole-text twins of one of them, 129 description-only, and 24 title-only (541 twins).
+- Compared with the 150 texts 040 learns from (default settings): 3 are whole-text twins of one of them, 18 description-only, and none title-only (21 twins).
 - Compared with the records the hand-built schema was written from (pool positions 0–5): only those 6 records themselves.
 
-Only the records the schema was learned from matter: a pool record that repeats an induction candidate 040 never read can't flatter the schema. The twin kinds say how much of a twin's text the schema saw. Most facts are stated in the description: of the 150 rows of the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) and of the old drafts (`annotations/archive/`) that have a [source text](../docs/terminology.md#1-records-and-their-text), 140 had it in the description and 10 in the title. So a description-only twin shares most of its facts' wording, and a title-only twin a few (e.g. a version, "V1.0"). Comparing whole texts alone would miss both (1 twin instead of 16, on 040's texts).
+Only the records the schema was learned from matter: a pool record that repeats an induction candidate 040 never read can't flatter the schema. The twin kinds say how much of a twin's text the schema saw. Most facts are stated in the description: of the 150 rows of the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) and of the old drafts (`annotations/archive/`) that have a [source text](../docs/terminology.md#1-records-and-their-text), 140 had it in the description and 10 in the title. So a description-only twin shares most of its facts' wording, and a title-only twin a few (e.g. a version, "V1.0"). Comparing whole texts alone would miss both (3 twins instead of 21, on 040's texts).
 
 **What it can't see.** A title or description that is nearly the same (one number or one word different, as in a series of datasets) doesn't make a twin. Such near-twins may flatter extraction too; nothing measures them yet.
 

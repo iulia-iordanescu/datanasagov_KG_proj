@@ -118,7 +118,7 @@ Four [stages](../docs/terminology.md#8-the-pipeline), in `030_split/run.py`'s `m
 
 The code: `030_split/` holds `run.py` (the [control panel](../docs/terminology.md#8-the-pipeline): inputs, settings and the [moves](../docs/terminology.md#8-the-pipeline), in order); `030_split/030_split_helpers/` holds `moves.py` (the moves, and writing the results). Shared with other steps: `common/common_helpers/records_io.py` (reading records), `common/common_helpers/files.py` (saving files).
 
-On 2026-09-28: 36,375 records; 999 left out as [ground truth](../docs/terminology.md#4-ground-truth-and-samples) candidates, 0 for having no [text](../docs/terminology.md#1-records-and-their-text); 35,376 induction candidates across 422 maintainers. On 2026-09-29 `splits.json` was rebuilt once to add each candidate's part: everything already in it came out identical.
+On 2026-10-12, from the harvest of 2026-10-01: 36,406 records; 999 left out as [ground truth](../docs/terminology.md#4-ground-truth-and-samples) candidates, 0 for having no [text](../docs/terminology.md#1-records-and-their-text); 35,407 induction candidates across 422 maintainers. (The earlier `splits.json`, from the harvest of 2026-09-27, had 35,376; it is kept aside in `outputs/intermediate_results/030_split/replaced_2026-09-27/` on the personal laptop.)
 
 ### Why "undefined" counts as a maintainer
 
