@@ -503,6 +503,60 @@ class LiteLLM(unittest.TestCase):
                 llm.call_llm_json("extract", read_timeout=5)
         self.assertEqual(len(calls), 1)
 
+    def _with(self, post):
+        from unittest import mock
+        llm = self.llm
+        return [mock.patch.dict("os.environ", {"LITELLM_API_KEY": "sk-test"}),
+                mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "load_dotenv", lambda: None),
+                mock.patch.object(llm.time, "sleep", lambda s: self.slept.append(s))]
+
+    def call(self, post, **kw):
+        import contextlib
+        self.slept = []
+        with contextlib.ExitStack() as stack:
+            for m in self._with(post):
+                stack.enter_context(m)
+            return self.llm.call_llm("x", model="m", service="litellm", **kw)
+
+    def test_read_timeout_not_asked_again(self):
+        llm, calls = self.llm, []
+
+        def post(url, headers=None, json=None, timeout=None):
+            calls.append(1)
+            raise llm.requests.ReadTimeout("read timed out")
+        with self.assertRaisesRegex(llm.ApiError, "no answer within"):
+            self.call(post)
+        self.assertEqual(len(calls), 1)
+
+    def test_no_usable_answer(self):
+        llm = self.llm
+        for choice, words in (({"message": {"content": None}, "finish_reason": "content_filter"}, "content filter"),
+                              ({"message": {"content": "  "}, "finish_reason": "stop"}, "no usable answer")):
+            calls = []
+
+            def post(url, headers=None, json=None, timeout=None, choice=choice):
+                calls.append(1)
+                return self.Reply(200, {"choices": [choice]})
+            with self.assertRaisesRegex(llm.ApiError, words):
+                self.call(post)
+            self.assertEqual(len(calls), 1, words)                               # not asked again
+
+    def test_rate_limit_waits_as_told_and_counts_requests(self):
+        llm, replies = self.llm, []
+
+        class Limited(self.Reply):
+            headers = {"Retry-After": "30"}
+
+        def post(url, headers=None, json=None, timeout=None):
+            replies.append(1)
+            if len(replies) < 3:
+                return Limited(429, {"error": {"message": "rate limited"}})
+            return self.Reply(200, {"choices": [{"message": {"content": '{"ok": true}'}, "finish_reason": "stop"}]})
+        llm.REQUESTS["sent"] = 0
+        self.assertEqual(self.call(post), '{"ok": true}')
+        self.assertEqual(llm.REQUESTS["sent"], 3)                                 # every attempt counted
+        self.assertTrue(all(30 <= s <= 32 for s in self.slept), self.slept)       # the service's wait, plus jitter
+
     def test_cache_and_record(self):
         llm = self.llm
         llm.MODEL, llm.SERVICE = "google-claude-sonnet-5", "asksage"

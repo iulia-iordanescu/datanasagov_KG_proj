@@ -61,7 +61,7 @@ class Cache:
             write_json(self.path, self.answers, indent=None)
 
 
-def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = 180) -> dict:
+def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = llm.READ_TIMEOUT) -> dict:
     """The model's answer to one filled prompt, from this stage's cache if it
     holds it, else from one model call (the run's first paid call shows plan
     and asks first: common/common_helpers/llm.py, PaidCalls), stored at once.

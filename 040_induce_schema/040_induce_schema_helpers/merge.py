@@ -94,8 +94,7 @@ def merge_labels(labels, triples, calls):
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
                         "examples": [v for v, _ in instances_of[lbl].most_common(EXAMPLES)]} for lbl in sent]
             reply = ask_cached(cache, calls, fill(PROMPTS[kind], labels=json.dumps(listing, ensure_ascii=False, indent=0)),
-                               "  040 will ask the model to merge synonymous labels, one call per kind",
-                               read_timeout=600)
+                               "  040 will ask the model to merge synonymous labels, one call per kind")
             decided = {}
             for m in reply.get("merges") if isinstance(reply.get("merges"), list) else []:
                 if not isinstance(m, dict):

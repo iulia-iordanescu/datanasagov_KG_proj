@@ -48,6 +48,7 @@ requests and python-dotenv.
 
 import json
 import os
+import random
 import re
 import sys
 import threading
@@ -83,10 +84,21 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 #: Every call asks for the model's most likely answer, the same each time as far as the model allows.
 TEMPERATURE = 0
 
-#: The longest answer a call may get, in tokens (about 4 characters each), asked for explicitly so the service's own
-#: default doesn't apply: on 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000
-#: characters, mid-JSON. 16,000 tokens is about 60,000 characters, several times the longest answer seen.
+#: The longest answer a call may get, in tokens, asked for explicitly so the service's own default doesn't apply: on
+#: 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000 characters, mid-JSON. With
+#: 16,000, one answer was still cut off, at 25,658 characters: fewer than 16,000 tokens usually hold, so tokens the
+#: model spends thinking may count too, or the model repeated itself. The log shows which (a cut-off answer is
+#: written there whole, with the service's token counts).
 MAX_ANSWER_TOKENS = 16000
+
+#: How long a call waits for its answer, in seconds, every call alike: long enough for an answer of
+#: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed).
+READ_TIMEOUT = 600
+
+#: Every request sent to the service in this run, retries, re-asks and failures included: what is billed, as far as
+#: the service bills requests (reset by paid_calls; shown in each report's Model calls).
+REQUESTS = {"sent": 0}
+_requests_lock = threading.Lock()
 
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
 #: Ask Sage's doesn't), for the run's record (describe).
@@ -187,6 +199,25 @@ class ApiError(Exception):
     handles it."""
 
 
+class RetryLater(RuntimeError):
+    """A rate limit or a server error: worth asking again, after `wait` seconds when the service says how long."""
+
+    def __init__(self, message: str, wait: float | None = None):
+        super().__init__(message)
+        self.wait = wait
+
+
+#: HTTP statuses worth asking again: rate limited (429), server errors, overloaded (529).
+RETRY_STATUSES = (429, 500, 502, 503, 504, 529)
+
+
+def _retry_after(resp) -> float | None:
+    try:
+        return float(resp.headers.get("Retry-After"))
+    except (TypeError, ValueError):
+        return None
+
+
 class CutOff(ApiError):
     """The answer reached the longest length allowed (MAX_ANSWER_TOKENS) and was cut off. Not retried: asking again
     with the same limit gets the same cut."""
@@ -217,8 +248,8 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int) -> str:
         # costs a request. Drop it and log in again on the next try.
         _token_cache.pop("token", None)
         raise RuntimeError("HTTP 401 - token dropped, will re-login")
-    if resp.status_code in (429, 500, 502, 503, 504):
-        raise RuntimeError(f"HTTP {resp.status_code}")
+    if resp.status_code in RETRY_STATUSES:
+        raise RetryLater(f"HTTP {resp.status_code}", _retry_after(resp))
     resp.raise_for_status()
     body = resp.json()
     # Ask Sage answers HTTP 200 with status 200 even when the request
@@ -295,8 +326,8 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
                          json={"model": model, "messages": [{"role": "user", "content": prompt}],
                                "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS},
                          timeout=(5, read_timeout))
-    if resp.status_code in (429, 500, 502, 503, 504):
-        raise RuntimeError(_litellm_error(resp))            # worth retrying
+    if resp.status_code in RETRY_STATUSES:
+        raise RetryLater(_litellm_error(resp), _retry_after(resp))   # worth retrying
     if resp.status_code >= 400:
         raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
     body = resp.json()
@@ -307,10 +338,18 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
         raise RuntimeError(f"LiteLLM's reply has no answer in it: {str(body)[:300]}") from None
     if body.get("model"):
         SERVED.add(str(body["model"]))
-    if choice.get("finish_reason") == "length":
+    reason = choice.get("finish_reason")
+    if reason == "length":
+        # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see why it ran long:
+        # many facts, or the model repeating itself.
+        log.debug(f"cut-off answer from {model}, {len(text or ''):,} characters, usage {body.get('usage')}:\n{text}")
         raise CutOff(f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, "
                      f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py), after {len(text or ''):,} characters")
-    return text or ""
+    if reason not in (None, "stop") or not (text or "").strip():
+        # e.g. "content_filter": a safety or recitation filter withheld the answer. Asking again gets the same.
+        raise ApiError(f"the model gave no usable answer (finish_reason {reason!r}, {len(text or ''):,} characters"
+                       + (": the service's content filter withheld it" if reason == "content_filter" else "") + ")")
+    return text
 
 
 # ------------------------------ either service ------------------------------
@@ -321,21 +360,28 @@ def list_models(service: str | None = None) -> list:
     return _litellm_models() if (service or SERVICE) == "litellm" else _asksage_models()
 
 
-def call_llm(prompt, attempts=4, read_timeout=180, model=None, service=None):
+def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None):
     """Send prompt to the model, through the service; the reply text. Retries with exponential backoff on rate
     limits, server errors and lost connections; a refusal that will not fix itself (ApiError) is raised at once.
     model, service: MODEL and SERVICE (the run's) when None."""
     model, service = model or MODEL, service or SERVICE
     ask = _ask_litellm if service == "litellm" else _ask_asksage
     for attempt in range(attempts):
+        with _requests_lock:
+            REQUESTS["sent"] += 1
         try:
             return ask(prompt, model, read_timeout)
+        except requests.ReadTimeout:
+            # Not asked again: the service may still be writing, and billing, the first answer.
+            raise ApiError(f"no answer within {read_timeout} s (READ_TIMEOUT in common/common_helpers/llm.py); not "
+                           f"asked again, since the service may still be writing, and billing, the first answer")
         except (RuntimeError, ValueError,
                 requests.ConnectionError, requests.Timeout) as e:
             if attempt == attempts - 1:
                 raise
-            wait = 2 ** attempt * 5          # 5s, 10s, 20s
-            log.warning(f"Model call to {model} failed ({e}); trying again in {wait} s (attempt {attempt + 2} of "
+            # 5, 10, 20 s, or longer when the service says so, plus up to 2 s so parallel calls don't retry together
+            wait = max(2 ** attempt * 5, getattr(e, "wait", None) or 0) + random.uniform(0, 2)
+            log.warning(f"Model call to {model} failed ({e}); trying again in {wait:.0f} s (attempt {attempt + 2} of "
                         f"{attempts}). Nothing to do: rate limits and server errors usually pass.")
             time.sleep(wait)
 
@@ -368,7 +414,7 @@ def _best_effort_json(text):
         raise
 
 
-def call_llm_json(prompt, retries=1, read_timeout=180):
+def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT):
     """Return the JSON OBJECT the prompt asked for, or raise.
 
     Every caller immediately does .get() on the result, so a reply that
@@ -487,6 +533,7 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
                          f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
     MODEL, SERVICE = name, service
     SERVED.clear()
+    REQUESTS["sent"] = 0
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
                  cache_dir=Path(output) / "cache")
 

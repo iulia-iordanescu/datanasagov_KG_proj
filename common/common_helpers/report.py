@@ -168,9 +168,11 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
     or None)]."""
     lines = ["### Model calls", "", "| Calls to | Made | Answered from the cache |", "|---|---:|---:|"]
     lines += [f"| {what} | {made:,} | {'–' if reused is None else f'{reused:,}'} |" for what, made, reused in stages]
+    from common import llm
     total = sum(made for _, made, _ in stages) + test_calls
     lines += [f"| the one-line test (first paid call of a run) | {test_calls} | – |",
-              f"| **total paid this run** | **{total:,}** | |", "",
+              f"| **answers received this run** | **{total:,}** | |",
+              f"| requests sent to the service, retries, re-asks and failures included | {llm.REQUESTS['sent']:,} | |", "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet.", ""]
     return lines

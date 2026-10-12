@@ -63,8 +63,7 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
             batch = [{"component_class": e["component_class"], "texts": e["support"], "examples": e["examples"]}
                      for e in wanted[start:start + DEFINE_BATCH]]
             reply = ask_cached(cache, calls, fill(PROMPTS[kind], entries=json.dumps(batch, ensure_ascii=False, indent=0)),
-                               f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call",
-                               read_timeout=600)
+                               f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call")
             sent = {e["component_class"] for e in batch}
             for field_name, target in (("definitions", result.of[kind]),
                                        ("too_vague", result.too_vague[kind])):

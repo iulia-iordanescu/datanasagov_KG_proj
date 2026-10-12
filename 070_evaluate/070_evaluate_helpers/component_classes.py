@@ -57,6 +57,9 @@ from common.triples_io import component_class_key
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "070_evaluate_prompts"   # 070_evaluate/070_evaluate_prompts/
 PROMPT = load(PROMPTS_DIR / "map_component_classes.txt")
 TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a person checks the translation table
+#: Component classes per translation call: the answer lists one item per component class, so a long list in one call
+#: could be cut off at the length limit (llm.MAX_ANSWER_TOKENS).
+TRANSLATE_BATCH = 100
 AGAIN = "then run `py 070_evaluate/run.py` again."
 SUGGEST_PROMPT = load(PROMPTS_DIR / "suggest_component_classes.txt")
 
@@ -97,18 +100,21 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
     definitions = {("entity class", e["component_class"]): e.get("definition", "") for e in schema_used["entity_classes"]}
     definitions.update({("predicate", e["component_class"]): e.get("definition", "") for e in schema_used["predicates"]})
     asked = [{"kind": k, "component_class": n, "definition": definitions.get((k, n), "")} for k, n in missing]
-    prompt = fill(PROMPT, ground_truth=json.dumps({k: [{"component_class": n, "definition": d} for n, d in v.items()]
-                                                   for k, v in gtt.items()}, ensure_ascii=False, indent=0),
-                  schema=json.dumps(asked, ensure_ascii=False, indent=0))
+    vocabulary_json = json.dumps({k: [{"component_class": n, "definition": d} for n, d in v.items()]
+                                  for k, v in gtt.items()}, ensure_ascii=False, indent=0)
     cache = Cache(calls.cache_dir, "map_component_classes")
     before = calls.paid.made
-    reply = ask_cached(cache, calls, prompt, f"  070 will ask the model to propose translations for {len(missing)} "
-                                             f"component class(es) of the current schema: 1 model call")
-    made = calls.paid.made - before
+    batches = [asked[i:i + TRANSLATE_BATCH] for i in range(0, len(asked), TRANSLATE_BATCH)]
     answers = {}
-    for item in reply.get("mapping", []) if isinstance(reply, dict) else []:
-        if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("schema"), str):
-            answers[(item["kind"], component_class_key(item["schema"]))] = item
+    for batch in batches:
+        prompt = fill(PROMPT, ground_truth=vocabulary_json, schema=json.dumps(batch, ensure_ascii=False, indent=0))
+        reply = ask_cached(cache, calls, prompt, f"  070 will ask the model to propose translations for {len(missing)} "
+                                                 f"component class(es) of the current schema: {len(batches)} model "
+                                                 f"call(s), {TRANSLATE_BATCH} per call")
+        for item in reply.get("mapping", []) if isinstance(reply, dict) else []:
+            if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("schema"), str):
+                answers[(item["kind"], component_class_key(item["schema"]))] = item
+    made = calls.paid.made - before
     by_key = {k: {component_class_key(n): n for n in v} for k, v in gtt.items()}
     rows, strays = [], []
     for kind, name in missing:

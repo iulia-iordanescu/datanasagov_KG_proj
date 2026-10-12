@@ -204,6 +204,10 @@ def failed_note(replies: Replies, where: str) -> str | None:
     where: what they are missing from ("the batch", "the output", …)."""
     if not replies.failed:
         return None
+    cut = sum("cut off at the longest length allowed" in why for why in replies.failed.values())
     return (f"{len(replies.failed)} record(s) failed: a model call for one of their text pieces failed, so each "
             f"is left out of {where} whole ({named([f'{i}: {why}' for i, why in replies.failed.items()], 3, '; ')}). "
-            f"Run the step again: only the failed pieces are asked again; every answer already paid for is reused.")
+            f"Run the step again: only the failed pieces are asked again; every answer already paid for is reused."
+            + (f" But {cut} of them had their answer cut off at the length limit, which a rerun would only repeat: "
+               f"first lower the step's max_chars, or raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py "
+               f"(docs/running_on_nasa_laptop.md, section 7)." if cut else ""))

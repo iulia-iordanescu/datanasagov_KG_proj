@@ -758,5 +758,39 @@ class CompareRuns(unittest.TestCase):
         self.assertIn("Don't draw conclusions from them yet", cr.report([a, b], ids, {}))
 
 
+class TranslationBatches(unittest.TestCase):
+    """070 asks for translations TRANSLATE_BATCH component classes per call, so no answer grows past the length limit."""
+
+    def test_batches(self):
+        import json
+        import re
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        import component_classes as cc
+        from common import llm
+        from common.llm import Calls, PaidCalls
+        n = 2 * cc.TRANSLATE_BATCH + 50
+        missing = [("entity class", f"Thing{i}") for i in range(n)]
+        schema_used = {"entity_classes": [{"component_class": f"Thing{i}", "definition": "d"} for i in range(n)],
+                       "predicates": []}
+        gtt = {"entity class": {"Device": "a device"}, "predicate": {}}
+        sent = []
+
+        def answer(prompt, read_timeout=None):
+            names = re.findall(r'"component_class": "(Thing\d+)"', prompt)
+            sent.append(len(names))
+            return {"mapping": [{"kind": "entity class", "schema": x, "ground_truth": "Device"} for x in names]}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(llm, "call_llm_json", answer):
+            calls = Calls(paid=PaidCalls(confirm=False), cache_dir=Path(tmp))
+            calls.paid.started = True                                       # no test call
+            rows, notes, made, reused = cc._propose(missing, gtt, schema_used, calls,
+                                                    {"entity class": {}, "predicate": {}})
+        self.assertEqual(sent, [cc.TRANSLATE_BATCH, cc.TRANSLATE_BATCH, 50])
+        self.assertEqual(made, 3)
+        self.assertEqual(len(rows), n)
+        self.assertTrue(all(r["component_class_in_gtt"] == "Device" for r in rows))
+
+
 if __name__ == "__main__":
     unittest.main()
