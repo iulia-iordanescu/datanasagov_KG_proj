@@ -83,6 +83,11 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 #: Every call asks for the model's most likely answer, the same each time as far as the model allows.
 TEMPERATURE = 0
 
+#: The longest answer a call may get, in tokens (about 4 characters each), asked for explicitly so the service's own
+#: default doesn't apply: on 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000
+#: characters, mid-JSON. 16,000 tokens is about 60,000 characters, several times the longest answer seen.
+MAX_ANSWER_TOKENS = 16000
+
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
 #: Ask Sage's doesn't), for the run's record (describe).
 SERVED = set()
@@ -91,7 +96,8 @@ SERVED = set()
 def describe() -> dict:
     """What answered this run's calls, for the run's record (each step's "made"): the service, the model as asked
     for, the exact model the service said answered (when it says), and the settings every call is sent with."""
-    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), "temperature": TEMPERATURE}
+    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), "temperature": TEMPERATURE,
+            "max_answer_tokens": MAX_ANSWER_TOKENS}
 
 
 def model_label() -> str:
@@ -179,6 +185,11 @@ class ApiError(Exception):
     every retry, burning four calls to report the same thing. A rate limit or
     a server error is raised as RuntimeError instead, so the normal backoff
     handles it."""
+
+
+class CutOff(ApiError):
+    """The answer reached the longest length allowed (MAX_ANSWER_TOKENS) and was cut off. Not retried: asking again
+    with the same limit gets the same cut."""
 
 
 def _ask_asksage(prompt: str, model: str, read_timeout: int) -> str:
@@ -282,7 +293,7 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
     url, headers = _litellm("/v1/chat/completions")
     resp = requests.post(url, headers=headers,
                          json={"model": model, "messages": [{"role": "user", "content": prompt}],
-                               "temperature": TEMPERATURE},
+                               "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS},
                          timeout=(5, read_timeout))
     if resp.status_code in (429, 500, 502, 503, 504):
         raise RuntimeError(_litellm_error(resp))            # worth retrying
@@ -290,11 +301,15 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
         raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
     body = resp.json()
     try:
-        text = body["choices"][0]["message"]["content"]
+        choice = body["choices"][0]
+        text = choice["message"]["content"]
     except (KeyError, IndexError, TypeError):
         raise RuntimeError(f"LiteLLM's reply has no answer in it: {str(body)[:300]}") from None
     if body.get("model"):
         SERVED.add(str(body["model"]))
+    if choice.get("finish_reason") == "length":
+        raise CutOff(f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, "
+                     f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py), after {len(text or ''):,} characters")
     return text or ""
 
 

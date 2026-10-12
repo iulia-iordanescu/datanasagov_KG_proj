@@ -472,7 +472,7 @@ class LiteLLM(unittest.TestCase):
         self.assertEqual(url, "https://proxy.fast.luna.nasa.gov/v1/chat/completions")
         self.assertEqual(headers, {"Authorization": "Bearer sk-test"})
         self.assertEqual(body, {"model": "claude-opus-5.5", "messages": [{"role": "user", "content": "hi"}],
-                                "temperature": 0})
+                                "temperature": 0, "max_tokens": llm.MAX_ANSWER_TOKENS})
         self.assertEqual(llm.SERVED, {"claude-opus-5-5-20260101"})
 
     def test_refusal_not_retried(self):
@@ -488,6 +488,21 @@ class LiteLLM(unittest.TestCase):
         self.assertEqual((ok, len(calls)), (False, 1))
         self.assertIn("HTTP 403: key not allowed to access model", why)
 
+    def test_cut_off_answer(self):
+        """An answer cut off at the length limit says so, and isn't asked again (the same limit cuts it again)."""
+        from unittest import mock
+        llm, calls = self.llm, []
+
+        def post(url, headers=None, json=None, timeout=None):
+            calls.append(1)
+            return self.Reply(200, {"choices": [{"message": {"content": '{"triples": [{"subject": "MO'},
+                                                 "finish_reason": "length"}]})
+        with mock.patch.dict("os.environ", {"LITELLM_API_KEY": "sk-test"}), \
+                mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "load_dotenv", lambda: None):
+            with self.assertRaisesRegex(llm.CutOff, "cut off at the longest length allowed"):
+                llm.call_llm_json("extract", read_timeout=5)
+        self.assertEqual(len(calls), 1)
+
     def test_cache_and_record(self):
         llm = self.llm
         llm.MODEL, llm.SERVICE = "google-claude-sonnet-5", "asksage"
@@ -496,7 +511,8 @@ class LiteLLM(unittest.TestCase):
         self.assertEqual(llm.cache_identity(), "litellm:claude-sonnet-5")
         llm.SERVED.add("claude-sonnet-5-20260101")
         self.assertEqual(llm.describe(), {"service": "litellm", "model": "claude-sonnet-5",
-                                          "served_as": ["claude-sonnet-5-20260101"], "temperature": 0})
+                                          "served_as": ["claude-sonnet-5-20260101"], "temperature": 0,
+                                          "max_answer_tokens": llm.MAX_ANSWER_TOKENS})
         self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
 
     def test_unknown_service(self):

@@ -123,6 +123,7 @@ A page opens in your browser: pick the [draft batch](terminology.md#4-ground-tru
 | *Test call to … failed* (040, 050, 060 or 070 stops) | The key or the connection is wrong, or Ask Sage refuses you that [model](terminology.md#8-the-pipeline). Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; see *Choosing a model*). Otherwise check `.env`, and that you're on NASA's network (or VPN). |
 | *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set* / *LITELLM_API_KEY isn't set* | `.env` is missing, or the key's name is misspelled. | Section 3. |
 | *Failed to resolve 'api.asksage.ai.nasa.gov'* | The laptop can't reach Ask Sage. | Connect to NASA's network or VPN. |
+| *… failed for <id> piece 1: the answer was cut off at the longest length allowed* | The model's answer for that text reached `MAX_ANSWER_TOKENS` (`common/common_helpers/llm.py`, 16,000 tokens, about 60,000 characters) and was cut off. Only that text is left out; the next run asks for it again. | If it happens often, raise `MAX_ANSWER_TOKENS`, or lower the step's `max_chars` so each [text piece](terminology.md#1-records-and-their-text), and so each answer, is shorter. |
 | *missing input files* | An earlier [step](terminology.md#8-the-pipeline) hasn't run yet. | Run the steps in order (section 4). |
 | *running scripts is disabled* | PowerShell's script policy. | Part 3 of `docs/virtual_environment_setup.md`. |
 
