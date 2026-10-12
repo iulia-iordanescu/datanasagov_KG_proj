@@ -77,3 +77,21 @@ def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = 
         calls.paid.made_call()
         cache.put(k, reply)
     return reply
+
+
+def ask_split(ask, batch: list, refused: list) -> list:
+    """The answers to a batch, asked with ask(batch) -> answer. When the service refuses the batch (llm.ApiError: a
+    content filter, a cut-off, no usable answer) or its answer is twice not JSON (llm.BadReply), each half is asked
+    instead, and so on down to single items: so one item the service won't answer about costs that item alone, not
+    its whole batch, and the step goes on. A single item still refused is added to refused as (item, why).
+    One refused item in a batch of 80 costs about 2 x log2(80), some 13, extra calls, each smaller."""
+    try:
+        return [ask(batch)]
+    except (llm.ApiError, llm.BadReply) as e:
+        if len(batch) == 1:
+            refused.append((batch[0], str(e)))
+            return []
+        llm.log.warning(f"The model's answer to a batch of {len(batch)} was refused ({e}); asking for each half "
+                        f"separately, to find the item(s) it won't answer about. Nothing to do.")
+        mid = len(batch) // 2
+        return ask_split(ask, batch[:mid], refused) + ask_split(ask, batch[mid:], refused)

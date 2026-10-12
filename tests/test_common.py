@@ -404,6 +404,31 @@ class SameModel(unittest.TestCase):
         self.assertEqual(len(same_model_notes(gt, {"b"}, "some-new-model")), 0)            # unknown maker: only the same name
 
 
+class AskSplit(unittest.TestCase):
+
+    def test_refused_item_isolated(self):
+        """A refused batch is asked in halves down to the refused item; everything else is answered."""
+        from common import llm
+        from common.cache import ask_split
+        asked = []
+
+        def ask(batch):
+            asked.append(list(batch))
+            if "bad" in batch:
+                raise llm.ApiError("the model gave no usable answer (finish_reason 'content_filter')")
+            return {x: x.upper() for x in batch}
+        refused = []
+        items = [f"w{i}" for i in range(7)] + ["bad"]
+        answers = {}
+        for reply in ask_split(ask, items, refused):
+            answers.update(reply)
+        self.assertEqual(answers, {f"w{i}": f"W{i}" for i in range(7)})
+        self.assertEqual([r for r, _ in refused], ["bad"])
+        self.assertIn("content_filter", refused[0][1])
+        self.assertLessEqual(len(asked), 2 * 3 + 1)                             # halves down to one item: log2(8) levels
+        self.assertEqual(ask_split(ask, ["a", "b"], []), [{"a": "A", "b": "B"}])  # nothing refused: one call
+
+
 class TryModels(unittest.TestCase):
 
     def test_try(self):

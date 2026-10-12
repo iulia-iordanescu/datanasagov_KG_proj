@@ -25,7 +25,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, ask_cached
+from common.cache import Cache, ask_cached, ask_split
 from common.audit import log
 from common.prompt_files import fill, load
 
@@ -48,6 +48,8 @@ class Definitions:
     of: dict = field(default_factory=dict)          # {"entity_classes": {entity class: sentence}, "predicates": {...}}
     too_vague: dict = field(default_factory=dict)   # {"entity_classes": {entity class: reason}, ...}
     unknown: list = field(default_factory=list)     # schema entries in replies that weren't sent
+    refused: list = field(default_factory=list)     # {"kind", "component_class", "why"}: the service wouldn't define
+                                                    # them (e.g. its content filter), so they get no definition
     calls: int = 0                                  # model calls made by this stage
     reused: int = 0                                 # batches answered from the cache
 
@@ -62,11 +64,17 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
         for start in range(0, len(wanted), DEFINE_BATCH):
             batch = [{"component_class": e["component_class"], "texts": e["support"], "examples": e["examples"]}
                      for e in wanted[start:start + DEFINE_BATCH]]
-            reply = ask_cached(cache, calls, fill(PROMPTS[kind], entries=json.dumps(batch, ensure_ascii=False, indent=0)),
-                               f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call")
+            refused = []
+            # A batch the service refuses is asked in halves; an entry it still refuses alone gets no definition, with
+            # the reason (common.cache.ask_split).
+            replies = ask_split(lambda part: ask_cached(
+                cache, calls, fill(PROMPTS[kind], entries=json.dumps(part, ensure_ascii=False, indent=0)),
+                f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call"), batch, refused)
+            result.refused += [{"kind": WORD[kind], "component_class": e["component_class"], "why": why}
+                               for e, why in refused]
             sent = {e["component_class"] for e in batch}
-            for field_name, target in (("definitions", result.of[kind]),
-                                       ("too_vague", result.too_vague[kind])):
+            for reply, (field_name, target) in [(r, ft) for r in replies for ft in (("definitions", result.of[kind]),
+                                                                                    ("too_vague", result.too_vague[kind]))]:
                 given = reply.get(field_name) if isinstance(reply.get(field_name), dict) else {}
                 for name, text in given.items():
                     if name not in sent:

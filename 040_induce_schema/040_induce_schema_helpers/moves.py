@@ -110,6 +110,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         "counts": {"entity_classes": counts.entity_classes, "predicates": counts.predicates,
                    "patterns": counts.patterns},
         "definitions": definitions.of, "too_vague": definitions.too_vague,
+        "refused": {"labels": labels.refused, "definitions": definitions.refused},
         "unknown_schema_entries": definitions.unknown, "missing_definitions": schema.missing_definitions,
         "calls": {**calls_made, "reused_extractions": triples.reused},
         "compared_with_hand_schema": comparison,
@@ -126,6 +127,18 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}. They add "
                         f"no support to any schema entry. Nothing to do if they are very short records; otherwise "
                         f"look at each one's `unverified` list in {evidence_shown}.")
+    refused = [f"{r['component_instance']} ({label.BECOMES[kind]})" for kind, rows in labels.refused.items() for r in rows]
+    refused += [f"{r['component_class']} ({r['kind']}, definition)" for r in definitions.refused]
+    if refused:
+        why = next(iter([r["why"] for rows in labels.refused.values() for r in rows]
+                        + [r["why"] for r in definitions.refused]))
+        warnings.append(f"The service refused to answer about {len(refused)} item(s), even asked alone ({why}): "
+                        f"{named(refused, 10)}. A refused component instance stays unlabeled and counts toward no "
+                        f"schema entry; a refused schema entry gets no definition. Everything else in their batches "
+                        f"was answered (each refused batch was asked again in halves). Each one, with the reason, is "
+                        f"in {evidence_shown} under `refused`; what the model wrote before the stop is in this run's "
+                        f"log (outputs/logs/<run id>.log), on DEBUG lines starting \"answer stopped by the service\". "
+                        f"Nothing to do if few; if many, try another model (`--model`).")
     unlabeled = sum(len(v) for v in labels.unlabeled.values())
     if unlabeled:
         left = [v for kind in label.KINDS for v in labels.unlabeled.get(kind, [])]

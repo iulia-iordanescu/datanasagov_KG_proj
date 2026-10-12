@@ -346,7 +346,10 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
         raise CutOff(f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, "
                      f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py), after {len(text or ''):,} characters")
     if reason not in (None, "stop") or not (text or "").strip():
-        # e.g. "content_filter": a safety or recitation filter withheld the answer. Asking again gets the same.
+        # e.g. "content_filter": a safety or recitation filter withheld the answer. Asking again gets the same. What
+        # came before the stop goes to the log file (DEBUG), so a person can see where it stopped.
+        log.debug(f"answer stopped by the service from {model} (finish_reason {reason!r}), {len(text or ''):,} "
+                  f"characters, usage {body.get('usage')}:\n{text}")
         raise ApiError(f"the model gave no usable answer (finish_reason {reason!r}, {len(text or ''):,} characters"
                        + (": the service's content filter withheld it" if reason == "content_filter" else "") + ")")
     return text

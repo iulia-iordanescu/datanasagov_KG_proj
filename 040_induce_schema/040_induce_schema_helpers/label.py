@@ -42,7 +42,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, ask_cached
+from common.cache import Cache, ask_cached, ask_split
 from common.audit import log
 from common.prompt_files import fill, load
 
@@ -68,6 +68,8 @@ class Labels:
     of: dict = field(default_factory=dict)          # {"entity": {component instance: label}, "predicate": {...}}
     vocabulary: dict = field(default_factory=dict)  # {"entity": [labels, in order of first use], ...}
     unlabeled: dict = field(default_factory=dict)   # {"entity": [component instances], ...}
+    refused: dict = field(default_factory=dict)     # {"entity": [{"component_instance", "why"}], ...}: the service
+                                                    # wouldn't label them (e.g. its content filter); also unlabeled
     batches: list = field(default_factory=list)     # {"kind", "component_instances", "new_labels", "reused"}
     merged_into: dict = field(default_factory=dict) # filled by stage 4: {"entity": {label: final label}, ...}
     merges: list = field(default_factory=list)      # filled by stage 4
@@ -153,20 +155,33 @@ def label_component_instances(triples, calls) -> Labels:
                                f"  040 will ask the model to label component instances, {LABEL_BATCH} per call")
             return reply.get("labels") if isinstance(reply.get("labels"), dict) else {}
 
+        refused = []
         for start in range(0, len(order), LABEL_BATCH):
             batch = order[start:start + LABEL_BATCH]
             items = {value: found[kind][value][1] for value in batch}
-            got, missing = _match(batch, ask(items))
+            # A batch the service refuses is asked in halves; component instances it still refuses alone stay
+            # unlabeled, with the reason (common.cache.ask_split).
+            answers = {}
+            for reply in ask_split(lambda values: ask({v: items[v] for v in values}), batch, refused):
+                answers.update(reply)
+            got, missing = _match(batch, answers)
+            missing = [v for v in missing if v not in {r for r, _ in refused}]
             if missing:
                 # One more try for those left out, with the vocabulary as it is now.
-                more, missing = _match(missing, ask({v: items[v] for v in missing}))
+                again = {}
+                for reply in ask_split(lambda values: ask({v: items[v] for v in values}), missing, refused):
+                    again.update(reply)
+                more, missing = _match(missing, again)
                 got.update(more)
+                missing = [v for v in missing if v not in {r for r, _ in refused}]
             new = [lbl for lbl in dict.fromkeys(got.values()) if lbl not in vocabulary]
             vocabulary += new
             labels.update(got)
             unlabeled += missing
             result.batches.append({"kind": BECOMES[kind], "component_instances": len(batch), "new_labels": new,
                                    "reused": len(set(got.values())) - len(new)})
+        unlabeled += [v for v, _ in refused]
+        result.refused[kind] = [{"component_instance": v, "why": why} for v, why in refused]
         result.of[kind], result.vocabulary[kind], result.unlabeled[kind] = labels, vocabulary, unlabeled
         log.info(f"  {kind} component instances: {len(labels):,} labeled with {len(vocabulary):,} labels"
                  + (f"; {len(unlabeled)} left unlabeled" if unlabeled else ""))

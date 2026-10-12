@@ -127,6 +127,7 @@ A page opens in your browser: pick the [draft batch](terminology.md#4-ground-tru
 | *… failed for <id> piece 1: no answer within 600 s* | The model took longer than `READ_TIMEOUT` (`common/common_helpers/llm.py`). It isn't asked again in this run, since the service may still be writing, and billing, the first answer. | Run the step again later; if it keeps happening, lower the step's `max_chars`. |
 | *… the model gave no usable answer (finish_reason …)* | The model answered nothing usable, e.g. its service's content filter withheld the answer (`content_filter`). Asking again gets the same. | Look at the record's text; if it happens often with one model, try another (`--model`). |
 | *Model call … failed (HTTP 429 …); trying again in N s* | The service's rate limit. The step waits as long as the service asks (plus up to 2 s), up to 3 times. | Nothing, unless it fails in the end: then lower the step's `workers` and run it again. |
+| *The model's answer to a batch of N was refused (…); asking for each half separately* | 040's labeling or defining hit an item the service won't answer about (e.g. its content filter). The step asks again in halves to find it, and goes on. | Nothing; the report then lists the item(s) refused (`040_induce_schema/040_induce_schema.md`, *Checks and warnings*). |
 | *missing input files* | An earlier [step](terminology.md#8-the-pipeline) hasn't run yet. | Run the steps in order (section 4). |
 | *running scripts is disabled* | PowerShell's script policy. | Part 3 of `docs/virtual_environment_setup.md`. |
 
