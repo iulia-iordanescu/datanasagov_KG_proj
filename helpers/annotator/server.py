@@ -563,7 +563,10 @@ def help_text(view: str) -> dict:
     text = README.read_text(encoding="utf-8")
     i = text.index(head)
     nxt = [j for j in (text.find("\n## ", i + len(head)), text.find("\n### ", i + len(head))) if j != -1]
-    return {"file": f"annotations/{README.name}", "markdown": text[i:min(nxt) if nxt else len(text)].strip()}
+    section = text[i:min(nxt) if nxt else len(text)].strip()
+    # The section's first paragraph after its heading: what the view is for, shown at the top of the view.
+    paragraphs = [p.strip() for p in section[len(head):].split("\n\n") if p.strip()]
+    return {"file": f"annotations/{README.name}", "markdown": section, "intro": paragraphs[0] if paragraphs else ""}
 
 
 # --------------------------------------------------------------------------

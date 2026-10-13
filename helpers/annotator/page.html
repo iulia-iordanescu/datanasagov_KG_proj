@@ -32,6 +32,9 @@
   #status { margin-left: auto; color: var(--muted); font-size: 14px; }
   #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
   #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
+  #intro { margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  #intro[hidden] { display: none; }
+  #intro p { margin: 0 0 4px 0; }
   #warnings:empty { display: none; }
   #warnings li { white-space: pre-line; }
   #gaps { padding: 8px 16px; background: var(--flag-bg); color: var(--flag); }
@@ -109,6 +112,7 @@
   <span id="status"></span>
 </header>
 <ul id="warnings"></ul>
+<div id="intro" hidden></div>
 <details id="gaps" hidden></details>
 <main>
   <nav id="records" aria-label="Records"></nav>
@@ -247,6 +251,7 @@ function drawList() {
 function show(i) {
   current = i; activeRow = null;
   location.hash = `b=${batch.n}&r=${i}`;
+  showIntro();
   drawList();
   const rec = batch.records[i];
   if (!rec) { $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" }, "This batch has no records."))); return; }
@@ -494,6 +499,7 @@ async function openMapping() {
   // counts, as unchecked until ticked again; ticking stores both definitions as they are now.
   // Untouched, it is saved as it is in the file, so it stays stale.
   location.hash = "m";
+  showIntro();
   if (!mapping.found) {
     $("records").replaceChildren();
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
@@ -676,6 +682,7 @@ async function openPartial() {
   status("Opening…");
   partial = await api("/api/partial");
   location.hash = "p";
+  showIntro();
   if (!partial.found) {
     $("records").replaceChildren();
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
@@ -747,6 +754,7 @@ async function openAdditions(prefill) {
   status("Opening…");
   additions = await api("/api/additions");
   location.hash = "a";
+  showIntro();
   editing = prefill || null;
   status(`Editing ${additions.file}`, "saved");
   drawAdditions();
@@ -867,6 +875,7 @@ async function openVocab() {
   vocab = await api("/api/vocab");
   vocabPlan = null;
   location.hash = "v";
+  showIntro();
   status(`Ground truth vocabulary (definitions in ${vocab.file})`, "saved");
   drawVocab();
 }
@@ -1005,6 +1014,20 @@ async function showHelp(path) {            // the README's section for this view
   } catch (e) { fail(e); }
 }
 function hideHelp() { $("help").hidden = true; }
+
+// At the top of every view but a batch: what the view is for, and when (the first paragraph of its README section,
+// read from the file each time), with the way to the rest.
+async function showIntro() {
+  const view = currentView(), box = $("intro");
+  if (view === "batch") { box.hidden = true; return; }
+  try {
+    const h = await api(`/api/help?view=${view}`);
+    const body = el("div", { class: "helpbody" });
+    body.innerHTML = markdown(h.intro);
+    box.replaceChildren(body, el("button", { onclick: () => showHelp() }, "Help: how to use this view"));
+    box.hidden = false;
+  } catch (e) { box.hidden = true; }
+}
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideHelp(); });
 
 loadBatches().catch(fail);
