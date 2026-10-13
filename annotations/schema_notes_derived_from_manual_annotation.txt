@@ -11,7 +11,7 @@ predicate            the relationship
 object               the thing it connects to
 object_class         class of the object (X = not yet decided)
 source_text          exact passage the fact comes from, copied verbatim;
-                     "(record structure)" for DESCRIBES rows (rule 8)
+                     "(record structure)" for describes triples (rule 8)
 all_facts_extracted  1 = every fact in the text was written down
                      0 = only some facts were written down
 
@@ -125,7 +125,7 @@ OPEN QUESTIONS
   temperature). Affects record 2.
 - Hierarchy: where Program sits under Mission; whether Comet becomes a
   subclass of CelestialBody.
-- For the scorer: exclude DESCRIBES rows (rule 8); treat X as "not
+- For the scorer: exclude describes triples (rule 8); treat X as "not
   decided"; decide whether a doubled word ("and and") still counts as a
   match.
 - Record 3 (MODIS/Aqua Snow Cover...) is partial. Its dataset is not
