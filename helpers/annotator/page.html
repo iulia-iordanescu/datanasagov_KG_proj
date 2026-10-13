@@ -27,13 +27,17 @@
          -webkit-font-smoothing: antialiased; }
   header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line);
            box-shadow: var(--shadow); }
-  header .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 20px; }
-  header .batchpick { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
-  header .views { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 5px 20px 6px; font-size: 13.5px;
-                  background: var(--tint); border-top: 1px solid var(--line); }
-  header .views .viewslabel { color: var(--muted); margin-right: 4px; }
-  header .views button { border: 0; background: transparent; color: var(--accent); padding: 2px 8px; border-radius: 6px; }
-  header .views button:hover { background: var(--accent-bg); }
+  header .topbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 20px; }
+  header .batchpick { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); }
+  .viewsmenu { position: relative; }
+  .viewsmenu summary { list-style: none; cursor: pointer; padding: 6px 12px; border-radius: 8px; color: var(--accent); }
+  .viewsmenu summary::-webkit-details-marker { display: none; }
+  .viewsmenu summary::after { content: " ▾"; }
+  .viewsmenu summary:hover, .viewsmenu[open] summary { background: var(--accent-bg); }
+  .viewsmenu .menu { position: absolute; top: 100%; left: 0; z-index: 3; margin-top: 4px; min-width: 230px; padding: 6px;
+                     background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+  .viewsmenu .menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; }
+  .viewsmenu .menu button:hover { background: var(--accent-bg); }
   header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 0 8px 0 0; }
   select, input, textarea, button { font: inherit; color: var(--ink); }
   select, input, textarea { background: var(--input); border: 1px solid #c3cac3; border-radius: 8px; padding: 6px 9px; }
@@ -60,17 +64,18 @@
   .addbox input { width: min(420px, 100%); }
   main { display: grid; grid-template-columns: 250px 1fr; gap: 16px; padding: 16px; }
   .workgrid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-  .textcol { position: sticky; top: 104px; max-height: calc(100vh - 120px); overflow: auto; }
+  .textcol { position: sticky; top: 72px; max-height: calc(100vh - 88px); overflow: auto; }
   .textcol #text { max-height: 46vh; }
   @media (max-width: 1100px) { .workgrid { grid-template-columns: 1fr; } .textcol { position: static; max-height: none; } }
   .classpanel { max-height: 40vh; overflow: auto; }
   .classopt { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
               border-radius: 0; padding: 6px 4px; background: transparent; }
   .classopt:hover { background: var(--accent-bg); }
-  .triplenav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+  .triplenav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 8px; }
+  .triplenav button { padding: 4px 12px; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
-        max-height: calc(100vh - 120px); overflow: auto; position: sticky; top: 104px; align-self: start; }
+        max-height: calc(100vh - 88px); overflow: auto; position: sticky; top: 72px; align-self: start; }
   nav button { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 6px 8px; margin: 1px 0; }
   nav button.current { background: var(--accent-bg); outline: 0; box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
   nav button:hover { background: var(--tint); }
@@ -112,24 +117,24 @@
   .hintbox summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
   .welcome ol { padding-left: 22px; line-height: 1.7; }
   .welcome li { margin-bottom: 6px; max-width: 80ch; }
-  .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 8px; }
-  .triple label, .source label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600;
-                                 letter-spacing: 0.04em; text-transform: uppercase; color: var(--label); min-width: 0; }
-  .triple label input, .triple label select, .source label textarea { text-transform: none; letter-spacing: normal;
-                                 font-weight: 400; font-size: 14.5px; }
-  .triple input { width: 100%; min-width: 0; }
+  .triple { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 34%); gap: 8px 10px; }
+  .triple label, .source label { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-weight: 600;
+                                 color: var(--label); min-width: 0; }
+  .triple label input, .triple label textarea, .source label textarea { font-weight: 400; font-size: 14.5px; }
+  .triple input, .triple textarea { width: 100%; min-width: 0; }
+  textarea.grow { resize: none; overflow: hidden; line-height: 1.4; }
   .triple .cls { font-size: 13px; }
   @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
   .source { display: flex; gap: 8px; align-items: flex-end; margin-top: 6px; }
   .source label { flex: 1; }
-  .source textarea { width: 100%; min-height: 44px; resize: vertical; }
+  .source textarea { width: 100%; }
   .problems { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
   .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
   .problems li.error { background: var(--error-bg); color: var(--error); }
   .problems li.flag { background: var(--flag-bg); color: var(--flag); }
   .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--accent-bg);
                border-radius: 8px; padding: 8px 10px; }
-  .describes input.title { flex: 1 1 280px; min-width: 0; }
+  .describes .title { flex: 1 1 280px; min-width: 0; }
   .empty { color: var(--muted); }
   .name { font-weight: 600; }                 /* a view's or section's name, *written so* in the README and guidelines */
   #help { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.45); display: flex;
@@ -167,17 +172,19 @@
 <header>
   <div class="topbar">
     <h1>Annotation tool</h1>
-    <label class="batchpick">Annotate batch <select id="batch" aria-label="Batch to annotate"></select></label>
+    <label class="batchpick">Batch <select id="batch" aria-label="Batch to annotate"></select></label>
     <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
+    <details class="viewsmenu" id="viewsmenu">
+      <summary>Other views</summary>
+      <div class="menu" role="navigation" aria-label="Other views">
+        <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
+        <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
+        <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
+        <button id="vocab" title="annotations/schema_derived_from_manual_annotation.txt">Ground truth vocabulary</button>
+      </div>
+    </details>
     <span id="status"></span>
     <button id="helpbutton" title="annotations/README.md: how to use the view you're on">Help</button>
-  </div>
-  <div class="views" role="navigation" aria-label="Other views">
-    <span class="viewslabel">Other views, when needed:</span>
-    <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
-    <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
-    <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
-    <button id="vocab" title="annotations/schema_derived_from_manual_annotation.txt">Ground truth vocabulary</button>
   </div>
 </header>
 <ul id="warnings"></ul>
@@ -188,7 +195,7 @@
   <div id="record"><section class="card welcome">
     <h2>Annotating ground truth</h2>
     <ol>
-      <li><strong>Choose a batch</strong> at the top, under “Annotate batch”. A batch is one file of records to annotate.</li>
+      <li><strong>Choose a batch</strong> at the top, under “Batch”. A batch is one file of records to annotate.</li>
       <li><strong>Read the Guidelines</strong> (the button next to the batch) before the first record: they say what to write.</li>
       <li><strong>For each record:</strong> read the record's text, then correct, delete or add its ground truth triples, and
           tick “All facts extracted” when every fact the text states has a ground truth triple.</li>
@@ -205,11 +212,13 @@
 "use strict";
 // The whole state: the open batch, as the server sent it, edited in place.
 let batch = null, current = 0, activeRow = null, saveTimer = null, saving = false, dirty = false;
-// One ground truth triple at a time (or all of them), remembered on this computer; tripleAt: which one, among the
-// record's ground truth triples (the DESCRIBES row isn't one).
+// One at a time (or all at once), remembered on this computer: the record's DESCRIBES row, then its ground truth
+// triples; tripleAt: which of those is shown (0 = the DESCRIBES row, if the record has one).
 let oneAtATime = (() => { try { return localStorage.getItem("oneAtATime") !== "0"; } catch (_) { return true; } })();
 let tripleAt = 0;
 const tripleRows = (rec) => rec.rows.map((r, j) => isDescribes(r) ? -1 : j).filter((j) => j >= 0);
+const stepRows = (rec) => rec.rows.filter(isDescribes).length
+  ? [rec.rows.findIndex(isDescribes), ...tripleRows(rec)] : tripleRows(rec);
 
 const $ = (id) => document.getElementById(id);
 function el(tag, attrs, ...children) {
@@ -229,7 +238,12 @@ async function api(path, body) {
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
-function status(text, kind) { const s = $("status"); s.textContent = text; s.className = kind || ""; }
+// The save status, short ("✓ Saved") when all is saved; the whole message (which file, when) on hover.
+function status(text, kind) {
+  const s = $("status");
+  s.textContent = kind === "saved" && /^(Editing|Saved to) /.test(text) ? "✓ Saved" : text;
+  s.title = text; s.className = kind || "";
+}
 // As the server decides (common/common_helpers/triples_io.is_describes): the subject class by
 // loose match (only letters and digits count, so "Catalog_Entry" counts too); the predicate
 // with case ignored, spaces, "_" and "-" equivalent, and punctuation at either end dropped.
@@ -241,8 +255,8 @@ const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p
 const flagsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "flag").length, 0);
 
 // The record's place in the batch, the batch's progress, and what in this record is left to fix or look at.
-function hintOpen() {                    // open unless folded away earlier on this computer
-  try { return localStorage.getItem("hintTextOpen") !== "0"; } catch (_) { return true; }
+function hintOpen() {                    // folded away unless opened earlier on this computer
+  try { return localStorage.getItem("hintTextOpen") === "1"; } catch (_) { return false; }
 }
 
 function drawProgress() {
@@ -282,19 +296,20 @@ async function loadBatches() {
   if (wanted.has("v")) { await openVocab(); return; }
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
-    await openBatch(+wanted.get("b"), +(wanted.get("r") || 0));
+    await openBatch(+wanted.get("b"), +(wanted.get("r") || 0), +(wanted.get("t") || 0));
   }
 }
-async function openBatch(n, at) {
+async function openBatch(n, at, step = 0) {
   await flush();
   mapping = null; partial = null; additions = null; vocab = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
-  tripleAt = 0;                            // a newly opened batch starts at its record's first ground truth triple
+  tripleAt = step;                         // a newly opened batch: the row the address names, else the record's first
   $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
   $("predicates").replaceChildren(...batch.predicates.map(p => el("option", { value: p })));
   status(`Editing annotations/ground_truth/${batch.file}`, "saved");
-  show(Math.min(at || 0, Math.max(batch.records.length - 1, 0)));
+  current = Math.min(at || 0, Math.max(batch.records.length - 1, 0));   // so show() keeps tripleAt
+  show(current);
   const opt = [...$("batch").options].find(o => o.value === String(n));
   if (opt && opt.textContent.includes("not opened yet")) loadBatches();   // it now has its copy
 }
@@ -303,6 +318,11 @@ $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
 $("vocab").addEventListener("click", () => openVocab().catch(fail));
+// The menu of other views closes once a view is chosen, or on a click anywhere else.
+document.addEventListener("click", (e) => {
+  const menu = $("viewsmenu");
+  if (menu.open && (!menu.contains(e.target) || e.target.closest(".menu button"))) menu.open = false;
+});
 $("helpbutton").addEventListener("click", () => showHelp());
 $("guidelinesbutton").addEventListener("click", () => showHelp("/api/guidelines"));
 
@@ -359,7 +379,6 @@ function drawList() {
 function show(i) {
   if (i !== current) tripleAt = 0;
   current = i; activeRow = null;
-  location.hash = `b=${batch.n}&r=${i}`;
   showIntro();
   drawList();
   const rec = batch.records[i];
@@ -369,29 +388,29 @@ function show(i) {
     el("h2", {}, rec.title || "(no title)"),
     el("div", { class: "meta" },
       `Pool position ${rec.position ?? "?"} `,
-      rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
+      rec.part ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
+        ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
+        : rec.part === "tuning"
+          ? "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)."
+          : "" }, rec.part) : null,
       ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
-    el("div", { class: "meta" }, rec.part === "held-out"
-      ? el("span", {}, "This record is held-out: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses. ",
-          el("button", { disabled: true, title: "held-out record" }, "Add a component class to the schema additions"))
-      : rec.part === "tuning"
-        ? el("span", {}, `This record is a tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt), with the source line “source: ground truth tuning #${rec.position}”, which this button fills in. `,
-            el("button", { onclick: () => openAdditions({ entry_type: "entity class", component_class: "", definition: "",
-                           source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
-               "Add a component class to the schema additions"))
-        : "This record isn't in the pool, so an entity class or predicate that occurs to you while annotating it can't go into the schema additions (annotations/schema_additions.txt) as coming from the ground truth."),
     el("div", { id: "progress" }),
     el("div", { class: "bar" },
-      el("label", { class: "finished" },
+      el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
         el("input", { type: "checkbox", checked: rec.finished,
                       onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
         "All facts extracted"),
-      el("span", { class: "meta" }, "Tick this box once every fact the record's text states has a ground truth triple below."),
+      rec.part === "tuning"
+        ? el("button", { title: `Opens the form of the view Schema additions, with the source line “source: ground truth tuning #${rec.position}” filled in.`,
+                         onclick: () => openAdditions({ entry_type: "entity class", component_class: "", definition: "",
+                           source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
+            "Add a component class to the schema additions")
+        : null,
       el("span", { style: "margin-left:auto" },
-        el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0 }, "← Previous"), " ",
-        el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
-                       disabled: current === batch.records.length - 1 }, "Next →"),
-        el("span", { class: "meta" }, "  (or the ← → keys, when not typing in a field)"))));
+        el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0, title: "or the ← key, when not typing in a field" },
+           "← Previous record"), " ",
+        el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)), title: "or the → key, when not typing in a field",
+                       disabled: current === batch.records.length - 1 }, "Next record →"))));
 
   const text = el("section", { class: "card" },
     el("h3", {}, "The record's text"),
@@ -409,55 +428,57 @@ function show(i) {
       el("li", {}, el("strong", {}, "To give a ground truth triple its source text:"), " in the record's text, drag the mouse " +
         "across the passage that states the fact, as when selecting text to copy. Then press “Use selection” in that ground " +
         "truth triple's box."))));
-  const classes = el("section", { class: "card classpanel", id: "classpanel" },
-    el("h3", {}, "Component classes"),
-    el("p", { class: "hint" }, "Click into an entity class field or the predicate field of a ground truth triple: " +
-      "the entity classes or predicates you can choose appear here, each with its definition, narrowed down as you type."));
+  const classes = el("section", { class: "card classpanel", id: "classpanel", hidden: true });
 
   const describes = rec.rows.findIndex(isDescribes);
-  const all = tripleRows(rec);
-  tripleAt = Math.max(0, Math.min(tripleAt, all.length - 1));
+  const all = tripleRows(rec), steps = stepRows(rec);
+  tripleAt = Math.max(0, Math.min(tripleAt, steps.length - 1));
+  const at = steps[tripleAt], atDescribes = at === describes;
+  location.hash = `b=${batch.n}&r=${i}` + (oneAtATime ? `&t=${tripleAt}` : "");
   const add = el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple");
   const switcher = el("button", { onclick: () => { oneAtATime = !oneAtATime;
       try { localStorage.setItem("oneAtATime", oneAtATime ? "1" : "0"); } catch (_) {}
-      show(current); } }, oneAtATime ? "Show all ground truth triples" : "Show one ground truth triple at a time");
+      show(current); } }, oneAtATime ? "Show all at once" : "Show one at a time");
   const none = all.length === 0
     ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null;
   const rows = el("section", { class: "card" },
-    el("h3", {}, "Ground truth triples"),
-    describes >= 0 ? describesRow(rec, describes) : null,
-    oneAtATime && all.length
+    el("h3", {}, "DESCRIBES row and ground truth triples"),
+    oneAtATime && steps.length
       ? [el("div", { class: "triplenav" },
-           el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: tripleAt === 0 }, "↑ Previous triple"),
-           el("strong", {}, `Ground truth triple ${tripleAt + 1} of ${all.length}`),
-           el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: tripleAt === all.length - 1 }, "Next triple ↓"),
-           el("span", { class: "meta" }, "(or the ↑ ↓ keys, when not typing in a field)")),
-         tripleRow(rec, all[tripleAt])]
-      : all.map((j) => tripleRow(rec, j)),
-    none,
+           el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: tripleAt === 0,
+                          title: "Previous (or the ↑ key, when not typing in a field)" }, "↑"),
+           el("strong", {}, atDescribes ? "DESCRIBES row"
+                                        : `Ground truth triple ${all.indexOf(at) + 1} of ${all.length}`),
+           el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: tripleAt === steps.length - 1,
+                          title: "Next (or the ↓ key, when not typing in a field)" }, "↓")),
+         atDescribes ? describesRow(rec, at) : tripleRow(rec, at, false)]
+      : [describes >= 0 ? describesRow(rec, describes) : null, all.map((j) => tripleRow(rec, j))],
+    oneAtATime && !atDescribes ? null : none,
     el("div", { class: "bar" }, add, switcher));
 
   $("record").replaceChildren(head, el("div", { class: "workgrid" }, el("div", { class: "textcol" }, text, classes), rows));
+  document.querySelectorAll("#record textarea.grow").forEach(grow);
   drawText();
   drawProgress();
-  if (oneAtATime && all.length) setActive(all[tripleAt]);   // its source text highlighted and scrolled into view
+  if (oneAtATime && steps.length) setActive(at);           // its source text highlighted and scrolled into view
 }
 
-// Go to the record's ground truth triple number k (0 = the first); with one at a time, show it.
+// Go to the record's k-th row to annotate (0 = its DESCRIBES row, if it has one); with one at a time, show it.
 function goToTriple(k) {
-  const all = tripleRows(batch.records[current]);
-  if (k < 0 || k >= all.length) return;
+  const steps = stepRows(batch.records[current]);
+  if (k < 0 || k >= steps.length) return;
   tripleAt = k;
   show(current);
 }
 
 // Go to the ground truth triple of row j (a click on its source text): show it, if one at a time, and put the cursor in it.
 function goToRow(j) {
-  const k = tripleRows(batch.records[current]).indexOf(j);
+  const k = stepRows(batch.records[current]).indexOf(j);
   if (oneAtATime && k >= 0 && k !== tripleAt) { tripleAt = k; show(current); }
   const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus();
 }
 
+function hideClasses() { const panel = $("classpanel"); if (panel) panel.hidden = true; }
 // The entity classes or predicates to choose from, for the field the cursor is in: each with its definition,
 // narrowed down to those whose name or definition contains what the field holds. A click puts one in the field.
 function showClasses(kind, input) {
@@ -469,10 +490,11 @@ function showClasses(kind, input) {
     .filter((n) => !q || n.toLowerCase().includes(q) || (defs[n] || "").toLowerCase().includes(q))
     .sort((a, b) => (b.toLowerCase().startsWith(q) - a.toLowerCase().startsWith(q)) || a.localeCompare(b));
   const what = kind === "entity_classes" ? "entity classes" : "predicates";
+  panel.hidden = false;
   panel.replaceChildren(
-    el("h3", {}, kind === "entity_classes" ? "Entity classes" : "Predicates",
-       el("span", { class: "meta" }, q ? `  ${names.length} matching “${input.value.trim()}”` : `  all ${names.length}`)),
-    el("p", { class: "hint" }, `The ${what} of the hand-built schema, and those coined while annotating. Click one to put it in the field.`),
+    el("h3", { title: `The ${what} of the hand-built schema, and those coined while annotating. Click one to put it in the field.` },
+       kind === "entity_classes" ? "Entity classes" : "Predicates",
+       el("span", { class: "meta" }, q ? `  ${names.length} matching “${input.value.trim()}”` : `  ${names.length}`)),
     names.length ? names.map((n) => el("button", { class: "classopt",
         onmousedown: (e) => e.preventDefault(),            // the field keeps the cursor
         onclick: () => { input.value = n; input.dispatchEvent(new Event("input")); showClasses(kind, input); } },
@@ -481,15 +503,22 @@ function showClasses(kind, input) {
       : el("p", { class: "empty" }, `No ${what} match: if none fits, type a new one (one word, as the Guidelines say).`));
 }
 
-function field(rec, j, key, label, extra) {
+// A field of a ground truth triple; multiline: a box that grows to show all of a long value (still one line of text).
+function field(rec, j, key, label, extra = {}) {
   const r = rec.rows[j];
   const kind = key === "predicate" ? "predicates" : key.endsWith("_class") ? "entity_classes" : null;
-  return el("label", {}, label,
-    el("input", { value: r[key], ...extra, "data-row": j,
-                  oninput: (e) => { r[key] = e.target.value; if (key === "source_text") drawText(); changed();
-                                    if (kind) showClasses(kind, e.target); },
-                  onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); } }));
+  const { multiline, ...attrs } = extra;
+  const on = { "data-row": j,
+    oninput: (e) => {
+      if (multiline) { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " "); grow(e.target); }
+      r[key] = e.target.value; if (key === "source_text") drawText(); changed();
+      if (kind) showClasses(kind, e.target); },
+    onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); else hideClasses(); } };
+  return el("label", {}, label, multiline
+    ? el("textarea", { ...attrs, ...on, class: "grow", rows: 1, onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); } }, r[key])
+    : el("input", { value: r[key], ...attrs, ...on }));
 }
+function grow(box) { box.style.height = "auto"; box.style.height = box.scrollHeight + 2 + "px"; }
 function problemList(r, j) {
   return el("ul", { class: "problems", "data-problems": j },
     r.problems.map(p => el("li", { class: p.type }, (p.type === "error" ? "✖ " : "⚑ ") + p.message,
@@ -498,36 +527,38 @@ function problemList(r, j) {
 function describesRow(rec, j) {
   const r = rec.rows[j];
   return el("div", { class: "row", "data-row-box": j },
-    el("div", { class: "describes" },
+    el("div", { class: "describes", title: "No source text: this line comes from the record itself (its id and its title), " +
+        "not from a passage of the text. Only choose the entity class of what the title names (Guidelines, The DESCRIBES row)." },
       el("strong", {}, "This record describes"),
-      el("input", { class: "title", value: r.object, "aria-label": "what the record describes", "data-row": j,
-                    oninput: (e) => { r.object = e.target.value; changed(); }, onfocus: () => setActive(j) }),
+      el("textarea", { class: "title grow", rows: 1, "aria-label": "what the record describes", "data-row": j,
+                       onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); },
+                       oninput: (e) => { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
+                                         grow(e.target); r.object = e.target.value; changed(); },
+                       onfocus: () => { setActive(j); hideClasses(); } }, r.object),
       el("span", {}, "which is a"),
       el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes",
                     placeholder: "entity class", "aria-label": "its entity class", "data-row": j,
                     oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target); },
                     onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } })),
-    el("p", { class: "hint" }, "No source text: this line comes from the record itself (its id and its title), not from a " +
-                               "passage of the text. Only choose the entity class of what the title names (Guidelines, The DESCRIBES row)."),
     problemList(r, j));
 }
-function tripleRow(rec, j) {
+function tripleRow(rec, j, heading = true) {
   const r = rec.rows[j];
   // Its number among the record's ground truth triples (the DESCRIBES row isn't one), as its heading.
   const n = rec.rows.slice(0, j + 1).filter((x) => !isDescribes(x)).length;
   return el("div", { class: "row", "data-row-box": j },
-    el("div", { class: "rowhead" }, `Ground truth triple ${n}`),
+    heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
     el("div", { class: "triple" },
-      field(rec, j, "subject", "Subject"),
-      field(rec, j, "predicate", "Predicate", { list: "predicates" }),
-      field(rec, j, "object", "Object"),
+      field(rec, j, "subject", "Subject", { multiline: true }),
       field(rec, j, "subject_class", "Subject's entity class", { list: "entity_classes", class: "cls" }),
+      field(rec, j, "predicate", "Predicate", { list: "predicates" }),
       el("span"),
+      field(rec, j, "object", "Object", { multiline: true }),
       field(rec, j, "object_class", "Object's entity class", { list: "entity_classes", class: "cls" })),
     el("div", { class: "source" },
-      el("label", {}, "Source text (copied exactly from the record's text)",
-        el("textarea", { "data-row": j, onfocus: () => setActive(j),
-                         oninput: (e) => { r.source_text = e.target.value; drawText(); changed(); } }, r.source_text)),
+      el("label", { title: "Copied exactly from the record's text" }, "Source text",
+        el("textarea", { "data-row": j, class: "grow", rows: 1, onfocus: () => { setActive(j); hideClasses(); },
+                         oninput: (e) => { r.source_text = e.target.value; grow(e.target); drawText(); changed(); } }, r.source_text)),
       el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"),
       el("button", { title: "Delete this ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
     problemList(r, j));
@@ -542,7 +573,7 @@ function setActive(j) {
   if (m) { const box = $("text"); box.scrollTop = m.offsetTop - box.offsetTop - box.clientHeight / 3; }
 }
 function addRow(rec) {
-  tripleAt = tripleRows(rec).length;       // the new one, once added
+  tripleAt = stepRows(rec).length;         // the new one, once added
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
                   problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. Fill in the empty ones, or delete it." }] });
