@@ -137,19 +137,19 @@ KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 #: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
 #: words for the page; each {placeholder} is filled with the component class concerned.
 MESSAGES = {
-    "no_source_text": "No source text: without one, this row can't be checked against the record's text. Select the "
+    "no_source_text": "No source text: without one, this ground truth triple can't be checked against the record's text. Select the "
                       "passage in the record's text that states this fact, then press \"Use selection\".",
-    "source_not_in_text": "The source text isn't in the record's text: it may have been retyped or cut, so this row "
-                          "can't be checked. Select the passage in the record's text, then press \"Use selection\" to "
+    "source_not_in_text": "The source text isn't in the record's text: it may have been retyped or cut, so this "
+                          "ground truth triple can't be checked. Select the passage in the record's text, then press \"Use selection\" to "
                           "copy it exactly.",
     "subject_not_in_text": "The subject instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                            "reworded on purpose, nothing to do.",
     "object_not_in_text": "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                           "reworded on purpose, nothing to do.",
-    "subject_not_in_source": "The subject instance isn't in this row's source text: the source text may be the wrong "
+    "subject_not_in_source": "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
                              "passage, or too short. Select a passage that states the whole fact, then press \"Use "
                              "selection\"; if the text states the fact without naming it there, nothing to do.",
-    "object_not_in_source": "The object instance isn't in this row's source text: the source text may be the wrong "
+    "object_not_in_source": "The object instance isn't in this ground truth triple's source text: the source text may be the wrong "
                             "passage, or too short. Select a passage that states the whole fact, then press \"Use "
                             "selection\"; if the text states the fact without naming it there, nothing to do.",
     "subject_equals_object": "The subject instance and the object instance are the same: a fact relates two different "
@@ -169,15 +169,15 @@ MESSAGES = {
     "pattern_not_in_schema": "The hand-built schema never uses {predicate} between {subject_class} and "
                              "{object_class}: a new pattern, or a wrong entity class. If it's right, add it to the "
                              "hand-built schema with the button below (shown once both entity classes are in it).",
-    "empty": "Subject, predicate, or object is empty: a row states a fact only with all three. Fill in the empty "
-             "ones, or delete the row.",
+    "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
+             "Fill in the empty ones, or delete it.",
     "describes_undecided": "No entity class yet for what this record describes (the DESCRIBES row's object class is "
                            "X or empty). Type or pick the entity class of the thing the title names.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
                                      "If it's new, add it to the hand-built schema with the button below, "
                                      "giving a one-line definition.",
-    "describes_subject_not_id": "This row's subject should be the record's id.",
+    "describes_subject_not_id": "The DESCRIBES row's subject should be the record's id.",
 }
 
 

@@ -9,7 +9,7 @@
     --bg: #e9ece8; --panel: #ffffff; --ink: #262b31; --muted: #626a76; --line: #d5dad4;
     --tint: #f1f6f5; --paper: #fbf9f3; --label: #4a5260; --stripe: #8fc1cc;
     --accent: #2c6e82; --accent-bg: #eaf3f5; --soft: #fbefc4; --strong: #f5d77a; --error: #a8322b; --flag: #85601a;
-    --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --input: #ffffff;
+    --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --ok-bg: #e5f4ea; --input: #ffffff;
     --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
   @media (prefers-color-scheme: dark) {
@@ -17,7 +17,7 @@
       --bg: #111417; --panel: #1b1f24; --ink: #e4e7ea; --muted: #9aa2ad; --line: #30363d;
       --tint: #222a2e; --paper: #1f2226; --label: #b6bdc7; --stripe: #3f7684;
       --accent: #7fbccd; --accent-bg: #1f3036; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
-      --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --input: #14171c;
+      --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --ok-bg: #1d3325; --input: #14171c;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
   }
@@ -78,10 +78,31 @@
           border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; background: var(--paper); }
   mark { background: var(--soft); color: inherit; border-radius: 2px; cursor: pointer; }
   mark.active { background: var(--strong); outline: 1px solid var(--flag); }
+  mark.shared { box-shadow: inset 0 -2px 0 var(--flag); }   /* the source text of more than one ground truth triple */
   .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  ul.hint { padding-left: 18px; }
+  ul.hint li { margin: 2px 0; }
   .row { border: 1px solid var(--line); border-left: 4px solid var(--stripe); border-radius: 10px; padding: 12px 14px;
          margin-bottom: 12px; background: var(--tint); }
   .row.active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .rowhead { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 9px; margin-left: 6px; }
+  .pill.error { background: var(--error-bg); color: var(--error); }
+  .pill.flag { background: var(--flag-bg); color: var(--flag); }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.todo { background: var(--bg); color: var(--muted); }
+  nav .badge .pill { margin-left: 3px; }
+  .progressline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; font-size: 13.5px; color: var(--label); }
+  .progressbar { height: 6px; border-radius: 999px; background: var(--bg); margin-top: 6px; overflow: hidden; }
+  .progressbar > div { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+  @media (prefers-color-scheme: dark) { button.primary { color: #10181b; } }
+  label.finished { background: var(--ok-bg); color: var(--ok); border-radius: 8px; padding: 4px 10px; }
+  .hintbox { margin-top: 8px; }
+  .hintbox summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
+  .welcome ol { padding-left: 22px; line-height: 1.7; }
+  .welcome li { margin-bottom: 6px; max-width: 80ch; }
   .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 8px; }
   .triple label, .source label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600;
                                  letter-spacing: 0.04em; text-transform: uppercase; color: var(--label); min-width: 0; }
@@ -123,6 +144,7 @@
   #intro .helpbody p { margin: 0 0 6px; }
   .part { font-size: 12px; border-radius: 10px; padding: 0 7px; border: 1px solid var(--line); }
   .part.held-out { color: var(--flag); background: var(--flag-bg); border-color: var(--flag); }
+  .part.tuning { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
   .kind { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
           border-radius: 10px; padding: 0 7px; margin-right: 6px; vertical-align: middle; }
   .maprow.todo { border-left: 4px solid var(--flag); }
@@ -154,7 +176,17 @@
 <details id="gaps" hidden></details>
 <main>
   <nav id="records" aria-label="Records"></nav>
-  <div id="record"><section class="card"><p class="empty">Pick a batch at the top.</p></section></div>
+  <div id="record"><section class="card welcome">
+    <h2>Annotating ground truth</h2>
+    <ol>
+      <li><strong>Choose a batch</strong> at the top, under “Annotate batch”. A batch is one file of records to annotate.</li>
+      <li><strong>Read the Guidelines</strong> (the button next to the batch) before the first record: they say what to write.</li>
+      <li><strong>For each record:</strong> read the record's text, then correct, delete or add its ground truth triples, and
+          tick “All facts extracted” when every fact the text states has a ground truth triple.</li>
+      <li><strong>When the batch is done,</strong> commit its file (annotations/ground_truth/batch_NNN.csv) to Git.</li>
+    </ol>
+    <p class="hint">Every change is saved to the file as you type. Help, at the top right, explains the view you are on.</p>
+  </section></div>
 </main>
 <div id="help" hidden></div>
 <datalist id="entity_classes"></datalist>
@@ -192,6 +224,27 @@ const predicateKey = (s) => (s || "").toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\
   .replace(/[\s_\-]+/g, " ").trim();
 const isDescribes = (r) => looseKey(r.subject_class) === "catalogentry" && predicateKey(r.predicate) === "describes";
 const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "error").length, 0);
+const flagsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "flag").length, 0);
+
+// The record's place in the batch, the batch's progress, and what in this record is left to fix or look at.
+function hintOpen() {                    // open unless folded away earlier on this computer
+  try { return localStorage.getItem("hintTextOpen") !== "0"; } catch (_) { return true; }
+}
+
+function drawProgress() {
+  const box = $("progress"), rec = batch && batch.records[current];
+  if (!box || !rec) return;
+  const done = batch.records.filter((r) => r.finished).length, all = batch.records.length;
+  const errors = errorsIn(rec), flags = flagsIn(rec);
+  box.replaceChildren(
+    el("div", { class: "progressline" },
+      el("span", {}, `Record ${current + 1} of ${all} · ${done} of ${all} finished`),
+      errors ? el("span", { class: "pill error" }, `${errors} to fix (✖)`) : null,
+      flags ? el("span", { class: "pill flag" }, `${flags} to look at (⚑)`) : null,
+      !errors && !flags ? el("span", { class: "pill ok" }, "Nothing to fix") : null),
+    el("div", { class: "progressbar", title: `${done} of ${all} records finished` },
+      el("div", { style: `width:${all ? Math.round(100 * done / all) : 0}%` })));
+}
 
 // ---------------------------------------------------------------- batches
 async function loadBatches() {
@@ -276,8 +329,10 @@ function drawList() {
   $("records").replaceChildren(...batch.records.map((rec, i) => {
     const errors = errorsIn(rec);
     return el("button", { class: i === current ? "current" : "", onclick: () => show(i) },
-      el("span", { class: "badge", title: rec.finished ? "all facts extracted" : "not finished" },
-         (errors ? `⚠ ${errors} ` : "") + (rec.finished ? "✓" : "…")),
+      el("span", { class: "badge" },
+         errors ? el("span", { class: "pill error", title: `${errors} to fix` }, `✖ ${errors}`) : null,
+         rec.finished ? el("span", { class: "pill ok", title: "all facts extracted" }, "✓")
+                      : el("span", { class: "pill todo", title: "not finished yet" }, "…")),
       rec.position !== null && rec.position !== undefined ? `#${rec.position} ` : "",
       rec.title || rec.id,
       el("div", { class: "small" }, rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
@@ -301,45 +356,56 @@ function show(i) {
       rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
       ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
     el("div", { class: "meta" }, rec.part === "held-out"
-      ? el("span", {}, "Held-out record: component classes you learn here must not go into schema_additions.txt (held-out records must not influence the schema). ",
+      ? el("span", {}, "This record is held-out: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses. ",
           el("button", { disabled: true, title: "held-out record" }, "Add a component class to the schema additions"))
       : rec.part === "tuning"
-        ? el("span", {}, `Tuning record: a component class you learn here may go into schema_additions.txt, with “source: ground truth tuning #${rec.position}”. `,
+        ? el("span", {}, `This record is a tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt), with the source line “source: ground truth tuning #${rec.position}”, which this button fills in. `,
             el("button", { onclick: () => openAdditions({ entry_type: "entity class", component_class: "", definition: "",
                            source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
                "Add a component class to the schema additions"))
-        : "Not in the pool: component classes learned here can't go into schema_additions.txt as coming from the ground truth."),
+        : "This record isn't in the pool, so an entity class or predicate that occurs to you while annotating it can't go into the schema additions (annotations/schema_additions.txt) as coming from the ground truth."),
+    el("div", { id: "progress" }),
     el("div", { class: "bar" },
       el("label", { class: "finished" },
         el("input", { type: "checkbox", checked: rec.finished,
-                      onchange: (e) => { rec.finished = e.target.checked; drawList(); changed(); } }),
+                      onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
         "All facts extracted"),
-      el("span", { class: "meta" }, "Tick once every fact the text states is below."),
+      el("span", { class: "meta" }, "Tick this box once every fact the record's text states has a ground truth triple below."),
       el("span", { style: "margin-left:auto" },
         el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0 }, "← Previous"), " ",
         el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
-                       disabled: current === batch.records.length - 1 }, "Next →"))));
+                       disabled: current === batch.records.length - 1 }, "Next →"),
+        el("span", { class: "meta" }, "  (or the ← → keys, when not typing in a field)"))));
 
   const text = el("section", { class: "card" },
     el("h3", {}, "The record's text"),
     rec.text === null
-      ? el("p", { class: "empty" }, "This record's id isn't in outputs/intermediate_results/020_clean/records.jsonl (a typo, or a record since removed), so its text can't be shown and its rows can't be checked against it.")
+      ? el("p", { class: "empty" }, "This record's id isn't in outputs/intermediate_results/020_clean/records.jsonl (a typo in the id, or a record removed from the catalog since), so the record's text can't be shown here, and its ground truth triples can't be checked against the text.")
       : el("div", { id: "text" }),
-    el("p", { class: "hint" },
-      "Yellow: the source texts of the rows below; the row you're on is darker. Click one to go to its row. " +
-      "To set a row's source text, select a passage here and press “Use selection” on the row."));
+    el("details", { class: "hintbox", open: hintOpen(),
+                    ontoggle: (e) => { try { localStorage.setItem("hintTextOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
+      el("summary", {}, "How to use the record's text"),
+    el("ul", { class: "hint" },
+      el("li", {}, el("strong", {}, "Yellow"), " marks the source text of each ground truth triple below. The source text of the " +
+        "ground truth triple you are editing (the box with the colored outline) is a darker yellow."),
+      el("li", {}, el("strong", {}, "Click a yellow passage"), " to jump to the ground truth triple whose source text it is. A " +
+        "passage that several ground truth triples share is underlined: each click on it jumps to the next of those ground truth triples."),
+      el("li", {}, el("strong", {}, "To give a ground truth triple its source text:"), " in the record's text above, drag the mouse " +
+        "across the passage that states the fact, as when selecting text to copy. Then press “Use selection” in that ground " +
+        "truth triple's box."))));
 
   const describes = rec.rows.findIndex(isDescribes);
   const rows = el("section", { class: "card" },
-    el("h3", {}, "Triple instances"),
+    el("h3", {}, "Ground truth triples"),
     describes >= 0 ? describesRow(rec, describes) : null,
     rec.rows.map((r, j) => isDescribes(r) ? null : tripleRow(rec, j)),
     rec.rows.filter(r => !isDescribes(r)).length === 0
-      ? el("p", { class: "empty" }, "No triple instances: saved as “this record states no facts”.") : null,
-    el("button", { onclick: () => addRow(rec) }, "+ Add a triple instance"));
+      ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null,
+    el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple"));
 
   $("record").replaceChildren(head, text, rows);
   drawText();
+  drawProgress();
 }
 
 function field(rec, j, key, label, extra) {
@@ -365,11 +431,16 @@ function describesRow(rec, j) {
       el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes",
                     placeholder: "entity class", "aria-label": "its entity class", "data-row": j,
                     oninput: (e) => { r.object_class = e.target.value; changed(); }, onfocus: () => setActive(j) })),
+    el("p", { class: "hint" }, "No source text: this line comes from the record itself (its id and its title), not from a " +
+                               "passage of the text. Only choose the entity class of what the title names (Guidelines, The DESCRIBES row)."),
     problemList(r, j));
 }
 function tripleRow(rec, j) {
   const r = rec.rows[j];
+  // Its number among the record's ground truth triples (the DESCRIBES row isn't one), as its heading.
+  const n = rec.rows.slice(0, j + 1).filter((x) => !isDescribes(x)).length;
   return el("div", { class: "row", "data-row-box": j },
+    el("div", { class: "rowhead" }, `Ground truth triple ${n}`),
     el("div", { class: "triple" },
       field(rec, j, "subject", "Subject"),
       field(rec, j, "predicate", "Predicate", { list: "predicates" }),
@@ -378,11 +449,11 @@ function tripleRow(rec, j) {
       el("span"),
       field(rec, j, "object_class", "Object's entity class", { list: "entity_classes", class: "cls" })),
     el("div", { class: "source" },
-      el("label", {}, "Source text (copied exactly from the text above)",
+      el("label", {}, "Source text (copied exactly from the record's text)",
         el("textarea", { "data-row": j, onfocus: () => setActive(j),
                          oninput: (e) => { r.source_text = e.target.value; drawText(); changed(); } }, r.source_text)),
-      el("button", { title: "Put the passage selected in the text above here", onclick: () => useSelection(rec, j) }, "Use selection"),
-      el("button", { title: "Delete this triple instance", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
+      el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"),
+      el("button", { title: "Delete this ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
     problemList(r, j));
 }
 
@@ -397,7 +468,7 @@ function setActive(j) {
 function addRow(rec) {
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
-                  problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a row states a fact only with all three. Fill in the empty ones, or delete the row." }] });
+                  problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. Fill in the empty ones, or delete it." }] });
   show(current);
   const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);
   if (inputs.length) inputs[0].focus();
@@ -435,20 +506,30 @@ function findSpan(text, source) {
 function drawText() {
   const box = $("text"), rec = batch && batch.records[current];
   if (!box || !rec || rec.text === null) return;
-  const owner = new Array(rec.text.length).fill(-1);   // which row's source text covers each character
+  // Every ground truth triple whose source text covers each character: shared and overlapping passages too.
+  const owners = Array.from({ length: rec.text.length }, () => []);
   rec.rows.forEach((r, j) => {
     if (isDescribes(r)) return;
     const span = findSpan(rec.text, r.source_text);
     if (!span) return;
-    for (let k = span[0]; k < span[1]; k++) if (owner[k] === -1 || j === activeRow) owner[k] = j;
+    for (let k = span[0]; k < span[1]; k++) owners[k].push(j);
   });
+  const number = (j) => rec.rows.slice(0, j + 1).filter((x) => !isDescribes(x)).length;   // as in its heading
   const parts = [];
   for (let k = 0; k < rec.text.length;) {
+    const key = owners[k].join(",");
     let end = k + 1;
-    while (end < rec.text.length && owner[end] === owner[k]) end++;
-    const piece = rec.text.slice(k, end), j = owner[k];
-    parts.push(j === -1 ? piece : el("mark", { class: j === activeRow ? "active" : "",
-      title: "Go to this row", onclick: () => { const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus(); } }, piece));
+    while (end < rec.text.length && owners[end].join(",") === key) end++;
+    const piece = rec.text.slice(k, end), mine = owners[k];
+    if (!mine.length) { parts.push(piece); k = end; continue; }
+    const names = mine.map(number);
+    const title = mine.length === 1 ? `Go to ground truth triple ${names[0]}`
+      : `Shared by ground truth triples ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}: each click goes to the next`;
+    parts.push(el("mark", {
+      class: [mine.includes(activeRow) ? "active" : "", mine.length > 1 ? "shared" : ""].join(" ").trim(), title,
+      // The next of them after the one you're on (the first, if you're on none of them).
+      onclick: () => { const i = mine.indexOf(activeRow), j = mine[(i + 1) % mine.length];
+                       const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus(); } }, piece));
     k = end;
   }
   box.replaceChildren(...parts);
@@ -463,6 +544,7 @@ function refreshProblems() {
     if (rec.rows[j] && !ul.contains(document.activeElement)) ul.replaceWith(problemList(rec.rows[j], j));
   });
   drawList();
+  drawProgress();
 }
 
 // ---------------------------------------------------------------- adding to the hand-built schema
@@ -557,10 +639,10 @@ function drawMappingSummary() {
   $("records").replaceChildren(
     el("div", { style: "padding:6px 8px" },
       el("h3", {}, "Translation table"),
-      el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the one extraction used last); ` +
+      el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the schema step 060 used last); ` +
                                   `${left} still to check.`),
-      el("p", { class: "meta" }, "Evaluation evaluates only when every row of the current schema is checked. " +
-                                  "It adds rows itself; it never changes one."),
+      el("p", { class: "meta" }, "Step 070 evaluates only when every row for the current schema is checked. Step 070 " +
+                                  "adds rows to this table itself, and never changes a row already there."),
       el("label", { class: "meta", style: "display:block" },
         el("input", { type: "checkbox", checked: onlyToCheck,
                       onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
@@ -568,7 +650,7 @@ function drawMappingSummary() {
       past ? el("label", { class: "meta", style: "display:block" },
         el("input", { type: "checkbox", checked: showPast,
                       onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
-        ` Show the ${past} row(s) only past schemas use (kept, so a component class that comes back needn't be checked again)`)
+        ` Show the ${past} row(s) for component classes only past schemas used (kept, so that a component class that comes back needn't be checked again)`)
         : null));
 }
 
@@ -577,9 +659,9 @@ function drawMapping() {
   const cards = [];
   if (mapping.repeats.length)
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
-      "✖ One component class, one row: " + mapping.repeats.map(r => `${r.kind} ${r.component_class} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
-      " has more than one. Keep the right row (usually the one whose stored definition matches the current " +
-      "schema's) and delete the others below. Evaluation won't evaluate until then."))));
+      "✖ Each component class may have only one row, but " + mapping.repeats.map(r => `${r.kind} ${r.component_class} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
+      " has more than one. Keep the correct row (usually the one whose stored definition matches the current " +
+      "schema's definition) and delete the others below. Step 070 won't evaluate until then."))));
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       "outputs/intermediate_results/060_extract/schema_used.json wasn't found, so the current schema's definitions can't be shown. Run py 060_extract/run.py, then open Translation table again.")));
@@ -630,35 +712,35 @@ function mappingRow(r, i) {
        r.repeated ? el("span", { class: "meta" }, `  (line ${r._line}, repeated) `) : null,
        r.repeated ? el("button", { onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
     r.repeated ? el("div", { class: "meta" }, "Stored definition (when this row was checked): ",
-       r.definition_from_past_or_crt_schema || el("i", {}, "none")) : null,
+       r.definition_from_past_or_crt_schema || el("span", { class: "empty" }, "none")) : null,
     el("div", { class: "meta" }, "In the current schema: ",
-       r.crt_definition ? r.crt_definition : el("i", {}, "no definition")),
+       r.crt_definition ? r.crt_definition : el("span", { class: "empty" }, "no definition")),
     r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
        "⚑ This row was checked when the component class was defined as: “" +
        (r.definition_from_past_or_crt_schema || "(no definition)") +
-       "”. Its meaning may have changed: check the translation again.")) : null,
+       "”. The meaning of " + r.component_class_from_past_or_crt_schema + " may have changed since: check this translation again.")) : null,
     r.stale_gtt ? el("div", { class: "problems" }, el("li", { class: "flag" },
        "⚑ This row was checked when the hand-built schema defined " + r.component_class_in_gtt +
        " (ground truth vocabulary) as: “" + (r.definition_in_gtt || "(no definition)") +
-       "”. It is now defined as shown below, under “In the ground truth”: check the translation again.")) : null,
+       "”. The hand-built schema now defines " + r.component_class_in_gtt + " as shown below, under “In the ground truth”: check this translation again.")) : null,
     el("div", { class: "means" },
       el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
       el("select", { id: `m${i}`, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
     r.component_class_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
       el("li", { class: "flag" }, `⚑ The model suggests ${r.component_class_from_past_or_crt_schema} (current schema) may ` +
         `mean ${r.suggested_gtt} (ground truth vocabulary), a component class the ground truth gained since this row was ` +
-        `checked. Pick it if right; keep (none) otherwise.`)) : null,
+        `checked. Pick ${r.suggested_gtt} if that is right; otherwise keep (none).`)) : null,
     nowExists ? el("ul", { class: "problems" }, el("li", { class: "flag" },
       `⚑ ${nowExists.component_class} (ground truth vocabulary) now exists: should ${r.component_class_from_past_or_crt_schema} ` +
-      `(current schema) translate to it? Keep (none) only if it means something else.`)) : null,
+      `(current schema) translate to ${nowExists.component_class}? Keep (none) only if the two mean different things.`)) : null,
     sharing.length ? el("ul", { class: "problems" }, el("li", { class: "flag" },
       `⚑ ${[r.component_class_from_past_or_crt_schema, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
-      `both translate to ${r.component_class_in_gtt} (ground truth vocabulary), so evaluation can't tell them apart: a ` +
-      `mix-up between them costs extraction nothing. Fine if your ground truth doesn't distinguish them; if it ` +
-      `should, annotate with separate component classes in the ground truth.`)) : null,
+      `both translate to ${r.component_class_in_gtt} (ground truth vocabulary), so step 070 can't tell these component classes apart: ` +
+      `extraction loses nothing by mixing them up. That is fine if your ground truth doesn't distinguish them; if your ground ` +
+      `truth should distinguish them, annotate with separate component classes in the ground truth.`)) : null,
     chosen ? el("div", { class: "meta" }, "In the ground truth: ",
                 chosen.definition ? chosen.definition
-                  : el("i", {}, "coined while annotating; no definition yet (add one to the hand-built schema)")) : null,
+                  : el("span", { class: "empty" }, "coined while annotating; no definition yet (add one to the hand-built schema)")) : null,
     r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
       el("input", { type: "checkbox", disabled: r.component_class_in_gtt === mapping.none,
                     checked: r.swap_subject_and_object === "yes",
@@ -666,8 +748,9 @@ function mappingRow(r, i) {
       " Swap subject and object (the ground truth's predicate states the relation the other way round)") : null,
     exampleLine(r),
     el("div", { class: "bar" }, same && !r.stale && !r.stale_gtt
-      ? el("span", { class: "meta" }, "Accepted automatically: the same spelling in both. Compare the two definitions " +
-           "above; if they mean different things, pick the right translation.")
+      ? el("span", { class: "meta" }, "Accepted automatically, because the component class is spelled the same in the current " +
+           "schema and in the ground truth vocabulary. Compare the two definitions above (In the current schema, In the ground " +
+           "truth); if the two mean different things, pick the right translation.")
       : el("label", { class: "finished" },
           el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale && !r.stale_gtt,
                         onchange: (e) => { r.stale = false; r.stale_gtt = false;
@@ -738,9 +821,10 @@ function drawPartial() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("h3", {}, "Partial pairs"),
     el("p", { class: "meta" }, `${partial.items.length} pair(s) of tuning records; ${left} not reviewed yet.`),
-    el("p", { class: "meta" }, "A partial pair: the predicates agree, and each subject and object is the same " +
-      "or contained in the other as whole words. That can be wrong (MODIS vs MODIS Terra). A pair you mark " +
-      "“not the same fact” is never paired again: evaluation counts it as missed and extra."),
+    el("p", { class: "meta" }, "A partial pair is an extracted triple and a ground truth triple whose predicates agree, " +
+      "and whose subjects, and whose objects, are each the same or one contained in the other as whole words. Such a " +
+      "pairing can be wrong (MODIS vs MODIS Terra). A pair you mark “not the same fact” is never paired again: step 070 " +
+      "then counts its ground truth triple as missed and its extracted triple as extra."),
     el("label", { class: "meta" },
       el("input", { type: "checkbox", checked: onlyUnreviewed,
                     onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
@@ -748,7 +832,7 @@ function drawPartial() {
   const shown = partial.items.filter(i => !onlyUnreviewed || !i.verdict);
   $("record").replaceChildren(...(shown.length ? shown.map(partialCard) : [el("section", { class: "card" },
     el("p", { class: "empty" }, partial.items.length ? "Every pair is reviewed." :
-      "No partial pairs in evaluation's last run."))]));
+      "No partial pairs in step 070's last run."))]));
 }
 
 function partialCard(i) {
@@ -812,18 +896,19 @@ function drawAdditions() {
   const left = additions.new_component_classes.filter(n => !n.added).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("h3", {}, "Schema additions"),
-    el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Extraction merges them ` +
-      "into its schema input (the induced schema, by default); the result is the current schema."),
-    el("p", { class: "meta" }, "Every entity class and predicate needs a one-line definition, and every entry a " +
-      "source: where the idea came from. One learned from the ground truth must come from tuning records: " +
-      "“ground truth tuning #12, #15”. To add a pattern to a predicate the schema already has, add a pattern."),
+    el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Step 060 (extraction) adds ` +
+      "these entries to the schema it extracts with (040's schema, by default); the combination is the current schema."),
+    el("p", { class: "meta" }, "Every entity class and predicate added here needs a one-line definition, and every entry " +
+      "needs a source: where the idea came from. An entry learned from the ground truth must come from tuning records " +
+      "only, named by pool position: “ground truth tuning #12, #15”. To allow a new pair of entity classes for a " +
+      "predicate the schema already has, add an entry of type pattern."),
     el("button", { onclick: () => { editing = { entry_type: "entity class", component_class: "", definition: "", source: "",
                                                   patterns: [] }; drawAdditions(); } }, "+ Add an entry")));
   const cards = [];
   if (additions.unread.length)
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
-      `✖ ${additions.file} has line(s) its layout can't read: ${additions.unread.join("; ")}. ` +
-      "Fix them by hand first; until then the tool won't save, so nothing is lost."))));
+      `✖ ${additions.file} has line(s) the tool can't read: ${additions.unread.join("; ")}. ` +
+      "Fix those lines by hand in the file first; until then the tool won't save the file, so nothing in it is lost."))));
   if (editing) cards.push(additionForm(editing));
   cards.push(el("section", { class: "card" }, el("h3", {}, "In the file"),
     additions.entries.length ? additions.entries.map((e, i) => el("div", { class: "row" },
@@ -837,12 +922,12 @@ function drawAdditions() {
         el("button", { onclick: () => { if (confirm(`Delete ${entryName(e)} from ${additions.file}?`))
                                           saveAdditions(additions.entries.filter((_, j) => j !== i)); } }, "Delete"))))
       : el("p", { class: "empty" }, "No entries yet.")));
-  cards.push(el("section", { class: "card" }, el("h3", {}, "Component classes outside the schema (extraction's last run)"),
+  cards.push(el("section", { class: "card" }, el("h3", {}, "Component classes outside the schema (step 060's last run)"),
     el("p", { class: "meta" }, additions.counted_over
       ? `Component classes the model used that the current schema doesn't have, counted over ${additions.counted_over} ` +
-        "(held-out records are never counted). Every one here is fair to add; add only those that name a real " +
+        "(held-out records are never counted, so each one listed here may be added). Add only those that name a real " +
         `kind of thing or relation. ${left} not added yet.`
-      : "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so extraction's component classes outside the schema can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
+      : "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so the component classes step 060 used outside the schema can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
     additions.new_component_classes.map(n => el("div", { class: "row" },
       el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",
@@ -865,7 +950,7 @@ function additionForm(e) {
     el("input", { value: e[key] || "", style: "width:100%", ...attrs,
                   oninput: (ev) => { e[key] = ev.target.value; check(); } }));
   const patterns = el("label", { style: "display:block;margin-top:6px" },
-    el("span", { class: "meta" }, "Patterns (predicates only): the entity classes it joins, as Subject -> Object; Subject -> Object"),
+    el("span", { class: "meta" }, "Patterns (for a predicate only): the pairs of entity classes the predicate joins, each written Subject -> Object, separated by ; (e.g. Instrument -> Spacecraft; Instrument -> Mission)"),
     el("input", { value: (e.patterns || []).map(p => `${p[0]} -> ${p[1]}`).join("; "), style: "width:100%",
                   disabled: e.entry_type !== "predicate",
                   oninput: (ev) => { e.patterns = ev.target.value.split(";").map(x => x.trim()).filter(Boolean)
@@ -955,13 +1040,13 @@ function planCard() {
   return el("section", { class: "card todo" },
     el("h3", {}, `${p.merge ? "Merge" : "Rename"} ${p.old} → ${p.new} (${p.kind})`),
     el("p", { class: "meta" }, p.merge
-      ? `${p.new} is already in the ground truth vocabulary, so ${p.old} is merged into it: every use of ${p.old} becomes ${p.new}.`
+      ? `${p.new} is already in the ground truth vocabulary, so ${p.old} is merged into ${p.new}: every use of ${p.old} becomes ${p.new}.`
       : `${p.old} is renamed ${p.new} everywhere.`),
     el("p", {}, "What would change (nothing has changed yet):"),
     el("ul", {}, p.changes.map(c => el("li", {}, el("code", {}, c.file), ": ", c.what))),
     p.notes.length ? el("ul", { class: "problems" }, p.notes.map(n => el("li", { class: "flag" }, "⚑ " + n))) : null,
     el("div", { class: "bar" },
-      el("button", { onclick: applyVocab }, "Do it"), " ",
+      el("button", { onclick: applyVocab }, "Make these changes"), " ",
       el("button", { onclick: () => { vocabPlan = null; drawVocab(); } }, "Cancel")));
 }
 
@@ -973,8 +1058,8 @@ function vocabEntry(kind, v) {
   return el("div", { class: "row" },
     el("div", {}, el("span", { class: "kind" }, kind), el("b", {}, v.component_class),
        el("span", { class: "meta" }, `  ${v.in_hand ? "in the hand-built schema" : "coined while annotating, not in the hand-built schema yet"}` +
-         ` · ${v.uses} ground truth row(s)` + (v.files.length ? ` in ${v.files.join(", ")}` : "") +
-         (v.translated_from.length ? ` · translated to from ${v.translated_from.join(", ")} (current or past schema)` : ""))),
+         ` · used ${v.uses} time(s) in the ground truth` + (v.files.length ? ` (${v.files.join(", ")})` : "") +
+         (v.translated_from.length ? ` · the translation table translates ${v.translated_from.join(", ")} (current or past schema) into ${v.component_class}` : ""))),
     el("div", { class: "bar" }, def, " ",
        v.in_hand
          ? el("button", { onclick: () => defineVocab(kind, v.component_class, def) }, "Save definition")
@@ -991,10 +1076,10 @@ function drawVocab() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("h3", {}, "Ground truth vocabulary"),
     el("p", { class: "meta" }, `${count("entity class")} entity class(es) and ${count("predicate")} predicate(s): every one ` +
-      "in the hand-built schema, plus every one the ground truth uses that it lacks (coined)."),
+      "in the hand-built schema, plus every one the ground truth uses that the hand-built schema doesn't have (coined while annotating)."),
     el("p", { class: "meta" }, "Changing a definition makes the translation table's rows that translate to that " +
-      "component class need checking again. Renaming or merging changes every file that uses the component class, after showing you what " +
-      "it would change.")));
+      "component class need checking again. Renaming or merging changes every file that uses the component class, after " +
+      "first showing you every change the rename or merge would make.")));
   const cards = [];
   if (vocabPlan) cards.push(planCard());
   for (const kind of ["entity class", "predicate"])
@@ -1095,6 +1180,13 @@ async function showIntro() {
   } catch (e) { box.hidden = true; }
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideHelp(); });
+// ← and → go to the previous and next record of the batch, unless a field (or the help window) has the keyboard.
+document.addEventListener("keydown", (e) => {
+  if (!batch || e.altKey || e.ctrlKey || e.metaKey || !$("help").hidden) return;
+  if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "ArrowRight" && current < batch.records.length - 1) { e.preventDefault(); show(current + 1); }
+  if (e.key === "ArrowLeft" && current > 0) { e.preventDefault(); show(current - 1); }
+});
 // A followed link opens its document in the help window (a term: docs/terminology.md).
 document.addEventListener("click", (e) => {
   const link = e.target.closest && e.target.closest("[data-doc]");
