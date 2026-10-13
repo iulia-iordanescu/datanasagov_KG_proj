@@ -83,6 +83,7 @@
   .helpbox { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px;
              max-width: 820px; width: 100%; }
   .helpbody code { background: var(--bg); padding: 0 4px; border-radius: 4px; }
+  .helpbody .ref { border-bottom: 1px dotted var(--line); cursor: help; }   /* a link's words; its target in the tooltip */
   .helpbody pre { background: var(--bg); padding: 8px; border-radius: 6px; overflow: auto; }
   .part { font-size: 12px; border-radius: 10px; padding: 0 7px; border: 1px solid var(--line); }
   .part.held-out { color: var(--flag); background: var(--flag-bg); border-color: var(--flag); }
@@ -959,9 +960,11 @@ function currentView() {
   return vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
 }
 
-function inline(text) {                  // `code`, **bold**, *italic*, on escaped text
+function inline(text) {                  // [links](…), `code`, **bold**, *italic*, on escaped text
   const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return esc.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+  // A link shows its words; where it points (a file of the repository, which the page can't open) is its tooltip.
+  return esc.replace(/\[([^\[\]]+)\]\(([^()\s]+)\)/g, '<span class="ref" title="$2">$1</span>')
+            .replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
             .replace(/\*([^*]+)\*/g, "<i>$1</i>");
 }
 
