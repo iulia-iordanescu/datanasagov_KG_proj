@@ -1,6 +1,6 @@
 # 060_extract
 
-Terms ([classed triple](../docs/terminology.md#2-triples), [entity class](../docs/terminology.md#3-schemas), [schema](../docs/terminology.md#3-schemas), [pattern](../docs/terminology.md#3-schemas), [DESCRIBES row](../docs/terminology.md#2-triples), [error](../docs/terminology.md#2-triples), [flag](../docs/terminology.md#2-triples), [schema additions](../docs/terminology.md#3-schemas), …) are as defined in [docs/terminology.md](../docs/terminology.md), especially section *Extracting with a schema (step 060)*.
+Terms ([classed triple](../docs/terminology.md#2-triples), [entity class](../docs/terminology.md#3-schemas), [schema](../docs/terminology.md#3-schemas), [pattern](../docs/terminology.md#3-schemas), [describes triple](../docs/terminology.md#2-triples), [error](../docs/terminology.md#2-triples), [flag](../docs/terminology.md#2-triples), [schema additions](../docs/terminology.md#3-schemas), …) are as defined in [docs/terminology.md](../docs/terminology.md), especially section *Extracting with a schema (step 060)*.
 
 ## Purpose
 
@@ -116,14 +116,14 @@ In `outputs/intermediate_results/060_extract/`:
 
 | File | Contents |
 |---|---|
-| `extracted_triples.csv` | The [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060): for each record extracted, its [DESCRIBES row](../docs/terminology.md#2-triples) first, then its [classed triples](../docs/terminology.md#2-triples). Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
+| `extracted_triples.csv` | The [extracted triples](../docs/terminology.md#6-extracting-with-a-schema-step-060): for each record extracted, its [describes triple](../docs/terminology.md#2-triples) first, then its [classed triples](../docs/terminology.md#2-triples). Columns `id, subject, subject_class, predicate, object, object_class, source_text, flags, origin`. |
 | `extracted_triples_removed.csv` | Every classed triple removed, with `reason` (below; both, if both apply); `raw` holds what the [model](../docs/terminology.md#8-the-pipeline) returned when it wasn't a classed triple at all. |
 | `schema_used.json` | The schema this run used: the schema input plus the additions, in the JSON shape above, each entry with `"from": "schema"` or `"additions"` (and its `source`), the additions left out for a clash (`left_out_additions`), and those left out for not coming from tuning records only (`left_out_not_tuning`); and which records the schema was learned from (`learned_from`, for finding twins: `070_evaluate/070_evaluate.md`, *Twins*). 070 reads this (and 080 will), so they use exactly what 060 used. |
 | `extracted_triples_details.json` | Each record chosen, with its status (`extracted`, or `failed` with the error), [text pieces](../docs/terminology.md#1-records-and-their-text), rows kept and removed; the records passed over while choosing; and the [component classes](../docs/terminology.md#3-schemas) outside the schema the model used (see the [report](../docs/terminology.md#8-the-pipeline)). |
 | `cache/` | Every model answer, so a rerun pays only for what isn't there yet (see *How to run*). Not listed in the [manifest](../docs/terminology.md#8-the-pipeline). |
 | `_manifest.json` | [Run id](../docs/terminology.md#8-the-pipeline), [settings](../docs/terminology.md#8-the-pipeline), input files and their hashes, output files and their hashes, headline numbers and the [harvest](../docs/terminology.md#1-records-and-their-text) date. Written when a run finishes. |
 
-For evaluation: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not evaluated as zero. A record with **only its DESCRIBES row** was extracted and states no [fact](../docs/terminology.md#2-triples) the schema can express.
+For evaluation: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not evaluated as zero. A record with **only its describes triple** was extracted and states no [fact](../docs/terminology.md#2-triples) the schema can express.
 
 Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
 
@@ -165,7 +165,7 @@ Four [stages](../docs/terminology.md#8-the-pipeline), in `060_extract/run.py`'s 
 1. **Pick the [records](../docs/terminology.md#1-records-and-their-text)** (`records.py`, `pick_records`). By `extract_from` or `ids` (above). Anything that differs from what was asked becomes a note shown before paying: a listed id not in the catalog or without [text](../docs/terminology.md#1-records-and-their-text), [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records not yet finished.
 2. **Load the [schema](../docs/terminology.md#3-schemas)** (`schema.py`, `load_schema`). The schema input plus the additions, merged, each entry remembering where it came from. Notes: additions from the ground truth that don't name tuning records only (left out), entries of the schema input whose `source:` line fails the same check (kept), additions that clash with the schema, additions with no `source:` line, entries with no definition, [entity classes](../docs/terminology.md#3-schemas) or [predicates](../docs/terminology.md#3-schemas) in [patterns](../docs/terminology.md#3-schemas) that the schema doesn't have.
 3. **Ask the model** (`extract.py`, `ask_model`). One call per [text piece](../docs/terminology.md#1-records-and-their-text), with the prompt `060_extract/060_extract_prompts/extract.txt`: extract only the [facts](../docs/terminology.md#2-triples) the schema can express, with only the schema's [component classes](../docs/terminology.md#3-schemas), and name the entity class of what the title names (`describes_class`), or none if no entity class fits. The model sees the schema in the text shape above. The rules and the reply format are 050's (`common/common_prompts/`), so what 060 extracts and the ground truth 050 drafted are asked for the same way. The calls are made by `common/common_helpers/extraction.py`, as in 050: every answer is cached the moment it arrives, and a record with a failed call is left out whole, never half extracted.
-4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/common_helpers/extraction.py` builds each record's rows (the [DESCRIBES row](../docs/terminology.md#2-triples) first) and checks every one against the record's **whole** text and the schema (`common/common_helpers/validate.py`). Then:
+4. **Check and sort the rows** (`extract.py`, `sort_rows`). `common/common_helpers/extraction.py` builds each record's rows (the [describes triple](../docs/terminology.md#2-triples) first) and checks every one against the record's **whole** text and the schema (`common/common_helpers/validate.py`). Then:
 
    | What | Where it goes | Why |
    |---|---|---|
@@ -175,7 +175,7 @@ Four [stages](../docs/terminology.md#8-the-pipeline), in `060_extract/run.py`'s 
    | Something that isn't a [classed triple](../docs/terminology.md#2-triples) at all | **removed**, reason `malformed` | Nothing to keep. |
    | A pattern the schema doesn't list (known component classes, new combination) | **kept**, [flag](../docs/terminology.md#2-triples) `pattern_not_in_schema` | The schema's patterns are what was seen, not all that's allowed. |
    | Any other flag (a reworded subject or [object instance](../docs/terminology.md#2-triples), subject equal to object, the same [subject instance](../docs/terminology.md#2-triples), predicate, and object instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
-   | The DESCRIBES row | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its entity class is `X`, flagged `describes_undecided`. |
+   | The describes triple | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its entity class is `X`, flagged `describes_undecided`. |
 
 The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).
 

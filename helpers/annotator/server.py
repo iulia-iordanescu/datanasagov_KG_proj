@@ -171,13 +171,13 @@ MESSAGES = {
                              "hand-built schema with the button below (shown once both entity classes are in it).",
     "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
-    "describes_undecided": "No entity class yet for what this record describes (the DESCRIBES row's object class is "
+    "describes_undecided": "No entity class yet for what this record describes (the describes triple's object class is "
                            "X or empty). Type or pick the entity class of the thing the title names.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
                                      "If it's new, add it to the hand-built schema with the button below, "
                                      "giving a one-line definition.",
-    "describes_subject_not_id": "The DESCRIBES row's subject should be the record's id.",
+    "describes_subject_not_id": "The describes triple's subject should be the record's id.",
 }
 
 
@@ -838,7 +838,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
                          f"as it is now.")
     old = spelled[component_class_key(old)]
     if component_class_key(old) in FIXED or component_class_key(new) in FIXED:
-        raise ValueError("CatalogEntry, DESCRIBES, and X are written by code (the DESCRIBES row), so they can't be "
+        raise ValueError("CatalogEntry, DESCRIBES, and X are written by code (the describes triple), so they can't be "
                          "renamed, merged, or used as a new component class")
     if new == old:
         raise ValueError("the new component class is the same as the old one: nothing to change. Type another one")

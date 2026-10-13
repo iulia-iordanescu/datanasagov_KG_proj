@@ -23,7 +23,7 @@ or extend; 060: only the schema's) and how it chooses records.
 
 What build_rows does with a record's replies (one per text piece):
 
-  1. the DESCRIBES row first (common/common_helpers/triples_io.py), with the first entity
+  1. the describes triple first (common/common_helpers/triples_io.py), with the first entity
      class a reply named for what the title names ("X" if none did);
   2. every item of every reply's "triples", cleaned by triples_io.clean_triple;
      one that can't be a triple instance (a missing subject, predicate or
@@ -53,7 +53,7 @@ from common.chunking import text_fields
 from common.prompt_files import fill, load
 from common.report import named
 from common.text_match import Text
-from common.triples_io import (clean_triple, describes_row, component_class_key, triple_key)
+from common.triples_io import (clean_triple, describes_triple, component_class_key, triple_key)
 from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
@@ -91,12 +91,12 @@ def wrap(piece: str) -> str:
 
 
 def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
-    """(rows, removed). rows: the DESCRIBES row, then one per triple
+    """(rows, removed). rows: the describes triple, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
     removed: {"reason": "malformed" | "duplicate", "raw" or the row}."""
     removed = []
     named = [str(r.get("describes_class") or "").strip() for r in replies if isinstance(r, dict)]
-    head = describes_row(record_id, title, next((c for c in named if c), ""))
+    head = describes_triple(record_id, title, next((c for c in named if c), ""))
     errors, flags = check_describes(head, record_id, schema_entries)
     rows = [{**head, "errors": errors, "flags": flags}]
 

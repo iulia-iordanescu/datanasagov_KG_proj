@@ -150,14 +150,14 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"Chosen: {chosen.how}. Extracted: {len(rows.kept)}; failed: {len(replies.failed)}"
              + ("; skipped while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
                 if chosen.skipped else "") + ".",
-             f"{only_describes} record(s) state no fact the schema can express (only their DESCRIBES row).", "",
+             f"{only_describes} record(s) state no fact the schema can express (only their describes triple).", "",
              "### Schema", "",
              f"`{schema.files['schema']}` plus `{schema.files['additions']}`: {len(c['entity_classes'])} entity "
              f"classes, {len(c['predicates'])} predicates, {len(c['patterns'])} patterns, of which added: "
              f"{added['entity_classes']} entity classes, {added['predicates']} predicates, {added['patterns']} "
              f"patterns. This run's schema, from now on the current schema, is in `{SCHEMA_NAME}`.", "",
              "### Triple instances", "",
-             f"- Extracted triples: {n_kept_facts:,}, plus one DESCRIBES row per record, in `{KEPT_NAME}`.",
+             f"- Extracted triples: {n_kept_facts:,}, plus one describes triple per record, in `{KEPT_NAME}`.",
              f"- Flags on extracted triples (worth a look): {counted(rows.flags)}.",
              f"- Removed: {len(removed):,} ({counted(rows.reasons)}), in `{REMOVED_NAME}` with the reason. "
              f"`source_text`: its source text is missing or isn't in the record's text; "

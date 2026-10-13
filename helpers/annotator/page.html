@@ -71,6 +71,7 @@
   .classopt { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
               border-radius: 0; padding: 6px 4px; background: transparent; }
   .classopt:hover { background: var(--accent-bg); }
+  .classopt.current { background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }   /* what the field holds */
   .triplenav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 8px; }
   .triplenav button { padding: 4px 12px; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
@@ -132,9 +133,7 @@
   .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
   .problems li.error { background: var(--error-bg); color: var(--error); }
   .problems li.flag { background: var(--flag-bg); color: var(--flag); }
-  .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--accent-bg);
-               border-radius: 8px; padding: 8px 10px; }
-  .describes .title { flex: 1 1 280px; min-width: 0; }
+  input.fixed { background: transparent; border-style: dashed; color: var(--muted); }   /* written by code, shown only */
   .empty { color: var(--muted); }
   .name { font-weight: 600; }                 /* a view's or section's name, *written so* in the README and guidelines */
   #help { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.45); display: flex;
@@ -212,8 +211,8 @@
 "use strict";
 // The whole state: the open batch, as the server sent it, edited in place.
 let batch = null, current = 0, activeRow = null, saveTimer = null, saving = false, dirty = false;
-// One at a time (or all at once), remembered on this computer: the record's DESCRIBES row, then its ground truth
-// triples; tripleAt: which of those is shown (0 = the DESCRIBES row, if the record has one).
+// One at a time (or all at once), remembered on this computer: the record's describes triple, then its ground truth
+// triples; tripleAt: which of those is shown (0 = the describes triple, if the record has one).
 let oneAtATime = (() => { try { return localStorage.getItem("oneAtATime") !== "0"; } catch (_) { return true; } })();
 let tripleAt = 0;
 const tripleRows = (rec) => rec.rows.map((r, j) => isDescribes(r) ? -1 : j).filter((j) => j >= 0);
@@ -442,16 +441,16 @@ function show(i) {
   const none = all.length === 0
     ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null;
   const rows = el("section", { class: "card" },
-    el("h3", {}, "DESCRIBES row and ground truth triples"),
+    el("h3", {}, "Describes triple and ground truth triples"),
     oneAtATime && steps.length
       ? [el("div", { class: "triplenav" },
            el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: tripleAt === 0,
                           title: "Previous (or the ↑ key, when not typing in a field)" }, "↑"),
-           el("strong", {}, atDescribes ? "DESCRIBES row"
+           el("strong", {}, atDescribes ? "Describes triple"
                                         : `Ground truth triple ${all.indexOf(at) + 1} of ${all.length}`),
            el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: tripleAt === steps.length - 1,
                           title: "Next (or the ↓ key, when not typing in a field)" }, "↓")),
-         atDescribes ? describesRow(rec, at) : tripleRow(rec, at, false)]
+         atDescribes ? describesRow(rec, at, false) : tripleRow(rec, at, false)]
       : [describes >= 0 ? describesRow(rec, describes) : null, all.map((j) => tripleRow(rec, j))],
     oneAtATime && !atDescribes ? null : none,
     el("div", { class: "bar" }, add, switcher));
@@ -463,7 +462,7 @@ function show(i) {
   if (oneAtATime && steps.length) setActive(at);           // its source text highlighted and scrolled into view
 }
 
-// Go to the record's k-th row to annotate (0 = its DESCRIBES row, if it has one); with one at a time, show it.
+// Go to the record's k-th row to annotate (0 = its describes triple, if it has one); with one at a time, show it.
 function goToTriple(k) {
   const steps = stepRows(batch.records[current]);
   if (k < 0 || k >= steps.length) return;
@@ -480,12 +479,13 @@ function goToRow(j) {
 
 function hideClasses() { const panel = $("classpanel"); if (panel) panel.hidden = true; }
 // The entity classes or predicates to choose from, for the field the cursor is in: each with its definition,
-// narrowed down to those whose name or definition contains what the field holds. A click puts one in the field.
-function showClasses(kind, input) {
+// all of them when the cursor enters the field (the one it holds marked), narrowed down to those whose name or
+// definition contains what is typed. A click puts one in the field.
+function showClasses(kind, input, typed = false) {
   const panel = $("classpanel");
   if (!panel || !batch.definitions) return;
   const defs = batch.definitions[kind] || {}, coined = new Set((batch.coined || {})[kind] || []);
-  const q = input.value.trim().toLowerCase();
+  const q = typed ? input.value.trim().toLowerCase() : "", now = looseKey(input.value);
   const names = Object.keys(defs)
     .filter((n) => !q || n.toLowerCase().includes(q) || (defs[n] || "").toLowerCase().includes(q))
     .sort((a, b) => (b.toLowerCase().startsWith(q) - a.toLowerCase().startsWith(q)) || a.localeCompare(b));
@@ -495,12 +495,14 @@ function showClasses(kind, input) {
     el("h3", { title: `The ${what} of the hand-built schema, and those coined while annotating. Click one to put it in the field.` },
        kind === "entity_classes" ? "Entity classes" : "Predicates",
        el("span", { class: "meta" }, q ? `  ${names.length} matching “${input.value.trim()}”` : `  ${names.length}`)),
-    names.length ? names.map((n) => el("button", { class: "classopt",
+    names.length ? el("div", {}, names.map((n) => el("button", { class: looseKey(n) === now && now ? "classopt current" : "classopt",
         onmousedown: (e) => e.preventDefault(),            // the field keeps the cursor
         onclick: () => { input.value = n; input.dispatchEvent(new Event("input")); showClasses(kind, input); } },
       el("strong", {}, n), coined.has(n) ? el("span", { class: "pill todo" }, "coined") : null,
-      el("div", { class: "meta" }, defs[n] || "No definition yet (it can be added in the view Ground truth vocabulary).")))
+      el("div", { class: "meta" }, defs[n] || "No definition yet (it can be added in the view Ground truth vocabulary)."))))
       : el("p", { class: "empty" }, `No ${what} match: if none fits, type a new one (one word, as the Guidelines say).`));
+  const held = panel.querySelector(".classopt.current");
+  if (held && !typed) held.scrollIntoView({ block: "nearest" });
 }
 
 // A field of a ground truth triple; multiline: a box that grows to show all of a long value (still one line of text).
@@ -512,7 +514,7 @@ function field(rec, j, key, label, extra = {}) {
     oninput: (e) => {
       if (multiline) { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " "); grow(e.target); }
       r[key] = e.target.value; if (key === "source_text") drawText(); changed();
-      if (kind) showClasses(kind, e.target); },
+      if (kind) showClasses(kind, e.target, true); },
     onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); else hideClasses(); } };
   return el("label", {}, label, multiline
     ? el("textarea", { ...attrs, ...on, class: "grow", rows: 1, onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); } }, r[key])
@@ -524,27 +526,32 @@ function problemList(r, j) {
     r.problems.map(p => el("li", { class: p.type }, (p.type === "error" ? "✖ " : "⚑ ") + p.message,
                            p.add ? addControl(p.add) : null)));
 }
-function describesRow(rec, j) {
+// The describes triple, laid out like a ground truth triple: its subject (the record's id), the subject's entity class
+// (CatalogEntry) and its predicate (DESCRIBES) are written by code and shown only; its object (the record's title) and
+// the object's entity class are the annotator's. It has no source text.
+function describesRow(rec, j, heading = true) {
   const r = rec.rows[j];
+  const fixed = (label, value) => el("label", { title: "Written by code; it can't be changed." }, label,
+    el("input", { value, readonly: true, tabindex: -1, class: "fixed" }));
   return el("div", { class: "row", "data-row-box": j },
-    el("div", { class: "describes", title: "No source text: this line comes from the record itself (its id and its title), " +
-        "not from a passage of the text. Only choose the entity class of what the title names (Guidelines, The DESCRIBES row)." },
-      el("strong", {}, "This record describes"),
-      el("textarea", { class: "title grow", rows: 1, "aria-label": "what the record describes", "data-row": j,
-                       onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); },
-                       oninput: (e) => { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
-                                         grow(e.target); r.object = e.target.value; changed(); },
-                       onfocus: () => { setActive(j); hideClasses(); } }, r.object),
-      el("span", {}, "which is a"),
-      el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes",
-                    placeholder: "entity class", "aria-label": "its entity class", "data-row": j,
-                    oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target); },
-                    onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } })),
+    heading ? el("div", { class: "rowhead" }, "Describes triple") : null,
+    el("div", { class: "triple" },
+      fixed("Subject (the record's id)", r.subject),
+      fixed("Subject's entity class", r.subject_class),
+      fixed("Predicate", r.predicate),
+      el("span"),
+      field(rec, j, "object", "Object (what the record describes)", { multiline: true }),
+      el("label", {}, "Object's entity class",
+        el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
+                      placeholder: "not chosen yet", "data-row": j,
+                      oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target, true); },
+                      onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }))),
+    el("p", { class: "hint" }, "No source text: this row comes from the record's id and title, not from a passage of the text."),
     problemList(r, j));
 }
 function tripleRow(rec, j, heading = true) {
   const r = rec.rows[j];
-  // Its number among the record's ground truth triples (the DESCRIBES row isn't one), as its heading.
+  // Its number among the record's ground truth triples (the describes triple isn't one), as its heading.
   const n = rec.rows.slice(0, j + 1).filter((x) => !isDescribes(x)).length;
   return el("div", { class: "row", "data-row-box": j },
     heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,

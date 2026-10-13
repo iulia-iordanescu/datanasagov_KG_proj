@@ -32,7 +32,7 @@ long text is checked against all of it.
 
 Shared by every step that takes triple instances from texts (040, 050 and
 060) and by the annotation tool. The checks against a schema and
-of the DESCRIBES row are at the end of this file; 040 has no schema to check
+of the describes triple are at the end of this file; 040 has no schema to check
 against. Adapted from check_row in to_be_reshaped/validate_triples.py: the
 same checks and names.
 """
@@ -80,7 +80,7 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
 #     pattern_not_in_schema          the predicate is in it, but never with
 #                                    these two entity classes
 #
-#     ON THE DESCRIBES ROW (common/common_helpers/triples_io.py)
+#     ON THE DESCRIBES TRIPLE (common/common_helpers/triples_io.py)
 #     describes_undecided            ERROR: no entity class named for what
 #                                    the title names
 #     describes_class_not_in_schema  FLAG: that entity class isn't in it
@@ -119,7 +119,7 @@ def check_against_schema(instance: dict, schema_entries: SchemaEntries) -> list:
 
 
 def check_describes(row: dict, record_id: str, schema_entries: SchemaEntries | None = None) -> tuple:
-    """(errors, flags) of a record's DESCRIBES row (see above)."""
+    """(errors, flags) of a record's describes triple (see above)."""
     from common.triples_io import UNDECIDED
     errors, flags = [], []
     if str(row.get("subject") or "").strip() != record_id:

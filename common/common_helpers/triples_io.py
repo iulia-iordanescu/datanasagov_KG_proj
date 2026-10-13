@@ -1,13 +1,13 @@
 """
 common/common_helpers/triples_io.py -- the one place a triple is defined, cleaned and
-keyed, and the DESCRIBES row is made.
+keyed, and the describes triple is made.
 
-Adapted from to_be_reshaped/triple_io.py; the DESCRIBES row (at the end)
+Adapted from to_be_reshaped/triple_io.py; the describes triple (at the end)
 was added. Used by common/common_helpers/extraction.py (050 and 060: clean_triple,
-triple_key, component_class_key, describes_row), common/common_helpers/validate.py,
+triple_key, component_class_key, describes_triple), common/common_helpers/validate.py,
 common/common_helpers/ground_truth.py, the annotation tool, 040 (component_class_key), 050 and 060
-(the DESCRIBES row's component classes, COLUMNS, component_class_key) and 070
-(component_class_key, the DESCRIBES row's component classes).
+(the describes triple's component classes, COLUMNS, component_class_key) and 070
+(component_class_key, the describes triple's component classes).
 
 A triple row has the columns in COLUMNS. source_text is the passage that
 states the fact. The ground truth and the draft batches add three columns
@@ -112,7 +112,7 @@ def clean_triple(raw) -> dict | None:
     return out
 
 
-# ------------------------------ the DESCRIBES row --------------------------
+# ------------------------------ the describes triple --------------------------
 #
 # Every record's triple instances start with one row no text states, written
 # in code (050, 060):
@@ -130,7 +130,7 @@ ENTRY_SOURCE = "(record structure)"
 UNDECIDED = "X"
 
 
-def describes_row(record_id: str, title: str, entity_class: str) -> dict:
+def describes_triple(record_id: str, title: str, entity_class: str) -> dict:
     """The row, with the title's spacing tidied like every component
     instance's (clean_triple). 020 already makes titles one line; this keeps
     the row right for a title from anywhere else."""

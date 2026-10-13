@@ -6,7 +6,7 @@ of the ground truth candidates pool and lists every fact each one states, as
 triple instances with entity classes, using the ground truth vocabulary's
 component classes (the hand-built schema's, plus any coined in the ground
 truth) where they fit and new ones where they don't; code adds each record's
-DESCRIBES row and checks every row against the record's text and the schema.
+describes triple and checks every row against the record's text and the schema.
 Each run writes one numbered draft batch. The person corrects it with the
 annotation tool (py helpers/annotate.py), which saves it into annotations/ground_truth/;
 no step writes there. Terms: docs/terminology.md.
@@ -54,7 +54,7 @@ def main(inputs, settings, output):
     chosen  = annotate.pick_records(inputs, settings, output)     # code: the next records of the pool, skipping done ones
     calls   = annotate.paid_calls(chosen, settings, output)       # code: asks before paying; keeps every answer in cache/
     replies = annotate.ask_model(chosen, calls, settings)         # LLM: every fact each record states
-    drafts  = annotate.build_rows(chosen, replies)                # code: DESCRIBES row, duplicates out, checks
+    drafts  = annotate.build_rows(chosen, replies)                # code: describes triple, duplicates out, checks
     typos   = annotate.check_ground_truth(chosen)                 # code: rows of your ground truth to fix
     # writes drafted_triples_batch<N>.csv and drafted_triples_batch<N>_details.json; the report
     return annotate.results(chosen, replies, drafts, typos, calls, settings, output)

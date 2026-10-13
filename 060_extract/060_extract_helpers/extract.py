@@ -12,7 +12,7 @@ common/common_helpers/extraction.ask_model: every answer is cached, a rerun pays
 what it doesn't have, and a record with a failed call is left out whole.
 
 Stage 4, sort_rows. common/common_helpers/extraction.build_rows turns each record's
-replies into rows (the DESCRIBES row first; malformed items and repeats
+replies into rows (the describes triple first; malformed items and repeats
 removed) and checks every row against the record's whole text and the
 schema. Then:
 
@@ -33,7 +33,7 @@ schema. Then:
       (pattern_not_in_schema: the schema's patterns are what was seen, not
       all that is allowed) and a reworded component class
 
-    The DESCRIBES row is always kept, so every record extracted has one
+    The describes triple is always kept, so every record extracted has one
     (a record with nothing else "states no fact the schema can express").
     If the model named no entity class for it, or one the schema doesn't
     have, its entity class is X and the row is flagged.
@@ -67,7 +67,7 @@ SLOTS_OF = {"subject_class_not_in_schema": ("entity class", "subject_class"),
 
 @dataclass
 class Rows:
-    kept: dict = field(default_factory=dict)       # {id: [rows]}, DESCRIBES row first
+    kept: dict = field(default_factory=dict)       # {id: [rows]}, describes triple first
     removed: dict = field(default_factory=dict)    # {id: [removed items, each with "reason"]}
     flags: dict = field(default_factory=dict)      # {check: extracted triples that raised it}
     reasons: dict = field(default_factory=dict)    # {reason: rows removed for it}

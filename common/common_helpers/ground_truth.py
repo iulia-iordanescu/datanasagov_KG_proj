@@ -37,7 +37,7 @@ progress. A row with an id but an empty subject, predicate and object says
                               ground truth
     check_rows(gt, records)   rows with a typo to fix: an id not in the
                               catalog, a source text not in the record's
-                              text, a DESCRIBES row with no entity class, …
+                              text, a describes triple with no entity class, …
                               (ROW_ERRORS, at the end of this file)
 
 Problems, each listed, none silently resolved:
@@ -275,8 +275,8 @@ ROW_ERRORS = {
                       "\"Use selection\"",
     "source_not_in_text": "its source text isn't in the record's text: in the annotation tool, select the passage and "
                           "press \"Use selection\" to copy it exactly",
-    "describes_subject_not_id": "the DESCRIBES row's subject isn't the record's id: write the record's id there",
-    "describes_undecided": "the DESCRIBES row has no entity class (X): choose the entity class of what the title names",
+    "describes_subject_not_id": "the describes triple's subject isn't the record's id: write the record's id there",
+    "describes_undecided": "the describes triple has no entity class (X): choose the entity class of what the title names",
 }
 
 
@@ -320,7 +320,7 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
     predicates (hand_schema, as common.schema_io.read_hand_schema reads it),
     plus every one the ground truth triples use that it lacks. Component
     classes are compared as common.triples_io.component_class_key does (ignoring case and
-    punctuation), keeping the first spelling met; the DESCRIBES row's own
+    punctuation), keeping the first spelling met; the describes triple's own
     component classes (CatalogEntry, DESCRIBES), the undecided X and anything
     without a letter or digit (e.g. "-") are not counted.
 

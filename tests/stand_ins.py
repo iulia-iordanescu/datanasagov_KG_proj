@@ -127,7 +127,7 @@ def _record_reply(prompt: str) -> dict:
     """Steps 050 and 060: the facts of the record, as the record's own words.
     Faults: a repeat, a source text that isn't in the text, a component class
     outside the schema, a malformed item; some records name no entity class
-    for the DESCRIBES row."""
+    for the describes triple."""
     text = _between(prompt, "----- BEGIN RECORD -----", "----- END RECORD -----").strip()
     entity, predicates = _schema_classes(prompt)
     instrument = "Instrument" if "Instrument" in entity else entity[0]

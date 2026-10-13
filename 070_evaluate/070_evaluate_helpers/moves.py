@@ -151,7 +151,7 @@ def _fingerprint(value) -> str:
 
 
 def _ground_truth_rows(r: dict) -> list:
-    """A record's ground truth as it is compared: each triple's components and source text, then its DESCRIBES row."""
+    """A record's ground truth as it is compared: each triple's components and source text, then its describes triple."""
     return [{k: t.get(k, "") for k in TRIPLE + ("source_text",)} for t in r["gt"] + [r["gt_describes"] or {}]]
 
 

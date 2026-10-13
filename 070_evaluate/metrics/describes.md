@@ -4,7 +4,7 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 ## <ins>Definition</ins>
 
-Every [record](../../docs/terminology.md#1-records-and-their-text) gets one [DESCRIBES row](../../docs/terminology.md#2-triples), written by code, in which the [model](../../docs/terminology.md#8-the-pipeline)'s only part is the [describes class](../../docs/terminology.md#2-triples): the [entity class](../../docs/terminology.md#3-schemas) of the thing the record is about, e.g. Dataset. So the DESCRIBES rows are left out of every other metric, and compared on their describes class alone. A record counts when its [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) names a describes class (one that isn't `X`). For such a record, extraction is **right** when its describes class, translated through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), is the ground truth's describes class, by [loose match](../../docs/terminology.md#3-schemas). It is not right when extraction named none (`X`), or named one whose row says `(none)`.
+Every [record](../../docs/terminology.md#1-records-and-their-text) gets one [describes triple](../../docs/terminology.md#2-triples), written by code, in which the [model](../../docs/terminology.md#8-the-pipeline)'s only part is the [describes class](../../docs/terminology.md#2-triples): the [entity class](../../docs/terminology.md#3-schemas) of the thing the record is about, e.g. Dataset. So the describes triples are left out of every other metric, and compared on their describes class alone. A record counts when its [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) names a describes class (one that isn't `X`). For such a record, extraction is **right** when its describes class, translated through the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070), is the ground truth's describes class, by [loose match](../../docs/terminology.md#3-schemas). It is not right when extraction named none (`X`), or named one whose row says `(none)`.
 
 ## <ins>Formula</ins>
 
@@ -32,7 +32,7 @@ Let *d* be the describes accuracy. It reads two ways: what was computed, on the 
 
 **What it means for the knowledge graph** (the whole catalog, approximately)
 
-Say the knowledge graph is built from the whole catalog's [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), with each record's DESCRIBES row as an [edge](../../docs/terminology.md#8-the-pipeline) from the record's [node](../../docs/terminology.md#8-the-pipeline) to the node of the thing it describes. Then:
+Say the knowledge graph is built from the whole catalog's [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), with each record's describes triple as an [edge](../../docs/terminology.md#8-the-pipeline) from the record's [node](../../docs/terminology.md#8-the-pipeline) to the node of the thing it describes. Then:
 
 1. approximately *d* of those nodes would have the right entity class (of the records whose ground truth would name a describes class);
 2. a graph that gave every such node the most common describes class would have approximately the describes baseline of them right;

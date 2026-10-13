@@ -191,7 +191,7 @@ class Checks(unittest.TestCase):
             self.assertIsNone(triples_io.clean_triple(bad), bad)
 
     def test_describes(self):
-        r = triples_io.describes_row("id1", " A\n title ", "")
+        r = triples_io.describes_triple("id1", " A\n title ", "")
         self.assertEqual((r["object"], r["object_class"]), ("A title", triples_io.UNDECIDED))
         self.assertTrue(triples_io.is_describes(r))
         self.assertTrue(triples_io.is_describes({"subject_class": "catalog entry", "predicate": "describes"}))
@@ -215,7 +215,7 @@ class Checks(unittest.TestCase):
         self.assertEqual(validate.check_against_schema({**t, "predicate": "CARRIES", "subject_class": "Probe"}, entries),
                          ["subject_class_not_in_schema", "predicate_not_in_schema"])
         self.assertEqual(entries.spelling["entity_classes"]["spacecraft"], "Spacecraft")
-        head = triples_io.describes_row("r", "T", "Probe")
+        head = triples_io.describes_triple("r", "T", "Probe")
         self.assertEqual(validate.check_describes(head, "r", entries), ([], ["describes_class_not_in_schema"]))
         self.assertEqual(validate.check_describes(head, "other")[0], ["describes_subject_not_id"])
 

@@ -4,7 +4,7 @@ moves.py -- the main moves of 050_annotate, as called by 050_annotate/run.py.
     stage 1  records.py  pick_records        code: which records this batch drafts; notes to show before paying
     -        (here)      paid_calls          code: asks before paying; keeps every answer in cache/
     stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
-    stage 3  (here)      build_rows          code: DESCRIBES row, duplicates out, every row checked
+    stage 3  (here)      build_rows          code: describes triple, duplicates out, every row checked
     stage 4  (here)      check_ground_truth  code: errors in the ground truth files
     -        (here)      results             writes drafted_triples_batch<N>.csv and drafted_triples_batch<N>_details.json; the report
 

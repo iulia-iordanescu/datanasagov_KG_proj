@@ -22,7 +22,7 @@ The reply also names describes_class: the kind of thing the text's title
 names ("Dataset", "WebTool", …), judged from the whole text. The first piece
 of a text to name one decides it. Stage 3 uses it as the title's label, so
 the schema always has entity classes for what records describe, which the
-DESCRIBES row of 050 and 060 needs.
+describes triple of 050 and 060 needs.
 
 Every triple instance is then checked in code against its record's whole
 text (common/common_helpers/validate.py). One that fails (no source text, or a source text

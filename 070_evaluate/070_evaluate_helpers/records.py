@@ -18,7 +18,7 @@ the pool at all (hand-picked) is left out and listed, with what to do.
 
 For each evaluated record: its pool position, its part (tuning or held-out,
 from 030), its stratum (from the pool file), its title, its ground
-truth triples and DESCRIBES row, 060's extracted triples and DESCRIBES row,
+truth triples and describes triple, 060's extracted triples and describes triple,
 and its twin kind (docs/terminology.md, twin): what it shares with a record
 the current schema was learned from (060's schema_used.json, learned_from),
 "" when it isn't a twin, None when that isn't known.
@@ -58,7 +58,7 @@ class Evaluated:
 
 
 def _triples(rows: list) -> tuple:
-    """(triples, DESCRIBES row or None): rows with subject, predicate and object."""
+    """(triples, describes triple or None): rows with subject, predicate and object."""
     triples, describes = [], None
     for r in rows:
         if not (r.get("subject") and r.get("predicate") and r.get("object")):

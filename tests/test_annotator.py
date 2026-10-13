@@ -153,7 +153,7 @@ class B_Batch(unittest.TestCase):
         b = get("/api/batch?n=0")
         recs = b["records"]
         recs[0]["finished"] = True
-        recs[0]["rows"][0]["subject"] = "typo"                                 # the DESCRIBES row: put back to the id
+        recs[0]["rows"][0]["subject"] = "typo"                                 # the describes triple: put back to the id
         recs[0]["rows"].append({"subject": "", "predicate": "", "object": ""})  # a row not filled in
         recs[1]["finished"] = True
         recs[1]["rows"][0]["object_class"] = "Dataset"

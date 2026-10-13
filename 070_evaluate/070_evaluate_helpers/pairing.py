@@ -30,7 +30,7 @@ the same. A ground truth triple is WITHIN REACH when its predicate is
 something the current schema could say (some checked row translates to it): all a
 pair needs, since a pair doesn't need the entity classes to agree. It is
 WITHIN STRICT REACH when both its entity classes are too: all a strict pair
-needs. The DESCRIBES rows are compared on their entity class only, apart from
+needs. The describes triples are compared on their entity class only, apart from
 the triples, since code writes the rest of them.
 
 COMPONENT CLASS MISMATCHES (component_class_mismatches): a wrong or missing row of the

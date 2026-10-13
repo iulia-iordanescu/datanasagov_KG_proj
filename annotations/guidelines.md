@@ -38,7 +38,7 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 
 *The subject isn't always the title.* *Suppose:* a record titled "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "This is a Rosetta Radio Science data set, collected during the COMET ESCORT 4 phase 2015-10-22 to 2015-12-31." *Then:* the facts about the data set have the title as their [subject instance](../docs/terminology.md#2-triples): … FROM_MISSION "Rosetta" (Mission), … HAS_DISCIPLINE "Radio Science" (Discipline), … HAS_MISSION_PHASE "COMET ESCORT 4 phase" (MissionPhase). But the dates belong to the phase, not to the data set: "COMET ESCORT 4 phase" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (TimeSpan). (From `annotations/ground_truth/batch_000.csv`, record `cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc`.)
 
-## The DESCRIBES row
+## The describes triple
 
 Every record has one row that no text states, written by code: the record's id DESCRIBES its title. Your only part in it is its [entity class](../docs/terminology.md#3-schemas), the [describes class](../docs/terminology.md#2-triples): the entity class of the thing the title names (e.g. Dataset, WebTool). Choose it in the tool's line *This record describes … which is a …*. `X` means none is chosen yet.
 
