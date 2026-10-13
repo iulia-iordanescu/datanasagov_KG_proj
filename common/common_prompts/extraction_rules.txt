@@ -12,6 +12,10 @@
   as approximate is stated: "approximately 250 m" is the object.
 - A number with a unit: the object is the number and its unit, as written
   ("250 m"); the predicate says what the number measures.
+- A qualifier stays in the subject or object, as written: "daily snow cover"
+  is one object, not "snow cover" plus a separate triple for "daily". A
+  qualifier stated as a fact of its own ("Data are provided daily.") is a
+  triple of its own.
 - A table of values inside the record (rows of measurements, one per object):
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.

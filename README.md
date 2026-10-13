@@ -196,3 +196,10 @@ Details: [`070_evaluate/070_evaluate.md`](070_evaluate/070_evaluate.md).
 ### Graph building (step 080, not built yet)
 
 [Step](docs/terminology.md#8-the-pipeline) 080 will build the graph from the structured [fields](docs/terminology.md#1-records-and-their-text) ([maintainers](docs/terminology.md#1-records-and-their-text), keywords, formats, as in phase 1) and the [extracted triples](docs/terminology.md#6-extracting-with-a-schema-step-060), as plain files of [nodes](docs/terminology.md#8-the-pipeline) and [edges](docs/terminology.md#8-the-pipeline). Which graph database to load them into (a labeled property graph such as Neo4j is the plan) is decided separately.
+
+To decide when step 080 is built:
+
+- **Linking instances to reference lists**, so that one thing named several ways ("Aqua", "EOS PM-1") becomes one node. First processing levels, a short fixed list (L0, L1A, L1B, L2, L3, L4: every spelling, such as "Level 3" or "L-3", mapped to one); then NASA's missions ([A to Z of NASA missions](https://www.nasa.gov/a-to-z-of-nasa-missions/)), where an instance with no match is flagged for a person to check, not dropped, since the catalog also names missions of other agencies.
+- **Which predicates give properties instead of edges**, by the rule of *Phase 1* above: a processing level, for example, has few values, which people filter by but don't go from node to node through.
+- **Splitting a number with a unit** ("250 m") into a value and a unit.
+- **Splitting a qualifier from what it qualifies** ("daily snow cover" into snow cover, daily), which annotation and extraction keep together (annotation guidelines, rule 9 of *Writing a classed triple*).

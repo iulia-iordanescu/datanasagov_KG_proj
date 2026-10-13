@@ -31,6 +31,7 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 6. **Each fact once**, even if the record states it twice or in other words. (Two ground truth triples that are the same [classed triple](../docs/terminology.md#2-triples) in one record stop step 070 until one is deleted: `annotations/README.md`, *What the pipeline checks*.)
 7. **[Source text](../docs/terminology.md#1-records-and-their-text): the shortest passage that states the fact, copied exactly.** Select it in the record's text and press **Use selection**, so it is copied exactly.
 8. **A number with a unit: the object instance is the number and its unit, as written.** *Suppose:* a record says "MODIS has a spatial resolution of 250 m." *Then:* the object instance is "250 m", and the predicate says what the number measures (a spatial resolution); coin one if the hand-built schema has none.
+9. **A qualifier stays in the instance, as written.** *Suppose:* a record says "The product provides daily snow cover." *Then:* one ground truth triple, with the object instance "daily snow cover". *Suppose instead:* the record says "Data are provided daily." *Then:* that sentence is a fact of its own, and gets its own ground truth triple.
 
 ### Examples
 
