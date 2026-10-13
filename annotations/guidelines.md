@@ -40,7 +40,7 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 
 ## The describes triple
 
-Every record has one row that no text states, written by code: the record's id DESCRIBES its title. Your only part in it is its [entity class](../docs/terminology.md#3-schemas), the [describes class](../docs/terminology.md#2-triples): the entity class of the thing the title names (e.g. Dataset, WebTool). Choose it in the tool's line *This record describes … which is a …*. `X` means none is chosen yet.
+Every record has one [classed triple](../docs/terminology.md#2-triples) that no text states, written by code: the record's id DESCRIBES its title. Your only part in it is its [entity class](../docs/terminology.md#3-schemas), the [describes class](../docs/terminology.md#2-triples): the entity class of the thing the title names (e.g. Dataset, WebTool). Choose it in the tool's field *Object's entity class* of the [describes triple](../docs/terminology.md#2-triples). `X` means none is chosen yet.
 
 ## Coining an entity class or predicate
 

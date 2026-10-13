@@ -133,7 +133,8 @@
   .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
   .problems li.error { background: var(--error-bg); color: var(--error); }
   .problems li.flag { background: var(--flag-bg); color: var(--flag); }
-  input.fixed { background: transparent; border-style: dashed; color: var(--muted); }   /* written by code, shown only */
+  .fixed { border: 1px dashed #c3cac3; border-radius: 8px; padding: 6px 9px; color: var(--muted); font-weight: 400;
+           font-size: 14.5px; line-height: 1.4; overflow-wrap: anywhere; }                      /* written by code, shown only */
   .empty { color: var(--muted); }
   .name { font-weight: 600; }                 /* a view's or section's name, *written so* in the README and guidelines */
   #help { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.45); display: flex;
@@ -527,12 +528,12 @@ function problemList(r, j) {
                            p.add ? addControl(p.add) : null)));
 }
 // The describes triple, laid out like a ground truth triple: its subject (the record's id), the subject's entity class
-// (CatalogEntry) and its predicate (DESCRIBES) are written by code and shown only; its object (the record's title) and
-// the object's entity class are the annotator's. It has no source text.
+// (CatalogEntry), its predicate (DESCRIBES) and its object (the record's title) are written by code and shown only;
+// the object's entity class is the annotator's. It has no source text.
 function describesRow(rec, j, heading = true) {
   const r = rec.rows[j];
   const fixed = (label, value) => el("label", { title: "Written by code; it can't be changed." }, label,
-    el("input", { value, readonly: true, tabindex: -1, class: "fixed" }));
+    el("div", { class: "fixed" }, value));
   return el("div", { class: "row", "data-row-box": j },
     heading ? el("div", { class: "rowhead" }, "Describes triple") : null,
     el("div", { class: "triple" },
@@ -540,13 +541,13 @@ function describesRow(rec, j, heading = true) {
       fixed("Subject's entity class", r.subject_class),
       fixed("Predicate", r.predicate),
       el("span"),
-      field(rec, j, "object", "Object (what the record describes)", { multiline: true }),
+      fixed("Object (the record's title)", r.object),
       el("label", {}, "Object's entity class",
         el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
                       placeholder: "not chosen yet", "data-row": j,
                       oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target, true); },
                       onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }))),
-    el("p", { class: "hint" }, "No source text: this row comes from the record's id and title, not from a passage of the text."),
+    el("p", { class: "hint" }, "No source text: this describes triple comes from the record's id and title, not from a passage of the text."),
     problemList(r, j));
 }
 function tripleRow(rec, j, heading = true) {

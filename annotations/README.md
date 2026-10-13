@@ -101,7 +101,7 @@ A batch opens from **Batch**, and each other view from **Other views**, both at 
 | | Change any value of any row: [subject instance](../docs/terminology.md#2-triples), predicate, [object instance](../docs/terminology.md#2-triples), their entity classes, source text. Entity classes and predicates suggest the [ground truth vocabulary](../docs/terminology.md#7-evaluating-extraction-step-070)'s as you type. | `annotations/ground_truth/batch_<NNN>.csv` |
 | | Set a row's source text from a passage: select it in the text, then press **Use selection**. | `annotations/ground_truth/batch_<NNN>.csv` |
 | | Add a row (**+ Add a [triple instance](../docs/terminology.md#2-triples)**), or delete one (🗑). Deleting every row of a record keeps one row with only its id: "states no facts". | `annotations/ground_truth/batch_<NNN>.csv` |
-| | Set what the record describes, and its entity class (*This record describes … which is a …*). | `annotations/ground_truth/batch_<NNN>.csv` |
+| | Choose the entity class of what the record describes: *Object's entity class*, in the describes triple (its subject, predicate, and object are written by code). | `annotations/ground_truth/batch_<NNN>.csv` |
 | | Tick **All facts extracted** once every fact the text states is there (untick it if you're not done). | `annotations/ground_truth/batch_<NNN>.csv` |
 | | Add an entity class or predicate you coined to the [hand-built schema](../docs/terminology.md#3-schemas), with a one-line definition (the button under its ⚑, or in the bar above the page). | `annotations/schema_derived_from_manual_annotation.txt` |
 | | Add a pattern the hand-built schema lacks (**Add the pattern**, under its ⚑, or in the bar above the page). | `annotations/schema_derived_from_manual_annotation.txt` |
