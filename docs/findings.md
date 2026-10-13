@@ -13,6 +13,14 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 - **Entity classes and predicates saturate within 150 texts; patterns don't,** so patterns are the part to make stricter (`min_support`) before 060 runs on the whole catalog. [2026-10-12](#saturation)
 - **Data tables** in about 2% of descriptions are described, not extracted cell by cell (rule 8). [2026-10-12](#data-tables-in-descriptions)
 
+## 2026-10-12 · Step 040 · What the content filter stopped on
+
+**The evidence.** In run `040_induce_schema_2026-10-12_1629`, its log (`outputs/logs/040_induce_schema_2026-10-12_1629.log`, DEBUG lines starting "answer stopped by the service") holds what the model wrote before each of the two stops, both in stage 3's predicate labeling. The last words before the first (a batch of 80, 699 characters): `"was grown in LSMMG using": "USES", "was grown`. Before the second (a batch of 40, 163 characters): `"was more virulent than": "COMPARED_TO", "was observed in": …`. LSMMG is low-shear modeled microgravity, a way of growing microbes; both phrases come from GeneLab's space-biology records (how bacteria behave in spaceflight). No tokens were spent thinking.
+
+**A hypothesis, not verified.** A safety filter for biological content: recent Anthropic models run with classifiers that block content on making pathogens more dangerous, and a list of bare phrases such as "was more virulent than" and "was grown in … using", without their records, can look like that. Smaller batches, where such phrases are fewer, went through. Whose filter it is (the model maker's, or one added by the service LiteLLM forwards to) isn't known, nor whether every such stop is labeled `content_filter`.
+
+**What it means.** For 040, nothing more: asking again in halves got every batch answered. For 060, which extracts from whole records (in 040, every text's extraction went through), failed records clustering in GeneLab's would point to the same filter; 060's report lists every failed record.
+
 ## 2026-10-12 · Step 040 · The baseline schema
 
 **The run.** `040_induce_schema_2026-10-12_1714`, on the NASA laptop: the harvest of 2026-10-01; `claude-opus-5.5` through LiteLLM; 15 texts from each of the 10 largest maintainers (150 texts); `min_support` 1; the extraction rules with rule 8 (values inside a data table aren't facts). It found 2,767 verified triple instances in 150 texts, and made a schema of 60 entity classes, 104 predicates and 1,233 patterns. This is the baseline schema: 060's and 070's experiments use this file unchanged. Its report: `outputs/reports/040_induce_schema_2026-10-12_1714.md`.
@@ -60,4 +68,4 @@ In the run before (`_1629`), one record's answer (`2346cc06-9a33-471e-b30d-ac41f
 
 ### The service's content filter
 
-In both runs, the service behind LiteLLM withheld some answers of stage 3's predicate labeling (`finish_reason` `content_filter`). The batches were asked again in halves (`common/common_helpers/cache.py`, `ask_split`) down to batches of 2, and in the end nothing was refused: smaller batches went through. What sets the filter off, and whose filter it is, isn't known.
+In both runs, the service behind LiteLLM withheld some answers of stage 3's predicate labeling (`finish_reason` `content_filter`). The batches were asked again in halves (`common/common_helpers/cache.py`, `ask_split`) down to batches of 2, and in the end nothing was refused: smaller batches went through. What sets the filter off, and whose filter it is, isn't known. Superseded in part by the entry of 2026-10-12, *Step 040 · What the content filter stopped on*.
