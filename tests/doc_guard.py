@@ -162,9 +162,11 @@ def check() -> bool:
         words_now = outside_links(now)
         terms_now = {term(t) for t, _ in LINK.findall(now)}
         # a link counts as lost when its words remain but nothing links that term (singular or plural) any more:
-        # the link fixer only removes duplicates, never a term's last link; a web link counts by its address
+        # the link fixer only removes duplicates, never a term's last link; a web link counts by its address. A
+        # link whose target is still linked, under other words, isn't lost either (e.g. "2026-10-12" -> "Evidence").
+        targets_now = {u2 for _, u2 in LINK.findall(now)}
         lost_kept = [t for t, u in lost if re.search(r"(?<![\w])" + re.escape(t) + r"(?![\w])", words_now)
-                     and (all(u != u2 for _, u2 in LINK.findall(now)) if u.startswith("http") else term(t) not in terms_now)]
+                     and u not in targets_now and (u.startswith("http") or term(t) not in terms_now)]
         if lost_kept:
             ok = False
             print(f"FAIL {rel}: links gone whose words remain: {lost_kept}")

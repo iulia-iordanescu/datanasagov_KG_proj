@@ -38,6 +38,29 @@ class Edit(unittest.TestCase):
         self.assertEqual(self.doc.read_text(encoding="utf-8"),
                          "| `model` | new | The AI [model](t.md#m) to ask: by default another. |")
 
+    def test_lost_links(self):
+        """check(): a link whose words stay but whose target nothing links any more is lost; one relinked under other
+        words (e.g. "2026-10-12" -> "Evidence") is not."""
+        import contextlib
+        import io
+        from unittest import mock
+
+        def checked(before, now, old, new):
+            self.doc.write_text(now, encoding="utf-8")
+            doc_guard._record("doc.md", old, new, 1)
+            out = io.StringIO()
+            with mock.patch.object(doc_guard, "_docs_changed", lambda: ["doc.md"]), \
+                    mock.patch.object(doc_guard, "_at_head", lambda rel: before), contextlib.redirect_stdout(out):
+                ok = doc_guard.check()
+            doc_guard.LEDGER.unlink()
+            return ok, out.getvalue()
+        ok, _ = checked("A line [2026-10-12](#a). Dated 2026-10-12.\n", "A line [Evidence](#a). Dated 2026-10-12.\n",
+                        "A line 2026-10-12.", "A line Evidence.")
+        self.assertTrue(ok)
+        ok, out = checked("A [record](t.md#r) here; a record.\n", "A record here; a record.\n", "A record here", "A record here")
+        self.assertFalse(ok)
+        self.assertIn("links gone whose words remain", out)
+
     def test_refuses_when_not_found_or_counted_wrong(self):
         self.doc.write_text("one two one", encoding="utf-8")
         with self.assertRaises(AssertionError):

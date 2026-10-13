@@ -4,15 +4,24 @@ What has been measured about the pipeline, newest first. Each entry says what wa
 
 The runs' own files (reports, logs, outputs) stay on the laptop that ran them, in `outputs/`, which Git doesn't carry; each entry names them.
 
-**How this file is kept.** *Current picture* (below) is rewritten whenever results change: what is known now, with links to the entries it rests on. The dated entries are never rewritten: a later measurement that corrects or replaces one is a new entry, and the old one gets a line saying "Superseded by the entry of <date>". So the file also records what was known when.
+**How this file is kept.** Two parts for two readers. *Current picture* (below) is for reading: what is known now, in plain words, a few lines, rewritten whenever results change, each line linking to the evidence. The dated entries after it are the evidence: what was run, the numbers, and what each result does and doesn't show; they are what later decisions rest on. Entries are never rewritten: a later measurement that corrects or replaces one is a new entry, and the old one gets a line saying "Superseded by the entry of <date>". So the file also records what was known when.
 
 ## Current picture
 
-- **The baseline schema** is 040's run of 2026-10-12 (60 entity classes, 104 predicates, 1,233 patterns), used unchanged by 060's and 070's experiments. [2026-10-12](#2026-10-12--step-040--the-baseline-schema)
-- **040's schema is not reproducible run to run** (about a third of the entity classes and half the predicates were named differently in two runs); experiments that change 040 need repeated runs of one recipe first. [2026-10-12](#the-schema-varies-from-run-to-run)
-- **Entity classes and predicates saturate within 150 texts; patterns don't,** so patterns are the part to make stricter (`min_support`) before 060 runs on the whole catalog. [2026-10-12](#saturation)
-- **Data tables** in about 2% of descriptions are described, not extracted cell by cell (rule 8).
-- **Prompt caching works through NASA's LiteLLM** after a first write per copy of the model; 060 uses it for the schema, identical in every request. [2026-10-12](#2026-10-12--litellm--prompt-caching-works-after-a-first-write-per-copy-of-the-model) [2026-10-12](#data-tables-in-descriptions)
+- **The schema we start from** is the one step 040 made on 2026-10-12: 60 kinds of things, 104 relations, 1,233 allowed combinations. Every experiment on extraction (060) and evaluation (070) uses this same file. [Evidence](#2026-10-12--step-040--the-baseline-schema)
+- **Step 040 gives a differently worded schema each time it runs**, even with almost nothing changed: in two runs, about a third of the kinds of things and half the relations had other names (e.g. FileFormat in one, DataFormat in the other). So a change to 040 itself can only be judged after running the same setup several times, to see how much it varies on its own. [Evidence](#the-schema-varies-from-run-to-run)
+- **150 texts are enough to find the kinds of things and the relations** (the last texts read added almost none), but not the combinations, which keep growing. The combinations are the part to trim before extraction runs on the whole catalog. [Evidence](#saturation)
+- **Tables of numbers inside descriptions** (about 2% of records) are described, not copied cell by cell (rule 8 of the annotation guidelines). [Evidence](#data-tables-in-descriptions)
+- **Prompt caching** (paying a fraction for the part of a request that is the same every time) **works through NASA's LiteLLM for Claude**, the way 060 sends it. Extraction (060) uses it; nothing else repeats enough to be worth it. For Gemini it's unclear. [Evidence](#2026-10-12--litellm--prompt-caching-works-after-a-first-write-per-copy-of-the-model), [more](#2026-10-12--litellm--caching-inside-the-user-message-and-gemini)
+- **The safety filter of the model's service** sometimes stops answers about space-biology phrases (e.g. "was more virulent than"). Step 040 works around it; extraction (060) on space-biology records may lose some facts, to be watched in its report. [Evidence](#2026-10-12--step-040--what-the-content-filter-stopped-on)
+
+## 2026-10-12 · LiteLLM · Caching inside the user message, and Gemini
+
+**The test.** On the NASA laptop, the same 2,523-token block as in the entry below, this time marked for caching as the first part of the user message (not a separate system message), sent 4 times to `claude-opus-5.5` and 4 times to `gemini-2.5-pro`, each with an answer limit of 20 tokens.
+
+**Claude.** All 4 requests wrote the cache (2,524 tokens), none read it. With the block as a separate system message (the entry below), 4 of 8 read it. Four writes in a row could still be four different copies of the model, so this doesn't prove the user-message form never reads; but only the system-message form has been seen to read, so 060 keeps that form. 040's extraction gets no caching: its saving would be small (about 150 requests with a 1,000–2,000-token identical start), and its requests stay as the baseline run sent them.
+
+**Gemini.** The first request answered and reported its whole prompt (1,930 tokens) as read from a cache, though Gemini had not been sent it before; why isn't known. The next three failed: HTTP 500 from LiteLLM, "provider returned a response with no 'choices'". A likely but unverified cause is the 20-token answer limit: Gemini 2.5 Pro thinks before answering and its thinking counts against the limit, so it may have used all 20 before writing anything. 050's requests allow 16,000 tokens (`MAX_ANSWER_TOKENS`). If 050 meets the same error, it would cost calls: an HTTP 500 is asked again (`RETRY_STATUSES` in `common/common_helpers/llm.py`); each report now counts every request, which would show it. 050 asks for no caching.
 
 ## 2026-10-12 · LiteLLM · Prompt caching works, after a first write per copy of the model
 
