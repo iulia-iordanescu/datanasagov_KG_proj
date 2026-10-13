@@ -32,7 +32,7 @@ def use_step(step: str) -> Path:
 
 #: annotations/ files a temporary copy starts with: copied whole, or only
 #: their first line (a CSV file's header; for the additions file, see below).
-WHOLE = ("README.md", "schema_derived_from_manual_annotation.txt")
+WHOLE = ("README.md", "schema_derived_from_manual_annotation.txt", "guidelines.md")
 HEADER_ONLY = ("component_class_mapping.csv", "partial_pair_reviews.csv", "held_out_looks.csv")
 
 

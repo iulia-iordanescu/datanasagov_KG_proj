@@ -393,7 +393,7 @@ class Pipeline(unittest.TestCase):
             self.assertNotIn("Traceback", text, r.name)
         written = sorted(p.relative_to(self.annotations).as_posix() for p in self.annotations.rglob("*") if p.is_file())
         self.assertEqual(written, ["README.md", "component_class_mapping.csv", "ground_truth/batch_001.csv",
-                                   "ground_truth_candidates.csv", "held_out_looks.csv", "partial_pair_reviews.csv",
+                                   "ground_truth_candidates.csv", "guidelines.md", "held_out_looks.csv", "partial_pair_reviews.csv",
                                    "schema_additions.txt", "schema_derived_from_manual_annotation.txt"])
 
 

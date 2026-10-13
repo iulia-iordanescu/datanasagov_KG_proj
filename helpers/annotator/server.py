@@ -119,6 +119,7 @@ METRICS = RESULTS_DIR / "070_evaluate" / "metrics.json"
 COMPARED = RESULTS_DIR / "070_evaluate" / "compared_triples.csv"
 ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
 README = ANNOTATIONS_DIR / "README.md"
+GUIDELINES = ANNOTATIONS_DIR / "guidelines.md"           # what to write in the ground truth: the Guidelines button
 #: The heading of annotations/README.md that explains each view of the page.
 HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "mapping": "### Checking the translation table",
@@ -985,6 +986,8 @@ def make_handler(data: Data):
                     self._json(partial_view(data))
                 elif url.path == "/api/help":
                     self._json(help_text(q["view"][0]))
+                elif url.path == "/api/guidelines":
+                    self._json({"file": f"annotations/{GUIDELINES.name}", "markdown": GUIDELINES.read_text(encoding="utf-8")})
                 elif url.path == "/api/additions":
                     self._json(additions_view(data))
                 elif url.path == "/api/vocab":

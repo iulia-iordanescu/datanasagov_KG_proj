@@ -114,6 +114,10 @@ class A_Paths(unittest.TestCase):
         for view in server.HELP_SECTIONS:
             self.assertTrue(get(f"/api/help?view={view}")["markdown"].startswith("#"), view)
         self.assertIn("error", get("/api/help?view=nope"))
+        self.assertIn('id="guidelinesbutton"', page)                            # the rules, one click from any view
+        g = get("/api/guidelines")
+        self.assertEqual(g["file"], "annotations/guidelines.md")
+        self.assertTrue(g["markdown"].startswith("# Annotation guidelines"))
 
 
 class B_Batch(unittest.TestCase):
