@@ -29,6 +29,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 |---|---|---|
 | `README.md` | This page: what's where, and why the pipeline is built the way it is | — |
 | `docs/terminology.md` | What every word used here means | — |
+| `docs/findings.md` | What has been measured about the pipeline, newest first: each result with the runs it comes from and what it does and doesn't mean | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
 | `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the [ground truth candidates pool](docs/terminology.md#4-ground-truth-and-samples) (`ground_truth_candidates.csv`, `.json`), the hand-built schema, the schema additions, the translation table (`component_class_mapping.csv`) and the log of [held-out looks](docs/terminology.md#7-evaluating-extraction-step-070) (both added to by 070), your [verdicts](docs/terminology.md#7-evaluating-extraction-step-070) on 070's [partial pairs](070_evaluate/metrics/pairs.md), and the notes and old drafts they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
