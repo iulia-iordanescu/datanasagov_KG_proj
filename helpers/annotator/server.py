@@ -91,6 +91,7 @@ import csv
 import io
 import json
 import os
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -106,7 +107,7 @@ from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_
 from common.records_io import load_records
 from common.schema_io import ONE_WORD, add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
     ground_truth_source_problem, pattern_key, read_hand_schema, read_schema, redefine_in_hand_schema, rename_in_hand_schema
-from common.step import ANNOTATIONS_DIR, RESULTS_DIR
+from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
 from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
@@ -120,6 +121,7 @@ COMPARED = RESULTS_DIR / "070_evaluate" / "compared_triples.csv"
 ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
 README = ANNOTATIONS_DIR / "README.md"
 GUIDELINES = ANNOTATIONS_DIR / "guidelines.md"           # what to write in the ground truth: the Guidelines button
+TERMINOLOGY = ROOT / "docs" / "terminology.md"            # each term's definition, shown when a linked term is hovered
 #: The heading of annotations/README.md that explains each view of the page.
 HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "mapping": "### Checking the translation table",
@@ -553,6 +555,37 @@ def delete_mapping_row(line: int, kind: str, name: str) -> None:
 # --------------------------------------------------------------------------
 # help
 # --------------------------------------------------------------------------
+
+def _plain(markdown: str) -> str:
+    """Markdown as plain text, for a tooltip: links become their words; bold, italics and code marks go."""
+    text = re.sub(r"\[([^\[\]]+)\]\([^()\s]+\)", r"\1", markdown)
+    return re.sub(r"\*\*|(?<!\w)\*(?!\s)|(?<!\s)\*(?!\w)|`", "", text).strip()
+
+
+def terms() -> dict:
+    """{term, lower case: its definition, as plain text}, from docs/terminology.md: every name written in bold in the
+    first cell of a row of its tables (a term and its other names), read from the file each time."""
+    rows = [[c.strip() for c in line.strip().strip("|").split("|")]
+            for line in TERMINOLOGY.read_text(encoding="utf-8").splitlines() if line.startswith("| **")]
+    rows = [r for r in rows if len(r) >= 2]
+    out = {}
+    # A row's own names first; then the names a definition writes in bold ("its **pool position**"), which that row
+    # defines too, unless another row is theirs.
+    for cell in (0, 1):
+        for r in rows:
+            for name in re.findall(r"\*\*([^*]+)\*\*", r[cell]):
+                out.setdefault(_plain(name).lower(), _plain(r[1]))
+    return out
+
+
+def doc_text(path: str) -> dict:
+    """A Markdown file of the repository, for the page to show when its link is followed: only a .md file inside the
+    repository folder (never anything else on the computer)."""
+    target = (ROOT / path).resolve()
+    if target.suffix.lower() != ".md" or not target.is_relative_to(ROOT.resolve()) or not target.is_file():
+        raise ValueError(f"{path} isn't a Markdown file of this repository, so it can't be shown here")
+    return {"file": target.relative_to(ROOT.resolve()).as_posix(), "markdown": target.read_text(encoding="utf-8")}
+
 
 def help_text(view: str) -> dict:
     """The README's section for a view, as Markdown: from its heading to the
@@ -989,6 +1022,10 @@ def make_handler(data: Data):
                     self._json(partial_view(data))
                 elif url.path == "/api/help":
                     self._json(help_text(q["view"][0]))
+                elif url.path == "/api/terms":
+                    self._json(terms())
+                elif url.path == "/api/doc":
+                    self._json(doc_text(q["path"][0]))
                 elif url.path == "/api/guidelines":
                     self._json({"file": f"annotations/{GUIDELINES.name}", "markdown": GUIDELINES.read_text(encoding="utf-8")})
                 elif url.path == "/api/additions":

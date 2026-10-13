@@ -47,6 +47,8 @@ def temp_repo(annotations: bool = True) -> Path:
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
     for name in CODE:
         shutil.copytree(ROOT / name, tmp / name, ignore=ignore)
+    (tmp / "docs").mkdir()
+    shutil.copy2(ROOT / "docs" / "terminology.md", tmp / "docs" / "terminology.md")   # the annotation tool's term tooltips
     (tmp / "annotations" / "ground_truth").mkdir(parents=True)
     if annotations:
         real = ROOT / "annotations"

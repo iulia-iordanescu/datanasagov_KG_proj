@@ -118,6 +118,13 @@ class A_Paths(unittest.TestCase):
             self.assertTrue(get(f"/api/help?view={view}")["intro"].startswith("**What it's for, and when.**"), view)
         self.assertIn('id="intro"', page)
         self.assertIn('id="guidelinesbutton"', page)                            # the rules, one click from any view
+        terms = get("/api/terms")                                                  # a term's definition, on hover
+        self.assertIn("ground truth vocabulary", terms)
+        self.assertNotIn("](", terms["ground truth vocabulary"])                   # plain text: no Markdown links
+        self.assertIn("pool position", terms)                                      # named in bold inside a definition
+        self.assertEqual(get("/api/doc?path=annotations/guidelines.md")["file"], "annotations/guidelines.md")
+        for outside in (".env", "../outside.md", "common/common_helpers/llm.py"):    # only .md files of the repository
+            self.assertIn("error", get(f"/api/doc?path={outside}"), outside)
         g = get("/api/guidelines")
         self.assertEqual(g["file"], "annotations/guidelines.md")
         self.assertTrue(g["markdown"].startswith("# Annotation guidelines"))
