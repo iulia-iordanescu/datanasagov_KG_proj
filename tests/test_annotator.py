@@ -137,6 +137,10 @@ class B_Batch(unittest.TestCase):
         self.assertEqual([r["id"] for r in b["records"]], ["r0", "r1", "r2", "r3"])
         self.assertEqual(len(gt_rows()), 6)
         self.assertEqual({r["drafted_by"] for r in gt_rows()}, {"test-model"})   # the copy keeps who drafted each row
+        # the page's list of component classes: every one offered has a definition entry, and coined ones are named
+        self.assertEqual(sorted(b["definitions"]["entity_classes"]), b["entity_classes"])
+        self.assertEqual(sorted(b["definitions"]["predicates"]), b["predicates"])
+        self.assertEqual(set(b["coined"]), {"entity_classes", "predicates"})
         r1 = b["records"][1]
         codes = [p["code"] for row in r1["rows"] for p in row["problems"]]
         self.assertIn("describes_undecided", codes)

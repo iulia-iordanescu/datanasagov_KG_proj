@@ -294,7 +294,10 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
                for rid, rows in _group(_read_rows(path))]
     vocab = vocabulary(data.hand, read_ground_truth())
     return {"n": n, "file": path.name, "records": records,
-            "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"])}
+            "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
+            # for the page's list of component classes: each one's definition (empty for a coined one)
+            "definitions": {"entity_classes": vocab["entity_classes"], "predicates": vocab["predicates"]},
+            "coined": vocab["coined"]}
 
 
 # --------------------------------------------------------------------------

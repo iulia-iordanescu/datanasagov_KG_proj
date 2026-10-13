@@ -58,7 +58,16 @@
   #gaps li { margin-top: 4px; }
   .addbox { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 6px; }
   .addbox input { width: min(420px, 100%); }
-  main { display: grid; grid-template-columns: 290px 1fr; gap: 16px; padding: 16px; }
+  main { display: grid; grid-template-columns: 250px 1fr; gap: 16px; padding: 16px; }
+  .workgrid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .textcol { position: sticky; top: 104px; max-height: calc(100vh - 120px); overflow: auto; }
+  .textcol #text { max-height: 46vh; }
+  @media (max-width: 1100px) { .workgrid { grid-template-columns: 1fr; } .textcol { position: static; max-height: none; } }
+  .classpanel { max-height: 40vh; overflow: auto; }
+  .classopt { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line);
+              border-radius: 0; padding: 6px 4px; background: transparent; }
+  .classopt:hover { background: var(--accent-bg); }
+  .triplenav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
         max-height: calc(100vh - 120px); overflow: auto; position: sticky; top: 104px; align-self: start; }
@@ -196,6 +205,11 @@
 "use strict";
 // The whole state: the open batch, as the server sent it, edited in place.
 let batch = null, current = 0, activeRow = null, saveTimer = null, saving = false, dirty = false;
+// One ground truth triple at a time (or all of them), remembered on this computer; tripleAt: which one, among the
+// record's ground truth triples (the DESCRIBES row isn't one).
+let oneAtATime = (() => { try { return localStorage.getItem("oneAtATime") !== "0"; } catch (_) { return true; } })();
+let tripleAt = 0;
+const tripleRows = (rec) => rec.rows.map((r, j) => isDescribes(r) ? -1 : j).filter((j) => j >= 0);
 
 const $ = (id) => document.getElementById(id);
 function el(tag, attrs, ...children) {
@@ -276,6 +290,7 @@ async function openBatch(n, at) {
   mapping = null; partial = null; additions = null; vocab = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
+  tripleAt = 0;                            // a newly opened batch starts at its record's first ground truth triple
   $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
   $("predicates").replaceChildren(...batch.predicates.map(p => el("option", { value: p })));
   status(`Editing annotations/ground_truth/${batch.file}`, "saved");
@@ -342,6 +357,7 @@ function drawList() {
 
 // ---------------------------------------------------------------- one record
 function show(i) {
+  if (i !== current) tripleAt = 0;
   current = i; activeRow = null;
   location.hash = `b=${batch.n}&r=${i}`;
   showIntro();
@@ -386,34 +402,93 @@ function show(i) {
                     ontoggle: (e) => { try { localStorage.setItem("hintTextOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
       el("summary", {}, "How to use the record's text"),
     el("ul", { class: "hint" },
-      el("li", {}, el("strong", {}, "Yellow"), " marks the source text of each ground truth triple below. The source text of the " +
+      el("li", {}, el("strong", {}, "Yellow"), " marks the source text of each ground truth triple (on the right). The source text of the " +
         "ground truth triple you are editing (the box with the colored outline) is a darker yellow."),
       el("li", {}, el("strong", {}, "Click a yellow passage"), " to jump to the ground truth triple whose source text it is. A " +
         "passage that several ground truth triples share is underlined: each click on it jumps to the next of those ground truth triples."),
-      el("li", {}, el("strong", {}, "To give a ground truth triple its source text:"), " in the record's text above, drag the mouse " +
+      el("li", {}, el("strong", {}, "To give a ground truth triple its source text:"), " in the record's text, drag the mouse " +
         "across the passage that states the fact, as when selecting text to copy. Then press “Use selection” in that ground " +
         "truth triple's box."))));
+  const classes = el("section", { class: "card classpanel", id: "classpanel" },
+    el("h3", {}, "Component classes"),
+    el("p", { class: "hint" }, "Click into an entity class field or the predicate field of a ground truth triple: " +
+      "the entity classes or predicates you can choose appear here, each with its definition, narrowed down as you type."));
 
   const describes = rec.rows.findIndex(isDescribes);
+  const all = tripleRows(rec);
+  tripleAt = Math.max(0, Math.min(tripleAt, all.length - 1));
+  const add = el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple");
+  const switcher = el("button", { onclick: () => { oneAtATime = !oneAtATime;
+      try { localStorage.setItem("oneAtATime", oneAtATime ? "1" : "0"); } catch (_) {}
+      show(current); } }, oneAtATime ? "Show all ground truth triples" : "Show one ground truth triple at a time");
+  const none = all.length === 0
+    ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null;
   const rows = el("section", { class: "card" },
     el("h3", {}, "Ground truth triples"),
     describes >= 0 ? describesRow(rec, describes) : null,
-    rec.rows.map((r, j) => isDescribes(r) ? null : tripleRow(rec, j)),
-    rec.rows.filter(r => !isDescribes(r)).length === 0
-      ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null,
-    el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple"));
+    oneAtATime && all.length
+      ? [el("div", { class: "triplenav" },
+           el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: tripleAt === 0 }, "↑ Previous triple"),
+           el("strong", {}, `Ground truth triple ${tripleAt + 1} of ${all.length}`),
+           el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: tripleAt === all.length - 1 }, "Next triple ↓"),
+           el("span", { class: "meta" }, "(or the ↑ ↓ keys, when not typing in a field)")),
+         tripleRow(rec, all[tripleAt])]
+      : all.map((j) => tripleRow(rec, j)),
+    none,
+    el("div", { class: "bar" }, add, switcher));
 
-  $("record").replaceChildren(head, text, rows);
+  $("record").replaceChildren(head, el("div", { class: "workgrid" }, el("div", { class: "textcol" }, text, classes), rows));
   drawText();
   drawProgress();
+  if (oneAtATime && all.length) setActive(all[tripleAt]);   // its source text highlighted and scrolled into view
+}
+
+// Go to the record's ground truth triple number k (0 = the first); with one at a time, show it.
+function goToTriple(k) {
+  const all = tripleRows(batch.records[current]);
+  if (k < 0 || k >= all.length) return;
+  tripleAt = k;
+  show(current);
+}
+
+// Go to the ground truth triple of row j (a click on its source text): show it, if one at a time, and put the cursor in it.
+function goToRow(j) {
+  const k = tripleRows(batch.records[current]).indexOf(j);
+  if (oneAtATime && k >= 0 && k !== tripleAt) { tripleAt = k; show(current); }
+  const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus();
+}
+
+// The entity classes or predicates to choose from, for the field the cursor is in: each with its definition,
+// narrowed down to those whose name or definition contains what the field holds. A click puts one in the field.
+function showClasses(kind, input) {
+  const panel = $("classpanel");
+  if (!panel || !batch.definitions) return;
+  const defs = batch.definitions[kind] || {}, coined = new Set((batch.coined || {})[kind] || []);
+  const q = input.value.trim().toLowerCase();
+  const names = Object.keys(defs)
+    .filter((n) => !q || n.toLowerCase().includes(q) || (defs[n] || "").toLowerCase().includes(q))
+    .sort((a, b) => (b.toLowerCase().startsWith(q) - a.toLowerCase().startsWith(q)) || a.localeCompare(b));
+  const what = kind === "entity_classes" ? "entity classes" : "predicates";
+  panel.replaceChildren(
+    el("h3", {}, kind === "entity_classes" ? "Entity classes" : "Predicates",
+       el("span", { class: "meta" }, q ? `  ${names.length} matching “${input.value.trim()}”` : `  all ${names.length}`)),
+    el("p", { class: "hint" }, `The ${what} of the hand-built schema, and those coined while annotating. Click one to put it in the field.`),
+    names.length ? names.map((n) => el("button", { class: "classopt",
+        onmousedown: (e) => e.preventDefault(),            // the field keeps the cursor
+        onclick: () => { input.value = n; input.dispatchEvent(new Event("input")); showClasses(kind, input); } },
+      el("strong", {}, n), coined.has(n) ? el("span", { class: "pill todo" }, "coined") : null,
+      el("div", { class: "meta" }, defs[n] || "No definition yet (it can be added in the view Ground truth vocabulary).")))
+      : el("p", { class: "empty" }, `No ${what} match: if none fits, type a new one (one word, as the Guidelines say).`));
 }
 
 function field(rec, j, key, label, extra) {
   const r = rec.rows[j];
+  const kind = key === "predicate" ? "predicates" : key.endsWith("_class") ? "entity_classes" : null;
   return el("label", {}, label,
     el("input", { value: r[key], ...extra, "data-row": j,
-                  oninput: (e) => { r[key] = e.target.value; if (key === "source_text") drawText(); changed(); },
-                  onfocus: () => setActive(j) }));
+                  oninput: (e) => { r[key] = e.target.value; if (key === "source_text") drawText(); changed();
+                                    if (kind) showClasses(kind, e.target); },
+                  onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); } }));
 }
 function problemList(r, j) {
   return el("ul", { class: "problems", "data-problems": j },
@@ -430,7 +505,8 @@ function describesRow(rec, j) {
       el("span", {}, "which is a"),
       el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes",
                     placeholder: "entity class", "aria-label": "its entity class", "data-row": j,
-                    oninput: (e) => { r.object_class = e.target.value; changed(); }, onfocus: () => setActive(j) })),
+                    oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target); },
+                    onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } })),
     el("p", { class: "hint" }, "No source text: this line comes from the record itself (its id and its title), not from a " +
                                "passage of the text. Only choose the entity class of what the title names (Guidelines, The DESCRIBES row)."),
     problemList(r, j));
@@ -466,6 +542,7 @@ function setActive(j) {
   if (m) { const box = $("text"); box.scrollTop = m.offsetTop - box.offsetTop - box.clientHeight / 3; }
 }
 function addRow(rec) {
+  tripleAt = tripleRows(rec).length;       // the new one, once added
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
                   problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. Fill in the empty ones, or delete it." }] });
@@ -528,8 +605,7 @@ function drawText() {
     parts.push(el("mark", {
       class: [mine.includes(activeRow) ? "active" : "", mine.length > 1 ? "shared" : ""].join(" ").trim(), title,
       // The next of them after the one you're on (the first, if you're on none of them).
-      onclick: () => { const i = mine.indexOf(activeRow), j = mine[(i + 1) % mine.length];
-                       const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus(); } }, piece));
+      onclick: () => { const i = mine.indexOf(activeRow); goToRow(mine[(i + 1) % mine.length]); } }, piece));
     k = end;
   }
   box.replaceChildren(...parts);
@@ -1186,6 +1262,8 @@ document.addEventListener("keydown", (e) => {
   if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
   if (e.key === "ArrowRight" && current < batch.records.length - 1) { e.preventDefault(); show(current + 1); }
   if (e.key === "ArrowLeft" && current > 0) { e.preventDefault(); show(current - 1); }
+  if (oneAtATime && e.key === "ArrowDown") { e.preventDefault(); goToTriple(tripleAt + 1); }
+  if (oneAtATime && e.key === "ArrowUp") { e.preventDefault(); goToTriple(tripleAt - 1); }
 });
 // A followed link opens its document in the help window (a term: docs/terminology.md).
 document.addEventListener("click", (e) => {
