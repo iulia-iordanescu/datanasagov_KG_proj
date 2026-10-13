@@ -6,14 +6,16 @@
 <title>Annotation tool</title>
 <style>
   :root {
-    --bg: #f4f5f3; --panel: #ffffff; --ink: #2a2f36; --muted: #6b7380; --line: #e3e6e2;
+    --bg: #e9ece8; --panel: #ffffff; --ink: #262b31; --muted: #626a76; --line: #d5dad4;
+    --tint: #f1f6f5; --paper: #fbf9f3; --label: #4a5260; --stripe: #8fc1cc;
     --accent: #2c6e82; --accent-bg: #eaf3f5; --soft: #fbefc4; --strong: #f5d77a; --error: #a8322b; --flag: #85601a;
     --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --input: #ffffff;
     --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #15181c; --panel: #1d2126; --ink: #e4e7ea; --muted: #9aa2ad; --line: #30363d;
+      --bg: #111417; --panel: #1b1f24; --ink: #e4e7ea; --muted: #9aa2ad; --line: #30363d;
+      --tint: #222a2e; --paper: #1f2226; --label: #b6bdc7; --stripe: #3f7684;
       --accent: #7fbccd; --accent-bg: #1f3036; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
       --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --input: #14171c;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -27,13 +29,15 @@
            box-shadow: var(--shadow); }
   header .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 20px; }
   header .batchpick { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
-  header .views { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 4px 20px 8px; font-size: 13.5px; }
+  header .views { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 5px 20px 6px; font-size: 13.5px;
+                  background: var(--tint); border-top: 1px solid var(--line); }
   header .views .viewslabel { color: var(--muted); margin-right: 4px; }
   header .views button { border: 0; background: transparent; color: var(--accent); padding: 2px 8px; border-radius: 6px; }
   header .views button:hover { background: var(--accent-bg); }
   header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 0 8px 0 0; }
   select, input, textarea, button { font: inherit; color: var(--ink); }
-  select, input, textarea { background: var(--input); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+  select, input, textarea { background: var(--input); border: 1px solid #c3cac3; border-radius: 8px; padding: 6px 9px; }
+  @media (prefers-color-scheme: dark) { select, input, textarea { border-color: #3b434c; } }
   input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   button { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer;
            transition: background 0.12s, border-color 0.12s; }
@@ -42,7 +46,7 @@
   #status { margin-left: auto; color: var(--muted); font-size: 13.5px; }
   #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
   #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
-  #intro { margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  #intro { margin: 0; padding: 10px 20px; border-bottom: 1px solid var(--line); background: var(--accent-bg); }
   #intro[hidden] { display: none; }
   #intro p { margin: 0 0 4px 0; }
   #warnings:empty { display: none; }
@@ -59,7 +63,8 @@
   nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
         max-height: calc(100vh - 120px); overflow: auto; position: sticky; top: 104px; align-self: start; }
   nav button { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 6px 8px; margin: 1px 0; }
-  nav button.current { background: var(--bg); outline: 2px solid var(--accent); }
+  nav button.current { background: var(--accent-bg); outline: 0; box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+  nav button:hover { background: var(--tint); }
   nav .badge { float: right; font-size: 13px; margin-left: 6px; }
   nav .small { color: var(--muted); font-size: 12px; }
   section.card { background: var(--panel); border: 1px solid transparent; border-radius: 12px; padding: 16px 20px;
@@ -70,14 +75,18 @@
   .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
   label.finished { font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
   #text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 45vh; overflow: auto; font-size: 15.5px; line-height: 1.65;
-          border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; background: var(--bg); }
+          border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; background: var(--paper); }
   mark { background: var(--soft); color: inherit; border-radius: 2px; cursor: pointer; }
   mark.active { background: var(--strong); outline: 1px solid var(--flag); }
   .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
-  .row { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: var(--panel); }
-  .row.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .row { border: 1px solid var(--line); border-left: 4px solid var(--stripe); border-radius: 10px; padding: 12px 14px;
+         margin-bottom: 12px; background: var(--tint); }
+  .row.active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 8px; }
-  .triple label, .source label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); min-width: 0; }
+  .triple label, .source label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; font-weight: 600;
+                                 letter-spacing: 0.04em; text-transform: uppercase; color: var(--label); min-width: 0; }
+  .triple label input, .triple label select, .source label textarea { text-transform: none; letter-spacing: normal;
+                                 font-weight: 400; font-size: 14.5px; }
   .triple input { width: 100%; min-width: 0; }
   .triple .cls { font-size: 13px; }
   @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
@@ -88,7 +97,8 @@
   .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
   .problems li.error { background: var(--error-bg); color: var(--error); }
   .problems li.flag { background: var(--flag-bg); color: var(--flag); }
-  .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--accent-bg);
+               border-radius: 8px; padding: 8px 10px; }
   .describes input.title { flex: 1 1 280px; min-width: 0; }
   .empty { color: var(--muted); }
   .name { font-weight: 600; }                 /* a view's or section's name, *written so* in the README and guidelines */
