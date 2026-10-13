@@ -19,3 +19,20 @@ Read them in this order: what they count first, then each metric, then why each 
 | [Recall within reach](metrics/recall_within_reach.md) | recall over only the ground truth triples [within reach](metrics/recall_upper_bound.md) (whose [predicate](../docs/terminology.md#3-schemas) some row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) translates to): recall ÷ recall upper bound |
 | [What each record describes](metrics/describes.md) | how often extraction names the right [describes class](../docs/terminology.md#2-triples), next to always naming the most common one |
 | [Why "approximately"](metrics/approximately.md) | the reasons every metric shares, including the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) |
+
+## Which part of the pipeline each number speaks for
+
+The numbers can tell some parts of the pipeline apart, so a weak result can be traced to the part that caused it.
+
+- **The schema, or the extraction?** A [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) can be missed because the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) has no predicate for it (060 couldn't express it), or because extraction didn't find it although it could. The [recall upper bound](metrics/recall_upper_bound.md) is the share the schema can express, the most recall can be with it; [recall within reach](metrics/recall_within_reach.md) is the share of those that extraction found. *Suppose* the recall upper bound is 70% and recall within reach 90%. *Then* most misses come from the schema, not from extraction.
+- **Finding a fact, or classifying it?** A [pair](metrics/pairs.md) counts a fact found when its subject, predicate and object match, whatever [entity classes](../docs/terminology.md#3-schemas) they were given; a [strict pair](metrics/pairs.md) also needs the entity classes right. [Entity-class accuracy](metrics/entity_class_accuracy.md) is the share of the pairs whose entity classes are right, and its subject and object versions say which slot goes wrong. So "finds the facts but misclassifies them" and "doesn't find them" are different numbers.
+- **What the record describes** has its own accuracy ([describes](metrics/describes.md)), apart from every other fact.
+
+What the numbers can't tell apart:
+
+- **The translation table's mistakes.** A wrong row of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) looks like an extraction mistake. The report's *Component class mismatches* points to rows that are likely wrong, but no number counts them apart.
+- **How good 050's drafts were.** Comparing each [draft batch](../docs/terminology.md#4-ground-truth-and-samples) with the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) corrected from it would measure it; that isn't built.
+- **How good the ground truth is.** That needs a second person annotating the same records and their agreement measured; not built either. The ground truth started as a model's draft, so recall is likely overstated ([recall](metrics/recall.md), *Assumes and can't see*).
+- **Steps 010 to 030** aren't evaluated here; their own checks and the tests (`tests/README.md`) cover them.
+
+To isolate any one part, change only that part and compare the two evaluations on the same records (`helpers/compare_runs.md`).
