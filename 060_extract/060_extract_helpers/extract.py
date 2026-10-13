@@ -88,9 +88,11 @@ def _in_schema_spelling(row: dict, schema_entries) -> dict:
 def ask_model(chosen, schema, calls, settings: dict) -> extraction.Replies:
     def prompt_for(item, piece):
         return extraction.prompt(PROMPT, schema.text, chosen.records[item["id"]], piece)
+    # Everything before the record (the instructions, the schema, the rules) is the same in every request, so it is
+    # sent for prompt caching (common/common_helpers/llm.py, _messages).
     return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "extract",
                                 f"060 will extract from {len(chosen.items)} record(s) ({chosen.how})",
-                                "extracting")
+                                "extracting", cache_until=extraction.BEGIN_LINE)
 
 
 def sort_rows(chosen, schema, replies) -> Rows:

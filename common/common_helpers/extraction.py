@@ -59,6 +59,9 @@ from common.validate import SchemaEntries, check_against_schema, check_describes
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
 RULES = load(PROMPTS / "extraction_rules.txt")
 REPLY = load(PROMPTS / "extraction_reply.txt")
+#: The lines around a record in the prompts. Everything before BEGIN_LINE is the same in every request of a run, so
+#: 060 sends it for prompt caching (llm._messages).
+BEGIN_LINE = "----- BEGIN RECORD -----"
 END_LINE = "----- END RECORD -----"
 ROW_KEYS = ("subject", "subject_class", "predicate", "object", "object_class", "source_text")
 
@@ -143,7 +146,8 @@ class Replies:
     reused: int = 0                               # pieces answered from the cache
 
 
-def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: str, verb: str) -> Replies:
+def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: str, verb: str,
+              cache_until: str | None = None) -> Replies:
     """One model call per text piece of each item ({"id", "pieces", …}),
     prompt_for(item, piece) giving the prompt. Every answer is kept in
     cache/<stage>.json (common/common_helpers/cache.py) the moment it arrives, so a rerun
@@ -171,7 +175,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
         before = calls.paid.made
 
         def ask(k, prompt):
-            reply = llm.call_llm_json(prompt)
+            reply = llm.call_llm_json(prompt, cache_until=cache_until)
             calls.paid.made_call()
             return k, reply
 

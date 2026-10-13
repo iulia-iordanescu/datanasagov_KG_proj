@@ -218,7 +218,7 @@ def _mapping(prompt: str) -> dict:
                          "reversed": False} for i in schema]}
 
 
-def stand_in_model(prompt, attempts=4, read_timeout=180, model=None):
+def stand_in_model(prompt, attempts=4, read_timeout=180, model=None, cache_until=None, **_):
     CALLS.append(prompt)
     if "----- BEGIN RECORD -----" in prompt and '"subject_class"' not in prompt:   # 040: no entity classes asked
         return json.dumps(_induce_texts(prompt))

@@ -11,7 +11,14 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 - **The baseline schema** is 040's run of 2026-10-12 (60 entity classes, 104 predicates, 1,233 patterns), used unchanged by 060's and 070's experiments. [2026-10-12](#2026-10-12--step-040--the-baseline-schema)
 - **040's schema is not reproducible run to run** (about a third of the entity classes and half the predicates were named differently in two runs); experiments that change 040 need repeated runs of one recipe first. [2026-10-12](#the-schema-varies-from-run-to-run)
 - **Entity classes and predicates saturate within 150 texts; patterns don't,** so patterns are the part to make stricter (`min_support`) before 060 runs on the whole catalog. [2026-10-12](#saturation)
-- **Data tables** in about 2% of descriptions are described, not extracted cell by cell (rule 8). [2026-10-12](#data-tables-in-descriptions)
+- **Data tables** in about 2% of descriptions are described, not extracted cell by cell (rule 8).
+- **Prompt caching works through NASA's LiteLLM** after a first write per copy of the model; 060 uses it for the schema, identical in every request. [2026-10-12](#2026-10-12--litellm--prompt-caching-works-after-a-first-write-per-copy-of-the-model) [2026-10-12](#data-tables-in-descriptions)
+
+## 2026-10-12 · LiteLLM · Prompt caching works, after a first write per copy of the model
+
+**The test.** On the NASA laptop, identical requests to `claude-opus-5.5` through NASA's LiteLLM, each starting with the same 2,523-token block marked for Anthropic's prompt caching. First two requests: both wrote the cache, neither read it. Then six more, in this order: read, read, wrote, wrote, read, read (2,523 tokens each time).
+
+**What it means.** The caching instruction reaches the model's service, and cached reads happen. That the first requests wrote and later ones read, with writes reappearing between reads, fits several copies of the model behind the service, each with its own cache that is written once and then read; this is inferred, not confirmed by the service. Since writing costs 1.25 times normal input and reading 0.05 times (for Opus 5.5, per Anthropic's documentation), caching pays once about 1 request in 5 reads: here 4 of 8 did, and in a long run nearly all would. 060 asks for caching since (`060_extract/060_extract.md`, *The schema in the prompt*), and each report counts the tokens read from and written to the cache, which will show the real share.
 
 ## 2026-10-12 · Step 040 · What the content filter stopped on
 

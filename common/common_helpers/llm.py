@@ -97,7 +97,7 @@ READ_TIMEOUT = 600
 
 #: Every request sent to the service in this run, retries, re-asks and failures included: what is billed, as far as
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
-REQUESTS = {"sent": 0}
+REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0}
 _requests_lock = threading.Lock()
 
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
@@ -223,7 +223,7 @@ class CutOff(ApiError):
     with the same limit gets the same cut."""
 
 
-def _ask_asksage(prompt: str, model: str, read_timeout: int) -> str:
+def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
     """One request to Ask Sage; the reply text.
 
     dataset/limit_references are set deliberately. Per the Ask Sage API docs
@@ -318,12 +318,37 @@ def _litellm_models() -> list:
     return sorted(set(names))
 
 
-def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
+def _messages(prompt: str, model: str, cache_until: str | None) -> list:
+    """The request's messages. With cache_until (a line of the prompt, e.g. "----- BEGIN RECORD -----") and a model
+    by Anthropic, everything before that line is sent as a system block marked for Anthropic's prompt caching, and
+    the rest as the user message: the same words, so a later request that starts the same way reads that part from
+    the cache at a fraction of the price (060_extract/060_extract.md, *The schema in the prompt*)."""
+    at = prompt.find(cache_until) if cache_until else -1
+    if at <= 0 or maker(model) != "Anthropic":
+        return [{"role": "user", "content": prompt}]
+    return [{"role": "system", "content": [{"type": "text", "text": prompt[:at], "cache_control": {"type": "ephemeral"}}]},
+            {"role": "user", "content": prompt[at:]}]
+
+
+def _count_tokens(usage: dict) -> None:
+    """Add a reply's token counts to REQUESTS, for the report's Model calls."""
+    if not isinstance(usage, dict):
+        return
+    read = usage.get("cache_read_input_tokens") or (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+    write = usage.get("cache_creation_input_tokens") or 0
+    with _requests_lock:
+        REQUESTS["input_tokens"] += (usage.get("prompt_tokens") or 0) - read - write
+        REQUESTS["cache_read_tokens"] += read
+        REQUESTS["cache_write_tokens"] += write
+        REQUESTS["output_tokens"] += usage.get("completion_tokens") or 0
+
+
+def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
     """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
     when the reply names it, goes into SERVED for the run's record."""
     url, headers = _litellm("/v1/chat/completions")
     resp = requests.post(url, headers=headers,
-                         json={"model": model, "messages": [{"role": "user", "content": prompt}],
+                         json={"model": model, "messages": _messages(prompt, model, cache_until),
                                "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS},
                          timeout=(5, read_timeout))
     if resp.status_code in RETRY_STATUSES:
@@ -331,6 +356,7 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int) -> str:
     if resp.status_code >= 400:
         raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
     body = resp.json()
+    _count_tokens(body.get("usage"))
     try:
         choice = body["choices"][0]
         text = choice["message"]["content"]
@@ -363,17 +389,18 @@ def list_models(service: str | None = None) -> list:
     return _litellm_models() if (service or SERVICE) == "litellm" else _asksage_models()
 
 
-def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None):
+def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None, cache_until=None):
     """Send prompt to the model, through the service; the reply text. Retries with exponential backoff on rate
     limits, server errors and lost connections; a refusal that will not fix itself (ApiError) is raised at once.
     model, service: MODEL and SERVICE (the run's) when None."""
     model, service = model or MODEL, service or SERVICE
+    # cache_until: where the prompt's identical start ends, for prompt caching (_messages); only LiteLLM uses it
     ask = _ask_litellm if service == "litellm" else _ask_asksage
     for attempt in range(attempts):
         with _requests_lock:
             REQUESTS["sent"] += 1
         try:
-            return ask(prompt, model, read_timeout)
+            return ask(prompt, model, read_timeout, cache_until)
         except requests.ReadTimeout:
             # Not asked again: the service may still be writing, and billing, the first answer.
             raise ApiError(f"no answer within {read_timeout} s (READ_TIMEOUT in common/common_helpers/llm.py); not "
@@ -417,7 +444,7 @@ def _best_effort_json(text):
         raise
 
 
-def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT):
+def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None):
     """Return the JSON OBJECT the prompt asked for, or raise.
 
     Every caller immediately does .get() on the result, so a reply that
@@ -426,7 +453,7 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT):
     AttributeError. Both failures are treated the same way here: re-ask once
     with a correction, then give up."""
     for attempt in range(retries + 1):
-        text = call_llm(prompt, read_timeout=read_timeout)
+        text = call_llm(prompt, read_timeout=read_timeout, cache_until=cache_until)
         try:
             data = _best_effort_json(text)
             if not isinstance(data, dict):
@@ -542,7 +569,8 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
                          f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
     MODEL, SERVICE = name, service
     SERVED.clear()
-    REQUESTS["sent"] = 0
+    for k in REQUESTS:
+        REQUESTS[k] = 0
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
                  cache_dir=Path(output) / "cache")
 

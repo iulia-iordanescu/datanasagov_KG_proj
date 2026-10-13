@@ -582,6 +582,31 @@ class LiteLLM(unittest.TestCase):
         self.assertEqual(llm.REQUESTS["sent"], 3)                                 # every attempt counted
         self.assertTrue(all(30 <= s <= 32 for s in self.slept), self.slept)       # the service's wait, plus jitter
 
+    def test_prompt_caching_messages(self):
+        """For an Anthropic model, the prompt's identical start (before the record) goes as a cached system block; the
+        words are the same; other makers' models, and prompts without the line, get one plain message."""
+        llm = self.llm
+        prompt = "RULES and SCHEMA\n----- BEGIN RECORD -----\nthe record\n----- END RECORD -----"
+        m = llm._messages(prompt, "claude-opus-5.5", "----- BEGIN RECORD -----")
+        self.assertEqual(m[0], {"role": "system", "content": [{"type": "text", "text": "RULES and SCHEMA\n",
+                                                               "cache_control": {"type": "ephemeral"}}]})
+        self.assertEqual(m[0]["content"][0]["text"] + m[1]["content"], prompt)
+        for model, until in (("gemini-2.5-pro", "----- BEGIN RECORD -----"), ("claude-opus-5.5", None),
+                             ("claude-opus-5.5", "not in the prompt")):
+            self.assertEqual(llm._messages(prompt, model, until), [{"role": "user", "content": prompt}], model)
+
+    def test_token_counts(self):
+        llm = self.llm
+        for k in llm.REQUESTS:
+            llm.REQUESTS[k] = 0
+        llm._count_tokens({"prompt_tokens": 2545, "completion_tokens": 9, "cache_creation_input_tokens": 2523,
+                           "cache_read_input_tokens": 0})
+        llm._count_tokens({"prompt_tokens": 2545, "completion_tokens": 9, "cache_creation_input_tokens": 0,
+                           "cache_read_input_tokens": 2523})
+        self.assertEqual({k: llm.REQUESTS[k] for k in ("input_tokens", "cache_read_tokens", "cache_write_tokens",
+                                                       "output_tokens")},
+                         {"input_tokens": 44, "cache_read_tokens": 2523, "cache_write_tokens": 2523, "output_tokens": 18})
+
     def test_cache_and_record(self):
         llm = self.llm
         llm.MODEL, llm.SERVICE = "google-claude-sonnet-5", "asksage"

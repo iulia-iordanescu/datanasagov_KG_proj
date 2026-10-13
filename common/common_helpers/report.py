@@ -173,6 +173,12 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
     lines += [f"| the one-line test (first paid call of a run) | {test_calls} | – |",
               f"| **answers received this run** | **{total:,}** | |",
               f"| requests sent to the service, retries, re-asks and failures included | {llm.REQUESTS['sent']:,} | |", "",
+              "| Tokens (as the service counted them) | |", "|---|---:|",
+              f"| sent, not from the cache | {llm.REQUESTS['input_tokens']:,} |",
+              f"| sent, read from the cache (billed at a fraction) | {llm.REQUESTS['cache_read_tokens']:,} |",
+              f"| sent, written to the cache (billed a little above normal) | {llm.REQUESTS['cache_write_tokens']:,} |",
+              f"| received | {llm.REQUESTS['output_tokens']:,} |", "",
+              "Token counts come only from LiteLLM, whose replies carry them; through Ask Sage they show 0.", "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet.", ""]
     return lines
