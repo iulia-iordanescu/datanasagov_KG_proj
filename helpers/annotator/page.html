@@ -6,15 +6,15 @@
 <title>Annotation tool</title>
 <style>
   :root {
-    --bg: #f3f5f8; --panel: #ffffff; --ink: #1f2933; --muted: #67707f; --line: #e1e5ec;
-    --accent: #2f5bd3; --accent-bg: #eef2fd; --soft: #fff3b0; --strong: #ffd33d; --error: #b3261e; --flag: #8a5a00;
+    --bg: #f4f5f3; --panel: #ffffff; --ink: #2a2f36; --muted: #6b7380; --line: #e3e6e2;
+    --accent: #2c6e82; --accent-bg: #eaf3f5; --soft: #fbefc4; --strong: #f5d77a; --error: #a8322b; --flag: #85601a;
     --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --input: #ffffff;
     --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14171c; --panel: #1c2027; --ink: #e7eaf0; --muted: #9ba4b3; --line: #313844;
-      --accent: #85a8ff; --accent-bg: #232d42; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
+      --bg: #15181c; --panel: #1d2126; --ink: #e4e7ea; --muted: #9aa2ad; --line: #30363d;
+      --accent: #7fbccd; --accent-bg: #1f3036; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
       --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --input: #14171c;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
@@ -23,9 +23,14 @@
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 15px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
          -webkit-font-smoothing: antialiased; }
-  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 12px;
-           align-items: center; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+  header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line);
            box-shadow: var(--shadow); }
+  header .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 20px; }
+  header .batchpick { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
+  header .views { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 4px 20px 8px; font-size: 13.5px; }
+  header .views .viewslabel { color: var(--muted); margin-right: 4px; }
+  header .views button { border: 0; background: transparent; color: var(--accent); padding: 2px 8px; border-radius: 6px; }
+  header .views button:hover { background: var(--accent-bg); }
   header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 0 8px 0 0; }
   select, input, textarea, button { font: inherit; color: var(--ink); }
   select, input, textarea { background: var(--input); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
@@ -34,7 +39,7 @@
            transition: background 0.12s, border-color 0.12s; }
   button:hover { border-color: var(--accent); background: var(--accent-bg); }
   .bar button.current { outline: 2px solid var(--accent); font-weight: 600; }
-  #status { margin-left: auto; color: var(--muted); font-size: 14px; }
+  #status { margin-left: auto; color: var(--muted); font-size: 13.5px; }
   #status.saved { color: var(--ok); } #status.failed { color: var(--error); font-weight: 600; }
   #warnings { margin: 0; padding: 8px 16px; background: var(--error-bg); color: var(--error); }
   #intro { margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
@@ -52,12 +57,12 @@
   main { display: grid; grid-template-columns: 290px 1fr; gap: 16px; padding: 16px; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
-        max-height: calc(100vh - 90px); overflow: auto; position: sticky; top: 70px; align-self: start; }
+        max-height: calc(100vh - 120px); overflow: auto; position: sticky; top: 104px; align-self: start; }
   nav button { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; padding: 6px 8px; margin: 1px 0; }
   nav button.current { background: var(--bg); outline: 2px solid var(--accent); }
   nav .badge { float: right; font-size: 13px; margin-left: 6px; }
   nav .small { color: var(--muted); font-size: 12px; }
-  section.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px;
+  section.card { background: var(--panel); border: 1px solid transparent; border-radius: 12px; padding: 16px 20px;
                  margin-bottom: 16px; min-width: 0; box-shadow: var(--shadow); }
   h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
   h3 { font-size: 15px; margin: 0 0 8px; }
@@ -85,7 +90,8 @@
   .problems li.flag { background: var(--flag-bg); color: var(--flag); }
   .describes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .describes input.title { flex: 1 1 280px; min-width: 0; }
-  .empty { color: var(--muted); font-style: italic; }
+  .empty { color: var(--muted); }
+  .name { font-weight: 600; }                 /* a view's or section's name, *written so* in the README and guidelines */
   #help { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.45); display: flex;
           justify-content: center; align-items: flex-start; padding: 40px 16px; overflow: auto; }
   #help[hidden] { display: none; }
@@ -118,15 +124,20 @@
 </head>
 <body>
 <header>
-  <h1>Annotation tool</h1>
-  <select id="batch" aria-label="Batch"></select>
-  <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
-  <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
-  <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
-  <button id="vocab" title="annotations/schema_derived_from_manual_annotation.txt">Ground truth vocabulary</button>
-  <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
-  <button id="helpbutton" title="annotations/README.md">Help</button>
-  <span id="status"></span>
+  <div class="topbar">
+    <h1>Annotation tool</h1>
+    <label class="batchpick">Annotate batch <select id="batch" aria-label="Batch to annotate"></select></label>
+    <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
+    <span id="status"></span>
+    <button id="helpbutton" title="annotations/README.md: how to use the view you're on">Help</button>
+  </div>
+  <div class="views" role="navigation" aria-label="Other views">
+    <span class="viewslabel">Other views, when needed:</span>
+    <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
+    <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
+    <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
+    <button id="vocab" title="annotations/schema_derived_from_manual_annotation.txt">Ground truth vocabulary</button>
+  </div>
 </header>
 <ul id="warnings"></ul>
 <div id="intro" hidden></div>
@@ -1015,11 +1026,11 @@ function linkHtml(words, target, base) {
   return `<span class="ref" title="${esc(path || target)}">${words}</span>`;
 }
 
-function inline(text, base) {            // [links](…), `code`, **bold**, *italic*, on escaped text
+function inline(text, base) {            // [links](…), `code`, **bold**, *names* (not italic), on escaped text
   const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return esc.replace(/\[([^\[\]]+)\]\(([^()\s]+)\)/g, (m, words, target) => linkHtml(words, target, base))
             .replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
-            .replace(/\*([^*]+)\*/g, "<i>$1</i>");
+            .replace(/\*([^*]+)\*/g, '<span class="name">$1</span>');
 }
 
 function markdown(md, base) {            // headings, paragraphs, lists, code blocks: enough for the README and guidelines
