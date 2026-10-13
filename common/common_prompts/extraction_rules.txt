@@ -12,6 +12,9 @@
   as approximate is stated: "approximately 250 m" is the object.
 - A number with a unit: the object is the number and its unit, as written
   ("250 m"); the predicate says what the number measures.
+- A table of values inside the record (rows of measurements, one per object):
+  extract what the table is about (what it measures, what it covers), not
+  one triple per cell.
 - Each fact once, even if the record states it twice or in other words.
 - Only facts the record states. Never use outside knowledge, and never
   infer what an unexplained code or acronym stands for.

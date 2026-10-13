@@ -50,7 +50,9 @@ import datetime as dt
 import glob
 import importlib.util
 import json
+import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -343,6 +345,68 @@ def _restore_manifest(output: Path, text: str | None) -> None:
         log.debug("previous manifest not restored: files it lists changed or are gone")
 
 
+#: Where a step keeps the earlier versions of its output files: <step folder>/previous_runs/<run id>/, one folder per
+#: earlier run, holding only the files a later run changed or removed, with that run's manifest.
+PREVIOUS_RUNS = "previous_runs"
+
+
+def _keep_previous(output: Path, manifest_text: str | None) -> list:
+    """Before a run: give every output file of the previous run (as its manifest lists them) a second name in
+    previous_runs/<its run id>/, by a hard link where the disk allows (no extra space: both names are the same file;
+    every write replaces a file with a new one, so the link keeps the old content), else by a copy. Returns
+    (previous_runs/<run id>/, [(file in the folder, its second name)]), for _settle_previous."""
+    try:
+        manifest = json.loads(manifest_text) if manifest_text else None
+        rows, run_id = (manifest.get("outputs", []), manifest.get("run_id")) if manifest else ([], None)
+    except ValueError:
+        rows, run_id = [], None
+    if not run_id:
+        return None, []
+    folder = output / PREVIOUS_RUNS / run_id
+    kept = []
+    for row in rows:
+        live = output / row.get("file", "")
+        if not live.is_file():
+            continue
+        second = folder / row["file"]
+        second.parent.mkdir(parents=True, exist_ok=True)
+        if not second.exists():
+            try:
+                os.link(live, second)
+            except OSError:
+                shutil.copy2(live, second)
+        kept.append((live, second))
+    if kept:
+        (folder / MANIFEST_NAME).write_text(manifest_text, encoding="utf-8")
+    return folder, kept
+
+
+def _settle_previous(output: Path, folder: Path | None, kept: list) -> None:
+    """After a run (finished or not): drop the second name of every file the run left as it was (the same file, or
+    one with the same content), so nothing is kept twice; a file the run changed or removed keeps its earlier
+    version in previous_runs/<run id>/. A folder left with nothing but the manifest is removed."""
+    if not kept:
+        return
+    still = []
+    for live, second in kept:
+        same = live.is_file() and (os.path.samefile(live, second) or audit.sha256([live]) == audit.sha256([second]))
+        if same:
+            second.unlink()
+        else:
+            still.append(_name_in(output, live))
+    if still:
+        log.info(f"  the previous run's version of {len(still)} file(s) this run changed or removed is kept in "
+                 f"{repo_path(folder)}/: {', '.join(still[:5])}{', …' if len(still) > 5 else ''}")
+        return
+    (folder / MANIFEST_NAME).unlink(missing_ok=True)
+    for d in sorted((p for p in folder.rglob("*") if p.is_dir()), key=lambda p: -len(p.parts)) + [folder]:
+        if d.is_dir() and not any(d.iterdir()):
+            d.rmdir()
+    parent = output / PREVIOUS_RUNS
+    if parent.is_dir() and not any(parent.iterdir()):
+        parent.rmdir()
+
+
 def _stamp(t: dt.datetime) -> str:
     return t.isoformat(timespec="seconds")
 
@@ -386,6 +450,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
 
     input_rows, output_rows, results, error = [], [], None, None
     old_manifest = None                  # nothing to restore if the run stops before taking it
+    previous = (None, [])                # the previous run's files given a second name (_keep_previous)
     try:
         _check_inputs(chosen_inputs, inputs, may_be_empty)
         input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs)
@@ -395,6 +460,14 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         # starts writing, so it is removed; if the run fails, it is put back
         # only if every output file it lists is still unchanged (see _restore_manifest).
         old_manifest = _take_manifest(output)
+        # Every output file of the previous run gets a second name in previous_runs/, so this run can't lose it.
+        try:
+            previous = _keep_previous(output, old_manifest)
+        except OSError as e:             # keeping an earlier version must never stop the run itself
+            log.warning(f"The previous run's output files couldn't be kept in {PREVIOUS_RUNS}/ ({e}), so this run may "
+                        f"replace them without a copy. The run goes on. If they matter, copy "
+                        f"{repo_path(output)} aside before the next run, and check the disk has space.")
+            previous = (None, [])
         log.debug(f"output folder: {repo_path(output)}")
         audit.begin_run(run_id, chosen_inputs)
         prompt_files.reset_prompts()
@@ -442,6 +515,11 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         _write_manifest(output, run, chosen_settings, input_rows, output_rows, results)
     else:
         _restore_manifest(output, old_manifest)
+    try:
+        _settle_previous(output, *previous)
+    except OSError as e:                 # tidying the kept versions must never fail a run that finished
+        log.warning(f"Tidying {PREVIOUS_RUNS}/ after the run failed ({e}): some earlier versions may be kept twice "
+                    f"(as a second name of the same file, which takes no extra space). Nothing to do.")
     write_step_report(report, run, chosen_settings, input_rows, output_rows,
                       audit.timeline(), results, error)
 

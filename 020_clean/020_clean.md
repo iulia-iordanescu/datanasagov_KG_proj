@@ -91,7 +91,7 @@ py 020_clean/run.py --batches path/to/batch_*.json      read batch files from el
 
 **Paying.** This [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](../docs/terminology.md#8-the-pipeline): it costs nothing, and keeps no cache.
 
-The whole catalog took 14–32 s (36,387 [records](../docs/terminology.md#1-records-and-their-text) read; 2026-09-27 to 2026-09-29), and 41 s once garbled characters were repaired too (36,406 records; 2026-10-12). A rerun replaces `records.jsonl`.
+The whole catalog took 14–32 s (36,387 [records](../docs/terminology.md#1-records-and-their-text) read; 2026-09-27 to 2026-09-29), and 41 s once garbled characters were repaired too (36,406 records; 2026-10-12). A rerun replaces `records.jsonl`; the earlier version is kept in `previous_runs/<run id>/` if it differs (`helpers/audit.md`, *Where to look*).
 
 ## How it works
 

@@ -276,6 +276,19 @@ class Pipeline(unittest.TestCase):
         its own: worked out by hand, 8 tuning records with one fact each,
         all found; record 0 has a second fact extraction can't find."""
         self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "schema_derived_from_manual_annotation.txt"))
+        # t07 extracted with 040's schema, later runs with the hand-built one: the earlier version of each file a run
+        # changed is kept in previous_runs/<that run>/, with its manifest; a file a run left as it was is not kept
+        kept = sorted((self.results / "060_extract" / "previous_runs").iterdir())
+        self.assertTrue(kept)
+        first = json.loads((kept[0] / "schema_used.json").read_text(encoding="utf-8"))
+        self.assertEqual(first["made"]["schema"], "040_induce_schema/the_schema.json")
+        for folder in kept:
+            self.assertTrue((folder / "_manifest.json").is_file())
+            later = kept[kept.index(folder) + 1:] or [self.results / "060_extract"]
+            for f in (x for x in folder.rglob("*") if x.is_file() and x.name != "_manifest.json"):
+                successor = next((d / f.relative_to(folder) for d in later if (d / f.relative_to(folder)).is_file()),
+                                 self.results / "060_extract" / f.relative_to(folder))
+                self.assertNotEqual(f.read_bytes(), successor.read_bytes(), f)       # kept only when it changed
         table = self.repo / "own_table.csv"
         table.write_text((self.annotations / "component_class_mapping.csv").read_text(encoding="utf-8").splitlines()[0] + "\n",
                            encoding="utf-8")
