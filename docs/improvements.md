@@ -30,6 +30,8 @@ The changes to make to the pipeline itself: what to change, why, and where the i
 
 ## 050_annotate
 
+- **A near-duplicate check when coining:** before the annotation tool adds a coined entity class or predicate, show the closest ones already in the ground truth schema, by spelling (`Satelite`, `Satellite`) and by words shared with their names and definitions, with a button to use one instead. A model would also catch synonyms that share no words (`Probe`, `Spacecraft`), at a paid call each. For now, coined ones are reviewed together at the end of a batch. From: 2026-10-14.
+- **Less work per annotated record:** measure the time per record on batch 0 first; then decide what to automate (e.g. a second model checking each draft and pointing at doubtful component classes, so a person looks only there). From: 2026-10-06 (queued), 2026-10-14.
 - **Gemini 2.5 Pro and error 500:** in a test with an answer limit of 20 tokens it answered error 500 ("no choices"), probably its thinking using up the limit. Watch whether real drafting calls get it: each costs retries. From: [`findings.md`](findings.md), 2026-10-12.
 
 ## 060_extract
