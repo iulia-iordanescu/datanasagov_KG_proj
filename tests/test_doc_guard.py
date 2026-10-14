@@ -91,6 +91,13 @@ class Edit(unittest.TestCase):
         self.assertNotIn("model", doc_guard.outside_links("No [model calls](t.md#m) here."))
         self.assertIn("there", doc_guard.outside_links(text))
 
+    def test_delete_removes_the_doc_and_records_it(self):
+        self.doc.write_text("Old.", encoding="utf-8")
+        doc_guard.delete("doc.md")
+        self.assertFalse(self.doc.exists())
+        self.assertEqual(json.loads(doc_guard.LEDGER.read_text(encoding="utf-8"))[-1],
+                         {"file": "doc.md", "old": "", "new": "", "count": 1, "delete": True})
+
     def test_create_writes_a_new_doc_only(self):
         doc_guard.create("new.md", "# New\n\nSee [x](x.md).\n")
         self.assertEqual((self.tmp / "new.md").read_text(encoding="utf-8"), "# New\n\nSee [x](x.md).\n")

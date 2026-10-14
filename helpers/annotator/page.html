@@ -10,6 +10,8 @@
     --tint: #f1f6f5; --paper: #fbf9f3; --label: #4a5260; --stripe: #8fc1cc;
     --accent: #2c6e82; --accent-bg: #eaf3f5; --soft: #fbefc4; --strong: #f5d77a; --error: #a8322b; --flag: #85601a;
     --error-bg: #fdecea; --flag-bg: #fff6e0; --ok: #1f7a3a; --ok-bg: #e5f4ea; --input: #ffffff;
+    --subj: #2f6db5; --subj-bg: #eaf1fb; --pred: #8a4fb8; --pred-bg: #f4ecfa; --obj: #2c8a5a; --obj-bg: #e8f5ee;
+    --bar: #1f5566; --bar-ink: #ffffff; --bar-soft: rgba(255, 255, 255, 0.16);
     --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
   }
   @media (prefers-color-scheme: dark) {
@@ -18,6 +20,8 @@
       --tint: #222a2e; --paper: #1f2226; --label: #b6bdc7; --stripe: #3f7684;
       --accent: #7fbccd; --accent-bg: #1f3036; --soft: #4d4415; --strong: #7a6400; --error: #ff8a80; --flag: #f0c060;
       --error-bg: #3a1f1f; --flag-bg: #3a3018; --ok: #6fd08c; --ok-bg: #1d3325; --input: #14171c;
+      --subj: #7fb0ec; --subj-bg: #1c2836; --pred: #c79ae8; --pred-bg: #2a2133; --obj: #79d1a4; --obj-bg: #1b2e25;
+      --bar: #163c47; --bar-ink: #e9f3f5; --bar-soft: rgba(255, 255, 255, 0.10);
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     }
   }
@@ -25,10 +29,18 @@
   body { margin: 0; background: var(--bg); color: var(--ink);
          font: 15px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
          -webkit-font-smoothing: antialiased; }
-  header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line);
-           box-shadow: var(--shadow); }
-  header .topbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 20px; }
-  header .batchpick { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bar); color: var(--bar-ink); box-shadow: var(--shadow); }
+  header .topbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 20px; }
+  header .batchpick { display: inline-flex; gap: 8px; align-items: center; margin-right: 10px; }
+  header .batchpick select { border-color: transparent; }
+  header .topbar > button, header .viewsmenu summary { background: transparent; border: 0; color: var(--bar-ink);
+                                                       padding: 6px 11px; border-radius: 8px; }
+  header .topbar > button:hover, header .viewsmenu summary:hover, header .viewsmenu[open] summary { background: var(--bar-soft); }
+  header #status { color: var(--bar-ink); opacity: 0.85; }
+  header #status.failed { color: #ffd2cc; opacity: 1; }
+  header #status.saved { color: #bdf2cc; opacity: 1; }
+  header .count { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 12px;
+                  font-weight: 700; background: #f4b6ae; color: #6d1d16; }
   .viewsmenu { position: relative; }
   .viewsmenu summary { list-style: none; cursor: pointer; padding: 6px 12px; border-radius: 8px; color: var(--accent); }
   .viewsmenu summary::-webkit-details-marker { display: none; }
@@ -38,7 +50,8 @@
                      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
   .viewsmenu .menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; }
   .viewsmenu .menu button:hover { background: var(--accent-bg); }
-  header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 0 8px 0 0; }
+  header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; margin: 0 12px 0 0; }
+  .viewsmenu .menu button { color: var(--ink); }
   select, input, textarea, button { font: inherit; color: var(--ink); }
   select, input, textarea { background: var(--input); border: 1px solid #c3cac3; border-radius: 8px; padding: 6px 9px; }
   @media (prefers-color-scheme: dark) { select, input, textarea { border-color: #3b434c; } }
@@ -55,11 +68,9 @@
   #intro p { margin: 0 0 4px 0; }
   #warnings:empty { display: none; }
   #warnings li { white-space: pre-line; }
-  #gaps { padding: 8px 16px; background: var(--flag-bg); color: var(--flag); }
-  #gaps[hidden] { display: none; }
-  #gaps summary { cursor: pointer; }
-  #gaps ul { list-style: none; margin: 6px 0 0; padding: 0; color: var(--ink); }
-  #gaps li { margin-top: 4px; }
+  .gaps { background: var(--error-bg); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
+  .gaps ul { list-style: none; margin: 6px 0 0; padding: 0; }
+  .gaps li { margin-top: 6px; }
   .addbox { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 6px; }
   .addbox input { width: min(420px, 100%); }
   main { display: grid; grid-template-columns: 250px 1fr; gap: 16px; padding: 16px; }
@@ -116,14 +127,21 @@
   label.finished { background: var(--ok-bg); color: var(--ok); border-radius: 8px; padding: 4px 10px; }
   .hintbox { margin-top: 8px; }
   .hintbox summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
-  .welcome ol { padding-left: 22px; line-height: 1.7; }
-  .welcome li { margin-bottom: 6px; max-width: 80ch; }
   .triple { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 34%); gap: 8px 10px; }
   .triple label, .source label { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-weight: 600;
                                  color: var(--label); min-width: 0; }
   .triple label input, .triple label textarea, .source label textarea { font-weight: 400; font-size: 14.5px; }
   .triple input, .triple textarea { width: 100%; min-width: 0; }
   textarea.grow { resize: none; overflow: hidden; line-height: 1.4; }
+  .triple label.f-subj { color: var(--subj); } .triple label.f-pred { color: var(--pred); } .triple label.f-obj { color: var(--obj); }
+  .f-subj input, .f-subj textarea { border-left: 4px solid var(--subj); background: var(--subj-bg); }
+  .f-pred input, .f-pred textarea { border-left: 4px solid var(--pred); background: var(--pred-bg); }
+  .f-obj input, .f-obj textarea { border-left: 4px solid var(--obj); background: var(--obj-bg); }
+  .f-subj input, .f-subj textarea, .f-pred input, .f-pred textarea, .f-obj input, .f-obj textarea { color: var(--ink); }
+  .f-subj .fixed { border-left: 4px solid var(--subj); } .f-pred .fixed { border-left: 4px solid var(--pred); }
+  .f-obj .fixed { border-left: 4px solid var(--obj); }
+  .schematable th { background: var(--tint); }
+  .schemaview h3 { color: var(--accent); }
   .triple .cls { font-size: 13px; }
   @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
   .source { display: flex; gap: 8px; align-items: flex-end; margin-top: 6px; }
@@ -183,9 +201,9 @@
 <header>
   <div class="topbar">
     <h1>Annotation tool</h1>
-    <label class="batchpick">Batch <select id="batch" aria-label="Batch to annotate"></select></label>
+    <label class="batchpick"><select id="batch" aria-label="Batch to annotate"></select></label>
     <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
-    <button id="schemabutton" title="annotations/ground_truth_schema.txt: every entity class and predicate, at a glance">Ground truth schema</button>
+    <button id="schemabutton" title="annotations/ground_truth_schema.txt: every entity class and predicate, at a glance, and what the ground truth uses that it lacks">Ground truth schema<span id="gapcount" class="count" hidden></span></button>
     <details class="viewsmenu" id="viewsmenu">
       <summary>Other views</summary>
       <div class="menu" role="navigation" aria-label="Other views">
@@ -200,20 +218,9 @@
 </header>
 <ul id="warnings"></ul>
 <div id="intro" hidden></div>
-<details id="gaps" hidden></details>
 <main>
   <nav id="records" aria-label="Records"></nav>
-  <div id="record"><section class="card welcome">
-    <h2>Annotating ground truth</h2>
-    <ol>
-      <li><strong>Choose a batch</strong> at the top, under “Batch”. A batch is one file of records to annotate.</li>
-      <li><strong>Read the Guidelines</strong> (the button next to the batch) before the first record: they say what to write.</li>
-      <li><strong>For each record:</strong> read the record's text, then correct, delete or add its ground truth triples, and
-          tick “All facts extracted” when every fact the text states has a ground truth triple.</li>
-      <li><strong>When the batch is done,</strong> commit its file (annotations/ground_truth/batch_NNN.csv) to Git.</li>
-    </ol>
-    <p class="hint">Every change is saved to the file as you type. Help, at the top right, explains the view you are on.</p>
-  </section></div>
+  <div id="record"></div>
 </main>
 <div id="help" hidden></div>
 <datalist id="entity_classes"></datalist>
@@ -317,6 +324,15 @@ async function loadBatches() {
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0), +(wanted.get("t") || 0));
+  } else if (data.batches.length) {
+    // no batch named in the address: the first one with records left to finish, else the last one
+    const next = data.batches.find((b) => b.ground_truth && b.finished < b.records)
+              || data.batches.find((b) => !b.ground_truth) || data.batches[data.batches.length - 1];
+    pick.value = String(next.n);
+    await openBatch(next.n, 0);
+  } else {
+    $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
+      "No batch to annotate yet: step 050 drafts one (py 050_annotate/run.py); then restart the tool.")));
   }
 }
 async function openBatch(n, at, step = 0) {
@@ -420,12 +436,6 @@ function show(i) {
         el("input", { type: "checkbox", checked: rec.finished,
                       onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
         "All facts extracted"),
-      rec.part === "tuning"
-        ? el("button", { title: `Opens the form of the view Schema additions, with the source line “source: ground truth tuning #${rec.position}” filled in.`,
-                         onclick: () => openAdditions({ entry_type: "entity class", component_class: "", definition: "",
-                           source: `ground truth tuning #${rec.position}`, patterns: [] }).catch(fail) },
-            "Add a component class to the schema additions")
-        : null,
       el("span", { style: "margin-left:auto" },
         el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0, title: "or the ← key, when not typing in a field" },
            "← Previous record"), " ",
@@ -535,13 +545,14 @@ function field(rec, j, key, label, extra = {}) {
   const r = rec.rows[j];
   const kind = key === "predicate" ? "predicates" : key.endsWith("_class") ? "entity_classes" : null;
   const { multiline, ...attrs } = extra;
+  const role = key.startsWith("subject") ? "subj" : key.startsWith("object") ? "obj" : key === "predicate" ? "pred" : "";
   const on = { "data-row": j,
     oninput: (e) => {
       if (multiline) { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " "); grow(e.target); }
       r[key] = e.target.value; if (key === "source_text") drawText(); changed();
       if (kind) showClasses(kind, e.target, true); },
     onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); else hideClasses(); } };
-  return el("label", {}, label, multiline
+  return el("label", { class: role ? "f-" + role : "" }, label, multiline
     ? el("textarea", { ...attrs, ...on, class: "grow", rows: 1, onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); } }, r[key])
     : el("input", { value: r[key], ...attrs, ...on }));
 }
@@ -556,17 +567,17 @@ function problemList(r, j) {
 // the object's entity class is the annotator's. It has no source text.
 function describesRow(rec, j, heading = true) {
   const r = rec.rows[j];
-  const fixed = (label, value) => el("label", { title: "Written by code; it can't be changed." }, label,
+  const fixed = (label, value, role) => el("label", { title: "Written by code; it can't be changed.", class: "f-" + role }, label,
     el("div", { class: "fixed" }, value));
   return el("div", { class: "row", "data-row-box": j },
     heading ? el("div", { class: "rowhead" }, "Describes triple") : null,
     el("div", { class: "triple" },
-      fixed("Subject (the record's id)", r.subject),
-      fixed("Subject's entity class", r.subject_class),
-      fixed("Predicate", r.predicate),
+      fixed("Subject (the record's id)", r.subject, "subj"),
+      fixed("Subject's entity class", r.subject_class, "subj"),
+      fixed("Predicate", r.predicate, "pred"),
       el("span"),
-      fixed("Object (the record's title)", r.object),
-      el("label", {}, "Object's entity class",
+      fixed("Object (the record's title)", r.object, "obj"),
+      el("label", { class: "f-obj" }, "Object's entity class",
         el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
                       placeholder: "not chosen yet", "data-row": j,
                       oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target, true); },
@@ -725,18 +736,28 @@ async function addToHand(item) {
   } catch (e) { status(`NOT ADDED: ${e.message}`, "failed"); }
   finally { adding = false; }
 }
+// What the ground truth uses that the ground truth schema lacks: counted on the Ground truth schema button, and
+// listed (with the Add buttons) at the top of its overview, redrawn there when it is open.
+let gaps = { component_classes: [], patterns: [], file: "" };
 function drawGaps(g) {
-  if ($("gaps").contains(document.activeElement)) return;   // you're typing a definition there
-  const n = g.component_classes.length, p = g.patterns.length;
-  $("gaps").hidden = !(n || p);
-  $("gaps").replaceChildren(
-    el("summary", {}, `The ground truth uses ${n} component class(es) and ${p} pattern(s) that aren't in the ground truth ` +
-       `schema (${g.file}). Add each one you mean to keep; fix any typo where it's used.`),
+  gaps = g;
+  const n = g.component_classes.length + g.patterns.length;
+  $("gapcount").hidden = !n;
+  $("gapcount").textContent = n ? `✖ ${n}` : "";
+  if (!$("help").hidden && $("help").querySelector(".schemaview") && !$("help").contains(document.activeElement))
+    showSchema().catch(() => {});
+}
+function gapsList() {
+  const n = gaps.component_classes.length, p = gaps.patterns.length;
+  if (!n && !p) return null;
+  return el("section", { class: "gaps" },
+    el("strong", {}, `The ground truth uses ${n} entity class(es) or predicate(s) and ${p} pattern(s) that aren't in the ground truth schema yet`),
+    el("div", { class: "meta" }, "Add each one you mean to keep, with a one-line definition; fix any typo where it's used."),
     el("ul", {},
-      g.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
-        ` (ground truth schema; ${x.uses} row(s))`, addControl(x))),
-      g.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
-        `${x.subject_class} ${x.predicate} ${x.object_class} (${x.uses} row(s))`, addControl(x)))));
+      gaps.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
+        ` (${x.uses} ground truth triple(s))`, addControl(x))),
+      gaps.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
+        `${x.subject_class} → ${x.predicate} → ${x.object_class} (${x.uses} ground truth triple(s))`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table
@@ -1331,7 +1352,7 @@ async function showSchema() {
     const q = filter.value.trim().toLowerCase();
     grid.querySelectorAll("tbody tr").forEach((r) => { r.hidden = q && !r.dataset.text.includes(q); });
   });
-  $("help").replaceChildren(el("div", { class: "helpbox wide" },
+  $("help").replaceChildren(el("div", { class: "helpbox wide schemaview" },
     el("div", { class: "bar", style: "margin-top:0" },
       el("h2", { style: "margin:0" }, "Ground truth schema"),
       el("span", { class: "meta" }, "annotations/ground_truth_schema.txt"),
@@ -1340,7 +1361,7 @@ async function showSchema() {
                        title: "Change a definition, rename one, or merge two that mean the same thing, in every file at once" },
            "Edit definitions, rename or merge…"), " ",
         el("button", { onclick: hideHelp }, "Close"))),
-    filter, grid));
+    gapsList(), filter, grid));
   $("help").hidden = false;
   filter.focus();
 }

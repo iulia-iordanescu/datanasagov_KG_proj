@@ -119,6 +119,16 @@ def create(rel: str, text: str) -> None:
     LEDGER.write_text(json.dumps(entries, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+def delete(rel: str) -> None:
+    """Delete the doc `rel` (Git's copy is kept in its history), and record it: check() then accepts it missing."""
+    path = ROOT / rel
+    if path.exists():
+        path.unlink()
+    entries = _ledger()
+    entries.append({"file": rel, "old": "", "new": "", "count": 1, "delete": True})
+    LEDGER.write_text(json.dumps(entries, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def _docs_changed() -> list:
     out = subprocess.run(["git", "diff", "--name-only", "HEAD", "--", "*.md"], cwd=ROOT, capture_output=True,
                          text=True, encoding="utf-8").stdout.split()
@@ -137,6 +147,11 @@ def check() -> bool:
     entries = _ledger()
     ok = True
     for rel in _docs_changed():
+        if not (ROOT / rel).exists():               # deleted: fine only if recorded as meant
+            if not any(e["file"] == rel and e.get("delete") for e in entries):
+                print(f"FAIL {rel}: deleted, but no recorded delete explains it")
+                ok = False
+            continue
         before, now = _at_head(rel), (ROOT / rel).read_text(encoding="utf-8")
         expected = plain(before)
         for e in (e for e in entries if e["file"] == rel):

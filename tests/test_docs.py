@@ -13,7 +13,7 @@ from support import ROOT
 STEPS = ["010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract", "070_evaluate"]
 #: Files whose text isn't the project's to sweep: old code, the plan kept as
 #: it was written, and the person-made files of annotations/ (except its README).
-SKIP = ("to_be_reshaped/", "docs/pipeline_redesign_plan.md", "annotations/")
+SKIP = ("to_be_reshaped/", "annotations/")
 KEEP = ("annotations/README.md",)
 
 
