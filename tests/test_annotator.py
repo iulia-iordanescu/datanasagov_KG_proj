@@ -1,6 +1,6 @@
 """The annotation tool (helpers/annotator/server.py), through its HTTP API,
 in a temporary copy of the repository: opening and saving a batch, adding
-to the hand-built schema, the translation table, the schema additions, and
+to the ground truth schema, the translation table, the schema additions, and
 partial pair reviews. Nothing in the real annotations/ is touched."""
 import csv
 import json
@@ -37,7 +37,7 @@ POOL = ["r0", "r1", "r2", "r3"] + [f"p{i}" for i in range(4, 9)] + ["r8"]      #
 
 
 def setUpModule():
-    (TMP / "annotations" / "schema_derived_from_manual_annotation.txt").write_text(HAND, encoding="utf-8")
+    (TMP / "annotations" / "ground_truth_schema.txt").write_text(HAND, encoding="utf-8")
     for step in ("020_clean", "030_split", "050_annotate", "060_extract", "070_evaluate"):
         (RESULTS / step).mkdir(parents=True)
     with open(RESULTS / "020_clean" / "records.jsonl", "w", encoding="utf-8") as fh:
@@ -96,7 +96,7 @@ def gt_rows():
 class A_Paths(unittest.TestCase):
 
     def test_never_the_real_repository(self):
-        for path in (server.ANNOTATIONS_DIR, server.RESULTS_DIR, server.HAND_SCHEMA, server.MAPPING_PATH,
+        for path in (server.ANNOTATIONS_DIR, server.RESULTS_DIR, server.GROUND_TRUTH_SCHEMA, server.MAPPING_PATH,
                      server.ADDITIONS, server.REVIEWS_PATH, server.GROUND_TRUTH_DIR):
             self.assertTrue(path.resolve().is_relative_to(TMP.resolve()), path)
 
@@ -119,8 +119,8 @@ class A_Paths(unittest.TestCase):
         self.assertIn('id="intro"', page)
         self.assertIn('id="guidelinesbutton"', page)                            # the rules, one click from any view
         terms = get("/api/terms")                                                  # a term's definition, on hover
-        self.assertIn("ground truth vocabulary", terms)
-        self.assertNotIn("](", terms["ground truth vocabulary"])                   # plain text: no Markdown links
+        self.assertIn("ground truth schema", terms)
+        self.assertNotIn("](", terms["ground truth schema"])                   # plain text: no Markdown links
         self.assertIn("pool position", terms)                                      # named in bold inside a definition
         self.assertEqual(get("/api/doc?path=annotations/guidelines.md")["file"], "annotations/guidelines.md")
         for outside in (".env", "../outside.md", "common/common_helpers/llm.py"):    # only .md files of the repository
@@ -185,7 +185,7 @@ class B_Batch(unittest.TestCase):
 class C_HandSchema(unittest.TestCase):
 
     def test_adds(self):
-        hand = TMP / "annotations" / "schema_derived_from_manual_annotation.txt"
+        hand = TMP / "annotations" / "ground_truth_schema.txt"
         gaps = get("/api/gaps")
         self.assertEqual({(g["entry_type"], g["component_class"], g["uses"]) for g in gaps["component_classes"]},
                          {("entity class", "Planet", 1), ("predicate", "ORBITS", 1)})
@@ -205,7 +205,7 @@ class C_HandSchema(unittest.TestCase):
                          [("Spacecraft", "ORBITS", "Planet")])
         post("/api/hand/add", gaps["patterns"][0])
         self.assertEqual(get("/api/gaps"), {"file": gaps["file"], "component_classes": [], "patterns": []})
-        s = schema_io.read_hand_schema(hand)
+        s = schema_io.read_ground_truth_schema(hand)
         self.assertEqual(s["sources"]["entity_classes"], {"Planet": "ground truth tuning #1"})
         self.assertIn(("Spacecraft", "ORBITS", "Planet"), s["patterns"])
         self.assertEqual(s["sources"]["patterns"], {"Spacecraft ORBITS Planet": "ground truth tuning #1"})   # where learned
@@ -269,7 +269,7 @@ class D_Mapping(unittest.TestCase):
         self.assertEqual(self.read()[0]["definition_from_past_or_crt_schema"], "an orbiting craft")
 
     def test_stale_gtt(self):
-        """The hand-built schema defines Spacecraft as "a vehicle in space"; the row stored another definition."""
+        """The ground truth schema defines Spacecraft as "a vehicle in space"; the row stored another definition."""
         cols = component_class_mapping.COLUMNS
         with open(self.path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
@@ -395,7 +395,7 @@ class F_Partial(unittest.TestCase):
 
 
 class G_Vocabulary(unittest.TestCase):
-    """The Ground truth vocabulary view: definitions, renaming, merging, every file at once or none."""
+    """The Ground truth schema view: definitions, renaming, merging, every file at once or none."""
 
     GT_ROWS = [["r0", "r0", "CatalogEntry", "DESCRIBES", "Title r0", "Satelite", "(record structure)", "1", "m"],
                ["r0", "MODIS", "Instrument", "ABOARD", "Aqua", "Satelite", "MODIS aboard Aqua", "1", "m"],
@@ -405,14 +405,14 @@ class G_Vocabulary(unittest.TestCase):
         .replace("Spacecraft -> Planet", "Satelite -> Planet")
 
     def setUp(self):
-        self.files = [TMP / "annotations" / "ground_truth" / "batch_000.csv", server.HAND_SCHEMA,
+        self.files = [TMP / "annotations" / "ground_truth" / "batch_000.csv", server.GROUND_TRUTH_SCHEMA,
                       server.MAPPING_PATH, server.REVIEWS_PATH]
         self.saved = {p: p.read_bytes() if p.exists() else None for p in self.files}
         with open(self.files[0], "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(ground_truth.FILE_COLUMNS)
             w.writerows(self.GT_ROWS)
-        server.HAND_SCHEMA.write_text(self.HAND.replace("Dataset           a collection of data",
+        server.GROUND_TRUTH_SCHEMA.write_text(self.HAND.replace("Dataset           a collection of data",
                                                         "Dataset           a collection of data\n"
                                                         "Satelite          a craft in orbit"), encoding="utf-8")
         cols = component_class_mapping.COLUMNS
@@ -449,7 +449,7 @@ class G_Vocabulary(unittest.TestCase):
         plan = post("/api/vocab/plan", {"kind": "entity class", "old": "Satelite", "new": "Spacecraft"})
         self.assertTrue(plan["merge"])
         self.assertEqual([c["file"] for c in plan["changes"]],
-                         ["annotations/ground_truth/batch_000.csv", f"annotations/{server.HAND_SCHEMA.name}",
+                         ["annotations/ground_truth/batch_000.csv", f"annotations/{server.GROUND_TRUTH_SCHEMA.name}",
                           f"annotations/{server.MAPPING_PATH.name}"])
         self.assertIn("3 cell(s)", plan["changes"][0]["what"])
         self.assertTrue(any("stale" in n for n in plan["notes"]))             # Spacecraft's definition differs
@@ -463,7 +463,7 @@ class G_Vocabulary(unittest.TestCase):
         self.assertEqual(rows[3]["subject_class"], "Spacecraft")                                 # any spelling
         self.assertEqual([r["subject"] for r in rows], ["r0", "MODIS", "AIRS", "Aqua"])          # nothing else
         self.assertEqual([r["drafted_by"] for r in rows], ["m"] * 4)
-        hand = schema_io.read_hand_schema(server.HAND_SCHEMA)
+        hand = schema_io.read_ground_truth_schema(server.GROUND_TRUTH_SCHEMA)
         self.assertNotIn("Satelite", hand["entity_classes"])
         self.assertEqual(hand["entity_classes"]["Spacecraft"], "a vehicle in space")
         self.assertIn(("Spacecraft", "ORBITS", "Planet"), hand["patterns"])
@@ -477,14 +477,14 @@ class G_Vocabulary(unittest.TestCase):
         done = post("/api/vocab/apply", {"kind": "predicate", "old": "ORBITS", "new": "CIRCLES"})
         self.assertFalse(done["merge"])
         self.assertEqual(gt_rows()[3]["predicate"], "CIRCLES")
-        self.assertIn("CIRCLES", schema_io.read_hand_schema(server.HAND_SCHEMA)["predicates"])
+        self.assertIn("CIRCLES", schema_io.read_ground_truth_schema(server.GROUND_TRUTH_SCHEMA)["predicates"])
         reviews = partial_reviews.read_reviews(server.REVIEWS_PATH)
         self.assertEqual(list(reviews.values()), ["same fact"])
         self.assertEqual(list(reviews)[0][2], partial_reviews.norm_text("CIRCLES"))
 
     def test_merge_predicate_moves_patterns(self):
         post("/api/vocab/apply", {"kind": "predicate", "old": "ORBITS", "new": "ABOARD"})
-        hand = schema_io.read_hand_schema(server.HAND_SCHEMA)
+        hand = schema_io.read_ground_truth_schema(server.GROUND_TRUTH_SCHEMA)
         self.assertNotIn("ORBITS", hand["predicates"])
         self.assertEqual(sorted(p for p in hand["patterns"] if p[1] == "ABOARD"),
                          [("Instrument", "ABOARD", "Spacecraft"), ("Satelite", "ABOARD", "Planet")])
@@ -534,7 +534,7 @@ class G_Vocabulary(unittest.TestCase):
     def test_define(self):
         done = post("/api/vocab/define", {"kind": "predicate", "component_class": "aboard", "definition": "is  anywhere on"})
         self.assertEqual(done, {"saved": True, "stale": ["MOUNTED_ON"]})
-        hand = schema_io.read_hand_schema(server.HAND_SCHEMA)
+        hand = schema_io.read_ground_truth_schema(server.GROUND_TRUTH_SCHEMA)
         self.assertEqual(hand["predicates"]["ABOARD"], "is anywhere on")
         self.assertEqual(hand["patterns"].count(("Instrument", "ABOARD", "Spacecraft")), 1)
         self.assertIn("add it first", post("/api/vocab/define", {"kind": "entity class", "component_class": "Planet",

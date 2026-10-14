@@ -3,7 +3,7 @@ moves.py -- the main moves of 070_evaluate, as called by 070_evaluate/run.py.
 
     stage 1  records.py            pick_records                 code: which records are evaluated (finished, extracted, in the fair sample)
     -        (here)                paid_calls                   code: asks before paying; keeps every answer in cache/
-    stage 2  component_classes.py  translate_component_classes  LLM: current schema's component classes → ground truth vocabulary, new ones only (+ suggestions for (none) rows); you check
+    stage 2  component_classes.py  translate_component_classes  LLM: current schema's component classes → ground truth schema, new ones only (+ suggestions for (none) rows); you check
     stage 3  pairing.py            compare                      code: record by record, exact and partial pairs, strict, within reach
     stage 4  stats.py              compute_metrics              code: the numbers, each with its margin of error, per part and stratum
     -        (here)                results                      writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
@@ -221,7 +221,7 @@ def _per_record(records: list, hidden: int) -> str:
              "Each evaluated record: its pairs (✓ exact / ≈ partial), each with its ground truth triple and its "
              "occurrence; its occurrences left extracted only (each counts against precision); and its ground "
              "truth triples left ground truth only (each counts against recall). Occurrences are shown translated "
-             "into the ground truth vocabulary. Terms: docs/terminology.md, section *Evaluating extraction*; "
+             "into the ground truth schema. Terms: docs/terminology.md, section *Evaluating extraction*; "
              "pairs: 070_evaluate/metrics/pairs.md.", ""]
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
@@ -234,7 +234,7 @@ def _per_record(records: list, hidden: int) -> str:
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
         lines += [f"Describes: {mark} extraction said `{d['said'] or '(none named)'}` (translated into the ground truth "
-                  f"vocabulary); the ground truth says `{d['truth'] or '(none)'}` (ground truth vocabulary)", ""]
+                  f"vocabulary); the ground truth says `{d['truth'] or '(none)'}` (ground truth schema)", ""]
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         if c["pairs"]:
@@ -304,29 +304,29 @@ def _mismatch_lines(mismatches: list) -> list:
              "these events, "
              "counted together, happened 9 times:", "",
              "- **entity class, subject:** extraction used `Body` (current schema) as the entity class of an "
-             "extracted triple's subject, translated to `Spacecraft` (ground truth vocabulary), while the ground truth triple paired with it (a pair, "
-             "exact or partial) had `CelestialBody` (ground truth vocabulary) as its subject's entity class;",
+             "extracted triple's subject, translated to `Spacecraft` (ground truth schema), while the ground truth triple paired with it (a pair, "
+             "exact or partial) had `CelestialBody` (ground truth schema) as its subject's entity class;",
              "- **entity class, object:** extraction used a component class of the current schema as the entity "
              "class of an extracted triple's object, translated to one component class of the ground truth "
              "vocabulary, while the ground truth triple paired with it had another as its object's entity class. "
              "One pair can count twice: once for the subjects' entity classes, once for the objects';",
              "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject and "
              "object, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
-             "predicate (ground truth vocabulary). With subject and object the other way round, the "
+             "predicate (ground truth schema). With subject and object the other way round, the "
              "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
              "Component classes are compared after translation. All 9 events share one cause: the translation table's row "
-             "`Body` (current schema) --> `Spacecraft` (ground truth vocabulary). Had that row said `Body` --> `CelestialBody` (ground truth "
+             "`Body` (current schema) --> `Spacecraft` (ground truth schema). Had that row said `Body` --> `CelestialBody` (ground truth "
              "vocabulary), none of the 9 would have happened. So that row of the translation table is the "
              "likely mistake, and the one to check.", ""]
     if not mismatches:
         return lines + ["None.", ""]
-    lines += ["| Kind | Component class in the current schema | Translated to (ground truth vocabulary) | What the ground truth "
-              "triple says instead (ground truth vocabulary) | Times | Check |", "|---|---|---|---|---:|---|"]
+    lines += ["| Kind | Component class in the current schema | Translated to (ground truth schema) | What the ground truth "
+              "triple says instead (ground truth schema) | Times | Check |", "|---|---|---|---|---:|---|"]
     for c in mismatches[:SHOW]:
         to = "(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION) else c["translated_to"]
         check = (f"swap_subject_and_object of {c['crt_component_class']} (current schema): subject and object were the "
                  f"other way round" if c["swapped"] else
-                 f"should {c['crt_component_class']} (current schema) translate to {c['gtt_component_class']} (ground truth vocabulary)?")
+                 f"should {c['crt_component_class']} (current schema) translate to {c['gtt_component_class']} (ground truth schema)?")
         lines.append(f"| {c['kind']} | {cell(c['crt_component_class'])} | {cell(to)} | {cell(c['gtt_component_class'])} | {c['count']} "
                      f"| {cell(check)} |")
     if len(mismatches) > SHOW:
@@ -411,9 +411,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                             f"assumptions, checked*.")
     if translation.suggested:
         warnings.append(f"The model suggests {len(translation.suggested)} row(s) of annotations/component_class_mapping.csv that say (none) may "
-                        f"now have a counterpart in the ground truth vocabulary: "
+                        f"now have a counterpart in the ground truth schema: "
                         + named([f"{s['component_class_from_past_or_crt_schema']} (current schema) --> {s['component_class_in_gtt']} "
-                                 f"(ground truth vocabulary)" for s in translation.suggested], 5, "; ")
+                                 f"(ground truth schema)" for s in translation.suggested], 5, "; ")
                         + f". While a row says (none), extracted triples that use its component class can't form "
                           f"pairs (a predicate) or strict pairs (an entity class). Rows aren't changed: check them "
                           f"({TABLE}, shows the suggestion), take the suggestion if right, else keep (none); {AGAIN}")
@@ -422,7 +422,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                         f"truth vocabulary now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
                         f"date, and extracted triples that use those component classes can't form pairs (a predicate) "
                         f"or strict pairs (an entity class). Check them ({TABLE}, marked *now exists*); keep (none) "
-                        f"only if the ground truth vocabulary's component class means something else; {AGAIN}")
+                        f"only if the ground truth schema's component class means something else; {AGAIN}")
     if unreviewed:
         waiting = [r["id"] for r in tuning if r["compared"]["partial_review"]["unreviewed"]]
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, in {len(waiting)} "
@@ -435,7 +435,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                         f"stated the fact but a component class differed: "
                         + named([f"{c['kind']} {c['crt_component_class']} (current schema) --> "
                                  + ("(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION)
-                                    else f"{c['translated_to']} (ground truth vocabulary)")
+                                    else f"{c['translated_to']} (ground truth schema)")
                                  + f", where the ground truth triple says {c['gtt_component_class']} (ground truth "
                                    f"vocabulary), {c['count']} times" for c in frequent], 5, "; ")
                         + f". A row of annotations/component_class_mapping.csv may translate wrong, to (none) when a "
@@ -452,7 +452,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         warnings.append(missing)
 
     lines = ["### What this run worked on", "",
-             f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth vocabulary "
+             f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth schema "
              f"through `annotations/component_class_mapping.csv` "
              f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed).", "",
              "| Part | Records evaluated |", "|---|---:|"]
@@ -464,11 +464,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         lines += ["The held-out part's numbers are not shown: they are kept for the end, so the pipeline isn't "
                   "tuned on them. `--evaluate_held_out true` shows them (and logs the look).", ""]
     lines += ["### The translation table", "",
-              "Rows of `annotations/component_class_mapping.csv` that say `(none)`, and component classes of the ground truth vocabulary "
-              "that no row translates to. The ground truth vocabulary grows as you annotate: if a `(none)` row "
+              "Rows of `annotations/component_class_mapping.csv` that say `(none)`, and component classes of the ground truth schema "
+              "that no row translates to. The ground truth schema grows as you annotate: if a `(none)` row "
               "should now point to one of its component classes, fix that row (`py helpers/annotate.py`, view "
               "*Translation table*).", "",
-              "| Kind | Current schema's component classes translated to (none) | Ground truth vocabulary's component classes nothing "
+              "| Kind | Current schema's component classes translated to (none) | Ground truth schema's component classes nothing "
               "translates to |", "|---|---|---|"]
     lines += [f"| {kind} | {cell(named(translation.to_none[kind], 20)) or '–'} | {cell(named(translation.untranslated[kind], 20)) or '–'} |"
               for kind in ("entity class", "predicate")]
@@ -476,11 +476,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     merged = [(kind, mine, theirs) for kind in ("entity class", "predicate")
               for mine, theirs in translation.merged[kind].items()]
     if merged:
-        lines += ["Component classes of the ground truth vocabulary that two or more of the current schema's component classes translate "
+        lines += ["Component classes of the ground truth schema that two or more of the current schema's component classes translate "
                   "to: the ground truth doesn't tell those component classes of the current schema apart, so neither can these metrics "
                   "(a mix-up between them costs extraction nothing). If the difference matters, make it in the "
                   "ground truth.", "",
-                  "| Kind | Component class in the ground truth vocabulary | Current schema's component classes that translate to it |",
+                  "| Kind | Component class in the ground truth schema | Current schema's component classes that translate to it |",
                   "|---|---|---|"]
         lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
         lines.append("")
@@ -528,7 +528,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                   f"record(s). Always guessing the most common entity class would get {readings.pct(d['majority_baseline'])}; "
                   f"averaged per entity class: {readings.pct(d['per_entity_class_average'])}.", ""]
         if v["confusion"]:
-            lines += ["| The ground truth says (ground truth vocabulary) | Extraction said (translated into the ground "
+            lines += ["| The ground truth says (ground truth schema) | Extraction said (translated into the ground "
                       "truth vocabulary) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")

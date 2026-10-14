@@ -11,7 +11,7 @@ each schema entry, and keeps them all with that evidence. Terms:
 docs/terminology.md.
 
 Reads:   records.jsonl (020), splits.json (030), and, to compare with,
-         annotations/schema_derived_from_manual_annotation.txt
+         annotations/ground_truth_schema.txt
 Writes:  the_schema.json, induction_evidence.json
 Details: 040_induce_schema/040_induce_schema.md
 """
@@ -26,7 +26,7 @@ from common.step import load_moves, run_step
 INPUTS = {
     "records":     "020_clean/records.jsonl",
     "splits":      "030_split/splits.json",
-    "hand_schema": "./annotations/schema_derived_from_manual_annotation.txt",
+    "ground_truth_schema": "./annotations/ground_truth_schema.txt",
 }
 
 SETTINGS = {
@@ -52,7 +52,7 @@ def main(inputs, settings, output):
     counts  = induce.count_support(triples, labels)                    # code: the texts and maintainers behind each schema entry
     words   = induce.write_definitions(counts, settings, calls)        # LLM: one sentence per entity class and predicate
     schema  = induce.check_schema(counts, words, settings)             # code: what enters the schema, what's deferred
-    beside  = induce.compare_with_hand_schema(inputs, schema)          # code: in both / only yours / only induced
+    beside  = induce.compare_with_ground_truth_schema(inputs, schema)          # code: in both / only yours / only induced
     # writes the_schema.json and induction_evidence.json; the report
     return induce.results(texts, triples, labels, counts, words, schema, beside, calls, settings, output)
 

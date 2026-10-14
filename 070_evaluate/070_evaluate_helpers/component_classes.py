@@ -1,13 +1,13 @@
 """
 component_classes.py -- stage 2: translate the component classes of the current
-schema (the one 060 used) into the ground truth vocabulary.
+schema (the one 060 used) into the ground truth schema.
 
-The ground truth triples use the GROUND TRUTH VOCABULARY: the hand-built
-schema's component classes, plus any a person coined while annotating
-(common/common_helpers/ground_truth.vocabulary). 060 uses the component classes of the schema it was
+The ground truth triples use the GROUND TRUTH SCHEMA's component classes
+(annotations/ground_truth_schema.txt); a finished record that uses one it
+lacks (a coined one) stops the step first. 060 uses the component classes of the schema it was
 given (040's by default): the current schema. Before comparing, each of the
 current schema's entity classes and predicates is translated to a component class of
-the ground truth vocabulary, through the table a person checks:
+the ground truth schema, through the table a person checks:
 
     annotations/component_class_mapping.csv
     kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
@@ -18,7 +18,7 @@ the ground truth vocabulary, through the table a person checks:
 (columns: common/common_helpers/component_class_mapping.py)
 
 For every component class of schema_used.json without a row:
-  - a component class equal to one of the ground truth vocabulary (ignoring
+  - a component class equal to one of the ground truth schema (ignoring
     case and punctuation) gets a row at once, checked "same component class";
   - the others are proposed by the model (paid calls, after the usual
     confirmation), as rows with checked "no".
@@ -27,30 +27,31 @@ changed or deleted. This is one of two narrow exceptions to "no step writes
 into annotations/" (the other is held_out_looks.csv). After adding rows the
 step stops, so the person can look at them; it evaluates only when every row it
 needs is checked ("yes" or "same component class"), was checked against the
-current schema's definition of its component class and the hand-built schema's
-definition of its component class of the ground truth vocabulary (else it is
+current schema's definition of its component class and the ground truth schema's
+definition of its component class of the ground truth schema (else it is
 stale: either may since mean something else), and names a component class of
-the ground truth vocabulary or (none).
+the ground truth schema or (none).
 
 Every message names where each component class comes from: the current schema, the
-ground truth vocabulary, or a row of the table (a past or the current
+ground truth schema, or a row of the table (a past or the current
 schema).
 """
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from pathlib import Path
 
 from common.audit import ref_path
 from common.cache import Cache, ask_cached
 from common.files import append_csv
-from common.ground_truth import vocabulary
+from common.ground_truth import coined_uses, with_coined
 from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions, is_stale,
                                             is_stale_gtt, read_mapping, repeats)
 from common.prompt_files import fill, load
 from common.report import named
-from common.schema_io import read_hand_schema
+from common.schema_io import read_ground_truth_schema
 from common.stop import Stop
 from common.triples_io import component_class_key
 
@@ -69,13 +70,13 @@ class Translation:
     entity: dict = field(default_factory=dict)      # {component_class_key(current schema's component class): gtt component class or None}
     predicate: dict = field(default_factory=dict)   # {component_class_key(current schema's component class): (gtt component class or None, reversed)}
     reachable: dict = field(default_factory=dict)   # {"entity class": {component_class_key(gtt component class)}, "predicate": {...}}
-    gtt: dict = field(default_factory=dict)         # the ground truth vocabulary: {kind: {component class: definition}}
+    gtt: dict = field(default_factory=dict)         # the ground truth schema: {kind: {component class: definition}}
     rows_used: int = 0
     to_none: dict = field(default_factory=dict)     # {kind: [060's component classes whose row says (none)]}
-    untranslated: dict = field(default_factory=dict)  # {kind: [ground truth vocabulary's component classes nothing translates to]}
+    untranslated: dict = field(default_factory=dict)  # {kind: [ground truth schema's component classes nothing translates to]}
     merged: dict = field(default_factory=dict)      # {kind: {gtt component class: [current schema's component classes that translate to it]}}, 2+ only
     outdated: list = field(default_factory=list)    # current schema's component classes whose row says (none), though the
-                                                    # ground truth vocabulary has the same component class
+                                                    # ground truth schema has the same component class
     suggested: list = field(default_factory=list)   # {"kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt"}: the
                                                     # model thinks a (none) row may now have a counterpart
     suggest_calls: int = 0
@@ -85,13 +86,10 @@ class Translation:
     reused: int = 0                                 # the translation call answered from the cache (0 or 1)
 
 
-def gtt_vocabulary(hand_schema_path, ground_truth) -> dict:
-    """The ground truth vocabulary (common/common_helpers/ground_truth.py), by kind, each
-    component class with its definition; a coined one has none, so it gets a note
-    saying so, for the model."""
-    vocab = vocabulary(read_hand_schema(hand_schema_path), ground_truth)
-    return {kind: {name: definition or "(used in the ground truth; not in the hand-built schema)"
-                   for name, definition in vocab[key].items()}
+def gtt_schema(ground_truth_schema_path) -> dict:
+    """The ground truth schema, by kind, each component class with its definition."""
+    vocab = read_ground_truth_schema(ground_truth_schema_path)
+    return {kind: {name: definition for name, definition in vocab[key].items()}
             for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
 
 
@@ -122,15 +120,15 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
         mine = item.get("ground_truth") if isinstance(item.get("ground_truth"), str) else None
         gtt_name = by_key[kind].get(component_class_key(mine)) if mine else None
         if mine and gtt_name is None:
-            strays.append(f"{name} (current schema) --> {mine} (not in the ground truth vocabulary)")
+            strays.append(f"{name} (current schema) --> {mine} (not in the ground truth schema)")
         rows.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": gtt_name or NONE,
                      "definition_from_past_or_crt_schema": definitions.get((kind, name), ""),
                      "definition_in_gtt": gtt_defs[kind].get(component_class_key(gtt_name), "") if gtt_name else "",
                      "swap_subject_and_object": "yes" if (kind == "predicate" and item.get("reversed") is True) else "no",
                      "checked": "no"})
-    notes = [f"The model proposed {len(strays)} component class(es) that aren't in the ground truth vocabulary, so "
+    notes = [f"The model proposed {len(strays)} component class(es) that aren't in the ground truth schema, so "
              f"their rows say (none) instead: {named(strays, 5, '; ')}. When you check those rows, choose a component "
-             f"class of the ground truth vocabulary if one means the same, else keep (none)."] \
+             f"class of the ground truth schema if one means the same, else keep (none)."] \
         if strays else []
     return rows, notes, made, cache.reused
 
@@ -138,12 +136,23 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
 def _row(name: str, r: dict) -> str:
     """A row of the translation table, for messages: where each component class comes from."""
     to = r["component_class_in_gtt"]
-    return f"{name} (current schema) --> " + ("(none)" if to == NONE else f"{to} (ground truth vocabulary)")
+    return f"{name} (current schema) --> " + ("(none)" if to == NONE else f"{to} (ground truth schema)")
 
 
 def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     path = Path(inputs["component_class_mapping"])
-    translation = Translation(gtt=gtt_vocabulary(inputs["hand_schema"], evaluated.ground_truth))
+    # only the finished records are evaluated, so only their ground truth triples must use the ground truth schema
+    gt = evaluated.ground_truth
+    finished = SimpleNamespace(rows=[r for r in gt.rows if gt.records.get(r["id"], {}).get("finished")])
+    coined = with_coined(read_ground_truth_schema(inputs["ground_truth_schema"]), finished)["coined"]
+    if coined["entity_classes"] or coined["predicates"]:
+        uses = coined_uses(finished, coined)
+        raise Stop(f"The ground truth triples use {len(uses)} entity class(es) or predicate(s) that aren't in the "
+                   f"ground truth schema ({ref_path(Path(inputs['ground_truth_schema']))}), so 070 can't translate into "
+                   f"them: {named(uses, 10, '; ')}. For each one, either add it to the ground truth schema with a "
+                   f"one-line definition (`py helpers/annotate.py`, view *Annotate batch*: the ✖ under it has a "
+                   f"button), or fix the typo where it's used; {AGAIN}")
+    translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]))
     rows = read_mapping(path)
     repeated = repeats(rows)
     if repeated:
@@ -165,7 +174,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
              [("predicate", e["component_class"]) for e in evaluated.schema_used["predicates"]]
     gtt_key = {k: {component_class_key(n): n for n in v} for k, v in translation.gtt.items()}
     now = crt_definitions(evaluated.schema_used)
-    gtt_now = gtt_definitions(vocabulary(read_hand_schema(inputs["hand_schema"]), evaluated.ground_truth))
+    gtt_now = gtt_definitions(read_ground_truth_schema(inputs["ground_truth_schema"]))
     same, missing = [], []
     handled = set(have)                     # a component class spelled two ways in the schema gets one row
     for kind, name in needed:
@@ -187,7 +196,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         append_csv(path, COLUMNS, same + proposed)
         raise Stop(f"Added {len(same) + len(proposed)} row(s) to {ref_path(path)} for component classes of the current "
                          f"schema that had none, so 070 stops for you to look at them before evaluating: {len(same)} "
-                         f"with the same component class in the ground truth vocabulary (checked = same component "
+                         f"with the same component class in the ground truth schema (checked = same component "
                          f"class), {len(proposed)} proposed by the model (checked = no): "
                          + named([_row(r["component_class_from_past_or_crt_schema"], r) for r in proposed or same], 5, "; ")
                          + (f". Check those rows: {TABLE}, shows each with both definitions (or in the file: fix "
@@ -207,7 +216,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         elif is_stale_gtt(r, gtt_now):
             stale_gtt.append(_row(name, r))
         elif r["component_class_in_gtt"] != NONE and component_class_key(r["component_class_in_gtt"]) not in gtt_key[kind]:
-            unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth vocabulary)")
+            unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth schema)")
     if unchecked:
         raise Stop(f"{len(unchecked)} row(s) of {ref_path(path)} still need checking, so 070 can't evaluate (it "
                          f"translates only through checked rows): {named(unchecked, 5, '; ')}. Check them: {TABLE} (or "
@@ -219,15 +228,15 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"with them: {named(stale, 5, '; ')}. Check them again: {TABLE}, shows both definitions; "
                          f"{AGAIN}")
     if stale_gtt:
-        raise Stop(f"{len(stale_gtt)} checked row(s) of {ref_path(path)} were checked when the hand-built schema "
-                         f"({ref_path(inputs['hand_schema'])}) defined the component class of the "
-                         f"ground truth vocabulary differently, or before it had a definition, so they may no longer be "
+        raise Stop(f"{len(stale_gtt)} checked row(s) of {ref_path(path)} were checked when the ground truth schema "
+                         f"({ref_path(inputs['ground_truth_schema'])}) defined the component class they translate "
+                         f"to differently, or before it had a definition, so they may no longer be "
                          f"right, and 070 can't evaluate with them: {named(stale_gtt, 5, '; ')}. Check them again: "
                          f"{TABLE}, shows the old and new definitions; {AGAIN}")
     if unknown:
         raise Stop(f"{len(unknown)} checked row(s) of {ref_path(path)} translate to a component class that isn't in the "
-                         f"ground truth vocabulary (a typo, or one since renamed), so 070 can't translate with them: "
-                         f"{named(unknown, 5, '; ')}. In each, choose a component class of the ground truth vocabulary, "
+                         f"ground truth schema (a typo, or one since renamed), so 070 can't translate with them: "
+                         f"{named(unknown, 5, '; ')}. In each, choose a component class of the ground truth schema, "
                          f"or (none) (column component_class_in_gtt; {TABLE}), {AGAIN}")
 
     translation.reachable = {"entity class": set(), "predicate": set()}
@@ -249,7 +258,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     translation.outdated = [f"{name} (current schema) --> (none), but {gtt_key[kind][component_class_key(name)]} (ground truth "
                       f"vocabulary) now exists" for kind, name in needed
                       if have[(kind, component_class_key(name))]["component_class_in_gtt"] == NONE and component_class_key(name) in gtt_key[kind]]
-    # The ground truth vocabulary grows as you annotate: a row checked as (none) may since have
+    # The ground truth schema grows as you annotate: a row checked as (none) may since have
     # gained a counterpart. Both lists go in the report, so such a row can be
     # spotted and fixed (rows are never changed by the step).
     def translates_to_none(kind: str, name: str) -> bool:
@@ -258,7 +267,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         return translation.predicate.get(component_class_key(name), ("", False))[0] is None
 
     # Two or more of the current schema's component classes translated to one
-    # component class of the ground truth vocabulary: evaluation can't
+    # component class of the ground truth schema: evaluation can't
     # tell them apart (a mix-up between them costs nothing), so they're listed.
     def translated(kind: str, name: str):
         if kind == "entity class":
@@ -281,10 +290,10 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
 def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     """Rows that say (none) whose component class may since have gained a
-    counterpart in the ground truth vocabulary: a DIFFERENT component class
+    counterpart in the ground truth schema: a DIFFERENT component class
     (the same one is caught by `outdated`, free). One model call, only when
     there are both (none) rows of the current schema and component classes of
-    the ground truth vocabulary nothing translates
+    the ground truth schema nothing translates
     to; the answer is cached by the lists asked about, so the same lists are
     never paid for twice. Rows are never changed: these are suggestions for
     the person (report warnings; the annotation tool reads them from
@@ -306,7 +315,7 @@ def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     before = calls.paid.made
     reply = ask_cached(cache, calls, prompt, f"  070 will ask the model whether {len(schema_side)} component class(es) "
                                              f"of the current schema translated to (none) now have a counterpart in the "
-                                             f"ground truth vocabulary: 1 model call")
+                                             f"ground truth schema: 1 model call")
     made = calls.paid.made - before
     asked = {(kind, component_class_key(n)): n for kind, n in schema_side}
     offered = {kind: {component_class_key(n): n for n in gtt_side[kind]} for kind in kinds}

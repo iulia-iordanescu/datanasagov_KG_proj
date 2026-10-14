@@ -3,8 +3,8 @@
 
 Drafts ground truth for a person to correct. A model reads the next records
 of the ground truth candidates pool and lists every fact each one states, as
-triple instances with entity classes, using the ground truth vocabulary's
-component classes (the hand-built schema's, plus any coined in the ground
+triple instances with entity classes, using the ground truth schema's
+component classes (the ground truth schema's, plus any coined in the ground
 truth) where they fit and new ones where they don't; code adds each record's
 describes triple and checks every row against the record's text and the schema.
 Each run writes one numbered draft batch. The person corrects it with the
@@ -12,7 +12,7 @@ annotation tool (py helpers/annotate.py), which saves it into annotations/ground
 no step writes there. Terms: docs/terminology.md.
 
 Reads:   records.jsonl (020), splits.json (030),
-         annotations/schema_derived_from_manual_annotation.txt,
+         annotations/ground_truth_schema.txt,
          annotations/ground_truth/ (to skip records already done, and to check it)
 Writes:  drafted_triples_batch<N>.csv, drafted_triples_batch<N>_details.json
 Details: 050_annotate/050_annotate.md
@@ -28,7 +28,7 @@ from common.step import load_moves, run_step
 INPUTS = {
     "records":      "020_clean/records.jsonl",
     "splits":       "030_split/splits.json",
-    "hand_schema":  "./annotations/schema_derived_from_manual_annotation.txt",
+    "ground_truth_schema":  "./annotations/ground_truth_schema.txt",
     "ground_truth": "./annotations/ground_truth/batch_*.csv",
 }
 

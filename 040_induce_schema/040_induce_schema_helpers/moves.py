@@ -10,7 +10,7 @@ moves.py -- the main moves of 040_induce_schema, as called by
     stage 5  count.py    count_support              code: the texts and maintainers behind every schema entry
     stage 6  define.py   write_definitions          LLM: one sentence per entity class and predicate
     stage 7  check.py    check_schema               code: builds the schema from the evidence
-    -        compare.py  compare_with_hand_schema   code: beside the hand-built schema, for the report
+    -        compare.py  compare_with_ground_truth_schema   code: beside the ground truth schema, for the report
     -        saturation.py  (in results)            code: would more texts have added schema entries? for the report
     -        (here)      results                    writes the_schema.json and induction_evidence.json; the report
 
@@ -33,7 +33,7 @@ from common import audit, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.ground_truth import twin_kinds, twin_table
-from common.schema_io import read_hand_schema
+from common.schema_io import read_ground_truth_schema
 from common.report import cell, counted, model_calls, named
 from common.step import Results, repo_path
 
@@ -76,12 +76,12 @@ def check_schema(counts, definitions, settings):
     return check.check_schema(counts, definitions, settings)
 
 
-def compare_with_hand_schema(inputs, schema) -> dict:
-    hand = read_hand_schema(inputs["hand_schema"])
+def compare_with_ground_truth_schema(inputs, schema) -> dict:
+    hand = read_ground_truth_schema(inputs["ground_truth_schema"])
     comparison = compare.compare(hand, schema)
-    comparison["hand_schema"] = ref_path(inputs["hand_schema"])
+    comparison["ground_truth_schema"] = ref_path(inputs["ground_truth_schema"])
     c = comparison["entity_classes"]
-    log.info(f"  beside the hand-built schema: {len(c['both'])} entity classes in both, "
+    log.info(f"  beside the ground truth schema: {len(c['both'])} entity classes in both, "
              f"{len(c['only_hand'])} only there, {len(c['only_induced'])} only induced")
     return comparison
 
@@ -113,7 +113,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         "refused": {"labels": labels.refused, "definitions": definitions.refused},
         "unknown_schema_entries": definitions.unknown, "missing_definitions": schema.missing_definitions,
         "calls": {**calls_made, "reused_extractions": triples.reused},
-        "compared_with_hand_schema": comparison,
+        "compared_with_ground_truth_schema": comparison,
         "saturation": {"curve": sat, "breadth": wide},
     })
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
@@ -237,7 +237,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         lines += [f"| {k} | {r} | {n:,} |" for (k, r), n in sorted(by_reason.items())]
         lines.append("")
     lines += saturation.report_lines(sat, wide, len(triples.texts), settings["min_support"])
-    lines += compare.report_lines(comparison, comparison["hand_schema"], SHOW)
+    lines += compare.report_lines(comparison, comparison["ground_truth_schema"], SHOW)
     lines += [f"Schema entries backed by one maintainer only (may be that maintainer's house style): "
               f"{len(schema.single_maintainer):,}.", "",
               "Entity classes with the most support:", "",

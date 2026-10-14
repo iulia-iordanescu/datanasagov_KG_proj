@@ -121,11 +121,11 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"`py 050_annotate/run.py` again.")
     coined = [n for kind in ("entity_classes", "predicates") for n in chosen.coined[kind]]
     if coined:
-        warnings.append(f"{len(coined)} component class(es) used in the ground truth aren't in the hand-built schema, so the model "
+        warnings.append(f"{len(coined)} component class(es) used in the ground truth aren't in the ground truth schema, so the model "
                         f"saw them without a definition: "
-                        f"{named([f'{n} (ground truth vocabulary)' for n in coined], 5, '; ')}. "
-                        f"Add each one you mean to keep, with a one-line definition, to the hand-built "
-                        f"schema, annotations/schema_derived_from_manual_annotation.txt (the buttons of the "
+                        f"{named([f'{n} (ground truth schema)' for n in coined], 5, '; ')}. "
+                        f"Add each one you mean to keep, with a one-line definition, to the ground truth "
+                        f"schema, annotations/ground_truth_schema.txt (the buttons of the "
                         f"annotation tool, `py helpers/annotate.py`, do it); fix any typo in the ground truth.")
     if typos:
         warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix, listed with file and "

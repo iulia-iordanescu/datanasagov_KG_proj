@@ -4,7 +4,7 @@
 Evaluates what 060 extracted against the ground truth: precision (when
 060 says something, how often it is right) and recall (of the triples in the
 ground truth, how many 060 found), each with its margin of error. 060's
-component classes are first translated into the ground truth vocabulary,
+component classes are first translated into the ground truth schema,
 through a table a person checks. Only the fair sample of the ground truth is evaluated, and only
 its tuning part by default; the held-out part is kept for the end. Terms:
 docs/terminology.md, section "Evaluating extraction".
@@ -12,7 +12,7 @@ docs/terminology.md, section "Evaluating extraction".
 Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          extracted_triples_details.json and schema_used.json (060),
          annotations/ground_truth_candidates.csv,
-         annotations/schema_derived_from_manual_annotation.txt,
+         annotations/ground_truth_schema.txt,
          annotations/ground_truth/, annotations/component_class_mapping.csv,
          annotations/partial_pair_reviews.csv
 Writes:  metrics.json, per_record.md, compared_triples.csv; adds rows to
@@ -35,7 +35,7 @@ INPUTS = {
     "extracted_triples_details": "060_extract/extracted_triples_details.json",
     "schema_used":               "060_extract/schema_used.json",
     "candidates":                "./annotations/ground_truth_candidates.csv",
-    "hand_schema":               "./annotations/schema_derived_from_manual_annotation.txt",
+    "ground_truth_schema":               "./annotations/ground_truth_schema.txt",
     "ground_truth":              "./annotations/ground_truth/batch_*.csv",
     "component_class_mapping":   "./annotations/component_class_mapping.csv",
     "partial_reviews":           "./annotations/partial_pair_reviews.csv",

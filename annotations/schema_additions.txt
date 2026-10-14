@@ -2,7 +2,7 @@
 # extracts with (040's induced schema by default), e.g. ones a mentor
 # suggested. Empty sections add nothing.
 #
-# Same layout as schema_derived_from_manual_annotation.txt: an entry is its
+# Same layout as ground_truth_schema.txt: an entry is its
 # component class, two or more spaces, and its definition. Under a predicate, an indented
 # line lists its patterns ("Subject -> Object", separated by ";"). A pattern
 # for a predicate the schema already has goes in a PATTERNS section, one per

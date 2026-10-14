@@ -93,7 +93,7 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
         evaluated.notes.append(f"Which records the current schema was learned from isn't known: {why}. So 070 can't "
                                f"tell which evaluated records are twins (the same title, description, or both as a record "
                                f"the schema was learned from; docs/terminology.md, section *Evaluating extraction*), and gives no "
-                               f"numbers without them. To get them, extract with 040's schema or the hand-built one "
+                               f"numbers without them. To get them, extract with 040's schema or the ground truth schema "
                                f"(`py 060_extract/run.py`), then run `py 070_evaluate/run.py` again.")
         for r in evaluated.records:
             r["twin"] = None

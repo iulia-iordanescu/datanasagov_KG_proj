@@ -11,7 +11,7 @@ What it reads
     annotations/ground_truth/batch_<NNN>.csv                                  the ground truth files
     outputs/intermediate_results/020_clean/records.jsonl                     each record's text
     outputs/intermediate_results/030_split/splits.json                       each record's pool position and part
-    annotations/schema_derived_from_manual_annotation.txt                   the hand-built schema
+    annotations/ground_truth_schema.txt                   the ground truth schema
     annotations/component_class_mapping.csv                                             the translation table
     outputs/intermediate_results/060_extract/schema_used.json                the current schema's definitions
     outputs/intermediate_results/060_extract/extracted_triples.csv           an example triple per predicate
@@ -25,7 +25,7 @@ What it reads
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
 annotations/component_class_mapping.csv, annotations/partial_pair_reviews.csv,
 annotations/schema_additions.txt, and additions to
-annotations/schema_derived_from_manual_annotation.txt (nothing else in it
+annotations/ground_truth_schema.txt (nothing else in it
 changes).
     - Opening draft batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
@@ -37,7 +37,7 @@ changes).
 
 The translation table (step 070's, common/common_helpers/component_class_mapping.py) is shown row by
 row, each component class with its definition, and a person's choices are saved to it
-at once: component_class_in_gtt (a component class of the ground truth vocabulary, or (none)),
+at once: component_class_in_gtt (a component class of the ground truth schema, or (none)),
 swap_subject_and_object (predicates only) and checked. Rows can't be added
 or reordered here, and the only rows that can be removed are a component class's
 repeated ones (common/common_helpers/component_class_mapping.repeats), and a save keeps any rows step 070 added since
@@ -65,20 +65,20 @@ shown or accepted (reviewing them would mean looking at held-out results).
 
 The checks are step 050's own, all from common/common_helpers/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate and pattern
-is in the hand-built schema), shown in plain words (MESSAGES). The component classes
-suggested as you type are the ground truth vocabulary
-(common/common_helpers/ground_truth.vocabulary): the hand-built schema's, plus those
-coined in the ground truth, so a coined component class is offered for reuse. A coined
-component class stays flagged until it is added to the hand-built schema, since it
-could be a typo.
+is in the ground truth schema), shown in plain words (MESSAGES). The component classes
+suggested as you type are the ground truth schema's, plus those coined in the
+ground truth (common/common_helpers/ground_truth.with_coined), so a coined
+component class is offered for reuse. A coined component class is an error
+until it is added to the ground truth schema, since it could be a typo, and
+step 070 stops while a finished record uses one.
 
-Adding to the hand-built schema: each flag "not in the hand-built schema" on
+Adding to the ground truth schema: each error or flag "not in the ground truth schema" on
 a row has a button that adds the entity class or predicate, with the one-line definition the
 person types, or the pattern; so does the list, above every view, of what
-the ground truth uses that the hand-built schema lacks (hand_schema_gaps). A
+the ground truth uses that the ground truth schema lacks (ground_truth_schema_gaps). A
 pattern is offered only once its entity classes are in the schema. The file
-is changed by common/common_helpers/schema_io.add_to_hand_schema and
-add_pattern_to_hand_schema, which add one entry or pattern, check that
+is changed by common/common_helpers/schema_io.add_to_ground_truth_schema and
+add_pattern_to_ground_truth_schema, which add one entry or pattern, check that
 nothing else changed, and otherwise put the file back. A component class gets a
 "source:" line naming the ground truth records using it, by part ("ground
 truth tuning #3; held-out #8"), so it can be told whether held-out records
@@ -100,13 +100,13 @@ from urllib.parse import parse_qs, urlsplit
 from common.chunking import full_text
 from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
-                                 draft_name, file_name, read_ground_truth, read_pool, vocabulary)
+                                 draft_name, file_name, read_ground_truth, read_pool, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
-from common.schema_io import ONE_WORD, add_pattern_to_hand_schema, add_to_hand_schema, additions_header, additions_text, \
-    ground_truth_source_problem, pattern_key, read_hand_schema, read_schema, redefine_in_hand_schema, rename_in_hand_schema
+from common.schema_io import ONE_WORD, add_pattern_to_ground_truth_schema, add_to_ground_truth_schema, additions_header, additions_text, \
+    ground_truth_source_problem, pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
@@ -127,10 +127,10 @@ HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "mapping": "### Checking the translation table",
                  "partial": "### Reviewing partial pairs",
                  "additions": "### Adding to the schema additions",
-                 "vocab": "### The ground truth vocabulary"}
+                 "vocab": "### The ground truth schema"}
 EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
-HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
+GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 PAGE = Path(__file__).with_name("page.html")
 KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
@@ -154,29 +154,29 @@ MESSAGES = {
                             "selection\"; if the text states the fact without naming it there, nothing to do.",
     "subject_equals_object": "The subject instance and the object instance are the same: a fact relates two different "
                              "things, so one of them is probably wrong. Correct it.",
-    "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the hand-built schema: a new one, "
+    "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the ground truth schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
-                                   "If it's new, add it to the hand-built schema with the button below, "
-                                   "giving a one-line definition.",
-    "object_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new one, "
+                                   "If it's new, add it to the ground truth schema with the button below, "
+                                   "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
+    "object_class_not_in_schema": "\"{object_class}\" isn't an entity class of the ground truth schema: a new one, "
                                   "or a typo. Keep it only if none of the schema's fits. "
-                                  "If it's new, add it to the hand-built schema with the button below, "
-                                  "giving a one-line definition.",
-    "predicate_not_in_schema": "\"{predicate}\" isn't a predicate of the hand-built schema: a new one, or a typo. "
+                                  "If it's new, add it to the ground truth schema with the button below, "
+                                  "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
+    "predicate_not_in_schema": "\"{predicate}\" isn't a predicate of the ground truth schema: a new one, or a typo. "
                                "Keep it only if none of the schema's fits. "
-                               "If it's new, add it to the hand-built schema with the button below, "
-                               "giving a one-line definition.",
-    "pattern_not_in_schema": "The hand-built schema never uses {predicate} between {subject_class} and "
+                               "If it's new, add it to the ground truth schema with the button below, "
+                               "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
+    "pattern_not_in_schema": "The ground truth schema never uses {predicate} between {subject_class} and "
                              "{object_class}: a new pattern, or a wrong entity class. If it's right, add it to the "
-                             "hand-built schema with the button below (shown once both entity classes are in it).",
+                             "ground truth schema with the button below (shown once both entity classes are in it).",
     "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
     "describes_undecided": "No entity class yet for what this record describes (the describes triple's object class is "
                            "X or empty). Type or pick the entity class of the thing the title names.",
-    "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the hand-built schema: a new "
+    "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the ground truth schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
-                                     "If it's new, add it to the hand-built schema with the button below, "
-                                     "giving a one-line definition.",
+                                     "If it's new, add it to the ground truth schema with the button below, "
+                                     "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
     "describes_subject_not_id": "The describes triple's subject should be the record's id.",
 }
 
@@ -199,8 +199,8 @@ class Data:
         self._texts = {}
 
     def read_hand(self) -> None:
-        """(Re)read the hand-built schema: at the start, and after the page adds to it."""
-        hand = read_hand_schema(HAND_SCHEMA) if HAND_SCHEMA.exists() else \
+        """(Re)read the ground truth schema: at the start, and after the page adds to it."""
+        hand = read_ground_truth_schema(GROUND_TRUTH_SCHEMA) if GROUND_TRUTH_SCHEMA.exists() else \
             {"entity_classes": {}, "predicates": {}, "patterns": []}
         self.hand, self.schema_entries = hand, SchemaEntries(hand)
 
@@ -239,12 +239,17 @@ def check_row(data: Data, row: dict, title: str) -> list:
         text = data.text(row["id"])
         errors, flags = check_triple_instance(row, text, title) if text is not None else ([], [])
         flags = flags + check_against_schema(row, data.schema_entries)
+    # an entity class or predicate the ground truth schema lacks must be added to it (or the typo fixed): step 070
+    # stops on one in a finished record, so it's an error to fix, not a flag; a new pattern stays a flag
+    every = errors + flags
+    errors = errors + [c for c in flags if c in ADDS]
+    flags = [c for c in flags if c not in ADDS]
     return [{"code": c, "type": kind, "message": MESSAGES[c].format(**{k: row.get(k) or "(none)" for k in COLUMNS}),
-             "add": _offer(c, row, flags)}
+             "add": _offer(c, row, every)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
 
 
-#: The flags a person resolves by adding a component class to the hand-built schema: (kind, the row's column holding it).
+#: The flags a person resolves by adding a component class to the ground truth schema: (kind, the row's column holding it).
 ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
         "object_class_not_in_schema": ("entity class", "object_class"),
         "describes_class_not_in_schema": ("entity class", "object_class"),
@@ -252,7 +257,7 @@ ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
 
 
 def _offer(code: str, row: dict, flags: list) -> dict | None:
-    """What the page offers to add to the hand-built schema for one flag, or
+    """What the page offers to add to the ground truth schema for one flag, or
     None. A pattern is offered only once both its entity classes are in the
     schema, so a mistyped entity class can't become part of a pattern."""
     if code in ADDS:
@@ -292,7 +297,7 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
     records = [record_view(data, rid, [r for r in rows if not _is_blank(r)],
                            all(r["all_facts_extracted"] == "1" for r in rows))
                for rid, rows in _group(_read_rows(path))]
-    vocab = vocabulary(data.hand, read_ground_truth())
+    vocab = with_coined(data.hand, read_ground_truth())
     return {"n": n, "file": path.name, "records": records,
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
             # for the page's list of component classes: each one's definition (empty for a coined one)
@@ -301,7 +306,7 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 
 
 # --------------------------------------------------------------------------
-# adding to the hand-built schema
+# adding to the ground truth schema
 # --------------------------------------------------------------------------
 
 def _using(gt, kind: str, name: str) -> list:
@@ -325,11 +330,11 @@ def _learned_from(data: Data, rows: list) -> str:
     return "ground truth " + "; ".join(bits) if bits else ""
 
 
-def hand_schema_gaps(data: Data, gt) -> dict:
-    """What the ground truth uses that the hand-built schema lacks:
+def ground_truth_schema_gaps(data: Data, gt) -> dict:
+    """What the ground truth uses that the ground truth schema lacks:
     component classes coined in the ground truth, and patterns whose predicate and entity
     classes are all in the schema, each with the rows using it."""
-    coined = vocabulary(data.hand, gt)["coined"]
+    coined = with_coined(data.hand, gt)["coined"]
     names = [{"entry_type": kind, "component_class": n, "uses": len(_using(gt, kind, n))}
              for kind, key in KIND_KEYS.items() for n in coined[key]]
     k, patterns = component_class_key, {}
@@ -342,7 +347,7 @@ def hand_schema_gaps(data: Data, gt) -> dict:
             patterns.setdefault(key, {"entry_type": "pattern", "subject_class": r["subject_class"],
                                       "predicate": r["predicate"], "object_class": r["object_class"],
                                       "uses": 0})["uses"] += 1
-    return {"file": f"annotations/{HAND_SCHEMA.name}", "component_classes": names, "patterns": list(patterns.values())}
+    return {"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", "component_classes": names, "patterns": list(patterns.values())}
 
 
 HAND_LOCK = threading.Lock()
@@ -350,7 +355,7 @@ HAND_LOCK = threading.Lock()
 
 def add_to_hand(data: Data, item: dict) -> str:
     """Add one component class (with its definition) or one pattern to the
-    hand-built schema; say what was added. A component class is written as
+    ground truth schema; say what was added. A component class is written as
     the page sent it, with
     a "source:" line naming the ground truth records using it (in any
     spelling, compared as component_class_key does). One add at a time (HAND_LOCK):
@@ -363,19 +368,19 @@ def add_to_hand(data: Data, item: dict) -> str:
             rows = [r for r in read_ground_truth().rows
                     if [k(r["subject_class"]), k(r["predicate"]), k(r["object_class"])] == trio]
             source = _learned_from(data, rows)
-            add_pattern_to_hand_schema(HAND_SCHEMA, item["predicate"], item["subject_class"], item["object_class"],
+            add_pattern_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, item["predicate"], item["subject_class"], item["object_class"],
                                        source=source)
             data.read_hand()
             return (f"Added the pattern {item['subject_class']} -> {item['object_class']} to {item['predicate']} "
-                    f"in {HAND_SCHEMA.name}" + (f" (source: {source})" if source else ""))
+                    f"in {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else ""))
         kind = item.get("entry_type")
         if kind not in KIND_KEYS:
             raise ValueError("entry_type must be entity class, predicate, or pattern")
         name = str(item.get("component_class") or "").strip()
         source = _learned_from(data, _using(read_ground_truth(), kind, name))
-        add_to_hand_schema(HAND_SCHEMA, kind, name, item.get("definition") or "", source=source)
+        add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
-        return f"Added the {kind} {name} to {HAND_SCHEMA.name}" + (f" (source: {source})" if source else "")
+        return f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else "")
 
 
 def list_batches() -> list:
@@ -438,8 +443,8 @@ def save_batch(data: Data, n: int, records: list) -> list:
 # --------------------------------------------------------------------------
 
 def _gtt(data: Data) -> dict:
-    """The ground truth vocabulary by kind: {kind: {component class: definition}}."""
-    vocab = vocabulary(data.hand, read_ground_truth())
+    """The ground truth schema by kind: {kind: {component class: definition}}."""
+    vocab = with_coined(data.hand, read_ground_truth())
     return {"entity class": vocab["entity_classes"], "predicate": vocab["predicates"]}
 
 
@@ -460,9 +465,9 @@ def _crt() -> dict | None:
 def mapping_view(data: Data) -> dict:
     """The table as the page shows it: every row, with the current schema's
     definition, whether the row is stale (checked against another definition
-    in the current schema: "stale"; in the hand-built schema: "stale_gtt"),
+    in the current schema: "stale"; in the ground truth schema: "stale_gtt"),
     an example triple for a predicate (the first one extraction
-    kept with it), and the ground truth vocabulary to choose from."""
+    kept with it), and the ground truth schema to choose from."""
     if not MAPPING_PATH.exists():
         return {"found": False, "rows": [], "gtt": {}}
     crt = _crt()
@@ -502,8 +507,8 @@ def save_mapping(data: Data, sent: list) -> None:
     kinds and component classes of the current schema must still be the file's
     first rows, in order; rows added after them (by step 070) are kept as
     they are. A row saved as checked stores the current schema's definition
-    of its component class and the hand-built schema's definition of its
-    component class of the ground truth vocabulary, unless the page says
+    of its component class and the ground truth schema's definition of its
+    component class of the ground truth schema, unless the page says
     keep_definition: a stale row the person hasn't ticked again keeps its
     checked value and its old definitions, so it stays stale."""
     rows = read_mapping(MAPPING_PATH)
@@ -521,7 +526,7 @@ def save_mapping(data: Data, sent: list) -> None:
         if name != NONE:
             if component_class_key(name) not in gtt.get(row["kind"], {}):
                 raise ValueError(f"\"{name}\" isn't {'an' if row['kind'] == 'entity class' else 'a'} {row['kind']} "
-                                 f"of the ground truth vocabulary, so nothing can translate to it. Pick one from "
+                                 f"of the ground truth schema, so nothing can translate to it. Pick one from "
                                  f"the list, or {NONE}.")
             name = gtt[row["kind"]][component_class_key(name)]
         row["component_class_in_gtt"] = name
@@ -772,7 +777,7 @@ def save_review(data: Data, item: dict) -> None:
 
 
 # --------------------------------------------------------------------------
-# the ground truth vocabulary: definitions, renaming, merging
+# the ground truth schema: definitions, renaming, merging
 # --------------------------------------------------------------------------
 # A rename or merge changes several of the person's files at once. plan_vocab
 # works out every file's new content without writing anything, so the page
@@ -787,13 +792,13 @@ GT_COLUMNS = {"entity class": ("subject_class", "object_class"), "predicate": ("
 
 
 def vocab_view(data: Data) -> dict:
-    """Every component class of the ground truth vocabulary, by kind: its
-    definition (empty if coined and not yet in the hand-built schema), how many
+    """Every component class of the ground truth schema, by kind: its
+    definition (empty if coined and not yet in the ground truth schema), how many
     ground truth rows and files use it, and how many rows of the translation
     table translate to it."""
     data.read_hand()                                   # the file as it is now: it may have been edited by hand
     gt = read_ground_truth()
-    vocab = vocabulary(data.hand, gt)
+    vocab = with_coined(data.hand, gt)
     table = read_mapping(MAPPING_PATH) if MAPPING_PATH.exists() else []
     files = {}
     for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN)):
@@ -810,7 +815,7 @@ def vocab_view(data: Data) -> dict:
                       "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
                                           if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)]}
                      for n, d in sorted(vocab[key].items(), key=lambda kv: kv[0].lower())]
-    return {"file": f"annotations/{HAND_SCHEMA.name}", "vocabulary": out}
+    return {"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", "vocabulary": out}
 
 
 def _csv_bytes(columns: list, rows: list) -> bytes:
@@ -830,7 +835,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
     old, new = str(old or "").strip(), str(new or "").strip()
     data.read_hand()                                   # the file as it is now: it may have been edited by hand
     gt = read_ground_truth()
-    vocab = vocabulary(data.hand, gt)[KIND_KEYS[kind]]
+    vocab = with_coined(data.hand, gt)[KIND_KEYS[kind]]
     spelled = {component_class_key(n): n for n in vocab}
     if component_class_key(old) not in spelled:
         raise ValueError(f"{old} isn't {'an entity class' if kind == 'entity class' else 'a predicate'} of the ground "
@@ -863,11 +868,11 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
         if cells:
             files[p] = _csv_bytes(columns, rows)
             changes.append({"file": f"annotations/ground_truth/{p.name}", "what": f"{cells} cell(s): {old} → {target}"})
-    # 2. the hand-built schema
-    hand_bytes, how = rename_in_hand_schema(HAND_SCHEMA, kind, old, target)
+    # 2. the ground truth schema
+    hand_bytes, how = rename_in_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, old, target)
     if how != "unchanged":
-        files[HAND_SCHEMA] = hand_bytes
-        changes.append({"file": f"annotations/{HAND_SCHEMA.name}", "what": {
+        files[GROUND_TRUTH_SCHEMA] = hand_bytes
+        changes.append({"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", "what": {
             "renamed": f"the entry {old} renamed {target}, and every pattern naming it",
             "merged": f"the entry {old} deleted (its definition and source line too); every pattern naming it now "
                       f"names {target}" + ("; its patterns moved under " + target if kind == "predicate" else ""),
@@ -877,7 +882,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
         table = read_mapping(MAPPING_PATH)
         hit = [r for r in table if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == k]
         if hit:
-            new_hand = gtt_definitions(vocabulary(read_schema_bytes(hand_bytes), gt))
+            new_hand = gtt_definitions(with_coined(read_schema_bytes(hand_bytes), gt))
             for r in hit:
                 r["component_class_in_gtt"] = target
             stale = [r["component_class_from_past_or_crt_schema"] for r in hit
@@ -960,29 +965,29 @@ def apply_vocab(data: Data, item: dict) -> dict:
 
 
 def define_vocab(data: Data, item: dict) -> dict:
-    """Change the definition of an entity class or predicate of the hand-built schema."""
+    """Change the definition of an entity class or predicate of the ground truth schema."""
     kind, name = item.get("kind"), str(item.get("component_class") or "").strip()
     if kind not in KIND_KEYS:
         raise ValueError("kind must be entity class or predicate")
     with HAND_LOCK:
-        content = redefine_in_hand_schema(HAND_SCHEMA, kind, name, item.get("definition") or "")
+        content = redefine_in_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "")
         stale = []
         if MAPPING_PATH.exists():
-            now = gtt_definitions(vocabulary(read_schema_bytes(content), read_ground_truth()))
+            now = gtt_definitions(with_coined(read_schema_bytes(content), read_ground_truth()))
             stale = [r["component_class_from_past_or_crt_schema"] for r in read_mapping(MAPPING_PATH)
                      if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(name)
                      and r["checked"] in CHECKED and is_stale_gtt(r, now)]
-        _write_all({HAND_SCHEMA: content})
+        _write_all({GROUND_TRUTH_SCHEMA: content})
         data.read_hand()
     return {"saved": True, "stale": stale}
 
 
 def read_schema_bytes(content: bytes) -> dict:
-    """The hand-built schema as it would read with these bytes (written to a temporary file next to it)."""
-    tmp = HAND_SCHEMA.with_name(HAND_SCHEMA.name + ".read")
+    """The ground truth schema as it would read with these bytes (written to a temporary file next to it)."""
+    tmp = GROUND_TRUTH_SCHEMA.with_name(GROUND_TRUTH_SCHEMA.name + ".read")
     tmp.write_bytes(content)
     try:
-        return read_hand_schema(tmp)
+        return read_ground_truth_schema(tmp)
     finally:
         tmp.unlink()
 
@@ -1016,9 +1021,9 @@ def make_handler(data: Data):
                 elif url.path == "/api/batches":
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
-                                "problems": gt.problems, "gaps": hand_schema_gaps(data, gt)})
+                                "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt)})
                 elif url.path == "/api/gaps":
-                    self._json(hand_schema_gaps(data, read_ground_truth()))
+                    self._json(ground_truth_schema_gaps(data, read_ground_truth()))
                 elif url.path == "/api/mapping":
                     self._json(mapping_view(data))
                 elif url.path == "/api/partial":

@@ -2,7 +2,7 @@
 pairing.py -- stage 3: compare, record by record, what 060 extracted with the
 ground truth. Code only, no model.
 
-Each extracted triple is first TRANSLATED into the ground truth vocabulary (component_classes.py): its
+Each extracted triple is first TRANSLATED into the ground truth schema (component_classes.py): its
 predicate and entity classes; a reversed predicate also swaps subject and
 object (and their entity classes). Then, per record, the ground truth's
 triples and the extracted triples are PAIRED: every triple, in either list, ends
@@ -41,7 +41,7 @@ but a component class differs:
   - an unpaired extracted triple and an unpaired ground truth triple with the
     same subject and object (or the two swapped) but different predicates:
     the predicate's row may be wrong, or its swap_subject_and_object.
-Each mismatch (current schema's component class, ground truth vocabulary's
+Each mismatch (current schema's component class, ground truth schema's
 component class) is counted; the frequent ones point at rows to look at. A single
 one may just be extraction choosing the wrong component class.
 """
@@ -75,9 +75,9 @@ NO_TRANSLATION = " (current schema; translates to (none))"
 
 
 def translate(triple: dict, translation) -> dict:
-    """The triple in the ground truth vocabulary. A component class whose row
+    """The triple in the ground truth schema. A component class whose row
     says (none) keeps its own spelling, marked NO_TRANSLATION, so it can never
-    equal a component class of the ground truth vocabulary. "crt" keeps the
+    equal a component class of the ground truth schema. "crt" keeps the
     current schema's component classes, slot by slot as translated (swapped along with subject and
     object), for component_class_mismatches."""
     p_mine, flipped = translation.predicate.get(component_class_key(triple["predicate"]), (None, False))

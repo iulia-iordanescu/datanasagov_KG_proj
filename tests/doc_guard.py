@@ -70,7 +70,9 @@ def edit(rel: str, old: str, new: str, count: int = 1) -> None:
     hits = [(n, plain(l).count(old)) for n, l in enumerate(lines) if old in plain(l)]
     assert sum(c for _, c in hits) == count, (rel, old[:80], hits)
     for n, _ in hits:
-        if old in lines[n]:
+        # the plain replacement, unless an occurrence is split by a link ("hand-built [schema](…)"): then the
+        # link-aware one below, so no occurrence on the line is left behind
+        if old in lines[n] and old not in plain(lines[n].replace(old, new)):
             lines[n] = lines[n].replace(old, new)
             continue
         old_plain = plain(lines[n])

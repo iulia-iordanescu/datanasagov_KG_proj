@@ -204,7 +204,7 @@ def _definitions(prompt: str) -> dict:
     return {"definitions": d, "too_vague": vague}
 
 
-#: Step 070's translations: the current schema's component class -> the ground truth vocabulary's.
+#: Step 070's translations: the current schema's component class -> the ground truth schema's.
 TRANSLATIONS = {"Satellite": "Spacecraft", "Sensor": "Instrument", "MOUNTED_ON": "ABOARD"}
 
 

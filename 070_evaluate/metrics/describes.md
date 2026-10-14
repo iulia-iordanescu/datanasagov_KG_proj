@@ -44,14 +44,14 @@ Say the knowledge graph is built from the whole catalog's [extracted triples](..
 - The per-entity-class average gives a describes class with 1 record as much weight as one with 50, so with few records it moves a lot from sample to sample: one record can change it by many percentage points. It gets no margin of error either.
 - Records whose ground truth describes class is `X` (none named yet) don't count.
 - A describes class of the ground truth that no checked row of the translation table translates to can never be right: unlike the other [classed triples](../../docs/terminology.md#2-triples), there is no version counting only the records the schema could get right ([Recall upper bound](recall_upper_bound.md) is about the other ground truth triples).
-- Two entity classes of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one entity class of the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070) look the same, so mixing them up isn't seen.
+- Two entity classes of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one entity class of the [ground truth schema](../../docs/terminology.md#3-schemas) look the same, so mixing them up isn't seen.
 - *What it means for the knowledge graph* is approximate for the [reasons every metric shares](approximately.md); the report measures one of them, sampling error, with *d*'s margin of error.
 
 Worked example: [What each record describes: example](#example). Sources: [What each record describes: sources](#sources).
 
 ## Example
 
-*Suppose:* Dataset, WebTool, and Catalog are [entity classes](../../docs/terminology.md#3-schemas) in both the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and the [ground truth vocabulary](../../docs/terminology.md#7-evaluating-extraction-step-070), and each translates to itself. 10 evaluated [records](../../docs/terminology.md#1-records-and-their-text) count. Their [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) [describes classes](../../docs/terminology.md#2-triples), and what extraction named:
+*Suppose:* Dataset, WebTool, and Catalog are [entity classes](../../docs/terminology.md#3-schemas) in both the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) and the [ground truth schema](../../docs/terminology.md#3-schemas), and each translates to itself. 10 evaluated [records](../../docs/terminology.md#1-records-and-their-text) count. Their [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) [describes classes](../../docs/terminology.md#2-triples), and what extraction named:
 
 | Ground truth describes class | Records | Extraction named it | Extraction named something else |
 |---|---:|---:|---:|

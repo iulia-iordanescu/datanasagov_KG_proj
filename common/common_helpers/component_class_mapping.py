@@ -1,6 +1,6 @@
 """
 common/common_helpers/component_class_mapping.py -- the translation table, annotations/component_class_mapping.csv:
-which component class of the ground truth vocabulary each component class of
+which component class of the ground truth schema each component class of
 the current schema (the one step 060 used) means.
 
     kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
@@ -13,7 +13,7 @@ the current schema (the one step 060 used) means.
                              a component class of the current schema or of a
                              past schema (crt: current): one
                              table serves every schema, so rows accumulate
-    component_class_in_gtt   a component class of the ground truth vocabulary
+    component_class_in_gtt   a component class of the ground truth schema
                              (gtt: ground truth triples), or (none)
     swap_subject_and_object  predicates only: "yes" when the ground truth's
                              predicate states the relation the other way round
@@ -24,19 +24,16 @@ the current schema (the one step 060 used) means.
     definition_from_past_or_crt_schema
                              that schema's definition of the component class
                              when the row was written or last checked
-    definition_in_gtt        the hand-built schema's definition of
+    definition_in_gtt        the ground truth schema's definition of
                              component_class_in_gtt when the row was written or
-                             last checked (empty for (none), and for a
-                             component class coined in the ground truth that
-                             had no definition yet)
+                             last checked (empty for (none))
 
 A row is only as good as the meanings it was checked against: a later schema
-may give the same component class another meaning, and the hand-built schema
-may give the ground truth vocabulary's component class another one. So a
+may give the same component class another meaning, and the ground truth schema
+may give the component class it translates to another one. So a
 checked row is STALE when (its definition_from_past_or_crt_schema differs from
 the current schema's definition) or (its definition_in_gtt differs from the
-hand-built schema's definition now), spacing aside; a coined component class
-that has since been given its first definition counts as differing too. Step
+ground truth schema's definition now), spacing aside. Step
 070 won't evaluate until a person checks a stale row again, and the annotation
 tool shows the old and new definitions. Checking it again stores both
 definitions as they are then.
@@ -78,8 +75,7 @@ def crt_definitions(schema_used: dict) -> dict:
 
 def gtt_definitions(vocab: dict) -> dict:
     """{kind: {component_class_key(component class): definition}} of the ground truth
-    vocabulary (common.ground_truth.vocabulary's result; a coined component class
-    has an empty definition)."""
+    schema (common.schema_io.read_ground_truth_schema's result)."""
     return {kind: {component_class_key(n): d or "" for n, d in vocab.get(key, {}).items()} for kind, key in KINDS.items()}
 
 
@@ -95,17 +91,17 @@ def is_stale(row: dict, definitions: dict) -> bool:
 
 
 def gtt_definition(row: dict, gtt: dict) -> str:
-    """The hand-built schema's definition, now, of the row's component class of the
-    ground truth vocabulary ("" for (none) or a coined one without a definition)."""
+    """The ground truth schema's definition, now, of the component class the row
+    translates to ("" for (none), or for one the ground truth schema lacks)."""
     if row["component_class_in_gtt"] == NONE:
         return ""
     return gtt.get(row["kind"], {}).get(component_class_key(row["component_class_in_gtt"]), "")
 
 
 def is_stale_gtt(row: dict, gtt: dict) -> bool:
-    """True if the row's stored definition_in_gtt differs from the hand-built
-    schema's definition now of its component class of the ground truth
-    vocabulary (spacing aside)."""
+    """True if the row's stored definition_in_gtt differs from the ground truth
+    schema's definition now of the component class the row translates to
+    (spacing aside)."""
     return not _same(row["definition_in_gtt"], gtt_definition(row, gtt))
 
 

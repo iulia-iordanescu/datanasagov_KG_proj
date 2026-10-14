@@ -77,7 +77,7 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
             + "; ".join(f"{e.get('component_class') or ' '.join(e['pattern'])} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
             "being evaluated, so they help here more surely than on records the pipeline hasn't seen."
             if from_tuning else "- **Schema additions learned from tuning records:** none."),
-           "- **Component classes:** extraction's component classes translated into the ground truth vocabulary through "
+           "- **Component classes:** extraction's component classes translated into the ground truth schema through "
            "`annotations/component_class_mapping.csv`.",
            f"- **Ground truth:** `annotations/ground_truth/`, the {len(recs)} finished {part} record(s) of the fair "
            f"sample (pool positions {', '.join(f'#{p}' for p in positions) or '–'}). Drafted by a model (step 050) and "
@@ -162,7 +162,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             _sure(n, ex["strict_precision"], "exact strict precision"), ""]
 
     # entity-class accuracy
-    shared = [f"{', '.join(v)} (current schema) --> {k} (ground truth vocabulary)"
+    shared = [f"{', '.join(v)} (current schema) --> {k} (ground truth schema)"
               for kind in ("entity class",) for k, v in translation.merged.get(kind, {}).items()]
     out += [f"#### Entity-class accuracy: {pct(ex['entity_class_accuracy']['value'])} (exact pairs), "
             f"{pct(pa['entity_class_accuracy']['value'])} (exact and partial pairs)", "",
@@ -219,7 +219,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     out += [f"#### What each record describes: {pct(d['accuracy']['value'])}", "",
             f"- Of the {d['records']} record(s) whose ground truth names a describes class, extraction named "
             f"the same describes class for {_of(right, d['records'])}.",
-            (f"- Always guessing the most common describes class, `{common}` (ground truth vocabulary), would get "
+            (f"- Always guessing the most common describes class, `{common}` (ground truth schema), would get "
              f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that. The "
              f"baseline comes from these records' own ground truth, so it has no margin of error."
              if common else "- No baseline: no record names what it describes."),

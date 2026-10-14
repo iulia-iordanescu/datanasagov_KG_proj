@@ -13,13 +13,13 @@ ground truth component class each component class of the current schema
 means), row by row, to
 check; "Partial pairs" to review evaluation's partial pairs; "Schema
 additions" to edit annotations/schema_additions.txt. A component class or pattern the
-ground truth uses but the hand-built schema lacks can be added to it with
+ground truth uses but the ground truth schema lacks can be added to it with
 a button. Press Ctrl+C here to stop the tool.
 
 It runs only on this computer: no internet, no model calls, nothing to
 install. It isn't a pipeline step: it writes nothing but your ground truth
 files, the translation table, your partial-pair verdicts, the schema
-additions and the component classes and patterns you add to the hand-built schema. How it works: helpers/annotator/server.py; how to use it:
+additions and the component classes and patterns you add to the ground truth schema. How it works: helpers/annotator/server.py; how to use it:
 annotations/README.md.
 """
 import argparse

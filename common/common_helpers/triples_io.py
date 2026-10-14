@@ -58,7 +58,7 @@ def component_class_key(s) -> str:
     """Loosest key, for looking up a COMPONENT CLASS the model re-cased or
     re-spaced ("physical quantity" -> "PhysicalQuantity"): letters and
     digits only, digits kept. Used wherever component classes are compared
-    loosely: 040 (spelling folds, the comparison with the hand-built
+    loosely: 040 (spelling folds, the comparison with the ground truth
     schema), the schema checks in common/common_helpers/validate.py, common/common_helpers/extraction.py
     (the conflicting_classes flag), 060 (merging the additions) and 070 (translating
     component classes, matching entity classes)."""

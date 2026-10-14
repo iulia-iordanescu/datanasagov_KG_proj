@@ -16,8 +16,8 @@ shapes:
    advised: the model reads it); "patterns" may be missing. Anything else
    (040's support, maintainers, texts, examples, deferred, made) is ignored.
 
-2. Text, like the hand-built schema
-   (annotations/schema_derived_from_manual_annotation.txt) and the additions
+2. Text, like the ground truth schema
+   (annotations/ground_truth_schema.txt) and the additions
    file (annotations/schema_additions.txt):
 
     ENTITY CLASSES
@@ -47,18 +47,18 @@ shapes:
    A pattern can also stand on its own, in the PATTERNS section: subject
    class, predicate and object class on one line (used by the additions
    file, to add a pattern to a predicate the schema already has, and by the
-   annotation tool, to add a pattern to the hand-built schema with its
+   annotation tool, to add a pattern to the ground truth schema with its
    source). An
    indented line starting "source:" under any entry (entity class,
    predicate or pattern) says where the idea for it came from (used by the
    additions file, and by the component classes and patterns the annotation
-   tool adds to the hand-built schema). Lines starting with # are comments.
+   tool adds to the ground truth schema). Lines starting with # are comments.
 
-Several steps read it: 040 compares the induced schema with the hand-built
-one; 050 shows the hand-built one to the model and checks every drafted row
-against it (as does the annotation tool); 060 extracts with 040's schema, or
-another given with --schema, plus the additions; 070 builds the ground truth
-vocabulary from the hand-built one and the ground truth.
+Several steps read it: 040 compares the induced schema with the ground truth
+schema; 050 shows the ground truth schema to the model and checks every drafted
+row against it (as does the annotation tool); 060 extracts with 040's schema, or
+another given with --schema, plus the additions; 070 translates the current
+schema into the ground truth schema.
 
     from common.schema_io import read_schema, schema_text
     schema = read_schema(path)          # either shape, by the file's suffix
@@ -75,10 +75,10 @@ vocabulary from the hand-built one and the ground truth.
     schema_text(schema)       the text shape, for a prompt
     additions_text(header, entries)       the additions file, written by the annotation tool
     ground_truth_source_problem(source, parts)   why an addition's source isn't fair, or None
-    add_to_hand_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
-    add_pattern_to_hand_schema(path, predicate, subject_class, object_class)   one pattern added (same)
+    add_to_ground_truth_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
+    add_pattern_to_ground_truth_schema(path, predicate, subject_class, object_class)   one pattern added (same)
 
-read_hand_schema(path) is read_schema for the hand-built text file.
+read_ground_truth_schema(path) is read_schema for the ground truth schema's text file.
 """
 from __future__ import annotations
 
@@ -154,7 +154,7 @@ def _read_text(path) -> dict:
                 if pairs and all(pairs):
                     schema["patterns"] += [(s, entry_name, o) for s, o in (p.groups() for p in pairs)]
                     continue
-        # Anything else is not an entry: prose (the hand-built schema's
+        # Anything else is not an entry: prose (the ground truth schema's
         # explanation under PREDICATES), or a mistake, e.g. a component class
         # with a space in it. Kept, so a reader that expects no prose can say so.
         schema["unread"].append(f"line {number}: {head}")
@@ -192,7 +192,7 @@ def read_schema(path) -> dict:
     return _read_json(path) if Path(path).suffix.lower() == ".json" else _read_text(path)
 
 
-def read_hand_schema(path) -> dict:
+def read_ground_truth_schema(path) -> dict:
     return _read_text(path)
 
 
@@ -282,7 +282,7 @@ def additions_text(header: str, entries: list) -> str:
 
 
 # --------------------------------------------------------------------------
-# adding to the hand-built schema (the annotation tool)
+# adding to the ground truth schema (the annotation tool)
 # --------------------------------------------------------------------------
 #
 # Both functions change the file the same careful way (_edit_text): the
@@ -338,8 +338,8 @@ def _pairs_text(pairs) -> str:
     return "; ".join(f"{s} -> {o}" for s, o in pairs)
 
 
-def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: list = (), source: str = "") -> None:
-    """Add one entry to the hand-built schema (text shape): an entity class
+def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patterns: list = (), source: str = "") -> None:
+    """Add one entry to the ground truth schema (text shape): an entity class
     after the last entity class, a predicate after the last predicate and
     the lines under it, aligned like the entries of its section. A
     predicate's patterns, [(subject class, object class)], go on the line
@@ -357,7 +357,7 @@ def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: li
     before = _read_text(path)
     same = [n for n in before[key] if component_class_key(n) == component_class_key(name)]
     if same:
-        raise ValueError(f"{same[0]} is already in the hand-built schema: nothing to add")
+        raise ValueError(f"{same[0]} is already in the ground truth schema: nothing to add")
 
     def edit(lines):
         start, end = _section(lines, key, path)
@@ -374,8 +374,8 @@ def add_to_hand_schema(path, kind: str, name: str, definition: str, patterns: li
     _edit_text(path, edit, expected, name)
 
 
-def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_class: str, source: str = "") -> None:
-    """Add one pattern to the hand-built schema. The predicate and both entity
+def add_pattern_to_ground_truth_schema(path, predicate: str, subject_class: str, object_class: str, source: str = "") -> None:
+    """Add one pattern to the ground truth schema. The predicate and both entity
     classes must be in the schema already, and are written in its spelling.
     With a source (where the pattern was learned, e.g. "ground truth tuning #3;
     held-out #8"), it goes in the PATTERNS section (made at the end if there is
@@ -385,11 +385,11 @@ def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_
     before = _read_text(path)
     name = next((n for n in before["predicates"] if component_class_key(n) == component_class_key(predicate)), None)
     if name is None:
-        raise ValueError(f"{predicate} isn't a predicate of the hand-built schema: add it first")
+        raise ValueError(f"{predicate} isn't a predicate of the ground truth schema: add it first")
     spelling = {component_class_key(n): n for n in before["entity_classes"]}
     missing = [c for c in (subject_class, object_class) if component_class_key(c) not in spelling]
     if missing:
-        raise ValueError(f"{missing[0]} isn't an entity class of the hand-built schema: add it first")
+        raise ValueError(f"{missing[0]} isn't an entity class of the ground truth schema: add it first")
     pair = (spelling[component_class_key(subject_class)], spelling[component_class_key(object_class)])
     if any(p == name and component_class_key(s) == component_class_key(pair[0]) and component_class_key(o) == component_class_key(pair[1])
            for s, p, o in before["patterns"]):
@@ -427,7 +427,7 @@ def add_pattern_to_hand_schema(path, predicate: str, subject_class: str, object_
 
 
 # --------------------------------------------------------------------------
-# changing the hand-built schema (the annotation tool's Ground truth vocabulary view)
+# changing the ground truth schema (the annotation tool's Ground truth schema view)
 # --------------------------------------------------------------------------
 # Each function returns the file's new bytes without writing them: the caller
 # writes them together with the other files a change touches. The new text is
@@ -485,8 +485,8 @@ def _indent(line: str) -> str:
     return line[:len(line) - len(line.lstrip())]
 
 
-def redefine_in_hand_schema(path, kind: str, name: str, definition: str) -> bytes:
-    """The hand-built schema with one entity class's or predicate's definition
+def redefine_in_ground_truth_schema(path, kind: str, name: str, definition: str) -> bytes:
+    """The ground truth schema with one entity class's or predicate's definition
     replaced (nothing else changes)."""
     key = KIND_KEYS[kind]
     definition = " ".join(str(definition).split())
@@ -496,7 +496,7 @@ def redefine_in_hand_schema(path, kind: str, name: str, definition: str) -> byte
     spelled = _spelled(before[key], name)
     if spelled is None:
         raise ValueError(f"{name} isn't {'an entity class' if key == 'entity_classes' else 'a predicate'} of the "
-                         f"hand-built schema: add it first")
+                         f"ground truth schema: add it first")
     bom, newline, lines = _file_lines(path)
     start, end = _section(lines, key, path)
     i = _entry_line(lines, start, end, spelled)
@@ -506,8 +506,8 @@ def redefine_in_hand_schema(path, kind: str, name: str, definition: str) -> byte
                     f"changing the definition of {spelled}")
 
 
-def rename_in_hand_schema(path, kind: str, old: str, new: str) -> tuple:
-    """The hand-built schema with the entity class or predicate `old` renamed
+def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
+    """The ground truth schema with the entity class or predicate `old` renamed
     to `new`, or, when `new` is already in it, merged into `new`: `old`'s
     entry (and the lines under it, such as its source) is deleted, and a
     merged predicate's patterns are moved to `new`. Every pattern naming

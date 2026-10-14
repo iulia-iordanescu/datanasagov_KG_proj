@@ -253,30 +253,30 @@ class Pipeline(unittest.TestCase):
         return n
 
     def test_t09b_redefined_ground_truth_component_class(self):
-        """A row checked against one definition in the hand-built schema stops evaluation once that definition changes."""
-        self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "schema_derived_from_manual_annotation.txt"))
+        """A row checked against one definition in the ground truth schema stops evaluation once that definition changes."""
+        self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "ground_truth_schema.txt"))
         table = self.repo / "redefined_table.csv"
         table.write_text((self.annotations / "component_class_mapping.csv").read_text(encoding="utf-8").splitlines()[0] + "\n",
                          encoding="utf-8")
-        hand = self.repo / "redefined_hand_schema.txt"
-        hand.write_text((self.annotations / "schema_derived_from_manual_annotation.txt").read_text(encoding="utf-8-sig"),
+        hand = self.repo / "redefined_ground_truth_schema.txt"
+        hand.write_text((self.annotations / "ground_truth_schema.txt").read_text(encoding="utf-8-sig"),
                         encoding="utf-8")
-        args = [*NO_CONFIRM, "--component_class_mapping", str(table), "--hand_schema", str(hand)]
+        args = [*NO_CONFIRM, "--component_class_mapping", str(table), "--ground_truth_schema", str(hand)]
         self.run_step("070_evaluate", *args, expect=2)                          # rows added, each with both definitions
         aboard = [r for r in read_csv(table) if r["component_class_in_gtt"] == "ABOARD"]
         self.assertEqual([r["definition_in_gtt"] for r in aboard], ["is carried on"])
         self.run_step("070_evaluate", *args)                                   # evaluates
         hand.write_text(hand.read_text(encoding="utf-8").replace("is carried on", "is anywhere on"), encoding="utf-8")
         out, _ = self.run_step("070_evaluate", *args, expect=2)
-        self.assertIn("hand-built schema", out)
-        self.assertIn("ABOARD (ground truth vocabulary)", out)
+        self.assertIn("ground truth schema", out)
+        self.assertIn("ABOARD (ground truth schema)", out)
 
     def test_t09_known_numbers(self):
-        """Extraction with the hand-built schema, evaluated with a table of
+        """Extraction with the ground truth schema, evaluated with a table of
         its own: worked out by hand, 8 tuning records with one fact each,
         all found; record 0 has a second fact extraction can't find."""
-        self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "schema_derived_from_manual_annotation.txt"))
-        # t07 extracted with 040's schema, later runs with the hand-built one: the earlier version of each file a run
+        self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "ground_truth_schema.txt"))
+        # t07 extracted with 040's schema, later runs with the ground truth schema: the earlier version of each file a run
         # changed is kept in previous_runs/<that run>/, with its manifest; a file a run left as it was is not kept
         kept = sorted((self.results / "060_extract" / "previous_runs").iterdir())
         self.assertTrue(kept)
@@ -316,7 +316,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(read_csv(self.annotations / "held_out_looks.csv"), [])
         report = max((self.repo / "outputs" / "reports").glob("070_evaluate_*.md"), key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8")
         self.assertIn("Drafted by a model (step 050) and corrected by a person", report)   # the guide says the report says so
-        # the hand-built schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
+        # the ground truth schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
         compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}
         twins = metrics["parts"]["tuning"]["twins"]
@@ -369,7 +369,13 @@ class Pipeline(unittest.TestCase):
             self.assertIn("Step 070 can't evaluate: 1 classed triple appears twice in a record of the ground truth, "
                           "and only one copy could be paired.", out)
             self.assertIn(f"1. Record {fact['id']} (batch_001.csv): lines", out)
-            write_csv(path, self.ground_truth + [{**fact, "object_class": "Other"}], COLUMNS)
+            # an entity class the ground truth schema doesn't have, in a finished record: stops, saying where
+            write_csv(path, self.ground_truth + [{**fact, "object_class": "Gizmo"}], COLUMNS)
+            out, _ = self.run_step("070_evaluate", *args, expect=2)
+            self.assertIn("use 1 entity class(es) or predicate(s) that aren't in the ground truth schema", out)
+            self.assertIn("Gizmo (entity class): batch_001.csv line ", out)
+            # another entity class of the ground truth schema: only warns
+            write_csv(path, self.ground_truth + [{**fact, "object_class": "Mission"}], COLUMNS)
             out, _ = self.run_step("070_evaluate", *args)
             self.assertIn("Step 070 found 1 warning:\n1. Ground truth, record", out)
             warning = out.index("with different entity classes")
@@ -393,8 +399,8 @@ class Pipeline(unittest.TestCase):
             self.assertNotIn("Traceback", text, r.name)
         written = sorted(p.relative_to(self.annotations).as_posix() for p in self.annotations.rglob("*") if p.is_file())
         self.assertEqual(written, ["README.md", "component_class_mapping.csv", "ground_truth/batch_001.csv",
-                                   "ground_truth_candidates.csv", "guidelines.md", "held_out_looks.csv", "partial_pair_reviews.csv",
-                                   "schema_additions.txt", "schema_derived_from_manual_annotation.txt"])
+                                   "ground_truth_candidates.csv", "ground_truth_schema.txt", "guidelines.md", "held_out_looks.csv",
+                                   "partial_pair_reviews.csv", "schema_additions.txt"])
 
 
 if __name__ == "__main__":

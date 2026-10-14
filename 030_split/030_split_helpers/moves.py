@@ -18,7 +18,7 @@ Each ground truth candidate also gets its part, for evaluation (070):
                number reported as how well the pipeline works
 
 by a rule fixed here, before any evaluation: pool positions 0-5 are tuning (the
-hand-built schema was written while annotating them, so they're not unseen);
+ground truth schema was written while annotating them, so they're not unseen);
 from position 6 on, every third record is held-out (8, 11, 14, ...) and the
 rest tuning. Both parts grow as annotation proceeds in pool order, and both
 stay random samples of the catalog, since the pool is shuffled. A position is the record's
@@ -64,7 +64,7 @@ from pathlib import Path
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_json
-from common.ground_truth import HAND_SCHEMA_FROM, twin_table
+from common.ground_truth import GROUND_TRUTH_SCHEMA_FROM, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
 from common.step import repo_path
@@ -77,7 +77,7 @@ INDUCTION = "induction_candidates"
 SHOW = 20                                   # rows listed in the report before "…"
 #: The tuning / held-out rule (see above). Fixed, not settings: changing them
 #: after metrics have been looked at would defeat the held-out part.
-ALL_TUNING_BEFORE = HAND_SCHEMA_FROM        # positions 0-5: tuning (the hand-built schema was written from them)
+ALL_TUNING_BEFORE = GROUND_TRUTH_SCHEMA_FROM        # positions 0-5: tuning (the ground truth schema was written from them)
 HELD_OUT_EVERY = 3                          # from there on, every third position is held-out
 
 

@@ -32,9 +32,8 @@ progress. A row with an id but an empty subject, predicate and object says
     gt.repeats     [{"message", "copies"}]: the problems that stop 070 (a classed triple twice in a record)
     fair_sample, fair_prefix  whether ids are the pool's first records (below)
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
-    vocabulary(hand_schema, gt)  the ground truth vocabulary: the hand-built
-                              schema's component classes plus those coined in the
-                              ground truth
+    with_coined(ground_truth_schema, gt)  the ground truth schema's component classes
+                              plus those coined in the ground truth (not in it yet)
     check_rows(gt, records)   rows with a typo to fix: an id not in the
                               catalog, a source text not in the record's
                               text, a describes triple with no entity class, …
@@ -86,10 +85,10 @@ PATTERN = "batch_*.csv"
 NUMBERED = re.compile(r"batch_(\d{3,})\.csv")
 DRAFT_PATTERN = "drafted_triples_batch*.csv"
 DRAFT_NUMBERED = re.compile(r"drafted_triples_batch(\d+)\.csv")
-HAND_SCHEMA = ANNOTATIONS_DIR / "schema_derived_from_manual_annotation.txt"
-#: The hand-built schema was written while annotating the pool's first records, positions 0 to HAND_SCHEMA_FROM - 1:
+GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
+#: The ground truth schema was written while annotating the pool's first records, positions 0 to GROUND_TRUTH_SCHEMA_FROM - 1:
 #: so they are always tuning (030), and they are the records it was learned from (060's learned_from).
-HAND_SCHEMA_FROM = 6
+GROUND_TRUTH_SCHEMA_FROM = 6
 
 
 #: The twin kinds (docs/terminology.md, twin): what a twin shares with one record the schema was learned from, the kind
@@ -312,12 +311,12 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
 
 
 # --------------------------------------------------------------------------
-# the ground truth vocabulary (050, the annotation tool, 070)
+# the ground truth schema (050, the annotation tool, 070)
 # --------------------------------------------------------------------------
 
-def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
-    """The ground truth vocabulary: the hand-built schema's entity classes and
-    predicates (hand_schema, as common.schema_io.read_hand_schema reads it),
+def with_coined(ground_truth_schema: dict, gt: GroundTruth) -> dict:
+    """The ground truth schema's entity classes and predicates
+    (ground_truth_schema, as common.schema_io.read_ground_truth_schema reads it),
     plus every one the ground truth triples use that it lacks. Component
     classes are compared as common.triples_io.component_class_key does (ignoring case and
     punctuation), keeping the first spelling met; the describes triple's own
@@ -326,13 +325,14 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
 
     Returned in the schema shape, plus "coined": {"entity_classes": [...],
     "predicates": [...]}, the component classes used in the ground truth but
-    not in the hand-built schema, in the order first used. A coined component
-    class has an empty
-    definition: only the hand-built schema has definitions."""
+    not in the ground truth schema, in the order first used. A coined component
+    class has an empty definition: only the ground truth schema has definitions.
+    The annotation tool marks a coined one as an error, and step 070 stops while
+    a finished record uses one."""
     from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, component_class_key
 
-    out = {"entity_classes": dict(hand_schema["entity_classes"]), "predicates": dict(hand_schema["predicates"]),
-           "patterns": list(hand_schema.get("patterns", [])),
+    out = {"entity_classes": dict(ground_truth_schema["entity_classes"]), "predicates": dict(ground_truth_schema["predicates"]),
+           "patterns": list(ground_truth_schema.get("patterns", [])),
            "coined": {"entity_classes": [], "predicates": []}}
     known = {kind: {component_class_key(n) for n in out[kind]} for kind in ("entity_classes", "predicates")}
     for row in gt.rows:
@@ -354,6 +354,26 @@ def vocabulary(hand_schema: dict, gt: GroundTruth) -> dict:
 # fair sample of the catalog, for any N. Results about the whole catalog may
 # only be drawn from such a sample. pool is the pool's ids in order
 # (030's splits.json); taken is a set of ids.
+
+def coined_uses(gt: GroundTruth, coined: dict) -> list:
+    """Where each coined component class is used, for messages: ["Instrumnet (entity class): batch_000.csv lines
+    4, 9", ...], in with_coined()'s order. coined is with_coined()["coined"]."""
+    from common.triples_io import component_class_key
+    where = {}
+    for row in gt.rows:
+        file = row[ORIGIN_FIELD][0].rsplit("/", 1)[-1].split("#")[0]
+        for kind, column in (("entity_classes", "subject_class"), ("entity_classes", "object_class"),
+                             ("predicates", "predicate")):
+            key = (kind, component_class_key(row[column]))
+            where.setdefault(key, {}).setdefault(file, []).append(str(row[LINE_FIELD]))
+    out = []
+    for kind, word in (("entity_classes", "entity class"), ("predicates", "predicate")):
+        for name in coined[kind]:
+            files = where.get((kind, component_class_key(name)), {})
+            out.append(f"{name} ({word}): " + "; ".join(f"{f} line{'s' if len(set(ls)) > 1 else ''} "
+                                                        f"{', '.join(sorted(set(ls), key=int))}" for f, ls in files.items()))
+    return out
+
 
 def read_pool(splits_path) -> list:
     """The ground truth candidates pool, in pool order, from 030's

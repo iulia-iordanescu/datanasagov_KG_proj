@@ -33,7 +33,7 @@ a pattern of the PATTERNS section is checked by its own source line.
 
 The schema input's own entries are never left out, but one whose "source:"
 line fails the same check (e.g. a component class the annotation tool added to the
-hand-built schema from a held-out record) becomes a note shown before
+ground truth schema from a held-out record) becomes a note shown before
 paying.
 
 The merged schema is what the model is shown, what every row is checked
@@ -51,7 +51,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.audit import log, ref_path
-from common.ground_truth import HAND_SCHEMA, HAND_SCHEMA_FROM, read_pool
+from common.ground_truth import GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, read_pool
 from common.report import named
 from common.schema_io import ground_truth_source_problem, pattern_key, read_schema, schema_text
 from common.step import repo_path
@@ -91,15 +91,15 @@ def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
     """The records the schema was learned from, for 070's twins (docs/terminology.md): {"known", "ids", "how":
     [sentences]}.
       - 040's schema: the texts the same run of 040 learned from, in its induction_evidence.json, beside the schema;
-      - the hand-built schema: pool positions 0 to HAND_SCHEMA_FROM - 1, which it was written while annotating;
+      - the ground truth schema: pool positions 0 to GROUND_TRUTH_SCHEMA_FROM - 1, which it was written while annotating;
       - either way, also the pool records an entry's source line names ("source: ground truth tuning #12").
     Any other schema file: not known ("known": False), unless an induction_evidence.json of the same run is beside it."""
     path = Path(inputs["schema"])
     by_position = {r["position"]: r["id"] for r in pool}
     ids, how = set(), []
-    if path.resolve() == HAND_SCHEMA.resolve():
-        ids |= {by_position[p] for p in range(HAND_SCHEMA_FROM) if p in by_position}
-        how.append(f"the hand-built schema was written while annotating pool positions 0 to {HAND_SCHEMA_FROM - 1}")
+    if path.resolve() == GROUND_TRUTH_SCHEMA.resolve():
+        ids |= {by_position[p] for p in range(GROUND_TRUTH_SCHEMA_FROM) if p in by_position}
+        how.append(f"the ground truth schema was written while annotating pool positions 0 to {GROUND_TRUTH_SCHEMA_FROM - 1}")
     else:
         evidence = path.with_name(EVIDENCE_NAME)
         run = _made(path).get("run_id")

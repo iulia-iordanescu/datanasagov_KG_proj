@@ -180,7 +180,7 @@
         <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
         <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
         <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
-        <button id="vocab" title="annotations/schema_derived_from_manual_annotation.txt">Ground truth vocabulary</button>
+        <button id="vocab" title="annotations/ground_truth_schema.txt">Ground truth schema</button>
       </div>
     </details>
     <span id="status"></span>
@@ -493,14 +493,14 @@ function showClasses(kind, input, typed = false) {
   const what = kind === "entity_classes" ? "entity classes" : "predicates";
   panel.hidden = false;
   panel.replaceChildren(
-    el("h3", { title: `The ${what} of the hand-built schema, and those coined while annotating. Click one to put it in the field.` },
+    el("h3", { title: `The ${what} of the ground truth schema, and those coined while annotating. Click one to put it in the field.` },
        kind === "entity_classes" ? "Entity classes" : "Predicates",
        el("span", { class: "meta" }, q ? `  ${names.length} matching “${input.value.trim()}”` : `  ${names.length}`)),
     names.length ? el("div", {}, names.map((n) => el("button", { class: looseKey(n) === now && now ? "classopt current" : "classopt",
         onmousedown: (e) => e.preventDefault(),            // the field keeps the cursor
         onclick: () => { input.value = n; input.dispatchEvent(new Event("input")); showClasses(kind, input); } },
       el("strong", {}, n), coined.has(n) ? el("span", { class: "pill todo" }, "coined") : null,
-      el("div", { class: "meta" }, defs[n] || "No definition yet (it can be added in the view Ground truth vocabulary)."))))
+      el("div", { class: "meta" }, defs[n] || "No definition yet (it can be added in the view Ground truth schema)."))))
       : el("p", { class: "empty" }, `No ${what} match: if none fits, type a new one (one word, as the Guidelines say).`));
   const held = panel.querySelector(".classopt.current");
   if (held && !typed) held.scrollIntoView({ block: "nearest" });
@@ -662,9 +662,9 @@ function refreshProblems() {
   drawProgress();
 }
 
-// ---------------------------------------------------------------- adding to the hand-built schema
-// A component class the ground truth uses but the hand-built schema lacks is added with a one-line definition;
-// a pattern, with one click. The server writes the file (annotations/schema_derived_from_manual_annotation.txt)
+// ---------------------------------------------------------------- adding to the ground truth schema
+// A component class the ground truth uses but the ground truth schema lacks is added with a one-line definition;
+// a pattern, with one click. The server writes the file (annotations/ground_truth_schema.txt)
 // and the checks run again.
 function addControl(a) {
   const box = el("span", { class: "addbox" });
@@ -680,7 +680,7 @@ function addControl(a) {
     box.replaceChildren(def, el("button", { onclick: go }, `Add ${a.component_class}`),
                         el("button", { onclick: () => box.replaceChildren(start) }, "Cancel"));
     def.focus();
-  } }, `Add ${a.component_class} to the hand-built schema…`);
+  } }, `Add ${a.component_class} to the ground truth schema…`);
   box.append(start);
   return box;
 }
@@ -704,18 +704,18 @@ function drawGaps(g) {
   const n = g.component_classes.length, p = g.patterns.length;
   $("gaps").hidden = !(n || p);
   $("gaps").replaceChildren(
-    el("summary", {}, `The ground truth uses ${n} component class(es) and ${p} pattern(s) that aren't in the hand-built ` +
+    el("summary", {}, `The ground truth uses ${n} component class(es) and ${p} pattern(s) that aren't in the ground truth ` +
        `schema (${g.file}). Add each one you mean to keep; fix any typo where it's used.`),
     el("ul", {},
       g.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
-        ` (ground truth vocabulary; ${x.uses} row(s))`, addControl(x))),
+        ` (ground truth schema; ${x.uses} row(s))`, addControl(x))),
       g.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
         `${x.subject_class} ${x.predicate} ${x.object_class} (${x.uses} row(s))`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table
 // One row per component class of the current schema (the one extraction used):
-// which component class of the ground truth vocabulary it means. Only component_class_in_gtt,
+// which component class of the ground truth schema it means. Only component_class_in_gtt,
 // swap_subject_and_object and checked can be changed here.
 let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
 // A row "of the current schema": its component class is in the current schema
@@ -730,7 +730,7 @@ async function openMapping() {
   status("Opening…");
   mapping = await api("/api/mapping");
   // A stale row (checked against another definition of its component class in the current schema, or
-  // of its component class of the ground truth vocabulary in the hand-built schema) is shown, and
+  // of the component class it translates to in the ground truth schema) is shown, and
   // counts, as unchecked until ticked again; ticking stores both definitions as they are now.
   // Untouched, it is saved as it is in the file, so it stays stale.
   location.hash = "m";
@@ -807,7 +807,7 @@ function mappingRow(r, i) {
                       `${mapping.none}: nothing in the ground truth means this`)];
   if (!known && r.component_class_in_gtt !== mapping.none)
     options.push(el("option", { value: r.component_class_in_gtt, selected: true },
-                    `⚠ ${r.component_class_in_gtt} (not in the ground truth vocabulary: pick another)`));
+                    `⚠ ${r.component_class_in_gtt} (not in the ground truth schema: pick another)`));
   for (const v of vocab) options.push(el("option", { value: v.component_class, selected: v.component_class === r.component_class_in_gtt }, v.component_class));
   const chosen = vocab.find(v => v.component_class === r.component_class_in_gtt);
   // Other component classes of the current schema already translated to the same component_class:
@@ -816,7 +816,7 @@ function mappingRow(r, i) {
     ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.component_class_in_gtt === r.component_class_in_gtt)
                   .map(o => o.component_class_from_past_or_crt_schema) : [];
   const same = r.checked === "same component class";
-  // A (none) row whose component class the ground truth vocabulary now has: probably out of date.
+  // A (none) row whose component class the ground truth schema now has: probably out of date.
   const nowExists = r.component_class_in_gtt === mapping.none && r.same_component_class_in_gtt ? { component_class: r.same_component_class_in_gtt } : null;
   // a row accepted automatically (same spelling) can be changed; changing it makes it an ordinary row to check
   const update = (key, value) => { r[key] = value; if (same && key !== "checked") r.checked = "no"; mapChanged(); drawMapping(); };
@@ -835,27 +835,27 @@ function mappingRow(r, i) {
        (r.definition_from_past_or_crt_schema || "(no definition)") +
        "”. The meaning of " + r.component_class_from_past_or_crt_schema + " may have changed since: check this translation again.")) : null,
     r.stale_gtt ? el("div", { class: "problems" }, el("li", { class: "flag" },
-       "⚑ This row was checked when the hand-built schema defined " + r.component_class_in_gtt +
-       " (ground truth vocabulary) as: “" + (r.definition_in_gtt || "(no definition)") +
-       "”. The hand-built schema now defines " + r.component_class_in_gtt + " as shown below, under “In the ground truth”: check this translation again.")) : null,
+       "⚑ This row was checked when the ground truth schema defined " + r.component_class_in_gtt +
+       " (ground truth schema) as: “" + (r.definition_in_gtt || "(no definition)") +
+       "”. The ground truth schema now defines " + r.component_class_in_gtt + " as shown below, under “In the ground truth”: check this translation again.")) : null,
     el("div", { class: "means" },
-      el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth vocabulary:"),
+      el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth schema:"),
       el("select", { id: `m${i}`, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
     r.component_class_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
       el("li", { class: "flag" }, `⚑ The model suggests ${r.component_class_from_past_or_crt_schema} (current schema) may ` +
-        `mean ${r.suggested_gtt} (ground truth vocabulary), a component class the ground truth gained since this row was ` +
+        `mean ${r.suggested_gtt} (ground truth schema), a component class the ground truth gained since this row was ` +
         `checked. Pick ${r.suggested_gtt} if that is right; otherwise keep (none).`)) : null,
     nowExists ? el("ul", { class: "problems" }, el("li", { class: "flag" },
-      `⚑ ${nowExists.component_class} (ground truth vocabulary) now exists: should ${r.component_class_from_past_or_crt_schema} ` +
+      `⚑ ${nowExists.component_class} (ground truth schema) now exists: should ${r.component_class_from_past_or_crt_schema} ` +
       `(current schema) translate to ${nowExists.component_class}? Keep (none) only if the two mean different things.`)) : null,
     sharing.length ? el("ul", { class: "problems" }, el("li", { class: "flag" },
       `⚑ ${[r.component_class_from_past_or_crt_schema, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
-      `both translate to ${r.component_class_in_gtt} (ground truth vocabulary), so step 070 can't tell these component classes apart: ` +
+      `both translate to ${r.component_class_in_gtt} (ground truth schema), so step 070 can't tell these component classes apart: ` +
       `extraction loses nothing by mixing them up. That is fine if your ground truth doesn't distinguish them; if your ground ` +
       `truth should distinguish them, annotate with separate component classes in the ground truth.`)) : null,
     chosen ? el("div", { class: "meta" }, "In the ground truth: ",
                 chosen.definition ? chosen.definition
-                  : el("span", { class: "empty" }, "coined while annotating; no definition yet (add one to the hand-built schema)")) : null,
+                  : el("span", { class: "empty" }, "coined while annotating; no definition yet (add one to the ground truth schema)")) : null,
     r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
       el("input", { type: "checkbox", disabled: r.component_class_in_gtt === mapping.none,
                     checked: r.swap_subject_and_object === "yes",
@@ -864,7 +864,7 @@ function mappingRow(r, i) {
     exampleLine(r),
     el("div", { class: "bar" }, same && !r.stale && !r.stale_gtt
       ? el("span", { class: "meta" }, "Accepted automatically, because the component class is spelled the same in the current " +
-           "schema and in the ground truth vocabulary. Compare the two definitions above (In the current schema, In the ground " +
+           "schema and in the ground truth schema. Compare the two definitions above (In the current schema, In the ground " +
            "truth); if the two mean different things, pick the right translation.")
       : el("label", { class: "finished" },
           el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale && !r.stale_gtt,
@@ -962,9 +962,9 @@ function partialCard(i) {
   };
   return el("section", { class: "card maprow" + (i.verdict ? "" : " todo") },
     el("h3", {}, `#${i.position ?? "?"} `, el("span", { class: "part tuning" }, "tuning"), " ", i.title),
-    triple("Ground truth (ground truth vocabulary)", i.ground_truth_subject, i.ground_truth_predicate,
+    triple("Ground truth (ground truth schema)", i.ground_truth_subject, i.ground_truth_predicate,
            i.ground_truth_object),
-    triple("Extracted (translated into the ground truth vocabulary)", i.translated_subject,
+    triple("Extracted (translated into the ground truth schema)", i.translated_subject,
            i.translated_predicate, i.translated_object),
     i.text ? el("details", {}, el("summary", { class: "meta" }, "The record's text"),
                 el("div", { class: "meta", style: "white-space:pre-wrap" }, i.text)) : null,
@@ -1099,9 +1099,9 @@ function additionForm(e) {
 
 // ---------------------------------------------------------------- help
 // The section of annotations/README.md about the view you're on.
-// ---------------------------------------------------------------- the ground truth vocabulary
-// Every entity class and predicate of the ground truth vocabulary: change a definition (in the
-// hand-built schema), or rename one, or merge it into another, everywhere at once. A rename or
+// ---------------------------------------------------------------- the ground truth schema
+// Every entity class and predicate of the ground truth schema: change a definition (in the
+// ground truth schema), or rename one, or merge it into another, everywhere at once. A rename or
 // merge is shown first (every file and what changes in it) and done only after "Do it".
 let vocab = null, vocabPlan = null;
 
@@ -1114,7 +1114,7 @@ async function openVocab() {
   vocabPlan = null;
   location.hash = "v";
   showIntro();
-  status(`Ground truth vocabulary (definitions in ${vocab.file})`, "saved");
+  status(`Ground truth schema (definitions in ${vocab.file})`, "saved");
   drawVocab();
 }
 
@@ -1135,7 +1135,7 @@ async function applyVocab() {
     vocabPlan = null;
     status(`${done.merge ? "Merged" : "Renamed"} ${done.old} → ${done.new} (${done.kind}) at ${new Date().toLocaleTimeString()}. Commit the changed files.`, "saved");
     drawVocab();
-    drawGaps(await api("/api/gaps"));                // the bar of component classes the hand-built schema lacks
+    drawGaps(await api("/api/gaps"));                // the bar of component classes the ground truth schema lacks
   } catch (e) { fail(e); }
 }
 
@@ -1155,7 +1155,7 @@ function planCard() {
   return el("section", { class: "card todo" },
     el("h3", {}, `${p.merge ? "Merge" : "Rename"} ${p.old} → ${p.new} (${p.kind})`),
     el("p", { class: "meta" }, p.merge
-      ? `${p.new} is already in the ground truth vocabulary, so ${p.old} is merged into ${p.new}: every use of ${p.old} becomes ${p.new}.`
+      ? `${p.new} is already in the ground truth schema, so ${p.old} is merged into ${p.new}: every use of ${p.old} becomes ${p.new}.`
       : `${p.old} is renamed ${p.new} everywhere.`),
     el("p", {}, "What would change (nothing has changed yet):"),
     el("ul", {}, p.changes.map(c => el("li", {}, el("code", {}, c.file), ": ", c.what))),
@@ -1172,7 +1172,7 @@ function vocabEntry(kind, v) {
                                "aria-label": `rename ${v.component_class}` });
   return el("div", { class: "row" },
     el("div", {}, el("span", { class: "kind" }, kind), el("b", {}, v.component_class),
-       el("span", { class: "meta" }, `  ${v.in_hand ? "in the hand-built schema" : "coined while annotating, not in the hand-built schema yet"}` +
+       el("span", { class: "meta" }, `  ${v.in_hand ? "in the ground truth schema" : "coined while annotating, not in the ground truth schema yet"}` +
          ` · used ${v.uses} time(s) in the ground truth` + (v.files.length ? ` (${v.files.join(", ")})` : "") +
          (v.translated_from.length ? ` · the translation table translates ${v.translated_from.join(", ")} (current or past schema) into ${v.component_class}` : ""))),
     el("div", { class: "bar" }, def, " ",
@@ -1180,8 +1180,8 @@ function vocabEntry(kind, v) {
          ? el("button", { onclick: () => defineVocab(kind, v.component_class, def) }, "Save definition")
          : el("button", { onclick: async () => {
              try { await api("/api/hand/add", { entry_type: kind, component_class: v.component_class, definition: def.value });
-                   vocab = await api("/api/vocab"); status(`Added ${v.component_class} to the hand-built schema`, "saved"); drawVocab();
-             } catch (e) { fail(e); } } }, "Add to the hand-built schema")),
+                   vocab = await api("/api/vocab"); status(`Added ${v.component_class} to the ground truth schema`, "saved"); drawVocab();
+             } catch (e) { fail(e); } } }, "Add to the ground truth schema")),
     el("div", { class: "bar" }, rename, " ",
        el("button", { onclick: () => planVocab(kind, v.component_class, rename) }, "Rename or merge…")));
 }
@@ -1189,9 +1189,10 @@ function vocabEntry(kind, v) {
 function drawVocab() {
   const count = (k) => vocab.vocabulary[k].length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
-    el("h3", {}, "Ground truth vocabulary"),
+    el("h3", {}, "Ground truth schema"),
     el("p", { class: "meta" }, `${count("entity class")} entity class(es) and ${count("predicate")} predicate(s): every one ` +
-      "in the hand-built schema, plus every one the ground truth uses that the hand-built schema doesn't have (coined while annotating)."),
+      "in the ground truth schema, plus any the ground truth uses that it doesn't have yet (coined while annotating: " +
+      "add each, or fix the typo, before step 070 runs)."),
     el("p", { class: "meta" }, "Changing a definition makes the translation table's rows that translate to that " +
       "component class need checking again. Renaming or merging changes every file that uses the component class, after " +
       "first showing you every change the rename or merge would make.")));

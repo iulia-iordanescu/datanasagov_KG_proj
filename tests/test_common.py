@@ -1,5 +1,5 @@
 """Shared code (common/common_helpers/): reading the ground truth, the
-ground truth vocabulary, the fair sample, the checks of each triple
+ground truth schema, the fair sample, the checks of each triple
 instance, building rows from the model's replies, text pieces, the
 translation table, and the partial pair reviews."""
 import csv
@@ -113,7 +113,7 @@ class GroundTruthFiles(unittest.TestCase):
             row("a", "MODIS", "-", "x", "Aqua", "X", "s")])
         hand = {"entity_classes": {"Instrument": "d", "Dataset": "d"}, "predicates": {"ABOARD": "d"},
                 "patterns": [("Instrument", "ABOARD", "Dataset")]}
-        v = ground_truth.vocabulary(hand, ground_truth.read_ground_truth(self.tmp))
+        v = ground_truth.with_coined(hand, ground_truth.read_ground_truth(self.tmp))
         self.assertEqual(v["coined"], {"entity_classes": ["Probe"], "predicates": ["CARRIED_BY", "x"]})
         self.assertEqual(v["entity_classes"]["Probe"], "")
         self.assertEqual(v["entity_classes"]["Instrument"], "d")
@@ -277,7 +277,7 @@ class TranslationTable(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def test_stale_gtt(self):
-        """A checked row is stale when the hand-built schema's definition of its component class of the ground truth
+        """A checked row is stale when the ground truth schema's definition of its component class of the ground truth
         vocabulary differs from the one stored when the row was checked, including a first definition."""
         gtt = component_class_mapping.gtt_definitions(
             {"entity_classes": {"Spacecraft": "a vehicle  in space", "Probe": ""}, "predicates": {"ABOARD": "is on"}})

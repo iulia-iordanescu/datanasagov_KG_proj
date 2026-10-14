@@ -32,13 +32,13 @@ def use_step(step: str) -> Path:
 
 #: annotations/ files a temporary copy starts with: copied whole, or only
 #: their first line (a CSV file's header; for the additions file, see below).
-WHOLE = ("README.md", "schema_derived_from_manual_annotation.txt", "guidelines.md")
+WHOLE = ("README.md", "ground_truth_schema.txt", "guidelines.md")
 HEADER_ONLY = ("component_class_mapping.csv", "partial_pair_reviews.csv", "held_out_looks.csv")
 
 
 def temp_repo(annotations: bool = True) -> Path:
     """A temporary copy of the code. With annotations, annotations/ holds the
-    README, the hand-built schema, the person-made CSV files with no rows,
+    README, the ground truth schema, the person-made CSV files with no rows,
     and the additions file's comments with no entries: never the ground
     truth, the pool, or anyone's rows. The caller removes it (shutil.rmtree).
     (No module of common/ is imported here: a test that imports the copy's

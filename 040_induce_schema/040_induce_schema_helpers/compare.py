@@ -1,11 +1,11 @@
 """
-compare.py -- the induced schema beside the hand-built one, for the report.
+compare.py -- the induced schema beside the ground truth schema, for the report.
 
-The hand-built schema (annotations/schema_derived_from_manual_annotation.txt,
+The ground truth schema (annotations/ground_truth_schema.txt,
 read by common/common_helpers/schema_io.py) was written by a person while annotating ground
 truth. Putting the two side by side is a quick sanity check on what the data
 taught the model: which entity classes, predicates and patterns both have,
-which only the hand-built one has, and which only the induced one has.
+which only the ground truth schema has, and which only the induced one has.
 
 It is not a metric. Component classes are matched when they are a loose
 match (only letters and digits count: "PhysicalQuantity" = "Physical
@@ -19,7 +19,7 @@ from common.triples_io import component_class_key
 
 
 def _side_by_side(hand: list, induced: list) -> dict:
-    """{"both": [(hand-built spelling, induced spelling)], "only_hand": [...], "only_induced": [...]}"""
+    """{"both": [(ground truth schema spelling, induced spelling)], "only_hand": [...], "only_induced": [...]}"""
     by_norm = {component_class_key(n): n for n in induced}
     both, only_hand = [], []
     for name in hand:
@@ -41,11 +41,11 @@ def compare(hand: dict, schema) -> dict:
 
 
 def report_lines(comparison: dict, hand_path: str, show: int) -> list:
-    lines = ["### Compared with the hand-built schema", "",
+    lines = ["### Compared with the ground truth schema", "",
              f"`{hand_path}`, written while annotating ground truth. Component classes match when they are "
              f"a loose match (only letters and digits count); a concept named differently in the two "
              f"counts as unmatched. A sanity check, not a metric (070 evaluates the schema).", "",
-             "| | In both | Only hand-built | Only induced |", "|---|---:|---:|---:|"]
+             "| | In both | Only the ground truth schema | Only induced |", "|---|---:|---:|---:|"]
     for kind in ("entity_classes", "predicates", "patterns"):
         c = comparison[kind]
         lines.append(f"| {kind.replace('_', ' ').capitalize()} | {len(c['both'])} | {len(c['only_hand'])} | "
@@ -56,7 +56,7 @@ def report_lines(comparison: dict, hand_path: str, show: int) -> list:
         what = kind.replace("_", " ").capitalize()
         lines.append(f"- **{what} in both:** "
                      + (", ".join(h if h == i else f"{h} = {i}" for h, i in c["both"]) or "none"))
-        lines.append(f"- **{what} only in the hand-built schema:** "
+        lines.append(f"- **{what} only in the ground truth schema:** "
                      + (", ".join(c["only_hand"]) or "none"))
         shown = c["only_induced"][:show]
         lines.append(f"- **{what} only in the induced schema:** "
