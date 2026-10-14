@@ -8,8 +8,10 @@ The changes to make to the pipeline itself: what to change, why, and where the i
 - **Cost per run.** Each report already gives the tokens sent and received (section *Model calls*); a price per token would turn them into dollars. From: the literature review of 2026-10-07.
 - **A batch API at NASA's LiteLLM**, if it has one: many calls sent together, at a discount. Ask NASA's LiteLLM administrators. From: 2026-10-13.
 - **Saved answers that are JSON of the wrong shape.** An answer that is JSON is saved whatever its shape (`common/common_helpers/cache.py`, `ask_cached`), so a rerun reuses a useless one instead of asking again. Check the shape before saving. From: 2026-10-12.
+- **Keep the saved answers safe:** every model answer behind a reported number is in the steps' `cache/` folders under `outputs/`, which Git doesn't carry, so they exist only on the computer that ran the step. Archive them with each run that numbers are reported from. From: the methods review of 2026-10-11, item 7.
 - **`tests/run_all.py` on the NASA laptop:** its first run there reported that the tests changed files, and the next run passed. Find why. From: 2026-10-12.
 - **README, *How to reproduce*:** setup and running are in [`running_on_nasa_laptop.md`](running_on_nasa_laptop.md); building the graph waits for step 080. From: `TODO.md`.
+- **Other catalogs:** some things fit only data.nasa.gov. The catalog's address is fixed in the code (`010_harvest/010_harvest_helpers/ckan_client.py`); "undefined" is treated as a maintainer (`020_clean/020_clean_helpers/maintainers.py`); splitting into strata needs a maintainer field that other catalogs may not fill; step 040's prompts say "a catalog of NASA datasets". From: the methods review of 2026-10-11, item 11.
 - **Competency questions:** 10 to 20 questions the knowledge graph should answer, to judge it by. From: the literature review of 2026-10-07.
 
 ## 020_clean
@@ -18,7 +20,7 @@ The changes to make to the pipeline itself: what to change, why, and where the i
 
 ## 040_induce_schema
 
-- **The sample of texts:** 10 maintainers × 15 texts is the documented baseline, not a design shown to be best. Compare designs with `helpers/compare_runs.py`, guided by the saturation curve in 040's report. From: [`findings.md`](findings.md), 2026-10-12.
+- **The sample of texts:** 10 maintainers × 15 texts is the documented baseline, not a design shown to be best. Taking only the 10 largest maintainers, it can never sample the records of the others (about 8% of the catalog, on the 2026-09-27 harvest; the methods review of 2026-10-11, item 3). Compare designs with `helpers/compare_runs.py`, guided by the saturation curve in 040's report. From: [`findings.md`](findings.md), 2026-10-12.
 - **`min_support`** above 1 (it is 1, which keeps everything found): try other values once runs can be compared. From: 040's guide, *Settings*.
 - **Near-duplicate texts inflate support.** If a maintainer's 15 texts are nearly the same text, every schema entry found in them counts 15 times. Measure how alike each maintainer's texts are; then drop the near-duplicates (taking others from the same maintainer), or count that maintainer once. It matters once `min_support` is above 1. 040's report lists twins between the texts it learned from and the pool, not near-duplicates among its own texts. From: `TODO.md`.
 - **Nothing filters junk from stage 2:** e.g. "dataset" as a bare subject instance, or "VNP43D66 is the BSA" read as an "is a" statement, both gaining real support. A list of generic subject instances to drop would cost nothing. From: `TODO.md`.
@@ -45,6 +47,8 @@ The changes to make to the pipeline itself: what to change, why, and where the i
 - **A second person checking a sample of the translation table,** frozen before the held-out part is looked at. From: the literature review of 2026-10-07.
 - **How many extracted triples 060 removed, per reason,** in 070's report. From: the literature review of 2026-10-07.
 - **Other quality metrics,** e.g. coverage. 070 already reports partial pairs, entity-class accuracy, and the recall upper bound. From: `TODO.md`.
+- **The model's run-to-run variation** isn't among the reasons the numbers are approximate ([`metrics/approximately.md`](../070_evaluate/metrics/approximately.md)), and margins of error leave it out. Add it once repeat runs measure it (see *The whole pipeline*). From: the methods review of 2026-10-11, item 6.
+- **Comparing runs whose schemas differ:** several component classes of a schema may translate to one of the ground truth vocabulary, so a finer schema is forgiven some wrong entity classes ([`metrics/pairs.md`](../070_evaluate/metrics/pairs.md), row 5 of *When a pair isn't the same fact*). `helpers/compare_runs.py` should say so when the runs' schemas differ. From: the methods review of 2026-10-11, item 10.
 - **The 10-point threshold** of 070's warning that a stratum's share of the evaluated records differs from its share of the pool: no source for 10. From: the literature review of 2026-10-07.
 - **Citations not yet checked:** Cochran (1977) for the 5% rule and the ratio bias, cited from memory in the metric docs. From: the literature review of 2026-10-07.
 - **Report wording:** "share" where "proportion" is meant (070's guide, `070_evaluate_helpers/readings.py`), and "extracted triple(s)" where an occurrence is meant (070's report). From: 2026-10-08.
