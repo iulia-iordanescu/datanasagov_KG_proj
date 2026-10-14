@@ -45,10 +45,10 @@ Every record has one [classed triple](../docs/terminology.md#2-triples) that no 
 
 ## Coining an entity class or predicate
 
-- **Coin one only when none of the [ground truth schema](../docs/terminology.md#3-schemas)'s fits.** Check the tool's list as you type, and its view *Ground truth schema*, which lists every one in use: a near-synonym may already exist.
+- **Coin one only when none of the [ground truth schema](../docs/terminology.md#3-schemas)'s fits.** Check the tool's list as you type, and its button **Ground truth schema** (top of the page), which shows every one at a glance: a near-synonym may already exist.
 - **Name it in the schema's style:** an [entity class](../docs/terminology.md#3-schemas) in CamelCase (`SpaceMission`), a predicate in UPPER_SNAKE_CASE (`PART_OF_MISSION`), one word each.
 - **Give it a one-line definition at once:** press the button under its ✖, in the tool. Until then the model sees it without a definition, the tool marks it ✖, and step 070 won't evaluate a [finished record](../docs/terminology.md#4-ground-truth-and-samples) that uses it.
-- **To rename one, or merge two that mean the same thing:** the tool's view *Ground truth schema*, **Rename or merge…** (`annotations/README.md`, *The ground truth schema*).
+- **To rename one, or merge two that mean the same thing:** the tool's button **Ground truth schema**, then **Edit definitions, rename or merge…**, then **Rename or merge…** (`annotations/README.md`, *The ground truth schema*).
 
 ## Finishing a record
 

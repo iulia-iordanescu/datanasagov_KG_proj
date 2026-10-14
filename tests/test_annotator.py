@@ -443,6 +443,9 @@ class G_Vocabulary(unittest.TestCase):
                          ("a craft in orbit", True, 3, ["batch_000.csv"], ["Satellite"]))
         planet = next(e for e in v["entity class"] if e["component_class"] == "Planet")
         self.assertFalse(planet["in_hand"])                                   # coined, no definition
+        # the overview at the top of the page shows each predicate's patterns (an entity class has none)
+        orbits = next(e for e in v["predicate"] if e["component_class"] == "ORBITS")
+        self.assertEqual((orbits["patterns"], sat["patterns"]), ([["Satelite", "Planet"]], []))
 
     def test_plan_writes_nothing(self):
         before = self.snapshot()

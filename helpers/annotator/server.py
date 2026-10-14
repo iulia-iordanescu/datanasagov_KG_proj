@@ -813,7 +813,10 @@ def vocab_view(data: Data) -> dict:
                       "uses": len(_using(gt, kind, n)),
                       "files": sorted(files.get((kind, component_class_key(n)), [])),
                       "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
-                                          if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)]}
+                                          if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)],
+                      # a predicate's patterns, for the page's overview: [[subject class, object class], ...]
+                      "patterns": [[s, o] for s, p, o in data.hand.get("patterns", [])
+                                   if kind == "predicate" and component_class_key(p) == component_class_key(n)]}
                      for n, d in sorted(vocab[key].items(), key=lambda kv: kv[0].lower())]
     return {"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", "vocabulary": out}
 

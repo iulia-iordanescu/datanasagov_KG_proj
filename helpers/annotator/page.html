@@ -140,6 +140,17 @@
   #help { position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, 0.45); display: flex;
           justify-content: center; align-items: flex-start; padding: 40px 16px; overflow: auto; }
   #help[hidden] { display: none; }
+  .helpbox.wide { max-width: 1240px; }
+  .schemafilter { width: 100%; margin: 12px 0; }
+  .schemagrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .schemagrid { grid-template-columns: 1fr; } }
+  .schematable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .schematable th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 6px;
+                    border-bottom: 1px solid var(--line); }
+  .schematable td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .schematable tbody tr:nth-child(even) td { background: var(--tint); }
+  .schematable td.schemaname { font-weight: 600; white-space: nowrap; }
+  .schematable td.schemauses { text-align: right; color: var(--muted); }
   .helpbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 28px 24px;
              max-width: 860px; width: 100%; box-shadow: 0 10px 30px rgba(16, 24, 40, 0.18); }
   .helpbody { line-height: 1.65; }
@@ -174,13 +185,13 @@
     <h1>Annotation tool</h1>
     <label class="batchpick">Batch <select id="batch" aria-label="Batch to annotate"></select></label>
     <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
+    <button id="schemabutton" title="annotations/ground_truth_schema.txt: every entity class and predicate, at a glance">Ground truth schema</button>
     <details class="viewsmenu" id="viewsmenu">
       <summary>Other views</summary>
       <div class="menu" role="navigation" aria-label="Other views">
         <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
         <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
         <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
-        <button id="vocab" title="annotations/ground_truth_schema.txt">Ground truth schema</button>
       </div>
     </details>
     <span id="status"></span>
@@ -317,7 +328,7 @@ $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBa
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
-$("vocab").addEventListener("click", () => openVocab().catch(fail));
+$("schemabutton").addEventListener("click", () => showSchema().catch(fail));
 // The menu of other views closes once a view is chosen, or on a click anywhere else.
 document.addEventListener("click", (e) => {
   const menu = $("viewsmenu");
@@ -1281,6 +1292,43 @@ async function showHelp(path) {            // the README's section for this view
   } catch (e) { fail(e); }
 }
 function hideHelp() { $("help").hidden = true; }
+
+// The ground truth schema at a glance (read from the file each time): its entity classes and predicates side by
+// side, each with its definition and how many ground truth triples use it, a predicate also with its patterns;
+// coined ones (used, not in the file yet) marked. A filter narrows both tables; editing is the view behind the button.
+async function showSchema() {
+  const v = (await api("/api/vocab")).vocabulary;
+  const filter = el("input", { type: "search", placeholder: "Filter by name, definition or pattern", class: "schemafilter" });
+  const row = (kind, x) => el("tr", { "data-text": [x.component_class, x.definition, ...(x.patterns || []).flat()].join(" ").toLowerCase() },
+    el("td", { class: "schemaname" }, x.component_class,
+       x.in_hand ? null : el("span", { class: "pill error", title: "Used in the ground truth, not in the ground truth schema yet: add it, or fix the typo" }, "✖ coined")),
+    el("td", {}, x.definition || el("span", { class: "empty" }, "no definition yet"),
+       kind === "predicate" && x.patterns.length
+         ? el("div", { class: "meta" }, x.patterns.map(([s, o]) => `${s} → ${o}`).join(" · ")) : null),
+    el("td", { class: "schemauses", title: "ground truth triples that use it" }, String(x.uses)));
+  const table = (kind, title) => el("section", {},
+    el("h3", {}, `${title} `, el("span", { class: "meta" }, `(${v[kind].length})`)),
+    el("table", { class: "schematable" },
+      el("thead", {}, el("tr", {}, el("th", {}, "Name"), el("th", {}, "Definition"), el("th", { title: "ground truth triples that use it" }, "Uses"))),
+      el("tbody", {}, v[kind].map((x) => row(kind, x)))));
+  const grid = el("div", { class: "schemagrid" }, table("entity class", "Entity classes"), table("predicate", "Predicates"));
+  filter.addEventListener("input", () => {
+    const q = filter.value.trim().toLowerCase();
+    grid.querySelectorAll("tbody tr").forEach((r) => { r.hidden = q && !r.dataset.text.includes(q); });
+  });
+  $("help").replaceChildren(el("div", { class: "helpbox wide" },
+    el("div", { class: "bar", style: "margin-top:0" },
+      el("h2", { style: "margin:0" }, "Ground truth schema"),
+      el("span", { class: "meta" }, "annotations/ground_truth_schema.txt"),
+      el("span", { style: "margin-left:auto" },
+        el("button", { onclick: () => { hideHelp(); openVocab().catch(fail); },
+                       title: "Change a definition, rename one, or merge two that mean the same thing, in every file at once" },
+           "Edit definitions, rename or merge…"), " ",
+        el("button", { onclick: hideHelp }, "Close"))),
+    filter, grid));
+  $("help").hidden = false;
+  filter.focus();
+}
 
 // At the top of every view but a batch: what the view is for, and when (the first paragraph of its README section,
 // read from the file each time), with the way to the rest.
