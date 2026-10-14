@@ -223,3 +223,6 @@ outputs/
 docs/prompts.md
 docs/pipeline_implementation_prompt.md
 .myvenv/
+
+# Licensed books and papers (PDFs) are never committed: cite them by title and authors instead
+*.pdf
