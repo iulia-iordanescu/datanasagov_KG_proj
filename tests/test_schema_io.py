@@ -85,7 +85,12 @@ class Reading(unittest.TestCase):
 
     def test_schema_text_round_trip(self):
         s = schema_io.read_schema(self.write("s.txt", TEXT))
-        again = schema_io.read_schema(self.write("t.txt", schema_io.schema_text(s)))
+        text = schema_io.schema_text(s)
+        # what the model reads leaves out every entry's source (where the idea came from), which says nothing to it
+        self.assertTrue(s["sources"]["predicates"] and s["sources"]["patterns"])
+        self.assertNotIn("source", text.lower())
+        self.assertNotIn("mentor", text)
+        again = schema_io.read_schema(self.write("t.txt", text))
         self.assertEqual(again["entity_classes"], s["entity_classes"])
         self.assertEqual(again["predicates"], s["predicates"])
         self.assertEqual(sorted(again["patterns"]), sorted(s["patterns"]))
