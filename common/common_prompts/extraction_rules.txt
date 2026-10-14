@@ -15,7 +15,8 @@
 - A qualifier stays in the subject or object, as written: "daily snow cover"
   is one object, not "snow cover" plus a separate triple for "daily". A
   qualifier stated as a fact of its own ("Data are provided daily.") is a
-  triple of its own.
+  triple of its own, and so is a word describing the record's data set itself
+  ("This global data set ...": the data set covers the globe).
 - A table of values inside the record (rows of measurements, one per object):
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.

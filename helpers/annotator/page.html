@@ -227,7 +227,16 @@ let batch = null, current = 0, activeRow = null, saveTimer = null, saving = fals
 // triples; tripleAt: which of those is shown (0 = the describes triple, if the record has one).
 let oneAtATime = (() => { try { return localStorage.getItem("oneAtATime") !== "0"; } catch (_) { return true; } })();
 let tripleAt = 0;
-const tripleRows = (rec) => rec.rows.map((r, j) => isDescribes(r) ? -1 : j).filter((j) => j >= 0);
+let shownRow = null;                       // the row shown (one at a time): it stays shown when the order changes
+// The record's ground truth triples (row numbers) in the order of the record's text: by where each source text
+// starts, then ends; ties, and those whose source text isn't found (or is empty), keep the file's order, the
+// latter after all the others. The file keeps its own order.
+const tripleRows = (rec) => {
+  const at = (r) => { const s = rec.text && r.source_text ? findSpan(rec.text, r.source_text) : null;
+                      return s || [Infinity, Infinity]; };
+  return rec.rows.map((r, j) => [j, at(r)]).filter(([j]) => !isDescribes(rec.rows[j]))
+    .sort((a, b) => (a[1][0] - b[1][0]) || (a[1][1] - b[1][1]) || (a[0] - b[0])).map(([j]) => j);
+};
 const stepRows = (rec) => rec.rows.filter(isDescribes).length
   ? [rec.rows.findIndex(isDescribes), ...tripleRows(rec)] : tripleRows(rec);
 
@@ -388,7 +397,7 @@ function drawList() {
 
 // ---------------------------------------------------------------- one record
 function show(i) {
-  if (i !== current) tripleAt = 0;
+  if (i !== current) { tripleAt = 0; shownRow = null; }
   current = i; activeRow = null;
   showIntro();
   drawList();
@@ -443,8 +452,10 @@ function show(i) {
 
   const describes = rec.rows.findIndex(isDescribes);
   const all = tripleRows(rec), steps = stepRows(rec);
+  if (shownRow !== null && steps.includes(shownRow)) tripleAt = steps.indexOf(shownRow);   // the same one, wherever it moved
   tripleAt = Math.max(0, Math.min(tripleAt, steps.length - 1));
   const at = steps[tripleAt], atDescribes = at === describes;
+  shownRow = steps.length ? at : null;
   location.hash = `b=${batch.n}&r=${i}` + (oneAtATime ? `&t=${tripleAt}` : "");
   const add = el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple");
   const switcher = el("button", { onclick: () => { oneAtATime = !oneAtATime;
@@ -475,17 +486,19 @@ function show(i) {
 }
 
 // Go to the record's k-th row to annotate (0 = its describes triple, if it has one); with one at a time, show it.
+// k counts from the one shown, in the order as it is now (a source text set since may have moved it).
 function goToTriple(k) {
   const steps = stepRows(batch.records[current]);
-  if (k < 0 || k >= steps.length) return;
-  tripleAt = k;
+  const target = (shownRow !== null && steps.includes(shownRow) ? steps.indexOf(shownRow) : tripleAt) + (k - tripleAt);
+  if (target < 0 || target >= steps.length) return;
+  tripleAt = target; shownRow = steps[target];
   show(current);
 }
 
 // Go to the ground truth triple of row j (a click on its source text): show it, if one at a time, and put the cursor in it.
 function goToRow(j) {
   const k = stepRows(batch.records[current]).indexOf(j);
-  if (oneAtATime && k >= 0 && k !== tripleAt) { tripleAt = k; show(current); }
+  if (oneAtATime && k >= 0 && k !== tripleAt) { tripleAt = k; shownRow = j; show(current); }
   const f = document.querySelector(`[data-row="${j}"]`); if (f) f.focus();
 }
 
@@ -563,8 +576,8 @@ function describesRow(rec, j, heading = true) {
 }
 function tripleRow(rec, j, heading = true) {
   const r = rec.rows[j];
-  // Its number among the record's ground truth triples (the describes triple isn't one), as its heading.
-  const n = rec.rows.slice(0, j + 1).filter((x) => !isDescribes(x)).length;
+  // Its number among the record's ground truth triples, in the text's order (the describes triple isn't one).
+  const n = tripleRows(rec).indexOf(j) + 1;
   return el("div", { class: "row", "data-row-box": j },
     heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
     el("div", { class: "triple" },
@@ -592,10 +605,10 @@ function setActive(j) {
   if (m) { const box = $("text"); box.scrollTop = m.offsetTop - box.offsetTop - box.clientHeight / 3; }
 }
 function addRow(rec) {
-  tripleAt = stepRows(rec).length;         // the new one, once added
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
                   problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. Fill in the empty ones, or delete it." }] });
+  shownRow = rec.rows.length - 1;          // the new one (last, until it gets a source text)
   show(current);
   const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);
   if (inputs.length) inputs[0].focus();
@@ -604,6 +617,7 @@ function deleteRow(rec, j) {
   const r = rec.rows[j];
   if ((r.subject || r.object) && !confirm(`Delete “${r.subject} ${r.predicate} ${r.object}”?`)) return;
   rec.rows.splice(j, 1);
+  shownRow = null;                         // row numbers moved: stay at the same place in the order
   show(current); changed();
 }
 function useSelection(rec, j) {
@@ -615,7 +629,8 @@ function useSelection(rec, j) {
   rec.rows[j].source_text = sel.toString().replace(/\s+/g, " ").trim();
   const area = document.querySelector(`textarea[data-row="${j}"]`);
   if (area) area.value = rec.rows[j].source_text;
-  drawText(); changed();
+  changed();
+  show(current);                           // in the text's order now, and still the one shown
 }
 
 // ---------------------------------------------------------------- highlighting
