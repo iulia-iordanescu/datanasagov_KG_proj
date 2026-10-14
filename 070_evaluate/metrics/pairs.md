@@ -243,7 +243,7 @@ In cases 1, 2, and 4 the wrong pair is a partial pair, so your review of partial
 There are two ways to catch it:
 
 - **An AI model judges** whether such an occurrence and ground truth triple state the same fact, as a third pair level. Evaluation doesn't do this: every run would cost [model calls](../../docs/terminology.md#8-the-pipeline), and a model tends to favor output like its own.
-- **A person checks a sample** of the occurrences left extracted only and counts how many are actually true. This doesn't change the metrics; it shows how far they are understated. Not done yet (see `070_evaluate/070_evaluate.md`, *To do*).
+- **A person checks a sample** of the occurrences left extracted only and counts how many are actually true. This doesn't change the metrics; it shows how far they are understated. Not done yet (see the [improvements list](../../docs/improvements.md#070_evaluate)).
 
 ## Sources
 

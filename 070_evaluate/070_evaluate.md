@@ -48,7 +48,6 @@ When a run stops to ask you something, or leaves something for you to check, do 
 - **[Margins of error](../docs/terminology.md#7-evaluating-extraction-step-070) need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
 - **Add [schema additions](../docs/terminology.md#3-schemas) (`annotations/schema_additions.txt`) only from the tuning part**, or from outside knowledge: adding [entity classes](../docs/terminology.md#3-schemas) or [predicates](../docs/terminology.md#3-schemas) because of what held-out records need is tuning on them.
 - **Report any metric** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
-- **Raise With Mentors: checking a sample of the occurrences left extracted only,** to see how far precision and recall are understated ([`metrics/pairs.md`](metrics/pairs.md), *The same fact in different words*). It's an involved process: such an occurrence can be the same fact in different words as a [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) left ground truth only, a repeat of a fact already paired, a fact the ground truth lacks, the result of a wrong translation, or actually wrong, and each means something different.
 
 ## Inputs
 

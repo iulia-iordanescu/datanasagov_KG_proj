@@ -30,6 +30,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `README.md` | This page: what's where, and why the pipeline is built the way it is | — |
 | `docs/terminology.md` | What every word used here means | — |
 | `docs/findings.md` | What has been measured about the pipeline, newest first: each result with the runs it comes from and what it does and doesn't mean | — |
+| `docs/improvements.md` | The [improvements list](docs/terminology.md#8-the-pipeline): changes to make to the pipeline itself, each with why and where the idea came from | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your Ask Sage key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
 | `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the [ground truth candidates pool](docs/terminology.md#4-ground-truth-and-samples) (`ground_truth_candidates.csv`, `.json`), the hand-built schema, the schema additions, the translation table (`component_class_mapping.csv`) and the log of [held-out looks](docs/terminology.md#7-evaluating-extraction-step-070) (both added to by 070), your [verdicts](docs/terminology.md#7-evaluating-extraction-step-070) on 070's [partial pairs](070_evaluate/metrics/pairs.md), and the notes and old drafts they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
@@ -197,9 +198,4 @@ Details: [`070_evaluate/070_evaluate.md`](070_evaluate/070_evaluate.md).
 
 [Step](docs/terminology.md#8-the-pipeline) 080 will build the graph from the structured [fields](docs/terminology.md#1-records-and-their-text) ([maintainers](docs/terminology.md#1-records-and-their-text), keywords, formats, as in phase 1) and the [extracted triples](docs/terminology.md#6-extracting-with-a-schema-step-060), as plain files of [nodes](docs/terminology.md#8-the-pipeline) and [edges](docs/terminology.md#8-the-pipeline). Which graph database to load them into (a labeled property graph such as Neo4j is the plan) is decided separately.
 
-To decide when step 080 is built:
-
-- **Linking instances to reference lists**, so that one thing named several ways ("Aqua", "EOS PM-1") becomes one node. First processing levels, a short fixed list (L0, L1A, L1B, L2, L3, L4: every spelling, such as "Level 3" or "L-3", mapped to one); then NASA's missions ([A to Z of NASA missions](https://www.nasa.gov/a-to-z-of-nasa-missions/)), where an instance with no match is flagged for a person to check, not dropped, since the catalog also names missions of other agencies.
-- **Which predicates give properties instead of edges**, by the rule of *Phase 1* above: a processing level, for example, has few values, which people filter by but don't go from node to node through.
-- **Splitting a number with a unit** ("250 m") into a value and a unit.
-- **Splitting a qualifier from what it qualifies** ("daily snow cover" into snow cover, daily), which annotation and extraction keep together (annotation guidelines, rule 9 of *Writing a classed triple*).
+What to decide when step 080 is built is in the [improvements list](docs/improvements.md#080_build_graph).
