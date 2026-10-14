@@ -139,6 +139,8 @@ class Vocabulary(unittest.TestCase):
             text = (ROOT / f).read_text(encoding="utf-8-sig")
             if f.endswith(".py"):
                 text = re.sub(r'"\s*\n\s*f?"', "", text)                         # strings continued on the next line
+            if f.endswith(".md"):                                              # a fenced block is code (a diagram's own
+                text = re.sub(r"```.*?```", lambda b: "\n" * b.group(0).count("\n"), text, flags=re.S)   # `class`), not prose
             for m in self.BARE.finditer(text):
                 start = text.rfind("\n", 0, m.start()) + 1
                 line = text[start:text.find("\n", m.start())]
