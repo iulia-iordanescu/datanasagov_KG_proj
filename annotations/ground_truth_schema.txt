@@ -14,6 +14,9 @@ TimeSpan          a period with a start and an end
 PhysicalQuantity  a property that can be measured
 CelestialBody     a natural object in space
 Version           a label marking one release of something
+Region            an area of the Earth or another body; "global" for all of it
+ProcessingLevel   how far data have been processed from what the instrument recorded, e.g. Level 2
+Value             a number with its unit, e.g. 500 m
 
 PREDICATES
 ----------
@@ -47,3 +50,9 @@ PROVIDES_ACCESS_TO   makes available
                      Organization -> Document
 SPONSORED_BY         is sponsored by
                      WebTool -> Organization
+HAS_SPATIAL_COVERAGE  covers the area
+                      Dataset -> Region
+HAS_PROCESSING_LEVEL  is processed to the level
+                      Dataset -> ProcessingLevel
+HAS_SPATIAL_RESOLUTION  has the spatial resolution
+                        Dataset -> Value
