@@ -147,7 +147,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     coined = with_coined(read_ground_truth_schema(inputs["ground_truth_schema"]), finished)["coined"]
     if coined["entity_classes"] or coined["predicates"]:
         uses = coined_uses(finished, coined)
-        raise Stop(f"The finished records' rows of the ground truth (describes triples included) use {len(uses)} "
+        raise Stop(f"The finished records' ground truth triples and describes triples use {len(uses)} "
                    f"entity class(es) or predicate(s) that aren't in the ground truth schema ({ref_path(Path(inputs['ground_truth_schema']))}), so 070 can't translate into "
                    f"them: {named(uses, 10, '; ')}. For each one, either add it to the ground truth schema with a "
                    f"one-line definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a "

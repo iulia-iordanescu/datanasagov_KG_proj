@@ -1021,8 +1021,8 @@ async function showHome() {
       box("Translation table", "Extraction and the ground truth use different schemas. Once step 070 has run, choose " +
           "for each entity class and predicate of the current schema the one of the ground truth schema that means " +
           "the same thing.", openMapping),
-      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an extracted triple and a ground " +
-          "truth triple that only partly match) whether the two state the same fact.", openPartial),
+      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an occurrence of an extracted " +
+          "triple and a ground truth triple that only partly match) whether the two state the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates, and patterns a person adds to the current schema, each with " +
           "where it was found.",
           () => openAdditions())),
@@ -1082,7 +1082,7 @@ function gapsList() {
     el("div", { class: "meta" }, "Add each one you mean to keep, with a one-line definition; fix any typo where it's used."),
     el("ul", {},
       gaps.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
-        ` (used in ${x.uses} row(s) of the ground truth, describes triples included)`, addControl(x)))));
+        ` (used by ${x.uses} ground truth triple(s) and describes triple(s))`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table
@@ -1314,11 +1314,12 @@ function drawPartial() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu()),
     el("p", { class: "meta" }, `${partial.items.length} partial pair(s) of tuning records; ${left} not reviewed yet.`),
-    el("p", { class: "meta" }, "A partial pair is an extracted triple and a ground truth triple whose predicates agree, " +
-      "and whose subjects, and whose objects, are each the same or one contained in the other as whole words. Such a " +
+    el("p", { class: "meta" }, "A partial pair is an occurrence of an extracted triple (translated into the ground truth schema) and a ground " +
+      "truth triple whose predicates agree, and whose subject instances, and whose object instances, are each the " +
+      "same or one contained in the other as whole words. Such a " +
       "pairing can be wrong (MODIS vs MODIS Terra). A pair you mark “not the same fact” is never paired again: step 070 " +
       "then pairs each of the two with another partner if it can; otherwise the ground truth triple is ground truth " +
-      "only, and the extracted triple's occurrence is extracted only."),
+      "only, and the occurrence is extracted only."),
     el("label", { class: "meta" },
       el("input", { type: "checkbox", checked: onlyUnreviewed,
                     onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
@@ -1700,11 +1701,11 @@ async function showSchema() {
     el("td", {}, x.definition || el("span", { class: "empty" }, "no definition yet"),
        kind === "predicate" && x.patterns.length
          ? el("div", { class: "meta" }, x.patterns.map(([s, o]) => `${s} → ${o}`).join(" · ")) : null),
-    el("td", { class: "schemauses", title: "rows of the ground truth that use it (describes triples included)" }, String(x.uses)));
+    el("td", { class: "schemauses", title: "ground truth triples and describes triples that use it" }, String(x.uses)));
   const table = (kind, title) => el("section", {},
     el("h3", {}, `${title} `, el("span", { class: "meta" }, `(${v[kind].length})`)),
     el("table", { class: "schematable" },
-      el("thead", {}, el("tr", {}, el("th", {}, kind === "predicate" ? "Predicate" : "Entity class"), el("th", {}, "Definition"), el("th", { title: "rows of the ground truth that use it (describes triples included)" }, "Uses"))),
+      el("thead", {}, el("tr", {}, el("th", {}, kind === "predicate" ? "Predicate" : "Entity class"), el("th", {}, "Definition"), el("th", { title: "ground truth triples and describes triples that use it" }, "Uses"))),
       el("tbody", {}, v[kind].map((x) => row(kind, x)))));
   const grid = el("div", { class: "schemagrid" }, table("entity class", "Entity classes"), table("predicate", "Predicates"));
   filter.addEventListener("input", () => {

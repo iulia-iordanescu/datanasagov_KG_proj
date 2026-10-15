@@ -167,7 +167,7 @@ def label_component_instances(triples, calls) -> Labels:
             got, missing = _match(batch, answers)
             missing = [v for v in missing if v not in {r for r, _ in refused}]
             if missing:
-                # One more try for those left out, with the vocabulary as it is now.
+                # One more try for those left out, with the running vocabulary as it is now.
                 again = {}
                 for reply in ask_split(lambda values: ask({v: items[v] for v in values}), missing, refused):
                     again.update(reply)
