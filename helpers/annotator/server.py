@@ -19,7 +19,9 @@ What it reads
     outputs/intermediate_results/070_evaluate/compared_triples.csv                    evaluation's partial pairs
     annotations/partial_pair_reviews.csv                                     your verdicts on them
     annotations/schema_additions.txt                                         the schema additions
-    annotations/README.md                                                    the Help shown on the page
+    annotations/README.md                                                    each view's How to use this view
+    annotations/guidelines.md, docs/terminology.md, any other .md of the repository   what the Help menus open
+    helpers/annotator/fonts/*.woff2                                          the page's typefaces
     outputs/intermediate_results/060_extract/extracted_triples_details.json  extraction's component classes outside the schema
 
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
@@ -53,9 +55,9 @@ applies). A file with lines the layout can't read is not rewritten (fix it
 by hand first). Extraction's last list of component classes outside the schema is shown
 alongside, each ready to add with its source.
 
-Help: the page's Help button shows the section of annotations/README.md
-about the view you're on (HELP_SECTIONS), so the tool's explanation lives in
-one place.
+Help: each view's Help menu (How to use this view) shows the section of
+annotations/README.md about that view (HELP_SECTIONS), so the tool's
+explanation lives in one place.
 
 Partial pairs (common/common_helpers/partial_reviews.py): evaluation's last run's partial
 pairs of TUNING records, each with its two triples and the record's text, for a
@@ -64,7 +66,7 @@ are shown too, so a verdict can be changed. Held-out records are never
 shown or accepted (reviewing them would mean looking at held-out results).
 
 The checks are step 050's own, all from common/common_helpers/validate.py (source texts,
-"is it in the text", and whether each entity class, predicate and pattern
+"is it in the text", and whether each entity class, predicate, and pattern
 is in the ground truth schema), shown in plain words (MESSAGES). The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
@@ -74,8 +76,9 @@ step 070 stops while a finished record uses one.
 
 Adding to the ground truth schema: each error or flag "not in the ground truth schema" on
 a row has a button that adds the entity class or predicate, with the one-line definition the
-person types, or the pattern; so does the list, above every view, of what
-the ground truth uses that the ground truth schema lacks (ground_truth_schema_gaps). A
+person types, or the pattern; so does the list, in the ground truth schema's
+overview (Help -> Ground truth schema), of what the ground truth uses that the
+ground truth schema lacks (ground_truth_schema_gaps). A
 pattern is offered only once its entity classes are in the schema. The file
 is changed by common/common_helpers/schema_io.add_to_ground_truth_schema and
 add_pattern_to_ground_truth_schema, which add one entry or pattern, check that
@@ -120,7 +123,7 @@ METRICS = RESULTS_DIR / "070_evaluate" / "metrics.json"
 COMPARED = RESULTS_DIR / "070_evaluate" / "compared_triples.csv"
 ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
 README = ANNOTATIONS_DIR / "README.md"
-GUIDELINES = ANNOTATIONS_DIR / "guidelines.md"           # what to write in the ground truth: the Guidelines button
+GUIDELINES = ANNOTATIONS_DIR / "guidelines.md"           # what to write in the ground truth: Help -> Guidelines
 TERMINOLOGY = ROOT / "docs" / "terminology.md"            # each term's definition, shown when a linked term is hovered
 #: The heading of annotations/README.md that explains each view of the page.
 HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
@@ -128,11 +131,13 @@ HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "partial": "### Reviewing partial pairs",
                  "additions": "### Adding to the schema additions",
                  "vocab": "### The ground truth schema"}
+#: Sections shown after a view's own: the whole tool's two lists, with Ground truth's (the view used most).
+HELP_ALSO = {"batch": ("### What the tool can do", "### What the tool can't do")}
 EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 PAGE = Path(__file__).with_name("page.html")
-#: The page's typefaces (Public Sans and JetBrains Mono, SIL Open Font License: the OFL-*.txt beside them).
+#: The page's typefaces (Libre Franklin and JetBrains Mono, SIL Open Font License: the OFL-*.txt beside them).
 FONTS = Path(__file__).with_name("fonts")
 KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
@@ -274,7 +279,7 @@ def _offer(code: str, row: dict, flags: list) -> dict | None:
 
 
 def _is_blank(row: dict) -> bool:
-    """A row with no subject, predicate and object: in a file, the one row of
+    """A row with no subject, predicate, and object: in a file, the one row of
     a record that states no facts; on the page, a row not filled in yet."""
     return not (row["subject"] or row["predicate"] or row["object"])
 
@@ -292,19 +297,6 @@ def record_view(data: Data, rid: str, rows: list, finished: bool) -> dict:
         "finished": finished,
         "rows": [{**r, "problems": check_row(data, r, title)} for r in rows],
     }
-
-
-def docs_url() -> str:
-    """Where the repository's documents are on GitHub, on the branch the tool runs from, for the page's links
-    (e.g. https://github.com/<owner>/<repo>/blob/<branch>/), or "" when Git doesn't say (no remote, not on a branch)."""
-    import subprocess
-
-    def git(*args) -> str:
-        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
-        return r.stdout.strip() if r.returncode == 0 else ""
-    remote, branch = git("remote", "get-url", "origin"), git("branch", "--show-current")
-    m = re.match(r"(?:https://github\.com/|git@github\.com:)([^/]+/[^/]+?)(?:\.git)?$", remote)
-    return f"https://github.com/{m.group(1)}/blob/{branch}/" if m and branch else ""
 
 
 def batch_view(data: Data, n: int, path: Path) -> dict:
@@ -471,7 +463,7 @@ def _gtt_definitions(gtt: dict) -> dict:
 
 def _crt() -> dict | None:
     """The current schema's definitions (common/common_helpers/component_class_mapping.crt_definitions),
-    or None if extraction's schema_used.json isn't there."""
+    or None if step 060's schema_used.json isn't there."""
     if not SCHEMA_USED.exists():
         return None
     return crt_definitions(json.loads(SCHEMA_USED.read_text(encoding="utf-8")))
@@ -580,7 +572,7 @@ def delete_mapping_row(line: int, kind: str, name: str) -> None:
 # --------------------------------------------------------------------------
 
 def _plain(markdown: str) -> str:
-    """Markdown as plain text, for a tooltip: links become their words; bold, italics and code marks go."""
+    """Markdown as plain text, for a tooltip: links become their words; bold, italics, and code marks go."""
     text = re.sub(r"\[([^\[\]]+)\]\([^()\s]+\)", r"\1", markdown)
     return re.sub(r"\*\*|(?<!\w)\*(?!\s)|(?<!\s)\*(?!\w)|`", "", text).strip()
 
@@ -610,19 +602,25 @@ def doc_text(path: str) -> dict:
     return {"file": target.relative_to(ROOT.resolve()).as_posix(), "markdown": target.read_text(encoding="utf-8")}
 
 
+def _section(text: str, head: str) -> str:
+    """The README's section under `head`, as Markdown: from the heading to the next heading."""
+    i = text.index(head)
+    nxt = [j for j in (text.find("\n## ", i + len(head)), text.find("\n### ", i + len(head))) if j != -1]
+    return text[i:min(nxt) if nxt else len(text)].strip()
+
+
 def help_text(view: str) -> dict:
-    """The README's section for a view, as Markdown: from its heading to the
-    next heading."""
+    """The README's section for a view, as Markdown; for Ground truth, followed by the two lists of what the tool
+    can and can't do (HELP_ALSO)."""
     head = HELP_SECTIONS.get(view)
     if head is None:
         raise ValueError(f"no help for {view!r}")
     text = README.read_text(encoding="utf-8")
-    i = text.index(head)
-    nxt = [j for j in (text.find("\n## ", i + len(head)), text.find("\n### ", i + len(head))) if j != -1]
-    section = text[i:min(nxt) if nxt else len(text)].strip()
+    section = _section(text, head)
+    whole = "\n\n".join([section] + [_section(text, h) for h in HELP_ALSO.get(view, ())])
     # The section's first paragraph after its heading: what the view is for, shown at the top of the view.
     paragraphs = [p.strip() for p in section[len(head):].split("\n\n") if p.strip()]
-    return {"file": f"annotations/{README.name}", "markdown": section, "intro": paragraphs[0] if paragraphs else ""}
+    return {"file": f"annotations/{README.name}", "markdown": whole, "intro": paragraphs[0] if paragraphs else ""}
 
 
 # --------------------------------------------------------------------------
@@ -675,7 +673,7 @@ def _one_word(x) -> bool:
 
 
 def check_addition(data: Data, e: dict) -> str | None:
-    """What's wrong with one entry (an entity class, a predicate or a
+    """What's wrong with one entry (an entity class, a predicate, or a
     pattern), or None."""
     if e.get("entry_type") == "pattern":
         if not all(_one_word(e.get(k)) for k in ("subject_class", "predicate", "object_class")):
@@ -750,7 +748,7 @@ def _read_reviews_rows() -> list:
 def partial_view(data: Data) -> dict:
     """Evaluation's last run's partial pairs of tuning records, plus pairs
     ruled out by an earlier review (no longer paired, so not in compared_triples.csv),
-    each with the verdict so far and the record's title, position and text."""
+    each with the verdict so far and the record's title, position, and text."""
     reviews = {row_key(r): r["verdict"] for r in _read_reviews_rows()}
     items, seen = [], set()
 
@@ -847,7 +845,7 @@ def _csv_bytes(columns: list, rows: list) -> bytes:
 def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
     """(what the page is shown, {path: new bytes}) for renaming `old` to `new`,
     or merging `old` into `new` when `new` is already in the ground truth
-    vocabulary."""
+    schema or coined in the ground truth."""
     if kind not in KIND_KEYS:
         raise ValueError("kind must be entity class or predicate")
     old, new = str(old or "").strip(), str(new or "").strip()
@@ -857,8 +855,8 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
     spelled = {component_class_key(n): n for n in vocab}
     if component_class_key(old) not in spelled:
         raise ValueError(f"{old} isn't {'an entity class' if kind == 'entity class' else 'a predicate'} of the ground "
-                         f"truth vocabulary, so it can't be renamed or merged: reload the page to see the vocabulary "
-                         f"as it is now.")
+                         f"truth schema, nor coined in the ground truth, so it can't be renamed or merged: reload the "
+                         f"page to see the ground truth schema as it is now.")
     old = spelled[component_class_key(old)]
     if component_class_key(old) in FIXED or component_class_key(new) in FIXED:
         raise ValueError("CatalogEntry, DESCRIBES, and X are written by code (the describes triple), so they can't be "
@@ -946,7 +944,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
                 unopened.append(p.name)
     if unopened:
         notes.append(f"Draft batch(es) not opened yet still use {old}: {', '.join(unopened)} (step 050's output, never "
-                     f"changed here). Once opened, the tool flags {old} there: change it to {target}.")
+                     f"changed here). Once opened, the tool marks {old} there ✖: change it to {target}.")
     if not files:
         raise ValueError(f"nothing uses {old}: there is nothing to change")
     return {"kind": kind, "old": old, "new": target, "merge": merging, "changes": changes, "notes": notes}, files
@@ -1042,8 +1040,7 @@ def make_handler(data: Data):
                 elif url.path == "/api/batches":
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
-                                "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt),
-                                "docs_url": docs_url()})
+                                "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt)})
                 elif url.path == "/api/gaps":
                     self._json(ground_truth_schema_gaps(data, read_ground_truth()))
                 elif url.path == "/api/mapping":

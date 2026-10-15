@@ -234,7 +234,7 @@ def _per_record(records: list, hidden: int) -> str:
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
         lines += [f"Describes: {mark} extraction said `{d['said'] or '(none named)'}` (translated into the ground truth "
-                  f"vocabulary); the ground truth says `{d['truth'] or '(none)'}` (ground truth schema)", ""]
+                  f"schema); the ground truth says `{d['truth'] or '(none)'}` (ground truth schema)", ""]
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         if c["pairs"]:
@@ -308,7 +308,7 @@ def _mismatch_lines(mismatches: list) -> list:
              "exact or partial) had `CelestialBody` (ground truth schema) as its subject's entity class;",
              "- **entity class, object:** extraction used a component class of the current schema as the entity "
              "class of an extracted triple's object, translated to one component class of the ground truth "
-             "vocabulary, while the ground truth triple paired with it had another as its object's entity class. "
+             "schema, while the ground truth triple paired with it had another as its object's entity class. "
              "One pair can count twice: once for the subjects' entity classes, once for the objects';",
              "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject and "
              "object, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
@@ -316,7 +316,7 @@ def _mismatch_lines(mismatches: list) -> list:
              "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
              "Component classes are compared after translation. All 9 events share one cause: the translation table's row "
              "`Body` (current schema) --> `Spacecraft` (ground truth schema). Had that row said `Body` --> `CelestialBody` (ground truth "
-             "vocabulary), none of the 9 would have happened. So that row of the translation table is the "
+             "schema), none of the 9 would have happened. So that row of the translation table is the "
              "likely mistake, and the one to check.", ""]
     if not mismatches:
         return lines + ["None.", ""]
@@ -419,7 +419,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                           f"({TABLE}, shows the suggestion), take the suggestion if right, else keep (none); {AGAIN}")
     if translation.outdated:
         warnings.append(f"{len(translation.outdated)} row(s) of annotations/component_class_mapping.csv translate to (none) though the ground "
-                        f"truth vocabulary now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
+                        f"truth schema now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
                         f"date, and extracted triples that use those component classes can't form pairs (a predicate) "
                         f"or strict pairs (an entity class). Check them ({TABLE}, marked *now exists*); keep (none) "
                         f"only if the ground truth schema's component class means something else; {AGAIN}")
@@ -437,7 +437,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                  + ("(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION)
                                     else f"{c['translated_to']} (ground truth schema)")
                                  + f", where the ground truth triple says {c['gtt_component_class']} (ground truth "
-                                   f"vocabulary), {c['count']} times" for c in frequent], 5, "; ")
+                                   f"schema), {c['count']} times" for c in frequent], 5, "; ")
                         + f". A row of annotations/component_class_mapping.csv may translate wrong, to (none) when a "
                           f"component class fits, or with the wrong swap_subject_and_object, which turns stated facts "
                           f"into misses. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: {this_report()}, section *Results*, subsection "
@@ -529,7 +529,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                   f"averaged per entity class: {readings.pct(d['per_entity_class_average'])}.", ""]
         if v["confusion"]:
             lines += ["| The ground truth says (ground truth schema) | Extraction said (translated into the ground "
-                      "truth vocabulary) | Records |", "|---|---|---:|"]
+                      "truth schema) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])

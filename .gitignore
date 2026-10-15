@@ -220,7 +220,6 @@ __marimo__/
 .env
 data/
 outputs/
-docs/prompts.md
 docs/pipeline_implementation_prompt.md
 .myvenv/
 

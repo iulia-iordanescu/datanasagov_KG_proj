@@ -46,16 +46,12 @@
   header nav.tabs .tab.current { background: var(--bar-ink); }
   header nav.tabs .tab.current > button, header nav.tabs .tab.current { color: #0f3d4a; }
   header .tab { display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; }
-  header .tabs button, header .tools button, header .topbar > button { background: transparent; border: 0;
       color: var(--bar-ink); padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
-  header .tabs button:hover, header .tools button:hover, header .topbar > button:hover { background: var(--bar-soft); }
   header .tab.current, header .tab.current button { background: var(--bar-ink); color: var(--bar); font-weight: 600; }
   header .tab select { border: 0; background: transparent; color: var(--bar-ink); font-weight: 600; padding: 6px 8px;
                        max-width: 330px; cursor: pointer; }
   header .tab select option { color: var(--ink); background: var(--panel); font-weight: 400; }
   header .tab.current select { color: var(--band-solid, #1f3a5f); }
-  header .tools { display: inline-flex; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--bar-soft); }
-  header .tools[hidden] { display: none; }
   header #status { color: var(--bar-ink); opacity: 0.85; }
   header #status.failed { color: #ffd2cc; opacity: 1; }
   header #status.saved { color: #bdf2cc; opacity: 1; }
@@ -137,11 +133,8 @@
   .headline .listtoggle { color: var(--accent); }
   .headmeta { margin: 4px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
   .headmeta .pill { margin-left: 6px; }
-  .recordhead .progressbar { margin: 0 -16px; border-radius: 0 0 12px 12px; height: 4px; }
   body.norecords main { grid-template-columns: 1fr; }
   body.norecords nav#records { display: none; }
-  .progressbar { height: 6px; border-radius: 999px; background: var(--bg); margin-top: 6px; overflow: hidden; }
-  .progressbar > div { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 600; }
   button.primary:hover { filter: brightness(1.08); background: var(--accent); }
   @media (prefers-color-scheme: dark) { button.primary { color: #10181b; } }
@@ -252,7 +245,6 @@
   mark { background: var(--soft); border-radius: 3px; }
   mark.active { background: var(--strong); outline: 0; box-shadow: 0 0 0 2px var(--sky); }
   .headline h2 { font-size: 18px; font-weight: 600; color: var(--ink); }
-  .progressbar > div, .recordhead .progressbar > div { background: var(--sky); }
   button { border-radius: 8px; }
   button.primary { background: var(--navy); border: 1px solid var(--navy); color: #fdfaf3; font-weight: 600; box-shadow: none; }
   button.primary:hover { background: var(--navy); filter: brightness(1.12); }
@@ -262,8 +254,6 @@
   nav#records { border-radius: 12px; }
   nav button.current { background: var(--navy-bg); box-shadow: inset 4px 0 0 var(--sky); }
   .part.tuning { color: var(--navy); background: var(--navy-bg); border-color: var(--navy); }
-  .striptools { margin-left: auto; display: inline-flex; gap: 6px; }
-  .paneltools { margin: 4px 0 8px; }
   button.tool { padding: 3px 10px; font-size: 13.5px; background: var(--navy-bg); border-color: transparent; color: var(--navy); font-weight: 600; }
   button.tool:hover { border-color: var(--navy); background: var(--navy-bg); }
   .home h2 { font-size: 26px; color: var(--navy); margin-bottom: 8px; }
@@ -275,7 +265,6 @@
   .viewbox:not(:first-child) { background: var(--steel-bg); }
   .viewbox h3 { margin: 0 0 4px; color: var(--navy); }
   .viewbox p { margin: 0 0 10px; color: var(--label); flex: 1; }
-  .doclinks a { color: var(--navy); }
   .schematable th { background: var(--navy-bg); color: var(--navy); }
   /* ✖ (must fix) and ⚑ (worth a look) are both red, to catch the eye: ✖ solid, ⚑ pale */
   :root { --flag: #b42318; --flag-bg: #fdecea; --error: #b42318; --error-bg: #fdecea; }
@@ -327,10 +316,8 @@
                      box-shadow: 0 6px 18px rgba(20, 30, 40, 0.15); display: flex; flex-direction: column; gap: 4px; }
   .toolsmenu .menu button.tool { text-align: left; width: 100%; }
   .headline label.finished { align-self: center; }
-  .headline > button, .headline .recnum { align-self: center; }
   section.card, section.card.textcard, section.card.triplecard, section.card.recordhead { border: 1px solid var(--line); }
   nav button.current { box-shadow: none; background: var(--navy-bg); font-weight: 600; }
-  .recnum { font-weight: 600; color: var(--muted); min-width: 3.2em; text-align: center; }
   .headmeta { gap: 8px; }
   .recinfo summary { cursor: pointer; color: var(--navy); font-weight: 600; }
   .recinfo { position: relative; }              /* the details open in a panel below it: the button doesn't move */
@@ -353,7 +340,7 @@
 <body>
 <header>
   <div class="topbar">
-    <h1><button id="homebutton" title="Home: what the tool is for, its views, and where its documents are">Annotation tool<span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span></button></h1>
+    <h1><button id="homebutton" title="Home: what the tool is for, and its views">Annotation tool<span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span></button></h1>
     <nav class="tabs" aria-label="Views">
       <span class="tab" id="tab-batch" title="Correct a model's drafts into ground truth, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
       <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
@@ -486,11 +473,15 @@ function drawProgress() {
 
 // ---------------------------------------------------------------- batches
 let BATCHES = [];
-// The batch to go on with: the first one with records left to finish, else a draft not opened yet, else the last one.
-const nextBatch = () => BATCHES.find((b) => b.ground_truth && b.finished < b.records)
-                     || BATCHES.find((b) => !b.ground_truth) || BATCHES[BATCHES.length - 1] || null;
-async function loadBatches() {
-  const data = await api("/api/batches");
+// The batch to go on with, in pool order: the first one with records left to finish, else the first draft not opened
+// yet, else the last one.
+const nextBatch = () => {
+  const upward = [...BATCHES].sort((a, b) => a.n - b.n);       // the server lists them newest first
+  return upward.find((b) => b.ground_truth && b.finished < b.records) || upward.find((b) => !b.ground_truth)
+      || upward[upward.length - 1] || null;
+};
+// The Ground truth dropdown: one entry per batch; `chosen` stays selected.
+function fillBatchList(data, chosen) {
   BATCHES = data.batches;
   const pick = $("batch");
   pick.replaceChildren(el("option", { value: "" }, "Ground truth: choose a batch"));
@@ -498,11 +489,16 @@ async function loadBatches() {
     const what = b.ground_truth ? `${b.finished} of ${b.records} finished` : "a new draft, not opened yet";
     pick.append(el("option", { value: b.n }, `Ground truth: batch ${b.n} (${what})`));
   }
+  if (chosen !== undefined) pick.value = String(chosen);
+}
+async function loadBatches() {
+  const data = await api("/api/batches");
+  fillBatchList(data);
+  const pick = $("batch");
   const warnings = [...data.problems];
   if (!data.records_found) warnings.unshift("outputs/intermediate_results/020_clean/records.jsonl wasn't found, so records' texts can't be shown or checked. Run py 010_harvest/run.py and py 020_clean/run.py, then restart the tool (py helpers/annotate.py).");
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
   drawGaps(data.gaps);
-  DOCS = data.docs_url || "";
   const wanted = new URLSearchParams(location.hash.slice(1));
   if (wanted.has("m")) { await openMapping(); return; }
   if (wanted.has("p")) { await openPartial(); return; }
@@ -527,7 +523,7 @@ async function openBatch(n, at, step = 0) {
   current = Math.min(at || 0, Math.max(batch.records.length - 1, 0));   // so show() keeps tripleAt
   show(current);
   const opt = [...$("batch").options].find(o => o.value === String(n));
-  if (opt && opt.textContent.includes("not opened yet")) loadBatches();   // it now has its copy
+  if (opt && opt.textContent.includes("not opened yet")) fillBatchList(await api("/api/batches"), n);   // it now has its copy
 }
 $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBatch(+e.target.value, 0).catch(fail); });
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
@@ -710,7 +706,7 @@ function show(i) {
   tripleAt = Math.max(0, Math.min(tripleAt, steps.length - 1));
   const at = steps[tripleAt], atDescribes = at === describes;
   shownRow = steps.length ? at : null;
-  location.hash = `b=${batch.n}&r=${i}` + (oneAtATime ? `&t=${tripleAt}` : "");
+  setHash(`b=${batch.n}&r=${i}` + (oneAtATime ? `&t=${tripleAt}` : ""));
   const add = el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple");
   const switcher = el("button", { onclick: () => { oneAtATime = !oneAtATime;
       try { localStorage.setItem("oneAtATime", oneAtATime ? "1" : "0"); } catch (_) {}
@@ -741,13 +737,17 @@ function show(i) {
 
 // Go to the record's k-th row to annotate (0 = its describes triple, if it has one); with one at a time, show it.
 // k counts from the one shown, in the order as it is now (a source text set since may have moved it).
-function goToTriple(k) {
+function goToTriple(k) {                  // true if it moved
   const steps = stepRows(batch.records[current]);
   const target = (shownRow !== null && steps.includes(shownRow) ? steps.indexOf(shownRow) : tripleAt) + (k - tripleAt);
-  if (target < 0 || target >= steps.length) return;
+  if (target < 0 || target >= steps.length) return false;
   tripleAt = target; shownRow = steps[target];
   show(current);
+  return true;
 }
+// The page's address names the view (and the batch, record, and triple shown), so a reload comes back to it; replaced,
+// not added, so the browser's Back button isn't filled with every move.
+function setHash(h) { history.replaceState(null, "", h ? "#" + h : location.pathname); }
 
 // Go to the ground truth triple of row j (a click on its source text): show it, if one at a time, and put the cursor in it.
 function goToRow(j) {
@@ -894,7 +894,7 @@ function useSelection(rec, j) {
 // ---------------------------------------------------------------- highlighting
 // Finds a source text in the text, for highlighting only: the letters and digits must
 // match, in order, and anything else between them may differ. That is more forgiving
-// than the server's check (evened out: only spacing, quote marks and dashes may differ),
+// than the server's check (evened out: only spacing, quote marks, and dashes may differ),
 // so a highlighted source text can still get the server's ✖ "isn't in the record's text".
 function findSpan(text, source) {
   const words = (source || "").match(/[\p{L}\p{N}]+/gu);
@@ -914,7 +914,7 @@ function drawText() {
     if (!span) return;
     for (let k = span[0]; k < span[1]; k++) owners[k].push(j);
   });
-  const number = (j) => rec.rows.slice(0, j + 1).filter((x) => !isDescribes(x)).length;   // as in its heading
+  const number = (j) => tripleRows(rec).indexOf(j) + 1;    // as in its heading: in the text's order
   const parts = [];
   for (let k = 0; k < rec.text.length;) {
     const key = owners[k].join(",");
@@ -986,22 +986,18 @@ async function addToHand(item) {
 // What the ground truth uses that the ground truth schema lacks: counted on the Ground truth schema button, and
 // listed (with the Add buttons) at the top of its overview, redrawn there when it is open.
 let gaps = { component_classes: [], patterns: [], file: "" };
-// Home: what the tool is for, its views (each opens from its box), and its documents on GitHub (on the branch the
-// tool runs from). Shown on start, and by the tool's name at the top left.
-let DOCS = "";                             // e.g. https://github.com/<owner>/<repo>/blob/<branch>/, from the server
+// Home: what the tool is for, and its views (each opens from its box). Shown on start, and by the tool's name at
+// the top left.
 async function showHome() {
   await flush();
   batch = null; mapping = null; partial = null; additions = null; vocab = null;
   $("batch").value = "";
-  location.hash = "";
+  setHash("");
   $("intro").hidden = true;
   $("records").replaceChildren();
   document.body.classList.add("norecords");
   chrome("home");
   const next = nextBatch();
-  const doc = (path, words) => DOCS
-    ? el("a", { href: DOCS + path, target: "_blank", rel: "noopener" }, words)
-    : el("span", { class: "ref doclink", "data-doc": path }, words);
   const box = (title, what, open, extra) => el("div", { class: "viewbox" },
     el("h3", {}, title), el("p", {}, what), el("div", { class: "bar" }, extra || null,
       open ? el("button", { onclick: () => open().catch(fail) }, `Open ${title}`) : null));
@@ -1010,22 +1006,24 @@ async function showHome() {
     el("p", { class: "lead" }, "This is where you make and look after the ground truth: the facts a person writes down for " +
        "a sample of catalog records, as ground truth triples. Step 070 measures extraction against them, so they must say " +
        "exactly what each record states, written the same way every time. Here you correct a model's drafts into ground " +
-       "truth; and, once steps 060 and 070 have run, check how extraction's schema translates into the ground truth " +
+       "truth; and, once steps 060 and 070 have run, check how the current schema translates into the ground truth " +
        "schema, rule on partial pairs, and add to the schema extraction uses."),
     el("div", { class: "viewgrid" },
       box("Ground truth", "Correct the ground truth triples a model drafted (step 050) for each record of a batch: " +
-          "fix, delete or add them, then tick All facts extracted.", null,
+          "fix, delete, or add them, then tick All facts extracted.", null,
           next ? el("button", { class: "primary", onclick: () => { $("batch").value = String(next.n); openBatch(next.n, 0).catch(fail); } },
                     next.ground_truth ? `Go on with batch ${next.n} (${next.records - next.finished} of ${next.records} records left)`
                                       : `Open batch ${next.n} (a new draft)`)
                : el("span", { class: "empty" }, "No batch yet: step 050 drafts one (py 050_annotate/run.py).")),
-      box("Translation table", "After step 070 has run: say which entity class or predicate of the ground truth schema " +
-          "each one of extraction's schema means.", openMapping),
-      box("Partial pairs", "After step 070 has run: rule whether each partial pair states the same fact.", openPartial),
-      box("Schema additions", "Entity classes, predicates and patterns to add to the schema step 060 extracts with.",
+      box("Translation table", "Extraction and the ground truth use different schemas. Once step 070 has run, choose " +
+          "for each entity class and predicate of the current schema the one of the ground truth schema that means " +
+          "the same thing.", openMapping),
+      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an extracted triple and a ground " +
+          "truth triple that only partly match) whether the two state the same fact.", openPartial),
+      box("Schema additions", "Entity classes, predicates, and patterns to add to the schema step 060 extracts with.",
           () => openAdditions())),
     el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch. " +
-       "How to use a view, and the terms: its Help menu."),
+       "In any of the above views, check its Help dropdown menu for useful information."),
     el("p", { class: "signature" }, "Made by Iulia Iordanescu · ",
        el("a", { href: "mailto:iulia.m.iordanescu@gmail.com" }, "iulia.m.iordanescu@gmail.com"))));
 }
@@ -1034,7 +1032,8 @@ function drawGaps(g) {
   gaps = g;
   const n = g.component_classes.length + g.patterns.length;
   GAPCOUNT.hidden = TOOLCOUNT.hidden = !n;
-  GAPCOUNT.textContent = TOOLCOUNT.textContent = n ? `✖ ${n}` : "";
+  const k = g.component_classes.length, pp = g.patterns.length;
+  GAPCOUNT.textContent = TOOLCOUNT.textContent = [k ? `✖ ${k}` : "", pp ? `⚑ ${pp}` : ""].filter(Boolean).join(" ");
   if (!$("help").hidden && $("help").querySelector(".schemaview") && !$("help").contains(document.activeElement))
     showSchema().catch(() => {});
 }
@@ -1073,7 +1072,7 @@ async function openMapping() {
   // of the component class it translates to in the ground truth schema) is shown, and
   // counts, as unchecked until ticked again; ticking stores both definitions as they are now.
   // Untouched, it is saved as it is in the file, so it stays stale.
-  location.hash = "m";
+  setHash("m");
   showIntro();
   if (!mapping.found) {                    // no table: still the side panel, with its Help
     $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
@@ -1184,7 +1183,7 @@ function mappingRow(r, i) {
       el("select", { id: `m${i}`, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
     r.component_class_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
       el("li", { class: "flag" }, `⚑ The model suggests ${r.component_class_from_past_or_crt_schema} (current schema) may ` +
-        `mean ${r.suggested_gtt} (ground truth schema), a component class the ground truth gained since this row was ` +
+        `mean ${r.suggested_gtt} (ground truth schema), a component class the ground truth schema gained since this row was ` +
         `checked. Pick ${r.suggested_gtt} if that is right; otherwise keep (none).`)) : null,
     nowExists ? el("ul", { class: "problems" }, el("li", { class: "flag" },
       `⚑ ${nowExists.component_class} (ground truth schema) now exists: should ${r.component_class_from_past_or_crt_schema} ` +
@@ -1260,7 +1259,7 @@ async function openPartial() {
   $("batch").value = "";
   status("Opening…");
   partial = await api("/api/partial");
-  location.hash = "p";
+  setHash("p");
   showIntro();
   if (!partial.found) {                    // nothing to review yet: still the side panel, with its Help
     $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
@@ -1336,7 +1335,7 @@ async function openAdditions(prefill) {
   $("batch").value = "";
   status("Opening…");
   additions = await api("/api/additions");
-  location.hash = "a";
+  setHash("a");
   showIntro();
   editing = prefill || null;
   status(`Editing ${additions.file}`, "saved");
@@ -1386,11 +1385,11 @@ function drawAdditions() {
   cards.push(el("section", { class: "card" }, el("h3", {}, "Entity classes and predicates extraction used outside its schema (step 060's last run)"),
     additions.counted_over
       ? el("div", { class: "explain" },
-          el("p", {}, el("strong", {}, "What this is. "), "While extracting, the model sometimes uses an entity class or predicate " +
-            "that the current schema doesn't have. Step 060 removes those extracted triples. Listed here: each one it used, " +
-            `counted over ${additions.counted_over}. Held-out records are never counted, since they must not shape the schema, so ` +
-            "each one listed may be added."),
-          el("p", {}, el("strong", {}, "What to do. "), "If one names a real kind of thing or relation that the schema lacks, " +
+          el("p", {}, "While extracting, the model sometimes uses an entity class or predicate that the current schema " +
+            "doesn't have, and step 060 removes those extracted triples. Each one it used is listed here, counted over " +
+            `${additions.counted_over}. Held-out records are never counted, since they must not shape the schema, so any ` +
+            "one listed may be added."),
+          el("p", {}, "If one names a real kind of thing or relation that the schema lacks, " +
             "press Add: the form above opens, filled in, for you to write its definition. The next run of step 060 can then " +
             "extract it. If it doesn't (a vague or wrong label), leave it: nothing changes until you add it. " +
             `${left} not added yet.`),
@@ -1456,12 +1455,10 @@ function additionForm(e) {
        el("button", { onclick: () => { editing = null; drawAdditions(); } }, "Cancel")));
 }
 
-// ---------------------------------------------------------------- help
-// The section of annotations/README.md about the view you're on.
 // ---------------------------------------------------------------- the ground truth schema
 // Every entity class and predicate of the ground truth schema: change a definition (in the
 // ground truth schema), or rename one, or merge it into another, everywhere at once. A rename or
-// merge is shown first (every file and what changes in it) and done only after "Do it".
+// merge is shown first (every file and what changes in it) and done only after "Make these changes".
 let vocab = null, vocabPlan = null;
 
 async function openVocab() {
@@ -1473,7 +1470,7 @@ async function openVocab() {
   status("Opening…");
   vocab = await api("/api/vocab");
   vocabPlan = null;
-  location.hash = "v";
+  setHash("v");
   showIntro();
   status(`Ground truth schema (definitions in ${vocab.file})`, "saved");
   drawVocab();
@@ -1628,6 +1625,8 @@ function markdown(md, base) {            // headings, paragraphs, lists, code bl
   return out.join("");
 }
 
+// ---------------------------------------------------------------- help
+// The section of annotations/README.md about the view you're on (Help → How to use this view), or another document.
 async function showHelp(path) {            // the README's section for this view, or another document (Guidelines)
   try {
     const h = await api(path || `/api/help?view=${currentView()}`);
@@ -1648,7 +1647,7 @@ function hideHelp() { $("help").hidden = true; }
 // coined ones (used, not in the file yet) marked. A filter narrows both tables; editing is the view behind the button.
 async function showSchema() {
   const v = (await api("/api/vocab")).vocabulary;
-  const filter = el("input", { type: "search", placeholder: "Filter by name, definition or pattern", class: "schemafilter" });
+  const filter = el("input", { type: "search", placeholder: "Filter by entity class or predicate, definition, or pattern", class: "schemafilter" });
   const row = (kind, x) => el("tr", { "data-text": [x.component_class, x.definition, ...(x.patterns || []).flat()].join(" ").toLowerCase() },
     el("td", { class: "schemaname" }, x.component_class,
        x.in_hand ? null : el("span", { class: "pill error", title: "Used in the ground truth, not in the ground truth schema yet: add it, or fix the typo" }, "✖ coined")),
@@ -1659,7 +1658,7 @@ async function showSchema() {
   const table = (kind, title) => el("section", {},
     el("h3", {}, `${title} `, el("span", { class: "meta" }, `(${v[kind].length})`)),
     el("table", { class: "schematable" },
-      el("thead", {}, el("tr", {}, el("th", {}, "Name"), el("th", {}, "Definition"), el("th", { title: "ground truth triples that use it" }, "Uses"))),
+      el("thead", {}, el("tr", {}, el("th", {}, kind === "predicate" ? "Predicate" : "Entity class"), el("th", {}, "Definition"), el("th", { title: "ground truth triples that use it" }, "Uses"))),
       el("tbody", {}, v[kind].map((x) => row(kind, x)))));
   const grid = el("div", { class: "schemagrid" }, table("entity class", "Entity classes"), table("predicate", "Predicates"));
   filter.addEventListener("input", () => {
@@ -1673,7 +1672,7 @@ async function showSchema() {
       el("span", { style: "margin-left:auto" },
         el("button", { onclick: () => { hideHelp(); openVocab().catch(fail); },
                        title: "Change a definition, rename one, or merge two that mean the same thing, in every file at once" },
-           "Edit definitions, rename or merge…"), " ",
+           "Edit definitions, rename, or merge…"), " ",
         el("button", { onclick: hideHelp }, "Close"))),
     gapsList(), filter, grid));
   $("help").hidden = false;
@@ -1689,7 +1688,7 @@ async function showIntro() {
     const h = await api(`/api/help?view=${view}`);
     const body = el("div", { class: "helpbody" });
     body.innerHTML = markdown(h.intro, h.file);
-    box.replaceChildren(body);                    // the rest of the view's section: Help, at the top right
+    box.replaceChildren(body);                    // the rest of the view's section: its Help menu, How to use this view
     box.hidden = false;
   } catch (e) { box.hidden = true; }
 }
@@ -1700,8 +1699,8 @@ document.addEventListener("keydown", (e) => {
   if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
   if (e.key === "ArrowRight" && current < batch.records.length - 1) { e.preventDefault(); show(current + 1); }
   if (e.key === "ArrowLeft" && current > 0) { e.preventDefault(); show(current - 1); }
-  if (oneAtATime && e.key === "ArrowDown") { e.preventDefault(); goToTriple(tripleAt + 1); }
-  if (oneAtATime && e.key === "ArrowUp") { e.preventDefault(); goToTriple(tripleAt - 1); }
+  if (oneAtATime && e.key === "ArrowDown" && goToTriple(tripleAt + 1)) e.preventDefault();
+  if (oneAtATime && e.key === "ArrowUp" && goToTriple(tripleAt - 1)) e.preventDefault();
 });
 // A followed link opens its document in the help window (a term: docs/terminology.md).
 document.addEventListener("click", (e) => {

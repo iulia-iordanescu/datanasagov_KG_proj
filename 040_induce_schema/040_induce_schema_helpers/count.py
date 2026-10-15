@@ -21,7 +21,7 @@ catalog-wide regularity; support from one may be that maintainer's house
 style, so both are kept. Entity classes also keep, as examples, the
 component instances that most often got them.
 
-Before counting, labels that differ only in case, spacing or punctuation
+Before counting, labels that differ only in case, spacing, or punctuation
 ("Space craft", "Spacecraft") are folded into one, the most frequent
 spelling. Digits are kept: "Level2" and "Level3" stay apart. Every fold is
 listed in induction_evidence.json (the report shows the first 20).

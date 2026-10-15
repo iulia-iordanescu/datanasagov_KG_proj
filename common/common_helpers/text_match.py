@@ -6,7 +6,7 @@ Every check that asks whether a component instance or a source text is "in" a
 record's text, or whether two component instances are "the same", evens out
 both sides first, and nothing else:
 
-    same     upper/lower case; runs of spaces, tabs and line breaks; Unicode
+    same     upper/lower case; runs of spaces, tabs, and line breaks; Unicode
              variants of one character (NFKC, e.g. a non-breaking space or a
              full-width letter); the dashes and hyphens of every width; and
              quote marks, which are ignored altogether (they carry no
@@ -54,7 +54,7 @@ import functools
 import re
 import unicodedata
 
-#: Every common Unicode quote, prime and dash, as its plain ASCII form.
+#: Every common Unicode quote, prime, and dash, as its plain ASCII form.
 QUOTES_AND_DASHES = str.maketrans({
     **dict.fromkeys("‘’‚‛′ʼ`´", "'"),
     **dict.fromkeys("“”„‟″«»", '"'),
@@ -72,7 +72,7 @@ _LEADING = re.compile(r"^(?:%s)\s+" % "|".join(map(re.escape, LEADING_WORDS))) i
 
 
 def even(s) -> str:
-    """Case, spacing, Unicode variants and dashes evened out; quote marks
+    """Case, spacing, Unicode variants, and dashes evened out; quote marks
     removed."""
     s = unicodedata.normalize("NFKC", str(s or "")).translate(QUOTES_AND_DASHES)
     s = s.replace('"', "").replace("'", "")

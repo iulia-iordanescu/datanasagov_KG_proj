@@ -280,7 +280,7 @@ def results(harvest: Harvest, check: Check) -> Results:
                      f"`py 010_harvest/run.py --new_harvest true`; they are then moved to "
                      f"`{_shown(harvest.folder)}/replaced_<date>/`, never deleted, and every later step must be "
                      f"run again (030 drops pool records no longer in the catalog). Details: "
-                     f"010_harvest/010_harvest.md, section *How it works*.", ""]
+                     f"010_harvest/010_harvest.md, section *How to run*.", ""]
     elif harvest.set_aside:
         kept_note = [f"**The saved harvest was replaced** (`--new_harvest true`): its batch files were moved to "
                      f"`{_shown(harvest.folder)}/{harvest.set_aside}/`, not deleted. Every later step must be run "

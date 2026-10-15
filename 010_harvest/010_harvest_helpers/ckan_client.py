@@ -56,7 +56,7 @@ def same_page(request_line: str | None, start: int, rows: int) -> bool:
 
 def make_session() -> requests.Session:
     """A session that retries busy or failing responses: the first retry at
-    once, then after 3, 6, 12 and 24 s (or the server's Retry-After). Each
+    once, then after 3, 6, 12, and 24 s (or the server's Retry-After). Each
     retry is written to the log by the underlying urllib3 library."""
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=RETRIES))

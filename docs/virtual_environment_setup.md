@@ -22,8 +22,8 @@ Then create the `.env` file (part 6) and run the checks (part 7).
 | Need | Detail |
 |---|---|
 | Python | **3.14** (part 1 checks for it) |
-| Packages | `requests`, used by every script that calls the data.nasa.gov API or Ask Sage, `python-dotenv`, used by `common/common_helpers/llm.py` to read your Ask Sage key from `.env`, and `ftfy`, used by step 020 to repair garbled characters. Everything else comes with Python |
-| Credentials | A `.env` file with your Ask Sage email and API key. Only the scripts that call a [model](terminology.md#8-the-pipeline) need it |
+| Packages | `requests`, used by every script that calls the data.nasa.gov API or a model's service, `python-dotenv`, used by `common/common_helpers/llm.py` to read your service key from `.env`, and `ftfy`, used by step 020 to repair garbled characters. Everything else comes with Python |
+| Credentials | A `.env` file with your service key (LiteLLM's key, or Ask Sage's email and key). Only the scripts that call a [model](terminology.md#8-the-pipeline) need it |
 
 ## Part 1: Check that Python 3.14 is installed
 
@@ -35,7 +35,7 @@ This lists the Python versions on the machine. Look for a line containing `3.14`
 
 If it's missing, download the latest 3.14 installer from [python.org](https://www.python.org/downloads/windows/), run it, and keep the **py launcher** option ticked.
 
-Why 3.14: it's the version the pipeline is run and tested with. A later version will probably work, but hasn't been tried; never use a pre-release (alpha, beta or release candidate).
+Why 3.14: it's the version the pipeline is run and tested with. A later version will probably work, but hasn't been tried; never use a pre-release (alpha, beta, or release candidate).
 
 ## Part 2: Create the environment
 
@@ -103,13 +103,14 @@ In Windows PowerShell, use `Out-File -Encoding utf8` rather than `>`. A plain `>
 
 Then commit `requirements.txt`.
 
-## Part 6: Add your Ask Sage credentials
+## Part 6: Add your service keys
 
 Skip this part if you only need the pipeline [steps](terminology.md#8-the-pipeline) that call no [model](terminology.md#8-the-pipeline) (010 to 030) and the audit tool.
 
-Create a file named `.env` in the repo root, containing these two lines with your own values:
+Create a file named `.env` in the repo root, with your own values in the lines of the service you use: LiteLLM's key for NASA's LiteLLM (the default; how to make the key: `docs/running_on_nasa_laptop.md`, section 3), and the email and key for Ask Sage (`--service asksage`):
 
 ```
+LITELLM_API_KEY=sk-your-key-here
 ASKSAGE_EMAIL=you@example.com
 ASKSAGE_API_KEY=your-key-here
 ```
@@ -118,7 +119,7 @@ Don't add quotes or spaces around the `=`.
 
 `.gitignore` excludes `.env`, so your key stays on your machine. The code that calls the model (`common/common_helpers/llm.py`) searches for `.env` starting in its own folder and then in each folder above it, so it finds it in the repo root.
 
-The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`) and 060 (`060_extract/run.py`), and 070 (`070_evaluate/run.py`) when it needs to propose [component class](terminology.md#3-schemas) translations. Ask Sage only answers from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
+The pipeline steps that call the model need the file: steps 040 (`040_induce_schema/run.py`), 050 (`050_annotate/run.py`), and 060 (`060_extract/run.py`) always, and 070 (`070_evaluate/run.py`) when it needs to propose [component class](terminology.md#3-schemas) translations. The model's services answer only from NASA's network, so these steps run on a NASA laptop (see `docs/running_on_nasa_laptop.md`).
 
 ## Part 7: Check the setup
 

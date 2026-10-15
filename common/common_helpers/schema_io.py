@@ -45,7 +45,7 @@ shapes:
    line under a predicate lists the pairs of entity classes (subject ->
    object) it has been used with, separated by ";"; each pair is a pattern.
    A pattern can also stand on its own, in the PATTERNS section: subject
-   class, predicate and object class on one line (used by the additions
+   class, predicate, and object class on one line (used by the additions
    file, to add a pattern to a predicate the schema already has, and by the
    annotation tool, to add a pattern to the ground truth schema with its
    source). An
@@ -288,7 +288,7 @@ def additions_text(header: str, entries: list) -> str:
 # Both functions change the file the same careful way (_edit_text): the
 # lines are edited, the byte-order mark and line endings stay as they were,
 # and the file is read back. If anything other than the one addition reads
-# differently (an entry, definition, pattern, source or unread line), the
+# differently (an entry, definition, pattern, source, or unread line), the
 # file is put back byte for byte and a ValueError says so.
 
 def _comparable(schema: dict) -> tuple:

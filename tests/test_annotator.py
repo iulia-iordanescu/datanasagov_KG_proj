@@ -124,7 +124,11 @@ class A_Paths(unittest.TestCase):
             self.assertTrue(get(f"/api/help?view={view}")["markdown"].startswith("#"), view)
         self.assertIn("error", get("/api/help?view=nope"))
         for view in ("mapping", "partial", "additions", "vocab"):                  # what the view is for, at its top
-            self.assertTrue(get(f"/api/help?view={view}")["intro"].startswith("**What it's for, and when.**"), view)
+            intro = get(f"/api/help?view={view}")["intro"]
+            self.assertTrue(intro and not intro.startswith("#"), view)              # the section's first paragraph
+        batch = get("/api/help?view=batch")["markdown"]                            # with the tool's two lists
+        self.assertIn("### What the tool can do", batch)
+        self.assertIn("### What the tool can't do", batch)
         self.assertIn('id="intro"', page)
         self.assertIn('showHelp("/api/guidelines")', page)                      # the rules, one click away while annotating
         terms = get("/api/terms")                                                  # a term's definition, on hover

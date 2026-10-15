@@ -213,7 +213,7 @@ VALID_TAG_NAME = re.compile(r"^" + _NAME + r"$", re.I)
 #: separated from it by whitespace.
 WELL_FORMED_TAG = re.compile(r"</?(" + _NAME + r")(?=[\s/>])((?:\s[^<>]*)?)/?>", re.I)
 
-#: "<" that does not begin a well-formed tag, comment or declaration.
+#: "<" that does not begin a well-formed tag, comment, or declaration.
 #: The HTML specification treats such a "<" as literal text; Python's
 #: parser is more lenient and would read "<log(L/L)>" or "<z>" as a tag,
 #: so this restores the stricter rule before parsing.
@@ -252,7 +252,7 @@ class CleanedNote:
     ----------
     text : str
         The cleaned text. Never shorter in content than the input: every
-        word, number and URL fragment from `source` is present.
+        word, number, and URL fragment from `source` is present.
     tier : str
         Which strategy produced `text`: TIER_PARSED, TIER_CONSERVATIVE
         or TIER_SOURCE. Anything other than TIER_PARSED means the markup
@@ -856,7 +856,7 @@ def clean_record(record, fields: Iterable[str] = DEFAULT_FIELDS
     Returns
     -------
     CleanedRecord
-        Original, cleaned and method per field. `.to_dict()` flattens it
+        Original, cleaned, and method per field. `.to_dict()` flattens it
         for CSV.
 
     Raises

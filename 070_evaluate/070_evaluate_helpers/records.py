@@ -58,7 +58,7 @@ class Evaluated:
 
 
 def _triples(rows: list) -> tuple:
-    """(triples, describes triple or None): rows with subject, predicate and object."""
+    """(triples, describes triple or None): rows with subject, predicate, and object."""
     triples, describes = [], None
     for r in rows:
         if not (r.get("subject") and r.get("predicate") and r.get("object")):

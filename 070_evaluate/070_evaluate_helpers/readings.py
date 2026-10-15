@@ -108,7 +108,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
             f"(exact and partial pairs)", "",
             f"- Of the {E} occurrences of these records (one per extracted triple, translated into the ground "
-            f"truth vocabulary), {_of(ex['pairs'], E)} are correct at the exact level, and {_of(pa['pairs'], E)} at "
+            f"truth schema), {_of(ex['pairs'], E)} are correct at the exact level, and {_of(pa['pairs'], E)} at "
             f"the partial level.",
             f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
             f"{pct(ex['precision']['value']) if E else '–'} of those edges would be correct at the exact "

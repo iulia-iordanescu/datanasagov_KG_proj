@@ -253,10 +253,10 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
             translation.reachable[kind].add(component_class_key(mine))
     translation.rows_used = len(needed)
     # A row checked as (none) before the same component class joined the ground
-    # truth vocabulary is almost surely out of date. Warned about (not a stop: (none)
+    # truth schema is almost surely out of date. Warned about (not a stop: (none)
     # may still be right if the ground truth's component class means something else).
     translation.outdated = [f"{name} (current schema) --> (none), but {gtt_key[kind][component_class_key(name)]} (ground truth "
-                      f"vocabulary) now exists" for kind, name in needed
+                      f"schema) now exists" for kind, name in needed
                       if have[(kind, component_class_key(name))]["component_class_in_gtt"] == NONE and component_class_key(name) in gtt_key[kind]]
     # The ground truth schema grows as you annotate: a row checked as (none) may since have
     # gained a counterpart. Both lists go in the report, so such a row can be

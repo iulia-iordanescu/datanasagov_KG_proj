@@ -11,8 +11,8 @@ import unittest
 from support import ROOT
 
 STEPS = ["010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract", "070_evaluate"]
-#: Files whose text isn't the project's to sweep: old code, the plan kept as
-#: it was written, and the person-made files of annotations/ (except its README).
+#: Files whose text isn't the project's to sweep: old code, and the person-made
+#: files of annotations/ (except its README).
 SKIP = ("to_be_reshaped/", "annotations/")
 KEEP = ("annotations/README.md",)
 
@@ -161,7 +161,7 @@ class Vocabulary(unittest.TestCase):
 
 
 #: The docs whose terms link to docs/terminology.md (every non-code doc except the prompts,
-#: terminology.md itself, the plan kept as written, TODO.md, and the person-made files of annotations/).
+#: terminology.md itself, and the person-made files of annotations/).
 LINKED_DOCS = ["README.md", "070_evaluate/metrics.md", "annotations/guidelines.md", *(f"070_evaluate/metrics/{n}.md" for n in ("pairs", "precision", "recall", "f1", "entity_class_accuracy", "recall_upper_bound", "recall_within_reach", "describes", "approximately")), "annotations/README.md", "helpers/audit.md", "tests/README.md",
                "docs/running_on_nasa_laptop.md", "docs/virtual_environment_setup.md"] + [f"{s}/{s}.md" for s in STEPS]
 #: Multi-word terms whose bold in terminology.md marks emphasis or an everyday phrase, not a separate term;

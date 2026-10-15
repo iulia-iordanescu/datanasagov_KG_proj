@@ -1,10 +1,10 @@
 # Running the pipeline on the NASA laptop
 
-The code is built and tested on a personal laptop, which can't reach Ask Sage, the NASA service that hosts the AI [model](terminology.md#8-the-pipeline). Real [runs](terminology.md#8-the-pipeline) happen on the NASA laptop, after pulling the code from GitHub. This page is the checklist for that. Items get added at the end as the pipeline grows.
+The code is built and tested on a personal laptop, which can't reach NASA's LiteLLM or Ask Sage, the NASA services that reach the AI [model](terminology.md#8-the-pipeline). Real [runs](terminology.md#8-the-pipeline) happen on the NASA laptop, after pulling the code from GitHub. This page is the checklist for that. Items get added at the end as the pipeline grows.
 
 Two things never travel through Git, on purpose:
 
-- **`.env`**, which holds your Ask Sage key: a key in Git could be read by anyone who can see the repository.
+- **`.env`**, which holds your service keys: a key in Git could be read by anyone who can see the repository.
 - **`outputs/`**, everything a pipeline run produces: it's rebuilt by running the [steps](terminology.md#8-the-pipeline), and it's large.
 
 So the NASA laptop needs its own `.env`, and makes its own `outputs/` by running the steps.
@@ -47,7 +47,7 @@ Every new PowerShell window needs `.\.myvenv\Scripts\Activate.ps1` again; your p
 
 ## 3. Add your keys
 
-Create the file `.env` with your Ask Sage email and key: part 6 of `docs/virtual_environment_setup.md`. For NASA's LiteLLM (the setting `service`, see *Choosing a model*), add a line with your LiteLLM key there too: `LITELLM_API_KEY=sk-...`. A key is made in LiteLLM's dashboard (https://proxy.fast.luna.nasa.gov/ui/, *Virtual Keys*, *Create New Key*; key type *AI APIs*; models left empty for all your team's models). LiteLLM shows the full key once: copy it into `.env` at once, and never into a chat or a file Git tracks.
+Create the file `.env` with your service keys: part 6 of `docs/virtual_environment_setup.md`. NASA's LiteLLM (the default `service`, see *Choosing a model*) needs the line `LITELLM_API_KEY=sk-...`; Ask Sage needs your email and key. A LiteLLM key is made in LiteLLM's dashboard (https://proxy.fast.luna.nasa.gov/ui/, *Virtual Keys*, *Create New Key*; key type *AI APIs*; models left empty for all your team's models). LiteLLM shows the full key once: copy it into `.env` at once, and never into a chat or a file Git tracks.
 
 ## 4. Run the steps, in order
 
@@ -61,7 +61,7 @@ Each [step](terminology.md#8-the-pipeline) reads what the one before it wrote, s
 | 040 induce [schema](terminology.md#3-schemas) | `py 040_induce_schema/run.py` | not yet measured | **yes** |
 | 050 annotate | `py 050_annotate/run.py` | not yet measured | **yes** (about one call per [record](terminology.md#1-records-and-their-text)) |
 | 060 extract | `py 060_extract/run.py` | not yet measured | **yes** (about one call per record: by default only the finished [ground truth](terminology.md#4-ground-truth-and-samples) records) |
-| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call, only when the [current schema](terminology.md#6-extracting-with-a-schema-step-060) has [component classes](terminology.md#3-schemas) not yet in `annotations/component_class_mapping.csv`; then check those rows and run it again) |
+| 070 evaluate | `py 070_evaluate/run.py` | not yet measured | **yes** (one call per 100 [component classes](terminology.md#3-schemas) of the [current schema](terminology.md#6-extracting-with-a-schema-step-060) not yet in `annotations/component_class_mapping.csv`, only when there are some; then check those rows and run it again) |
 
 Each step ends by printing where its [report](terminology.md#8-the-pipeline) is (`outputs/reports/<run id>.md`). Read the report's **Warnings** before running the next step. Each step's guide (`<step>/<step>.md`) says what every warning means and what to do.
 
@@ -93,13 +93,13 @@ Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's rec
 
 ### Choosing a model
 
-Each of 040–070 has a `service` [setting](terminology.md#8-the-pipeline), the service that reaches the model: `litellm` (NASA's LiteLLM, https://proxy.fast.luna.nasa.gov, the default) or `asksage` (NASA's Ask Sage). Each service names its [models](terminology.md#8-the-pipeline) its own way (Ask Sage's `google-claude-sonnet-5` is LiteLLM's `claude-sonnet-5`), and each step has a `model` setting: by default `claude-opus-5.5` for 040, 060 and 070, and `gemini-2.5-pro` for 050 (LiteLLM names). On 2026-10-12, LiteLLM let this project's key use both, and `gemini-3.1-pro-preview`; Ask Sage refused Opus. LiteLLM's `gpt-5.5` refused the pipeline's temperature 0 (it accepts only 1), so GPT-5 models can't be used as the code stands. To see which models a service lists for your account (free; add `--service litellm` for LiteLLM, whose list shows only the models your key may use):
+Each of 040–070 has a `service` [setting](terminology.md#8-the-pipeline), the service that reaches the model: `litellm` (NASA's LiteLLM, https://proxy.fast.luna.nasa.gov, the default) or `asksage` (NASA's Ask Sage). Each service names its [models](terminology.md#8-the-pipeline) its own way (Ask Sage's `google-claude-sonnet-5` is LiteLLM's `claude-sonnet-5`), and each step has a `model` setting: by default `claude-opus-5.5` for 040, 060, and 070, and `gemini-2.5-pro` for 050 (LiteLLM names). On 2026-10-12, LiteLLM let this project's key use both, and `gemini-3.1-pro-preview`; Ask Sage refused Opus. LiteLLM's `gpt-5.5` refused the pipeline's temperature 0 (it accepts only 1), so GPT-5 models can't be used as the code stands. To see which models a service lists for your account (free; LiteLLM's list shows only the models your key may use; add `--service asksage` for Ask Sage's):
 
 ```powershell
 py helpers/models.py
 ```
 
-A listed model may still refuse you: the list shows what Ask Sage offers, not what your account is approved for. To find out, try the models you're considering, e.g. `py helpers/models.py --try google-claude-sonnet-5 <name> <name>`, with names copied from the list, or `--try all` for every listed one. Each try is the one-line test call a [step](terminology.md#8-the-pipeline) makes first: one tiny [paid call](terminology.md#8-the-pipeline) per model, asked about before paying. It prints each model as usable, or refused with Ask Sage's reason (e.g. `model_not_permitted`).
+A listed model may still refuse you: Ask Sage's list shows what it offers, not what your account is approved for, and a model LiteLLM lists may still fail on a setting it doesn't accept. To find out, try the models you're considering, e.g. `py helpers/models.py --try claude-sonnet-5 <name> <name>`, with names copied from the list, or `--try all` for every listed one. Each try is the one-line test call a [step](terminology.md#8-the-pipeline) makes first: one tiny [paid call](terminology.md#8-the-pipeline) per model, asked about before paying. It prints each model as usable, or refused with the service's reason (e.g. Ask Sage's `model_not_permitted`).
 
 Which model where:
 
@@ -114,13 +114,13 @@ Which model where:
 py helpers/annotate.py
 ```
 
-A page opens in your browser: pick the [draft batch](terminology.md#4-ground-truth-and-samples) 050 wrote, correct it, tick *All facts extracted* on each [finished record](terminology.md#4-ground-truth-and-samples), stop with Ctrl+C, commit. How: `annotations/README.md`. It makes no [model calls](terminology.md#8-the-pipeline), so it also works on your personal laptop, if that laptop has run [steps](terminology.md#8-the-pipeline) 010 to 030 and has the draft batch.
+The tool's home page opens in your browser: in **[Ground truth](terminology.md#4-ground-truth-and-samples)**, pick the [draft batch](terminology.md#4-ground-truth-and-samples) 050 wrote, correct it, tick *All facts extracted* on each [finished record](terminology.md#4-ground-truth-and-samples), stop with Ctrl+C, commit. How: `annotations/README.md`. It makes no [model calls](terminology.md#8-the-pipeline), so it also works on your personal laptop, if that laptop has run [steps](terminology.md#8-the-pipeline) 010 to 030 and has the draft batch.
 
 ## 7. If something goes wrong
 
 | What you see | What it means | What to do |
 |---|---|---|
-| *Test call to … failed* (040, 050, 060 or 070 stops) | The key or the connection is wrong, or Ask Sage refuses you that [model](terminology.md#8-the-pipeline). Nothing else was called. | If Ask Sage says the model isn't allowed, choose another (`--model`; see *Choosing a model*). Otherwise check `.env`, and that you're on NASA's network (or VPN). |
+| *Test call to … failed* (040, 050, 060, or 070 stops) | The key or the connection is wrong, or the service refuses you that [model](terminology.md#8-the-pipeline). Nothing else was called. | If the service says the model isn't allowed, choose another (`--model`; see *Choosing a model*). Otherwise check `.env`, and that you're on NASA's network (or VPN). |
 | *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set* / *LITELLM_API_KEY isn't set* | `.env` is missing, or the key's name is misspelled. | Section 3. |
 | *Failed to resolve 'api.asksage.ai.nasa.gov'* | The laptop can't reach Ask Sage. | Connect to NASA's network or VPN. |
 | *… failed for <id> piece 1: the answer was cut off at the longest length allowed* | The model's answer for that text reached `MAX_ANSWER_TOKENS` (`common/common_helpers/llm.py`, 16,000 tokens; one answer was cut off at 25,658 characters on 2026-10-12) and was cut off. Only that text is left out. The whole answer is in the step's log (`outputs/logs/<run id>.log`, a DEBUG line starting "cut-off answer", with the service's token counts), so you can see whether it was long or repeated itself. Asking again with the same settings gets the same cut. On Ask Sage no limit can be sent, so a cut answer shows as *isn't a JSON object* instead. | If it happens often, raise `MAX_ANSWER_TOKENS`, or lower the step's `max_chars` so each [text piece](terminology.md#1-records-and-their-text), and so each answer, is shorter. |

@@ -14,7 +14,7 @@ Free: no model calls. It writes a report, `outputs/reports/compare_runs_<date>_<
 *Suppose* you want to know whether extracting with another model helps. *Then:*
 
 1. Extract and evaluate with the first model: `py 060_extract/run.py --service litellm --model claude-opus-5.5`, then `py 070_evaluate/run.py`. Note 070's run id (top of its report, or the newest file in `outputs/intermediate_results/070_evaluate/evaluations/`).
-2. The same with the other model: `py 060_extract/run.py --service litellm --model gemini-2.5-pro`, then `py 070_evaluate/run.py`.
+2. The same with the other model: `py 060_extract/run.py --service litellm --model gemini-3.1-pro-preview` (not `gemini-2.5-pro`, the model that drafts the ground truth: step 060 warns about it, since it inflates recall), then `py 070_evaluate/run.py`.
 3. Compare: `py helpers/compare_runs.py <first run id> <second run id>`.
 
 Change one thing at a time, so a difference has one cause.
@@ -22,7 +22,7 @@ Change one thing at a time, so a difference has one cause.
 ## What the report says
 
 - **The runs**, A, B, C, …, with 070's run id. A is the baseline; each other run is compared with it.
-- **What differs between the runs:** every part of each run's recipe that isn't the same in every run. From 060's run: its code version, settings (service and model among them), prompts by fingerprint, and the schema files it read, by fingerprint. From 070's run: its code version, and the translation (the rows of the translation table it used), by fingerprint. A difference in the numbers comes from one of these.
+- **What differs between the runs:** every part of each run's recipe that isn't the same in every run. From 060's run: its code version, settings (service and model among them), prompts by fingerprint, and the schema files it read, by fingerprint. From 070's run: its code version, settings (service and model among them), and the translation (the rows of the translation table it used), by fingerprint. A difference in the numbers comes from one of these, or from the partial-pair verdicts (`annotations/partial_pair_reviews.csv`), which the recipe doesn't hold yet: review no partial pairs between the runs you compare.
 - **The records compared:** the tuning records evaluated in every run, with the same ground truth in every run. A record whose ground truth changed between the runs (you corrected it in between) is left out and named, since a difference there could come from your correction rather than the version. Held-out records are never compared.
 - **One table per run compared with the baseline:** for each number (precision, recall, F1, and the others 070 gives a margin of error), the baseline's value, the other run's, the difference in points, the 95% range of the difference, and a verdict: *higher*, *lower*, *can't tell apart*, or *the same*.
 

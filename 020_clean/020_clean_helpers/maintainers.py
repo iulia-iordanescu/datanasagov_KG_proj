@@ -7,9 +7,9 @@ PH. D", "Parnchai Sawaengphokhai" and "Sawaengphokhai Parnchai". Two
 spellings are one maintainer when they have the same words once these are
 ignored:
 
-    case, punctuation, spacing and word order
+    case, punctuation, spacing, and word order
     the degree Ph.D, however it is written (PhD, Ph.D., PH. D, Ph D)
-    the honorifics Dr, Mr, Ms, Mrs and Prof, as whole words
+    the honorifics Dr, Mr, Ms, Mrs, and Prof, as whole words
 
 Every other word counts, so names differing by a middle name or an initial
 ("Lola Olsen", "Lola M. Olsen"; "Mama Pucci", "Mama D. Pucci") stay apart,

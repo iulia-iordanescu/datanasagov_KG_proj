@@ -82,7 +82,7 @@ def compare_with_ground_truth_schema(inputs, schema) -> dict:
     comparison["ground_truth_schema"] = ref_path(inputs["ground_truth_schema"])
     c = comparison["entity_classes"]
     log.info(f"  beside the ground truth schema: {len(c['both'])} entity classes in both, "
-             f"{len(c['only_hand'])} only there, {len(c['only_induced'])} only induced")
+             f"{len(c['only_ground_truth_schema'])} only there, {len(c['only_induced'])} only induced")
     return comparison
 
 

@@ -288,7 +288,7 @@ def results(catalog: Catalog, output: Path) -> Results:
     lines += ["### Cleaning", "",
               "*With HTML* counts the values that had HTML tags or escapes to remove; every "
               "other value only had its whitespace tidied. Each value is checked after "
-              "cleaning: every word, number and URL of the input must still be there. "
+              "cleaning: every word, number, and URL of the input must still be there. "
               "*parsed* is the normal method (and includes every value without HTML); "
               "*conservative* is a cruder fallback; *source* means the value is kept as "
               "decoded, markup included.", "",

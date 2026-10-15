@@ -67,7 +67,7 @@ from common.audit import log
 #: the service shows your account (a listed model may still refuse you: the
 #: run's first call, a one-line test, finds out for the price of that call).
 #: It is part of every cache key (common/common_helpers/cache.py), so changing it asks again.
-#: The default of 040, 060 and 070 (a LiteLLM name: the default service is LiteLLM).
+#: The default of 040, 060, and 070 (a LiteLLM name: the default service is LiteLLM).
 MODEL = "claude-opus-5.5"
 
 #: The default model of step 050, which drafts the ground truth: from another maker than MODEL, so the facts one
@@ -95,7 +95,7 @@ MAX_ANSWER_TOKENS = 16000
 #: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed).
 READ_TIMEOUT = 600
 
-#: Every request sent to the service in this run, retries, re-asks and failures included: what is billed, as far as
+#: Every request sent to the service in this run, retries, re-asks, and failures included: what is billed, as far as
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
 REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0}
 _requests_lock = threading.Lock()
@@ -191,7 +191,7 @@ class BadReply(ValueError):
 class ApiError(Exception):
     """The service refused the request in a way that will not fix itself:
     a permission or validation failure (e.g. Ask Sage's "model_not_permitted",
-    or LiteLLM's HTTP 400, 401, 403 or 404).
+    or LiteLLM's HTTP 400, 401, 403, or 404).
 
     Deliberately NOT in call_llm's retry tuple: it would fail identically on
     every retry, burning four calls to report the same thing. A rate limit or
@@ -391,7 +391,7 @@ def list_models(service: str | None = None) -> list:
 
 def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None, cache_until=None):
     """Send prompt to the model, through the service; the reply text. Retries with exponential backoff on rate
-    limits, server errors and lost connections; a refusal that will not fix itself (ApiError) is raised at once.
+    limits, server errors, and lost connections; a refusal that will not fix itself (ApiError) is raised at once.
     model, service: MODEL and SERVICE (the run's) when None."""
     model, service = model or MODEL, service or SERVICE
     # cache_until: where the prompt's identical start ends, for prompt caching (_messages); only LiteLLM uses it
@@ -448,7 +448,7 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
     """Return the JSON OBJECT the prompt asked for, or raise.
 
     Every caller immediately does .get() on the result, so a reply that
-    parses into a list, a string or a number is as useless as one that does
+    parses into a list, a string, or a number is as useless as one that does
     not parse at all - and used to surface three frames away as an opaque
     AttributeError. Both failures are treated the same way here: re-ask once
     with a correction, then give up."""

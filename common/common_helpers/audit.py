@@ -112,7 +112,7 @@ def start_log(path: Path, step_name: str) -> logging.FileHandler:
     log.setLevel(logging.DEBUG)
     log.propagate = False
 
-    # The requests library's connections, retries and waits, file only:
+    # The requests library's connections, retries, and waits, file only:
     # "Incremented Retry for (url=...)", "Retrying (...) after ...".
     network = logging.getLogger("urllib3")
     network.handlers[:] = [file_handler]

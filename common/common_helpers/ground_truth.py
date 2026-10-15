@@ -21,7 +21,7 @@ a person wrote; batch_000.csv, annotated before the pipeline, has no such
 column. Any other column (e.g. the `flags` column of a draft batch) is
 ignored, so a corrected draft batch can be saved as it is. all_facts_extracted is 1 on every row of a record the
 person has finished (every fact of its text is there), 0 while it is in
-progress. A row with an id but an empty subject, predicate and object says
+progress. A row with an id but an empty subject, predicate, and object says
 "this record was annotated and states no facts".
 
     from common.ground_truth import read_ground_truth
@@ -49,13 +49,13 @@ Problems, each listed, none silently resolved:
     class and object class (as triples_io.component_class_key does). Only
     one copy can be paired, so 070 would count the other as missed. Also in
     gt.repeats: 070 refuses to run while there is one;
-  - the same subject instance, predicate and object instance twice in a
+  - the same subject instance, predicate, and object instance twice in a
     record, with different entity classes: likely one fact given two entity
     classes by mistake;
 A problem about lines of a file shows each of them on a line of its own
 (the message has several lines).
   - a file missing one of the columns above.
-050, 060 and 070 list them in their report's warnings (and before paying);
+050, 060, and 070 list them in their report's warnings (and before paying);
 070 also shows them before it evaluates and asks whether to go ahead; the
 annotation tool shows them on its page.
 
@@ -264,7 +264,7 @@ def _shown(rows: list) -> str:
 # --------------------------------------------------------------------------
 
 #: What check_rows reports: things a person must fix, i.e. typos, never
-#: matters of judgement (a reworded subject or object instance is fine in
+#: matters of judgment (a reworded subject or object instance is fine in
 #: ground truth).
 ROW_ERRORS = {
     "id_not_in_records": "its id isn't a record of the catalog (a typo, or a record since removed): correct the id, "
@@ -346,15 +346,6 @@ def with_coined(ground_truth_schema: dict, gt: GroundTruth) -> dict:
     return out
 
 
-# --------------------------------------------------------------------------
-# the fair sample (050, 070)
-# --------------------------------------------------------------------------
-#
-# The ground truth candidates pool is shuffled, so its first N records are a
-# fair sample of the catalog, for any N. Results about the whole catalog may
-# only be drawn from such a sample. pool is the pool's ids in order
-# (030's splits.json); taken is a set of ids.
-
 def coined_uses(gt: GroundTruth, coined: dict) -> list:
     """Where each coined component class is used, for messages: ["Instrumnet (entity class): batch_000.csv lines
     4, 9", ...], in with_coined()'s order. coined is with_coined()["coined"]."""
@@ -374,6 +365,15 @@ def coined_uses(gt: GroundTruth, coined: dict) -> list:
                                                         f"{', '.join(sorted(set(ls), key=int))}" for f, ls in files.items()))
     return out
 
+
+# --------------------------------------------------------------------------
+# the fair sample (050, 070)
+# --------------------------------------------------------------------------
+#
+# The ground truth candidates pool is shuffled, so its first N records are a
+# fair sample of the catalog, for any N. Results about the whole catalog may
+# only be drawn from such a sample. pool is the pool's ids in order
+# (030's splits.json); taken is a set of ids.
 
 def read_pool(splits_path) -> list:
     """The ground truth candidates pool, in pool order, from 030's

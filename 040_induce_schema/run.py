@@ -52,7 +52,7 @@ def main(inputs, settings, output):
     counts  = induce.count_support(triples, labels)                    # code: the texts and maintainers behind each schema entry
     words   = induce.write_definitions(counts, settings, calls)        # LLM: one sentence per entity class and predicate
     schema  = induce.check_schema(counts, words, settings)             # code: what enters the schema, what's deferred
-    beside  = induce.compare_with_ground_truth_schema(inputs, schema)          # code: in both / only yours / only induced
+    beside  = induce.compare_with_ground_truth_schema(inputs, schema)          # code: in both / only the ground truth schema / only induced
     # writes the_schema.json and induction_evidence.json; the report
     return induce.results(texts, triples, labels, counts, words, schema, beside, calls, settings, output)
 

@@ -7,11 +7,11 @@ Every metric is computed on the evaluated [records](../../docs/terminology.md#1-
 - the evaluated records are a random sample of the catalog (only the fair sample is evaluated);
 - the pipeline wasn't adjusted to these records (true of the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070) until it is looked at).
 
-Even then, every metric is approximate for the whole catalog, for the five reasons below. Each has the same parts: what it means, and how the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it. A metric with reasons of its own lists them in its own section, under *Assumes and can't see*. Sources for all five: [Why "approximately": sources](#sources).
+Even then, every metric is approximate for the whole catalog, for the five reasons below. Each has the same parts: its meaning, and how the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it. A metric with reasons of its own lists them in its own section, under *Assumes and can't see*. Sources for all five: [Why "approximately": sources](#sources).
 
 ## Sampling error
 
-**What it means.** Another sample of the same size would give a somewhat different value.
+**Meaning.** Another sample of the same size would give a somewhat different value.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it: the margin of error.** A range around each metric's value that says how much the value could change with another sample of the same size. Every metric gets one, except the [describes baseline](describes.md) and the [describes per-entity-class average](describes.md). Example: [Sampling error: example](#example).
 
@@ -26,7 +26,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   - A narrow range: another sample of the same size would give nearly the same value. A wide one: it could give quite a different value.
   - More evaluated records give a narrower range.
   - Two values whose ranges overlap a lot may differ only by chance.
-- **What it assumes.** No distribution for the metric (e.g. not a normal one), but the following. The report checks each, in its section *The margin of error's assumptions, checked*, and warns when one doesn't hold.
+- **Assumptions.** No distribution for the metric (e.g. not a normal one), but the following. The report checks each, in its section *The margin of error's assumptions, checked*, and warns when one doesn't hold.
 
   | Assumption | Why it matters | How the report checks it |
   |---|---|---|
@@ -37,11 +37,11 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   | The range isn't at 0% or 100% | There, a percentile range is too narrow. | Lists the metrics whose range reaches 0% or 100%. |
   | No one record dominates | A record with most of the classed triples sways every redraw it's in. | Gives the largest record's proportion of the extracted triples and of the [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples), for reading (no established threshold). |
   | A small proportion of the catalog is evaluated | Redrawing with repeats treats the catalog as endless; for a large proportion, the range comes out somewhat too wide. | Gives the proportion of the catalog evaluated; holds below 5%. |
-- **What it can't see.** Only sampling error: the other four reasons can move the whole catalog's value outside the range.
+- **Limits.** Only sampling error: the other four reasons can move the whole catalog's value outside the range.
 
 ## The sample's mix of maintainers
 
-**What it means.** The [pool](../../docs/terminology.md#4-ground-truth-and-samples) was drawn stratified by [maintainer](../../docs/terminology.md#1-records-and-their-text), and only its first [finished records](../../docs/terminology.md#4-ground-truth-and-samples) are evaluated. If their mix of maintainers differs from the catalog's, the value leans toward the over-represented maintainers.
+**Meaning.** The [pool](../../docs/terminology.md#4-ground-truth-and-samples) was drawn stratified by [maintainer](../../docs/terminology.md#1-records-and-their-text), and only its first [finished records](../../docs/terminology.md#4-ground-truth-and-samples) are evaluated. If their mix of maintainers differs from the catalog's, the value leans toward the over-represented maintainers.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.**
 - The pool matches the catalog's mix of maintainers: it was drawn with proportional allocation (`annotations/ground_truth_candidates.json`).
@@ -51,19 +51,19 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 ## Small-sample bias of a ratio
 
-**What it means.** Each metric is a ratio of two counts that both vary from sample to sample. Such a ratio is slightly biased in small samples: averaged over many samples, it isn't exactly the whole catalog's value.
+**Meaning.** Each metric is a ratio of two counts that both vary from sample to sample. Such a ratio is slightly biased in small samples: averaged over many samples, it isn't exactly the whole catalog's value.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.** It doesn't check it. The bias shrinks as the sample grows, faster than the sampling error does, so it is small next to the [margin of error](#sampling-error).
 
 ## Tuning on the evaluated records
 
-**What it means.** Changes made after looking at the [tuning part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s numbers (to the [schema](../../docs/terminology.md#3-schemas), the [schema additions](../../docs/terminology.md#3-schemas), or the prompts) fit those [records](../../docs/terminology.md#1-records-and-their-text), so the tuning part's numbers come out higher than the whole catalog's would.
+**Meaning.** Changes made after looking at the [tuning part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s numbers (to the [schema](../../docs/terminology.md#3-schemas), the [schema additions](../../docs/terminology.md#3-schemas), or the prompts) fit those [records](../../docs/terminology.md#1-records-and-their-text), so the tuning part's numbers come out higher than the whole catalog's would.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.** The [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070): its numbers are shown only with the [setting](../../docs/terminology.md#8-the-pipeline) `evaluate_held_out`, meant for the end, and each look is logged in `annotations/held_out_looks.csv`.
 
 ## An imperfect ground truth
 
-**What it means.** "Correct" means having a partner in the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples). A [fact](../../docs/terminology.md#2-triples) missing from it, or a mistake in it, shifts the value the same way in every sample.
+**Meaning.** "Correct" means having a partner in the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples). A [fact](../../docs/terminology.md#2-triples) missing from it, or a mistake in it, shifts the value the same way in every sample.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.** It doesn't: nothing in the numbers shows it. Only care in annotating limits it (see `050_annotate/050_annotate.md`).
 

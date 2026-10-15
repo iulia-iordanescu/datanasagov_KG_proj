@@ -3,7 +3,7 @@ schema.py -- stage 2: the schema this run extracts with.
 
 The schema input (040's the_schema.json by default, or any file given with
 --schema, in either shape common/common_helpers/schema_io.py reads) plus the additions
-(annotations/schema_additions.txt): entity classes, predicates and patterns a
+(annotations/schema_additions.txt): entity classes, predicates, and patterns a
 person added, e.g. on a mentor's advice (a pattern for a predicate the
 schema already has goes in the file's PATTERNS section). They are merged into one schema, and each
 entry remembers where it came from: "schema" (the schema input) or

@@ -8,9 +8,9 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 
 ## Current picture
 
-- **The schema we start from** is the one step 040 made on 2026-10-12: 60 kinds of things, 104 relations, 1,233 allowed combinations. Every experiment on extraction (060) and evaluation (070) uses this same file. [Evidence](#2026-10-12--step-040--the-baseline-schema)
-- **Step 040 gives a differently worded schema each time it runs**, even with almost nothing changed: in two runs, about a third of the kinds of things and half the relations had other names (e.g. FileFormat in one, DataFormat in the other). So a change to 040 itself can only be judged after running the same setup several times, to see how much it varies on its own. [Evidence](#the-schema-varies-from-run-to-run)
-- **150 texts are enough to find the kinds of things and the relations** (the last texts read added almost none), but not the combinations, which keep growing. The combinations are the part to trim before extraction runs on the whole catalog. [Evidence](#saturation)
+- **The schema we start from** is the one step 040 made on 2026-10-12: 60 entity classes, 104 predicates, 1,233 patterns. Every experiment on extraction (060) and evaluation (070) uses this same file. [Evidence](#2026-10-12--step-040--the-baseline-schema)
+- **Step 040 gives a differently worded schema each time it runs**, even with almost nothing changed: in two runs, about a third of the entity classes and half the predicates had other names (e.g. FileFormat in one, DataFormat in the other). So a change to 040 itself can only be judged after running the same setup several times, to see how much it varies on its own. [Evidence](#the-schema-varies-from-run-to-run)
+- **150 texts are enough to find the entity classes, and nearly enough for the predicates** (the last 25 texts added 2.8), but not the patterns, which keep growing. The patterns are the part to trim before extraction runs on the whole catalog. [Evidence](#saturation)
 - **Tables of numbers inside descriptions** (about 2% of records) are described, not copied cell by cell (rule 8 of the annotation guidelines). [Evidence](#data-tables-in-descriptions)
 - **Prompt caching** (paying a fraction for the part of a request that is the same every time) **works through NASA's LiteLLM for Claude**, the way 060 sends it. Extraction (060) uses it; nothing else repeats enough to be worth it. For Gemini it's unclear. [Evidence](#2026-10-12--litellm--prompt-caching-works-after-a-first-write-per-copy-of-the-model), [more](#2026-10-12--litellm--caching-inside-the-user-message-and-gemini)
 - **The safety filter of the model's service** sometimes stops answers about space-biology phrases (e.g. "was more virulent than"). Step 040 works around it; extraction (060) on space-biology records may lose some facts, to be watched in its report. [Evidence](#2026-10-12--step-040--what-the-content-filter-stopped-on)
@@ -27,7 +27,7 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 
 **The test.** On the NASA laptop, identical requests to `claude-opus-5.5` through NASA's LiteLLM, each starting with the same 2,523-token block marked for Anthropic's prompt caching. First two requests: both wrote the cache, neither read it. Then six more, in this order: read, read, wrote, wrote, read, read (2,523 tokens each time).
 
-**What it means.** The caching instruction reaches the model's service, and cached reads happen. That the first requests wrote and later ones read, with writes reappearing between reads, fits several copies of the model behind the service, each with its own cache that is written once and then read; this is inferred, not confirmed by the service. Since writing costs 1.25 times normal input and reading 0.05 times (for Opus 5.5, per Anthropic's documentation), caching pays once about 1 request in 5 reads: here 4 of 8 did, and in a long run nearly all would. 060 asks for caching since (`060_extract/060_extract.md`, *The schema in the prompt*), and each report counts the tokens read from and written to the cache, which will show the real share.
+**Interpretation.** The caching instruction reaches the model's service, and cached reads happen. That the first requests wrote and later ones read, with writes reappearing between reads, fits several copies of the model behind the service, each with its own cache that is written once and then read; this is inferred, not confirmed by the service. Since writing costs 1.25 times normal input and reading 0.05 times (for Opus 5.5, per Anthropic's documentation), caching pays once about 1 request in 5 reads: here 4 of 8 did, and in a long run nearly all would. 060 asks for caching since (`060_extract/060_extract.md`, *The schema in the prompt*), and each report counts the tokens read from and written to the cache, which will show the real share.
 
 ## 2026-10-12 · Step 040 · What the content filter stopped on
 
@@ -35,11 +35,11 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 
 **A hypothesis, not verified.** A safety filter for biological content: recent Anthropic models run with classifiers that block content on making pathogens more dangerous, and a list of bare phrases such as "was more virulent than" and "was grown in … using", without their records, can look like that. Smaller batches, where such phrases are fewer, went through. Whose filter it is (the model maker's, or one added by the service LiteLLM forwards to) isn't known, nor whether every such stop is labeled `content_filter`.
 
-**What it means.** For 040, nothing more: asking again in halves got every batch answered. For 060, which extracts from whole records (in 040, every text's extraction went through), failed records clustering in GeneLab's would point to the same filter; 060's report lists every failed record.
+**Interpretation.** For 040, nothing more: asking again in halves got every batch answered. For 060, which extracts from whole records (in 040, every text's extraction went through), failed records clustering in GeneLab's would point to the same filter; 060's report lists every failed record.
 
 ## 2026-10-12 · Step 040 · The baseline schema
 
-**The run.** `040_induce_schema_2026-10-12_1714`, on the NASA laptop: the harvest of 2026-10-01; `claude-opus-5.5` through LiteLLM; 15 texts from each of the 10 largest maintainers (150 texts); `min_support` 1; the extraction rules with rule 8 (values inside a data table aren't facts). It found 2,767 verified triple instances in 150 texts, and made a schema of 60 entity classes, 104 predicates and 1,233 patterns. This is the baseline schema: 060's and 070's experiments use this file unchanged. Its report: `outputs/reports/040_induce_schema_2026-10-12_1714.md`.
+**The run.** `040_induce_schema_2026-10-12_1714`, on the NASA laptop: the harvest of 2026-10-01; `claude-opus-5.5` through LiteLLM; 15 texts from each of the 10 largest maintainers (150 texts); `min_support` 1; the extraction rules with rule 8 (values inside a data table aren't facts). It found 2,767 verified triple instances in 150 texts, and made a schema of 60 entity classes, 104 predicates, and 1,233 patterns. This is the baseline schema: 060's and 070's experiments use this file unchanged. Its report: `outputs/reports/040_induce_schema_2026-10-12_1714.md`.
 
 ### The schema varies from run to run
 
@@ -66,7 +66,9 @@ From the run's report (*Saturation*): the expected number of schema entries afte
 | Predicates | 71 | 86 | 94 | 99 | 102 | 105 | 2.8 |
 | Patterns | 297 | 537 | 746 | 934 | 1,106 | 1,264 | 158 |
 
-Entity classes are saturated: more texts from these 10 maintainers would find no new kinds of things. Predicates nearly are. Patterns are not, and with `min_support` 1 likely never will be: every combination of entity classes and a predicate seen once counts. This speaks only for the 10 maintainers read.
+Both tables count by support only, before stage 7 leaves out the entries too vague to define, so they end at 105 predicates and 1,264 patterns, one predicate and 31 patterns more than the schema has.
+
+Entity classes are saturated: more texts from these 10 maintainers would find no new entity classes. Predicates nearly are. Patterns are not, and with `min_support` 1 likely never will be: every combination of entity classes and a predicate seen once counts. This speaks only for the 10 maintainers read.
 
 ### Breadth
 

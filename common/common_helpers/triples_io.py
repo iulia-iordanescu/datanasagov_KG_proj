@@ -17,7 +17,7 @@ Component instances and component classes are evened out in two ways:
     triple_key  (subject, predicate, object) as common/common_helpers/text_match.norm_text
                 gives them (case, spacing, quote marks, dashes, edge
                 punctuation, a leading article); predicates also treat
-                "_", "-" and spaces alike ("IS_ABOARD" == "is aboard").
+                "_", "-", and spaces alike ("IS_ABOARD" == "is aboard").
                 Two rows with the same key are the same fact.
     component_class_key   letters and digits only, for component classes the
                 model re-cased or re-spaced ("physical quantity" ==
@@ -38,7 +38,7 @@ from common.text_match import norm_text
 REQUIRED = ("subject", "predicate", "object")
 OPTIONAL = ("subject_class", "object_class", "source_text")
 #: A triple row's columns. (The ground truth and draft batches add
-#: all_facts_extracted, flags and origin: common/common_helpers/ground_truth.COLUMNS.)
+#: all_facts_extracted, flags, and origin: common/common_helpers/ground_truth.COLUMNS.)
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
            "object_class", "source_text"]
 

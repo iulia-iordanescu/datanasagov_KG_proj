@@ -1,5 +1,5 @@
 """
-common/common_helpers/files.py -- the one way every step, the manifest, the report and the
+common/common_helpers/files.py -- the one way every step, the manifest, the report, and the
 annotation tool save a file. (The log is the one exception: it is written
 line by line as a run goes, so a crash still leaves every line before it.)
 

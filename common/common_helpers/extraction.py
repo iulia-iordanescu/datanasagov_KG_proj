@@ -28,7 +28,7 @@ What build_rows does with a record's replies (one per text piece):
   2. every item of every reply's "triples", cleaned by triples_io.clean_triple;
      one that can't be a triple instance (a missing subject, predicate or
      object, a list where text belongs, …) is removed as "malformed";
-  3. the same subject, predicate, object and entity classes again (e.g.
+  3. the same subject, predicate, object, and entity classes again (e.g.
      stated in two pieces) is removed as "duplicate"; the same triple
      instance with OTHER entity classes is kept, and both rows are flagged
      conflicting_classes;
@@ -77,7 +77,7 @@ def reply(with_classes: bool = True) -> str:
 
 
 def prompt(template, schema_text: str, record: dict, piece: str, with_classes: bool = True) -> str:
-    """The prompt for one text piece: template (040's, 050's or 060's) filled
+    """The prompt for one text piece: template (040's, 050's, or 060's) filled
     with the schema (none for 040), this record's rules, the shared reply
     format and the piece."""
     return fill(template, schema=schema_text, rules=rules_for(record), reply=reply(with_classes),

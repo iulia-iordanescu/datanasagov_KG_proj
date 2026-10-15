@@ -1,8 +1,8 @@
 """
 helpers/models.py -- the AI models a service lists for your account, and which of them you may use.
 
-    py helpers/models.py                                  Ask Sage's list (free)
-    py helpers/models.py --service litellm                LiteLLM's list (free)
+    py helpers/models.py                                  LiteLLM's list (free; the default service)
+    py helpers/models.py --service asksage                Ask Sage's list (free)
 
 Free: listing is not a model call. Being listed doesn't guarantee access:
 Ask Sage may list a model and still refuse it. (LiteLLM lists only the
@@ -10,12 +10,12 @@ models your key may use, but a model may still fail, e.g. on a setting it
 doesn't accept.) To use one, give the service and the model's name to a
 step's settings, e.g.
 
-    py 050_annotate/run.py --service litellm --model <name>
+    py 050_annotate/run.py --service asksage --model <name>
 
 To find out which models you may use, before choosing one:
 
     py helpers/models.py --try <name> <name>                       these models (names from the list)
-    py helpers/models.py --service litellm --try all               every listed model
+    py helpers/models.py --try all                                 every listed model
 
 Each try is the same one-line test call a step makes first: one tiny paid
 call per model. It asks before paying, then prints, for each model, usable

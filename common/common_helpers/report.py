@@ -38,10 +38,10 @@ def cell(value) -> str:
 
 
 def named(items, show: int = 5, sep: str = ", ") -> str:
-    """The first `show` items, then "and N more": "a, b, c and 4 more".
+    """The first `show` items, then "and N more": "a, b, c, and 4 more".
     Shared by every warning and note that names items."""
     items = [str(i) for i in items]
-    return sep.join(items[:show]) + (f" and {len(items) - show} more" if len(items) > show else "")
+    return sep.join(items[:show]) + (f"{sep.rstrip()} and {len(items) - show} more" if len(items) > show else "")
 
 
 def counted(counter: dict) -> str:
@@ -172,7 +172,7 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
     total = sum(made for _, made, _ in stages) + test_calls
     lines += [f"| the one-line test (first paid call of a run) | {test_calls} | – |",
               f"| **answers received this run** | **{total:,}** | |",
-              f"| requests sent to the service, retries, re-asks and failures included | {llm.REQUESTS['sent']:,} | |", "",
+              f"| requests sent to the service, retries, re-asks, and failures included | {llm.REQUESTS['sent']:,} | |", "",
               "| Tokens (as the service counted them) | |", "|---|---:|",
               f"| sent, not from the cache | {llm.REQUESTS['input_tokens']:,} |",
               f"| sent, read from the cache (billed at a fraction) | {llm.REQUESTS['cache_read_tokens']:,} |",

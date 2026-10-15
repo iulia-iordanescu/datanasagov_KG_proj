@@ -26,7 +26,7 @@ How it runs:
   A step named with --only runs whatever the gates say.
 - Its own report and log: outputs/reports/000_pipeline_<date>_<time>.md and
   outputs/logs/000_pipeline_<date>_<time>.log. The report shows every step's
-  status, duration, headline numbers, warnings and report, and what needs
+  status, duration, headline numbers, warnings, and report, and what needs
   attention. It never repeats the step reports.
 
 Step 080 (building the graph) isn't built yet.
@@ -137,7 +137,7 @@ def _new_report(step: str, before: set) -> Path | None:
 
 
 def run_one(step: str, confirm: str | None, say) -> dict:
-    """Run one step in its own process; its status, duration, report, headline and warnings."""
+    """Run one step in its own process; its status, duration, report, headline, and warnings."""
     before = set(REPORTS_DIR.glob(f"{step}_*.md")) if REPORTS_DIR.exists() else set()
     say(f"--- {step}: started")
     clock = time.monotonic()

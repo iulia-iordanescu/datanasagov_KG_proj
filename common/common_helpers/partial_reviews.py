@@ -14,7 +14,7 @@ in "MODIS Terra"), so a person can review each one:
     verdict   "same fact" or "not the same fact"
 
 The extracted triple is written as translated into the ground truth
-vocabulary (as compared_triples.csv shows it), so a verdict stops applying if the
+schema (as compared_triples.csv shows it), so a verdict stops applying if the
 translation table changes that triple. Step 070 never pairs two triples a
 person marked "not the same fact"; it counts every partial pair not yet
 reviewed. The annotation tool writes the file (Partial pairs), for TUNING
