@@ -132,6 +132,8 @@ EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.js
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
 GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 PAGE = Path(__file__).with_name("page.html")
+#: The page's typefaces (Public Sans and JetBrains Mono, SIL Open Font License: the OFL-*.txt beside them).
+FONTS = Path(__file__).with_name("fonts")
 KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
 #: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
@@ -1034,6 +1036,9 @@ def make_handler(data: Data):
             try:
                 if url.path == "/":
                     self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+                elif url.path.startswith("/fonts/") and url.path.endswith(".woff2") and "/" not in url.path[7:] \
+                        and (FONTS / url.path[7:]).is_file():
+                    self._send(200, (FONTS / url.path[7:]).read_bytes(), "font/woff2")
                 elif url.path == "/api/batches":
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),

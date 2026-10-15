@@ -4,8 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Annotation tool</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%20aria-hidden%3D%22true%22%3E%3Cg%20transform%3D%22rotate%2845%2032%2032%29%22%20stroke%3D%22%235a3b1c%22%20stroke-width%3D%221.7%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M25.6%204.6c2.1-1%2010.6-1%2012.7.1l.3%206.4H25.4z%22%20fill%3D%22%23d48a7e%22/%3E%3Cpath%20d%3D%22M25.4%2011.1h13.2l.1%205.6H25.3z%22%20fill%3D%22%23b8bcc0%22/%3E%3Cpath%20d%3D%22M25.6%2013.1h12.9M25.5%2015h13%22%20stroke%3D%22%238b9095%22%20stroke-width%3D%221%22/%3E%3Cpath%20d%3D%22M25.3%2016.7h13.4l-.2%2027.6H25.5z%22%20fill%3D%22%23d9a23f%22/%3E%3Cpath%20d%3D%22M29.8%2017l.2%2027M34.2%2017l-.1%2027%22%20stroke-width%3D%221.1%22/%3E%3Cpath%20d%3D%22M30.9%2017.4l.1%2026.4%22%20stroke%3D%22%23f0c86e%22%20stroke-width%3D%221.4%22/%3E%3Cpath%20d%3D%22M25.5%2044.3h13l-6.4%2012.9z%22%20fill%3D%22%23ead2a3%22/%3E%3Cpath%20d%3D%22M28.2%2047.6c1.4.9%202.4%202.6%202.6%204.4M35.6%2047.4c-1.1%201.1-1.7%202.8-1.8%204.6%22%20stroke%3D%22%23b58a52%22%20stroke-width%3D%220.9%22/%3E%3Cpath%20d%3D%22M30.1%2053.4h4l-2%203.8z%22%20fill%3D%22%233a3632%22%20stroke%3D%22%232b2724%22/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  /* the tool's own copies (helpers/annotator/fonts/, SIL Open Font License), so the look doesn't depend on the network */
+  @font-face { font-family: "Public Sans"; src: url("/fonts/PublicSans.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+</style>
 <style>
   :root {
     --bg: #e9ece8; --panel: #ffffff; --ink: #262b31; --muted: #626a76; --line: #d5dad4;
@@ -112,7 +116,7 @@
           border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; background: var(--paper); }
   mark { background: var(--soft); color: inherit; border-radius: 2px; cursor: pointer; }
   mark.active { background: var(--strong); outline: 1px solid var(--flag); }
-  mark.shared { box-shadow: inset 0 -2px 0 var(--flag); }   /* the source text of more than one ground truth triple */
+  mark.shared { box-shadow: inset 0 -2px 0 var(--muted); }   /* the source text of more than one ground truth triple */
   .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
   ul.hint { padding-left: 18px; }
   ul.hint li { margin: 2px 0; }
@@ -151,12 +155,10 @@
   .triple input, .triple textarea { width: 100%; min-width: 0; }
   textarea.grow { resize: none; overflow: hidden; line-height: 1.4; }
   .triple label.f-subj { color: var(--subj); } .triple label.f-pred { color: var(--pred); } .triple label.f-obj { color: var(--obj); }
-  .f-subj input, .f-subj textarea { border-left: 4px solid var(--subj); background: var(--subj-bg); }
-  .f-pred input, .f-pred textarea { border-left: 4px solid var(--pred); background: var(--pred-bg); }
-  .f-obj input, .f-obj textarea { border-left: 4px solid var(--obj); background: var(--obj-bg); }
+  .f-subj input, .f-subj textarea { background: var(--subj-bg); }
+  .f-pred input, .f-pred textarea { background: var(--pred-bg); }
+  .f-obj input, .f-obj textarea { background: var(--obj-bg); }
   .f-subj input, .f-subj textarea, .f-pred input, .f-pred textarea, .f-obj input, .f-obj textarea { color: var(--ink); }
-  .f-subj .fixed { border-left: 4px solid var(--subj); } .f-pred .fixed { border-left: 4px solid var(--pred); }
-  .f-obj .fixed { border-left: 4px solid var(--obj); }
   .schematable th { background: var(--tint); }
   .schemaview h3 { color: var(--accent); }
   .triple .cls { font-size: 13px; }
@@ -218,9 +220,9 @@
   :root {
     --bg: #f3f0ea; --panel: #fffdfa; --paper: #fffaf0; --tint: #f7f3ec; --line: #dcd5c9;
     --ink: #1f2933; --muted: #66707a; --label: #3e4a56;
-    --navy: #1f3a5f; --navy-bg: #e7edf5; --sky: #3f7cc0; --sky-bg: #e4eef9;
+    --navy: #1f3a5f; --navy-bg: #e7edf5; --sky: #3f7cc0; --sky-bg: #dcebfb; --steel-bg: #e8ebf5;
     --accent: var(--navy); --accent-bg: var(--navy-bg);
-    --subj: #b23a72; --subj-bg: #fbedf3; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #b8621c; --obj-bg: #fdf1e5;
+    --subj: #11777a; --subj-bg: #e6f4f3; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #b8621c; --obj-bg: #fdf1e5;
     --soft: #f6e3b4; --strong: #efc36a;
     --bar: var(--navy); --bar-ink: #fdfaf3; --bar-soft: rgba(255, 255, 255, 0.14);
   }
@@ -228,16 +230,19 @@
     :root {
       --bg: #14181c; --panel: #1c2127; --paper: #1f2329; --tint: #222830; --line: #2e353d;
       --ink: #e9e4da; --muted: #9aa3ab; --label: #c3c9cf;
-      --navy: #8fb0d6; --navy-bg: #1f2c3b; --sky: #7fb0e3; --sky-bg: #1b2a3a;
-      --subj: #f0a3c6; --subj-bg: #2e1f28; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #f2b27a; --obj-bg: #2e2419;
+      --navy: #8fb0d6; --navy-bg: #1f2c3b; --sky: #7fb0e3; --sky-bg: #1b2a3a; --steel-bg: #222838;
+      --subj: #6fd0cc; --subj-bg: #17292a; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #f2b27a; --obj-bg: #2e2419;
       --soft: #4a3d1c; --strong: #6b5419;
       --bar: #172b45; --bar-ink: #ece6da; --bar-soft: rgba(255, 255, 255, 0.10);
     }
   }
   body { font-family: "Public Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; background: var(--bg); }
-  header { background: var(--bar); box-shadow: none; border-bottom: 0; }
+  header { background: var(--bar); box-shadow: none; border-bottom: 3px solid #6f9fd2; }
+  @media (prefers-color-scheme: dark) { header { border-bottom-color: #3d6596; } }
   header h1 button { background: transparent; border: 0; color: var(--bar-ink); font: inherit; font-weight: 600;
                      font-size: 17px; padding: 4px 10px 4px 0; letter-spacing: 0.01em; }
+  .pencil { display: inline-block; width: 24px; height: 24px; margin-right: 8px; vertical-align: -6px; }
+  .pencil svg { width: 100%; height: 100%; }
   header h1 button:hover { background: transparent; text-decoration: underline; text-underline-offset: 4px; }
   header nav.tabs .tab.current, header nav.tabs .tab.current > button { background: var(--bar-ink); color: #1f3a5f; }
   header .tab.current select { color: #1f3a5f; }
@@ -267,6 +272,7 @@
   .viewbox { background: var(--tint); border: 1px solid var(--line); border-radius: 10px;
              padding: 12px 16px; display: flex; flex-direction: column; }
   .viewbox:first-child { background: var(--sky-bg); }
+  .viewbox:not(:first-child) { background: var(--steel-bg); }
   .viewbox h3 { margin: 0 0 4px; color: var(--navy); }
   .viewbox p { margin: 0 0 10px; color: var(--label); flex: 1; }
   .doclinks a { color: var(--navy); }
@@ -291,7 +297,15 @@
   .titleblock h2 { margin: 2px 0 2px; white-space: normal; overflow: visible; }
   .viewbox a { color: var(--navy); }
   .titleblock .headmeta { margin: 0; }
-  .headline .striptools { margin-left: 0; align-self: center; }
+  .toolsmenu { position: relative; align-self: center; }
+  .toolsmenu summary { list-style: none; cursor: pointer; padding: 5px 12px; border-radius: 8px; background: var(--navy-bg);
+                       color: var(--navy); font-weight: 600; white-space: nowrap; }
+  .toolsmenu summary::-webkit-details-marker { display: none; }
+  .toolsmenu summary::after { content: " ▾"; }
+  .toolsmenu .menu { position: absolute; right: 0; top: 100%; z-index: 4; margin-top: 4px; min-width: 210px; padding: 6px;
+                     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+                     box-shadow: 0 6px 18px rgba(20, 30, 40, 0.15); display: flex; flex-direction: column; gap: 4px; }
+  .toolsmenu .menu button.tool { text-align: left; width: 100%; }
   .headline label.finished { align-self: center; }
   .headline > button, .headline .recnum { align-self: center; }
   section.card, section.card.textcard, section.card.triplecard, section.card.recordhead { border: 1px solid var(--line); }
@@ -299,14 +313,16 @@
   .recnum { font-weight: 600; color: var(--muted); min-width: 3.2em; text-align: center; }
   .headmeta { gap: 8px; }
   .recinfo summary { cursor: pointer; color: var(--navy); font-weight: 600; }
-  .recinfo[open] { flex-basis: 100%; order: 3; }
-  .recinfo dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 6px 0 2px; }
+  .recinfo { position: relative; }              /* the details open in a panel below it: the button doesn't move */
+  .recinfo dl { position: absolute; left: 0; top: 100%; z-index: 4; margin: 4px 0 0; padding: 10px 14px; min-width: 360px;
+                display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; background: var(--panel);
+                border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(20, 30, 40, 0.15); }
   .recinfo dt { color: var(--muted); } .recinfo dd { margin: 0; color: var(--ink); }
   #batchprogress { padding: 8px 8px 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   .batchline { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
   .segments { display: flex; gap: 3px; margin-top: 6px; }
   .seg { flex: 1; height: 9px; border-radius: 3px; background: var(--line); }
-  .seg.done { background: var(--navy); }
+  .seg.done { background: var(--ok); }
   .seg.here { outline: 2px solid var(--sky); outline-offset: 1px; }
   #intro .helpbody p, #intro .helpbody li { max-width: none; }
   code { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 0.88em; background: var(--tint);
@@ -317,7 +333,7 @@
 <body>
 <header>
   <div class="topbar">
-    <h1><button id="homebutton" title="Home: what the tool is for, its views, and where its documents are">Annotation tool</button></h1>
+    <h1><button id="homebutton" title="Home: what the tool is for, its views, and where its documents are"><span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span>Annotation tool</button></h1>
     <nav class="tabs" aria-label="Views">
       <span class="tab" id="tab-batch" title="Correct a model's drafts into ground truth, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
       <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
@@ -508,6 +524,17 @@ const TOOL_SCHEMA = el("button", { class: "tool", onclick: () => showSchema().ca
          "definition. When a ground truth triple uses one that isn't in it yet (a new one, or a typo), add it with a " +
          "definition, or fix the typo: step 070 won't evaluate a finished record that uses one missing from it." },
   "Ground truth schema", GAPCOUNT);
+// Ground truth's tools, in one menu: the Guidelines and the ground truth schema (its count shows on the menu too).
+const TOOLCOUNT = el("span", { class: "count", hidden: true });
+function toolsMenu() {
+  return el("details", { class: "toolsmenu" },
+    el("summary", { title: "The Guidelines, and the ground truth schema" }, "Tools", TOOLCOUNT),
+    el("div", { class: "menu" }, TOOL_GUIDELINES, TOOL_SCHEMA));
+}
+document.addEventListener("click", (e) => {        // the menu closes on a choice, or a click anywhere else
+  for (const m of document.querySelectorAll(".toolsmenu[open]"))
+    if (!m.contains(e.target) || e.target.closest(".menu button")) m.open = false;
+});
 // The view you're on: its tab in the top band.
 function chrome(view) {
   for (const [id, v] of [["tab-batch", "batch"], ["mapping", "mapping"], ["partial", "partial"], ["additions", "additions"]])
@@ -591,7 +618,6 @@ function show(i) {
       el("div", { class: "titleblock" },
         el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
         el("div", { class: "meta headmeta" },
-          el("span", { id: "progress" }),
           el("details", { class: "recinfo", open: infoOpen(),
                           ontoggle: (e) => { try { localStorage.setItem("recordInfoOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
             el("summary", {}, "About this record"),
@@ -603,8 +629,9 @@ function show(i) {
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
-              el("dt", {}, "Id"), el("dd", { class: "fixed" }, rec.id))))),
-      el("div", { class: "striptools" }, TOOL_GUIDELINES, TOOL_SCHEMA),
+              el("dt", {}, "Id"), el("dd", { class: "fixed" }, rec.id))),
+          el("span", { id: "progress" }))),
+      toolsMenu(),
       el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
         el("input", { type: "checkbox", checked: rec.finished,
                       onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
@@ -956,8 +983,8 @@ async function showHome() {
 function drawGaps(g) {
   gaps = g;
   const n = g.component_classes.length + g.patterns.length;
-  GAPCOUNT.hidden = !n;
-  GAPCOUNT.textContent = n ? `✖ ${n}` : "";
+  GAPCOUNT.hidden = TOOLCOUNT.hidden = !n;
+  GAPCOUNT.textContent = TOOLCOUNT.textContent = n ? `✖ ${n}` : "";
   if (!$("help").hidden && $("help").querySelector(".schemaview") && !$("help").contains(document.activeElement))
     showSchema().catch(() => {});
 }
