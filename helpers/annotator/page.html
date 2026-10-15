@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%20aria-hidden%3D%22true%22%3E%3Cg%20transform%3D%22rotate%2845%2032%2032%29%22%20stroke%3D%22%235a3b1c%22%20stroke-width%3D%221.7%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M25.6%204.6c2.1-1%2010.6-1%2012.7.1l.3%206.4H25.4z%22%20fill%3D%22%23d48a7e%22/%3E%3Cpath%20d%3D%22M25.4%2011.1h13.2l.1%205.6H25.3z%22%20fill%3D%22%23b8bcc0%22/%3E%3Cpath%20d%3D%22M25.6%2013.1h12.9M25.5%2015h13%22%20stroke%3D%22%238b9095%22%20stroke-width%3D%221%22/%3E%3Cpath%20d%3D%22M25.3%2016.7h13.4l-.2%2027.6H25.5z%22%20fill%3D%22%23d9a23f%22/%3E%3Cpath%20d%3D%22M29.8%2017l.2%2027M34.2%2017l-.1%2027%22%20stroke-width%3D%221.1%22/%3E%3Cpath%20d%3D%22M30.9%2017.4l.1%2026.4%22%20stroke%3D%22%23f0c86e%22%20stroke-width%3D%221.4%22/%3E%3Cpath%20d%3D%22M25.5%2044.3h13l-6.4%2012.9z%22%20fill%3D%22%23ead2a3%22/%3E%3Cpath%20d%3D%22M28.2%2047.6c1.4.9%202.4%202.6%202.6%204.4M35.6%2047.4c-1.1%201.1-1.7%202.8-1.8%204.6%22%20stroke%3D%22%23b58a52%22%20stroke-width%3D%220.9%22/%3E%3Cpath%20d%3D%22M30.1%2053.4h4l-2%203.8z%22%20fill%3D%22%233a3632%22%20stroke%3D%22%232b2724%22/%3E%3C/g%3E%3C/svg%3E">
 <style>
   /* the tool's own copies (helpers/annotator/fonts/, SIL Open Font License), so the look doesn't depend on the network */
-  @font-face { font-family: "IBM Plex Sans"; src: url("/fonts/IBMPlexSans.woff2") format("woff2"); font-weight: 100 700; font-display: swap; }
+  @font-face { font-family: "Libre Franklin"; src: url("/fonts/LibreFranklin.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
   @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 </style>
 <style>
@@ -216,13 +216,13 @@
              border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
 
   /* ---------------------------------------------------------------- the look: one palette, navy and sky blue on paper;
-     IBM Plex Sans (plain zeros), JetBrains Mono for anything code-like */
+     Libre Franklin (chosen 2026-10-14, from eight samples), JetBrains Mono for anything code-like */
   :root {
     --bg: #f3f0ea; --panel: #fffdfa; --paper: #fffaf0; --tint: #f7f3ec; --line: #dcd5c9;
     --ink: #1f2933; --muted: #66707a; --label: #3e4a56;
     --navy: #1f3a5f; --navy-bg: #e7edf5; --sky: #3f7cc0; --sky-bg: #dcebfb; --steel-bg: #e8ebf5;
     --accent: var(--navy); --accent-bg: var(--navy-bg);
-    --subj: #11777a; --subj-bg: #e6f4f3; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #4a5568; --obj-bg: #eef0f4;
+    --subj: #11777a; --subj-bg: #e6f4f3; --pred: #b0567a; --pred-bg: #fdeef4; --obj: #6f4a8e; --obj-bg: #f2ecf8;
     --soft: #f6e3b4; --strong: #efc36a;
     --bar: var(--navy); --bar-ink: #fdfaf3; --bar-soft: rgba(255, 255, 255, 0.14);
   }
@@ -231,12 +231,12 @@
       --bg: #14181c; --panel: #1c2127; --paper: #1f2329; --tint: #222830; --line: #2e353d;
       --ink: #e9e4da; --muted: #9aa3ab; --label: #c3c9cf;
       --navy: #8fb0d6; --navy-bg: #1f2c3b; --sky: #7fb0e3; --sky-bg: #1b2a3a; --steel-bg: #222838;
-      --subj: #6fd0cc; --subj-bg: #17292a; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #b8c2d0; --obj-bg: #252a32;
+      --subj: #6fd0cc; --subj-bg: #17292a; --pred: #f0b0c8; --pred-bg: #2e2027; --obj: #c3a6e3; --obj-bg: #251f2e;
       --soft: #4a3d1c; --strong: #6b5419;
       --bar: #172b45; --bar-ink: #ece6da; --bar-soft: rgba(255, 255, 255, 0.10);
     }
   }
-  body { font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; background: var(--bg); }
+  body { font-family: "Libre Franklin", "Segoe UI", system-ui, sans-serif; font-size: 15px; background: var(--bg); }
   header { background: var(--bar); box-shadow: none; border-bottom: 3px solid #6f9fd2; }
   @media (prefers-color-scheme: dark) { header { border-bottom-color: #3d6596; } }
   header h1 button { background: transparent; border: 0; color: var(--bar-ink); font: inherit; font-weight: 600;
@@ -303,6 +303,7 @@
   .triplenav button, .headline > button { color: var(--navy); }
   .arrow { display: inline-flex; vertical-align: -2px; }
   .rightstack { display: flex; flex-direction: column; align-items: stretch; gap: 6px; align-self: center; }
+  .rightstack .toolsmenu { align-self: stretch; }
   .rightstack .toolsmenu summary { display: block; text-align: center; }
   .iddd { display: flex; align-items: center; gap: 8px; }
   .iddd .fixed { white-space: nowrap; padding: 2px 8px; }
@@ -560,7 +561,7 @@ function arrow(dir) {                       // "up", "down", "left", "right"
 }
 function toolsMenu(...extra) {                // extra: the view's own tools (TOOL_GUIDELINES, TOOL_SCHEMA)
   return el("details", { class: "toolsmenu" },
-    el("summary", { title: "How to use this view, the terms, and this view's tools" }, "Tools",
+    el("summary", { title: "How to use this view, the terms, and this view's tools" }, "Help",
        extra.includes(TOOL_SCHEMA) ? TOOLCOUNT : null),
     el("div", { class: "menu" },
       el("button", { class: "tool", onclick: () => showHelp(),
@@ -1014,7 +1015,7 @@ async function showHome() {
       box("Schema additions", "Entity classes, predicates and patterns to add to the schema step 060 extracts with.",
           () => openAdditions())),
     el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch. " +
-       "How to use a view, and the terms: its Tools menu.")));
+       "How to use a view, and the terms: its Help menu.")));
 }
 
 function drawGaps(g) {

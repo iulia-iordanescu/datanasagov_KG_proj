@@ -110,10 +110,10 @@ class A_Paths(unittest.TestCase):
 
     def test_fonts(self):
         """The page's typefaces come from the tool itself (no network needed), and only its own .woff2 files."""
-        r = urllib.request.urlopen(url("/fonts/IBMPlexSans.woff2"))
+        r = urllib.request.urlopen(url("/fonts/LibreFranklin.woff2"))
         self.assertEqual(r.headers["Content-Type"], "font/woff2")
         self.assertGreater(len(r.read()), 10000)
-        for bad in ("/fonts/OFL-IBMPlexSans.txt", "/fonts/..%2Fserver.py", "/fonts/nope.woff2"):
+        for bad in ("/fonts/OFL-LibreFranklin.txt", "/fonts/..%2Fserver.py", "/fonts/nope.woff2"):
             with self.subTest(bad=bad), self.assertRaises(urllib.error.HTTPError):
                 urllib.request.urlopen(url(bad))
 
