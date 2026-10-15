@@ -292,6 +292,19 @@ def record_view(data: Data, rid: str, rows: list, finished: bool) -> dict:
     }
 
 
+def docs_url() -> str:
+    """Where the repository's documents are on GitHub, on the branch the tool runs from, for the page's links
+    (e.g. https://github.com/<owner>/<repo>/blob/<branch>/), or "" when Git doesn't say (no remote, not on a branch)."""
+    import subprocess
+
+    def git(*args) -> str:
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    remote, branch = git("remote", "get-url", "origin"), git("branch", "--show-current")
+    m = re.match(r"(?:https://github\.com/|git@github\.com:)([^/]+/[^/]+?)(?:\.git)?$", remote)
+    return f"https://github.com/{m.group(1)}/blob/{branch}/" if m and branch else ""
+
+
 def batch_view(data: Data, n: int, path: Path) -> dict:
     """The batch as the page shows it: one entry per record, in the file's order."""
     records = [record_view(data, rid, [r for r in rows if not _is_blank(r)],
@@ -1024,7 +1037,8 @@ def make_handler(data: Data):
                 elif url.path == "/api/batches":
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
-                                "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt)})
+                                "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt),
+                                "docs_url": docs_url()})
                 elif url.path == "/api/gaps":
                     self._json(ground_truth_schema_gaps(data, read_ground_truth()))
                 elif url.path == "/api/mapping":

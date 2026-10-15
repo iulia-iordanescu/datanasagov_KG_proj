@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Annotation tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <style>
   :root {
     --bg: #e9ece8; --panel: #ffffff; --ink: #262b31; --muted: #626a76; --line: #d5dad4;
@@ -30,28 +32,29 @@
          font: 15px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
          -webkit-font-smoothing: antialiased; }
   header { position: sticky; top: 0; z-index: 2; background: var(--bar); color: var(--bar-ink); box-shadow: var(--shadow); }
-  header .topbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 20px; }
-  header .batchpick { display: inline-flex; gap: 8px; align-items: center; margin-right: 10px; }
-  header .batchpick select { border-color: transparent; }
-  header .topbar > button, header .viewsmenu summary { background: transparent; border: 0; color: var(--bar-ink);
-                                                       padding: 6px 11px; border-radius: 8px; }
-  header .topbar > button:hover, header .viewsmenu summary:hover, header .viewsmenu[open] summary { background: var(--bar-soft); }
+  header .topbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 8px 16px; }
+  @media (min-width: 1200px) { header .topbar { flex-wrap: nowrap; } }
+  header #status { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 5em; }
+  header h1 { white-space: nowrap; }
+  header nav.tabs { display: flex; gap: 2px; align-items: center; background: none; border: 0; padding: 0;
+                    max-height: none; overflow: visible; position: static; border-radius: 0; box-shadow: none; }
+  header nav.tabs button { display: inline-block; width: auto; margin: 0; text-align: center; box-shadow: none; }
+  header nav.tabs .tab.current { background: var(--bar-ink); }
+  header nav.tabs .tab.current > button, header nav.tabs .tab.current { color: #0f3d4a; }
+  header .tab { display: inline-flex; align-items: center; gap: 4px; border-radius: 8px; }
+  header .tabs button, header .tools button, header .topbar > button { background: transparent; border: 0;
+      color: var(--bar-ink); padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
+  header .tabs button:hover, header .tools button:hover, header .topbar > button:hover { background: var(--bar-soft); }
+  header .tab.current, header .tab.current button { background: var(--bar-ink); color: var(--bar); font-weight: 600; }
+  header .tab select { border-color: transparent; padding: 3px 6px; margin-right: 4px; max-width: 210px; }
+  header .tools { display: inline-flex; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--bar-soft); }
+  header .tools[hidden] { display: none; }
   header #status { color: var(--bar-ink); opacity: 0.85; }
   header #status.failed { color: #ffd2cc; opacity: 1; }
   header #status.saved { color: #bdf2cc; opacity: 1; }
   header .count { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 12px;
                   font-weight: 700; background: #f4b6ae; color: #6d1d16; }
-  .viewsmenu { position: relative; }
-  .viewsmenu summary { list-style: none; cursor: pointer; padding: 6px 12px; border-radius: 8px; color: var(--accent); }
-  .viewsmenu summary::-webkit-details-marker { display: none; }
-  .viewsmenu summary::after { content: " ▾"; }
-  .viewsmenu summary:hover, .viewsmenu[open] summary { background: var(--accent-bg); }
-  .viewsmenu .menu { position: absolute; top: 100%; left: 0; z-index: 3; margin-top: 4px; min-width: 230px; padding: 6px;
-                     background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
-  .viewsmenu .menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; }
-  .viewsmenu .menu button:hover { background: var(--accent-bg); }
   header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; margin: 0 12px 0 0; }
-  .viewsmenu .menu button { color: var(--ink); }
   select, input, textarea, button { font: inherit; color: var(--ink); }
   select, input, textarea { background: var(--input); border: 1px solid #c3cac3; border-radius: 8px; padding: 6px 9px; }
   @media (prefers-color-scheme: dark) { select, input, textarea { border-color: #3b434c; } }
@@ -68,6 +71,13 @@
   #intro p { margin: 0 0 4px 0; }
   #warnings:empty { display: none; }
   #warnings li { white-space: pre-line; }
+  .about p { max-width: 80ch; }
+  .aboutgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 14px 0; }
+  .aboutitem { background: var(--accent-bg); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; }
+  .aboutitem p { margin: 4px 0 0; font-size: 14px; color: var(--label); }
+  .aboutlinks a { color: var(--accent); }
+  .typepick { display: flex; gap: 6px; margin: 6px 0; }
+  .explain p { margin: 6px 0; max-width: 90ch; }
   .gaps { background: var(--error-bg); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
   .gaps ul { list-style: none; margin: 6px 0 0; padding: 0; }
   .gaps li { margin-top: 6px; }
@@ -118,7 +128,16 @@
   .pill.ok { background: var(--ok-bg); color: var(--ok); }
   .pill.todo { background: var(--bg); color: var(--muted); }
   nav .badge .pill { margin-left: 3px; }
-  .progressline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; font-size: 13.5px; color: var(--label); }
+  .recordhead { padding: 10px 16px 0; }
+  .headline { display: flex; align-items: center; gap: 8px; }
+  .headline h2 { flex: 1; min-width: 0; margin: 0 6px; font-size: 16.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .headline button { padding: 4px 10px; }
+  .headline .listtoggle { color: var(--accent); }
+  .headmeta { margin: 4px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+  .headmeta .pill { margin-left: 6px; }
+  .recordhead .progressbar { margin: 0 -16px; border-radius: 0 0 12px 12px; height: 4px; }
+  body.norecords main { grid-template-columns: 1fr; }
+  body.norecords nav#records { display: none; }
   .progressbar { height: 6px; border-radius: 999px; background: var(--bg); margin-top: 6px; overflow: hidden; }
   .progressbar > div { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 600; }
@@ -195,24 +214,72 @@
   .maprow select { max-width: 100%; }
   .example { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg);
              border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+  /* ---------------------------------------------------------------- the look: bolder, still calm */
+  :root {
+    --bg: #eaf0f3; --tint: #f2f7f9; --accent: #17798a; --accent-bg: #dff1f4; --line: #d3dde2;
+    --amber: #d9961a; --amber-bg: #fff3d6; --violet: #5b6fd6;
+    --band: linear-gradient(100deg, #0f3d4a 0%, #186e7e 55%, #3d5aa8 100%);
+    --soft: #ffe9a6; --strong: #ffd047;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1418; --tint: #18232a; --accent: #5fc7d6; --accent-bg: #16323a; --line: #2a3a42;
+      --amber: #e8b04a; --amber-bg: #33280f; --violet: #8f9df0;
+      --band: linear-gradient(100deg, #0b2a33 0%, #124b57 55%, #263d73 100%);
+      --soft: #4f4413; --strong: #7a6205;
+    }
+  }
+  body { font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; font-size: 14.5px; }
+  header { background: var(--band); box-shadow: 0 2px 10px rgba(10, 40, 50, 0.25); }
+  header h1::before { content: "◆"; color: #7fe3d3; margin-right: 8px; font-size: 13px; vertical-align: 2px; }
+  section.card { border-radius: 16px; border: 1px solid var(--line); border-top: 4px solid transparent;
+                 box-shadow: 0 2px 10px rgba(20, 50, 70, 0.07); }
+  section.card.textcard { border-top-color: var(--amber); }
+  section.card.triplecard { border-top-color: var(--accent); }
+  section.card.recordhead { border-top-color: var(--violet); }
+  .textcard > h3 { color: var(--amber); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12.5px; }
+  .triplecard > h3 { color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12.5px; }
+  #text { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; font-size: 17px; line-height: 1.75;
+          background: var(--paper); border-color: var(--line); }
+  mark { background: var(--soft); border-radius: 4px; padding: 1px 2px; }
+  mark.active { background: var(--strong); outline: 0; box-shadow: 0 0 0 2px var(--amber); }
+  .headline h2 { font-size: 18px; font-weight: 700; }
+  .progressbar > div, .recordhead .progressbar > div { background: linear-gradient(90deg, var(--accent), var(--violet)); }
+  button { border-radius: 10px; }
+  button.primary { background: linear-gradient(135deg, #1a8a9c, #2f6fb0); border: 0; color: #fff;
+                   box-shadow: 0 2px 6px rgba(23, 121, 138, 0.35); }
+  button.primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, #1a8a9c, #2f6fb0); }
+  .row { background: var(--panel); border-radius: 14px; }
+  .row.active { box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(23, 121, 138, 0.15); }
+  nav { border-radius: 14px; }
+  nav button.current { background: linear-gradient(90deg, var(--accent-bg), transparent); box-shadow: inset 4px 0 0 var(--accent); }
+  .triplenav strong { font-size: 15.5px; }
+  .about { background: linear-gradient(160deg, var(--accent-bg), var(--panel) 45%); }
+  .about h2 { font-size: 24px; letter-spacing: -0.01em; }
+  .aboutitem:nth-child(1) { border-left-color: var(--accent); }
+  .aboutitem:nth-child(2) { border-left-color: var(--violet); background: color-mix(in srgb, var(--violet) 10%, var(--panel)); }
+  .aboutitem:nth-child(3) { border-left-color: var(--amber); background: var(--amber-bg); }
+  .aboutitem:nth-child(4) { border-left-color: var(--ok); background: var(--ok-bg); }
+  .schematable th { background: var(--accent-bg); color: var(--accent); }
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
     <h1>Annotation tool</h1>
-    <label class="batchpick"><select id="batch" aria-label="Batch to annotate"></select></label>
-    <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
-    <button id="schemabutton" title="annotations/ground_truth_schema.txt: every entity class and predicate, at a glance, and what the ground truth uses that it lacks">Ground truth schema<span id="gapcount" class="count" hidden></span></button>
-    <details class="viewsmenu" id="viewsmenu">
-      <summary>Other views</summary>
-      <div class="menu" role="navigation" aria-label="Other views">
-        <button id="mapping" title="annotations/component_class_mapping.csv">Translation table</button>
-        <button id="partial" title="annotations/partial_pair_reviews.csv">Partial pairs</button>
-        <button id="additions" title="annotations/schema_additions.txt">Schema additions</button>
-      </div>
-    </details>
+    <nav class="tabs" aria-label="Views">
+      <span class="tab" id="tab-batch"><button id="batchtab" title="Correct the drafted ground truth, record by record">Annotate batch</button><select id="batch" aria-label="Batch to annotate"></select></span>
+      <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
+      <button class="tab" id="partial" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
+      <button class="tab" id="additions" title="annotations/schema_additions.txt: for the schema step 060 extracts with">Schema additions</button>
+    </nav>
+    <span class="tools" id="tools">
+      <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
+      <button id="schemabutton" title="annotations/ground_truth_schema.txt: every entity class and predicate, at a glance, and what the ground truth uses that it lacks">Ground truth schema<span id="gapcount" class="count" hidden></span></button>
+    </span>
     <span id="status"></span>
+    <button id="aboutbutton" title="What this tool is for, and where its documents are">About</button>
     <button id="helpbutton" title="annotations/README.md: how to use the view you're on">Help</button>
   </div>
 </header>
@@ -234,6 +301,12 @@ let batch = null, current = 0, activeRow = null, saveTimer = null, saving = fals
 // triples; tripleAt: which of those is shown (0 = the describes triple, if the record has one).
 let oneAtATime = (() => { try { return localStorage.getItem("oneAtATime") !== "0"; } catch (_) { return true; } })();
 let tripleAt = 0;
+let listHidden = (() => { try { return localStorage.getItem("recordsHidden") === "1"; } catch (_) { return false; } })();
+function toggleList() {
+  listHidden = !listHidden;
+  try { localStorage.setItem("recordsHidden", listHidden ? "1" : "0"); } catch (_) {}
+  show(current);
+}
 let shownRow = null;                       // the row shown (one at a time): it stays shown when the order changes
 // The record's ground truth triples (row numbers) in the order of the record's text: by where each source text
 // starts, then ends; ties, and those whose source text isn't found (or is empty), keep the file's order, the
@@ -291,19 +364,23 @@ function drawProgress() {
   if (!box || !rec) return;
   const done = batch.records.filter((r) => r.finished).length, all = batch.records.length;
   const errors = errorsIn(rec), flags = flagsIn(rec);
-  box.replaceChildren(
-    el("div", { class: "progressline" },
-      el("span", {}, `Record ${current + 1} of ${all} · ${done} of ${all} finished`),
-      errors ? el("span", { class: "pill error" }, `${errors} to fix (✖)`) : null,
-      flags ? el("span", { class: "pill flag" }, `${flags} to look at (⚑)`) : null,
-      !errors && !flags ? el("span", { class: "pill ok" }, "Nothing to fix") : null),
-    el("div", { class: "progressbar", title: `${done} of ${all} records finished` },
-      el("div", { style: `width:${all ? Math.round(100 * done / all) : 0}%` })));
+  box.replaceChildren(...[                   // replaceChildren would write a null as the word "null"
+    `Record ${current + 1} of ${all} · ${done} of ${all} finished`,
+    errors ? el("span", { class: "pill error" }, `${errors} to fix (✖)`) : null,
+    flags ? el("span", { class: "pill flag" }, `${flags} to look at (⚑)`) : null].filter((x) => x !== null));
+  const bar = $("progressbar");
+  if (bar) { bar.title = `${done} of ${all} records finished`;
+             bar.replaceChildren(el("div", { style: `width:${all ? Math.round(100 * done / all) : 0}%` })); }
 }
 
 // ---------------------------------------------------------------- batches
+let BATCHES = [];
+// The batch to go on with: the first one with records left to finish, else a draft not opened yet, else the last one.
+const nextBatch = () => BATCHES.find((b) => b.ground_truth && b.finished < b.records)
+                     || BATCHES.find((b) => !b.ground_truth) || BATCHES[BATCHES.length - 1] || null;
 async function loadBatches() {
   const data = await api("/api/batches");
+  BATCHES = data.batches;
   const pick = $("batch");
   pick.replaceChildren(el("option", { value: "" }, "Choose a batch…"));
   for (const b of data.batches) {
@@ -316,6 +393,7 @@ async function loadBatches() {
   if (!data.records_found) warnings.unshift("outputs/intermediate_results/020_clean/records.jsonl wasn't found, so records' texts can't be shown or checked. Run py 010_harvest/run.py and py 020_clean/run.py, then restart the tool (py helpers/annotate.py).");
   $("warnings").replaceChildren(...warnings.map(w => el("li", {}, w)));
   drawGaps(data.gaps);
+  DOCS = data.docs_url || "";
   const wanted = new URLSearchParams(location.hash.slice(1));
   if (wanted.has("m")) { await openMapping(); return; }
   if (wanted.has("p")) { await openPartial(); return; }
@@ -324,15 +402,14 @@ async function loadBatches() {
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0), +(wanted.get("t") || 0));
-  } else if (data.batches.length) {
-    // no batch named in the address: the first one with records left to finish, else the last one
-    const next = data.batches.find((b) => b.ground_truth && b.finished < b.records)
-              || data.batches.find((b) => !b.ground_truth) || data.batches[data.batches.length - 1];
-    pick.value = String(next.n);
-    await openBatch(next.n, 0);
   } else {
-    $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
-      "No batch to annotate yet: step 050 drafts one (py 050_annotate/run.py); then restart the tool.")));
+    // no batch named in the address: what the tool is for, and the batch to go on with (the first one with records
+    // left to finish, else a draft not opened yet, else the last one)
+    const next = nextBatch();
+    $("records").replaceChildren();
+    document.body.classList.add("norecords");   // no list beside the card
+    chrome("start");
+    $("record").replaceChildren(aboutCard(next, false));
   }
 }
 async function openBatch(n, at, step = 0) {
@@ -354,12 +431,26 @@ $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
 $("schemabutton").addEventListener("click", () => showSchema().catch(fail));
-// The menu of other views closes once a view is chosen, or on a click anywhere else.
-document.addEventListener("click", (e) => {
-  const menu = $("viewsmenu");
-  if (menu.open && (!menu.contains(e.target) || e.target.closest(".menu button"))) menu.open = false;
+// The view you're on, in the top band: its tab, and its tools (Guidelines and the ground truth schema for
+// annotating; the ground truth schema also for the translation table, whose rows choose among its entries).
+function chrome(view) {
+  for (const [id, v] of [["tab-batch", "batch"], ["mapping", "mapping"], ["partial", "partial"], ["additions", "additions"]])
+    $(id).classList.toggle("current", view === v);
+  $("guidelinesbutton").hidden = view !== "batch";
+  $("schemabutton").hidden = !["batch", "mapping"].includes(view);
+  $("tools").hidden = !["batch", "mapping"].includes(view);
+}
+// Annotate batch: the batch chosen in its list, else the one to go on with.
+$("batchtab").addEventListener("click", () => {
+  if (batch) return;
+  const n = $("batch").value !== "" ? +$("batch").value : (nextBatch() || {}).n;
+  if (n !== undefined) { $("batch").value = String(n); openBatch(n, 0).catch(fail); }
 });
 $("helpbutton").addEventListener("click", () => showHelp());
+$("aboutbutton").addEventListener("click", () => {
+  $("help").replaceChildren(el("div", { class: "helpbox" }, aboutCard(null, true)));
+  $("help").hidden = false;
+});
 $("guidelinesbutton").addEventListener("click", () => showHelp("/api/guidelines"));
 
 // ---------------------------------------------------------------- saving
@@ -413,6 +504,8 @@ function drawList() {
 
 // ---------------------------------------------------------------- one record
 function show(i) {
+  document.body.classList.toggle("norecords", listHidden);
+  chrome("batch");
   if (i !== current) { tripleAt = 0; shownRow = null; }
   current = i; activeRow = null;
   showIntro();
@@ -420,29 +513,33 @@ function show(i) {
   const rec = batch.records[i];
   if (!rec) { $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" }, "This batch has no records."))); return; }
 
-  const head = el("section", { class: "card" },
-    el("h2", {}, rec.title || "(no title)"),
-    el("div", { class: "meta" },
-      `Pool position ${rec.position ?? "?"} `,
+  const head = el("section", { class: "card recordhead" },
+    el("div", { class: "headline" },
+      el("button", { class: "listtoggle", onclick: toggleList,
+                     title: listHidden ? "Show the list of the batch's records" : "Hide the list of the batch's records" },
+         listHidden ? "☰ Records" : "☰ Hide records"),
+      el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0,
+                     title: "Previous record (or the ← key, when not typing in a field)" }, "←"),
+      el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
+                     disabled: current === batch.records.length - 1,
+                     title: "Next record (or the → key, when not typing in a field)" }, "→"),
+      el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
+      el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
+        el("input", { type: "checkbox", checked: rec.finished,
+                      onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
+        "All facts extracted")),
+    el("div", { class: "meta headmeta" },
+      el("span", { id: "progress" }),
+      ` · pool position ${rec.position ?? "?"} `,
       rec.part ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
         ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
         : rec.part === "tuning"
           ? "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)."
           : "" }, rec.part) : null,
-      ` · maintainer ${rec.maintainer || "?"} · id ${rec.id}`),
-    el("div", { id: "progress" }),
-    el("div", { class: "bar" },
-      el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
-        el("input", { type: "checkbox", checked: rec.finished,
-                      onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
-        "All facts extracted"),
-      el("span", { style: "margin-left:auto" },
-        el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0, title: "or the ← key, when not typing in a field" },
-           "← Previous record"), " ",
-        el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)), title: "or the → key, when not typing in a field",
-                       disabled: current === batch.records.length - 1 }, "Next record →"))));
+      ` · ${rec.maintainer || "maintainer ?"} · id ${rec.id}`),
+    el("div", { id: "progressbar", class: "progressbar" }));
 
-  const text = el("section", { class: "card" },
+  const text = el("section", { class: "card textcard" },
     el("h3", {}, "The record's text"),
     rec.text === null
       ? el("p", { class: "empty" }, "This record's id isn't in outputs/intermediate_results/020_clean/records.jsonl (a typo in the id, or a record removed from the catalog since), so the record's text can't be shown here, and its ground truth triples can't be checked against the text.")
@@ -473,7 +570,7 @@ function show(i) {
       show(current); } }, oneAtATime ? "Show all at once" : "Show one at a time");
   const none = all.length === 0
     ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null;
-  const rows = el("section", { class: "card" },
+  const rows = el("section", { class: "card triplecard" },
     el("h3", {}, "Describes triple and ground truth triples"),
     oneAtATime && steps.length
       ? [el("div", { class: "triplenav" },
@@ -739,6 +836,41 @@ async function addToHand(item) {
 // What the ground truth uses that the ground truth schema lacks: counted on the Ground truth schema button, and
 // listed (with the Add buttons) at the top of its overview, redrawn there when it is open.
 let gaps = { component_classes: [], patterns: [], file: "" };
+// What the tool is for, in short, with links to the documents on GitHub (on the branch the tool runs from).
+let DOCS = "";                             // e.g. https://github.com/<owner>/<repo>/blob/<branch>/, from the server
+function aboutCard(next, inHelp) {
+  const doc = (path, words) => DOCS
+    ? el("a", { href: DOCS + path, target: "_blank", rel: "noopener" }, words)
+    : el("span", { class: "ref doclink", "data-doc": path }, words);
+  return el("section", { class: inHelp ? "about" : "card about" },
+    inHelp ? el("div", { class: "bar", style: "margin-top:0;justify-content:flex-end" },
+                el("button", { onclick: hideHelp }, "Close")) : null,
+    el("h2", {}, "The annotation tool"),
+    el("p", {}, "This is where the ground truth is made: the facts a person writes down for a sample of catalog records, " +
+       "as ground truth triples. They are the answer key step 070 measures extraction against, so they must say exactly " +
+       "what each record states, written the same way every time."),
+    el("div", { class: "aboutgrid" },
+      el("div", { class: "aboutitem" }, el("strong", {}, "Annotate batch"),
+         el("p", {}, "Correct the ground truth triples a model drafted (step 050) for each record: fix, delete or add them, then tick All facts extracted.")),
+      el("div", { class: "aboutitem" }, el("strong", {}, "Ground truth schema"),
+         el("p", {}, "The entity classes and predicates the ground truth uses, each with its definition. Add one you coin; nothing it lacks may stay in a finished record.")),
+      el("div", { class: "aboutitem" }, el("strong", {}, "Translation table · Partial pairs · Schema additions"),
+         el("p", {}, "After steps 060 and 070 have run: check the translation table, review partial pairs, and edit the schema additions (for extraction's schema).")),
+      el("div", { class: "aboutitem" }, el("strong", {}, "Saving"),
+         el("p", {}, "Every change is saved to annotations/ as you type. Commit that folder to Git when you finish a batch."))),
+    el("p", { class: "aboutlinks" }, "The full documentation: ",
+       doc("annotations/README.md", "how to use the tool"), " · ",
+       doc("annotations/guidelines.md", "what to write (the guidelines)"), " · ",
+       doc("docs/terminology.md", "the terms"), " · ",
+       doc("docs/pipeline_in_pictures.md", "the pipeline in pictures"), "."),
+    next && !inHelp
+      ? el("div", { class: "bar" }, el("button", { class: "primary", onclick: () => {
+            $("batch").value = String(next.n); openBatch(next.n, 0).catch(fail); } },
+          next.ground_truth ? `Go on with batch ${next.n} (${next.records - next.finished} of ${next.records} records left)`
+                            : `Open batch ${next.n} (a new draft)`))
+      : (!next && !inHelp ? el("p", { class: "empty" }, "No batch to annotate yet: step 050 drafts one (py 050_annotate/run.py); then restart the tool.") : null));
+}
+
 function drawGaps(g) {
   gaps = g;
   const n = g.component_classes.length + g.patterns.length;
@@ -773,6 +905,8 @@ const toCheck = (r) => r.stale || r.stale_gtt || (r.checked !== "yes" && r.check
 async function openMapping() {
   await flush();
   batch = null; partial = null; additions = null; vocab = null;
+  document.body.classList.remove("norecords");   // other views use the left column
+  chrome("mapping");
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
@@ -961,6 +1095,8 @@ let partial = null, onlyUnreviewed = true;
 async function openPartial() {
   await flush();
   batch = null; mapping = null; additions = null; vocab = null;
+  document.body.classList.remove("norecords");   // other views use the left column
+  chrome("partial");
   $("batch").value = "";
   status("Opening…");
   partial = await api("/api/partial");
@@ -1034,6 +1170,8 @@ let additions = null, editing = null;
 async function openAdditions(prefill) {
   await flush();
   batch = null; mapping = null; partial = null; vocab = null;
+  document.body.classList.remove("norecords");   // other views use the left column
+  chrome("additions");
   $("batch").value = "";
   status("Opening…");
   additions = await api("/api/additions");
@@ -1084,12 +1222,20 @@ function drawAdditions() {
         el("button", { onclick: () => { if (confirm(`Delete ${entryName(e)} from ${additions.file}?`))
                                           saveAdditions(additions.entries.filter((_, j) => j !== i)); } }, "Delete"))))
       : el("p", { class: "empty" }, "No entries yet.")));
-  cards.push(el("section", { class: "card" }, el("h3", {}, "Component classes outside the schema (step 060's last run)"),
-    el("p", { class: "meta" }, additions.counted_over
-      ? `Component classes the model used that the current schema doesn't have, counted over ${additions.counted_over} ` +
-        "(held-out records are never counted, so each one listed here may be added). Add only those that name a real " +
-        `kind of thing or relation. ${left} not added yet.`
-      : "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so the component classes step 060 used outside the schema can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
+  cards.push(el("section", { class: "card" }, el("h3", {}, "Entity classes and predicates extraction used outside its schema (step 060's last run)"),
+    additions.counted_over
+      ? el("div", { class: "explain" },
+          el("p", {}, el("strong", {}, "What this is. "), "While extracting, the model sometimes uses an entity class or predicate " +
+            "that the current schema doesn't have. Step 060 removes those extracted triples. Listed here: each one it used, " +
+            `counted over ${additions.counted_over}. Held-out records are never counted, since they must not shape the schema, so ` +
+            "each one listed may be added."),
+          el("p", {}, el("strong", {}, "What to do. "), "If one names a real kind of thing or relation that the schema lacks, " +
+            "press Add: the form above opens, filled in, for you to write its definition. The next run of step 060 can then " +
+            "extract it. If it doesn't (a vague or wrong label), leave it: nothing changes until you add it. " +
+            `${left} not added yet.`),
+          el("p", { class: "meta" }, "Patterns aren't listed: step 060 keeps an extracted triple whose pattern the schema " +
+            "lacks (it only flags it), so a missing pattern costs nothing. To add one anyway, use + Add an entry, Pattern."))
+      : el("p", { class: "meta" }, "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so the entity classes and predicates step 060 used outside its schema can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
     additions.new_component_classes.map(n => el("div", { class: "row" },
       el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",
@@ -1112,9 +1258,8 @@ function additionForm(e) {
     el("input", { value: e[key] || "", style: "width:100%", ...attrs,
                   oninput: (ev) => { e[key] = ev.target.value; check(); } }));
   const patterns = el("label", { style: "display:block;margin-top:6px" },
-    el("span", { class: "meta" }, "Patterns (for a predicate only): the pairs of entity classes the predicate joins, each written Subject -> Object, separated by ; (e.g. Instrument -> Spacecraft; Instrument -> Mission)"),
+    el("span", { class: "meta" }, "Patterns: the pairs of entity classes it joins, each written Subject -> Object, separated by ; (e.g. Instrument -> Spacecraft; Instrument -> Mission)"),
     el("input", { value: (e.patterns || []).map(p => `${p[0]} -> ${p[1]}`).join("; "), style: "width:100%",
-                  disabled: e.entry_type !== "predicate",
                   oninput: (ev) => { e.patterns = ev.target.value.split(";").map(x => x.trim()).filter(Boolean)
                                        .map(x => x.split("->").map(y => y.trim())); check(); } }));
   const save = () => {
@@ -1128,16 +1273,22 @@ function additionForm(e) {
   setTimeout(check, 0);
   return el("section", { class: "card maprow todo" },
     el("h3", {}, e._index !== undefined ? `Edit ${entryName(e)}` : "Add an entry"),
-    el("label", { class: "meta" }, "Entry type ",
-      el("select", { onchange: (ev) => { e.entry_type = ev.target.value; drawAdditions(); } },
-        ["entity class", "predicate", "pattern"].map(k => el("option", { value: k, selected: e.entry_type === k }, k)))),
-    ...(e.entry_type === "pattern"
-      ? [input("subject_class", "Subject class, one word (an entity class)"),
-         input("predicate", "Predicate, one word (one the schema has, or one added here)"),
-         input("object_class", "Object class, one word (an entity class)")]
-      : [input("component_class", "Component class, one word (entity classes in CamelCase, predicates in UPPER_SNAKE_CASE)"),
-         input("definition", "Definition, one line"),
-         patterns]),
+    el("div", { class: "typepick" },
+      [["entity class", "Entity class"], ["predicate", "Predicate"], ["pattern", "Pattern"]].map(([k, words]) =>
+        el("button", { class: e.entry_type === k ? "primary" : "", onclick: () => { e.entry_type = k; drawAdditions(); } }, words))),
+    el("p", { class: "meta" }, {
+      "entity class": "A new kind of thing that extraction may use as a subject's or object's entity class.",
+      "predicate": "A new relation between two things, with the pairs of entity classes it joins (its patterns).",
+      "pattern": "A new pair of entity classes for a predicate that the schema (or this file) already has." }[e.entry_type]),
+    ...({
+      "entity class": [input("component_class", "Entity class: one word in CamelCase (e.g. SpaceMission)"),
+                       input("definition", "Definition: one line saying what kind of thing it is (e.g. a named spaceflight effort)")],
+      "predicate": [input("component_class", "Predicate: one word in UPPER_SNAKE_CASE (e.g. PART_OF_MISSION)"),
+                    input("definition", "Definition: one line, read from subject to object (e.g. was carried out as part of)"),
+                    patterns],
+      "pattern": [input("subject_class", "Subject's entity class: one word (e.g. Instrument)"),
+                  input("predicate", "Predicate: one the schema has, or one added in this file (e.g. ABOARD)"),
+                  input("object_class", "Object's entity class: one word (e.g. Spacecraft)")] }[e.entry_type]),
     input("source", "Source: where the idea came from (e.g. mentor; NASA missions A-to-Z; ground truth tuning #12)"),
     problem,
     el("div", { class: "bar" }, el("button", { onclick: save }, "Save"),
@@ -1155,6 +1306,8 @@ let vocab = null, vocabPlan = null;
 async function openVocab() {
   await flush();
   batch = null; mapping = null; partial = null; additions = null;
+  document.body.classList.remove("norecords");   // other views use the left column
+  chrome("vocab");
   $("batch").value = "";
   status("Opening…");
   vocab = await api("/api/vocab");
@@ -1182,7 +1335,7 @@ async function applyVocab() {
     vocabPlan = null;
     status(`${done.merge ? "Merged" : "Renamed"} ${done.old} → ${done.new} (${done.kind}) at ${new Date().toLocaleTimeString()}. Commit the changed files.`, "saved");
     drawVocab();
-    drawGaps(await api("/api/gaps"));                // the bar of component classes the ground truth schema lacks
+    drawGaps(await api("/api/gaps"));                // the count on the Ground truth schema button, and its list
   } catch (e) { fail(e); }
 }
 
@@ -1375,7 +1528,7 @@ async function showIntro() {
     const h = await api(`/api/help?view=${view}`);
     const body = el("div", { class: "helpbody" });
     body.innerHTML = markdown(h.intro, h.file);
-    box.replaceChildren(body, el("button", { onclick: () => showHelp() }, "Help: how to use this view"));
+    box.replaceChildren(body);                    // the rest of the view's section: Help, at the top right
     box.hidden = false;
   } catch (e) { box.hidden = true; }
 }
