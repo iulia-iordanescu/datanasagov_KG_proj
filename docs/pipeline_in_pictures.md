@@ -69,7 +69,7 @@ How the ground truth is made and used, and where a person comes in (in the annot
 
 ```mermaid
 flowchart TD
-    D["050 drafts a batch"] --> C["You correct it: Annotate batch"]
+    D["050 drafts a batch"] --> C["You correct it: Ground truth"]
     C -->|"an entity class or predicate it lacks"| GS["You add it to the ground truth schema,<br/>with a one-line definition"]
     GS --> C
     C -->|"commit annotations/ to Git"| E["060 extracts the finished records"]

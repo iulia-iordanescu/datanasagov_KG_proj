@@ -150,7 +150,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         raise Stop(f"The ground truth triples use {len(uses)} entity class(es) or predicate(s) that aren't in the "
                    f"ground truth schema ({ref_path(Path(inputs['ground_truth_schema']))}), so 070 can't translate into "
                    f"them: {named(uses, 10, '; ')}. For each one, either add it to the ground truth schema with a "
-                   f"one-line definition (`py helpers/annotate.py`, view *Annotate batch*: the ✖ under it has a "
+                   f"one-line definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a "
                    f"button), or fix the typo where it's used; {AGAIN}")
     translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]))
     rows = read_mapping(path)

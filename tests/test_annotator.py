@@ -117,7 +117,7 @@ class A_Paths(unittest.TestCase):
         for view in ("mapping", "partial", "additions", "vocab"):                  # what the view is for, at its top
             self.assertTrue(get(f"/api/help?view={view}")["intro"].startswith("**What it's for, and when.**"), view)
         self.assertIn('id="intro"', page)
-        self.assertIn('id="guidelinesbutton"', page)                            # the rules, one click from any view
+        self.assertIn('showHelp("/api/guidelines")', page)                      # the rules, one click away while annotating
         terms = get("/api/terms")                                                  # a term's definition, on hover
         self.assertIn("ground truth schema", terms)
         self.assertNotIn("](", terms["ground truth schema"])                   # plain text: no Markdown links

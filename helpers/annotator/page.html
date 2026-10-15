@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Annotation tool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
   :root {
     --bg: #e9ece8; --panel: #ffffff; --ink: #262b31; --muted: #626a76; --line: #d5dad4;
@@ -46,7 +46,10 @@
       color: var(--bar-ink); padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
   header .tabs button:hover, header .tools button:hover, header .topbar > button:hover { background: var(--bar-soft); }
   header .tab.current, header .tab.current button { background: var(--bar-ink); color: var(--bar); font-weight: 600; }
-  header .tab select { border-color: transparent; padding: 3px 6px; margin-right: 4px; max-width: 210px; }
+  header .tab select { border: 0; background: transparent; color: var(--bar-ink); font-weight: 600; padding: 6px 8px;
+                       max-width: 330px; cursor: pointer; }
+  header .tab select option { color: var(--ink); background: var(--panel); font-weight: 400; }
+  header .tab.current select { color: var(--band-solid, #1f3a5f); }
   header .tools { display: inline-flex; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--bar-soft); }
   header .tools[hidden] { display: none; }
   header #status { color: var(--bar-ink); opacity: 0.85; }
@@ -71,13 +74,8 @@
   #intro p { margin: 0 0 4px 0; }
   #warnings:empty { display: none; }
   #warnings li { white-space: pre-line; }
-  .about p { max-width: 80ch; }
-  .aboutgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 14px 0; }
-  .aboutitem { background: var(--accent-bg); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; }
-  .aboutitem p { margin: 4px 0 0; font-size: 14px; color: var(--label); }
-  .aboutlinks a { color: var(--accent); }
   .typepick { display: flex; gap: 6px; margin: 6px 0; }
-  .explain p { margin: 6px 0; max-width: 90ch; }
+  .explain p { margin: 6px 0; }
   .gaps { background: var(--error-bg); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
   .gaps ul { list-style: none; margin: 6px 0 0; padding: 0; }
   .gaps li { margin-top: 6px; }
@@ -215,71 +213,95 @@
   .example { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg);
              border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
 
-  /* ---------------------------------------------------------------- the look: bolder, still calm */
+  /* ---------------------------------------------------------------- the look: one palette, navy and ochre on paper;
+     Source Sans 3 (plain zeros: records are full of numbers), JetBrains Mono for anything code-like */
   :root {
-    --bg: #eaf0f3; --tint: #f2f7f9; --accent: #17798a; --accent-bg: #dff1f4; --line: #d3dde2;
-    --amber: #d9961a; --amber-bg: #fff3d6; --violet: #5b6fd6;
-    --band: linear-gradient(100deg, #0f3d4a 0%, #186e7e 55%, #3d5aa8 100%);
-    --soft: #ffe9a6; --strong: #ffd047;
+    --bg: #f3f0ea; --panel: #fffdfa; --paper: #fffaf0; --tint: #f7f3ec; --line: #dcd5c9;
+    --ink: #1f2933; --muted: #66707a; --label: #3e4a56;
+    --navy: #1f3a5f; --navy-bg: #e7edf5; --ochre: #b7791f; --ochre-bg: #fbf0dc;
+    --accent: var(--navy); --accent-bg: var(--navy-bg);
+    --subj: #2d5c8a; --subj-bg: #ecf2f8; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #3f7350; --obj-bg: #eaf3ec;
+    --soft: #f6e3b4; --strong: #efc36a;
+    --bar: var(--navy); --bar-ink: #fdfaf3; --bar-soft: rgba(255, 255, 255, 0.14);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0e1418; --tint: #18232a; --accent: #5fc7d6; --accent-bg: #16323a; --line: #2a3a42;
-      --amber: #e8b04a; --amber-bg: #33280f; --violet: #8f9df0;
-      --band: linear-gradient(100deg, #0b2a33 0%, #124b57 55%, #263d73 100%);
-      --soft: #4f4413; --strong: #7a6205;
+      --bg: #14181c; --panel: #1c2127; --paper: #1f2329; --tint: #222830; --line: #2e353d;
+      --ink: #e9e4da; --muted: #9aa3ab; --label: #c3c9cf;
+      --navy: #8fb0d6; --navy-bg: #1f2c3b; --ochre: #e0a95a; --ochre-bg: #33291a;
+      --subj: #8db4dc; --subj-bg: #1d2834; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #8fc7a0; --obj-bg: #1d2b22;
+      --soft: #4a3d1c; --strong: #6b5419;
+      --bar: #172b45; --bar-ink: #ece6da; --bar-soft: rgba(255, 255, 255, 0.10);
     }
   }
-  body { font-family: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; font-size: 14.5px; }
-  header { background: var(--band); box-shadow: 0 2px 10px rgba(10, 40, 50, 0.25); }
-  header h1::before { content: "◆"; color: #7fe3d3; margin-right: 8px; font-size: 13px; vertical-align: 2px; }
-  section.card { border-radius: 16px; border: 1px solid var(--line); border-top: 4px solid transparent;
-                 box-shadow: 0 2px 10px rgba(20, 50, 70, 0.07); }
-  section.card.textcard { border-top-color: var(--amber); }
-  section.card.triplecard { border-top-color: var(--accent); }
-  section.card.recordhead { border-top-color: var(--violet); }
-  .textcard > h3 { color: var(--amber); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12.5px; }
-  .triplecard > h3 { color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-size: 12.5px; }
-  #text { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; font-size: 17px; line-height: 1.75;
-          background: var(--paper); border-color: var(--line); }
-  mark { background: var(--soft); border-radius: 4px; padding: 1px 2px; }
-  mark.active { background: var(--strong); outline: 0; box-shadow: 0 0 0 2px var(--amber); }
-  .headline h2 { font-size: 18px; font-weight: 700; }
-  .progressbar > div, .recordhead .progressbar > div { background: linear-gradient(90deg, var(--accent), var(--violet)); }
-  button { border-radius: 10px; }
-  button.primary { background: linear-gradient(135deg, #1a8a9c, #2f6fb0); border: 0; color: #fff;
-                   box-shadow: 0 2px 6px rgba(23, 121, 138, 0.35); }
-  button.primary:hover { filter: brightness(1.08); background: linear-gradient(135deg, #1a8a9c, #2f6fb0); }
-  .row { background: var(--panel); border-radius: 14px; }
-  .row.active { box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(23, 121, 138, 0.15); }
-  nav { border-radius: 14px; }
-  nav button.current { background: linear-gradient(90deg, var(--accent-bg), transparent); box-shadow: inset 4px 0 0 var(--accent); }
-  .triplenav strong { font-size: 15.5px; }
-  .about { background: linear-gradient(160deg, var(--accent-bg), var(--panel) 45%); }
-  .about h2 { font-size: 24px; letter-spacing: -0.01em; }
-  .aboutitem:nth-child(1) { border-left-color: var(--accent); }
-  .aboutitem:nth-child(2) { border-left-color: var(--violet); background: color-mix(in srgb, var(--violet) 10%, var(--panel)); }
-  .aboutitem:nth-child(3) { border-left-color: var(--amber); background: var(--amber-bg); }
-  .aboutitem:nth-child(4) { border-left-color: var(--ok); background: var(--ok-bg); }
-  .schematable th { background: var(--accent-bg); color: var(--accent); }
+  body { font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif; font-size: 15.5px; background: var(--bg); }
+  header { background: var(--bar); box-shadow: none; border-bottom: 3px solid var(--ochre); }
+  header h1 button { background: transparent; border: 0; color: var(--bar-ink); font: inherit; font-weight: 700;
+                     font-size: 17px; padding: 4px 10px 4px 0; letter-spacing: 0.01em; }
+  header h1 button:hover { background: transparent; text-decoration: underline; text-underline-offset: 4px; }
+  header nav.tabs .tab.current, header nav.tabs .tab.current > button { background: var(--bar-ink); color: #1f3a5f; }
+  header .tab.current select { color: #1f3a5f; }
+  section.card { border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 2px rgba(40, 30, 10, 0.06); }
+  section.card > h3, .textcard > h3, .triplecard > h3 { color: var(--navy); font-size: 15px; }
+  #text { font-size: 16.5px; line-height: 1.7; background: var(--paper); border-color: var(--line); }
+  mark { background: var(--soft); border-radius: 3px; }
+  mark.active { background: var(--strong); outline: 0; box-shadow: 0 0 0 2px var(--ochre); }
+  .headline h2 { font-size: 18px; font-weight: 700; color: var(--ink); }
+  .progressbar > div, .recordhead .progressbar > div { background: var(--ochre); }
+  button { border-radius: 8px; }
+  button.primary { background: var(--navy); border: 1px solid var(--navy); color: #fdfaf3; font-weight: 700; box-shadow: none; }
+  button.primary:hover { background: var(--navy); filter: brightness(1.12); }
+  @media (prefers-color-scheme: dark) { button.primary { color: #10161d; } }
+  .row { background: var(--panel); border-radius: 10px; }
+  .row, .row.active { border: 1px solid var(--line); border-left: 1px solid var(--line); box-shadow: none; }
+  nav#records { border-radius: 12px; }
+  nav button.current { background: var(--navy-bg); box-shadow: inset 4px 0 0 var(--ochre); }
+  .part.tuning { color: var(--navy); background: var(--navy-bg); border-color: var(--navy); }
+  .striptools { margin-left: auto; display: inline-flex; gap: 6px; }
+  .paneltools { margin: 4px 0 8px; }
+  button.tool { padding: 3px 10px; font-size: 13.5px; background: var(--navy-bg); border-color: transparent; color: var(--navy); font-weight: 700; }
+  button.tool:hover { border-color: var(--navy); background: var(--navy-bg); }
+  .home h2 { font-size: 26px; color: var(--navy); margin-bottom: 8px; }
+  .home .lead { font-size: 16px; line-height: 1.6; }
+  .viewgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; }
+  .viewbox { background: var(--tint); border: 1px solid var(--line); border-radius: 10px;
+             padding: 12px 16px; display: flex; flex-direction: column; }
+  .viewbox:first-child { background: var(--ochre-bg); }
+  .viewbox h3 { margin: 0 0 4px; color: var(--navy); }
+  .viewbox p { margin: 0 0 10px; color: var(--label); flex: 1; }
+  .doclinks a { color: var(--navy); }
+  .schematable th { background: var(--navy-bg); color: var(--navy); }
+  section.card, section.card.textcard, section.card.triplecard, section.card.recordhead { border: 1px solid var(--line); }
+  nav button.current { box-shadow: none; background: var(--navy-bg); font-weight: 700; }
+  .recnum { font-weight: 700; color: var(--muted); min-width: 3.2em; text-align: center; }
+  .headmeta { gap: 8px; }
+  .recinfo summary { cursor: pointer; color: var(--navy); font-weight: 700; }
+  .recinfo[open] { flex-basis: 100%; order: 3; }
+  .recinfo dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 6px 0 2px; }
+  .recinfo dt { color: var(--muted); } .recinfo dd { margin: 0; color: var(--ink); }
+  #batchprogress { padding: 8px 8px 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  .batchline { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+  .segments { display: flex; gap: 3px; margin-top: 6px; }
+  .seg { flex: 1; height: 9px; border-radius: 3px; background: var(--line); }
+  .seg.done { background: var(--ok); }
+  .seg.here { outline: 2px solid var(--ochre); outline-offset: 1px; }
+  #intro .helpbody p, #intro .helpbody li { max-width: none; }
+  code { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 0.88em; background: var(--tint);
+         border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  header code, button code { background: transparent; border: 0; padding: 0; }
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <h1>Annotation tool</h1>
+    <h1><button id="homebutton" title="Home: what the tool is for, its views, and where its documents are">Annotation tool</button></h1>
     <nav class="tabs" aria-label="Views">
-      <span class="tab" id="tab-batch"><button id="batchtab" title="Correct the drafted ground truth, record by record">Annotate batch</button><select id="batch" aria-label="Batch to annotate"></select></span>
+      <span class="tab" id="tab-batch" title="Correct a model's drafts into ground truth, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
       <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
       <button class="tab" id="partial" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
       <button class="tab" id="additions" title="annotations/schema_additions.txt: for the schema step 060 extracts with">Schema additions</button>
     </nav>
-    <span class="tools" id="tools">
-      <button id="guidelinesbutton" title="annotations/guidelines.md: what to write in the ground truth">Guidelines</button>
-      <button id="schemabutton" title="annotations/ground_truth_schema.txt: every entity class and predicate, at a glance, and what the ground truth uses that it lacks">Ground truth schema<span id="gapcount" class="count" hidden></span></button>
-    </span>
     <span id="status"></span>
-    <button id="aboutbutton" title="What this tool is for, and where its documents are">About</button>
     <button id="helpbutton" title="annotations/README.md: how to use the view you're on">Help</button>
   </div>
 </header>
@@ -328,8 +350,33 @@ function el(tag, attrs, ...children) {
     else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
     else if (v !== null && v !== undefined && v !== false) node.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of children.flat()) if (c !== null && c !== undefined) node.append(c);
+  const raw = RAW_TAGS.has(tag) || /\bfixed\b/.test((attrs && attrs["class"]) || "");
+  for (const c of children.flat(Infinity)) {      // lists inside lists, at any depth
+    if (c === null || c === undefined) continue;
+    if (typeof c === "string" && !raw) node.append(...codeWords(c)); else node.append(c);
+  }
   return node;
+}
+// Where text is shown as written (the record's text, a field's value, a list's options), nothing is reformatted.
+const RAW_TAGS = new Set(["mark", "option", "select", "textarea", "code", "pre", "title", "script", "style"]);
+// A command (py helpers/annotate.py --port 8051), a path or folder of the repository (annotations/ground_truth/,
+// 060_extract/run.py), a file name (batch_000.csv), or a column or setting name (all_facts_extracted).
+const CODE_WORDS = new RegExp([
+  String.raw`\bpy [\w./-]+(?: --?\w+(?: [\w./<>*-]+)?)*`,
+  String.raw`\b(?:annotations|outputs|docs|common|helpers|tests|\d{3}_[a-z_]+)/(?:[\w.<>*@-]+/?)*`,
+  String.raw`\b\d{3}_[a-z]+(?:_[a-z]+)*\b`,
+  String.raw`\b[\w<>*-]+\.(?:csv|txt|md|json|jsonl|py|log|html)\b`,
+  String.raw`\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b`].join("|"), "g");
+function codeWords(s) {
+  const out = [];
+  let last = 0;
+  for (const m of s.matchAll(CODE_WORDS)) {
+    if (m.index > last) out.push(s.slice(last, m.index));
+    out.push(el("code", {}, m[0]));
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) out.push(s.slice(last));
+  return out;
 }
 async function api(path, body) {
   const res = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" },
@@ -355,6 +402,9 @@ const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p
 const flagsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "flag").length, 0);
 
 // The record's place in the batch, the batch's progress, and what in this record is left to fix or look at.
+function infoOpen() {                    // folded away unless opened earlier on this computer
+  try { return localStorage.getItem("recordInfoOpen") === "1"; } catch (_) { return false; }
+}
 function hintOpen() {                    // folded away unless opened earlier on this computer
   try { return localStorage.getItem("hintTextOpen") === "1"; } catch (_) { return false; }
 }
@@ -365,12 +415,15 @@ function drawProgress() {
   const done = batch.records.filter((r) => r.finished).length, all = batch.records.length;
   const errors = errorsIn(rec), flags = flagsIn(rec);
   box.replaceChildren(...[                   // replaceChildren would write a null as the word "null"
-    `Record ${current + 1} of ${all} · ${done} of ${all} finished`,
     errors ? el("span", { class: "pill error" }, `${errors} to fix (✖)`) : null,
-    flags ? el("span", { class: "pill flag" }, `${flags} to look at (⚑)`) : null].filter((x) => x !== null));
-  const bar = $("progressbar");
-  if (bar) { bar.title = `${done} of ${all} records finished`;
-             bar.replaceChildren(el("div", { style: `width:${all ? Math.round(100 * done / all) : 0}%` })); }
+    flags ? el("span", { class: "pill flag" }, `${flags} to look at (⚑)`) : null,
+    !errors && !flags ? el("span", { class: "pill ok" }, "nothing to fix") : null].filter((x) => x !== null));
+  const top = $("batchprogress");
+  if (top) top.replaceChildren(
+    el("div", { class: "batchline" }, el("strong", {}, `Record ${current + 1} of ${all}`), el("span", {}, `${done} of ${all} finished`)),
+    el("div", { class: "segments", title: "One block per record: filled when finished; the record you're on is outlined" },
+      batch.records.map((r, i) => el("span", { class: "seg" + (r.finished ? " done" : "") + (i === current ? " here" : ""),
+                                              title: `Record ${i + 1}: ${r.finished ? "finished" : "not finished"}` }))));
 }
 
 // ---------------------------------------------------------------- batches
@@ -382,12 +435,10 @@ async function loadBatches() {
   const data = await api("/api/batches");
   BATCHES = data.batches;
   const pick = $("batch");
-  pick.replaceChildren(el("option", { value: "" }, "Choose a batch…"));
+  pick.replaceChildren(el("option", { value: "" }, "Ground truth: choose a batch"));
   for (const b of data.batches) {
-    const what = b.ground_truth
-      ? `${b.ground_truth}: ${b.records} records, ${b.finished} finished`
-      : `draft ${b.draft}: not opened yet`;
-    pick.append(el("option", { value: b.n }, `Batch ${b.n} (${what})`));
+    const what = b.ground_truth ? `${b.finished} of ${b.records} finished` : "a new draft, not opened yet";
+    pick.append(el("option", { value: b.n }, `Ground truth: batch ${b.n} (${what})`));
   }
   const warnings = [...data.problems];
   if (!data.records_found) warnings.unshift("outputs/intermediate_results/020_clean/records.jsonl wasn't found, so records' texts can't be shown or checked. Run py 010_harvest/run.py and py 020_clean/run.py, then restart the tool (py helpers/annotate.py).");
@@ -403,13 +454,7 @@ async function loadBatches() {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0), +(wanted.get("t") || 0));
   } else {
-    // no batch named in the address: what the tool is for, and the batch to go on with (the first one with records
-    // left to finish, else a draft not opened yet, else the last one)
-    const next = nextBatch();
-    $("records").replaceChildren();
-    document.body.classList.add("norecords");   // no list beside the card
-    chrome("start");
-    $("record").replaceChildren(aboutCard(next, false));
+    showHome();                                 // no view named in the address
   }
 }
 async function openBatch(n, at, step = 0) {
@@ -430,28 +475,23 @@ $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBa
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
-$("schemabutton").addEventListener("click", () => showSchema().catch(fail));
-// The view you're on, in the top band: its tab, and its tools (Guidelines and the ground truth schema for
-// annotating; the ground truth schema also for the translation table, whose rows choose among its entries).
+// The tools a view needs, shown inside it: the Guidelines and the ground truth schema in Ground truth; the ground
+// truth schema also in the translation table, whose rows choose among its entries.
+const GAPCOUNT = el("span", { class: "count", hidden: true });
+const TOOL_GUIDELINES = el("button", { class: "tool", onclick: () => showHelp("/api/guidelines"),
+  title: "annotations/guidelines.md: what every ground truth triple must say and how, for each one you correct or add" }, "Guidelines");
+const TOOL_SCHEMA = el("button", { class: "tool", onclick: () => showSchema().catch(fail),
+  title: "annotations/ground_truth_schema.txt: the entity classes and predicates the ground truth may use, each with its " +
+         "definition. When a ground truth triple uses one that isn't in it yet (a new one, or a typo), add it with a " +
+         "definition, or fix the typo: step 070 won't evaluate a finished record that uses one missing from it." },
+  "Ground truth schema", GAPCOUNT);
+// The view you're on: its tab in the top band.
 function chrome(view) {
   for (const [id, v] of [["tab-batch", "batch"], ["mapping", "mapping"], ["partial", "partial"], ["additions", "additions"]])
     $(id).classList.toggle("current", view === v);
-  $("guidelinesbutton").hidden = view !== "batch";
-  $("schemabutton").hidden = !["batch", "mapping"].includes(view);
-  $("tools").hidden = !["batch", "mapping"].includes(view);
 }
-// Annotate batch: the batch chosen in its list, else the one to go on with.
-$("batchtab").addEventListener("click", () => {
-  if (batch) return;
-  const n = $("batch").value !== "" ? +$("batch").value : (nextBatch() || {}).n;
-  if (n !== undefined) { $("batch").value = String(n); openBatch(n, 0).catch(fail); }
-});
+$("homebutton").addEventListener("click", () => showHome().catch(fail));
 $("helpbutton").addEventListener("click", () => showHelp());
-$("aboutbutton").addEventListener("click", () => {
-  $("help").replaceChildren(el("div", { class: "helpbox" }, aboutCard(null, true)));
-  $("help").hidden = false;
-});
-$("guidelinesbutton").addEventListener("click", () => showHelp("/api/guidelines"));
 
 // ---------------------------------------------------------------- saving
 function changed() {
@@ -488,14 +528,14 @@ function fail(e) { status(`Problem: ${e.message}`, "failed"); }
 
 // ---------------------------------------------------------------- the records list
 function drawList() {
-  $("records").replaceChildren(...batch.records.map((rec, i) => {
+  $("records").replaceChildren(el("div", { id: "batchprogress" }), ...batch.records.map((rec, i) => {
     const errors = errorsIn(rec);
     return el("button", { class: i === current ? "current" : "", onclick: () => show(i) },
       el("span", { class: "badge" },
          errors ? el("span", { class: "pill error", title: `${errors} to fix` }, `✖ ${errors}`) : null,
          rec.finished ? el("span", { class: "pill ok", title: "all facts extracted" }, "✓")
                       : el("span", { class: "pill todo", title: "not finished yet" }, "…")),
-      rec.position !== null && rec.position !== undefined ? `#${rec.position} ` : "",
+      `${i + 1}. `,
       rec.title || rec.id,
       el("div", { class: "small" }, rec.part ? el("span", { class: "part " + rec.part }, rec.part) : null,
          rec.part ? " " : "", rec.maintainer || ""));
@@ -520,6 +560,8 @@ function show(i) {
          listHidden ? "☰ Records" : "☰ Hide records"),
       el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0,
                      title: "Previous record (or the ← key, when not typing in a field)" }, "←"),
+      el("span", { class: "recnum", title: `Record ${current + 1} of the batch's ${batch.records.length}` },
+         `${current + 1} / ${batch.records.length}`),
       el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
                      disabled: current === batch.records.length - 1,
                      title: "Next record (or the → key, when not typing in a field)" }, "→"),
@@ -530,14 +572,19 @@ function show(i) {
         "All facts extracted")),
     el("div", { class: "meta headmeta" },
       el("span", { id: "progress" }),
-      ` · pool position ${rec.position ?? "?"} `,
-      rec.part ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-        ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
-        : rec.part === "tuning"
-          ? "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)."
-          : "" }, rec.part) : null,
-      ` · ${rec.maintainer || "maintainer ?"} · id ${rec.id}`),
-    el("div", { id: "progressbar", class: "progressbar" }));
+      el("details", { class: "recinfo", open: infoOpen(),
+                      ontoggle: (e) => { try { localStorage.setItem("recordInfoOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
+        el("summary", {}, "About this record"),
+        el("dl", {},
+          el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
+          el("dt", {}, "Part"), el("dd", {}, rec.part
+            ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
+                ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
+                : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
+            : "none (not in the pool)"),
+          el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
+          el("dt", {}, "Id"), el("dd", { class: "fixed" }, rec.id))),
+      el("span", { class: "striptools" }, TOOL_GUIDELINES, TOOL_SCHEMA)));
 
   const text = el("section", { class: "card textcard" },
     el("h3", {}, "The record's text"),
@@ -836,46 +883,57 @@ async function addToHand(item) {
 // What the ground truth uses that the ground truth schema lacks: counted on the Ground truth schema button, and
 // listed (with the Add buttons) at the top of its overview, redrawn there when it is open.
 let gaps = { component_classes: [], patterns: [], file: "" };
-// What the tool is for, in short, with links to the documents on GitHub (on the branch the tool runs from).
+// Home: what the tool is for, its views (each opens from its box), and its documents on GitHub (on the branch the
+// tool runs from). Shown on start, and by the tool's name at the top left.
 let DOCS = "";                             // e.g. https://github.com/<owner>/<repo>/blob/<branch>/, from the server
-function aboutCard(next, inHelp) {
+async function showHome() {
+  await flush();
+  batch = null; mapping = null; partial = null; additions = null; vocab = null;
+  $("batch").value = "";
+  location.hash = "";
+  $("intro").hidden = true;
+  $("records").replaceChildren();
+  document.body.classList.add("norecords");
+  chrome("home");
+  const next = nextBatch();
   const doc = (path, words) => DOCS
     ? el("a", { href: DOCS + path, target: "_blank", rel: "noopener" }, words)
     : el("span", { class: "ref doclink", "data-doc": path }, words);
-  return el("section", { class: inHelp ? "about" : "card about" },
-    inHelp ? el("div", { class: "bar", style: "margin-top:0;justify-content:flex-end" },
-                el("button", { onclick: hideHelp }, "Close")) : null,
-    el("h2", {}, "The annotation tool"),
-    el("p", {}, "This is where the ground truth is made: the facts a person writes down for a sample of catalog records, " +
-       "as ground truth triples. They are the answer key step 070 measures extraction against, so they must say exactly " +
-       "what each record states, written the same way every time."),
-    el("div", { class: "aboutgrid" },
-      el("div", { class: "aboutitem" }, el("strong", {}, "Annotate batch"),
-         el("p", {}, "Correct the ground truth triples a model drafted (step 050) for each record: fix, delete or add them, then tick All facts extracted.")),
-      el("div", { class: "aboutitem" }, el("strong", {}, "Ground truth schema"),
-         el("p", {}, "The entity classes and predicates the ground truth uses, each with its definition. Add one you coin; nothing it lacks may stay in a finished record.")),
-      el("div", { class: "aboutitem" }, el("strong", {}, "Translation table · Partial pairs · Schema additions"),
-         el("p", {}, "After steps 060 and 070 have run: check the translation table, review partial pairs, and edit the schema additions (for extraction's schema).")),
-      el("div", { class: "aboutitem" }, el("strong", {}, "Saving"),
-         el("p", {}, "Every change is saved to annotations/ as you type. Commit that folder to Git when you finish a batch."))),
-    el("p", { class: "aboutlinks" }, "The full documentation: ",
+  const box = (title, what, open, extra) => el("div", { class: "viewbox" },
+    el("h3", {}, title), el("p", {}, what), el("div", { class: "bar" }, extra || null,
+      open ? el("button", { onclick: () => open().catch(fail) }, `Open ${title}`) : null));
+  $("record").replaceChildren(el("section", { class: "card home" },
+    el("h2", {}, "Annotation tool"),
+    el("p", { class: "lead" }, "This is where you make and look after the ground truth: the facts a person writes down for " +
+       "a sample of catalog records, as ground truth triples. Step 070 measures extraction against them, so they must say " +
+       "exactly what each record states, written the same way every time. Here you correct a model's drafts into ground " +
+       "truth; and, once steps 060 and 070 have run, check how extraction's schema translates into the ground truth " +
+       "schema, rule on partial pairs, and add to the schema extraction uses."),
+    el("div", { class: "viewgrid" },
+      box("Ground truth", "Correct the ground truth triples a model drafted (step 050) for each record of a batch: " +
+          "fix, delete or add them, then tick All facts extracted.", null,
+          next ? el("button", { class: "primary", onclick: () => { $("batch").value = String(next.n); openBatch(next.n, 0).catch(fail); } },
+                    next.ground_truth ? `Go on with batch ${next.n} (${next.records - next.finished} of ${next.records} records left)`
+                                      : `Open batch ${next.n} (a new draft)`)
+               : el("span", { class: "empty" }, "No batch yet: step 050 drafts one (py 050_annotate/run.py).")),
+      box("Translation table", "After step 070 has run: say which entity class or predicate of the ground truth schema " +
+          "each one of extraction's schema means.", openMapping),
+      box("Partial pairs", "After step 070 has run: rule whether each partial pair states the same fact.", openPartial),
+      box("Schema additions", "Entity classes, predicates and patterns to add to the schema step 060 extracts with.",
+          () => openAdditions())),
+    el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch."),
+    el("p", { class: "doclinks" }, "Documents: ",
        doc("annotations/README.md", "how to use the tool"), " · ",
-       doc("annotations/guidelines.md", "what to write (the guidelines)"), " · ",
+       doc("annotations/guidelines.md", "the guidelines (what every ground truth triple must say)"), " · ",
        doc("docs/terminology.md", "the terms"), " · ",
-       doc("docs/pipeline_in_pictures.md", "the pipeline in pictures"), "."),
-    next && !inHelp
-      ? el("div", { class: "bar" }, el("button", { class: "primary", onclick: () => {
-            $("batch").value = String(next.n); openBatch(next.n, 0).catch(fail); } },
-          next.ground_truth ? `Go on with batch ${next.n} (${next.records - next.finished} of ${next.records} records left)`
-                            : `Open batch ${next.n} (a new draft)`))
-      : (!next && !inHelp ? el("p", { class: "empty" }, "No batch to annotate yet: step 050 drafts one (py 050_annotate/run.py); then restart the tool.") : null));
+       doc("docs/pipeline_in_pictures.md", "the pipeline in pictures"), ".")));
 }
 
 function drawGaps(g) {
   gaps = g;
   const n = g.component_classes.length + g.patterns.length;
-  $("gapcount").hidden = !n;
-  $("gapcount").textContent = n ? `✖ ${n}` : "";
+  GAPCOUNT.hidden = !n;
+  GAPCOUNT.textContent = n ? `✖ ${n}` : "";
   if (!$("help").hidden && $("help").querySelector(".schemaview") && !$("help").contains(document.activeElement))
     showSchema().catch(() => {});
 }
@@ -935,6 +993,7 @@ function drawMappingSummary() {
   $("records").replaceChildren(
     el("div", { style: "padding:6px 8px" },
       el("h3", {}, "Translation table"),
+      el("div", { class: "paneltools" }, TOOL_SCHEMA),
       el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the schema step 060 used last); ` +
                                   `${left} still to check.`),
       el("p", { class: "meta" }, "Step 070 evaluates only when every row for the current schema is checked. Step 070 " +
@@ -1523,7 +1582,7 @@ async function showSchema() {
 // read from the file each time), with the way to the rest.
 async function showIntro() {
   const view = currentView(), box = $("intro");
-  if (view === "batch") { box.hidden = true; return; }
+  if (view === "batch" || !$("intro").isConnected) { box.hidden = true; return; }
   try {
     const h = await api(`/api/help?view=${view}`);
     const body = el("div", { class: "helpbody" });
