@@ -325,6 +325,8 @@ class RulesInStep(unittest.TestCase):
         ("states as NOT so", "Not negated facts"),
         ("A number with a unit", "A number with a unit"),
         ("A qualifier stays in the subject or object", "A qualifier stays in the subject instance or object instance"),
+        ("A name with its abbreviation in parentheses is one subject or object",
+         "A name with its abbreviation in parentheses is one instance"),
         ("A table of values inside the record", "Not the values inside a data table"),
         ("Each fact once", "Each fact once"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),
