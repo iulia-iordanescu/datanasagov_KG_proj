@@ -1075,8 +1075,9 @@ async function openMapping() {
   // Untouched, it is saved as it is in the file, so it stays stale.
   location.hash = "m";
   showIntro();
-  if (!mapping.found) {
-    $("records").replaceChildren();
+  if (!mapping.found) {                    // no table: still the side panel, with its Help
+    $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+      el("div", { class: "panelhead" }, el("h3", {}, "Translation table"), toolsMenu(TOOL_SCHEMA))));
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
       "annotations/component_class_mapping.csv wasn't found, so there is no translation table to check. It is kept in Git: restore it (git checkout -- annotations/component_class_mapping.csv), then open Translation table again.")));
     status("");
@@ -1261,8 +1262,9 @@ async function openPartial() {
   partial = await api("/api/partial");
   location.hash = "p";
   showIntro();
-  if (!partial.found) {
-    $("records").replaceChildren();
+  if (!partial.found) {                    // nothing to review yet: still the side panel, with its Help
+    $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+      el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu())));
     $("record").replaceChildren(el("section", { class: "card" }, el("p", { class: "empty" },
       "outputs/intermediate_results/070_evaluate/compared_triples.csv wasn't found, so there are no partial pairs to review. Run py 070_evaluate/run.py, then open Partial pairs again.")));
     status("");
