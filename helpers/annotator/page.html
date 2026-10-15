@@ -293,7 +293,10 @@
   header .tab.current select { color: #1f3a5f; }
   header nav.tabs button:hover, header nav.tabs .tab:hover { border-radius: 999px; }
   .headline { align-items: flex-start; }
-  .titleblock { flex: 1; min-width: 0; }
+  .titleblock { flex: 1; min-width: 0; text-align: center; }
+  .titleblock .headmeta { justify-content: center; }
+  .listblock { display: flex; flex-direction: column; gap: 4px; max-width: 150px; align-self: center; }
+  .listblock .meta { font-size: 12px; line-height: 1.3; }
   .titleblock h2 { margin: 2px 0 2px; white-space: normal; overflow: visible; }
   .viewbox a { color: var(--navy); }
   .titleblock .headmeta { margin: 0; }
@@ -643,16 +646,13 @@ function show(i) {
 
   const head = el("section", { class: "card recordhead" },
     el("div", { class: "headline" },
-      el("button", { class: "listtoggle", onclick: toggleList,
-                     title: listHidden ? "Show the list of the batch's records" : "Hide the list of the batch's records" },
-         listHidden ? "☰ Records" : "☰ Hide records"),
+      el("div", { class: "listblock" },
+        el("button", { class: "listtoggle", onclick: toggleList,
+                       title: listHidden ? "Show the list of the batch's records" : "Hide the list of the batch's records" },
+           listHidden ? "☰ Records" : "☰ Hide records"),
+        el("div", { class: "meta" }, `Currently showing: record ${current + 1} of ${batch.records.length} in this batch`)),
       el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0,
                      title: "Previous record (or the ← key, when not typing in a field)" }, arrow("left")),
-      el("span", { class: "recnum", title: `Record ${current + 1} of the batch's ${batch.records.length}` },
-         `${current + 1} / ${batch.records.length}`),
-      el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
-                     disabled: current === batch.records.length - 1,
-                     title: "Next record (or the → key, when not typing in a field)" }, arrow("right")),
       el("div", { class: "titleblock" },
         el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
         el("div", { class: "meta headmeta" },
@@ -669,6 +669,9 @@ function show(i) {
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
               el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)))),
           el("span", { id: "progress" }))),
+      el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
+                     disabled: current === batch.records.length - 1,
+                     title: "Next record (or the → key, when not typing in a field)" }, arrow("right")),
       el("div", { class: "rightstack" },
         el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
           el("input", { type: "checkbox", checked: rec.finished,
