@@ -94,7 +94,7 @@ class Reading(unittest.TestCase):
         self.assertEqual(again["entity_classes"], s["entity_classes"])
         self.assertEqual(again["predicates"], s["predicates"])
         self.assertEqual(sorted(again["patterns"]), sorted(s["patterns"]))
-        self.assertEqual(again["unread"], ["line 9: Each entry reads subject -> object, with the entity class pairs it is used with."])
+        self.assertEqual(again["unread"], ["line 9: Each entry reads subject -> object, with its patterns (subject class -> object class)."])
 
     def test_hand_built_schema_reads_cleanly(self):
         s = schema_io.read_ground_truth_schema(HAND)
@@ -231,7 +231,7 @@ class HandSchemaEdits(unittest.TestCase):
 
 
 class ExtractionChecksPatternSources(unittest.TestCase):
-    """Step 060 notes every entry of its schema input whose source names ground truth records other than tuning
+    """Step 060 notes every entry of its schema file whose source names ground truth records other than tuning
     ones, patterns included (060_extract/060_extract_helpers/schema.py, load_schema)."""
 
     def test_held_out_pattern_noted(self):
@@ -249,7 +249,7 @@ class ExtractionChecksPatternSources(unittest.TestCase):
             s = extract_schema.load_schema({"schema": hand, "additions": tmp / "additions.txt", "splits": tmp / "splits.json"})
             noted = [n for n in s.notes if "whose source names ground truth records" in n]
             self.assertEqual(len(noted), 1)
-            self.assertIn("Dataset ABOARD Spacecraft (schema input;", noted[0])
+            self.assertIn("Dataset ABOARD Spacecraft (schema file;", noted[0])
         finally:
             shutil.rmtree(tmp)
 

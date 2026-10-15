@@ -3,10 +3,10 @@ label.py -- stage 3: give every component instance a label, with a running
 vocabulary.
 
 A label is the general word for a component instance: for a subject
-or object instance, the kind of thing it is ("MODIS" → `Instrument`), which
+or object instance, the type of thing it is ("MODIS" → `Instrument`), which
 becomes an entity class; for a predicate instance, the relation it
 expresses ("is aboard" → `ABOARD`), which becomes a predicate. The two kinds
-are labeled in two separate passes, each with its own vocabulary of labels.
+are labeled in two separate passes, each with its own running vocabulary.
 
 The component instances are sent in batches of LABEL_BATCH, and every batch
 is shown the labels chosen so far, with the instruction to reuse one whenever
@@ -22,8 +22,8 @@ more; if it is still unlabeled it is listed, and it counts toward no schema
 entry.
 
 A text's title is not sent: its label is the describes_class stage 2 got
-for it, judged from the whole text. Those labels also start the entity
-vocabulary (most common first), so other component instances reuse them.
+for it, judged from the whole text. Those labels also start the running
+vocabulary of the entity pass (most common first), so other component instances reuse them.
 
 Each batch's answer is cached under a key that includes the labels in use
 before it, so a rerun reuses every batch whose component instances and

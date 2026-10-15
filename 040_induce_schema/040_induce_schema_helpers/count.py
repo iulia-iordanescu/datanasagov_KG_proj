@@ -28,7 +28,7 @@ listed in induction_evidence.json (the report shows the first 20).
 
 Each text's title also counts once toward its label (the describes_class
 of stage 2), as an entity class, whether or not the title is in a triple
-instance: so the kinds of thing records describe are always counted.
+instance: so the types of thing records describe are always counted.
 
 Each quantity is counted independently: a component instance left
 unlabeled costs its own schema entry and every pattern through it, not its

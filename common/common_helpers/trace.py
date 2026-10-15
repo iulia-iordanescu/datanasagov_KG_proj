@@ -79,7 +79,7 @@ def _read(path: Path):
         elif isinstance(data, dict):
             # Several lists in one file, each under its own name: the two lists
             # of 030's splits.json ({"<name>": {"records": [...]}}) or the
-            # entity classes, predicates, and patterns of 040's schema ({"<name>": [...]}).
+            # entity classes, predicates, and patterns of the induced schema ({"<name>": [...]}).
             for value in data.values():
                 if isinstance(value, dict) and isinstance(value.get("records"), list):
                     items.extend(value["records"])

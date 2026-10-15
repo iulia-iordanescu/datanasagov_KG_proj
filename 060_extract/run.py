@@ -2,11 +2,11 @@
 060 · Extract
 
 Extracts, from each record's text, the facts a schema can express: a model
-lists them as triple instances with ONLY the schema's component classes; code checks every
-one against the record's text and the schema, keeps it, or removes it with
-a reason. The schema is 040's induced schema by default (or any schema given
-with --schema), plus the entity classes, predicates, and patterns added by hand in
-annotations/schema_additions.txt. By default only the finished records of
+lists them as classed triples with ONLY the current schema's component classes; code checks
+every one against the record's text and the schema, keeps it, or removes it with
+a reason. The current schema is the induced schema by default (or any schema given
+with --schema), plus the schema additions: the entity classes, predicates, and
+patterns a person wrote in annotations/schema_additions.txt. By default only the finished records of
 the ground truth are extracted from, which is what 070 evaluates; every record
 once the schema is final. Terms: docs/terminology.md.
 
@@ -47,7 +47,7 @@ extract = load_moves("060_extract")
 
 def main(inputs, settings, output):
     chosen  = extract.pick_records(inputs, settings)                 # code: the finished ground truth records, by default
-    schema  = extract.load_schema(inputs)                            # code: 040's schema plus your additions (none from held-out)
+    schema  = extract.load_schema(inputs)                            # code: the induced schema plus the schema additions (none from held-out)
     calls   = extract.paid_calls(chosen, schema, settings, output)   # code: asks before paying; keeps every answer in cache/
     replies = extract.ask_model(chosen, schema, calls, settings)     # LLM: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft)
     rows    = extract.sort_rows(chosen, schema, replies)             # code: checked; kept, or removed with a reason

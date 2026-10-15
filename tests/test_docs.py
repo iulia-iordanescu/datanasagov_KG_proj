@@ -302,12 +302,12 @@ class RulesInStep(unittest.TestCase):
     #: (words of the prompt's rule, words of its guideline); None: the model's only.
     PAIRS = [
         ("the record's own words for them", "the record's own words, as written"),
-        ("whatever the sentence is about", "The subject is what the sentence is about"),
+        ("whatever the sentence is about", "The subject instance is what the sentence is about"),
         ("the shortest passage copied EXACTLY", "the shortest passage that states the fact, copied exactly"),
         ("One fact per triple. Leave out opinion words", "One fact per"),
         ("states as NOT so", "Not negated facts"),
         ("A number with a unit", "A number with a unit"),
-        ("A qualifier stays in the subject or object", "A qualifier stays in the instance"),
+        ("A qualifier stays in the subject or object", "A qualifier stays in the subject instance or object instance"),
         ("A table of values inside the record", "Not the values inside a data table"),
         ("Each fact once", "Each fact once"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),

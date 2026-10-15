@@ -8,8 +8,8 @@ other warning found here (ground truth problems, records left out, …) is
 shown before anything is evaluated, and the person is asked whether to go
 ahead (unless confirm_paid_calls is false).
 
-A record is evaluated when a person has finished it in the ground truth (all
-triples extracted, on every row) AND step 060's last run extracted from it.
+A record is evaluated when a person has finished it in the ground truth
+(all_facts_extracted = 1 on every row) AND step 060's last run extracted from it.
 Of those, only the FAIR SAMPLE is evaluated: the longest run of the pool's first
 records that are all evaluated. The pool is shuffled, so that run is a fair
 sample of the catalog, which the margins of error require (see stats.py). A
@@ -91,9 +91,9 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
     if not learned.get("known"):
         why = (learned.get("how") or [f"{repo_path(inputs['schema_used'])} doesn't say (an older step 060 wrote it)"])[0]
         evaluated.notes.append(f"Which records the current schema was learned from isn't known: {why}. So 070 can't "
-                               f"tell which evaluated records are twins (the same title, description, or both as a record "
+                               f"tell which evaluated records are twins (the same title, the same `notes`, or both as a record"
                                f"the schema was learned from; docs/terminology.md, section *Evaluating extraction*), and gives no "
-                               f"numbers without them. To get them, extract with 040's schema or the ground truth schema "
+                               f"numbers without them. To get them, extract with the induced schema or the ground truth schema "
                                f"(`py 060_extract/run.py`), then run `py 070_evaluate/run.py` again.")
         for r in evaluated.records:
             r["twin"] = None

@@ -1,6 +1,6 @@
 # Comparing runs
 
-Is one version of the pipeline better than another? A version is everything that makes extraction's numbers: the model and the service, the schema, the prompts, the settings, the code, the translation table. To find out whether a change helped, evaluate both versions (step 070) on the same finished tuning records, then compare them:
+Is one recipe better than another? A recipe is everything that makes extraction's numbers: the model and the service, the schema, the prompts, the settings, the code, the translation table. To find out whether a change helped, evaluate both recipes (step 070) on the same finished tuning records, then compare them:
 
 ```
 py helpers/compare_runs.py                                      the evaluations kept so far, with each one's run id
@@ -9,7 +9,7 @@ py helpers/compare_runs.py <run id A> <run id B> [<run id C> ...]   compare them
 
 Free: no model calls. It writes a report, `outputs/reports/compare_runs_<date>_<time>.md`, and prints where it is.
 
-## Making two versions to compare
+## Making two recipes to compare
 
 *Suppose* you want to know whether extracting with another model helps. *Then:*
 
@@ -23,7 +23,7 @@ Change one thing at a time, so a difference has one cause.
 
 - **The runs**, A, B, C, …, with 070's run id. A is the baseline; each other run is compared with it.
 - **What differs between the runs:** every part of each run's recipe that isn't the same in every run. From 060's run: its code version, settings (service and model among them), prompts by fingerprint, and the schema files it read, by fingerprint. From 070's run: its code version, settings (service and model among them), and the translation (the rows of the translation table it used), by fingerprint. A difference in the numbers comes from one of these, or from the partial-pair verdicts (`annotations/partial_pair_reviews.csv`), which the recipe doesn't hold yet: review no partial pairs between the runs you compare.
-- **The records compared:** the tuning records evaluated in every run, with the same ground truth in every run. A record whose ground truth changed between the runs (you corrected it in between) is left out and named, since a difference there could come from your correction rather than the version. Held-out records are never compared.
+- **The records compared:** the tuning records evaluated in every run, with the same ground truth in every run. A record whose ground truth changed between the runs (you corrected it in between) is left out and named, since a difference there could come from your correction rather than the recipe. Held-out records are never compared.
 - **One table per run compared with the baseline:** for each number (precision, recall, F1, and the others 070 gives a margin of error), the baseline's value, the other run's, the difference in points, the 95% range of the difference, and a verdict: *higher*, *lower*, *can't tell apart*, or *the same*.
 
 ## How the range is computed
@@ -37,5 +37,5 @@ Each run of step 070 keeps its tuning records' counts and its recipe in `outputs
 ## What it can't see
 
 - **Many comparisons:** about 1 in 20 ranges misses by chance, so among many rows, one *higher* or *lower* alone is not a finding; a change that shows on several related numbers is.
-- **Only these records:** the range covers which records happened to be evaluated, not mistakes in the ground truth, nor a model answering differently on another run of the same version (temperature 0 makes that rare, not impossible).
-- **Tuning records only:** compare and choose on the tuning part; evaluate the version you report once on the held-out part, at the end (`py 070_evaluate/run.py --evaluate_held_out true`).
+- **Only these records:** the range covers which records happened to be evaluated, not mistakes in the ground truth, nor a model answering differently on another run of the same recipe (temperature 0 makes that rare, not impossible).
+- **Tuning records only:** compare and choose on the tuning part; evaluate the recipe you report once on the held-out part, at the end (`py 070_evaluate/run.py --evaluate_held_out true`).

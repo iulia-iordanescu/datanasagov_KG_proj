@@ -56,9 +56,9 @@ shapes:
 
 Several steps read it: 040 compares the induced schema with the ground truth
 schema; 050 shows the ground truth schema to the model and checks every drafted
-row against it (as does the annotation tool); 060 extracts with 040's schema, or
-another given with --schema, plus the additions; 070 translates the current
-schema into the ground truth schema.
+row against it (as does the annotation tool); 060 extracts with the current schema (the induced
+schema, or another given with --schema, plus the schema additions); 070
+translates the current schema into the ground truth schema.
 
     from common.schema_io import read_schema, schema_text
     schema = read_schema(path)          # either shape, by the file's suffix
@@ -202,7 +202,7 @@ def schema_text(schema: dict) -> str:
     lines = ["ENTITY CLASSES", "--------------"]
     lines += [f"{name.ljust(width)}{d}".rstrip() for name, d in schema["entity_classes"].items()]
     lines += ["", "PREDICATES", "----------",
-              "Each entry reads subject -> object, with the entity class pairs it is used with.", ""]
+              "Each entry reads subject -> object, with its patterns (subject class -> object class).", ""]
     by_predicate = {}
     for s_, p_, o_ in schema["patterns"]:
         by_predicate.setdefault(p_, []).append(f"{s_} -> {o_}")

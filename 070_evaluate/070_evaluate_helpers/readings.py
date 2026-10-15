@@ -72,11 +72,11 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
            f"- **Extracted triples:** from extraction's run `{made.get('run_id', 'unknown: not in the details file of extraction')}` "
            f"(model `{made.get('model', 'unknown')}`), in `060_extract/extracted_triples.csv`.",
            f"- **The current schema (the one extraction used):** `{schema.get('schema', 'unknown')}`, plus "
-           f"`{schema.get('additions', 'annotations/schema_additions.txt')}` ({len(additions)} addition(s)).",
-           ("- **Schema additions learned from tuning records:** "
+           f"`{schema.get('additions', 'annotations/schema_additions.txt')}` ({len(additions)} schema entr(ies) from it).",
+           ("- **Schema entries of the schema additions learned from tuning records:** "
             + "; ".join(f"{e.get('component_class') or ' '.join(e['pattern'])} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
             "being evaluated, so they help here more surely than on records the pipeline hasn't seen."
-            if from_tuning else "- **Schema additions learned from tuning records:** none."),
+            if from_tuning else "- **Schema entries of the schema additions learned from tuning records:** none."),
            "- **Component classes:** extraction's component classes translated into the ground truth schema through "
            "`annotations/component_class_mapping.csv`.",
            f"- **Ground truth:** `annotations/ground_truth/`, the {len(recs)} finished {part} record(s) of the fair "
@@ -177,7 +177,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"- Which entity class goes wrong: of the {ex['pairs']} exact pairs, {_of(ex['subject_class_pairs'], ex['pairs'])} "
             f"have the right subject class (subject-class accuracy) and {_of(ex['object_class_pairs'], ex['pairs'])} the "
             f"right object class (object-class accuracy). Entity-class accuracy needs both, so it is never above either.",
-            "- Only pairs are judged: the entity classes of an occurrence left without a partner (wrong, or a "
+            "- Only pairs are judged: the entity classes of an occurrence left extracted only (wrong, or a "
             "repeat of a fact already paired) aren't counted.",
             _sure(n, ex["entity_class_accuracy"], "exact entity-class accuracy")]
     if shared:
@@ -216,15 +216,16 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
         truths[t] += k
     common = truths.most_common(1)[0][0] if truths else None
     right = round((d["accuracy"]["value"] or 0) * d["records"]) if d["accuracy"]["value"] is not None else 0
-    out += [f"#### What each record describes: {pct(d['accuracy']['value'])}", "",
+    out += [f"#### Describes accuracy: {pct(d['accuracy']['value'])}", "",
             f"- Of the {d['records']} record(s) whose ground truth names a describes class, extraction named "
             f"the same describes class for {_of(right, d['records'])}.",
-            (f"- Always guessing the most common describes class, `{common}` (ground truth schema), would get "
-             f"{pct(d['majority_baseline'])}: the accuracy means something only when it's clearly above that. The "
-             f"baseline comes from these records' own ground truth, so it has no margin of error."
-             if common else "- No baseline: no record names what it describes."),
-            f"- Averaged per describes class ({len(truths)} describes class(es)), each weighing the same (the balanced "
-            f"accuracy): {pct(d['per_entity_class_average'])}, so a rare one counts as much as a common one."
+            (f"- The describes baseline (always naming the most common describes class, `{common}`, ground truth "
+             f"schema): {pct(d['majority_baseline'])}. The describes accuracy means something only when it's clearly "
+             f"above that. The describes baseline comes from these records' own ground truth, so it has no margin of "
+             f"error."
+             if common else "- No describes baseline: no record's ground truth names a describes class."),
+            f"- The describes per-entity-class average ({len(truths)} describes class(es), each weighing the same): "
+            f"{pct(d['per_entity_class_average'])}, so a rare one counts as much as a common one."
             + (f" Always naming `{common}` would get {pct(1 / len(truths))} on it." if truths else "")
             + " No margin of error: a describes class with few records moves it a lot.",
             _sure(n, d["accuracy"], "this accuracy"), ""]

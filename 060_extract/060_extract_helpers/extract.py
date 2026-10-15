@@ -129,6 +129,6 @@ def sort_rows(chosen, schema, replies) -> Rows:
         rows.kept[rid], rows.removed[rid] = kept, removed
     rows.flags, rows.reasons = dict(flags), dict(reasons)
     rows.new_component_classes = {k: {"records": sorted(v)} for k, v in new_component_classes.items()}
-    log.info(f"  kept {sum(len(v) for v in rows.kept.values()):,} rows for {len(rows.kept)} record(s); "
+    log.info(f"  kept {sum(len(v) for v in rows.kept.values()):,} extracted triples (describes triples included) for {len(rows.kept)} record(s); "
              f"removed {sum(len(v) for v in rows.removed.values()):,} ({', '.join(f'{k} {n}' for k, n in sorted(reasons.items())) or 'none'})")
     return rows

@@ -1,4 +1,4 @@
-# What each record describes
+# Describes accuracy
 
 Part of [Evaluation metrics](../metrics.md), which explains the notation and lists every metric.
 
@@ -47,7 +47,7 @@ Say the knowledge graph is built from the whole catalog's [extracted triples](..
 - Two entity classes of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) that translate to one entity class of the [ground truth schema](../../docs/terminology.md#3-schemas) look the same, so mixing them up isn't seen.
 - *What it means for the knowledge graph* is approximate for the [reasons every metric shares](approximately.md); the report measures one of them, sampling error, with *d*'s margin of error.
 
-Worked example: [What each record describes: example](#example). Sources: [What each record describes: sources](#sources).
+Worked example: [Describes accuracy: example](#example). Sources: [Describes accuracy: sources](#sources).
 
 ## Example
 

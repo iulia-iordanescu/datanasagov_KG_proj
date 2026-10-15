@@ -135,7 +135,7 @@ class GroundTruthFiles(unittest.TestCase):
         spec.loader.exec_module(records_050)
         text = records_050.vocabulary_text("FILE", v["coined"], v["used_patterns"])
         self.assertTrue(text.startswith("FILE\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n"))
-        self.assertIn("MORE ENTITY CLASS PAIRS THE GROUND TRUTH USES (subject -> object)\nABOARD: instrument -> Probe\n"
+        self.assertIn("MORE PATTERNS THE GROUND TRUTH USES (subject class -> object class)\nABOARD: instrument -> Probe\n"
                       "CARRIED_BY: Instrument -> probe", text)
         self.assertEqual(records_050.vocabulary_text("FILE", {"entity_classes": [], "predicates": []}, []), "FILE")
 

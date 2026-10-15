@@ -6,19 +6,19 @@ One model call per text piece (040_induce_schema_prompts/extract.txt): list
 every fact the text states as a triple instance, with the text's own words as
 its subject instance and object instance, a short verb phrase in the model's
 words as its predicate instance ("MODIS" – "is aboard" – "Aqua"), and its
-source text, the passage that states it. Nothing tells the model which kinds of things or
+source text, the passage that states it. Nothing tells the model which types of things or
 relations to look for; that is what the later stages learn. (The prompt says
 "facts": it speaks plainly to the model.)
 
 Everything else is what 050 and 060 use too (common/common_helpers/extraction.py),
-so the schema is learned from the same kind of facts extraction later has to
+so the schema is learned from the same type of facts extraction later has to
 produce: the shared extraction rules, the reply format (here without entity
 classes, which stage 3 learns), the record's text between BEGIN/END RECORD
 lines, and the model calls themselves (ask_model: cached, `workers` at a
 time, a text with a failed call left out whole and asked again on the next
 run).
 
-The reply also names describes_class: the kind of thing the text's title
+The reply also names describes_class: the type of thing the text's title
 names ("Dataset", "WebTool", …), judged from the whole text. The first piece
 of a text to name one decides it. Stage 3 uses it as the title's label, so
 the schema always has entity classes for what records describe, which the

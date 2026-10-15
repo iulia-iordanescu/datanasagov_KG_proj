@@ -39,7 +39,7 @@ Let *u* be the value of one version of the recall upper bound. It reads two ways
 
 1. *u* is the proportion of the evaluated records' ground truth triples that are within reach (for the strict version, within strict reach).
 2. No extraction with this schema and translation table can get a [recall](recall.md) above the recall upper bound, or a strict recall above the strict recall upper bound, at either [pair level](pairs.md): a [pair](pairs.md) needs the same predicate, and an occurrence has a predicate of the ground truth schema only when a row translates its predicate to one; a [strict pair](pairs.md) also needs the same subject classes and the same object classes, and an occurrence has entity classes of the ground truth schema only when rows translate its entity classes to them.
-3. Recall upper bound minus strict recall upper bound is the proportion of the ground truth triples that are within reach but not within strict reach: the schema has their predicate, but (no counterpart for their subject class) ∨ (no counterpart for their object class).
+3. Recall upper bound minus strict recall upper bound is the proportion of the ground truth triples that are within reach but not within strict reach: a predicate of the current schema translates to theirs, but (no counterpart for their subject class) ∨ (no counterpart for their object class).
 
 **What it means for the knowledge graph** (the whole catalog, approximately)
 
@@ -53,7 +53,7 @@ Read with recall: [recall within reach](recall_within_reach.md) is recall divide
 
 ## <ins>Assumes and can't see</ins>
 
-- Within reach means only that the schema has the [component classes](../../docs/terminology.md#3-schemas): not that the [model](../../docs/terminology.md#8-the-pipeline) could find the [fact](../../docs/terminology.md#2-triples) in the [text](../../docs/terminology.md#1-records-and-their-text).
+- Within reach means only that checked rows translate [component classes](../../docs/terminology.md#3-schemas) of the current schema to the ground truth triple's: not that the [model](../../docs/terminology.md#8-the-pipeline) could find the [fact](../../docs/terminology.md#2-triples) in the [text](../../docs/terminology.md#1-records-and-their-text).
 - It depends on the translation table: a row wrongly saying `(none)` lowers it, and a row wrongly translating to a component class of the ground truth schema raises it.
 - Each row translates one component class of the current schema to at most one component class of the ground truth schema. So when one component class of the current schema means what two of the ground truth schema mean together (for example, a broad predicate CARRIES of the current schema, covering what both ABOARD and HOSTS of the ground truth schema mean), its row can name only one of them, and the ground truth triples using the other count as out of reach, though the schema could state them.
 - The translation table is checked by one person, and a row can be changed after the [tuning part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s numbers have been seen. A row changed because of those numbers fits the tuning part, as any change made while looking at its numbers does ([Why "approximately"](approximately.md), *Tuning on the evaluated records*). Check the rows before looking at the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070).

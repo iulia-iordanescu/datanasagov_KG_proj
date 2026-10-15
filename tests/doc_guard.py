@@ -56,9 +56,26 @@ def _ledger() -> list:
 
 
 def _record(rel: str, old: str, new: str, count: int) -> None:
-    entries = _ledger()
-    entries.append({"file": rel, "old": old, "new": new, "count": count})
-    LEDGER.write_text(json.dumps(entries, ensure_ascii=False, indent=1), encoding="utf-8")
+    """Append one edit to the ledger. Several processes may edit docs at once (each a different doc): a lock file,
+    made only if absent, lets one of them read, append, and write at a time, so no edit is lost."""
+    import os
+    import time
+    lock = LEDGER.with_name(LEDGER.name + ".lock")
+    for _ in range(600):                           # up to a minute
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            time.sleep(0.1)
+    else:
+        raise RuntimeError(f"{lock} has been held for a minute: delete it if no edit is running, then edit again")
+    try:
+        entries = _ledger()
+        entries.append({"file": rel, "old": old, "new": new, "count": count})
+        LEDGER.write_text(json.dumps(entries, ensure_ascii=False, indent=1), encoding="utf-8")
+    finally:
+        os.close(fd)
+        os.unlink(lock)
 
 
 def edit(rel: str, old: str, new: str, count: int = 1) -> None:

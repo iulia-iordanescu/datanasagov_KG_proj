@@ -93,7 +93,7 @@ class Gates(Base):
         self.draft(1)
         status, why = rp.gate("050_annotate", False)
         self.assertEqual(status, "kept")
-        self.assertIn("draft batch 1 isn't opened", why)
+        self.assertIn("drafted batch 1 isn't opened", why)
         self.gt_file(1, finished=False)                                        # opened, not finished
         self.assertIn("batch_001.csv has a record not finished", rp.gate("050_annotate", False)[1])
         self.gt_file(1, finished=True)

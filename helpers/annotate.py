@@ -8,7 +8,7 @@ model drafted, in your browser.
 
 The tool opens on its home page, with a box for each view. Ground truth
 (pick a batch in its dropdown at the top of the page): opening one of step
-050's draft batches for the first time copies it to
+050's drafted batches for the first time copies it to
 annotations/ground_truth/batch_<NNN>.csv, and every change is saved to that
 copy at once. Translation table: annotations/component_class_mapping.csv
 (step 070's table of which component class of the ground truth schema each

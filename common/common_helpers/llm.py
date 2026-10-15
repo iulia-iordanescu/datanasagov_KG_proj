@@ -70,7 +70,7 @@ from common.audit import log
 #: The default of 040, 060, and 070 (a LiteLLM name: the default service is LiteLLM).
 MODEL = "claude-opus-5.5"
 
-#: The default model of step 050, which drafts the ground truth: from another maker than MODEL, so the facts one
+#: The default model of step 050, which drafts the classed triples a person corrects into ground truth: from another maker than MODEL, so the facts one
 #: model misses aren't missing from both the ground truth and the extraction (060 warns when they're the same maker).
 DRAFTING_MODEL = "gemini-2.5-pro"
 

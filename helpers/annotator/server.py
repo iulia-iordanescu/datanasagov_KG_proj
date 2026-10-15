@@ -7,7 +7,7 @@ It serves one page (page.html) and a small JSON API, on this computer only
 Python's standard library is used.
 
 What it reads
-    outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv   step 050's draft batches
+    outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv   step 050's drafted batches
     annotations/ground_truth/batch_<NNN>.csv                                  the ground truth files
     outputs/intermediate_results/020_clean/records.jsonl                     each record's text
     outputs/intermediate_results/030_split/splits.json                       each record's pool position and part
@@ -29,13 +29,13 @@ annotations/component_class_mapping.csv, annotations/partial_pair_reviews.csv,
 annotations/schema_additions.txt, and additions to
 annotations/ground_truth_schema.txt (nothing else in it
 changes).
-    - Opening draft batch N for the first time copies it to
+    - Opening drafted batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
-      then on that copy is what's shown and edited. The draft in outputs/ is
-      never changed.
+      then on that copy is what's shown and edited. The drafted batch's file
+      in outputs/ is never changed.
     - Every edit is saved to that file at once (the page sends the batch, the
       server writes it under a temporary name and renames it).
-    - The draft's flags column isn't kept: the checks are recomputed live.
+    - The drafted batch's flags column isn't kept: the checks are recomputed live.
 
 The translation table (step 070's, common/common_helpers/component_class_mapping.py) is shown row by
 row, each component class with its definition, and a person's choices are saved to it
@@ -334,7 +334,7 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 # --------------------------------------------------------------------------
 
 def _learned_from(data: Data, rows: list) -> str:
-    """Where a component class was learned, as a "source:" line the fairness check
+    """Where a component class was learned, as a "source:" line the source check
     (common/common_helpers/schema_io.ground_truth_source_problem) can read: the
     ground truth records using it, by part, as pool positions."""
     by_part, outside = {"tuning": set(), "held-out": set()}, []
@@ -375,7 +375,7 @@ def add_to_hand(data: Data, item: dict) -> str:
 
 
 def list_batches() -> list:
-    """Every draft batch and ground truth file, newest draft first."""
+    """Every drafted batch and ground truth file, newest first."""
     out, gt_files = [], {int(m.group(1)): p for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN))
                          if (m := NUMBERED.fullmatch(p.name))}
     drafts = {int(m.group(1)): p for p in DRAFTS_DIR.glob(DRAFT_PATTERN)
@@ -392,12 +392,12 @@ def list_batches() -> list:
 
 
 def open_batch(n: int) -> Path:
-    """The ground truth file of batch n, copied from its draft the first time."""
+    """The ground truth file of batch n, copied from its drafted batch's file the first time."""
     gt = GROUND_TRUTH_DIR / file_name(n)
     if not gt.exists():
         draft = DRAFTS_DIR / draft_name(n)
         if not draft.exists():
-            raise FileNotFoundError(f"batch {n} has no draft (outputs/intermediate_results/050_annotate/{draft.name}) "
+            raise FileNotFoundError(f"batch {n} has no drafted batch file (outputs/intermediate_results/050_annotate/{draft.name}) "
                                 f"and no ground truth file (annotations/ground_truth/{gt.name}), so there is nothing "
                                 f"to open. Pick another batch, or draft one with py 050_annotate/run.py.")
         write_csv(gt, FILE_COLUMNS, _read_rows(draft))
@@ -550,7 +550,7 @@ def delete_mapping_row(line: int, kind: str, name: str) -> None:
                          f"hand edit), so the row to delete can't be told for sure: reload the page, then delete it "
                          f"again.")
     if not any(line in r["lines"] for r in repeats(rows)):
-        raise ValueError("only a component class's extra rows can be deleted here, so that no translation is lost. "
+        raise ValueError("only a component class's repeated rows can be deleted here, so that no translation is lost. "
                          "To delete another row, edit annotations/component_class_mapping.csv by hand.")
     write_csv(MAPPING_PATH, MAPPING_COLUMNS, [r for r in rows if r is not target])
 
@@ -877,7 +877,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
             files[REVIEWS_PATH] = _csv_bytes(REVIEW_COLUMNS, kept)
             changes.append({"file": f"annotations/{REVIEWS_PATH.name}",
                             "what": f"{cells} cell(s): {old} → {target}, so your verdicts still apply"})
-    # drafts not opened yet are never changed (they're step 050's output)
+    # drafted batches not opened yet are never changed (they're step 050's output)
     unopened = []
     if DRAFTS_DIR.exists():
         opened = {int(m.group(1)) for p in GROUND_TRUTH_DIR.glob(PATTERN) if (m := NUMBERED.fullmatch(p.name))}
@@ -887,7 +887,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
                     component_class_key(r.get(c)) == k for r in _read_rows(p) for c in GT_COLUMNS[kind]):
                 unopened.append(p.name)
     if unopened:
-        notes.append(f"Draft batch(es) not opened yet still use {old}: {', '.join(unopened)} (step 050's output, never "
+        notes.append(f"Drafted batch(es) not opened yet still use {old}: {', '.join(unopened)} (step 050's output, never "
                      f"changed here). Once opened, the tool marks {old} there ✖: change it to {target}.")
     if not files:
         raise ValueError(f"nothing uses {old}: there is nothing to change")

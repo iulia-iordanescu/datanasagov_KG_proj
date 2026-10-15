@@ -39,15 +39,15 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   | A small proportion of the catalog is evaluated | Redrawing with repeats treats the catalog as endless; for a large proportion, the range comes out somewhat too wide. | Gives the proportion of the catalog evaluated; holds below 5%. |
 - **Limits.** Only sampling error: the other four reasons can move the whole catalog's value outside the range.
 
-## The sample's mix of maintainers
+## The sample's mix of strata
 
-**Meaning.** The [pool](../../docs/terminology.md#4-ground-truth-and-samples) was drawn stratified by [maintainer](../../docs/terminology.md#1-records-and-their-text), and only its first [finished records](../../docs/terminology.md#4-ground-truth-and-samples) are evaluated. If their mix of maintainers differs from the catalog's, the value leans toward the over-represented maintainers.
+**Meaning.** The [pool](../../docs/terminology.md#4-ground-truth-and-samples) was drawn stratified by [maintainer](../../docs/terminology.md#1-records-and-their-text), and only its first [finished records](../../docs/terminology.md#4-ground-truth-and-samples) are evaluated. If their mix of strata differs from the catalog's, the value leans toward the over-represented maintainers.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.**
-- The pool matches the catalog's mix of maintainers: it was drawn with proportional allocation (`annotations/ground_truth_candidates.json`).
+- The pool matches the catalog's mix of strata: it was drawn with proportional allocation (`annotations/ground_truth_candidates.json`).
 - The report's [strata](../../docs/terminology.md#4-ground-truth-and-samples) table compares, per stratum, the proportion of the evaluated [records](../../docs/terminology.md#1-records-and-their-text) with the proportion of the pool.
 - From 20 evaluated records on, it warns when the two differ by more than 10 percentage points (`SHARE_GAP`). The 10 points is a rule of thumb, with no source found.
-- The [margin of error](#sampling-error) already includes this chance: the redraws let the mix of maintainers vary as it does from sample to sample.
+- The [margin of error](#sampling-error) already includes this chance: the redraws let the mix of strata vary as it does from sample to sample.
 
 ## Small-sample bias of a ratio
 
@@ -80,7 +80,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   - The threshold of 20 records: a rule of thumb, with no source found.
   - Below 5% of the catalog evaluated, drawing with repeats from a finite catalog is negligible: Cochran, *Sampling Techniques* (1977), chapter 2.
   - A percentile range is too narrow near 0% or 100%: Efron & Tibshirani (1993).
-- The sample's mix of [maintainers](../../docs/terminology.md#1-records-and-their-text): stratified sampling with proportional allocation, Cochran (1977), chapter 5. The 10-point warning: a rule of thumb, with no source found.
+- The sample's mix of strata: stratified sampling with proportional allocation, Cochran (1977), chapter 5. The 10-point warning: a rule of thumb, with no source found.
 - Small-sample bias of a ratio: the ratio estimator, biased by an amount that shrinks faster than its sampling error as the sample grows, Cochran (1977), chapter 6.
 - Tuning on the evaluated records: a test set used to choose between versions no longer gives an unbiased estimate; a part kept unseen until the end does. Hastie, Tibshirani & Friedman, *The Elements of Statistical Learning* (2nd ed., 2009), section 7.2.
 - An imperfect [ground truth](../../docs/terminology.md#4-ground-truth-and-samples): a reference set missing true facts makes evaluation "overly pessimistic" for methods that extract them, Zhang & Soh, *Extract, Define, Canonicalize* (2024), [paper](https://arxiv.org/abs/2404.03868).

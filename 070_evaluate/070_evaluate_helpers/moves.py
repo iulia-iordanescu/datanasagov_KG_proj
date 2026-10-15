@@ -112,10 +112,10 @@ def _margin_check_lines(checks: dict | None) -> list:
 def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
     """The report's table of the numbers without the twins (docs/terminology.md; stats.twins)."""
     lines = ["#### Twins", "",
-             "A twin is an evaluated record with the same title, description, or both as a record the current "
+             "A twin is an evaluated record with the same title, the same `notes`, or both as a record the current "
              "schema was learned from (docs/terminology.md, section *Evaluating extraction*), so the schema has seen "
              "some or most of its text. Its twin kind says what it shares with one such record: whole text (title and "
-             "description), description only, or title only. Learned from: "
+             "`notes`), description only (`notes` only), or title only. Learned from: "
              + ("; ".join(learned.get("how") or []) or "not known") + ".", ""]
     t = v["twins"]
     if t is None:
@@ -233,7 +233,7 @@ def _per_record(records: list, hidden: int) -> str:
                   f"Pool position {r['position']} · {r['part']} · stratum {r['stratum'] or '(none)'} · id `{r['id']}`", ""]
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
-        lines += [f"Describes: {mark} extraction said `{d['said'] or '(none named)'}` (translated into the ground truth "
+        lines += [f"Describes class: {mark} extraction named `{d['said'] or '(none named)'}` (translated into the ground truth "
                   f"schema); the ground truth says `{d['truth'] or '(none)'}` (ground truth schema)", ""]
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
@@ -249,11 +249,11 @@ def _per_record(records: list, hidden: int) -> str:
             lines.append("")
         extra = [ex[i] for i in range(len(ex)) if i not in paired_e]
         if extra:
-            lines += ["**Extracted, but not in the ground truth** (against precision)", ""]
+            lines += ["**Extracted only** (occurrences without a partner; against precision)", ""]
             lines += [f"- ✗ {_triple(f)}" for f in extra] + [""]
         missed = [(gt[i], c["within_reach"][i]) for i in range(len(gt)) if i not in paired_g]
         if missed:
-            lines += ["**In the ground truth, but not extracted** (against recall)", ""]
+            lines += ["**Ground truth only** (ground truth triples without a partner; against recall)", ""]
             lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: no predicate of the current schema translates to this one")
                       for f, reach in missed] + [""]
         if not (c["pairs"] or extra or missed):
@@ -296,7 +296,7 @@ def _mismatch_lines(mismatches: list) -> list:
     """The report's list of component class mismatches (pairing.component_class_mismatches)."""
     lines = ["### Component class mismatches", "",
              "Counted over the tuning records only: held-out records never say what to change.", "",
-             "A mismatch: extraction stated the fact, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
+             "A component class mismatch: extraction stated the fact, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
              "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, view *Translation table*). Seen once, it may just be "
              "extraction choosing the wrong component class.", "",
@@ -310,8 +310,8 @@ def _mismatch_lines(mismatches: list) -> list:
              "class of an extracted triple's object, translated to one component class of the ground truth "
              "schema, while the ground truth triple paired with it had another as its object's entity class. "
              "One pair can count twice: once for the subjects' entity classes, once for the objects';",
-             "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject and "
-             "object, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
+             "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject instance and "
+             "object instance, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
              "predicate (ground truth schema). With subject and object the other way round, the "
              "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
              "Component classes are compared after translation. All 9 events share one cause: the translation table's row "
@@ -439,8 +439,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                  + f", where the ground truth triple says {c['gtt_component_class']} (ground truth "
                                    f"schema), {c['count']} times" for c in frequent], 5, "; ")
                         + f". A row of annotations/component_class_mapping.csv may translate wrong, to (none) when a "
-                          f"component class fits, or with the wrong swap_subject_and_object, which turns stated facts "
-                          f"into misses. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: {this_report()}, section *Results*, subsection "
+                          f"component class fits, or with the wrong swap_subject_and_object, which leaves stated facts "
+                          f"ground truth only. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: {this_report()}, section *Results*, subsection "
                           f"*Component class mismatches*.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks['count']} time(s) so far, each logged in "
@@ -494,7 +494,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             continue
         n = v["numbers"]
         lines += [f"### Metrics: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
-                  f"{n['extracted']} extracted)", ""]
+                  f"{n['extracted']} extracted triples)", ""]
         if not n["margins"]:
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
                       f"error: these numbers could easily have come out very differently. Don't draw "
@@ -521,12 +521,14 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                   f"{_with_margin(n[level]['recall_within_reach'])} | "
                   f"{_with_margin(n[level]['strict_recall_within_reach'])} |" for level in pairing.LEVELS]
         d = n["describes"]
-        lines += ["", f"- **Recall upper bound** (ground truth triples whose predicate the schema has, the most recall "
-                      f"can be): {_with_margin(n['recall_upper_bound'])}. **Strict recall upper bound** (predicate and both "
-                      f"entity classes, the most strict recall can be): {_with_margin(n['strict_recall_upper_bound'])}.",
-                  f"- **What the record describes**: right for {_with_margin(d['accuracy'])} of {d['records']} "
-                  f"record(s). Always guessing the most common entity class would get {readings.pct(d['majority_baseline'])}; "
-                  f"averaged per entity class: {readings.pct(d['per_entity_class_average'])}.", ""]
+        lines += ["", f"- **Recall upper bound** (the ground truth triples within reach: the most recall "
+                      f"can be): {_with_margin(n['recall_upper_bound'])}. **Strict recall upper bound** (the ground "
+                      f"truth triples within strict reach: the most strict recall can be): "
+                      f"{_with_margin(n['strict_recall_upper_bound'])}.",
+                  f"- **Describes accuracy**: right for {_with_margin(d['accuracy'])} of {d['records']} "
+                  f"record(s). **Describes baseline** (always naming the most common describes class): "
+                  f"{readings.pct(d['majority_baseline'])}; **describes per-entity-class average**: "
+                  f"{readings.pct(d['per_entity_class_average'])}.", ""]
         if v["confusion"]:
             lines += ["| The ground truth says (ground truth schema) | Extraction said (translated into the ground "
                       "truth schema) | Records |", "|---|---|---:|"]

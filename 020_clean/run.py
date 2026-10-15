@@ -7,7 +7,7 @@ its first copy; a record with no id is dropped); HTML in the text fields
 becomes plain text, checked so that no word, number, or URL is lost; the
 spellings of one maintainer are joined into one name; and each field is kept
 under its own key, so later steps never have to guess where a title ends and
-a description begins. Terms: docs/terminology.md.
+the `notes` begin. Terms: docs/terminology.md.
 
 Reads:   batch_*.json (010)
 Writes:  records.jsonl

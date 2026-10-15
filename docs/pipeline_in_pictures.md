@@ -16,7 +16,7 @@ flowchart LR
     S050 --> S060["060 extract"]
     S060 --> S070["070 evaluate"]
     S070 --> S080["080 build graph"]
-    P1(["a person corrects the drafts"]) -.- S050
+    P1(["a person corrects the drafted batches"]) -.- S050
     P2(["a person checks the translation table"]) -.- S070
 
     classDef model fill:#fbefc4,stroke:#85601a
@@ -25,7 +25,7 @@ flowchart LR
     class S080 notbuilt
 ```
 
-Yellow: the step asks a model (040 learns the schema, 050 drafts the ground truth, 060 extracts). 070 asks a model only to propose new rows of the translation table. Dashed: not built yet. What each step does, reads, and writes: the table in the README's *Pipeline overview*, and each step's guide, `<step>/<step>.md`.
+Yellow: the step asks a model (040 learns the schema, 050 drafts classed triples for the ground truth, 060 extracts). 070 asks a model only to propose new rows of the translation table. Dashed: not built yet. What each step does, reads, and writes: the table in the README's *Pipeline overview*, and each step's guide, `<step>/<step>.md`.
 
 ## 2. What each step reads
 
@@ -54,7 +54,7 @@ flowchart LR
     end
     POOL --> S030
     GTS --> S040 & S050 & S070
-    S050 -->|"draft batches, corrected<br/>in the annotation tool"| GT
+    S050 -->|"drafted batches, corrected<br/>in the annotation tool"| GT
     GT --> S060 & S070
     ADD --> S060
     MAP <--> S070
@@ -89,14 +89,14 @@ How 070 compares one record's extracted triples with its ground truth triples (i
 
 ```mermaid
 flowchart LR
-    X["extracted triple<br/>(the current schema's words)"] -->|"translation table"| TX["translated extracted triple<br/>(the ground truth schema's words)"]
+    X["extracted triple<br/>(the current schema's component classes)"] -->|"translation table"| TX["translated extracted triple<br/>(the ground truth schema's component classes)"]
     G["ground truth triple"] --> PAIR{"pairs<br/>exact, then partial"}
     TX --> PAIR
-    PAIR -->|"each translated extracted triple<br/>in a pair is correct"| PREC["precision"]
+    PAIR -->|"each occurrence<br/>in a pair is correct"| PREC["precision"]
     PAIR -->|"each ground truth triple<br/>in a pair is found"| REC["recall"]
 ```
 
-Each translated extracted triple pairs with at most one ground truth triple of the same record, and the other way round. Exact and partial are the two pair levels. Every number comes with its margin of error: [`070_evaluate/metrics.md`](../070_evaluate/metrics.md).
+Each occurrence (of a translated extracted triple) pairs with at most one ground truth triple of the same record, and the other way round. Exact and partial are the two pair levels. Every number comes with its margin of error: [`070_evaluate/metrics.md`](../070_evaluate/metrics.md).
 
 ## 5. Tracing an output
 

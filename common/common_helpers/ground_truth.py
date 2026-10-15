@@ -1,8 +1,8 @@
 """
 common/common_helpers/ground_truth.py -- reads the ground truth: every file in
 
-    annotations/ground_truth/batch_000.csv     triple instances annotated before the pipeline
-    annotations/ground_truth/batch_001.csv     corrected from step 050's draft batch 1
+    annotations/ground_truth/batch_000.csv     classed triples annotated before the pipeline
+    annotations/ground_truth/batch_001.csv     corrected from step 050's drafted batch 1
     annotations/ground_truth/batch_002.csv     … batch 2, and so on
 
 taken together. Each file is a batch of records a person has corrected; the
@@ -18,8 +18,8 @@ Every file has the columns
 one row per classed triple, grouped by record (id). A file may also have the
 column drafted_by: the model that drafted the row (step 050), empty for a row
 a person wrote; batch_000.csv, annotated before the pipeline, has no such
-column. Any other column (e.g. the `flags` column of a draft batch) is
-ignored, so a corrected draft batch can be saved as it is. all_facts_extracted is 1 on every row of a record the
+column. Any other column (e.g. the `flags` column of a drafted batch) is
+ignored, so a corrected drafted batch can be saved as it is. all_facts_extracted is 1 on every row of a record the
 person has finished (every fact of its text is there), 0 while it is in
 progress. A row with an id but an empty subject, predicate, and object says
 "this record was annotated and states no facts".
@@ -80,7 +80,7 @@ from common.triples_io import component_class_key, is_describes, triple_key
 GROUND_TRUTH_DIR = ANNOTATIONS_DIR / "ground_truth"
 PATTERN = "batch_*.csv"
 #: The files' names, by batch number: the ground truth's batch_<NNN>.csv, and
-#: step 050's draft batches, drafted_triples_batch<N>.csv, which the
+#: step 050's drafted batches, drafted_triples_batch<N>.csv, which the
 #: annotation tool copies to the ground truth file of the same number.
 NUMBERED = re.compile(r"batch_(\d{3,})\.csv")
 DRAFT_PATTERN = "drafted_triples_batch*.csv"
@@ -98,7 +98,7 @@ TWIN_KINDS = ("whole text", "description only", "title only")
 
 def twin_kinds(records: dict, learned: list) -> dict:
     """{id: its twin kind (TWIN_KINDS), or "" when it isn't a twin} for each of records ({id: record}), against
-    learned (the records the schema was learned from). Title and description are compared evened out
+    learned (the records the schema was learned from). Title and `notes` are compared evened out
     (common/common_helpers/text_match.py); an empty one is never the same as another.
 
     >>> learned = [{"title": "Snow, Aqua", "notes": "Daily snow."}, {"title": "Fire", "notes": "Burned area."}]
@@ -124,9 +124,9 @@ def twin_kinds(records: dict, learned: list) -> dict:
 
 
 #: The rows of the twin table (twin_table): each twin kind, as the table names it.
-TWIN_ROWS = {"whole text": "whole text (same title and same description)",
-             "description only": "description only (same description, different title)",
-             "title only": "title only (same title, different description)"}
+TWIN_ROWS = {"whole text": "whole text (same title and same `notes`)",
+             "description only": "description only (same `notes`, different title)",
+             "title only": "title only (same title, different `notes`)"}
 
 
 def twin_table(pool: dict, columns: list) -> list:
@@ -144,10 +144,10 @@ def twin_table(pool: dict, columns: list) -> list:
     heading, what, _ = columns[0]
     n = counts[0]["description only"]
     lines += ["", f"*How to read a cell, e.g. row \"description only\", column \"Pool records, compared with {heading}\", {n:,}:* "
-                  f"{n:,} of the {len(pool):,} pool records each have the same description as one of {what}, and a "
+                  f"{n:,} of the {len(pool):,} pool records each have the same `notes` as one of {what}, and a "
                   f"different title. Each pool record is counted in one row only. A pool record that shares text in two "
                   f"ways (with two different records) is counted under the twin kind that shares more text: whole "
-                  f"text, then description only, then title only. Titles and descriptions are compared evened out "
+                  f"text, then description only, then title only. Titles and `notes` are compared evened out "
                   f"(docs/terminology.md, section *Triples*); twins: docs/terminology.md, section *Evaluating "
                   f"extraction*; why they matter: 070_evaluate/070_evaluate.md, section *How it works*, subsection "
                   f"*Twins*.", ""]
@@ -164,7 +164,7 @@ def draft_name(n: int) -> str:
 #: The columns every ground truth file has, in this order.
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class",
            "source_text", "all_facts_extracted"]
-#: The model that drafted a row (050's draft batches; the annotation tool keeps it); empty when a person wrote it.
+#: The model that drafted a row (050's drafted batches; the annotation tool keeps it); empty when a person wrote it.
 #: Optional: a file without it (batch_000.csv) reads as written by a person.
 DRAFTED_BY = "drafted_by"
 #: Every column a ground truth file may have, in this order.
@@ -455,7 +455,7 @@ def fair_prefix(pool: list, taken: set) -> list:
     return out
 
 
-def fair_words(fair: dict, positions: dict, what: str = "The ground truth and drafts") -> str:
+def fair_words(fair: dict, positions: dict, what: str = "The ground truth and the drafted batches") -> str:
     """fair_sample()'s answer in words."""
     if fair["fair"]:
         return f"{what} are the first {fair['first_n']} records of the pool: a fair sample."

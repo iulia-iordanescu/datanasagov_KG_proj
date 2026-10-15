@@ -10,7 +10,7 @@ common/common_helpers/ground_truth.py, the annotation tool, 040 (component_class
 (component_class_key, the describes triple's component classes).
 
 A triple row has the columns in COLUMNS. source_text is the passage that
-states the fact. The ground truth and the draft batches add three columns
+states the fact. The ground truth and the drafted batches add three columns
 (common/common_helpers/ground_truth.COLUMNS).
 
 Component instances and component classes are evened out in two ways:
@@ -37,7 +37,7 @@ from common.text_match import norm_text
 
 REQUIRED = ("subject", "predicate", "object")
 OPTIONAL = ("subject_class", "object_class", "source_text")
-#: A triple row's columns. (The ground truth and draft batches add
+#: A triple row's columns. (The ground truth and drafted batches add
 #: all_facts_extracted, flags, and origin: common/common_helpers/ground_truth.COLUMNS.)
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object",
            "object_class", "source_text"]

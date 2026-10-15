@@ -22,8 +22,8 @@ gives no verdict. It uses the labels 040 assigned with every text in view, so it
 smaller sample might have labeled a few component instances differently.
 
 THE BREADTH TABLE. For each entry that reached min_support, how many maintainers' texts it was found in: 1, 2,
-or 3 or more. Entries found in one maintainer only are that maintainer's own vocabulary; many of them suggest
-the maintainers 040 doesn't read have their own too.
+or 3 or more. Entries found in one maintainer only are used by that maintainer only; many of them suggest
+the maintainers 040 doesn't read use schema entries of their own too.
 
 Entries count here by support alone; the check stage may still leave out one the model judged too vague.
 """
@@ -102,8 +102,8 @@ def report_lines(sat: dict, wide: dict, n_texts: int, min_support: int) -> list:
                   f"{sat['added_by_last'][first]:.1f}. It speaks only for the maintainers 040 read, and is slightly "
                   f"optimistic (the labels were chosen with every text in view).", "",
               "Schema entries that reached min_support, by how many maintainers' texts they were found in (an entry "
-              "found in one maintainer's texts only is that maintainer's own vocabulary; many such suggest the "
-              "maintainers 040 doesn't read have their own too):", "",
+              "found in one maintainer's texts only is used by that maintainer only; many such suggest the "
+              "maintainers 040 doesn't read use schema entries of their own too):", "",
               "| Schema entries | 1 maintainer | 2 maintainers | 3 or more |", "|---|---:|---:|---:|"]
     lines += [f"| {name} | {wide[name]['1']} | {wide[name]['2']} | {wide[name]['3 or more']} |" for name, _ in KINDS]
     return lines + [""]

@@ -1,5 +1,5 @@
 """
-draft.py -- stage 2: the model drafts each chosen record's triple instances.
+draft.py -- stage 2: the model drafts each chosen record's classed triples.
 
 One call per text piece (a long record is split, as in 040: common/common_helpers/chunking.py).
 The prompt (050_annotate/050_annotate_prompts/draft.txt) puts COMPLETENESS FIRST: every fact the

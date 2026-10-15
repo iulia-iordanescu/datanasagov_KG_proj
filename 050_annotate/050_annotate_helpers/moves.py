@@ -3,7 +3,7 @@ moves.py -- the main moves of 050_annotate, as called by 050_annotate/run.py.
 
     stage 1  records.py  pick_records        code: which records this batch drafts; notes to show before paying
     -        (here)      paid_calls          code: asks before paying; keeps every answer in cache/
-    stage 2  draft.py    ask_model           LLM: every fact each record states, as triple instances
+    stage 2  draft.py    ask_model           LLM: every fact each record states, as classed triples
     stage 3  (here)      build_rows          code: describes triple, duplicates out, every row checked
     stage 4  (here)      check_ground_truth  code: errors in the ground truth files
     -        (here)      results             writes drafted_triples_batch<N>.csv and drafted_triples_batch<N>_details.json; the report
@@ -28,7 +28,7 @@ from common.report import cell, counted, model_calls, named, this_report
 from common.step import Results, repo_path
 from common.triples_io import ENTRY_PREDICATE
 
-#: A draft batch's columns: the ground truth's, then the checks, then where each row came from.
+#: A drafted batch's columns: the ground truth's, then the checks, then where each row came from.
 COLUMNS = GROUND_TRUTH_COLUMNS + [DRAFTED_BY, "flags", ORIGIN_COLUMN]
 SHOW = 20                        # rows listed in the report before "…"
 
@@ -69,7 +69,7 @@ def build_rows(chosen, replies) -> Drafts:
             flags.update(r["flags"])
     drafts.errors, drafts.flags = dict(errors), dict(flags)
     n = sum(len(r) for r in drafts.rows.values())
-    log.info(f"  {n:,} rows for {len(drafts.rows)} record(s); "
+    log.info(f"  {n:,} drafted triples for {len(drafts.rows)} record(s); "
              f"{sum(len(r) for r in drafts.removed.values())} removed (malformed or duplicate)")
     return drafts
 
@@ -95,7 +95,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                              DRAFTED_BY: llm.MODEL, "flags": " ".join(r["errors"] + r["flags"]),
                              ORIGIN_COLUMN: audit.origin("records", item["id"])})
     if csv_rows:
-        write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a draft batch is never overwritten
+        write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a drafted batch is never overwritten
         write_json(details_path, {
             "made": {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings},
             "batch": n, "chosen": chosen.how,
@@ -132,17 +132,17 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"line in {this_report()}, section *Results*, subsection *Your ground truth*: the ground truth is what step 070 "
                         f"evaluates against, so a wrong row makes its metrics wrong. Fix them with "
                         f"`py helpers/annotate.py` or any editor.")
-    missing = check_origins(csv_rows, "draft rows")
+    missing = check_origins(csv_rows, "rows of the drafted batch")
     if missing:
         warnings.append(missing)
 
     gt = chosen.ground_truth
     lines = ["### What this run worked on", ""]
     if csv_rows:
-        lines += [f"Batch {n}: `{batch_path.name}`, {len(csv_rows):,} rows for {len(drafts.rows)} record(s), "
+        lines += [f"Batch {n}: `{batch_path.name}`, {len(csv_rows):,} drafted triples for {len(drafts.rows)} record(s), "
                   f"chosen as {chosen.how}. To correct it, run `py helpers/annotate.py` and pick batch {n}: it "
                   f"copies it to `annotations/ground_truth/{file_name(n)}` and saves your changes there.", ""]
-    lines += ["| Pool position | Record | Rows | With an error | With a flag |", "|---:|---|---:|---:|---:|"]
+    lines += ["| Pool position | Record | Drafted triples | With an error | With a flag |", "|---:|---|---:|---:|---:|"]
     for item in chosen.items:
         rows = drafts.rows.get(item["id"])
         if rows is None:
@@ -154,7 +154,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                          f"{sum(bool(r['flags']) for r in rows)} |")
     removed = collections.Counter(x["reason"] for v in drafts.removed.values() for x in v)
     lines += ["", f"- Errors (must be fixed): {counted(drafts.errors)}.",
-              f"- Flags (worth a look; a component class not in the schema is often a good new one): {counted(drafts.flags)}.",
+              f"- Flags (worth a look; a component class not in the ground truth schema is often a good new one): {counted(drafts.flags)}.",
               f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).",
               "", "### Fair sample", "", fair_words(chosen.fair, chosen.positions), ""]
     if chosen.skipped:
@@ -170,13 +170,13 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         if len(typos) > SHOW:
             lines.append(f"| … {len(typos) - SHOW} more | | |")
         lines.append("")
-    lines += model_calls([("stage 2: draft triple instances (one call per text piece)", replies.calls, replies.reused)],
+    lines += model_calls([("stage 2: draft classed triples (one call per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.model_label())
 
     return Results(
         files=files,
         headline={"records drafted": len(drafts.rows),
-                  "triple instances drafted": sum(1 for r in csv_rows if r["predicate"] != ENTRY_PREDICATE)},
+                  "drafted triples": sum(1 for r in csv_rows if r["predicate"] != ENTRY_PREDICATE)},
         details="\n".join(lines),
         warnings=warnings,
     )

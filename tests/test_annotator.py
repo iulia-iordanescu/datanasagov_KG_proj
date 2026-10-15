@@ -324,7 +324,7 @@ class D_Mapping(unittest.TestCase):
         self.assertIn("isn't an entity class", post("/api/mapping/save", {"rows": bad_name})["error"])
         moved = [{"kind": "predicate", "component_class_from_past_or_crt_schema": "Satellite"}]
         self.assertIn("reload", post("/api/mapping/save", {"rows": moved})["error"])
-        self.assertIn("extra rows", post("/api/mapping/delete", {"line": 2, "kind": "entity class",
+        self.assertIn("repeated rows", post("/api/mapping/delete", {"line": 2, "kind": "entity class",
                                                                  "component_class": "Satellite"})["error"])
         self.assertIn("reload", post("/api/mapping/delete", {"line": 4, "kind": "entity class",
                                                              "component_class": "Satellite"})["error"])

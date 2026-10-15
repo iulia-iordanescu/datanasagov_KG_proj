@@ -9,7 +9,7 @@ order listed (still at most `records_per_batch`).
 
 Always skipped, whatever was asked:
   - a record already in the ground truth (annotations/ground_truth/): it's done;
-  - a record in a draft batch in this step's output folder: it's waiting to
+  - a record in a drafted batch in this step's output folder: it's waiting to
     be corrected (a record deleted from a corrected batch stays skipped too,
     as the person decided it);
   - an id that isn't a record of the catalog, or a record with no text.
@@ -21,7 +21,7 @@ paid-call question (common/common_helpers/llm.py PaidCalls) and in the report.
 
 Fair sample: the pool is shuffled, so its first N records are a fair sample
 of the catalog, and step 070 can only claim results for the whole catalog
-from such a sample. `fair` says whether the ground truth, the waiting drafts
+from such a sample. `fair` says whether the ground truth, the drafted batches waiting
 and this batch together are still exactly the first N of the pool.
 
 The model is shown the ground truth schema plus the component classes a
@@ -55,7 +55,7 @@ class Chosen:
     records: dict = field(default_factory=dict)    # every record, {id: record}
     ground_truth: object = None                    # common.ground_truth.GroundTruth
     done: set = field(default_factory=set)         # ids in the ground truth
-    waiting: dict = field(default_factory=dict)    # {id: draft batch number} not yet corrected
+    waiting: dict = field(default_factory=dict)    # {id: drafted batch number} not yet corrected
     pool: list = field(default_factory=list)       # the pool's ids, in order
     positions: dict = field(default_factory=dict)  # {id: pool position}
     schema_text: str = ""                          # the ground truth schema, as the prompt shows it
@@ -69,8 +69,8 @@ class Chosen:
 def vocabulary_text(hand_text: str, coined: dict, used_patterns: list = ()) -> str:
     """The ground truth schema as the model sees it: the ground truth
     schema's text as written, then the component classes coined in the ground truth,
-    which have no definition yet, and the entity class pairs the ground truth uses
-    with a predicate that the file doesn't list (common.ground_truth.with_coined's
+    which have no definition yet, and the patterns the ground truth uses that the
+    file doesn't list (common.ground_truth.with_coined's
     used_patterns). With nothing of either, just the schema's text, so earlier
     answers stay in the cache."""
     out = hand_text
@@ -82,14 +82,14 @@ def vocabulary_text(hand_text: str, coined: dict, used_patterns: list = ()) -> s
     for s, p, o in used_patterns:
         pairs.setdefault(p, []).append(f"{s} -> {o}")
     if pairs:
-        out += ("\n\nMORE ENTITY CLASS PAIRS THE GROUND TRUTH USES (subject -> object)\n"
+        out += ("\n\nMORE PATTERNS THE GROUND TRUTH USES (subject class -> object class)\n"
                 + "\n".join(f"{p}: {'; '.join(v)}" for p, v in pairs.items()))
     return out
 
 
 def _waiting(output: Path) -> tuple:
-    """({id: batch number} of every draft batch in the output folder, the
-    highest draft batch number)."""
+    """({id: batch number} of every drafted batch in the output folder, the
+    highest drafted batch number)."""
     waiting, highest = {}, 0
     for path in sorted(Path(output).glob(DRAFT_PATTERN)):
         m = DRAFT_NUMBERED.fullmatch(path.name)
@@ -129,14 +129,14 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
 
     per, ids = settings["records_per_batch"], read_ids(settings["ids"])
     skipped = {"not in the catalog": [], "without text": [], "already in the ground truth": [],
-               "waiting in a draft batch to be corrected": []}
+               "waiting in a drafted batch to be corrected": []}
     picked = []
 
     def usable(rid: str) -> bool:
         reason = ("not in the catalog" if rid not in chosen.records else
                   "without text" if not has_text(chosen.records[rid]) else
                   "already in the ground truth" if rid in chosen.done else
-                  "waiting in a draft batch to be corrected" if rid in chosen.waiting else None)
+                  "waiting in a drafted batch to be corrected" if rid in chosen.waiting else None)
         if reason:
             skipped[reason].append(rid)
         return reason is None
@@ -176,13 +176,13 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
                               f"{repo_path(inputs['records'])}.",
         "without text": "Nothing to do: a record without text has nothing for the model to read.",
         "already in the ground truth": "Nothing to do: they are already annotated in annotations/ground_truth/.",
-        "waiting in a draft batch to be corrected": f"Correct them with `py helpers/annotate.py`; to draft one "
-                                                    f"again instead, delete its draft batch (both files) from "
+        "waiting in a drafted batch to be corrected": f"Correct them with `py helpers/annotate.py`; to draft one "
+                                                    f"again instead, delete its drafted batch (both files) from "
                                                     f"{repo_path(output)}/ before correcting it."}
     for reason, rids in chosen.skipped.items():
         if ids:                                    # by default, passing over done records is expected
             where = ""
-            if reason == "waiting in a draft batch to be corrected":
+            if reason == "waiting in a drafted batch to be corrected":
                 where = " (" + ", ".join(sorted({f"batch {chosen.waiting[r]}" for r in rids})) + ")"
             chosen.notes.append(f"{len(rids)} record(s) you listed {'are' if len(rids) > 1 else 'is'} "
                                 f"{reason}{where}, so skipped: {named(rids)}. {to_do[reason]}")

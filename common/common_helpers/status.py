@@ -13,7 +13,7 @@ docs/upkeep.md, which each item names.
 
 It only reads files: the steps' manifests (_manifest.json) and outputs, and
 annotations/. No model is called. Some of what it reads holds model output
-(050's draft batches, 060's extracted triples, the rows 070 added to the
+(050's drafted batches, 060's extracted triples, the rows 070 added to the
 translation table), so an item is only as current as the run that wrote its
 file: each item says which run that was, and a step whose inputs changed
 since its run is listed as out of date.
@@ -55,7 +55,7 @@ from common.partial_reviews import REVIEWS_PATH, read_reviews, row_key
 from common.report import named
 from common.schema_io import addition_problem, additions_entries, read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, MANIFEST_NAME, PIPELINE_STEPS, RESULTS_DIR, ROOT, input_files, repo_path
-from common.triples_io import component_class_key, is_describes
+from common.triples_io import component_class_key
 
 UPKEEP = "docs/upkeep.md"
 GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
@@ -106,7 +106,7 @@ def _when(manifest: dict) -> str:
 # --------------------------------------------------------------------------
 
 def unopened_drafts(drafts_dir: Path = DRAFTS_DIR, gt_dir: Path = GROUND_TRUTH_DIR) -> list:
-    """The numbers of 050's draft batches not opened yet in the annotation tool (no ground truth file of the same
+    """The numbers of 050's drafted batches not opened yet in the annotation tool (no ground truth file of the same
     number), in order."""
     opened = {int(m.group(1)) for p in Path(gt_dir).glob(PATTERN) if (m := NUMBERED.fullmatch(p.name))}
     found = [int(m.group(1)) for p in Path(drafts_dir).glob(DRAFT_PATTERN) if (m := DRAFT_NUMBERED.fullmatch(p.name))] \
@@ -124,11 +124,11 @@ def unfinished(gt) -> dict:
 
 
 def batch_waiting(drafts_dir: Path = DRAFTS_DIR, gt_dir: Path = GROUND_TRUTH_DIR, gt=None) -> str | None:
-    """Why 050 shouldn't draft another batch yet, or None: a draft batch not opened yet in the annotation tool, or
+    """Why 050 shouldn't draft another batch yet, or None: a drafted batch not opened yet in the annotation tool, or
     a ground truth file with a record not finished."""
     waiting = unopened_drafts(drafts_dir, gt_dir)
     if waiting:
-        return f"draft batch {waiting[0]} isn't opened yet in the annotation tool"
+        return f"drafted batch {waiting[0]} isn't opened yet in the annotation tool"
     left = unfinished(gt if gt is not None else read_ground_truth(gt_dir))
     if left:
         files = [repo_path(Path(gt_dir) / f) for f in left]
@@ -227,7 +227,7 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
     items = []
     shown = lambda rid: f"#{positions[rid]}" if rid in positions else rid      # as the annotation tool names a record
     for n in unopened_drafts():
-        items.append(_item("Ground truth", TO_DO, f"Draft batch {n} from step 050 isn't opened yet: open it in the "
+        items.append(_item("Ground truth", TO_DO, f"Drafted batch {n} from step 050 isn't opened yet: open it in the "
                            f"annotation tool (`py helpers/annotate.py`, Ground truth, batch {n}) and correct it.",
                            "after-step-050-drafts-a-batch", repo_path(DRAFTS_DIR / f"drafted_triples_batch{n}.csv")))
     for file, ids in unfinished(gt).items():
@@ -250,8 +250,8 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
     gaps = ground_truth_schema_gaps(schema, gt)
     if gaps["component_classes"]:
         coined = with_coined(schema, gt)["coined"]
+        # every row of a finished record, its describes triple too (its entity class, as step 070 checks it)
         in_finished = {(kind, component_class_key(r[c])) for r in gt.rows if gt.records[r["id"]]["finished"]
-                       and not is_describes(r)
                        for kind, cols in (("entity_classes", ("subject_class", "object_class")),
                                           ("predicates", ("predicate",))) for c in cols}
         stops = [n for kind in ("entity_classes", "predicates") for n in coined[kind]
@@ -285,9 +285,9 @@ def _additions_items(parts: dict) -> list:
                if (n["kind"], component_class_key(n["component_class"])) not in have]
         if new:
             m = _manifest("060_extract") or {}
-            items.append(_item("Schema additions", LOOK, f"Step 060 used {len(new)} entity class(es) or predicate(s) "
-                               f"outside its schema, so it removed those extracted triples: "
-                               f"{named([n['component_class'] for n in new], 4)}. Add the ones that name a real kind "
+            items.append(_item("Schema additions", LOOK, f"Step 060's model used {len(new)} component class(es) "
+                               f"outside the schema, so step 060 removed those extracted triples: "
+                               f"{named([n['component_class'] for n in new], 4)}. Add the ones that name a real type "
                                f"of thing or relation (annotation tool, Schema additions).", "after-step-060",
                                m.get("run_id", "")))
     return items

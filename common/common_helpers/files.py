@@ -17,7 +17,7 @@ was written on Windows (see .gitattributes).
     read_csv(path)                             # every row, as dicts
     append_csv(path, columns, rows)            # add rows, never changing what is there
 
-new=True refuses to replace an existing file (e.g. a draft batch, which is
+new=True refuses to replace an existing file (e.g. a drafted batch's file, which is
 never overwritten).
 """
 from __future__ import annotations

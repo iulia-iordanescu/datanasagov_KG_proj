@@ -349,10 +349,10 @@
   <div class="topbar">
     <h1><button id="homebutton" title="Home: what the tool is for, and its views">Annotation tool<span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span></button></h1>
     <nav class="tabs" aria-label="Views">
-      <span class="tab" id="tab-batch" title="Correct a model's drafts into ground truth, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
+      <span class="tab" id="tab-batch" title="Correct a model's drafted triples into ground truth triples, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
       <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
       <button class="tab" id="partial" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
-      <button class="tab" id="additions" title="annotations/schema_additions.txt: for the schema step 060 extracts with">Schema additions</button>
+      <button class="tab" id="additions" title="annotations/schema_additions.txt: schema entries a person adds to the current schema">Schema additions</button>
     </nav>
     <span id="status"></span>
   </div>
@@ -480,7 +480,7 @@ function drawProgress() {
 
 // ---------------------------------------------------------------- batches
 let BATCHES = [];
-// The batch to go on with, in pool order: the first one with records left to finish, else the first draft not opened
+// The batch to go on with, in pool order: the first one with records left to finish, else the first drafted batch not opened
 // yet, else the last one.
 const nextBatch = () => {
   const upward = [...BATCHES].sort((a, b) => a.n - b.n);       // the server lists them newest first
@@ -493,7 +493,7 @@ function fillBatchList(data, chosen) {
   const pick = $("batch");
   pick.replaceChildren(el("option", { value: "" }, "Ground truth: choose a batch"));
   for (const b of data.batches) {
-    const what = b.ground_truth ? `${b.finished} of ${b.records} finished` : "a new draft, not opened yet";
+    const what = b.ground_truth ? `${b.finished} of ${b.records} finished` : "a new drafted batch, not opened yet";
     pick.append(el("option", { value: b.n }, `Ground truth: batch ${b.n} (${what})`));
   }
   if (chosen !== undefined) pick.value = String(chosen);
@@ -673,7 +673,7 @@ function show(i) {
               el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
               el("dt", {}, "Part"), el("dd", {}, rec.part
                 ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-                    ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
+                    ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
@@ -835,7 +835,7 @@ function describesRow(rec, j, heading = true) {
                       onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }))),
     el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
       "subject (the record's id) and object (the record's title) are copied from the record by code, and the object's " +
-      "entity class, the kind of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
+      "entity class (the describes class), the type of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
       "checked by you here in this tool. Click the field under “Object's entity class” to edit it."),
     problemList(r, j));
 }
@@ -901,7 +901,7 @@ function useSelection(rec, j) {
 // ---------------------------------------------------------------- highlighting
 // Finds a source text in the text, for highlighting only: the letters and digits must
 // match, in order, and anything else between them may differ. That is more forgiving
-// than the server's check (evened out: only spacing, quote marks, and dashes may differ),
+// than the server's check (evened out, as docs/terminology.md defines it),
 // so a highlighted source text can still get the server's ✖ "isn't in the record's text".
 function findSpan(text, source) {
   const words = (source || "").match(/[\p{L}\p{N}]+/gu);
@@ -1008,22 +1008,23 @@ async function showHome() {
     el("h2", {}, "Annotation tool"),
     el("p", { class: "lead" }, "This is where you make and look after the ground truth: the facts a person writes down for " +
        "a sample of catalog records, as ground truth triples. Step 070 measures extraction against them, so they must say " +
-       "exactly what each record states, written the same way every time. Here you correct a model's drafts into ground " +
-       "truth; and, once steps 060 and 070 have run, check how the current schema translates into the ground truth " +
-       "schema, rule on partial pairs, and add to the schema extraction uses."),
+       "exactly what each record states, written the same way every time. Here you correct a model's drafted triples into ground " +
+       "truth triples; and, once steps 060 and 070 have run, check how the current schema translates into the ground truth " +
+       "schema, rule on partial pairs, and add schema entries to the current schema (the schema additions)."),
     el("div", { class: "viewgrid" },
       box("Ground truth", "Correct the ground truth triples a model drafted (step 050) for each record of a batch: " +
           "fix, delete, or add them, then tick All facts extracted.", null,
           next ? el("button", { class: "primary", onclick: () => { $("batch").value = String(next.n); openBatch(next.n, 0).catch(fail); } },
                     next.ground_truth ? `Go on with batch ${next.n} (${next.records - next.finished} of ${next.records} records left)`
-                                      : `Open batch ${next.n} (a new draft)`)
+                                      : `Open batch ${next.n} (a new drafted batch)`)
                : el("span", { class: "empty" }, "No batch yet: step 050 drafts one (py 050_annotate/run.py).")),
       box("Translation table", "Extraction and the ground truth use different schemas. Once step 070 has run, choose " +
           "for each entity class and predicate of the current schema the one of the ground truth schema that means " +
           "the same thing.", openMapping),
       box("Partial pairs", "Once step 070 has run, decide for each partial pair (an extracted triple and a ground " +
           "truth triple that only partly match) whether the two state the same fact.", openPartial),
-      box("Schema additions", "Entity classes, predicates, and patterns to add to the schema step 060 extracts with.",
+      box("Schema additions", "Entity classes, predicates, and patterns a person adds to the current schema, each with " +
+          "where it was found.",
           () => openAdditions())),
     el("section", { id: "nextup", class: "nextup" }, el("h3", {}, "What to do next"),
        el("p", { class: "meta" }, "Working it out from the files…")),
@@ -1081,7 +1082,7 @@ function gapsList() {
     el("div", { class: "meta" }, "Add each one you mean to keep, with a one-line definition; fix any typo where it's used."),
     el("ul", {},
       gaps.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
-        ` (${x.uses} ground truth triple(s))`, addControl(x)))));
+        ` (used in ${x.uses} row(s) of the ground truth, describes triples included)`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table
@@ -1167,7 +1168,7 @@ function exampleLine(r) {
   if (r.kind !== "predicate") return null;
   const ex = r.example || { subject: "A", object: "B" };
   const before = `${ex.subject}  ${r.component_class_from_past_or_crt_schema}  ${ex.object}`;
-  const after = r.component_class_in_gtt === mapping.none ? "(not translated: nothing in the ground truth means this)"
+  const after = r.component_class_in_gtt === mapping.none ? "(not translated: nothing in the ground truth schema means this)"
     : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.component_class_in_gtt}  ${ex.subject}`
     : `${ex.subject}  ${r.component_class_in_gtt}  ${ex.object}`;
   return el("div", { class: "example", title: r.example ? "the first such extracted triple" : "a made-up example" },
@@ -1178,7 +1179,7 @@ function mappingRow(r, i) {
   const vocab = mapping.gtt[r.kind] || [];
   const known = vocab.some(v => v.component_class === r.component_class_in_gtt);
   const options = [el("option", { value: mapping.none, selected: r.component_class_in_gtt === mapping.none },
-                      `${mapping.none}: nothing in the ground truth means this`)];
+                      `${mapping.none}: nothing in the ground truth schema means this`)];
   if (!known && r.component_class_in_gtt !== mapping.none)
     options.push(el("option", { value: r.component_class_in_gtt, selected: true },
                     `⚠ ${r.component_class_in_gtt} (not in the ground truth schema: pick another)`));
@@ -1211,7 +1212,7 @@ function mappingRow(r, i) {
     r.stale_gtt ? el("div", { class: "problems" }, el("li", { class: "flag" },
        "⚑ This row was checked when the ground truth schema defined " + r.component_class_in_gtt +
        " (ground truth schema) as: “" + (r.definition_in_gtt || "(no definition)") +
-       "”. The ground truth schema now defines " + r.component_class_in_gtt + " as shown below, under “In the ground truth”: check this translation again.")) : null,
+       "”. The ground truth schema now defines " + r.component_class_in_gtt + " as shown below, under “In the ground truth schema”: check this translation again.")) : null,
     el("div", { class: "means" },
       el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth schema:"),
       el("select", { id: `m${i}`, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
@@ -1227,7 +1228,7 @@ function mappingRow(r, i) {
       `both translate to ${r.component_class_in_gtt} (ground truth schema), so step 070 can't tell these component classes apart: ` +
       `extraction loses nothing by mixing them up. That is fine if your ground truth doesn't distinguish them; if your ground ` +
       `truth should distinguish them, annotate with separate component classes in the ground truth.`)) : null,
-    chosen ? el("div", { class: "meta" }, "In the ground truth: ",
+    chosen ? el("div", { class: "meta" }, "In the ground truth schema: ",
                 chosen.definition ? chosen.definition
                   : el("span", { class: "empty" }, "coined while annotating; no definition yet (add one to the ground truth schema)")) : null,
     r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
@@ -1238,8 +1239,8 @@ function mappingRow(r, i) {
     exampleLine(r),
     el("div", { class: "bar" }, same && !r.stale && !r.stale_gtt
       ? el("span", { class: "meta" }, "Accepted automatically, because the component class is spelled the same in the current " +
-           "schema and in the ground truth schema. Compare the two definitions above (In the current schema, In the ground " +
-           "truth); if the two mean different things, pick the right translation.")
+           "schema and in the ground truth schema. Compare the two definitions above (In the current schema, In the ground truth " +
+           "schema); if the two mean different things, pick the right translation.")
       : el("label", { class: "finished" },
           el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale && !r.stale_gtt,
                         onchange: (e) => { r.stale = false; r.stale_gtt = false;
@@ -1312,11 +1313,12 @@ function drawPartial() {
   const left = partial.items.filter(i => !i.verdict).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu()),
-    el("p", { class: "meta" }, `${partial.items.length} pair(s) of tuning records; ${left} not reviewed yet.`),
+    el("p", { class: "meta" }, `${partial.items.length} partial pair(s) of tuning records; ${left} not reviewed yet.`),
     el("p", { class: "meta" }, "A partial pair is an extracted triple and a ground truth triple whose predicates agree, " +
       "and whose subjects, and whose objects, are each the same or one contained in the other as whole words. Such a " +
       "pairing can be wrong (MODIS vs MODIS Terra). A pair you mark “not the same fact” is never paired again: step 070 " +
-      "then counts its ground truth triple as missed and its extracted triple as extra."),
+      "then pairs each of the two with another partner if it can; otherwise the ground truth triple is ground truth " +
+      "only, and the extracted triple's occurrence is extracted only."),
     el("label", { class: "meta" },
       el("input", { type: "checkbox", checked: onlyUnreviewed,
                     onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
@@ -1391,7 +1393,7 @@ function drawAdditions() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Schema additions"), toolsMenu()),
     el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Step 060 (extraction) adds ` +
-      "these entries to the schema it extracts with (040's schema, by default); the combination is the current schema."),
+      "these entries to the induced schema (or to another schema it is given): together, the current schema."),
     el("p", { class: "meta" }, "Every entity class and predicate added here needs a one-line definition, and every entry " +
       "needs a source: where the idea came from. An entry learned from the ground truth must come from tuning records " +
       "only, named by pool position: “ground truth tuning #12, #15”. To allow a new pair of entity classes for a " +
@@ -1416,20 +1418,20 @@ function drawAdditions() {
         el("button", { onclick: () => { if (confirm(`Delete ${entryName(e)} from ${additions.file}?`))
                                           saveAdditions(additions.entries.filter((_, j) => j !== i)); } }, "Delete"))))
       : el("p", { class: "empty" }, "No entries yet.")));
-  cards.push(el("section", { class: "card" }, el("h3", {}, "Entity classes and predicates extraction used outside its schema (step 060's last run)"),
+  cards.push(el("section", { class: "card" }, el("h3", {}, "Component classes outside the schema (step 060's last run)"),
     additions.counted_over
       ? el("div", { class: "explain" },
           el("p", {}, "While extracting, the model sometimes uses an entity class or predicate that the current schema " +
             "doesn't have, and step 060 removes those extracted triples. Each one it used is listed here, counted over " +
             `${additions.counted_over}. Held-out records are never counted, since they must not shape the schema, so any ` +
             "one listed may be added."),
-          el("p", {}, "If one names a real kind of thing or relation that the schema lacks, " +
+          el("p", {}, "If one names a real type of thing or relation that the schema lacks, " +
             "press Add: the form above opens, filled in, for you to write its definition. The next run of step 060 can then " +
-            "extract it. If it doesn't (a vague or wrong label), leave it: nothing changes until you add it. " +
+            "extract it. If it doesn't (a vague or wrong one), leave it: nothing changes until you add it. " +
             `${left} not added yet.`),
           el("p", { class: "meta" }, "Patterns aren't listed: step 060 keeps an extracted triple whose pattern the schema " +
             "lacks (it only flags it), so a missing pattern costs nothing. To add one anyway, use + Add an entry, Pattern."))
-      : el("p", { class: "meta" }, "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so the entity classes and predicates step 060 used outside its schema can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
+      : el("p", { class: "meta" }, "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so the component classes outside the schema from step 060's last run can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
     additions.new_component_classes.map(n => el("div", { class: "row" },
       el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",
@@ -1471,12 +1473,12 @@ function additionForm(e) {
       [["entity class", "Entity class"], ["predicate", "Predicate"], ["pattern", "Pattern"]].map(([k, words]) =>
         el("button", { class: e.entry_type === k ? "primary" : "", onclick: () => { e.entry_type = k; drawAdditions(); } }, words))),
     el("p", { class: "meta" }, {
-      "entity class": "A new kind of thing that extraction may use as a subject's or object's entity class.",
+      "entity class": "A new type of thing that extraction may use as a subject's or object's entity class.",
       "predicate": "A new relation between two things, with the pairs of entity classes it joins (its patterns).",
       "pattern": "A new pair of entity classes for a predicate that the schema (or this file) already has." }[e.entry_type]),
     ...({
       "entity class": [input("component_class", "Entity class: one word in CamelCase (e.g. SpaceMission)"),
-                       input("definition", "Definition: one line saying what kind of thing it is (e.g. a named spaceflight effort)")],
+                       input("definition", "Definition: one line saying what type of thing it is (e.g. a named spaceflight effort)")],
       "predicate": [input("component_class", "Predicate: one word in UPPER_SNAKE_CASE (e.g. PART_OF_MISSION)"),
                     input("definition", "Definition: one line, read from subject to object (e.g. was carried out as part of)"),
                     patterns],
@@ -1698,11 +1700,11 @@ async function showSchema() {
     el("td", {}, x.definition || el("span", { class: "empty" }, "no definition yet"),
        kind === "predicate" && x.patterns.length
          ? el("div", { class: "meta" }, x.patterns.map(([s, o]) => `${s} → ${o}`).join(" · ")) : null),
-    el("td", { class: "schemauses", title: "ground truth triples that use it" }, String(x.uses)));
+    el("td", { class: "schemauses", title: "rows of the ground truth that use it (describes triples included)" }, String(x.uses)));
   const table = (kind, title) => el("section", {},
     el("h3", {}, `${title} `, el("span", { class: "meta" }, `(${v[kind].length})`)),
     el("table", { class: "schematable" },
-      el("thead", {}, el("tr", {}, el("th", {}, kind === "predicate" ? "Predicate" : "Entity class"), el("th", {}, "Definition"), el("th", { title: "ground truth triples that use it" }, "Uses"))),
+      el("thead", {}, el("tr", {}, el("th", {}, kind === "predicate" ? "Predicate" : "Entity class"), el("th", {}, "Definition"), el("th", { title: "rows of the ground truth that use it (describes triples included)" }, "Uses"))),
       el("tbody", {}, v[kind].map((x) => row(kind, x)))));
   const grid = el("div", { class: "schemagrid" }, table("entity class", "Entity classes"), table("predicate", "Predicates"));
   filter.addEventListener("input", () => {

@@ -20,9 +20,9 @@ Value             a number with its unit, e.g. 500 m
 
 PREDICATES
 ----------
-Each entry below reads subject -> object, and lists entity class pairs it is used with.
-Every pair the ground truth itself uses counts too (code reads them from the
-ground truth files), so a new pair is never added here. Use a predicate
+Each entry below reads subject -> object, and lists its patterns (subject class -> object class).
+Every pattern the ground truth itself uses counts too (code reads them from the
+ground truth files), so a new pattern is never added here. Use a predicate
 wherever its meaning fits.
 
 ABOARD               is carried on

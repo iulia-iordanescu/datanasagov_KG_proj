@@ -1,5 +1,5 @@
-# Schema additions: entity classes, predicates and patterns to add to the schema step 060
-# extracts with (040's induced schema by default), e.g. ones a mentor
+# Schema additions: schema entries (entity classes, predicates, and patterns) a person
+# adds to the current schema (step 060 uses them from its next run), e.g. ones a mentor
 # suggested. Empty sections add nothing.
 #
 # Same layout as ground_truth_schema.txt: an entry is its

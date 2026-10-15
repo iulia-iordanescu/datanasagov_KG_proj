@@ -1,23 +1,24 @@
 """
 schema.py -- stage 2: the schema this run extracts with.
 
-The schema input (040's the_schema.json by default, or any file given with
---schema, in either shape common/common_helpers/schema_io.py reads) plus the additions
+The schema file (the induced schema, 040's the_schema.json, by default, or any
+file given with --schema, in either shape common/common_helpers/schema_io.py reads) plus the additions
 (annotations/schema_additions.txt): entity classes, predicates, and patterns a
 person added, e.g. on a mentor's advice (a pattern for a predicate the
 schema already has goes in the file's PATTERNS section). They are merged into one schema, and each
-entry remembers where it came from: "schema" (the schema input) or
-"additions". An addition the schema (or an earlier addition) already has,
-ignoring case and punctuation, is left out (the entry already there is
-kept). Patterns are written in the merged schema's spelling,
-compared the same loose way, so a left-out addition's patterns still apply
-to the entry kept. A left-out addition, a line of the additions file that
-isn't read, an addition without a "source:" line, an entry without a
+entry remembers where it came from: "schema" (the schema file) or
+"additions". A schema entry of the additions file that the schema (or an
+earlier entry of that file) already has, ignoring case and punctuation, is
+left out (the entry already there is kept). Patterns are written in the merged
+schema's spelling, compared the same loose way, so a left-out entry's patterns
+still apply to the entry kept. A left-out entry, a line of the additions file
+that isn't read, an entry of that file without a "source:" line, an entry without a
 definition and a component class in a pattern that the schema doesn't
 have become notes shown
 before paying.
 
-An addition learned from the ground truth must come from TUNING records only
+A schema entry of the additions file learned from the ground truth must come
+from TUNING records only
 (a component class learned from a held-out record would let the schema see the final
 exam). Its source line says so and names the records by pool position, as the
 annotation tool shows them:
@@ -26,12 +27,12 @@ annotation tool shows them:
 
 The word "tuning" is required too, as a check on the person: any source
 mentioning "ground truth" is checked against splits.json (030), and an
-addition that doesn't say "tuning", names a held-out record, a position not
+entry that doesn't say "tuning", names a held-out record, a position not
 in the pool, or no record at all is left out, with a note shown before
 paying. The patterns written under such a predicate are left out with it;
 a pattern of the PATTERNS section is checked by its own source line.
 
-The schema input's own entries are never left out, but one whose "source:"
+The schema file's own entries are never left out, but one whose "source:"
 line fails the same check (e.g. a component class the annotation tool added to the
 ground truth schema from a held-out record) becomes a note shown before
 paying.
@@ -40,8 +41,8 @@ The merged schema is what the model is shown, what every row is checked
 against, and what is written to schema_used.json, so 070 (and 080, once
 built) read exactly the schema this run used. schema_used.json also says which
 records the schema was learned from (learned_from, below), so 070 can find the
-twins (docs/terminology.md): evaluated records with the same description as one
-of them.
+twins (docs/terminology.md): evaluated records with the same title, the same
+`notes`, or both as one of them.
 """
 from __future__ import annotations
 
@@ -90,7 +91,7 @@ def _made(path: Path) -> dict:
 def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
     """The records the schema was learned from, for 070's twins (docs/terminology.md): {"known", "ids", "how":
     [sentences]}.
-      - 040's schema: the texts the same run of 040 learned from, in its induction_evidence.json, beside the schema;
+      - the induced schema: the texts the same run of 040 learned from, in its induction_evidence.json, beside the schema;
       - the ground truth schema: pool positions 0 to GROUND_TRUTH_SCHEMA_FROM - 1, which it was written while annotating;
       - either way, also the pool records an entry's source line names ("source: ground truth tuning #12").
     Any other schema file: not known ("known": False), unless an induction_evidence.json of the same run is beside it."""
@@ -125,7 +126,7 @@ def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
 
 def _source(came_from: str | None) -> str:
     """Where a schema entry came from, for messages."""
-    return "additions file" if came_from == "additions" else "schema input"
+    return "additions file" if came_from == "additions" else "schema file"
 
 
 def load_schema(inputs: dict) -> Schema:
@@ -202,7 +203,7 @@ def load_schema(inputs: dict) -> Schema:
     result.learned_from = learned_from(inputs, base, result, pool)
 
     schema_file, additions_file = repo_path(inputs["schema"]), repo_path(inputs["additions"])
-    from_held_out = [f"{name} (schema input; {why})" for kind in KINDS + ("patterns",)
+    from_held_out = [f"{name} (schema file; {why})" for kind in KINDS + ("patterns",)
                      for name, source in base["sources"].get(kind, {}).items()
                      if (why := ground_truth_source_problem(source, parts))]
     if from_held_out:
@@ -212,17 +213,17 @@ def load_schema(inputs: dict) -> Schema:
                             f"the schema you chose), but then evaluation's held-out numbers no longer measure "
                             f"records the pipeline was never adjusted to. Fine for tuning numbers; for held-out "
                             f"numbers, extract with a schema that didn't learn from held-out records: run "
-                            f"`py 060_extract/run.py` without --schema (040's induced schema).")
+                            f"`py 060_extract/run.py` without --schema (the induced schema).")
     if result.not_tuning:
-        result.notes.append(f"{len(result.not_tuning)} addition(s) in {additions_file} say they come "
+        result.notes.append(f"{len(result.not_tuning)} schema entr(ies) of {additions_file} say they come "
                             f"from the ground truth but don't show they come from tuning records only, so they are "
-                            f"left out (an addition from a held-out record would let held-out records influence the schema): "
+                            f"left out (a schema entry learned from a held-out record would let held-out records influence the schema): "
                             + named([f"{x['schema_entry']} (additions file; {x['why']})" for x in result.not_tuning], 5, "; ")
                             + ". Take each out, or, if it really came from tuning records, list their pool positions "
                             "in its source line, e.g. `source: ground truth tuning #12`.")
     if result.left_out:
-        result.notes.append(f"{len(result.left_out)} addition(s) in {additions_file} "
-                            f"are already there (in the schema input, or an earlier addition, ignoring case and "
+        result.notes.append(f"{len(result.left_out)} schema entr(ies) of {additions_file} "
+                            f"are already there (in the schema file, or earlier in the same file, ignoring case and "
                             f"punctuation), so each is left out and the entry already there is used: "
                             + named([f"{x['component_class']} (additions file) = {x['kept']} "
                                      f"({_source(result.came_from[x['kind']].get(x['kept']))})"
@@ -230,13 +231,13 @@ def load_schema(inputs: dict) -> Schema:
                             f"or rename it if it means something else.")
     if extra["unread"]:
         result.notes.append(f"{len(extra['unread'])} line(s) of {additions_file} aren't read as an "
-                            f"entry, a source or patterns (an entity class or predicate can't contain a space; two or more spaces go "
+                            f"entry, a source, or patterns (an entity class or predicate can't contain a space; two or more spaces go "
                             f"before the definition; patterns under a predicate are \"Subject -> Object\" separated by \";\"; "
                             f"in the PATTERNS section, one pattern per line, \"Subject PREDICATE Object\"): "
                             + named(extra["unread"], 5, "; ") + ". Such a line adds nothing to the schema; fix "
                             "each in " + additions_file + ".")
     if no_source:
-        result.notes.append(f"{len(no_source)} addition(s) have no \"source:\" line saying where the idea "
+        result.notes.append(f"{len(no_source)} schema entr(ies) of {additions_file} have no \"source:\" line saying where the idea "
                             f"came from: {named([f'{n} (additions file)' for n in no_source], 5, '; ')}. They are "
                             f"used, but where they came from isn't recorded. Add a `source:` line under each in "
                             f"{additions_file}.")
@@ -245,7 +246,7 @@ def load_schema(inputs: dict) -> Schema:
     if undefined:
         result.notes.append(f"{len(undefined)} schema entr{'ies have' if len(undefined) > 1 else 'y has'} "
                             f"no definition, so the model sees only the entity class or predicate itself: {named(undefined, 5, '; ')}. "
-                            f"Add a one-line definition to each, in {schema_file} (schema input) or "
+                            f"Add a one-line definition to each, in {schema_file} (schema file) or "
                             f"{additions_file} (additions file).")
     unknown = sorted({x for s, p, o in patterns for x, kind in ((s, "entity_classes"), (p, "predicates"),
                                                               (o, "entity_classes"))

@@ -317,7 +317,7 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
               for m in induction.maintainers[:SHOW]]
     lines += ["", "Records in both lists: **0** (checked).", "",
               "### Twins in the pool", "",
-              "A pool record with the same title, description, or both as a record the schema is learned from is a "
+              "A pool record with the same title, the same `notes`, or both as a record the schema is learned from is a "
               "twin (docs/terminology.md, section *Evaluating extraction*): the schema has seen some or most of its "
               "text. No record is in both lists, but two records can still share text. Step 040 learns from only "
               "some induction candidates, so its report counts the twins that matter; the counts below, against "

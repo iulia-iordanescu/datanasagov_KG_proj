@@ -2,7 +2,7 @@
 moves.py -- the main moves of 060_extract, as called by 060_extract/run.py.
 
     stage 1  records.py  pick_records   code: which records this run extracts from; notes to show before paying
-    stage 2  schema.py   load_schema    code: the schema input plus the additions, merged; notes
+    stage 2  schema.py   load_schema    code: the schema file plus the schema additions, merged; notes
     -        (here)      paid_calls     code: asks before paying; keeps every answer in cache/
     stage 3  extract.py  ask_model      LLM: the facts each record states that the schema can express
     stage 4  extract.py  sort_rows      code: every row checked; kept, or removed with its reason
@@ -86,8 +86,8 @@ def _new_component_classes(chosen, rows, settings) -> tuple:
     learned there would let held-out records influence the schema). On a run over
     every record, no ground truth record at all (ones learned from records
     outside it are fair as they are). Otherwise, tuning records are counted
-    and named by pool position, for the "source: ground truth tuning #N" line an
-    addition from them needs."""
+    and named by pool position, for the "source: ground truth tuning #N" line a schema
+    entry of annotations/schema_additions.txt learned from them needs."""
     all_records = settings["extract_from"] == "all" and not settings["ids"].strip()
     listed = []
     for (kind, name), v in rows.new_component_classes.items():
@@ -156,7 +156,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"classes, {len(c['predicates'])} predicates, {len(c['patterns'])} patterns, of which added: "
              f"{added['entity_classes']} entity classes, {added['predicates']} predicates, {added['patterns']} "
              f"patterns. This run's schema, from now on the current schema, is in `{SCHEMA_NAME}`.", "",
-             "### Triple instances", "",
+             "### Extracted triples", "",
              f"- Extracted triples: {n_kept_facts:,}, plus one describes triple per record, in `{KEPT_NAME}`.",
              f"- Flags on extracted triples (worth a look): {counted(rows.flags)}.",
              f"- Removed: {len(removed):,} ({counted(rows.reasons)}), in `{REMOVED_NAME}` with the reason. "
@@ -164,9 +164,9 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"`component_class_not_in_schema`: it uses an entity class or predicate the schema doesn't have.", ""]
     if new_component_classes:
         lines += ["### Component classes outside the schema", "",
-                  f"Entity classes and predicates outside the schema (the current schema: the schema input plus "
-                  f"the additions file) the model used, counted over {where}, most used first (held-out records "
-                  f"are never counted). One that keeps coming back, and that names a real kind of thing or "
+                  f"Component classes outside the schema (the current schema: the schema file plus "
+                  f"the schema additions) the model used, counted over {where}, most used first (held-out records "
+                  f"are never counted). One that keeps coming back, and that names a real type of thing or "
                   f"relation, may be added to `annotations/schema_additions.txt`, with a one-line definition and "
                   f"the `source:` line given here: every component class listed is fair to add.", "",
                   "| Kind | Component class (used by the model; not in the current schema) | Records | source: line for "
@@ -176,7 +176,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         if len(new_component_classes) > SHOW:
             lines.append(f"| … {len(new_component_classes) - SHOW} more, in `{DETAILS_NAME}` | | | |")
         lines.append("")
-    lines += model_calls([("stage 3: extract triple instances (one call per text piece)", replies.calls, replies.reused)],
+    lines += model_calls([("stage 3: extract classed triples (one call per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.model_label())
 
     return Results(

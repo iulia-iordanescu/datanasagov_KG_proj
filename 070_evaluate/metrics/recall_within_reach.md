@@ -47,7 +47,7 @@ Say the knowledge graph is built from the whole catalog's [extracted triples](..
 ## <ins>Assumes and can't see</ins>
 
 - Everything [recall](recall.md) assumes and can't see, since it is recall over fewer ground truth triples.
-- Within reach means only that the schema has the [component classes](../../docs/terminology.md#3-schemas): a ground truth triple within reach can still be hard for the [model](../../docs/terminology.md#8-the-pipeline) to find in the [text](../../docs/terminology.md#1-records-and-their-text). So a low *w* points at extraction (its model, its prompt, or its checks), not at the schema.
+- Within reach means only that checked rows translate [component classes](../../docs/terminology.md#3-schemas) of the current schema to the ground truth triple's: a ground truth triple within reach can still be hard for the [model](../../docs/terminology.md#8-the-pipeline) to find in the [text](../../docs/terminology.md#1-records-and-their-text). So a low *w* points at extraction (its model, its prompt, or its checks), not at the schema.
 - It depends on the translation table: a wrong row changes which ground truth triples are within reach, and which pairs are made, so it can move *w* up or down.
 - It counts fewer ground truth triples than recall, so its [margin of error](approximately.md#sampling-error) is wider, the more so the lower the recall upper bound.
 - *What it means for the knowledge graph* is approximate for the [reasons every metric shares](approximately.md); the [report](../../docs/terminology.md#8-the-pipeline) measures one of them, sampling error, with *w*'s margin of error.

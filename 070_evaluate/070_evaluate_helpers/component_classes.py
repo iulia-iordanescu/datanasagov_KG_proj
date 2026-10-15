@@ -5,7 +5,7 @@ schema (the one 060 used) into the ground truth schema.
 The ground truth triples use the GROUND TRUTH SCHEMA's component classes
 (annotations/ground_truth_schema.txt); a finished record that uses one it
 lacks (a coined one) stops the step first. 060 uses the component classes of the schema it was
-given (040's by default): the current schema. Before comparing, each of the
+given (by default the induced schema plus the schema additions): the current schema. Before comparing, each of the
 current schema's entity classes and predicates is translated to a component class of
 the ground truth schema, through the table a person checks:
 
@@ -13,7 +13,7 @@ the ground truth schema, through the table a person checks:
     kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
     entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
     predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth means this
+    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema means this
 
 (columns: common/common_helpers/component_class_mapping.py)
 
@@ -147,8 +147,8 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     coined = with_coined(read_ground_truth_schema(inputs["ground_truth_schema"]), finished)["coined"]
     if coined["entity_classes"] or coined["predicates"]:
         uses = coined_uses(finished, coined)
-        raise Stop(f"The ground truth triples use {len(uses)} entity class(es) or predicate(s) that aren't in the "
-                   f"ground truth schema ({ref_path(Path(inputs['ground_truth_schema']))}), so 070 can't translate into "
+        raise Stop(f"The finished records' rows of the ground truth (describes triples included) use {len(uses)} "
+                   f"entity class(es) or predicate(s) that aren't in the ground truth schema ({ref_path(Path(inputs['ground_truth_schema']))}), so 070 can't translate into "
                    f"them: {named(uses, 10, '; ')}. For each one, either add it to the ground truth schema with a "
                    f"one-line definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a "
                    f"button), or fix the typo where it's used; {AGAIN}")
@@ -160,7 +160,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"tell which translation counts: "
                          + named([f"{r['kind']} {r['component_class']} (a past or the current schema; lines "
                                   f"{', '.join(map(str, r['lines']))})" for r in repeated], 5, "; ")
-                         + f". Keep one row per component class: delete the extra ones ({TABLE}, shows a *Delete "
+                         + f". Keep one row per component class: delete the repeated ones ({TABLE}, shows a *Delete "
                            f"this row* button on each repeated row), {AGAIN}")
     have = {(r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])): r for r in rows}
     bad_kind = [r for r in rows if r["kind"] not in KINDS]

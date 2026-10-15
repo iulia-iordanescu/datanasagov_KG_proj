@@ -214,7 +214,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual({e["component_class"] for e in used["entity_classes"]},
                          {e["component_class"] for e in schema["entity_classes"]})
         evidence = json.loads(self.output("040_induce_schema", "induction_evidence.json").read_text(encoding="utf-8"))
-        self.assertTrue(used["learned_from"]["known"])                          # 040's schema: the texts it learned from
+        self.assertTrue(used["learned_from"]["known"])                          # the induced schema: the texts it learned from
         self.assertEqual(set(used["learned_from"]["ids"]), {x["id"] for x in evidence["texts"]})
         _, again = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(again, 0, "a rerun paid again")
@@ -276,7 +276,7 @@ class Pipeline(unittest.TestCase):
         its own: worked out by hand, 8 tuning records with one fact each,
         all found; record 0 has a second fact extraction can't find."""
         self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "ground_truth_schema.txt"))
-        # t07 extracted with 040's schema, later runs with the ground truth schema: the earlier version of each file a run
+        # t07 extracted with the induced schema, later runs with the ground truth schema: the earlier version of each file a run
         # changed is kept in previous_runs/<that run>/, with its manifest; a file a run left as it was is not kept
         kept = sorted((self.results / "060_extract" / "previous_runs").iterdir())
         self.assertTrue(kept)

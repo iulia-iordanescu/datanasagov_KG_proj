@@ -189,7 +189,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
     learned = [t["record"] for t in texts.items if t["id"] in {x["id"] for x in triples.texts}]
     lines += ["", "### Twins in the pool", "",
-              f"A pool record with the same title, description, or both as one of the {len(learned)} texts this run "
+              f"A pool record with the same title, the same `notes`, or both as one of the {len(learned)} texts this run "
               f"learned from is a twin (docs/terminology.md, section *Evaluating extraction*): the schema has seen "
               f"some or most of its text, so step 070 gives its numbers with and without the twins. The second "
               f"column, against every induction candidate, is the most there can be (as in step 030's report).", ""]
@@ -201,15 +201,15 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     lines += ["", "### Triple instances and labels", "",
               f"- {n_verified:,} verified triple instances from {counts.texts_with_triple_instances} texts: "
               f"each one's source text is in its record's text (checked in code, `common/common_helpers/validate.py`).",
-              f"- What the record describes (`describes_class`, the title's entity class): named for "
+              f"- Describes class (`describes_class`, the entity class of what the title names): named for "
               f"{counts.texts_with_describes_class} of {len(triples.texts)} texts.",
               f"- Left out as unverified: {sum(triples.errors.values()):,} ({counted(triples.errors)}); "
               f"listed in `{repo_path(output / EVIDENCE_NAME)}` under each text's `unverified`.",
               f"- Verified, with flags worth a look: {counted(triples.flags)}.",
               f"- {triples.malformed:,} item(s) in the replies weren't triple instances and were dropped.",
-              f"- Labeled: {len(labels.of.get('entity', {})):,} component instances of subjects and objects "
+              f"- Labeled: {len(labels.of.get('entity', {})):,} subject instances and object instances "
               f"with {len(labels.vocabulary.get('entity', [])):,} entity class labels; "
-              f"{len(labels.of.get('predicate', {})):,} of predicates with "
+              f"{len(labels.of.get('predicate', {})):,} predicate instances with "
               f"{len(labels.vocabulary.get('predicate', [])):,} predicate labels.",
               f"- Merged in stage 4: {len(labels.merges)} label(s), all listed below.",
               f"- Folded by spelling in stage 5: {len(counts.spelling_folds)} group(s).", ""]

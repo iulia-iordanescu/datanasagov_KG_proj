@@ -104,7 +104,7 @@ class Status(unittest.TestCase):
         self.ground_truth(0, [["r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "0"],
                               ["r2", "", "", "", "", "", "", "0"]])
         gt = self.texts(self.status(), "Ground truth")
-        self.assertTrue(any("Draft batch 1 from step 050 isn't opened yet" in t for t in gt), gt)
+        self.assertTrue(any("Drafted batch 1 from step 050 isn't opened yet" in t for t in gt), gt)
         self.assertTrue(any("batch_000.csv has 2 record(s) not finished (pool position): #1 and #2" in t
                             or "batch_000.csv has 2 record(s) not finished (pool position): #1, #2" in t for t in gt), gt)
 
@@ -115,6 +115,11 @@ class Status(unittest.TestCase):
         self.assertEqual(len(coined), 1, gt)
         self.assertIn("Gizmo (entity class, coined in the ground truth)", coined[0])
         self.assertIn("Step 070 stops while a finished record uses one (1 do)", coined[0])
+        # a describes triple's entity class counts too, as step 070 checks it
+        self.ground_truth(0, [["r1", "r1", "CatalogEntry", "DESCRIBES", "A title", "Gadgetry", "(record structure)", "1"]])
+        coined = [t for t in self.texts(self.status(), "Ground truth") if "aren't in the ground truth schema" in t]
+        self.assertIn("Gadgetry (entity class, coined in the ground truth)", coined[0])
+        self.assertIn("(1 do)", coined[0])
 
     # ---- the schema additions, the translation table, the partial pairs
     def test_addition_without_a_source(self):

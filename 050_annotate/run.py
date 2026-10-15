@@ -1,19 +1,19 @@
 """
 050 · Annotate
 
-Drafts ground truth for a person to correct. A model reads the next records
-of the ground truth candidates pool and lists every fact each one states, as
-triple instances with entity classes, using the ground truth schema's
+Drafts classed triples (drafted triples) for a person to correct into ground
+truth. A model reads the next records of the ground truth candidates pool and
+lists every fact each one states, as classed triples, using the ground truth schema's
 component classes (the ground truth schema's, plus any coined in the ground
 truth) where they fit and new ones where they don't; code adds each record's
 describes triple and checks every row against the record's text and the schema.
-Each run writes one numbered draft batch. The person corrects it with the
+Each run writes one numbered drafted batch. The person corrects it with the
 annotation tool (py helpers/annotate.py), which saves it into annotations/ground_truth/;
 no step writes there. Terms: docs/terminology.md.
 
 Reads:   records.jsonl (020), splits.json (030),
          annotations/ground_truth_schema.txt,
-         annotations/ground_truth/ (to skip records already done, and to check it)
+         annotations/ground_truth/ (to skip records already in it, and to check it)
 Writes:  drafted_triples_batch<N>.csv, drafted_triples_batch<N>_details.json
 Details: 050_annotate/050_annotate.md
 """
@@ -32,7 +32,7 @@ INPUTS = {
     "ground_truth": "./annotations/ground_truth/batch_*.csv",
 }
 
-#: Inputs that may have no files yet: before the first draft batch is corrected,
+#: Inputs that may have no files yet: before the first drafted batch is corrected,
 #: there is no ground truth, and no record is done.
 MAY_BE_EMPTY = ("ground_truth",)
 

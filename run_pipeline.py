@@ -18,7 +18,7 @@ How it runs:
   translation table for you to check), or is interrupted (Ctrl+C). Later
   steps need what that step would have written.
 - Human gates, never failures:
-    050 drafts the next batch only when no batch is waiting for you: a draft
+    050 drafts the next batch only when no batch is waiting for you: a drafted
         batch not opened yet in the annotation tool, or a ground truth file
         with a record not finished. Otherwise it is "kept" (nothing drafted).
     060 and 070 are "skipped" until the ground truth has a finished record:
