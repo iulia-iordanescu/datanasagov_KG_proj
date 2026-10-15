@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Annotation tool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
   :root {
     --bg: #e9ece8; --panel: #ffffff; --ink: #262b31; --muted: #626a76; --line: #d5dad4;
@@ -36,7 +36,7 @@
   @media (min-width: 1200px) { header .topbar { flex-wrap: nowrap; } }
   header #status { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 5em; }
   header h1 { white-space: nowrap; }
-  header nav.tabs { display: flex; gap: 2px; align-items: center; background: none; border: 0; padding: 0;
+  header nav.tabs { display: flex; gap: 8px; align-items: center; background: none; border: 0; padding: 0;
                     max-height: none; overflow: visible; position: static; border-radius: 0; box-shadow: none; }
   header nav.tabs button { display: inline-block; width: auto; margin: 0; text-align: center; box-shadow: none; }
   header nav.tabs .tab.current { background: var(--bar-ink); }
@@ -56,8 +56,8 @@
   header #status.failed { color: #ffd2cc; opacity: 1; }
   header #status.saved { color: #bdf2cc; opacity: 1; }
   header .count { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 12px;
-                  font-weight: 700; background: #f4b6ae; color: #6d1d16; }
-  header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; margin: 0 12px 0 0; }
+                  font-weight: 600; background: #f4b6ae; color: #6d1d16; }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.01em; margin: 0 12px 0 0; }
   select, input, textarea, button { font: inherit; color: var(--ink); }
   select, input, textarea { background: var(--input); border: 1px solid #c3cac3; border-radius: 8px; padding: 6px 9px; }
   @media (prefers-color-scheme: dark) { select, input, textarea { border-color: #3b434c; } }
@@ -213,14 +213,14 @@
   .example { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg);
              border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
 
-  /* ---------------------------------------------------------------- the look: one palette, navy and ochre on paper;
-     Source Sans 3 (plain zeros: records are full of numbers), JetBrains Mono for anything code-like */
+  /* ---------------------------------------------------------------- the look: one palette, navy and sky blue on paper;
+     Public Sans (the U.S. Web Design System's typeface; plain zeros), JetBrains Mono for anything code-like */
   :root {
     --bg: #f3f0ea; --panel: #fffdfa; --paper: #fffaf0; --tint: #f7f3ec; --line: #dcd5c9;
     --ink: #1f2933; --muted: #66707a; --label: #3e4a56;
-    --navy: #1f3a5f; --navy-bg: #e7edf5; --ochre: #b7791f; --ochre-bg: #fbf0dc;
+    --navy: #1f3a5f; --navy-bg: #e7edf5; --sky: #3f7cc0; --sky-bg: #e4eef9;
     --accent: var(--navy); --accent-bg: var(--navy-bg);
-    --subj: #2d5c8a; --subj-bg: #ecf2f8; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #3f7350; --obj-bg: #eaf3ec;
+    --subj: #b23a72; --subj-bg: #fbedf3; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #b8621c; --obj-bg: #fdf1e5;
     --soft: #f6e3b4; --strong: #efc36a;
     --bar: var(--navy); --bar-ink: #fdfaf3; --bar-soft: rgba(255, 255, 255, 0.14);
   }
@@ -228,15 +228,15 @@
     :root {
       --bg: #14181c; --panel: #1c2127; --paper: #1f2329; --tint: #222830; --line: #2e353d;
       --ink: #e9e4da; --muted: #9aa3ab; --label: #c3c9cf;
-      --navy: #8fb0d6; --navy-bg: #1f2c3b; --ochre: #e0a95a; --ochre-bg: #33291a;
-      --subj: #8db4dc; --subj-bg: #1d2834; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #8fc7a0; --obj-bg: #1d2b22;
+      --navy: #8fb0d6; --navy-bg: #1f2c3b; --sky: #7fb0e3; --sky-bg: #1b2a3a;
+      --subj: #f0a3c6; --subj-bg: #2e1f28; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #f2b27a; --obj-bg: #2e2419;
       --soft: #4a3d1c; --strong: #6b5419;
       --bar: #172b45; --bar-ink: #ece6da; --bar-soft: rgba(255, 255, 255, 0.10);
     }
   }
-  body { font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif; font-size: 15.5px; background: var(--bg); }
-  header { background: var(--bar); box-shadow: none; border-bottom: 3px solid var(--ochre); }
-  header h1 button { background: transparent; border: 0; color: var(--bar-ink); font: inherit; font-weight: 700;
+  body { font-family: "Public Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; background: var(--bg); }
+  header { background: var(--bar); box-shadow: none; border-bottom: 0; }
+  header h1 button { background: transparent; border: 0; color: var(--bar-ink); font: inherit; font-weight: 600;
                      font-size: 17px; padding: 4px 10px 4px 0; letter-spacing: 0.01em; }
   header h1 button:hover { background: transparent; text-decoration: underline; text-underline-offset: 4px; }
   header nav.tabs .tab.current, header nav.tabs .tab.current > button { background: var(--bar-ink); color: #1f3a5f; }
@@ -245,37 +245,60 @@
   section.card > h3, .textcard > h3, .triplecard > h3 { color: var(--navy); font-size: 15px; }
   #text { font-size: 16.5px; line-height: 1.7; background: var(--paper); border-color: var(--line); }
   mark { background: var(--soft); border-radius: 3px; }
-  mark.active { background: var(--strong); outline: 0; box-shadow: 0 0 0 2px var(--ochre); }
-  .headline h2 { font-size: 18px; font-weight: 700; color: var(--ink); }
-  .progressbar > div, .recordhead .progressbar > div { background: var(--ochre); }
+  mark.active { background: var(--strong); outline: 0; box-shadow: 0 0 0 2px var(--sky); }
+  .headline h2 { font-size: 18px; font-weight: 600; color: var(--ink); }
+  .progressbar > div, .recordhead .progressbar > div { background: var(--sky); }
   button { border-radius: 8px; }
-  button.primary { background: var(--navy); border: 1px solid var(--navy); color: #fdfaf3; font-weight: 700; box-shadow: none; }
+  button.primary { background: var(--navy); border: 1px solid var(--navy); color: #fdfaf3; font-weight: 600; box-shadow: none; }
   button.primary:hover { background: var(--navy); filter: brightness(1.12); }
   @media (prefers-color-scheme: dark) { button.primary { color: #10161d; } }
   .row { background: var(--panel); border-radius: 10px; }
   .row, .row.active { border: 1px solid var(--line); border-left: 1px solid var(--line); box-shadow: none; }
   nav#records { border-radius: 12px; }
-  nav button.current { background: var(--navy-bg); box-shadow: inset 4px 0 0 var(--ochre); }
+  nav button.current { background: var(--navy-bg); box-shadow: inset 4px 0 0 var(--sky); }
   .part.tuning { color: var(--navy); background: var(--navy-bg); border-color: var(--navy); }
   .striptools { margin-left: auto; display: inline-flex; gap: 6px; }
   .paneltools { margin: 4px 0 8px; }
-  button.tool { padding: 3px 10px; font-size: 13.5px; background: var(--navy-bg); border-color: transparent; color: var(--navy); font-weight: 700; }
+  button.tool { padding: 3px 10px; font-size: 13.5px; background: var(--navy-bg); border-color: transparent; color: var(--navy); font-weight: 600; }
   button.tool:hover { border-color: var(--navy); background: var(--navy-bg); }
   .home h2 { font-size: 26px; color: var(--navy); margin-bottom: 8px; }
   .home .lead { font-size: 16px; line-height: 1.6; }
   .viewgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 18px 0; }
   .viewbox { background: var(--tint); border: 1px solid var(--line); border-radius: 10px;
              padding: 12px 16px; display: flex; flex-direction: column; }
-  .viewbox:first-child { background: var(--ochre-bg); }
+  .viewbox:first-child { background: var(--sky-bg); }
   .viewbox h3 { margin: 0 0 4px; color: var(--navy); }
   .viewbox p { margin: 0 0 10px; color: var(--label); flex: 1; }
   .doclinks a { color: var(--navy); }
   .schematable th { background: var(--navy-bg); color: var(--navy); }
+  /* ✖ (must fix) and ⚑ (worth a look) are both red, to catch the eye: ✖ solid, ⚑ pale */
+  :root { --flag: #b42318; --flag-bg: #fdecea; --error: #b42318; --error-bg: #fdecea; }
+  @media (prefers-color-scheme: dark) { :root { --flag: #ff9a8f; --flag-bg: #3a1f1f; --error: #ff9a8f; --error-bg: #3a1f1f; } }
+  .pill.error { background: var(--error); color: #fff; }
+  @media (prefers-color-scheme: dark) { .pill.error { color: #2a0f0c; } }
+  .problems li.error { background: var(--error); color: #fff; }
+  @media (prefers-color-scheme: dark) { .problems li.error { color: #2a0f0c; } }
+  .problems li.flag, .pill.flag { background: var(--flag-bg); color: var(--flag); }
+  header .topbar { padding: 10px 24px; gap: 8px; }
+  header h1 { margin-right: 28px; padding-right: 28px; border-right: 1px solid var(--bar-soft); }
+  header nav.tabs button, header nav.tabs .tab select { padding: 7px 14px; }
+  header nav.tabs .tab { border-radius: 999px; }
+  header nav.tabs .tab.current, header nav.tabs .tab.current > button { background: var(--sky-bg); color: var(--navy); }
+  header .tab.current select { color: #1f3a5f; }
+  header nav.tabs button:hover, header nav.tabs .tab:hover { border-radius: 999px; }
+  .headline { align-items: flex-start; }
+  .titleblock { flex: 1; min-width: 0; }
+  .titleblock h2 { margin: 2px 0 2px; white-space: normal; overflow: visible; }
+  .viewbox a { color: var(--navy); }
+  .titleblock .headmeta { margin: 0; }
+  .headline .striptools { margin-left: 0; align-self: center; }
+  .headline label.finished { align-self: center; }
+  .headline > button, .headline .recnum { align-self: center; }
   section.card, section.card.textcard, section.card.triplecard, section.card.recordhead { border: 1px solid var(--line); }
-  nav button.current { box-shadow: none; background: var(--navy-bg); font-weight: 700; }
-  .recnum { font-weight: 700; color: var(--muted); min-width: 3.2em; text-align: center; }
+  nav button.current { box-shadow: none; background: var(--navy-bg); font-weight: 600; }
+  .recnum { font-weight: 600; color: var(--muted); min-width: 3.2em; text-align: center; }
   .headmeta { gap: 8px; }
-  .recinfo summary { cursor: pointer; color: var(--navy); font-weight: 700; }
+  .recinfo summary { cursor: pointer; color: var(--navy); font-weight: 600; }
   .recinfo[open] { flex-basis: 100%; order: 3; }
   .recinfo dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 6px 0 2px; }
   .recinfo dt { color: var(--muted); } .recinfo dd { margin: 0; color: var(--ink); }
@@ -283,8 +306,8 @@
   .batchline { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
   .segments { display: flex; gap: 3px; margin-top: 6px; }
   .seg { flex: 1; height: 9px; border-radius: 3px; background: var(--line); }
-  .seg.done { background: var(--ok); }
-  .seg.here { outline: 2px solid var(--ochre); outline-offset: 1px; }
+  .seg.done { background: var(--navy); }
+  .seg.here { outline: 2px solid var(--sky); outline-offset: 1px; }
   #intro .helpbody p, #intro .helpbody li { max-width: none; }
   code { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 0.88em; background: var(--tint);
          border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
@@ -565,26 +588,27 @@ function show(i) {
       el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
                      disabled: current === batch.records.length - 1,
                      title: "Next record (or the → key, when not typing in a field)" }, "→"),
-      el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
+      el("div", { class: "titleblock" },
+        el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
+        el("div", { class: "meta headmeta" },
+          el("span", { id: "progress" }),
+          el("details", { class: "recinfo", open: infoOpen(),
+                          ontoggle: (e) => { try { localStorage.setItem("recordInfoOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
+            el("summary", {}, "About this record"),
+            el("dl", {},
+              el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
+              el("dt", {}, "Part"), el("dd", {}, rec.part
+                ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
+                    ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
+                    : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
+                : "none (not in the pool)"),
+              el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
+              el("dt", {}, "Id"), el("dd", { class: "fixed" }, rec.id))))),
+      el("div", { class: "striptools" }, TOOL_GUIDELINES, TOOL_SCHEMA),
       el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
         el("input", { type: "checkbox", checked: rec.finished,
                       onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
-        "All facts extracted")),
-    el("div", { class: "meta headmeta" },
-      el("span", { id: "progress" }),
-      el("details", { class: "recinfo", open: infoOpen(),
-                      ontoggle: (e) => { try { localStorage.setItem("recordInfoOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
-        el("summary", {}, "About this record"),
-        el("dl", {},
-          el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
-          el("dt", {}, "Part"), el("dd", {}, rec.part
-            ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-                ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the schema that extraction uses."
-                : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
-            : "none (not in the pool)"),
-          el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
-          el("dt", {}, "Id"), el("dd", { class: "fixed" }, rec.id))),
-      el("span", { class: "striptools" }, TOOL_GUIDELINES, TOOL_SCHEMA)));
+        "All facts extracted")));
 
   const text = el("section", { class: "card textcard" },
     el("h3", {}, "The record's text"),
@@ -910,8 +934,9 @@ async function showHome() {
        "truth; and, once steps 060 and 070 have run, check how extraction's schema translates into the ground truth " +
        "schema, rule on partial pairs, and add to the schema extraction uses."),
     el("div", { class: "viewgrid" },
-      box("Ground truth", "Correct the ground truth triples a model drafted (step 050) for each record of a batch: " +
-          "fix, delete or add them, then tick All facts extracted.", null,
+      box("Ground truth", el("span", {}, "Correct the ground truth triples a model drafted (step 050) for each record of a batch: " +
+          "fix, delete or add them, then tick All facts extracted. What every ground truth triple must say: ",
+          doc("annotations/guidelines.md", "the guidelines"), "."), null,
           next ? el("button", { class: "primary", onclick: () => { $("batch").value = String(next.n); openBatch(next.n, 0).catch(fail); } },
                     next.ground_truth ? `Go on with batch ${next.n} (${next.records - next.finished} of ${next.records} records left)`
                                       : `Open batch ${next.n} (a new draft)`)
@@ -924,7 +949,6 @@ async function showHome() {
     el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch."),
     el("p", { class: "doclinks" }, "Documents: ",
        doc("annotations/README.md", "how to use the tool"), " · ",
-       doc("annotations/guidelines.md", "the guidelines (what every ground truth triple must say)"), " · ",
        doc("docs/terminology.md", "the terms"), " · ",
        doc("docs/pipeline_in_pictures.md", "the pipeline in pictures"), ".")));
 }
