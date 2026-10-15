@@ -20,7 +20,10 @@
 - A name with its abbreviation in parentheses is one subject or object, as
   written: "Level-2 (L2)", with no separate triple saying L2 is another name
   for Level-2. Write such a triple only when the record states the other
-  name in words of its own ("X, or Y"; "X and Y are used interchangeably").
+  name in words of its own ("X, or Y"). When the record gives two names for
+  something of its data set, such as its release ("the terms X and Y are used
+  interchangeably in reference to this release"), write each as a fact about
+  the data set (two version triples), not a triple between the two names.
 - A table of values inside the record (rows of measurements, one per object):
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.
