@@ -1,6 +1,6 @@
 """
-extract.py -- stages 3 and 4: the model extracts each record's triple
-instances with the schema; code checks them and sorts them into kept and
+extract.py -- stages 3 and 4: the model extracts each record's classed
+triples with the schema; code checks them and sorts them into kept and
 removed.
 
 Stage 3, ask_model. One call per text piece (a long record is split:
@@ -27,16 +27,16 @@ schema. Then:
       duplicate, malformed  as in 050
 
     KEPT (extracted_triples.csv), with its flags, its entity classes and
-    predicate in the schema's own spelling (each is compared loosely, so
+    predicate in the schema's own spelling (each is compared by loose match, so
     "Space craft" is accepted as Spacecraft, and written Spacecraft)
       everything else, including a pattern the schema doesn't list
       (pattern_not_in_schema: the schema's patterns are what was seen, not
-      all that is allowed) and a reworded component class
+      all that is allowed) and a component class that is a loose match for one of the schema's
 
     The describes triple is always kept, so every record extracted has one
     (a record with nothing else "states no fact the schema can express").
-    If the model named no entity class for it, or one the schema doesn't
-    have, its entity class is X and the row is flagged.
+    If the model named no describes class for it, or one the schema doesn't
+    have, its describes class is X and the row is flagged.
 
 Component classes outside the schema are counted (new_component_classes), so the report can list
 the ones the model reaches for most: possible schema additions (schema_additions.txt).

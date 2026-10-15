@@ -14,15 +14,15 @@ copy at once. Translation table: annotations/component_class_mapping.csv
 (step 070's table of which component class of the ground truth schema each
 component class of the current schema means), row by row, to check.
 Partial pairs: evaluation's partial pairs, to review. Schema additions:
-annotations/schema_additions.txt, to edit. An entity class, predicate, or
-pattern the ground truth uses but the ground truth schema lacks can be added
-to it with a button. Press Ctrl+C here to stop the tool.
+annotations/schema_additions.txt, to edit. An entity class or predicate
+the ground truth uses but the ground truth schema lacks can be added to it
+with a button. Press Ctrl+C here to stop the tool.
 
 It runs only on this computer: no internet, no model calls, nothing to
 install. It isn't a pipeline step: it writes nothing but the ground truth
 files, the translation table, the partial-pair verdicts, the schema
-additions, and the entity classes, predicates, and patterns added to the
-ground truth schema. How it works: helpers/annotator/server.py; how to use
+additions, and the entity classes and predicates added to the ground truth
+schema. How it works: helpers/annotator/server.py; how to use
 it: annotations/README.md.
 """
 import argparse

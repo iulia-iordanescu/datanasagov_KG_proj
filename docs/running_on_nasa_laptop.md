@@ -89,7 +89,7 @@ The cheapest way to check that everything works, about 20 [paid calls](terminolo
 
 3. **Check you're charged properly.** For each [run](terminology.md#8-the-pipeline), compare the plan it prints before you press Enter ("… will make N [model call](terminology.md#8-the-pipeline)(s) …") with its [report](terminology.md#8-the-pipeline)'s *Model calls* table (`outputs/reports/<run id>.md`): calls per [stage](terminology.md#8-the-pipeline), the test call, and the total paid. Running the same command again should show 0 paid calls: the cache works, and nothing is paid twice.
 
-Nothing is wasted: the real 040 run reuses the tiny run's extractions; 050's record is real work (correct it in `py helpers/annotate.py`); 060 and 070 simply run again after the real 040.
+Nothing is wasted: the real 040 run reuses the tiny run's saved answers; 050's record is real work (correct it in `py helpers/annotate.py`); 060 and 070 simply run again after the real 040.
 
 ### Choosing a model
 
@@ -103,9 +103,9 @@ A listed model may still refuse you: Ask Sage's list shows what it offers, not w
 
 Which model where:
 
-- **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the [schema](terminology.md#3-schemas), 050 decides how much you correct by hand, 070's translations decide the metrics.
+- **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the induced [schema](terminology.md#3-schemas), 050 decides how much you correct by hand, 070's translations decide the metrics.
 - **050 and 060: two different models, from different makers if you can** (e.g. a Claude model for one, a Gemini or GPT model for the other). The [ground truth](terminology.md#4-ground-truth-and-samples) starts as 050's [drafted triples](terminology.md#4-ground-truth-and-samples); if 060 used the same model, the [facts](terminology.md#2-triples) that model misses would be missing from both, and [recall](terminology.md#7-evaluating-extraction-step-070) would look better than it is. Step 060 warns before paying when it would extract with the model that drafted the ground truth, or one from the same maker.
-- **060 on every [record](terminology.md#1-records-and-their-text) (about 36,000 calls): measure before choosing.** Once 20 or more ground truth records are finished, run 060 on them with two or three models, evaluate each with 070, compare them (`py helpers/compare_runs.py`, `helpers/compare_runs.md`), and use the cheapest that the comparison can't tell apart from the best.
+- **060 on every [record](terminology.md#1-records-and-their-text) (about 36,000 calls): measure before choosing.** Once 20 or more [tuning records](terminology.md#7-evaluating-extraction-step-070) are finished, run 060 on them with two or three models, evaluate each with 070, compare them (`py helpers/compare_runs.py`, `helpers/compare_runs.md`), and use the cheapest that the comparison can't tell apart from the best.
 - **Decide before the real runs:** every cached answer is tied to its model, so changing models later means paying for those calls again.
 
 ## 6. Annotating ground truth (after 050, before 060)

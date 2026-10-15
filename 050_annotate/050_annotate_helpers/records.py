@@ -1,5 +1,5 @@
 """
-records.py -- stage 1: which records this batch drafts, and anything about
+records.py -- stage 1: which records this drafted batch holds, and anything about
 that choice the person should know BEFORE paying.
 
 By default, the next records of the ground truth candidates pool, in the
@@ -10,24 +10,24 @@ order listed (still at most `records_per_batch`).
 Always skipped, whatever was asked:
   - a record already in the ground truth (annotations/ground_truth/): it's done;
   - a record in a drafted batch in this step's output folder: it's waiting to
-    be corrected (a record deleted from a corrected batch stays skipped too,
+    be corrected (a record deleted from a corrected drafted batch stays skipped too,
     as the person decided it);
   - an id that isn't a record of the catalog, or a record with no text.
 
 For the default choice the first two are expected and just counted. Anything
-that makes the batch differ from what was asked (an id listed that is
+that makes the drafted batch differ from what was asked (an id listed that is
 skipped, fewer records than asked, …) becomes a NOTE: shown before the
 paid-call question (common/common_helpers/llm.py PaidCalls) and in the report.
 
 Fair sample: the pool is shuffled, so its first N records are a fair sample
 of the catalog, and step 070 can only claim results for the whole catalog
 from such a sample. `fair` says whether the ground truth, the drafted batches waiting
-and this batch together are still exactly the first N of the pool.
+and this drafted batch together are still exactly the first N of the pool.
 
 The model is shown the ground truth schema plus the component classes a
 person coined in the ground truth and hasn't added to it yet
 (common/common_helpers/ground_truth.with_coined), so a coined one is reused
-from the next batch on. The checks compare with the ground truth schema alone,
+from the next drafted batch on. The checks compare with the ground truth schema alone,
 so a coined component class (or a typo) stays an error until it is added there.
 """
 from __future__ import annotations
@@ -50,8 +50,8 @@ from common.validate import SchemaEntries
 @dataclass
 class Chosen:
     items: list = field(default_factory=list)      # {"id", "position", "title", "text", "pieces"}
-    batch: int = 1                                 # this batch's number
-    notes: list = field(default_factory=list)      # shown before paying: where the batch differs from what was asked
+    batch: int = 1                                 # this drafted batch's number
+    notes: list = field(default_factory=list)      # shown before paying: where the drafted batch differs from what was asked
     records: dict = field(default_factory=dict)    # every record, {id: record}
     ground_truth: object = None                    # common.ground_truth.GroundTruth
     done: set = field(default_factory=set)         # ids in the ground truth
@@ -165,7 +165,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
         if len(picked) < per:
             passed = "; ".join(f"{len(v)} {k}" for k, v in skipped.items() if v) or "none"
             chosen.notes.append(f"You asked for {per} records (records_per_batch), but only {len(picked)} "
-                                f"are left in the pool from position {start} on, so this batch has "
+                                f"are left in the pool from position {start} on, so this drafted batch has "
                                 f"{len(picked)}. The other pool records from position {start} on: {passed}. "
                                 + (f"To draft records before position {start}, set a lower --start_position."
                                    if start else "Nothing to do: the pool has no other record to draft."))
@@ -183,7 +183,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
         if ids:                                    # by default, passing over done records is expected
             where = ""
             if reason == "waiting in a drafted batch to be corrected":
-                where = " (" + ", ".join(sorted({f"batch {chosen.waiting[r]}" for r in rids})) + ")"
+                where = " (" + ", ".join(sorted({f"drafted batch {chosen.waiting[r]}" for r in rids})) + ")"
             chosen.notes.append(f"{len(rids)} record(s) you listed {'are' if len(rids) > 1 else 'is'} "
                                 f"{reason}{where}, so skipped: {named(rids)}. {to_do[reason]}")
 
@@ -195,14 +195,14 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     before = fair_sample(chosen.pool, chosen.done | set(chosen.waiting))
     chosen.fair = fair_sample(chosen.pool, chosen.done | set(chosen.waiting) | set(picked))
     if before["fair"] and not chosen.fair["fair"] and picked:
-        chosen.notes.append("With this batch, the ground truth is no longer the first records of the pool "
+        chosen.notes.append("With this drafted batch, the ground truth is no longer the first records of the pool "
                             "(a fair sample of the catalog): " + fair_words(chosen.fair, chosen.positions) +
                             " Step 070 evaluates only the fair sample, so the records after the first one not "
                             "taken won't be evaluated until the records before them are annotated. Nothing to "
                             "do if you chose these records on purpose; otherwise leave ids empty and set "
-                            "--start_position 0, so the batch takes the pool's next records.")
+                            "--start_position 0, so the drafted batch takes the pool's next records.")
     if not chosen.items:
-        raise Stop("Nothing to draft: none of the records chosen can be drafted, so 050 can't write a batch. "
+        raise Stop("Nothing to draft: none of the records chosen can be drafted, so 050 can't write a drafted batch. "
                    + " ".join(chosen.notes) + " Change the settings as these reasons say, then run "
                    "`py 050_annotate/run.py` again.")
     return chosen

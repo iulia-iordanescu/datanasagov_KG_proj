@@ -25,7 +25,7 @@ flowchart LR
     class S080 notbuilt
 ```
 
-Yellow: the step asks a model (040 learns the schema, 050 drafts classed triples for the ground truth, 060 extracts). 070 asks a model only to propose new rows of the translation table. Dashed: not built yet. What each step does, reads, and writes: the table in the README's *Pipeline overview*, and each step's guide, `<step>/<step>.md`.
+Yellow: the step asks a model (040 learns the induced schema, 050 drafts classed triples for the ground truth, 060 extracts). 070 asks a model only to propose new rows of the translation table. Dashed: not built yet. What each step does, reads, and writes: the table in the README's *Pipeline overview*, and each step's guide, `<step>/<step>.md`.
 
 ## 2. What each step reads
 
@@ -69,8 +69,8 @@ How the ground truth is made and used, and where a person comes in (in the annot
 
 ```mermaid
 flowchart TD
-    D["050 drafts a batch"] --> C["You correct it: Ground truth"]
-    C -->|"an entity class or predicate it lacks"| GS["You add it to the ground truth schema,<br/>with a one-line definition"]
+    D["050 drafts the next drafted batch"] --> C["You correct it: Ground truth"]
+    C -->|"a coined entity class or predicate"| GS["You add it to the ground truth schema,<br/>with a one-line definition"]
     GS --> C
     C -->|"commit annotations/ to Git"| E["060 extracts the finished records"]
     E --> V["070 evaluate"]

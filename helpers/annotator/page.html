@@ -813,9 +813,9 @@ function problemList(r, j) {
     r.problems.map(p => el("li", { class: p.type }, (p.type === "error" ? "✖ " : "⚑ ") + p.message,
                            p.add ? addControl(p.add) : null)));
 }
-// The describes triple, laid out like a ground truth triple: its subject (the record's id), the subject's entity class
+// The describes triple, laid out like a ground truth triple: its subject (the record's id), its subject class
 // (CatalogEntry), its predicate (DESCRIBES) and its object (the record's title) are written by code and shown only;
-// the object's entity class is the annotator's. It has no source text.
+// its object class (the describes class) is the person's. It has no source text.
 function describesRow(rec, j, heading = true) {
   const r = rec.rows[j];
   const fixed = (label, value, role) => el("label", { title: "Written by code; it can't be changed.", class: "f-" + role }, label,
@@ -824,19 +824,19 @@ function describesRow(rec, j, heading = true) {
     heading ? el("div", { class: "rowhead" }, "Describes triple") : null,
     el("div", { class: "triple" },
       fixed("Subject (the record's id)", r.subject, "subj"),
-      fixed("Subject's entity class", r.subject_class, "subj"),
+      fixed("Subject class", r.subject_class, "subj"),
       fixed("Predicate", r.predicate, "pred"),
       el("span"),
       fixed("Object (the record's title)", r.object, "obj"),
-      el("label", { class: "f-obj" }, "Object's entity class",
+      el("label", { class: "f-obj" }, "Object class (the describes class)",
         el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
                       placeholder: "not chosen yet", "data-row": j,
                       oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target, true); },
                       onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }))),
     el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
-      "subject (the record's id) and object (the record's title) are copied from the record by code, and the object's " +
-      "entity class (the describes class), the type of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
-      "checked by you here in this tool. Click the field under “Object's entity class” to edit it."),
+      "subject (the record's id) and object (the record's title) are copied from the record by code, and the " +
+      "object class (the describes class), the type of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
+      "checked by you here in this tool. Click the field under “Object class (the describes class)” to edit it."),
     problemList(r, j));
 }
 function tripleRow(rec, j, heading = true) {
@@ -847,11 +847,11 @@ function tripleRow(rec, j, heading = true) {
     heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
     el("div", { class: "triple" },
       field(rec, j, "subject", "Subject", { multiline: true }),
-      field(rec, j, "subject_class", "Subject's entity class", { list: "entity_classes", class: "cls" }),
+      field(rec, j, "subject_class", "Subject class", { list: "entity_classes", class: "cls" }),
       field(rec, j, "predicate", "Predicate", { list: "predicates" }),
       el("span"),
       field(rec, j, "object", "Object", { multiline: true }),
-      field(rec, j, "object_class", "Object's entity class", { list: "entity_classes", class: "cls" })),
+      field(rec, j, "object_class", "Object class", { list: "entity_classes", class: "cls" })),
     el("div", { class: "source" },
       el("label", { title: "Copied exactly from the record's text" }, "Source text",
         el("textarea", { "data-row": j, class: "grow", rows: 1, onfocus: () => { setActive(j); hideClasses(); },
@@ -1021,8 +1021,8 @@ async function showHome() {
       box("Translation table", "Extraction and the ground truth use different schemas. Once step 070 has run, choose " +
           "for each entity class and predicate of the current schema the one of the ground truth schema that means " +
           "the same thing.", openMapping),
-      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an occurrence of an extracted " +
-          "triple and a ground truth triple that only partly match) whether the two state the same fact.", openPartial),
+      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an occurrence, which is a translated extracted " +
+          "triple of the record, and a ground truth triple that only partly match) whether the two state the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates, and patterns a person adds to the current schema, each with " +
           "where it was found.",
           () => openAdditions())),
@@ -1314,7 +1314,7 @@ function drawPartial() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu()),
     el("p", { class: "meta" }, `${partial.items.length} partial pair(s) of tuning records; ${left} not reviewed yet.`),
-    el("p", { class: "meta" }, "A partial pair is an occurrence of an extracted triple (translated into the ground truth schema) and a ground " +
+    el("p", { class: "meta" }, "A partial pair is an occurrence (a translated extracted triple of the record) and a ground " +
       "truth triple whose predicates agree, and whose subject instances, and whose object instances, are each the " +
       "same or one contained in the other as whole words. Such a " +
       "pairing can be wrong (MODIS vs MODIS Terra). A pair you mark “not the same fact” is never paired again: step 070 " +
@@ -1397,7 +1397,7 @@ function drawAdditions() {
       "these entries to the induced schema (or to another schema it is given): together, the current schema."),
     el("p", { class: "meta" }, "Every entity class and predicate added here needs a one-line definition, and every entry " +
       "needs a source: where the idea came from. An entry learned from the ground truth must come from tuning records " +
-      "only, named by pool position: “ground truth tuning #12, #15”. To allow a new pair of entity classes for a " +
+      "only, named by pool position: “ground truth tuning #12, #15”. To add a pattern for a " +
       "predicate the schema already has, add an entry of type pattern."),
     el("button", { onclick: () => { editing = { entry_type: "entity class", component_class: "", definition: "", source: "",
                                                   patterns: [] }; drawAdditions(); } }, "+ Add an entry")));
@@ -1474,7 +1474,7 @@ function additionForm(e) {
       [["entity class", "Entity class"], ["predicate", "Predicate"], ["pattern", "Pattern"]].map(([k, words]) =>
         el("button", { class: e.entry_type === k ? "primary" : "", onclick: () => { e.entry_type = k; drawAdditions(); } }, words))),
     el("p", { class: "meta" }, {
-      "entity class": "A new type of thing that extraction may use as a subject's or object's entity class.",
+      "entity class": "A new type of thing that extraction may use as a subject class or an object class.",
       "predicate": "A new relation between two things, with the pairs of entity classes it joins (its patterns).",
       "pattern": "A new pair of entity classes for a predicate that the schema (or this file) already has." }[e.entry_type]),
     ...({
@@ -1483,9 +1483,9 @@ function additionForm(e) {
       "predicate": [input("component_class", "Predicate: one word in UPPER_SNAKE_CASE (e.g. PART_OF_MISSION)"),
                     input("definition", "Definition: one line, read from subject to object (e.g. was carried out as part of)"),
                     patterns],
-      "pattern": [input("subject_class", "Subject's entity class: one word (e.g. Instrument)"),
+      "pattern": [input("subject_class", "Subject class: one word (e.g. Instrument)"),
                   input("predicate", "Predicate: one the schema has, or one added in this file (e.g. ABOARD)"),
-                  input("object_class", "Object's entity class: one word (e.g. Spacecraft)")] }[e.entry_type]),
+                  input("object_class", "Object class: one word (e.g. Spacecraft)")] }[e.entry_type]),
     input("source", "Source: where the idea came from (e.g. mentor; NASA missions A-to-Z; ground truth tuning #12)"),
     problem,
     el("div", { class: "bar" }, el("button", { onclick: save }, "Save"),

@@ -13,7 +13,7 @@ The calls themselves are made by common/common_helpers/extraction.ask_model (sha
 060): every answer is kept in cache/draft.json (common/common_helpers/cache.py) the moment
 it arrives, so a rerun, e.g. after a failed call or Ctrl+C, pays only for
 what it doesn't have. A record whose call fails, for any piece, is left out
-of the batch, never half drafted; the next run drafts it again.
+of the drafted batch, never half drafted; the next run drafts it again.
 """
 from __future__ import annotations
 
@@ -30,5 +30,5 @@ def ask_model(chosen, calls, settings: dict) -> extraction.Replies:
     def prompt_for(item, piece):
         return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece)
     return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "draft",
-                                f"050 will draft {len(chosen.items)} record(s) into batch {chosen.batch}",
+                                f"050 will draft {len(chosen.items)} record(s) into drafted batch {chosen.batch}",
                                 "drafting")

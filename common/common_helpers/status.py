@@ -33,7 +33,7 @@ files as they are now. Every input made by an earlier step counts. Of the
 inputs a person makes (annotations/), only those that change the step's
 result count (COUNTED_PERSON_INPUTS): the additions for 060, and for 070
 everything it reads there. Step 050 is never out of date: each run drafts a
-new batch, and the batches waiting are their own items. For 060, the
+new drafted batch, and the drafted batches waiting are their own items. For 060, the
 ground truth counts as finished records not extracted yet, not as a changed
 file (annotating an unfinished record changes the file, not 060's work).
 """
@@ -102,7 +102,7 @@ def _when(manifest: dict) -> str:
 
 
 # --------------------------------------------------------------------------
-# what needs a person before the next batch, or before 060 and 070 (also run_pipeline.py's gates)
+# what needs a person before the next drafted batch, or before 060 and 070 (also run_pipeline.py's gates)
 # --------------------------------------------------------------------------
 
 def unopened_drafts(drafts_dir: Path = DRAFTS_DIR, gt_dir: Path = GROUND_TRUTH_DIR) -> list:
@@ -124,7 +124,7 @@ def unfinished(gt) -> dict:
 
 
 def batch_waiting(drafts_dir: Path = DRAFTS_DIR, gt_dir: Path = GROUND_TRUTH_DIR, gt=None) -> str | None:
-    """Why 050 shouldn't draft another batch yet, or None: a drafted batch not opened yet in the annotation tool, or
+    """Why 050 shouldn't draft another drafted batch yet, or None: a drafted batch not opened yet in the annotation tool, or
     a ground truth file with a record not finished."""
     waiting = unopened_drafts(drafts_dir, gt_dir)
     if waiting:
@@ -243,8 +243,8 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
     if records:
         typos = check_rows(gt, records)
         if typos:
-            items.append(_item("Ground truth", TO_DO, f"{len(typos)} row(s) of the ground truth have a typo to fix "
-                               f"(an id not in the catalog, a source text not in the record's text, …): "
+            items.append(_item("Ground truth", TO_DO, f"{len(typos)} ground truth triple(s) or describes triple(s) have an error "
+                               f"to fix (an id not in the catalog, a source text not in the record's text, …): "
                                f"{named([t['where'] for t in typos], 3)}. The annotation tool marks each with ✖.",
                                "while-annotating", "annotations/ground_truth/"))
     gaps = ground_truth_schema_gaps(schema, gt)

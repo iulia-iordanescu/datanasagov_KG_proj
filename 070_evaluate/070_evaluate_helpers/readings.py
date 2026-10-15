@@ -144,7 +144,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"2 × {ex['pairs']} pairs ÷ ({E} extracted + {G} ground truth triples). It's high only when both are.",
             "- The usual headline number for comparing runs or models, and with published results. It weighs "
             "precision and recall equally; read them too when one matters more (for a knowledge graph, a wrong "
-            "statement is often worse than a missing one).",
+            "edge is often worse than a missing one).",
             _sure(n, ex["f1"], "exact F1"), ""]
 
     # strict
@@ -157,7 +157,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"({pct(ex['strict_precision']['value'])}); strict recall: {ex['strict_pairs']} of the {G} ground "
             f"truth triples ({pct(ex['strict_recall']['value'])}).",
             f"- Strict F1: {pct(ex['strict_f1']['value'])} (exact pairs).",
-            "- For a knowledge graph: a strict pair is a statement whose two nodes would also get the right "
+            "- For a knowledge graph: a strict pair is an edge whose two nodes would also get the right "
             "entity classes (node labels).",
             _sure(n, ex["strict_precision"], "exact strict precision"), ""]
 

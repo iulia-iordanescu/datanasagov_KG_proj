@@ -189,8 +189,8 @@ MESSAGES = {
                              "truth schema's patterns.",
     "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
-    "describes_undecided": "No entity class yet for what this record describes (the describes triple's object class is "
-                           "X or empty). Type or pick the entity class of the thing the title names.",
+    "describes_undecided": "No describes class yet (the describes triple's object class is X or empty). Type or "
+                           "pick the entity class of the thing the title names.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the ground truth schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
                                      "If it's new, add it to the ground truth schema with the button below, "
@@ -397,7 +397,7 @@ def open_batch(n: int) -> Path:
     if not gt.exists():
         draft = DRAFTS_DIR / draft_name(n)
         if not draft.exists():
-            raise FileNotFoundError(f"batch {n} has no drafted batch file (outputs/intermediate_results/050_annotate/{draft.name}) "
+            raise FileNotFoundError(f"drafted batch {n} has no file (outputs/intermediate_results/050_annotate/{draft.name}) "
                                 f"and no ground truth file (annotations/ground_truth/{gt.name}), so there is nothing "
                                 f"to open. Pick another batch, or draft one with py 050_annotate/run.py.")
         write_csv(gt, FILE_COLUMNS, _read_rows(draft))
@@ -751,7 +751,7 @@ GT_COLUMNS = {"entity class": ("subject_class", "object_class"), "predicate": ("
 def vocab_view(data: Data) -> dict:
     """Every component class of the ground truth schema, by kind: its
     definition (empty if coined and not yet in the ground truth schema), how many
-    ground truth rows and files use it, and how many rows of the translation
+    ground truth triples and describes triples, and files, use it, and how many rows of the translation
     table translate to it."""
     data.read_hand()                                   # the file as it is now: it may have been edited by hand
     gt = read_ground_truth()

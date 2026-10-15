@@ -1,7 +1,7 @@
 """
 moves.py -- the main moves of 050_annotate, as called by 050_annotate/run.py.
 
-    stage 1  records.py  pick_records        code: which records this batch drafts; notes to show before paying
+    stage 1  records.py  pick_records        code: which records this drafted batch holds; notes to show before paying
     -        (here)      paid_calls          code: asks before paying; keeps every answer in cache/
     stage 2  draft.py    ask_model           LLM: every fact each record states, as classed triples
     stage 3  (here)      build_rows          code: describes triple, duplicates out, every row checked
@@ -113,9 +113,9 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
 
     warnings = list(chosen.notes)                  # shown before paying too, if the run paid
     if replies.failed:
-        warnings.append(extraction.failed_note(replies, "the batch"))
+        warnings.append(extraction.failed_note(replies, "the drafted batch"))
     if not csv_rows:
-        warnings.append(f"No record was drafted, so no batch was written: the model calls for all "
+        warnings.append(f"No record was drafted, so no drafted batch was written: the model calls for all "
                         f"{len(chosen.items)} record(s) chosen failed (the warning before this one says why for "
                         f"each). Fix the cause if it's yours (e.g. the connection to the model's service), then run "
                         f"`py 050_annotate/run.py` again.")
@@ -128,7 +128,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"schema, annotations/ground_truth_schema.txt (the buttons of the "
                         f"annotation tool, `py helpers/annotate.py`, do it); fix any typo in the ground truth.")
     if typos:
-        warnings.append(f"{len(typos)} row(s) of the ground truth have something to fix, listed with file and "
+        warnings.append(f"{len(typos)} ground truth triple(s) or describes triple(s) have an error to fix, listed with file and "
                         f"line in {this_report()}, section *Results*, subsection *Your ground truth*: the ground truth is what step 070 "
                         f"evaluates against, so a wrong row makes its metrics wrong. Fix them with "
                         f"`py helpers/annotate.py` or any editor.")
@@ -139,7 +139,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     gt = chosen.ground_truth
     lines = ["### What this run worked on", ""]
     if csv_rows:
-        lines += [f"Batch {n}: `{batch_path.name}`, {len(csv_rows):,} drafted triples for {len(drafts.rows)} record(s), "
+        lines += [f"Drafted batch {n}: `{batch_path.name}`, {len(csv_rows):,} drafted triples for {len(drafts.rows)} record(s), "
                   f"chosen as {chosen.how}. To correct it, run `py helpers/annotate.py` and pick batch {n}: it "
                   f"copies it to `annotations/ground_truth/{file_name(n)}` and saves your changes there.", ""]
     lines += ["| Pool position | Record | Drafted triples | With an error | With a flag |", "|---:|---|---:|---:|---:|"]
@@ -162,7 +162,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                   + ".", ""]
     lines += ["### Your ground truth", "",
               f"{len(gt.records)} records in {len(gt.files)} file(s), {sum(r['finished'] for r in gt.records.values())} "
-              f"finished (all facts extracted). Rows with something to fix: {len(typos)}.", ""]
+              f"finished (all facts extracted). Ground truth triples or describes triples with an error to fix: {len(typos)}.", ""]
     if typos:
         lines += ["| Where | Record | To fix |", "|---|---|---|"]
         lines += [f"| {t['where']} | {t['id']} | {'; '.join(ROW_ERRORS[e] for e in t['errors'])} |"

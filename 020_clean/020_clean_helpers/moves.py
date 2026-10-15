@@ -21,7 +21,7 @@ One line of records.jsonl, shortened:
 
 Apart from records with no id and later copies of a repeated id, every
 record is kept, even one with no title or notes: the graph needs every
-catalog entry, and its structured fields still hold facts.
+catalog entry, and its other metadata fields still give the knowledge graph edges and properties.
 """
 from __future__ import annotations
 

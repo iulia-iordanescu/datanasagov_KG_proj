@@ -34,9 +34,9 @@ progress. A row with an id but an empty subject, predicate, and object says
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
     with_coined(ground_truth_schema, gt)  the ground truth schema's component classes
                               plus those coined in the ground truth (not in it yet)
-    check_rows(gt, records)   rows with a typo to fix: an id not in the
+    check_rows(gt, records)   rows with an error to fix: an id not in the
                               catalog, a source text not in the record's
-                              text, a describes triple with no entity class, …
+                              text, a describes triple with no describes class, …
                               (ROW_ERRORS, at the end of this file)
 
 Problems, each listed, none silently resolved:
@@ -47,7 +47,7 @@ Problems, each listed, none silently resolved:
     predicate and object instance (compared as
     common/common_helpers/triples_io.triple_key does) and the same subject
     class and object class (as triples_io.component_class_key does). Only
-    one copy can be paired, so 070 would count the other as missed. Also in
+    one copy can be paired, so 070 would count the other as ground truth only. Also in
     gt.repeats: 070 refuses to run while there is one;
   - the same subject instance, predicate, and object instance twice in a
     record, with different entity classes: likely one fact given two entity
@@ -93,7 +93,7 @@ GROUND_TRUTH_SCHEMA_FROM = 6
 
 #: The twin kinds (docs/terminology.md, twin): what a twin shares with one record the schema was learned from, the kind
 #: that shares the most text first. A record with two kinds (with two different records) gets the one listed first.
-TWIN_KINDS = ("whole text", "description only", "title only")
+TWIN_KINDS = ("whole text", "notes only", "title only")
 
 
 def twin_kinds(records: dict, learned: list) -> dict:
@@ -105,7 +105,7 @@ def twin_kinds(records: dict, learned: list) -> dict:
     >>> twin_kinds({"a": {"title": "snow,  AQUA", "notes": "Daily snow."}, "b": {"title": "Snow, Terra", "notes": "Daily snow."},
     ...              "c": {"title": "Fire", "notes": "Fire counts."}, "d": {"title": "Fire", "notes": "Daily snow."},
     ...              "e": {"title": "Ice", "notes": ""}}, learned)
-    {'a': 'whole text', 'b': 'description only', 'c': 'title only', 'd': 'description only', 'e': ''}
+    {'a': 'whole text', 'b': 'notes only', 'c': 'title only', 'd': 'notes only', 'e': ''}
     """
     from common.text_match import even
 
@@ -118,14 +118,14 @@ def twin_kinds(records: dict, learned: list) -> dict:
     out = {}
     for rid, r in records.items():
         t, d = keys(r)
-        out[rid] = ("whole text" if t and d and (t, d) in pairs else "description only" if d in descriptions
+        out[rid] = ("whole text" if t and d and (t, d) in pairs else "notes only" if d in descriptions
                     else "title only" if t in titles else "")
     return out
 
 
 #: The rows of the twin table (twin_table): each twin kind, as the table names it.
 TWIN_ROWS = {"whole text": "whole text (same title and same `notes`)",
-             "description only": "description only (same `notes`, different title)",
+             "notes only": "notes only (same `notes`, different title)",
              "title only": "title only (same title, different `notes`)"}
 
 
@@ -142,12 +142,12 @@ def twin_table(pool: dict, columns: list) -> list:
     lines.append("| **all twins** | " + " | ".join(f"**{sum(c[k] for k in TWIN_ROWS):,}**" for c in counts) + " |")
     lines.append("| not a twin | " + " | ".join(f"{c['']:,}" for c in counts) + " |")
     heading, what, _ = columns[0]
-    n = counts[0]["description only"]
-    lines += ["", f"*How to read a cell, e.g. row \"description only\", column \"Pool records, compared with {heading}\", {n:,}:* "
+    n = counts[0]["notes only"]
+    lines += ["", f"*How to read a cell, e.g. row \"notes only\", column \"Pool records, compared with {heading}\", {n:,}:* "
                   f"{n:,} of the {len(pool):,} pool records each have the same `notes` as one of {what}, and a "
                   f"different title. Each pool record is counted in one row only. A pool record that shares text in two "
                   f"ways (with two different records) is counted under the twin kind that shares more text: whole "
-                  f"text, then description only, then title only. Titles and `notes` are compared evened out "
+                  f"text, then notes only, then title only. Titles and `notes` are compared evened out "
                   f"(docs/terminology.md, section *Triples*); twins: docs/terminology.md, section *Evaluating "
                   f"extraction*; why they matter: 070_evaluate/070_evaluate.md, section *How it works*, subsection "
                   f"*Twins*.", ""]
@@ -263,7 +263,7 @@ def _shown(rows: list) -> str:
 # checking the rows against the records' texts (050, on every run)
 # --------------------------------------------------------------------------
 
-#: What check_rows reports: things a person must fix, i.e. typos, never
+#: What check_rows reports: errors a person must fix, never
 #: matters of judgment (a reworded subject or object instance is fine in
 #: ground truth).
 ROW_ERRORS = {
@@ -275,7 +275,7 @@ ROW_ERRORS = {
     "source_not_in_text": "its source text isn't in the record's text: in the annotation tool, select the passage and "
                           "press \"Use selection\" to copy it exactly",
     "describes_subject_not_id": "the describes triple's subject isn't the record's id: write the record's id there",
-    "describes_undecided": "the describes triple has no entity class (X): choose the entity class of what the title names",
+    "describes_undecided": "the describes triple has no describes class (X): choose the entity class of what the title names",
 }
 
 
@@ -382,7 +382,7 @@ KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
 
 def uses_of(gt: GroundTruth, kind: str, name: str) -> list:
-    """The ground truth rows that use a component class (compared as component_class_key does); kind is
+    """The ground truth triples and describes triples that use a component class (compared as component_class_key does); kind is
     "entity class" or "predicate"."""
     columns = ("subject_class", "object_class") if kind == "entity class" else ("predicate",)
     return [r for r in gt.rows if any(component_class_key(r[c]) == component_class_key(name) for c in columns)]

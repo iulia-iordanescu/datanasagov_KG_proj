@@ -74,7 +74,7 @@ translates the current schema into the ground truth schema.
                               is kept) and the lines under it (text shape only)
     schema_text(schema)       the text shape, for a prompt
     additions_text(header, entries)       the additions file, written by the annotation tool
-    ground_truth_source_problem(source, parts)   why an addition's source isn't fair, or None
+    ground_truth_source_problem(source, parts)   why a schema entry's source isn't fair, or None
     add_to_ground_truth_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
 
 read_ground_truth_schema(path) is read_schema for the ground truth schema's text file.
@@ -218,13 +218,13 @@ def schema_text(schema: dict) -> str:
 # --------------------------------------------------------------------------
 
 def ground_truth_source_problem(source: str, parts: dict) -> str | None:
-    """Why an addition whose source mentions the ground truth isn't fair to
+    """Why a schema entry whose source mentions the ground truth isn't fair to
     use, or None. Such a source must say "tuning" and name its records by
     pool position ("ground truth tuning #12, #15"), every one of them in the
     tuning part: a component class learned from a held-out record would let held-out
     records influence the schema, and the held-out numbers would no longer
     measure records the pipeline was never adjusted to. parts is {pool position: "tuning" | "held-out"}
-    (030's splits.json). Shared by step 060 (which leaves such an addition
+    (030's splits.json). Shared by step 060 (which leaves such a schema entry
     out) and the annotation tool (which refuses to save it)."""
     if not re.search(r"ground[\s_-]*truth", source.lower()):    # any spelling: "ground-truth" too
         return None

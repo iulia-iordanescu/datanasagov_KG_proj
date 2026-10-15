@@ -175,7 +175,7 @@ class Checks(unittest.TestCase):
         self.assertNotEqual(text_match.norm_text("MODIS, Aqua"), text_match.norm_text("MODIS Aqua"))
 
     def test_twin_kinds(self):
-        # one kind each, the one sharing the most text: whole text, description only, title only; empty fields never match
+        # one kind each, the one sharing the most text: whole text, notes only, title only; empty fields never match
         import doctest
         runner = doctest.DocTestRunner()
         for test in doctest.DocTestFinder().find(ground_truth.twin_kinds, globs={"twin_kinds": ground_truth.twin_kinds}):

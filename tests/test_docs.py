@@ -293,6 +293,23 @@ def first_uses_unlinked() -> list:
         return missing
 
 
+class NoLinkInCode(unittest.TestCase):
+    """A link inside a code span breaks it (`metrics/[pairs](…).md` is no longer a path)."""
+
+    def test_no_link_inside_a_code_span(self):
+        found = []
+        for path in (ROOT / f for f in tracked(".md")):
+            fence = False
+            for n, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+                if line.startswith("```"):
+                    fence = not fence
+                    continue
+                if not fence:
+                    found += [f"{path.relative_to(ROOT).as_posix()}:{n}: {m.group(0)}"
+                              for m in re.finditer(r"`([^`]+)`", line) if re.search(r"\]\([^)]*\)", m.group(1))]
+        self.assertEqual(found, [])
+
+
 class RulesInStep(unittest.TestCase):
     """The rules the model follows (common/common_prompts/extraction_rules.txt) and the annotation guidelines a person
     follows (annotations/guidelines.md) say the same things: each rule of the prompt is paired here with the words of

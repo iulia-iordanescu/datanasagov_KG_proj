@@ -104,10 +104,13 @@ def edit(rel: str, old: str, new: str, count: int = 1) -> None:
             links.append((m.group(1), m.group(2), at))
         line = old_plain.replace(old, new)
         for text, url, at in links:                    # put back each link whose words are still there, nearest use
-            # only an existing link is off limits: a link's words may sit inside **bold** or be `code` themselves
+            # off limits: an existing link, and the inside of a code span (`metrics/pairs.md` is a path, not words
+            # to link); a link's words may sit inside **bold**, or be a whole code span themselves
             protect = [m.span() for m in LINK.finditer(line)]
+            code = [m.span() for m in re.finditer(r"`[^`]+`", line)]
             uses = [m for m in re.finditer(r"(?<![\w\[])" + re.escape(text) + r"(?![\w\]])", line)
-                    if not any(a <= m.start() < b for a, b in protect)]
+                    if not any(a <= m.start() < b for a, b in protect)
+                    and not any(a < m.start() < b or a < m.end() < b for a, b in code)]
             if uses:
                 m = min(uses, key=lambda u: abs(u.start() - at))
                 line = line[:m.start()] + f"[{text}]({url})" + line[m.end():]

@@ -115,7 +115,7 @@ def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
              "A twin is an evaluated record with the same title, the same `notes`, or both as a record the current "
              "schema was learned from (docs/terminology.md, section *Evaluating extraction*), so the schema has seen "
              "some or most of its text. Its twin kind says what it shares with one such record: whole text (title and "
-             "`notes`), description only (`notes` only), or title only. Learned from: "
+             "`notes`), notes only, or title only. Learned from: "
              + ("; ".join(learned.get("how") or []) or "not known") + ".", ""]
     t = v["twins"]
     if t is None:
@@ -301,20 +301,20 @@ def _mismatch_lines(mismatches: list) -> list:
              "likely wrong: check that row (`py helpers/annotate.py`, view *Translation table*). Seen once, it may just be "
              "extraction choosing the wrong component class.", "",
              "How to read a row of the table below, e.g. *entity class | Body | Spacecraft | CelestialBody | 9*: "
-             "these events, "
-             "counted together, happened 9 times:", "",
-             "- **entity class, subject:** extraction used `Body` (current schema) as the entity class of an "
-             "extracted triple's subject, translated to `Spacecraft` (ground truth schema), while the ground truth triple paired with it (a pair, "
-             "exact or partial) had `CelestialBody` (ground truth schema) as its subject's entity class;",
-             "- **entity class, object:** extraction used a component class of the current schema as the entity "
-             "class of an extracted triple's object, translated to one component class of the ground truth "
-             "schema, while the ground truth triple paired with it had another as its object's entity class. "
-             "One pair can count twice: once for the subjects' entity classes, once for the objects';",
-             "- **predicate:** an extracted triple and a ground truth triple left unpaired had the same subject instance and "
+             "these component class "
+             "mismatches, counted together, happened 9 times:", "",
+             "- **entity class, subject:** extraction used `Body` (current schema) as the subject class of an "
+             "extracted triple, translated to `Spacecraft` (ground truth schema), while the ground truth triple paired with it (a pair, "
+             "exact or partial) had `CelestialBody` (ground truth schema) as its subject class;",
+             "- **entity class, object:** extraction used a component class of the current schema as the object "
+             "class of an extracted triple, translated to one component class of the ground truth "
+             "schema, while the ground truth triple paired with it had another as its object class. "
+             "One pair can count twice: once for the subject classes, once for the object classes;",
+             "- **predicate:** an extracted only occurrence and a ground truth only triple had the same subject instance and "
              "object instance, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
              "predicate (ground truth schema). With subject and object the other way round, the "
              "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
-             "Component classes are compared after translation. All 9 events share one cause: the translation table's row "
+             "Component classes are compared after translation. All 9 share one cause: the translation table's row "
              "`Body` (current schema) --> `Spacecraft` (ground truth schema). Had that row said `Body` --> `CelestialBody` (ground truth "
              "schema), none of the 9 would have happened. So that row of the translation table is the "
              "likely mistake, and the one to check.", ""]

@@ -112,5 +112,26 @@ class Edit(unittest.TestCase):
                          [{"file": "doc.md", "old": "beta", "new": "gamma", "count": 1}])
 
 
+class CodeSpans(unittest.TestCase):
+    """A link put back after an edit never lands inside a code span: `metrics/pairs.md` is a path."""
+
+    def test_link_not_put_inside_a_path(self):
+        import tempfile
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            doc = tmp / "doc.md"
+            doc.write_text("See [pairs](t.md#7) and `metrics/pairs.md`, old words.\n", encoding="utf-8")
+            saved = (doc_guard.ROOT, doc_guard.LEDGER)
+            doc_guard.ROOT, doc_guard.LEDGER = tmp, tmp / "ledger.json"
+            try:
+                doc_guard.edit("doc.md", "See pairs and", "Read")
+            finally:
+                doc_guard.ROOT, doc_guard.LEDGER = saved
+            self.assertEqual(doc.read_text(encoding="utf-8"), "Read `metrics/pairs.md`, old words.\n")
+        finally:
+            import shutil
+            shutil.rmtree(tmp)
+
+
 if __name__ == "__main__":
     unittest.main()

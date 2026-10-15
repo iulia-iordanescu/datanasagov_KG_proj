@@ -18,7 +18,7 @@ How it runs:
   translation table for you to check), or is interrupted (Ctrl+C). Later
   steps need what that step would have written.
 - Human gates, never failures:
-    050 drafts the next batch only when no batch is waiting for you: a drafted
+    050 drafts the next drafted batch only when none is waiting for you: a drafted
         batch not opened yet in the annotation tool, or a ground truth file
         with a record not finished. Otherwise it is "kept" (nothing drafted).
     060 and 070 are "skipped" until the ground truth has a finished record:
@@ -87,7 +87,7 @@ def chosen_steps(args) -> list:
 
 
 def batch_waiting() -> str | None:
-    """Why 050 shouldn't draft another batch yet, or None (common/common_helpers/status.py)."""
+    """Why 050 shouldn't draft another drafted batch yet, or None (common/common_helpers/status.py)."""
     return project.batch_waiting(RESULTS_DIR / "050_annotate", GROUND_TRUTH_DIR, read_ground_truth())
 
 
@@ -102,8 +102,8 @@ def gate(step: str, forced: bool) -> tuple:
     if step == "050_annotate":
         why = batch_waiting()
         if why:
-            return "kept", (f"no new batch drafted: {why}. Finish it in the annotation tool (`py helpers/annotate.py`); "
-                           f"050 drafts the next batch once it's done. To draft one anyway: "
+            return "kept", (f"no new drafted batch: {why}. Finish it in the annotation tool (`py helpers/annotate.py`); "
+                           f"050 drafts the next drafted batch once it's done. To draft one anyway: "
                            f"`py run_pipeline.py --only 050`")
     if step in ("060_extract", "070_evaluate") and not any_finished():
         return "skipped", ("the ground truth has no finished record yet, and by default 060 extracts and 070 "

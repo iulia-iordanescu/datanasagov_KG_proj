@@ -1,6 +1,6 @@
 """
 common/common_helpers/extraction.py -- what the steps that ask a model for a record's
-triple instances share: 040 (learning the schema), 050 (drafting ground truth)
+triple instances (040) or classed triples (050, 060) share: 040 (learning the schema), 050 (drafting ground truth)
 and 060 (extracting with a schema), so they all extract the same kind of facts,
 and 060 is evaluated against 050 on equal terms.
 
@@ -23,8 +23,8 @@ or extend; 060: only the schema's) and how it chooses records.
 
 What build_rows does with a record's replies (one per text piece):
 
-  1. the describes triple first (common/common_helpers/triples_io.py), with the first entity
-     class a reply named for what the title names ("X" if none did);
+  1. the describes triple first (common/common_helpers/triples_io.py), with the first describes
+     class a reply named ("X" if none did);
   2. every item of every reply's "triples", cleaned by triples_io.clean_triple;
      one that can't be a triple instance (a missing subject, predicate or
      object, a list where text belongs, …) is removed as "malformed";
@@ -154,7 +154,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     pays only for what it doesn't have. A record with any failed call is
     left out of `of`, never half answered; the next run asks it again.
     plan is the confirmation's first words ("050 will draft 10 record(s)
-    into batch 3"); verb names the work in the log ("drafting")."""
+    into drafted batch 3"); verb names the work in the log ("drafting")."""
     cache = Cache(calls.cache_dir, stage)
     answers, todo = {}, {}
     for item in items:
@@ -205,7 +205,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
 
 def failed_note(replies: Replies, where: str) -> str | None:
     """The warning for the records ask_model left out, with why, or None.
-    where: what they are missing from ("the batch", "the output", …)."""
+    where: what they are missing from ("the drafted batch", "the output", …)."""
     if not replies.failed:
         return None
     cut = sum("cut off at the longest length allowed" in why for why in replies.failed.values())

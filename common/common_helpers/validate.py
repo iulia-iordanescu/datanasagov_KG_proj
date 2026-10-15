@@ -74,19 +74,18 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
 # --------------------------------------------------------------------------
 #
 #     FLAGS (a component class the schema doesn't have: a new one, or a typo)
-#     subject_class_not_in_schema    the subject's entity class isn't in it
-#     object_class_not_in_schema     the object's entity class isn't in it
+#     subject_class_not_in_schema    the subject class isn't in it
+#     object_class_not_in_schema     the object class isn't in it
 #     predicate_not_in_schema        the predicate isn't in it
 #     pattern_not_in_schema          the predicate is in it, but never with
 #                                    these two entity classes
 #
 #     ON THE DESCRIBES TRIPLE (common/common_helpers/triples_io.py)
-#     describes_undecided            ERROR: no entity class named for what
-#                                    the title names
+#     describes_undecided            ERROR: no describes class named
 #     describes_class_not_in_schema  FLAG: that entity class isn't in it
 #     describes_subject_not_id       ERROR: its subject isn't the record's id
 #
-# Component classes are compared loosely (triples_io.component_class_key: letters and digits only,
+# Component classes are compared by loose match (triples_io.component_class_key: letters and digits only,
 # case ignored), so "physical quantity" is PhysicalQuantity and has_version
 # is HAS_VERSION. The schema is a dict as common/common_helpers/schema_io.py reads it.
 

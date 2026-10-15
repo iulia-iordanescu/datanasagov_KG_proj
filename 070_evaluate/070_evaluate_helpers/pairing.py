@@ -38,7 +38,7 @@ translation table leaves a trace in the triples. Extraction stated the fact,
 but a component class differs:
   - a paired triple whose entity class differs from the ground truth's: the
     current schema's entity class may translate to the wrong one (or to (none));
-  - an unpaired extracted triple and an unpaired ground truth triple with the
+  - an extracted only occurrence and a ground truth only triple with the
     same subject and object (or the two swapped) but different predicates:
     the predicate's row may be wrong, or its swap_subject_and_object.
 Each mismatch (current schema's component class, ground truth schema's

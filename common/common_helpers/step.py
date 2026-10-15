@@ -40,7 +40,7 @@ deleted and rebuilt by rerunning the pipeline. Work that can't be rebuilt
 Paths in INPUTS are relative to outputs/intermediate_results/, except paths
 that start with "./", which are relative to the repo root (for files kept in
 Git, e.g. "./annotations/ground_truth/batch_*.csv"; an input may be a
-pattern like this one, standing for every file it matches). Paths given on the
+wildcard path like this one, standing for every file it matches). Paths given on the
 command line are ordinary paths.
 """
 from __future__ import annotations
@@ -193,7 +193,7 @@ def _is_pattern(path: Path) -> bool:
 
 
 def input_files(path: Path) -> list:
-    """The files behind one input: the file itself, or every match of a pattern."""
+    """The files behind one input: the file itself, or every match of a wildcard path."""
     if _is_pattern(path):
         return [Path(p) for p in sorted(glob.glob(str(path)))]
     return [path] if path.is_file() else []
@@ -220,7 +220,7 @@ def _describe_inputs(inputs: dict) -> tuple:
     rows, warnings, harvest_dates, harvest_partial = [], [], set(), None
     for key, path in inputs.items():
         files = input_files(path)
-        where = files[0] if files else path          # an input allowed to have no files yet: its pattern
+        where = files[0] if files else path          # an input allowed to have no files yet: its wildcard path
         manifest_path = where.parent / MANIFEST_NAME
         run_id, origin = None, "unknown (no manifest beside it)"
         in_git = not where.resolve().is_relative_to(RESULTS_DIR.resolve())

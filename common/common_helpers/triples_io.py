@@ -114,14 +114,14 @@ def clean_triple(raw) -> dict | None:
 
 # ------------------------------ the describes triple --------------------------
 #
-# Every record's triple instances start with one row no text states, written
+# Every record's classed triples start with one row no text states, written
 # in code (050, 060):
 #
 #     <record id> (CatalogEntry) DESCRIBES <the record's title> (<entity class>)
 #
 # It keeps the catalog entry apart from the thing the entry is about, so
 # facts about one are not mistaken for facts about the other. The model's
-# only part in it is naming the entity class of what the title names;
+# only part in it is naming the describes class;
 # UNDECIDED ("X") means it named none, for the person to fill in.
 
 ENTRY_CLASS = "CatalogEntry"
