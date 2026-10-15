@@ -72,6 +72,9 @@ REPORTS_DIR = OUTPUTS_DIR / "reports"               # one report per run, for pe
 LOGS_DIR = OUTPUTS_DIR / "logs"                     # one log per run
 ANNOTATIONS_DIR = ROOT / "annotations"              # human work; in Git, never regenerated
 MANIFEST_NAME = "_manifest.json"
+#: The pipeline's steps, in the order they run (run_pipeline.py, and the project's status).
+PIPELINE_STEPS = ["010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract",
+                  "070_evaluate"]
 
 
 @dataclass

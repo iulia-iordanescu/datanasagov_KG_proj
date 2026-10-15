@@ -591,3 +591,63 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
     else:
         how = "merged" if merging else "renamed"
     return data, how
+
+
+# --------------------------------------------------------------------------
+# the additions file's entries, and what's wrong with one
+# --------------------------------------------------------------------------
+
+def additions_entries(path) -> tuple:
+    """(entries, unread lines) of an additions file: each entry a dict with entry_type ("entity class",
+    "predicate", or "pattern"), its component class or pattern, definition, source, and patterns; shared by the
+    annotation tool and the project's status."""
+    path = Path(path)
+    if not path.exists():
+        return [], []
+    schema = read_schema(path)
+    standalone = [tuple(q) for q in schema["pattern_entries"]]
+    entries = []
+    for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates")):
+        for name, definition in schema[key].items():
+            entries.append({"entry_type": kind, "component_class": name, "definition": definition,
+                            "source": schema["sources"][key].get(name, ""),
+                            "patterns": [[s_, o_] for s_, p_, o_ in schema["patterns"]
+                                         if p_ == name and (s_, p_, o_) not in standalone]})
+    for s_, p_, o_ in standalone:
+        entries.append({"entry_type": "pattern", "subject_class": s_, "predicate": p_, "object_class": o_,
+                        "source": schema["sources"]["patterns"].get(pattern_key((s_, p_, o_)), "")})
+    return entries, schema["unread"]
+
+
+def _one_word(x) -> bool:
+    x = str(x or "").strip()
+    return bool(x) and not any(c.isspace() for c in x)
+
+
+def addition_problem(e: dict, parts: dict) -> str | None:
+    """What's wrong with one entry of the additions file (an entity class, a predicate, or a pattern), or None.
+    parts: {pool position: "tuning" or "held-out"}, for a source naming the ground truth."""
+    if e.get("entry_type") == "pattern":
+        if not all(_one_word(e.get(k)) for k in ("subject_class", "predicate", "object_class")):
+            return ("a pattern needs a subject class, a predicate, and an object class, one word each: fill in "
+                    "all three")
+        name = pattern_key(str(e[k]).strip() for k in ("subject_class", "predicate", "object_class"))
+    elif e.get("entry_type") not in ("entity class", "predicate"):
+        return "entry_type must be entity class, predicate, or pattern"
+    else:
+        name = str(e.get("component_class") or "").strip()
+        if not _one_word(name):
+            return ONE_WORD
+        if not str(e.get("definition") or "").strip():
+            return f"{name} (additions file) needs a one-line definition"
+    source = str(e.get("source") or "").strip()
+    if not source:
+        return (f"{name} (additions file) needs a source: where the idea came from (e.g. mentor; ground truth "
+                f"tuning #12)")
+    problem = ground_truth_source_problem(source, parts)
+    if problem:
+        return f"{name} (additions file): its source {problem}"
+    for pair in e.get("patterns") or []:
+        if len(pair) != 2 or not all(str(x).strip() and not any(c.isspace() for c in str(x).strip()) for x in pair):
+            return f"{name} (additions file): each pattern is two entity classes, one word each (Subject -> Object)"
+    return None

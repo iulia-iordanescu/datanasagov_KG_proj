@@ -366,6 +366,38 @@ def coined_uses(gt: GroundTruth, coined: dict) -> list:
     return out
 
 
+
+#: The kinds of component class, as messages name them, and their key in a schema dict.
+KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
+
+
+def uses_of(gt: GroundTruth, kind: str, name: str) -> list:
+    """The ground truth rows that use a component class (compared as component_class_key does); kind is
+    "entity class" or "predicate"."""
+    columns = ("subject_class", "object_class") if kind == "entity class" else ("predicate",)
+    return [r for r in gt.rows if any(component_class_key(r[c]) == component_class_key(name) for c in columns)]
+
+
+def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict:
+    """What the ground truth uses that the ground truth schema lacks: the component classes coined in the
+    ground truth, and the patterns whose predicate and entity classes are all in the schema, each with how many
+    rows use it. Shared by the annotation tool and the project's status (common/common_helpers/status.py)."""
+    from common.validate import SchemaEntries
+    entries = SchemaEntries(ground_truth_schema)
+    coined = with_coined(ground_truth_schema, gt)["coined"]
+    names = [{"entry_type": kind, "component_class": n, "uses": len(uses_of(gt, kind, n))}
+             for kind, key in KIND_KEYS.items() for n in coined[key]]
+    k, patterns = component_class_key, {}
+    for r in gt.rows:
+        if is_describes(r) or k(r["predicate"]) not in entries.predicates                 or not {k(r["subject_class"]), k(r["object_class"])} <= entries.entity_classes:
+            continue
+        key = (k(r["subject_class"]), k(r["predicate"]), k(r["object_class"]))
+        if key not in entries.patterns:
+            patterns.setdefault(key, {"entry_type": "pattern", "subject_class": r["subject_class"],
+                                      "predicate": r["predicate"], "object_class": r["object_class"],
+                                      "uses": 0})["uses"] += 1
+    return {"component_classes": names, "patterns": list(patterns.values())}
+
 # --------------------------------------------------------------------------
 # the fair sample (050, 070)
 # --------------------------------------------------------------------------

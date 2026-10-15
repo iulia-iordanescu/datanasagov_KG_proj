@@ -36,10 +36,16 @@ class Base(unittest.TestCase):
         rp.GROUND_TRUTH_DIR = self.tmp / "gt"
         rp.GROUND_TRUTH_DIR.mkdir()
         rp.read_ground_truth = lambda: ground_truth.read_ground_truth(rp.GROUND_TRUTH_DIR)
+        # the project's status is tested in test_status.py: here a stand-in, so the real repository is never read
+        self.saved_status = rp.project.project_status
+        rp.project.project_status = lambda: {"when": "", "steps": [], "items": [
+            {"area": "Ground truth", "level": "to do", "text": "batch_009.csv has 1 record(s) not finished",
+             "doc": "docs/upkeep.md#while-annotating", "source": ""}]}
 
     def tearDown(self):
         for k, v in self.saved.items():
             setattr(rp, k, v)
+        rp.project.project_status = self.saved_status
         shutil.rmtree(self.tmp)
 
     def gt_file(self, n, finished):
@@ -132,6 +138,15 @@ class Running(Base):
         self.assertEqual(code, 0)
         self.assertIn("**010_a** has 1 warning(s)", report)
         self.assertIn("| Steps requested | --from 010 |", report)
+        self.assertIn("### What to do next", report)                           # the project's status, after the run
+        self.assertIn("- **Ground truth:** batch_009.csv has 1 record(s) not finished "
+                      "([why, and how](../../docs/upkeep.md#while-annotating))", report)
+
+    def test_status_alone(self):
+        self.assertEqual(rp.main(["--status"]), 0)                              # prints it; runs nothing
+        self.assertFalse(rp.REPORTS_DIR.exists() and any(rp.REPORTS_DIR.glob("000_pipeline_*.md")))
+        with self.assertRaisesRegex(SystemExit, "can't be combined"):
+            rp.main(["--status", "--from", "040"])
 
     def test_failure(self):
         code, report = self.run_fake({"010_a": 1})

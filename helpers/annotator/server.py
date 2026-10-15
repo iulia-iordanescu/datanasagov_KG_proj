@@ -59,6 +59,11 @@ Help: each view's Help menu (How to use this view) shows the section of
 annotations/README.md about that view (HELP_SECTIONS), so the tool's
 explanation lives in one place.
 
+What to do next: the home page shows the project's status
+(common/common_helpers/status.py, /api/status), the same list as
+`py run_pipeline.py --status`: each view's box its own count, and every item
+with the section of docs/upkeep.md that explains it.
+
 Partial pairs (common/common_helpers/partial_reviews.py): evaluation's last run's partial
 pairs of TUNING records, each with its two triples and the record's text, for a
 person to mark "same fact" or "not the same fact"; pairs ruled out earlier
@@ -103,13 +108,15 @@ from urllib.parse import parse_qs, urlsplit
 from common.chunking import full_text
 from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
-                                 draft_name, file_name, read_ground_truth, read_pool, with_coined)
+                                 KIND_KEYS, draft_name, file_name, ground_truth_schema_gaps as schema_gaps,
+                                 read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
-from common.schema_io import ONE_WORD, add_pattern_to_ground_truth_schema, add_to_ground_truth_schema, additions_header, additions_text, \
-    ground_truth_source_problem, pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
+from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_pattern_to_ground_truth_schema, add_to_ground_truth_schema, additions_header, additions_text, \
+    pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
+from common.status import project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
@@ -139,7 +146,6 @@ GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 PAGE = Path(__file__).with_name("page.html")
 #: The page's typefaces (Libre Franklin and JetBrains Mono, SIL Open Font License: the OFL-*.txt beside them).
 FONTS = Path(__file__).with_name("fonts")
-KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
 #: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
 #: words for the page; each {placeholder} is filled with the component class concerned.
@@ -316,12 +322,6 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 # adding to the ground truth schema
 # --------------------------------------------------------------------------
 
-def _using(gt, kind: str, name: str) -> list:
-    """The ground truth rows that use a component class (compared as component_class_key does)."""
-    columns = ("subject_class", "object_class") if kind == "entity class" else ("predicate",)
-    return [r for r in gt.rows if any(component_class_key(r[c]) == component_class_key(name) for c in columns)]
-
-
 def _learned_from(data: Data, rows: list) -> str:
     """Where a component class was learned, as a "source:" line the fairness check
     (common/common_helpers/schema_io.ground_truth_source_problem) can read: the
@@ -338,23 +338,8 @@ def _learned_from(data: Data, rows: list) -> str:
 
 
 def ground_truth_schema_gaps(data: Data, gt) -> dict:
-    """What the ground truth uses that the ground truth schema lacks:
-    component classes coined in the ground truth, and patterns whose predicate and entity
-    classes are all in the schema, each with the rows using it."""
-    coined = with_coined(data.hand, gt)["coined"]
-    names = [{"entry_type": kind, "component_class": n, "uses": len(_using(gt, kind, n))}
-             for kind, key in KIND_KEYS.items() for n in coined[key]]
-    k, patterns = component_class_key, {}
-    for r in gt.rows:
-        if is_describes(r) or k(r["predicate"]) not in data.schema_entries.predicates \
-                or not {k(r["subject_class"]), k(r["object_class"])} <= data.schema_entries.entity_classes:
-            continue
-        key = (k(r["subject_class"]), k(r["predicate"]), k(r["object_class"]))
-        if key not in data.schema_entries.patterns:
-            patterns.setdefault(key, {"entry_type": "pattern", "subject_class": r["subject_class"],
-                                      "predicate": r["predicate"], "object_class": r["object_class"],
-                                      "uses": 0})["uses"] += 1
-    return {"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", "component_classes": names, "patterns": list(patterns.values())}
+    """What the ground truth uses that the ground truth schema lacks (common/common_helpers/ground_truth.py)."""
+    return {"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", **schema_gaps(data.hand, gt)}
 
 
 HAND_LOCK = threading.Lock()
@@ -384,7 +369,7 @@ def add_to_hand(data: Data, item: dict) -> str:
         if kind not in KIND_KEYS:
             raise ValueError("entry_type must be entity class, predicate, or pattern")
         name = str(item.get("component_class") or "").strip()
-        source = _learned_from(data, _using(read_ground_truth(), kind, name))
+        source = _learned_from(data, uses_of(read_ground_truth(), kind, name))
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
         return f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else "")
@@ -628,22 +613,8 @@ def help_text(view: str) -> dict:
 # --------------------------------------------------------------------------
 
 def _additions() -> tuple:
-    """(entries, unread lines) of the additions file."""
-    if not ADDITIONS.exists():
-        return [], []
-    schema = read_schema(ADDITIONS)
-    standalone = [tuple(q) for q in schema["pattern_entries"]]
-    entries = []
-    for kind, key in KIND_KEYS.items():
-        for name, definition in schema[key].items():
-            entries.append({"entry_type": kind, "component_class": name, "definition": definition,
-                            "source": schema["sources"][key].get(name, ""),
-                            "patterns": [[s_, o_] for s_, p_, o_ in schema["patterns"]
-                                         if p_ == name and (s_, p_, o_) not in standalone]})
-    for s_, p_, o_ in standalone:
-        entries.append({"entry_type": "pattern", "subject_class": s_, "predicate": p_, "object_class": o_,
-                        "source": schema["sources"]["patterns"].get(pattern_key((s_, p_, o_)), "")})
-    return entries, schema["unread"]
+    """(entries, unread lines) of the additions file (common/common_helpers/schema_io.additions_entries)."""
+    return additions_entries(ADDITIONS)
 
 
 def additions_view(data: Data) -> dict:
@@ -667,39 +638,9 @@ def additions_view(data: Data) -> dict:
             "schema_component_classes": {k: sorted(v.values()) for k, v in used.items()}}
 
 
-def _one_word(x) -> bool:
-    x = str(x or "").strip()
-    return bool(x) and not any(c.isspace() for c in x)
-
-
 def check_addition(data: Data, e: dict) -> str | None:
-    """What's wrong with one entry (an entity class, a predicate, or a
-    pattern), or None."""
-    if e.get("entry_type") == "pattern":
-        if not all(_one_word(e.get(k)) for k in ("subject_class", "predicate", "object_class")):
-            return ("a pattern needs a subject class, a predicate, and an object class, one word each: fill in "
-                    "all three")
-        name = pattern_key(str(e[k]).strip() for k in ("subject_class", "predicate", "object_class"))
-    elif e.get("entry_type") not in KIND_KEYS:
-        return "entry_type must be entity class, predicate, or pattern"
-    else:
-        name = str(e.get("component_class") or "").strip()
-        if not _one_word(name):
-            return ONE_WORD
-        if not str(e.get("definition") or "").strip():
-            return f"{name} (additions file) needs a one-line definition"
-    source = str(e.get("source") or "").strip()
-    if not source:
-        return (f"{name} (additions file) needs a source: where the idea came from (e.g. mentor; ground truth "
-                f"tuning #12)")
-    parts = {data.positions[i]: part for i, part in data.parts.items() if i in data.positions}
-    problem = ground_truth_source_problem(source, parts)
-    if problem:
-        return f"{name} (additions file): its source {problem}"
-    for pair in e.get("patterns") or []:
-        if len(pair) != 2 or not all(str(x).strip() and not any(c.isspace() for c in str(x).strip()) for x in pair):
-            return f"{name} (additions file): each pattern is two entity classes, one word each (Subject -> Object)"
-    return None
+    """What's wrong with one entry, or None (common/common_helpers/schema_io.addition_problem)."""
+    return addition_problem(e, {data.positions[i]: part for i, part in data.parts.items() if i in data.positions})
 
 
 def save_additions(data: Data, entries: list) -> None:
@@ -823,7 +764,7 @@ def vocab_view(data: Data) -> dict:
     for kind, key in KIND_KEYS.items():
         coined = {component_class_key(n) for n in vocab["coined"][key]}
         out[kind] = [{"component_class": n, "definition": d or "", "in_hand": component_class_key(n) not in coined,
-                      "uses": len(_using(gt, kind, n)),
+                      "uses": len(uses_of(gt, kind, n)),
                       "files": sorted(files.get((kind, component_class_key(n)), [])),
                       "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
                                           if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)],
@@ -1041,6 +982,8 @@ def make_handler(data: Data):
                     gt = read_ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
                                 "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt)})
+                elif url.path == "/api/status":
+                    self._json(project_status(data.records or None))
                 elif url.path == "/api/gaps":
                     self._json(ground_truth_schema_gaps(data, read_ground_truth()))
                 elif url.path == "/api/mapping":

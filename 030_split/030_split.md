@@ -19,20 +19,10 @@ No record is ever in both lists. 070 measures how well extraction works on [text
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
-
-### This step
-
-#### Before running
-
-- `outputs/intermediate_results/030_split/splits.json` is written once and then kept. Delete it and rerun only if you mean to rebuild it (e.g. after a new [harvest](../docs/terminology.md#1-records-and-their-text)); the pool's order and parts stay the same.
-
-#### After running
-
-- **Never edit or reorder `annotations/ground_truth_candidates.csv`** (the [pool](../docs/terminology.md#4-ground-truth-and-samples)) while annotation is in progress: the order is what makes the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) a [fair sample](../docs/terminology.md#4-ground-truth-and-samples).
-
+- `outputs/intermediate_results/030_split/splits.json` is written once and then kept: running 030 again only checks that the split still holds ([*Running the steps again*](../docs/upkeep.md#running-the-steps-again)).
+- Never edit or reorder the pool, `annotations/ground_truth_candidates.csv`: its order is what makes the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) a [fair sample](../docs/terminology.md#4-ground-truth-and-samples).
 ## Inputs
 
 | Input | Default | Contents |

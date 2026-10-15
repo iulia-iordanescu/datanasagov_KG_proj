@@ -10,29 +10,10 @@ Only metadata is downloaded (titles, descriptions, [maintainers](../docs/termino
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-#### Before running
-
-- **Run it** after the [steps](../docs/terminology.md#8-the-pipeline) before it, and again whenever their outputs change (see that step's guide, *How to run*).
-- **Before a step pays for [model calls](../docs/terminology.md#8-the-pipeline),** read what it prints: anything it can't do exactly as asked is listed above the question. Then press Enter to go ahead, or anything else to stop, having spent nothing. (Steps that call no [model](../docs/terminology.md#8-the-pipeline) don't ask.)
-
-#### After running
-
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s Warnings:** the report is `outputs/reports/<step>_<date>_<time>.md` (the step prints its path when it ends). Each warning is explained, with what to do, in that step's guide, *Checks and warnings*.
-- **Commit every changed file in the `annotations/` folder to Git,** so your work is safe.
-
-### This step
-
-#### Before running
-
-- **A trial [harvest](../docs/terminology.md#1-records-and-their-text)** (`--max_records`) only checks that harvesting works: step 030 won't split a trial catalog, since it writes its file (`outputs/intermediate_results/030_split/splits.json`) only once. Run the full harvest before steps 020 and 030.
-- **On another computer** (e.g. the NASA laptop): copy the saved harvest, the folder `outputs/intermediate_results/010_harvest/`, there first. Git doesn't carry `outputs/`, and running 010 without it would harvest the catalog as it is that day, which is no longer the catalog of 2026-10-01 (see *Known limits*). With the folder copied, 010 keeps it and asks the catalog nothing.
-
-#### After running
-
-- Nothing else: the [step](../docs/terminology.md#8-the-pipeline) runs on its own (for how long, see *Known limits*).
-
+- **On another computer, copy the saved harvest first** (`outputs/intermediate_results/010_harvest/`), and run the full harvest, not a trial one, before steps 020 and 030 ([*Before the first run*](../docs/upkeep.md#before-the-first-run)).
+- After running, nothing else: the step runs on its own (for how long, see *Known limits*).
 ## Inputs
 
 None: the [step](../docs/terminology.md#8-the-pipeline) reads no input files. It downloads from `https://data.nasa.gov/api/3/action/package_search`.

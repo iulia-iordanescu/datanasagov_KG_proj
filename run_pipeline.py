@@ -6,6 +6,7 @@ run_pipeline.py -- runs the pipeline's steps in order, each in its own process.
     py run_pipeline.py --from 040 --to 060     a range
     py run_pipeline.py --only 070              one step
     py run_pipeline.py --confirm_paid_calls false   for runs with nobody at the keyboard
+    py run_pipeline.py --status                where the project stands, and what to do next (runs nothing)
 
 How it runs:
 
@@ -28,6 +29,12 @@ How it runs:
   outputs/logs/000_pipeline_<date>_<time>.log. The report shows every step's
   status, duration, headline numbers, warnings, and report, and what needs
   attention. It never repeats the step reports.
+- What to do next: at the end of every run (in the report, counted in the
+  terminal), and alone with --status, the project's status
+  (common/common_helpers/status.py): what each step needs, what the ground
+  truth, the schema additions, the translation table, and the partial pairs
+  need from a person, and what isn't committed yet, each with the section of
+  docs/upkeep.md that explains it.
 
 Step 080 (building the graph) isn't built yet.
 """
@@ -45,14 +52,11 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from common.audit import new_run_id                                                    # noqa: E402
-from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, NUMBERED, PATTERN,  # noqa: E402
-                                 read_ground_truth)
-from common.report import named                                                        # noqa: E402
-from common.step import LOGS_DIR, MANIFEST_NAME, REPORTS_DIR, RESULTS_DIR, git_commit   # noqa: E402
-from common.step import repo_path  # noqa: E402
+from common.ground_truth import GROUND_TRUTH_DIR, read_ground_truth                    # noqa: E402
+from common import status as project                                                   # noqa: E402
+from common.step import LOGS_DIR, MANIFEST_NAME, PIPELINE_STEPS, REPORTS_DIR, RESULTS_DIR, git_commit  # noqa: E402
 
-STEPS = ["010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract",
-         "070_evaluate"]
+STEPS = list(PIPELINE_STEPS)
 #: The steps that call the model, and so have the setting confirm_paid_calls.
 PAYING = {"040_induce_schema", "050_annotate", "060_extract", "070_evaluate"}
 #: run_step's exit codes (common/common_helpers/step.py): anything else is a failure.
@@ -83,22 +87,8 @@ def chosen_steps(args) -> list:
 
 
 def batch_waiting() -> str | None:
-    """Why 050 shouldn't draft another batch yet, or None: a draft batch not opened yet in the annotation
-    tool, or a ground truth file with a record not finished."""
-    drafts_dir = RESULTS_DIR / "050_annotate"
-    opened = {int(m.group(1)) for p in GROUND_TRUTH_DIR.glob(PATTERN) if (m := NUMBERED.fullmatch(p.name))}
-    if drafts_dir.exists():
-        for p in sorted(drafts_dir.glob(DRAFT_PATTERN)):
-            m = DRAFT_NUMBERED.fullmatch(p.name)
-            if m and int(m.group(1)) not in opened:
-                return f"draft batch {int(m.group(1))} isn't opened yet in the annotation tool"
-    unfinished = {rid: r["file"] for rid, r in read_ground_truth().records.items() if not r["finished"]}
-    if unfinished:
-        files = [repo_path(GROUND_TRUTH_DIR / f) for f in sorted(set(unfinished.values()))]
-        n = len(unfinished)
-        return (f"{named(files)} {'has' if len(files) == 1 else 'have'} "
-                f"{'a record' if n == 1 else f'{n} records'} not finished yet ({named(sorted(unfinished))})")
-    return None
+    """Why 050 shouldn't draft another batch yet, or None (common/common_helpers/status.py)."""
+    return project.batch_waiting(RESULTS_DIR / "050_annotate", GROUND_TRUTH_DIR, read_ground_truth())
 
 
 def any_finished() -> bool:
@@ -157,8 +147,9 @@ def _duration(seconds: float) -> str:
     return f"{seconds / 60:.1f} min" if seconds >= 90 else f"{seconds:.0f} s"
 
 
-def report_text(run: dict, rows: list) -> str:
-    """The pipeline report: Run, Pipeline at a glance, Needs attention."""
+def report_text(run: dict, rows: list, next_up: list | None = None) -> str:
+    """The pipeline report: Run, Pipeline at a glance, Needs attention (this run's steps, then what to do next:
+    next_up, the project's status as Markdown lines)."""
     lines = [f"# Pipeline run {run['run_id']}", "",
              "## Run", "", "| | |", "|---|---|",
              f"| Started | {run['started']} |", f"| Finished | {run['finished']} |",
@@ -192,7 +183,10 @@ def report_text(run: dict, rows: list) -> str:
         elif r["warnings"]:
             attention.append(f"- **{r['step']}** has {r['warnings']} warning(s){report}: each is explained, with what "
                              f"to do, in its guide (`{r['step']}/{r['step']}.md`, section *Checks and warnings*).")
-    lines += attention or ["Nothing."]
+    lines += attention or ["Nothing from this run's steps."]
+    if next_up is not None:
+        lines += ["", "### What to do next", "", "Where the project stands now (also `py run_pipeline.py --status`):",
+                  ""] + next_up
     return "\n".join(lines) + "\n"
 
 
@@ -203,7 +197,15 @@ def main(argv=None) -> int:
     p.add_argument("--only", help="run just this step, whatever the gates say")
     p.add_argument("--confirm_paid_calls", choices=["true", "false"],
                    help="passed to every step that pays (040-070); false for runs with nobody at the keyboard")
+    p.add_argument("--status", action="store_true",
+                   help="where the project stands, and what to do next; runs nothing and pays nothing")
     args = p.parse_args(argv)
+    if args.status:
+        if args.start or args.to or args.only or args.confirm_paid_calls:
+            sys.exit("--status runs nothing, so it can't be combined with --from, --to, --only, or "
+                     "--confirm_paid_calls: give it alone, `py run_pipeline.py --status`.")
+        print(project.status_text(project.project_status()))
+        return 0
     steps = chosen_steps(args)
 
     started = dt.datetime.now().astimezone()
@@ -241,9 +243,20 @@ def main(argv=None) -> int:
            "requested": " ".join(a for a in (f"--from {args.start}" if args.start else "", f"--to {args.to}" if args.to else "",
                                             f"--only {args.only}" if args.only else "") if a) or "all",
            "confirm": args.confirm_paid_calls, "log": log_path}
-    report_path.write_text(report_text(run, rows), encoding="utf-8")
+    try:
+        st = project.project_status()
+        next_up = project.status_markdown(st, docs_prefix="../../")
+        counts = {level: sum(i["level"] == level for i in st["items"]) for level in (project.TO_DO, project.LOOK)}
+        summary = (f"what to do next: {counts[project.TO_DO]} to do, {counts[project.LOOK]} worth a look "
+                   f"(the report's *What to do next*, or `py run_pipeline.py --status`)")
+    except Exception as e:                                 # the status never costs the run its report
+        next_up = [f"The project's status couldn't be worked out ({type(e).__name__}: {e}); "
+                   f"`py run_pipeline.py --status` shows the error in full."]
+        summary = f"the project's status couldn't be worked out ({type(e).__name__}: {e})"
+    report_path.write_text(report_text(run, rows, next_up), encoding="utf-8")
     shown = report_path.relative_to(ROOT).as_posix() if report_path.is_relative_to(ROOT) else report_path
     say(f"pipeline report: {shown}")
+    say(summary)
     bad = next((r for r in rows if r["status"] in ("failed", "stopped", "interrupted")), None)
     return 0 if bad is None else (bad["exit_code"] or 1)
 

@@ -185,7 +185,8 @@ Each metric below is also read out in sentences, with each run's own counts, in 
 | **run** | One execution of one step. Its **run id** (e.g. `040_induce_schema_2026-09-28_1811`) names its report and its log. |
 | **report** | The page a run writes for people (`outputs/reports/<run id>.md`): what it read and wrote, its numbers, its warnings. |
 | **log** | The line-by-line record of a run (`outputs/logs/<run id>.log`). |
-| **To do section** | The section *To do* of a step's guide (`<step>/<step>.md`) that says what a person running the step must do, before and after running it. Not a list of changes to the pipeline: those are in the improvements list. |
+| **upkeep** | Everything a person does to keep the project going (annotating, checking the translation table, reviewing partial pairs, committing, …), grouped by when it comes up: [`upkeep.md`](upkeep.md). `py run_pipeline.py --status` and the annotation tool's home page list what is waiting now, each item with its section there. Not a list of changes to the pipeline: those are in the improvements list. |
+| **To do section** | The section *To do* of a step's guide (`<step>/<step>.md`): what a person does for that step, in short, with links to the upkeep's sections. |
 | **improvements list** | The changes to make to the pipeline itself, each with why and where the idea came from: [`improvements.md`](improvements.md). |
 | **manifest** | The file a step's output folder gets when a run finishes (`_manifest.json`): which files went in and came out, each with its hash. |
 | **fingerprint** | A short code computed from exact content: a file, a prompt, a set of settings. The same content always gives the same fingerprint, and any change gives a different one. Used to tell whether an input or a cached model answer still matches (technically a SHA-256 hash). |

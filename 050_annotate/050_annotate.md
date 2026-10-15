@@ -12,28 +12,11 @@ Each run also checks your ground truth files for [errors](../docs/terminology.md
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
-
-### This step
-
-#### Before running
-
-- **Before the real [runs](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** the strongest one the service lets you use, and from a different maker than extraction's (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-- **Draft and correct batches in [pool](../docs/terminology.md#4-ground-truth-and-samples) order, without skipping:** a [record](../docs/terminology.md#1-records-and-their-text) after a gap falls out of the [fair sample](../docs/terminology.md#4-ground-truth-and-samples), the only records evaluation evaluates.
-
-#### Before running again
-
-Each run drafts the next batch. Before drafting another, finish the last one:
-
-- **Correct every [draft batch](../docs/terminology.md#4-ground-truth-and-samples)** with `py helpers/annotate.py`, following the annotation guidelines (`annotations/guidelines.md`): read each record's [text](../docs/terminology.md#1-records-and-their-text) first, then fix, delete, or add rows until every [fact](../docs/terminology.md#2-triples) it states is there, and tick *All facts extracted*. The tool saves your corrections to `annotations/ground_truth/batch_<NNN>.csv`; never correct the draft itself (`outputs/intermediate_results/050_annotate/drafted_triples_batch<N>.csv`): it can be deleted and rebuilt. Commit each corrected batch.
-- **Add what the draft missed**, above all. Accepting a wrong row is easy (reading the text first, then the rows, limits it); a fact the model missed is unlikely to be added by hand, and if extraction misses it too, nothing counts it as missed: [recall](../docs/terminology.md#7-evaluating-extraction-step-070) comes out higher than it should.
-- **Annotate tuning and held-out records the same way.** The tool shows each record's part; it matters only for [component classes](../docs/terminology.md#3-schemas) you'd add to the [schema](../docs/terminology.md#3-schemas) (see extraction's *To do*).
-- **When you coin an [entity class](../docs/terminology.md#3-schemas) or [predicate](../docs/terminology.md#3-schemas)**, add it with a one-line definition to the [ground truth schema](../docs/terminology.md#3-schemas) (`annotations/ground_truth_schema.txt`): in the tool, press the button under its [flag](../docs/terminology.md#2-triples). Until then the next drafts reuse it, but the model sees it without a definition, the tool marks it as an error (✖; it could be a typo), and step 070 stops while a [finished record](../docs/terminology.md#4-ground-truth-and-samples) uses it; the tool's page and this [step](../docs/terminology.md#8-the-pipeline)'s [report](../docs/terminology.md#8-the-pipeline) list every such component class.
-- **Fix the [errors](../docs/terminology.md#2-triples) and problems** the tool and this step's report point out in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) (`annotations/ground_truth/`).
-- **To rename a component class of the ground truth schema, merge two that mean the same thing, or change a definition**, use `py helpers/annotate.py`, **Help → Ground truth schema**, then **Edit definitions, rename, or merge…** (`annotations/README.md`, *The ground truth schema*): it changes every file at once, after showing you what it would change. Then commit the changed files. Everything else the tool can and can't do: `annotations/README.md`, *What the tool can do* and *What the tool can't do*.
-
+- Choose the model before the real runs ([*Before the first run*](../docs/upkeep.md#before-the-first-run)).
+- Correct each [draft batch](../docs/terminology.md#4-ground-truth-and-samples) in the annotation tool, in pool order, adding what the draft missed ([*After step 050 drafts a batch*](../docs/upkeep.md#after-step-050-drafts-a-batch)); 050 drafts the next batch only once the last one is done.
+- Add each [entity class](../docs/terminology.md#3-schemas) or predicate you coin to the [ground truth schema](../docs/terminology.md#3-schemas), and fix every ✖ ([*While annotating*](../docs/upkeep.md#while-annotating)).
 ## Inputs
 
 | Input | Default | Contents |
@@ -191,14 +174,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *ids names the file …, which doesn't exist* | A typo in the file name. | Fix the file name. |
 | *missing input files, so the step can't run: … (run `py 020_clean/run.py` or `py 030_split/run.py` first, or give another file with --records / --splits)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A setting is out of range: `records_per_batch` or `workers` under 1, `start_position` under 0, or `max_chars` under 1,000. | Fix the setting. |
-| *The setting model is empty, so no model can be called* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
-| *The setting service is …, which isn't a service the pipeline can reach* | The `service` setting is neither `litellm` nor `asksage`. | Give `--service litellm` or `--service asksage`. |
-| *Test call to … failed* | The service refuses you that model, the key is wrong, or the service can't be reached. Nothing else was called. | If the service says the model isn't allowed, choose another (`--model`; `py helpers/models.py --service <service> --try <name> ...` tells which you may use). Otherwise check `.env` and the network. |
-| *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
-| *Stopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. Answers already received are kept in the cache; nothing else was written.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
-| *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set, so no model can be called* (or one of them isn't) | The Ask Sage credentials aren't in `.env`, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | LiteLLM's key isn't in `.env` (with `service` `litellm`, the default). | Put `LITELLM_API_KEY=<your key>` in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | `--service litellm`, but the LiteLLM key isn't in `.env`. | Put it in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
+| *The setting model is empty …*, *The setting service is …*, *Test call to … failed*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
 
 ## Audit trail
 

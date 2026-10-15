@@ -1,6 +1,6 @@
 # Improvements list
 
-The changes to make to the pipeline itself: what to change, why, and where the idea came from. Not to be confused with a step guide's *To do*, which says what a person running that step must do. An item that is done is deleted here, and the commit that does it says so. Measured results that an item rests on are in [`findings.md`](findings.md).
+The changes to make to the pipeline itself: what to change, why, and where the idea came from. Not to be confused with the upkeep (`upkeep.md`): what a person running the pipeline does, and when. An item that is done is deleted here, and the commit that does it says so. Measured results that an item rests on are in [`findings.md`](findings.md).
 
 ## The whole pipeline
 

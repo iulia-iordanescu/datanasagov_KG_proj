@@ -10,28 +10,10 @@ The schema is 040's [induced schema](../docs/terminology.md#5-learning-the-schem
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
-
-### This step
-
-#### Before running
-
-- **Before the real [runs](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** from a different maker than annotation's, so the two don't share blind spots; for the run over every [record](../docs/terminology.md#1-records-and-their-text), the cheapest whose metrics are within the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) of the best (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-
-#### Before running again
-
-Each run extracts the finished [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records. Before the next run:
-
-- **Rerun it after finishing more ground truth records:** by default it extracts only the finished ones, and evaluation can evaluate only what it extracted.
-- **Read the [report](../docs/terminology.md#8-the-pipeline)'s table *[Component classes](../docs/terminology.md#3-schemas) outside the [schema](../docs/terminology.md#3-schemas)*** (`outputs/reports/060_extract_<date>_<time>.md`): [entity classes](../docs/terminology.md#3-schemas) and [predicates](../docs/terminology.md#3-schemas) the model used that the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) doesn't have, from tuning records and records outside the ground truth only (never held-out ones). For one that keeps coming back and names a real kind of thing or relation, add it to `annotations/schema_additions.txt` (easiest: `py helpers/annotate.py`, *Schema additions*, where each listed component class has an *Add* button) with a one-line definition and the `source:` line the table gives (e.g. `source: ground truth tuning #0, #12`). Every component class listed is fair to add.
-- **Give every addition in `annotations/schema_additions.txt` a `source:` line.** A component class learned from the ground truth must come from tuning records only, named by [pool](../docs/terminology.md#4-ground-truth-and-samples) position (`source: ground truth tuning #12`); the [step](../docs/terminology.md#8-the-pipeline) leaves out any other.
-
-#### After running
-
-- **Now and then, read the removed [classed triples](../docs/terminology.md#2-triples)** (`outputs/intermediate_results/060_extract/extracted_triples_removed.csv`, each with its reason). A rule that removes good [facts](../docs/terminology.md#2-triples) is a sign the schema, or the prompt, needs work.
-
+- Choose the model before the real runs ([*Before the first run*](../docs/upkeep.md#before-the-first-run)).
+- Run it again after finishing more [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records, and consider the [entity classes](../docs/terminology.md#3-schemas) and predicates it used outside its schema for the [schema additions](../docs/terminology.md#3-schemas), from tuning records only ([*After step 060*](../docs/upkeep.md#after-step-060)).
 ## Inputs
 
 | Input | Default | Contents |
@@ -250,14 +232,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *extract_from must be one of ground_truth, all* | A typo in the [setting](../docs/terminology.md#8-the-pipeline). | Use `ground_truth` or `all`. |
 | *Nothing to extract: none of the records chosen can be extracted from …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
-| *The setting model is empty, so no model can be called* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
-| *The setting service is …, which isn't a service the pipeline can reach* | The `service` setting is neither `litellm` nor `asksage`. | Give `--service litellm` or `--service asksage`. |
-| *Test call to … failed* | The service refuses you that model, the key is wrong, or the service can't be reached. Nothing else was called. | If the service says the model isn't allowed, choose another (`--model`; `py helpers/models.py --service <service> --try <name> ...` tells which you may use). Otherwise check `.env` and the network. |
-| *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
-| *Stopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. Answers already received are kept in the cache; nothing else was written.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
-| *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set, so no model can be called* (or one of them isn't) | The Ask Sage credentials aren't in `.env`, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | LiteLLM's key isn't in `.env` (with `service` `litellm`, the default). | Put `LITELLM_API_KEY=<your key>` in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | `--service litellm`, but the LiteLLM key isn't in `.env`. | Put it in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
+| *The setting model is empty …*, *The setting service is …*, *Test call to … failed*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
 
 ## Audit trail
 

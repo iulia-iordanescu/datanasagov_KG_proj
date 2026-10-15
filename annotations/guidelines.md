@@ -6,7 +6,7 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 
 ## Before you start
 
-- **Work in pool order, without skipping.** [Draft batches](../docs/terminology.md#4-ground-truth-and-samples) with `py 050_annotate/run.py` and correct them in the order of the pool: a record after a gap isn't evaluated until the records before it are done (`050_annotate/050_annotate.md`, *To do*).
+- **Work in pool order, without skipping.** [Draft batches](../docs/terminology.md#4-ground-truth-and-samples) with `py 050_annotate/run.py` and correct them in the order of the pool: a record after a gap isn't evaluated until the records before it are done (`docs/upkeep.md`, *After step 050 drafts a batch*).
 - **Read the record's text first, then its ground truth triples.** The draft was written by a model: reading the text first makes it easier to see what the draft got wrong, and above all what it missed.
 - **Annotate tuning records and held-out records the same way.** The tool shows each record's part; it changes nothing about how you annotate.
 

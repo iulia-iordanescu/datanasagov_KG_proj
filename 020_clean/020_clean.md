@@ -15,16 +15,9 @@ Apart from records with no id and later copies of a repeated id, every record is
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
-
-### This step
-
-#### After running
-
-- Nothing else: the [step](../docs/terminology.md#8-the-pipeline) runs on its own.
-
+- Nothing beyond what every step needs: read its report's Warnings ([*Running the steps again*](../docs/upkeep.md#running-the-steps-again)).
 ## Inputs
 
 | Input | Default | Contents |

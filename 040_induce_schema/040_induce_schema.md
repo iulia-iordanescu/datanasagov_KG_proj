@@ -14,21 +14,10 @@ A [model](../docs/terminology.md#8-the-pipeline) reads a sample of texts and lis
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
-
-### This step
-
-#### Before running
-
-- **Before the real [run](../docs/terminology.md#8-the-pipeline), choose the [model](../docs/terminology.md#8-the-pipeline):** the strongest one the service lets you use (`docs/running_on_nasa_laptop.md`, *Choosing a model*).
-
-#### After running
-
-- **Review the merges** listed in the [report](../docs/terminology.md#8-the-pipeline) (`outputs/reports/040_induce_schema_<date>_<time>.md`, section *Triple instances and labels*), and the [spelling folds](../docs/terminology.md#3-schemas) in `outputs/intermediate_results/040_induce_schema/induction_evidence.json` (under `spelling_folds`). A wrong merge (two different ideas made one) is the one mistake code can't catch: it just looks like a single [entity class](../docs/terminology.md#3-schemas) with high [support](../docs/terminology.md#5-learning-the-schema-step-040).
-- **Read the report's *Saturation*** (section *Results*): whether more texts would have added schema entries (see *Saturation*, below). If the last 25 texts still added several, the sample may be too small for its maintainers; if many schema entries come from one maintainer only, it may read too few maintainers. Either is a change to test against this run (`helpers/compare_runs.md`), not to make on sight.
-
+- Choose the model before the real run ([*Before the first run*](../docs/upkeep.md#before-the-first-run)).
+- After running, review the merges and read *Saturation* in the report ([*Running the steps again*](../docs/upkeep.md#running-the-steps-again)).
 ## Inputs
 
 | Input | Default | Contents |
@@ -188,14 +177,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *missing input files, so the step can't run:*, then one line per missing file, e.g. *records: … (run `py 020_clean/run.py` first, or give another file with --records)*, or *ground_truth_schema: … (give the file with --ground_truth_schema)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A [setting](../docs/terminology.md#8-the-pipeline) is out of range: `induction_maintainers`, `texts_per_maintainer`, `min_support` or `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
 | *Induction candidate … is not in 020's records (…): … and the records are out of step* | 020 was rerun on a different [harvest](../docs/terminology.md#1-records-and-their-text) after 030 wrote `splits.json`. | Delete 030's `splits.json`, then run `py 030_split/run.py` (it writes the file only once), then run `py 040_induce_schema/run.py` again. |
-| *The setting model is empty, so no model can be called* | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
-| *The setting service is …, which isn't a service the pipeline can reach* | The `service` setting is neither `litellm` nor `asksage`. | Give `--service litellm` or `--service asksage`. |
-| *Test call to … failed* | The service refuses you that model, the key is wrong, or the service can't be reached. Nothing else was called. | If the service says the model isn't allowed, choose another (`--model`; `py helpers/models.py --service <service> --try <name> ...` tells which you may use). Otherwise check `.env` and the network. |
-| *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
-| *Stopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. Answers already received are kept in the cache; nothing else was written.* | You pressed Ctrl+C while the model calls ran. | Run the step again: the answers already received are reused, not paid for again. |
-| *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set, so no model can be called* (or one of them isn't) | The Ask Sage credentials aren't in `.env`, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | LiteLLM's key isn't in `.env` (with `service` `litellm`, the default). | Put `LITELLM_API_KEY=<your key>` in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | `--service litellm`, but the LiteLLM key isn't in `.env`. | Put it in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
+| *The setting model is empty …*, *The setting service is …*, *Test call to … failed*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
 
 ## Audit trail
 

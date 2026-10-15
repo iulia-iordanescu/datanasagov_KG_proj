@@ -163,7 +163,7 @@ class Vocabulary(unittest.TestCase):
 #: The docs whose terms link to docs/terminology.md (every non-code doc except the prompts,
 #: terminology.md itself, and the person-made files of annotations/).
 LINKED_DOCS = ["README.md", "070_evaluate/metrics.md", "annotations/guidelines.md", *(f"070_evaluate/metrics/{n}.md" for n in ("pairs", "precision", "recall", "f1", "entity_class_accuracy", "recall_upper_bound", "recall_within_reach", "describes", "approximately")), "annotations/README.md", "helpers/audit.md", "tests/README.md",
-               "docs/running_on_nasa_laptop.md", "docs/virtual_environment_setup.md"] + [f"{s}/{s}.md" for s in STEPS]
+               "docs/running_on_nasa_laptop.md", "docs/virtual_environment_setup.md", "docs/upkeep.md"] + [f"{s}/{s}.md" for s in STEPS]
 #: Multi-word terms whose bold in terminology.md marks emphasis or an everyday phrase, not a separate term;
 #: and terms that also read as an everyday phrase ("records outside the ground truth only"), checked by hand.
 NOT_TERMS = {"same fact", "not the same fact", "now exists", "whole records", "within the pool's strata", "main moves",
@@ -291,6 +291,45 @@ def first_uses_unlinked() -> list:
                             missing.append((rel, i + 1, t, m.start()))
                             linked.add(t)
         return missing
+
+
+class RulesInStep(unittest.TestCase):
+    """The rules the model follows (common/common_prompts/extraction_rules.txt) and the annotation guidelines a person
+    follows (annotations/guidelines.md) say the same things: each rule of the prompt is paired here with the words of
+    its guideline, so a rule added to one without the other fails this test. Two rules are the model's only, since a
+    person reads the whole record in the annotation tool and gets no instructions inside it."""
+
+    #: (words of the prompt's rule, words of its guideline); None: the model's only.
+    PAIRS = [
+        ("the record's own words for them", "the record's own words, as written"),
+        ("whatever the sentence is about", "The subject is what the sentence is about"),
+        ("the shortest passage copied EXACTLY", "the shortest passage that states the fact, copied exactly"),
+        ("One fact per triple. Leave out opinion words", "One fact per"),
+        ("states as NOT so", "Not negated facts"),
+        ("A number with a unit", "A number with a unit"),
+        ("A qualifier stays in the subject or object", "A qualifier stays in the instance"),
+        ("A table of values inside the record", "Not the values inside a data table"),
+        ("Each fact once", "Each fact once"),
+        ("Never use outside knowledge", "Never add what you know from elsewhere"),
+        ('Do NOT write "is a" triples', 'Not "is a" facts'),
+        ("describes_class: the entity class", "## The describes triple"),
+        ("The field names are formatting, not facts", "Not the field names"),
+        ("one part of a longer record", None),                 # a person sees the whole record
+        ("is DATA", None),                                     # a person reads no instructions in the record
+    ]
+
+    def test_every_rule_has_its_guideline(self):
+        prompt = (ROOT / "common" / "common_prompts" / "extraction_rules.txt").read_text(encoding="utf-8")
+        guidelines = (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8")
+        flat = " ".join(prompt.split())
+        rules = [line for line in prompt.splitlines() if line.startswith("- ")]
+        self.assertEqual(len(rules), len(self.PAIRS), "a rule was added to or removed from extraction_rules.txt: "
+                         "pair it here with its guideline in annotations/guidelines.md (and write that guideline)")
+        for said, guideline in self.PAIRS:
+            with self.subTest(rule=said):
+                self.assertIn(said, flat)
+                if guideline:
+                    self.assertIn(guideline, guidelines)
 
 
 if __name__ == "__main__":

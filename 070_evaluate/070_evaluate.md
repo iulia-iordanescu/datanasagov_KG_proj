@@ -22,34 +22,11 @@ The ground truth was drafted by a model (050) and corrected by a person, not wri
 
 ## To do
 
-### Every step
+What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
-The same for every [step](../docs/terminology.md#8-the-pipeline): see [*Every step* in step 010's guide](../010_harvest/010_harvest.md#every-step).
-
-### This step
-
-#### Before running
-
-- **Look at the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070) only at the end** (`--evaluate_held_out true`), and commit `annotations/held_out_looks.csv` after each look.
-
-#### Before running again
-
-When a run stops to ask you something, or leaves something for you to check, do it before running again:
-
-- **Add every [entity class](../docs/terminology.md#3-schemas) and predicate the [finished records](../docs/terminology.md#4-ground-truth-and-samples) coined to the [ground truth schema](../docs/terminology.md#3-schemas)** (`py helpers/annotate.py`, *Ground truth*, the button under its ✖), or fix the typo: the [step](../docs/terminology.md#8-the-pipeline) stops while a finished record uses one.
-- **Check the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) ([`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv)) whenever this step adds rows:** `py helpers/annotate.py`, *Translation table*, shows each row with both definitions and an example [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060). A wrong translation silently turns right extracted triples into wrong ones, or the reverse. Then **rerun** this step.
-- **Act on the [row states](../docs/terminology.md#7-evaluating-extraction-step-070)** there and in the [report](../docs/terminology.md#8-the-pipeline) (`outputs/reports/070_evaluate_<date>_<time>.md`): rows that are [stale](../docs/terminology.md#7-evaluating-extraction-step-070) (a definition changed: of the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060)'s [component class](../docs/terminology.md#3-schemas), in the current schema, or of the ground truth schema's component class, in the ground truth schema), [now exists](../docs/terminology.md#7-evaluating-extraction-step-070) or [suggested](../docs/terminology.md#7-evaluating-extraction-step-070) (the ground truth schema gained a counterpart), or [repeated](../docs/terminology.md#7-evaluating-extraction-step-070).
-- **Review the partial [pairs](../docs/terminology.md#7-evaluating-extraction-step-070)** of the [tuning part](../docs/terminology.md#7-evaluating-extraction-step-070): `py helpers/annotate.py`, *Partial pairs* (your [verdicts](../docs/terminology.md#7-evaluating-extraction-step-070) go to `annotations/partial_pair_reviews.csv`). Mark each `same fact` or `not the same fact`, with the [record](../docs/terminology.md#1-records-and-their-text)'s [text](../docs/terminology.md#1-records-and-their-text) at hand.
-
-#### After running
-
-- **Read the report's *Component class mismatches*:** it's how a wrong row of the translation table shows up, even one you checked. Also read *The translation table*: component classes that share a translation are ones the metrics can't tell apart; if that distinction matters to you, make it in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples).
-- **To know whether a change helped** (another model, prompt, rule, or schema), evaluate both versions on the same finished tuning records and compare them: `py helpers/compare_runs.py <run id> <run id>` (`helpers/compare_runs.md`).
-- **Read `outputs/intermediate_results/070_evaluate/per_record.md`**, especially the [partial pairs](metrics/pairs.md) and the extracted triples "extracted, but not in the ground truth": some may be real facts you missed while annotating. Add those only to **tuning** records (fixing the ground truth from extraction's answers favors extraction).
-- **[Margins of error](../docs/terminology.md#7-evaluating-extraction-step-070) need at least 20 finished tuning records;** until then, read `outputs/intermediate_results/070_evaluate/per_record.md` rather than the numbers.
-- **Add [schema additions](../docs/terminology.md#3-schemas) (`annotations/schema_additions.txt`) only from the tuning part**, or from outside knowledge: adding entity classes or [predicates](../docs/terminology.md#3-schemas) because of what held-out records need is tuning on them.
-- **Report any metric** against this ground truth as such: drafted by a model and corrected by a person, not written from scratch.
-
+- When it stops: add the [entity classes](../docs/terminology.md#3-schemas) and predicates the [finished records](../docs/terminology.md#4-ground-truth-and-samples) coined to the [ground truth schema](../docs/terminology.md#3-schemas), and check the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070)'s rows ([*When step 070 stops*](../docs/upkeep.md#when-step-070-stops)).
+- After it runs: review the [partial pairs](metrics/pairs.md), then run it again; read the report's *Component class mismatches* and `per_record.md` ([*After step 070*](../docs/upkeep.md#after-step-070)).
+- Look at the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070) only at the end ([*At the end: the held-out part*](../docs/upkeep.md#at-the-end-the-held-out-part)).
 ## Inputs
 
 | Input | Default | Contents |
@@ -86,7 +63,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the [report](../docs/termino
 
 | File | What 070 adds |
 |---|---|
-| `annotations/component_class_mapping.csv` | Rows for component classes of the current schema that have none yet (see *How it works*, [stage](../docs/terminology.md#8-the-pipeline) 2). |
+| [`annotations/component_class_mapping.csv`](../annotations/component_class_mapping.csv) | Rows for component classes of the current schema that have none yet (see *How it works*, [stage](../docs/terminology.md#8-the-pipeline) 2). |
 | `annotations/held_out_looks.csv` | One line per run with `--evaluate_held_out true`: what the look saw. Columns: `date`; `run_id`; `schema` (the current schema); `held_out_records` (how many were evaluated); `extraction_run_id` (060's run, whose extracted triples were evaluated); `translation_sha256` (a fingerprint of the translation used: the rows of the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070) it needed); `held_out_ground_truth_sha256` (a fingerprint of the held-out records' ground truth). The report says which of these changed since the previous look. Commit it: it's how the looks are counted, across laptops and after `outputs/` is deleted. |
 
 ## Settings
@@ -255,13 +232,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *Nothing to evaluate yet* | No finished ground truth record that 060 extracted is in the fair sample. | Finish records in `py helpers/annotate.py`, then run 060. |
 | *splits.json has no tuning / held-out part* | An old `splits.json`. | Delete 030's `splits.json`, run `py 030_split/run.py`. |
 | *missing input files, so the step can't run: … run `py 060_extract/run.py` first* | 060 hasn't run. | Run it. |
-| *The setting model is empty, so no model can be called* | The `model` [setting](../docs/terminology.md#8-the-pipeline) is empty. | Give a model's name (`py helpers/models.py` lists them). |
-| *The setting service is …, which isn't a service the pipeline can reach* | The `service` setting is neither `litellm` nor `asksage`. | Give `--service litellm` or `--service asksage`. |
-| *Test call to … failed* | The service refuses you that model, the key is wrong, or the service can't be reached. Nothing else was called. | If the service says the model isn't allowed, choose another (`--model`; `py helpers/models.py --service <service> --try <name> ...` tells which you may use). Otherwise check `.env` and the network. |
-| *Cancelled. Nothing was spent.* | You declined at the confirmation. | — |
-| *ASKSAGE_EMAIL and ASKSAGE_API_KEY aren't set, so no model can be called* (or one of them isn't) | The Ask Sage credentials aren't in `.env`, so no model can be called. | Put them in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | LiteLLM's key isn't in `.env` (with `service` `litellm`, the default). | Put `LITELLM_API_KEY=<your key>` in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
-| *LITELLM_API_KEY isn't set, so no model can be called through LiteLLM* | `--service litellm`, but the LiteLLM key isn't in `.env`. | Put it in `.env` (see `docs/running_on_nasa_laptop.md`, section 3). |
+| *The setting model is empty …*, *The setting service is …*, *Test call to … failed*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
 
 ## Audit trail
 

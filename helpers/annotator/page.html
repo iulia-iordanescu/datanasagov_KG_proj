@@ -289,6 +289,13 @@
   .recnav .titleblock { flex: 0 1 auto; }
   button.bigarrow { padding: 8px 12px; border-radius: 10px; align-self: center; }
   button.bigarrow .arrow svg { width: 22px; height: 22px; }
+  .viewbox p.now { flex: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .nextup { margin: 4px 0 14px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  .nextup h3 { margin: 0 0 6px; color: var(--navy); }
+  .nextup h4 { margin: 10px 0 4px; }
+  .nextup ol { margin: 0; padding-left: 22px; }
+  .nextup li { margin: 4px 0; line-height: 1.5; }
+  .nextup li .doclink { white-space: nowrap; }
   .signature { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
   .signature a { color: var(--navy); }
   .listblock .meta { font-size: 12px; line-height: 1.3; }
@@ -999,7 +1006,8 @@ async function showHome() {
   chrome("home");
   const next = nextBatch();
   const box = (title, what, open, extra) => el("div", { class: "viewbox" },
-    el("h3", {}, title), el("p", {}, what), el("div", { class: "bar" }, extra || null,
+    el("h3", {}, title), el("p", {}, what), el("p", { class: "now", "data-area": title }, "Checking what it needs…"),
+    el("div", { class: "bar" }, extra || null,
       open ? el("button", { onclick: () => open().catch(fail) }, `Open ${title}`) : null));
   $("record").replaceChildren(el("section", { class: "card home" },
     el("h2", {}, "Annotation tool"),
@@ -1022,10 +1030,44 @@ async function showHome() {
           "truth triple that only partly match) whether the two state the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates, and patterns to add to the schema step 060 extracts with.",
           () => openAdditions())),
+    el("section", { id: "nextup", class: "nextup" }, el("h3", {}, "What to do next"),
+       el("p", { class: "meta" }, "Working it out from the files…")),
     el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch. " +
        "In any of the above views, check its Help dropdown menu for useful information."),
     el("p", { class: "signature" }, "Made by Iulia Iordanescu · ",
        el("a", { href: "mailto:iulia.m.iordanescu@gmail.com" }, "iulia.m.iordanescu@gmail.com"))));
+  drawNextUp();                                                     // filled in when the status is worked out
+}
+
+// What to do next, from the project's status (common/common_helpers/status.py, the same list as
+// `py run_pipeline.py --status`): each view's box gets its own count, and the list goes under the boxes, each item
+// with the section of docs/upkeep.md that explains it.
+async function drawNextUp() {
+  let st;
+  try { st = await api("/api/status"); } catch (e) {
+    const box = $("nextup");
+    if (box) box.replaceChildren(el("h3", {}, "What to do next"), el("p", { class: "empty" }, `Couldn't work it out: ${e.message}`));
+    return;
+  }
+  if (!$("nextup")) return;                                         // the home page was left meanwhile
+  for (const p of document.querySelectorAll(".viewbox .now")) {
+    const mine = st.items.filter((i) => i.area === p.dataset.area);
+    const todo = mine.filter((i) => i.level === "to do").length, look = mine.length - todo;
+    p.replaceChildren(...(mine.length
+      ? [todo ? el("span", { class: "pill error" }, `✖ ${todo} to do`) : null,
+         look ? el("span", { class: "pill flag" }, `⚑ ${look} worth a look`) : null].filter((x) => x !== null)
+      : [el("span", { class: "pill ok" }, "nothing needed now")]));
+  }
+  const item = (i) => el("li", { class: i.level === "to do" ? "todo" : "look" },
+    el("span", { class: "kind" }, i.area), " ", i.text.replace(/`/g, ""), " ",   // code-like words get their font anyway
+    el("span", { class: "ref doclink", "data-doc": i.doc.split("#")[0], "data-anchor": i.doc.split("#")[1] || "" },
+       "Why, and how"));
+  const todo = st.items.filter((i) => i.level === "to do"), look = st.items.filter((i) => i.level !== "to do");
+  $("nextup").replaceChildren(...[el("h3", {}, "What to do next"),   // replaceChildren would write a null as "null"
+    st.items.length ? null : el("p", { class: "empty" }, "Nothing: every step is up to date, and nothing waits for you."),
+    todo.length ? el("h4", {}, "✖ To do") : null, todo.length ? el("ol", {}, todo.map(item)) : null,
+    look.length ? el("h4", {}, "⚑ Worth a look") : null, look.length ? el("ol", {}, look.map(item)) : null,
+    el("p", { class: "meta" }, `As of ${st.when}; the same list as py run_pipeline.py --status.`)].filter((x) => x !== null));
 }
 
 function drawGaps(g) {
@@ -1584,14 +1626,15 @@ function termOf(words) {                 // "classes" -> "class": a link's words
 function linkHtml(words, target, base) {
   const esc = (s) => s.replace(/"/g, "&quot;");
   if (/^https?:/.test(target)) return `<a href="${esc(target)}" target="_blank" rel="noopener">${words}</a>`;
-  const [file] = target.split("#");
+  const [file, anchor] = target.split("#");
   const path = file ? joinPath(base || "", file) : base;
+  const at = anchor ? ` data-anchor="${esc(anchor)}"` : "";
   if (/(^|\/)terminology\.md$/.test(path || "")) {
     const term = termOf(words);
     const tip = term ? `${term}: ${TERMS[term]}` : "a term of docs/terminology.md";
-    return `<span class="ref term" data-doc="${esc(path)}" title="${esc(tip)}">${words}</span>`;
+    return `<span class="ref term" data-doc="${esc(path)}"${at} title="${esc(tip)}">${words}</span>`;
   }
-  if (/\.md$/.test(path || "")) return `<span class="ref doclink" data-doc="${esc(path)}" title="Open ${esc(path)}">${words}</span>`;
+  if (/\.md$/.test(path || "")) return `<span class="ref doclink" data-doc="${esc(path)}"${at} title="Open ${esc(path)}">${words}</span>`;
   return `<span class="ref" title="${esc(path || target)}">${words}</span>`;
 }
 
@@ -1600,6 +1643,13 @@ function inline(text, base) {            // [links](…), `code`, **bold**, *nam
   return esc.replace(/\[([^\[\]]+)\]\(([^()\s]+)\)/g, (m, words, target) => linkHtml(words, target, base))
             .replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
             .replace(/\*([^*]+)\*/g, '<span class="name">$1</span>');
+}
+
+// A heading's anchor, as GitHub makes it: lowercased, punctuation dropped, each space a hyphen ("3. Schemas" ->
+// "3-schemas"), so a link's #section finds its heading here too.
+function slug(text) {
+  return text.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[`*]/g, "").toLowerCase()
+             .replace(/[^\p{L}\p{N} _-]/gu, "").replace(/ /g, "-");
 }
 
 function markdown(md, base) {            // headings, paragraphs, lists, code blocks: enough for the README and guidelines
@@ -1617,8 +1667,8 @@ function markdown(md, base) {            // headings, paragraphs, lists, code bl
       list.push(`<li>${inline(item[2], base)}</li>`); continue;
     }
     if (list) { out.push(ordered ? `<ol>${list.join("")}</ol>` : `<ul>${list.join("")}</ul>`); list = null; }
-    const head = line.match(/^(#{1,3})\s+(.*)$/);
-    if (head) out.push(`<h3>${inline(head[2], base)}</h3>`);
+    const head = line.match(/^(#{1,4})\s+(.*)$/);
+    if (head) out.push(`<h3 id="${slug(head[2])}">${inline(head[2], base)}</h3>`);
     else if (line.trim()) out.push(`<p>${inline(line, base)}</p>`);
   }
   if (list) out.push(ordered ? `<ol>${list.join("")}</ol>` : `<ul>${list.join("")}</ul>`);
@@ -1627,7 +1677,7 @@ function markdown(md, base) {            // headings, paragraphs, lists, code bl
 
 // ---------------------------------------------------------------- help
 // The section of annotations/README.md about the view you're on (Help → How to use this view), or another document.
-async function showHelp(path) {            // the README's section for this view, or another document (Guidelines)
+async function showHelp(path, anchor) {    // the README's section for this view, or another document, at a section
   try {
     const h = await api(path || `/api/help?view=${currentView()}`);
     const body = el("div", { class: "helpbody" });
@@ -1638,6 +1688,8 @@ async function showHelp(path) {            // the README's section for this view
         el("button", { style: "margin-left:auto", onclick: hideHelp }, "Close")),
       body));
     $("help").hidden = false;
+    const target = anchor && body.querySelector(`[id="${CSS.escape(anchor)}"]`);
+    if (target) target.scrollIntoView({ block: "start" });
   } catch (e) { fail(e); }
 }
 function hideHelp() { $("help").hidden = true; }
@@ -1705,7 +1757,7 @@ document.addEventListener("keydown", (e) => {
 // A followed link opens its document in the help window (a term: docs/terminology.md).
 document.addEventListener("click", (e) => {
   const link = e.target.closest && e.target.closest("[data-doc]");
-  if (link) showHelp(`/api/doc?path=${encodeURIComponent(link.dataset.doc)}`);
+  if (link) showHelp(`/api/doc?path=${encodeURIComponent(link.dataset.doc)}`, link.dataset.anchor);
 });
 
 loadBatches().catch(fail);

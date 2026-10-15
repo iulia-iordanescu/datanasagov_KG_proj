@@ -130,6 +130,10 @@ class A_Paths(unittest.TestCase):
         self.assertIn("### What the tool can do", batch)
         self.assertIn("### What the tool can't do", batch)
         self.assertIn('id="intro"', page)
+        st = get("/api/status")                                                    # the home page's What to do next
+        self.assertEqual([s["step"] for s in st["steps"]][:2], ["010_harvest", "020_clean"])
+        self.assertTrue(all(i["doc"].startswith("docs/upkeep.md#") for i in st["items"]))
+        self.assertIn("drawNextUp()", page)
         self.assertIn('showHelp("/api/guidelines")', page)                      # the rules, one click away while annotating
         terms = get("/api/terms")                                                  # a term's definition, on hover
         self.assertIn("ground truth schema", terms)
