@@ -21,6 +21,8 @@ Algorithm         a method applied to data to compute a result, e.g. an index or
                   source: ground truth tuning #2
 Identifier        a code that names one thing for good, e.g. a DOI
                   source: ground truth tuning #2
+SpatialRepresentation  how data are laid out over the ground: as observed, along the satellite's path (swath), or on a fixed map grid (gridded)
+                       source: ground truth tuning #2
 
 PREDICATES
 ----------
@@ -69,3 +71,5 @@ HAS_DOI              has the Digital Object Identifier
                      source: ground truth tuning #2
 HAS_GRANULE_DURATION  each file of the data covers this long
                       source: ground truth tuning #2
+HAS_SPATIAL_REPRESENTATION  lays out its data as
+                            source: ground truth tuning #2
