@@ -72,29 +72,31 @@ shown or accepted (reviewing them would mean looking at held-out results).
 
 The checks are step 050's own, all from common/common_helpers/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate, and pattern
-is in the ground truth schema), shown in plain words (MESSAGES). The component classes
+is in the ground truth schema), shown in plain words (MESSAGES). The ground
+truth schema's patterns are its file's plus every one the ground truth uses
+(common/common_helpers/ground_truth.with_coined), so a pattern is flagged only
+the first time it is used, for a look (a wrong entity class or direction),
+and never needs adding. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
 component class is offered for reuse. A coined component class is an error
 until it is added to the ground truth schema, since it could be a typo, and
 step 070 stops while a finished record uses one.
 
-Adding to the ground truth schema: each error or flag "not in the ground truth schema" on
-a row has a button that adds the entity class or predicate, with the one-line definition the
-person types, or the pattern; so does the list, in the ground truth schema's
-overview (Help -> Ground truth schema), of what the ground truth uses that the
-ground truth schema lacks (ground_truth_schema_gaps). A
-pattern is offered only once its entity classes are in the schema. The file
-is changed by common/common_helpers/schema_io.add_to_ground_truth_schema and
-add_pattern_to_ground_truth_schema, which add one entry or pattern, check that
-nothing else changed, and otherwise put the file back. A component class gets a
-"source:" line naming the ground truth records using it, by part ("ground
-truth tuning #3; held-out #8"), so it can be told whether held-out records
-shaped its component classes (a pattern gets no source line: it is added under its predicate,
-where the layout has no place for one).
+Adding to the ground truth schema: each error "not in the ground truth schema" on a row
+has a button that adds the entity class or predicate, with the one-line definition the
+person types; so does the list, in the ground truth schema's overview (Help -> Ground
+truth schema), of what the ground truth uses that the ground truth schema lacks
+(ground_truth_schema_gaps). The file is changed by
+common/common_helpers/schema_io.add_to_ground_truth_schema, which adds one entry,
+checks that nothing else changed, and otherwise puts the file back. A component
+class gets a "source:" line naming the ground truth records using it, by part
+("ground truth tuning #3; held-out #8"), so it can be told whether held-out
+records shaped its component classes.
 """
 from __future__ import annotations
 
+import collections
 import csv
 import io
 import json
@@ -105,16 +107,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
+from common.audit import ORIGIN_FIELD
 from common.chunking import full_text
 from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
                                  KIND_KEYS, draft_name, file_name, ground_truth_schema_gaps as schema_gaps,
+                                 pattern_of,
                                  read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
 from common.records_io import load_records
-from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_pattern_to_ground_truth_schema, add_to_ground_truth_schema, additions_header, additions_text, \
+from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
@@ -179,9 +183,10 @@ MESSAGES = {
                                "Keep it only if none of the schema's fits. "
                                "If it's new, add it to the ground truth schema with the button below, "
                                "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
-    "pattern_not_in_schema": "The ground truth schema never uses {predicate} between {subject_class} and "
-                             "{object_class}: a new pattern, or a wrong entity class. If it's right, add it to the "
-                             "ground truth schema with the button below (shown once both entity classes are in it).",
+    "pattern_not_in_schema": "No other ground truth triple uses {predicate} between {subject_class} and "
+                             "{object_class}: a pattern used for the first time, or a wrong entity class or "
+                             "direction. If it's right, there's nothing to do: from now on it's one of the ground "
+                             "truth schema's patterns.",
     "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
     "describes_undecided": "No entity class yet for what this record describes (the describes triple's object class is "
@@ -242,8 +247,10 @@ def _group(rows: list) -> list:
     return [(rid, grouped[rid]) for rid in order]
 
 
-def check_row(data: Data, row: dict, title: str) -> list:
-    """The row's problems, as {"code", "message", "type": "error" | "flag"}."""
+def check_row(data: Data, row: dict, title: str, uses: collections.Counter | None = None) -> list:
+    """The row's problems, as {"code", "message", "type": "error" | "flag"}. uses: how many ground truth triples use
+    each pattern (pattern_uses), this row among them: a pattern the file lacks is flagged only where no other
+    ground truth triple uses it."""
     if is_describes(row):
         errors, flags = check_describes(row, row["id"], data.schema_entries)
     elif not (row["subject"] and row["predicate"] and row["object"]):
@@ -252,8 +259,11 @@ def check_row(data: Data, row: dict, title: str) -> list:
         text = data.text(row["id"])
         errors, flags = check_triple_instance(row, text, title) if text is not None else ([], [])
         flags = flags + check_against_schema(row, data.schema_entries)
+        if uses is not None and uses[pattern_of(row)] > 1:
+            flags = [c for c in flags if c != "pattern_not_in_schema"]
     # an entity class or predicate the ground truth schema lacks must be added to it (or the typo fixed): step 070
-    # stops on one in a finished record, so it's an error to fix, not a flag; a new pattern stays a flag
+    # stops on one in a finished record, so it's an error to fix, not a flag; a pattern used for the first time
+    # stays a flag
     every = errors + flags
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
@@ -270,18 +280,17 @@ ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
 
 
 def _offer(code: str, row: dict, flags: list) -> dict | None:
-    """What the page offers to add to the ground truth schema for one flag, or
-    None. A pattern is offered only once both its entity classes are in the
-    schema, so a mistyped entity class can't become part of a pattern."""
+    """What the page offers to add to the ground truth schema for one error, or None."""
     if code in ADDS:
         kind, column = ADDS[code]
         name = str(row.get(column) or "").strip()
         return {"entry_type": kind, "component_class": name} if component_class_key(name) else None
-    classes_flagged = {"subject_class_not_in_schema", "object_class_not_in_schema"} & set(flags)
-    if code == "pattern_not_in_schema" and not classes_flagged:
-        return {"entry_type": "pattern", "predicate": row["predicate"], "subject_class": row["subject_class"],
-                "object_class": row["object_class"]}
     return None
+
+
+def pattern_uses(rows) -> collections.Counter:
+    """How many ground truth triples use each pattern (common/common_helpers/ground_truth.pattern_of)."""
+    return collections.Counter(k for r in rows if (k := pattern_of(r)))
 
 
 def _is_blank(row: dict) -> bool:
@@ -290,7 +299,7 @@ def _is_blank(row: dict) -> bool:
     return not (row["subject"] or row["predicate"] or row["object"])
 
 
-def record_view(data: Data, rid: str, rows: list, finished: bool) -> dict:
+def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collections.Counter | None = None) -> dict:
     record = data.records.get(rid) or {}
     title = record.get("title") or ""
     return {
@@ -301,16 +310,18 @@ def record_view(data: Data, rid: str, rows: list, finished: bool) -> dict:
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title)} for r in rows],
+        "rows": [{**r, "problems": check_row(data, r, title, uses)} for r in rows],
     }
 
 
 def batch_view(data: Data, n: int, path: Path) -> dict:
     """The batch as the page shows it: one entry per record, in the file's order."""
+    gt = read_ground_truth()
+    uses = pattern_uses(gt.rows)                       # this file's rows are among them, as saved
     records = [record_view(data, rid, [r for r in rows if not _is_blank(r)],
-                           all(r["all_facts_extracted"] == "1" for r in rows))
+                           all(r["all_facts_extracted"] == "1" for r in rows), uses)
                for rid, rows in _group(_read_rows(path))]
-    vocab = with_coined(data.hand, read_ground_truth())
+    vocab = with_coined(data.hand, gt)
     return {"n": n, "file": path.name, "records": records,
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
             # for the page's list of component classes: each one's definition (empty for a coined one)
@@ -346,28 +357,16 @@ HAND_LOCK = threading.Lock()
 
 
 def add_to_hand(data: Data, item: dict) -> str:
-    """Add one component class (with its definition) or one pattern to the
-    ground truth schema; say what was added. A component class is written as
-    the page sent it, with
+    """Add one component class (with its definition) to the ground truth
+    schema; say what was added. It is written as the page sent it, with
     a "source:" line naming the ground truth records using it (in any
     spelling, compared as component_class_key does). One add at a time (HAND_LOCK):
     the server answers requests in parallel, and two adds at once could
     undo each other."""
     with HAND_LOCK:
-        if item.get("entry_type") == "pattern":
-            k = component_class_key
-            trio = [k(item.get(c)) for c in ("subject_class", "predicate", "object_class")]
-            rows = [r for r in read_ground_truth().rows
-                    if [k(r["subject_class"]), k(r["predicate"]), k(r["object_class"])] == trio]
-            source = _learned_from(data, rows)
-            add_pattern_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, item["predicate"], item["subject_class"], item["object_class"],
-                                       source=source)
-            data.read_hand()
-            return (f"Added the pattern {item['subject_class']} -> {item['object_class']} to {item['predicate']} "
-                    f"in {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else ""))
         kind = item.get("entry_type")
         if kind not in KIND_KEYS:
-            raise ValueError("entry_type must be entity class, predicate, or pattern")
+            raise ValueError("entry_type must be entity class or predicate")
         name = str(item.get("component_class") or "").strip()
         source = _learned_from(data, uses_of(read_ground_truth(), kind, name))
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
@@ -412,6 +411,10 @@ def save_batch(data: Data, n: int, records: list) -> list:
     of the record. Rows not filled in aren't written; a record left with no
     rows is written as one row holding only its id ("states no facts")."""
     out, problems = [], []
+    # the patterns as they will be once this file is written: the other files' uses, and this one's from the page
+    others = [r for r in read_ground_truth().rows if not r[ORIGIN_FIELD][0].split("#")[0].endswith("/" + file_name(n))]
+    sent = [{c: str(r.get(c) or "").strip() for c in FILE_COLUMNS} for rec in records for r in rec.get("rows", [])]
+    uses = pattern_uses(others + sent)
     for rec in records:
         mark = "1" if rec.get("finished") else "0"
         title = (data.records.get(rec["id"]) or {}).get("title") or ""
@@ -421,7 +424,7 @@ def save_batch(data: Data, n: int, records: list) -> list:
             row["id"], row["all_facts_extracted"] = rec["id"], mark
             if is_describes(row):
                 row["subject"], row["source_text"] = rec["id"], ENTRY_SOURCE
-            found.append(check_row(data, row, title))
+            found.append(check_row(data, row, title, uses))
             if not _is_blank(row):
                 written.append(row)
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
@@ -769,7 +772,7 @@ def vocab_view(data: Data) -> dict:
                       "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
                                           if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)],
                       # a predicate's patterns, for the page's overview: [[subject class, object class], ...]
-                      "patterns": [[s, o] for s, p, o in data.hand.get("patterns", [])
+                      "patterns": [[s, o] for s, p, o in vocab["patterns"]
                                    if kind == "predicate" and component_class_key(p) == component_class_key(n)]}
                      for n, d in sorted(vocab[key].items(), key=lambda kv: kv[0].lower())]
     return {"file": f"annotations/{GROUND_TRUTH_SCHEMA.name}", "vocabulary": out}

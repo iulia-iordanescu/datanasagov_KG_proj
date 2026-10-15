@@ -27,7 +27,11 @@ INPUTS = {
     "records":     "020_clean/records.jsonl",
     "splits":      "030_split/splits.json",
     "ground_truth_schema": "./annotations/ground_truth_schema.txt",
+    "ground_truth": "./annotations/ground_truth/batch_*.csv",
 }
+#: Inputs that may have no files yet: the ground truth, before any record is annotated (used only to compare
+#: patterns: the ground truth schema's patterns include every one the ground truth uses).
+MAY_BE_EMPTY = ("ground_truth",)
 
 SETTINGS = {
     "induction_maintainers": 10,    # learn from this many of the largest maintainers
@@ -58,4 +62,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("040_induce_schema", INPUTS, SETTINGS, main)
+    run_step("040_induce_schema", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY)

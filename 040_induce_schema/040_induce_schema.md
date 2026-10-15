@@ -25,6 +25,7 @@ What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for 
 | `records` | `020_clean/records.jsonl` | 020's cleaned [records](../docs/terminology.md#1-records-and-their-text): the [texts](../docs/terminology.md#1-records-and-their-text). |
 | `splits` | `030_split/splits.json` | 030's [induction candidates](../docs/terminology.md#4-ground-truth-and-samples): every [maintainer](../docs/terminology.md#1-records-and-their-text)'s records that may be learned from, each maintainer's in a fixed random order. |
 | `ground_truth_schema` | `./annotations/ground_truth_schema.txt` (in Git) | The [ground truth schema](../docs/terminology.md#3-schemas), written while annotating [ground truth](../docs/terminology.md#4-ground-truth-and-samples). Only compared with, in the [report](../docs/terminology.md#8-the-pipeline); it doesn't shape the [induced schema](../docs/terminology.md#5-learning-the-schema-step-040). |
+| `ground_truth` | `./annotations/ground_truth/batch_*.csv` (in Git) | The ground truth: its patterns count as the ground truth schema's when comparing (none yet is fine). |
 
 ## Outputs
 

@@ -173,8 +173,6 @@ class HandSchemaEdits(unittest.TestCase):
                 schema_io.add_to_ground_truth_schema(self.path, "entity class", "Probe", "a small  spacecraft", source="mentor")
                 schema_io.add_to_ground_truth_schema(self.path, "predicate", "CARRIES", "carries",
                                              patterns=[("Spacecraft", "Instrument")], source="ground truth tuning #2")
-                schema_io.add_pattern_to_ground_truth_schema(self.path, "aboard", "dataset", "spacecraft")
-                schema_io.add_pattern_to_ground_truth_schema(self.path, "HAS_PART", "Probe", "Instrument")
                 raw = self.path.read_bytes()
                 self.assertEqual(raw.startswith(b"\xef\xbb\xbf"), bool(bom))
                 text = raw.decode("utf-8-sig")
@@ -185,35 +183,9 @@ class HandSchemaEdits(unittest.TestCase):
                 self.assertEqual(s["entity_classes"]["Probe"], "a small spacecraft")
                 self.assertEqual(list(s["entity_classes"])[-1], "Probe")
                 self.assertIn(("Spacecraft", "CARRIES", "Instrument"), s["patterns"])
-                self.assertIn(("Dataset", "ABOARD", "Spacecraft"), s["patterns"])
-                self.assertIn(("Probe", "HAS_PART", "Instrument"), s["patterns"])
                 self.assertEqual(s["sources"]["predicates"]["CARRIES"], "ground truth tuning #2")
                 self.assertEqual(s["sources"]["predicates"]["HAS_PART"], "mentor, 2026-10-01")
-                self.assertIn("Instrument -> Spacecraft; Instrument -> Mission; Dataset -> Spacecraft", text)
-
-    def test_pattern_with_source_goes_in_patterns_section(self):
-        """A pattern added with its source goes in the PATTERNS section (made if missing), with its source line;
-        nothing else changes."""
-        without = TEXT[:TEXT.index("PATTERNS")].rstrip("\n") + "\n"
-        for start, has_section in ((TEXT, True), (without, False)):
-            with self.subTest(has_section=has_section):
-                self.start(start.encode("utf-8"))
-                before = schema_io.read_ground_truth_schema(self.path)
-                schema_io.add_pattern_to_ground_truth_schema(self.path, "aboard", "dataset", "spacecraft",
-                                                     source="ground truth held-out #8")
-                schema_io.add_pattern_to_ground_truth_schema(self.path, "ABOARD", "Instrument", "Dataset",
-                                                     source="ground truth tuning #3")
-                s = schema_io.read_ground_truth_schema(self.path)
-                self.assertEqual(s["sources"]["patterns"], {**before["sources"]["patterns"],
-                                                            "Dataset ABOARD Spacecraft": "ground truth held-out #8",
-                                                            "Instrument ABOARD Dataset": "ground truth tuning #3"})
-                self.assertEqual(s["pattern_entries"], before["pattern_entries"] + [("Dataset", "ABOARD", "Spacecraft"),
-                                                                                    ("Instrument", "ABOARD", "Dataset")])
-                self.assertEqual((s["unread"], s["entity_classes"], s["predicates"]),
-                                 (before["unread"], before["entity_classes"], before["predicates"]))
-                text = self.path.read_text(encoding="utf-8")
-                self.assertEqual(text.count("PATTERNS"), 1)
-                self.assertTrue(text.startswith(start.rstrip("\n")))             # everything before kept as it was
+                self.assertIn("Instrument -> Spacecraft; Instrument -> Mission", text)
 
     def test_refusals_leave_file_alone(self):
         before = self.start(TEXT.encode("utf-8"))
@@ -221,10 +193,7 @@ class HandSchemaEdits(unittest.TestCase):
                    lambda: schema_io.add_to_ground_truth_schema(self.path, "entity class", "Two words", "d"),
                    lambda: schema_io.add_to_ground_truth_schema(self.path, "entity class", "A->B", "d"),
                    lambda: schema_io.add_to_ground_truth_schema(self.path, "entity class", "Probe", "  "),
-                   lambda: schema_io.add_to_ground_truth_schema(self.path, "predicate", "P", "d", patterns=[("Two words", "X")]),
-                   lambda: schema_io.add_pattern_to_ground_truth_schema(self.path, "NOPE", "Instrument", "Dataset"),
-                   lambda: schema_io.add_pattern_to_ground_truth_schema(self.path, "ABOARD", "Nope", "Dataset"),
-                   lambda: schema_io.add_pattern_to_ground_truth_schema(self.path, "ABOARD", "instrument", "SPACECRAFT")]
+                   lambda: schema_io.add_to_ground_truth_schema(self.path, "predicate", "P", "d", patterns=[("Two words", "X")])]
         for call in refused:
             with self.assertRaises(ValueError):
                 call()
@@ -272,8 +241,8 @@ class ExtractionChecksPatternSources(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         try:
             hand = tmp / "hand.txt"
-            hand.write_text(TEXT, encoding="utf-8")
-            schema_io.add_pattern_to_ground_truth_schema(hand, "ABOARD", "Dataset", "Spacecraft", source="ground truth held-out #8")
+            hand.write_text(TEXT + "Dataset ABOARD Spacecraft\n                  source: ground truth held-out #8\n",
+                            encoding="utf-8")                            # a pattern in the PATTERNS section
             (tmp / "additions.txt").write_text("", encoding="utf-8")
             pool = [{"id": f"r{i}", "position": i, "part": "held-out" if i == 8 else "tuning"} for i in range(10)]
             (tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}), encoding="utf-8")

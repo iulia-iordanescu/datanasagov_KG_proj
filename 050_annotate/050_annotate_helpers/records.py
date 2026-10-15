@@ -66,16 +66,25 @@ class Chosen:
     skipped: dict = field(default_factory=dict)    # {reason: [ids]} passed over while choosing
 
 
-def vocabulary_text(hand_text: str, coined: dict) -> str:
+def vocabulary_text(hand_text: str, coined: dict, used_patterns: list = ()) -> str:
     """The ground truth schema as the model sees it: the ground truth
     schema's text as written, then the component classes coined in the ground truth,
-    which have no definition yet. With nothing coined, just the schema's
-    text, so earlier answers stay in the cache."""
+    which have no definition yet, and the entity class pairs the ground truth uses
+    with a predicate that the file doesn't list (common.ground_truth.with_coined's
+    used_patterns). With nothing of either, just the schema's text, so earlier
+    answers stay in the cache."""
+    out = hand_text
     lines = [f"{label}: {', '.join(coined[kind])}"
              for kind, label in (("entity_classes", "Entity classes"), ("predicates", "Predicates")) if coined[kind]]
-    if not lines:
-        return hand_text
-    return hand_text + "\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n" + "\n".join(lines)
+    if lines:
+        out += "\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n" + "\n".join(lines)
+    pairs = {}
+    for s, p, o in used_patterns:
+        pairs.setdefault(p, []).append(f"{s} -> {o}")
+    if pairs:
+        out += ("\n\nMORE ENTITY CLASS PAIRS THE GROUND TRUTH USES (subject -> object)\n"
+                + "\n".join(f"{p}: {'; '.join(v)}" for p, v in pairs.items()))
+    return out
 
 
 def _waiting(output: Path) -> tuple:
@@ -106,10 +115,12 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent)   # none yet: no record done
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
-    chosen.schema_entries = SchemaEntries(hand)
-    chosen.coined = with_coined(hand, chosen.ground_truth)["coined"]
+    vocab = with_coined(hand, chosen.ground_truth)
+    # the checks: the file's entity classes and predicates; its patterns and every one the ground truth uses
+    chosen.schema_entries = SchemaEntries({**hand, "patterns": vocab["patterns"]})
+    chosen.coined = vocab["coined"]
     chosen.schema_text = vocabulary_text(Path(inputs["ground_truth_schema"]).read_text(encoding="utf-8-sig").strip(),
-                                         chosen.coined)
+                                         chosen.coined, vocab["used_patterns"])
     chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
     chosen.done = {r["id"] for r in chosen.ground_truth.rows}
     chosen.waiting, highest = _waiting(output)

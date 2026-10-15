@@ -9,7 +9,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import sys
+
 import support                                    # noqa: F401  (the repository on the import path)
+from support import ROOT
 from common import chunking, component_class_mapping, extraction, ground_truth, partial_reviews, text_match, \
     triples_io, validate
 from common.files import read_csv, write_csv
@@ -119,6 +122,22 @@ class GroundTruthFiles(unittest.TestCase):
         self.assertEqual(v["entity_classes"]["Instrument"], "d")
         self.assertNotIn("CatalogEntry", v["entity_classes"])
         self.assertNotIn("DESCRIBES", v["predicates"])
+        # the patterns: the file's, then every other one the ground truth uses (not the describes triple's, nor one
+        # missing a component class), as first spelled
+        self.assertEqual(v["used_patterns"], [("instrument", "ABOARD", "Probe"), ("Instrument", "CARRIED_BY", "probe")])
+        self.assertEqual(v["patterns"], [("Instrument", "ABOARD", "Dataset")] + v["used_patterns"])
+        # what 050's drafting model is shown: the file's text, then the coined ones, then the pairs the file lacks
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "records_050", ROOT / "050_annotate" / "050_annotate_helpers" / "records.py")
+        records_050 = importlib.util.module_from_spec(spec)
+        sys.modules["records_050"] = records_050                           # its dataclass needs it registered
+        spec.loader.exec_module(records_050)
+        text = records_050.vocabulary_text("FILE", v["coined"], v["used_patterns"])
+        self.assertTrue(text.startswith("FILE\n\nALSO USED IN THE GROUND TRUTH (no definition yet)\n"))
+        self.assertIn("MORE ENTITY CLASS PAIRS THE GROUND TRUTH USES (subject -> object)\nABOARD: instrument -> Probe\n"
+                      "CARRIED_BY: Instrument -> probe", text)
+        self.assertEqual(records_050.vocabulary_text("FILE", {"entity_classes": [], "predicates": []}, []), "FILE")
 
     def test_fair_sample(self):
         pool = ["p0", "p1", "p2", "p3"]

@@ -20,6 +20,8 @@ Terms are as defined in docs/terminology.md.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import check
 import compare
 import count
@@ -32,7 +34,7 @@ import texts as texts_stage
 from common import audit, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
-from common.ground_truth import twin_kinds, twin_table
+from common.ground_truth import read_ground_truth, twin_kinds, twin_table, with_coined
 from common.schema_io import read_ground_truth_schema
 from common.report import cell, counted, model_calls, named
 from common.step import Results, repo_path
@@ -78,6 +80,8 @@ def check_schema(counts, definitions, settings):
 
 def compare_with_ground_truth_schema(inputs, schema) -> dict:
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
+    # its patterns: the file's, and every one the ground truth uses (common/common_helpers/ground_truth.with_coined)
+    hand = {**hand, "patterns": with_coined(hand, read_ground_truth(Path(inputs["ground_truth"]).parent))["patterns"]}
     comparison = compare.compare(hand, schema)
     comparison["ground_truth_schema"] = ref_path(inputs["ground_truth_schema"])
     c = comparison["entity_classes"]

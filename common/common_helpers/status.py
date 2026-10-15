@@ -263,11 +263,6 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
                            f"fix the typo." + (f" Step 070 stops while a finished record uses one ({len(stops)} do)."
                                                if stops else ""), "while-annotating",
                            repo_path(GROUND_TRUTH_SCHEMA)))
-    if gaps["patterns"]:
-        shown = [f"{p['subject_class']} {p['predicate']} {p['object_class']}" for p in gaps["patterns"]]
-        items.append(_item("Ground truth", LOOK, f"{len(shown)} pattern(s) the ground truth uses aren't in the ground "
-                           f"truth schema yet: {named(shown, 3, '; ')}. Add the ones that are right (annotation tool, "
-                           f"Help → Ground truth schema).", "while-annotating", repo_path(GROUND_TRUTH_SCHEMA)))
     return items
 
 

@@ -33,7 +33,7 @@ Step 050 drafts the next batch only when no batch is waiting: a [draft batch](te
 ## While annotating
 
 - **An [entity class](terminology.md#3-schemas) or predicate you coin:** add it with a one-line definition to the [ground truth schema](terminology.md#3-schemas) (`annotations/ground_truth_schema.txt`): in the tool, the button under its ✖, or **Help → Ground truth schema**. Until then the next drafts reuse it without a definition, the tool marks it as an error (it could be a typo), and step 070 stops while a [finished record](terminology.md#4-ground-truth-and-samples) uses it. If it's a typo, fix it where it's used instead.
-- **A pattern the ground truth schema lacks** (⚑): add it if it's right, with **Add the pattern** under its ⚑.
+- **A pattern used for the first time** (⚑): check the entity classes and the direction. If it's right, there's nothing to do: the ground truth schema's patterns include every one the [ground truth](terminology.md#4-ground-truth-and-samples) uses.
 - **Every ✖ in the tool** (an id not in the catalog, a [source text](terminology.md#1-records-and-their-text) not in the record's text, …): fix it.
 - **To rename an entity class or predicate of the ground truth schema, merge two that mean the same thing, or change a definition:** in the tool, **Help → Ground truth schema**, then **Edit definitions, rename, or merge…** ([`annotations/README.md`](../annotations/README.md), *The ground truth schema*). It changes every file at once, after showing what it would change.
 

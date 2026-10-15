@@ -954,16 +954,11 @@ function refreshProblems() {
 }
 
 // ---------------------------------------------------------------- adding to the ground truth schema
-// A component class the ground truth uses but the ground truth schema lacks is added with a one-line definition;
-// a pattern, with one click. The server writes the file (annotations/ground_truth_schema.txt)
-// and the checks run again.
+// A component class the ground truth uses but the ground truth schema lacks is added with a one-line definition.
+// The server writes the file (annotations/ground_truth_schema.txt) and the checks run again. (Patterns are never
+// added: the ground truth schema's patterns include every one the ground truth uses.)
 function addControl(a) {
   const box = el("span", { class: "addbox" });
-  if (a.entry_type === "pattern") {
-    box.append(el("button", { onclick: () => addToHand(a) },
-      `Add the pattern ${a.subject_class} -> ${a.object_class} to ${a.predicate}`));
-    return box;
-  }
   const start = el("button", { onclick: () => {
     const def = el("input", { placeholder: `one-line definition of ${a.component_class}`, "aria-label": `definition of ${a.component_class}` });
     const go = () => addToHand({ ...a, definition: def.value });
@@ -992,7 +987,7 @@ async function addToHand(item) {
 }
 // What the ground truth uses that the ground truth schema lacks: counted on the Ground truth schema button, and
 // listed (with the Add buttons) at the top of its overview, redrawn there when it is open.
-let gaps = { component_classes: [], patterns: [], file: "" };
+let gaps = { component_classes: [], file: "" };
 // Home: what the tool is for, and its views (each opens from its box). Shown on start, and by the tool's name at
 // the top left.
 async function showHome() {
@@ -1072,24 +1067,21 @@ async function drawNextUp() {
 
 function drawGaps(g) {
   gaps = g;
-  const n = g.component_classes.length + g.patterns.length;
+  const n = g.component_classes.length;
   GAPCOUNT.hidden = TOOLCOUNT.hidden = !n;
-  const k = g.component_classes.length, pp = g.patterns.length;
-  GAPCOUNT.textContent = TOOLCOUNT.textContent = [k ? `✖ ${k}` : "", pp ? `⚑ ${pp}` : ""].filter(Boolean).join(" ");
+  GAPCOUNT.textContent = TOOLCOUNT.textContent = n ? `✖ ${n}` : "";
   if (!$("help").hidden && $("help").querySelector(".schemaview") && !$("help").contains(document.activeElement))
     showSchema().catch(() => {});
 }
 function gapsList() {
-  const n = gaps.component_classes.length, p = gaps.patterns.length;
-  if (!n && !p) return null;
+  const n = gaps.component_classes.length;
+  if (!n) return null;
   return el("section", { class: "gaps" },
-    el("strong", {}, `The ground truth uses ${n} entity class(es) or predicate(s) and ${p} pattern(s) that aren't in the ground truth schema yet`),
+    el("strong", {}, `The ground truth uses ${n} entity class(es) or predicate(s) that aren't in the ground truth schema yet`),
     el("div", { class: "meta" }, "Add each one you mean to keep, with a one-line definition; fix any typo where it's used."),
     el("ul", {},
       gaps.component_classes.map(x => el("li", {}, el("span", { class: "kind" }, x.entry_type), el("b", {}, x.component_class),
-        ` (${x.uses} ground truth triple(s))`, addControl(x))),
-      gaps.patterns.map(x => el("li", {}, el("span", { class: "kind" }, "pattern"),
-        `${x.subject_class} → ${x.predicate} → ${x.object_class} (${x.uses} ground truth triple(s))`, addControl(x)))));
+        ` (${x.uses} ground truth triple(s))`, addControl(x)))));
 }
 
 // ---------------------------------------------------------------- the translation table

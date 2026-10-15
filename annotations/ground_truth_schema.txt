@@ -20,9 +20,10 @@ Value             a number with its unit, e.g. 500 m
 
 PREDICATES
 ----------
-Each entry below reads subject -> object, and lists the entity class pairs used so far.
-Those pairs record where a predicate has been used, not the only place it
-may be used. Use a predicate wherever its meaning fits.
+Each entry below reads subject -> object, and lists entity class pairs it is used with.
+Every pair the ground truth itself uses counts too (code reads them from the
+ground truth files), so a new pair is never added here. Use a predicate
+wherever its meaning fits.
 
 ABOARD               is carried on
                      Instrument -> Spacecraft

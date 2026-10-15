@@ -328,12 +328,22 @@ def with_coined(ground_truth_schema: dict, gt: GroundTruth) -> dict:
     not in the ground truth schema, in the order first used. A coined component
     class has an empty definition: only the ground truth schema has definitions.
     The annotation tool marks a coined one as an error, and step 070 stops while
-    a finished record uses one."""
+    a finished record uses one.
+
+    "patterns" is the file's patterns, then every other pattern the ground truth
+    triples use ("used_patterns", in the order first used): the file's say
+    "where a predicate has been used", which the ground truth itself says, so
+    nobody keeps them up to date by hand."""
     from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, component_class_key
 
     out = {"entity_classes": dict(ground_truth_schema["entity_classes"]), "predicates": dict(ground_truth_schema["predicates"]),
            "patterns": list(ground_truth_schema.get("patterns", [])),
-           "coined": {"entity_classes": [], "predicates": []}}
+           "coined": {"entity_classes": [], "predicates": []}, "used_patterns": []}
+    in_file = {tuple(component_class_key(x) for x in p) for p in out["patterns"]}
+    for key, spelled in used_patterns(gt.rows).items():   # patterns: the file's, then every other one used
+        if key not in in_file:
+            out["patterns"].append(spelled)
+            out["used_patterns"].append(spelled)
     known = {kind: {component_class_key(n) for n in out[kind]} for kind in ("entity_classes", "predicates")}
     for row in gt.rows:
         for kind, name in (("entity_classes", row["subject_class"]), ("entity_classes", row["object_class"]),
@@ -378,25 +388,33 @@ def uses_of(gt: GroundTruth, kind: str, name: str) -> list:
     return [r for r in gt.rows if any(component_class_key(r[c]) == component_class_key(name) for c in columns)]
 
 
+def pattern_of(row: dict) -> tuple | None:
+    """A ground truth triple's pattern as compared (component_class_key of its subject class, predicate, and
+    object class), or None for the describes triple or a row missing one of them."""
+    key = tuple(component_class_key(row.get(c)) for c in ("subject_class", "predicate", "object_class"))
+    return None if is_describes(row) or not all(key) else key
+
+
+def used_patterns(rows) -> dict:
+    """{pattern key: (subject class, predicate, object class) as first spelled}, in the order first used: every
+    pattern the ground truth triples use."""
+    out = {}
+    for r in rows:
+        key = pattern_of(r)
+        if key and key not in out:
+            out[key] = (r["subject_class"].strip(), r["predicate"].strip(), r["object_class"].strip())
+    return out
+
+
 def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict:
-    """What the ground truth uses that the ground truth schema lacks: the component classes coined in the
-    ground truth, and the patterns whose predicate and entity classes are all in the schema, each with how many
-    rows use it. Shared by the annotation tool and the project's status (common/common_helpers/status.py)."""
-    from common.validate import SchemaEntries
-    entries = SchemaEntries(ground_truth_schema)
+    """What the ground truth uses that the ground truth schema lacks: the entity classes and predicates coined in
+    the ground truth, each with how many rows use it. (Patterns are never missing: the ground truth schema's
+    patterns are those of its file plus every one the ground truth uses; see with_coined.) Shared by the annotation
+    tool and the project's status (common/common_helpers/status.py)."""
     coined = with_coined(ground_truth_schema, gt)["coined"]
-    names = [{"entry_type": kind, "component_class": n, "uses": len(uses_of(gt, kind, n))}
-             for kind, key in KIND_KEYS.items() for n in coined[key]]
-    k, patterns = component_class_key, {}
-    for r in gt.rows:
-        if is_describes(r) or k(r["predicate"]) not in entries.predicates                 or not {k(r["subject_class"]), k(r["object_class"])} <= entries.entity_classes:
-            continue
-        key = (k(r["subject_class"]), k(r["predicate"]), k(r["object_class"]))
-        if key not in entries.patterns:
-            patterns.setdefault(key, {"entry_type": "pattern", "subject_class": r["subject_class"],
-                                      "predicate": r["predicate"], "object_class": r["object_class"],
-                                      "uses": 0})["uses"] += 1
-    return {"component_classes": names, "patterns": list(patterns.values())}
+    return {"component_classes": [{"entry_type": kind, "component_class": n, "uses": len(uses_of(gt, kind, n))}
+                                  for kind, key in KIND_KEYS.items() for n in coined[key]]}
+
 
 # --------------------------------------------------------------------------
 # the fair sample (050, 070)

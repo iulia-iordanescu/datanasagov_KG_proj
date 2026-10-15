@@ -76,7 +76,6 @@ schema into the ground truth schema.
     additions_text(header, entries)       the additions file, written by the annotation tool
     ground_truth_source_problem(source, parts)   why an addition's source isn't fair, or None
     add_to_ground_truth_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
-    add_pattern_to_ground_truth_schema(path, predicate, subject_class, object_class)   one pattern added (same)
 
 read_ground_truth_schema(path) is read_schema for the ground truth schema's text file.
 """
@@ -372,58 +371,6 @@ def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patt
                 "patterns": before["patterns"] + [(s, name, o) for s, o in patterns],
                 "sources": {**before["sources"], key: {**before["sources"][key], **({name: source} if source else {})}}}
     _edit_text(path, edit, expected, name)
-
-
-def add_pattern_to_ground_truth_schema(path, predicate: str, subject_class: str, object_class: str, source: str = "") -> None:
-    """Add one pattern to the ground truth schema. The predicate and both entity
-    classes must be in the schema already, and are written in its spelling.
-    With a source (where the pattern was learned, e.g. "ground truth tuning #3;
-    held-out #8"), it goes in the PATTERNS section (made at the end if there is
-    none), with its "source:" line under it, since a predicate's patterns line
-    has no place for one; without, at the end of the predicate's patterns line
-    (or on a new line just under the predicate if it has none)."""
-    before = _read_text(path)
-    name = next((n for n in before["predicates"] if component_class_key(n) == component_class_key(predicate)), None)
-    if name is None:
-        raise ValueError(f"{predicate} isn't a predicate of the ground truth schema: add it first")
-    spelling = {component_class_key(n): n for n in before["entity_classes"]}
-    missing = [c for c in (subject_class, object_class) if component_class_key(c) not in spelling]
-    if missing:
-        raise ValueError(f"{missing[0]} isn't an entity class of the ground truth schema: add it first")
-    pair = (spelling[component_class_key(subject_class)], spelling[component_class_key(object_class)])
-    if any(p == name and component_class_key(s) == component_class_key(pair[0]) and component_class_key(o) == component_class_key(pair[1])
-           for s, p, o in before["patterns"]):
-        raise ValueError(f"{pair[0]} -> {pair[1]} is already a pattern of {name}")
-
-    source = " ".join(str(source).split())
-    trio = (pair[0], name, pair[1])
-
-    def edit(lines):
-        start, end = _section(lines, "predicates", path)
-        i = next(j for j in range(start, end) if (m := ENTRY.match(lines[j])) and m.group(1) == name)
-        indent = " " * ENTRY.match(lines[i]).start(2)
-        if source:
-            new = [pattern_key(trio), indent + "source: " + source]
-            heads = [k for k, line in enumerate(lines) if line.strip() in SECTIONS]
-            pat = next((k for k in heads if SECTIONS[lines[k].strip()] == "patterns"), None)
-            if pat is None:                        # no PATTERNS section yet: one at the end
-                while lines and not lines[-1].strip():
-                    lines = lines[:-1]
-                return lines + ["", "PATTERNS", "--------"] + new + [""]
-            stop = next((k for k in heads if k > pat), len(lines))
-            last = max([k for k in range(pat + 1, stop) if lines[k].strip() and set(lines[k].strip()) != {"-"}],
-                       default=pat + 1)
-            return lines[:last + 1] + new + lines[last + 1:]
-        for j in range(i + 1, _under(lines, i, end) + 1):
-            if all(PAIR.match(p) for p in lines[j].split(";")):
-                return lines[:j] + [lines[j].rstrip() + "; " + _pairs_text([pair])] + lines[j + 1:]
-        return lines[:i + 1] + [indent + _pairs_text([pair])] + lines[i + 1:]
-
-    expected = {**before, "patterns": before["patterns"] + [trio]}
-    if source:
-        expected["sources"] = {**before["sources"], "patterns": {**before["sources"]["patterns"], pattern_key(trio): source}}
-    _edit_text(path, edit, expected, f"{pair[0]} -> {pair[1]} to {name}")
-
 
 
 # --------------------------------------------------------------------------

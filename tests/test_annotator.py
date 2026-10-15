@@ -217,19 +217,32 @@ class C_HandSchema(unittest.TestCase):
         self.assertIn("source: ground truth tuning #1", added["added"])
         post("/api/hand/add", {"entry_type": "predicate", "component_class": "ORBITS", "definition": "goes around"})
         gaps = get("/api/gaps")
-        self.assertEqual(gaps["component_classes"], [])
-        self.assertEqual([(p["subject_class"], p["predicate"], p["object_class"]) for p in gaps["patterns"]],
-                         [("Spacecraft", "ORBITS", "Planet")])
-        post("/api/hand/add", gaps["patterns"][0])
-        self.assertEqual(get("/api/gaps"), {"file": gaps["file"], "component_classes": [], "patterns": []})
+        self.assertEqual(gaps, {"file": gaps["file"], "component_classes": []})
         s = schema_io.read_ground_truth_schema(hand)
         self.assertEqual(s["sources"]["entity_classes"], {"Planet": "ground truth tuning #1"})
-        self.assertIn(("Spacecraft", "ORBITS", "Planet"), s["patterns"])
-        self.assertEqual(s["sources"]["patterns"], {"Spacecraft ORBITS Planet": "ground truth tuning #1"})   # where learned
-        b = get("/api/batch?n=0")
-        flags = [p["code"] for rec in b["records"] for row in rec["rows"] for p in row["problems"] if p["type"] == "flag"
-                 and p["code"].endswith("_in_schema")]
-        self.assertEqual(flags, [])
+        # patterns are never added: the ground truth schema's include every one the ground truth uses, and a
+        # pattern used for the first time is flagged, for a look (a wrong entity class or direction)
+        self.assertIn("error", post("/api/hand/add", {"entry_type": "pattern", "predicate": "ORBITS",
+                                                      "subject_class": "Spacecraft", "object_class": "Planet"}))
+        self.assertNotIn(("Spacecraft", "ORBITS", "Planet"), s["patterns"])
+        orbits = next(v for v in get("/api/vocab")["vocabulary"]["predicate"] if v["component_class"] == "ORBITS")
+        self.assertEqual(orbits["patterns"], [["Spacecraft", "Planet"]])
+
+        def schema_flags():
+            b = get("/api/batch?n=0")
+            return [p["code"] for rec in b["records"] for row in rec["rows"] for p in row["problems"]
+                    if p["code"].endswith("_in_schema")]
+        self.assertEqual(schema_flags(), ["pattern_not_in_schema"])           # its first use
+        other = TMP / "annotations" / "ground_truth" / "batch_009.csv"
+        row = next(r for r in gt_rows() if r["predicate"] == "ORBITS")
+        with open(other, "w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
+            w.writeheader()
+            w.writerow({**{c: row.get(c, "") for c in ground_truth.FILE_COLUMNS}, "id": "r-other"})
+        try:
+            self.assertEqual(schema_flags(), [])                              # used again elsewhere: no flag
+        finally:
+            other.unlink()
 
     def test_held_out_source_named(self):
         rows = gt_rows()
