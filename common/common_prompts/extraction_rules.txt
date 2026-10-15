@@ -12,11 +12,15 @@
   as approximate is stated: "approximately 250 m" is the object.
 - A number with a unit: the object is the number and its unit, as written
   ("250 m"); the predicate says what the number measures.
-- A qualifier stays in the subject or object, as written: "daily snow cover"
-  is one object, not "snow cover" plus a separate triple for "daily". A
-  qualifier stated as a fact of its own ("Data are provided daily.") is a
-  triple of its own, and so is a word describing the record's data set itself
-  ("This global data set ...": the data set covers the globe).
+- A qualifier that is a time step, an area covered, a processing level, a
+  size on the ground, or a country is a triple of its own, and is taken out
+  of the subject or object: "This global data set provides daily snow cover"
+  gives "snow cover", and the data set's time step "daily" and area covered
+  "global" as triples of their own; "the U.S. National Aeronautics and Space
+  Administration (NASA)" gives "National Aeronautics and Space Administration
+  (NASA)", and the triple that NASA is based in the U.S. Any other qualifier
+  stays in the subject or object, as written: "sea surface salinity" stays
+  whole.
 - A name with its abbreviation in parentheses is one subject or object, as
   written: "Level-2 (L2)", with no separate triple saying L2 is another name
   for Level-2. Write such a triple only when the record states the other
