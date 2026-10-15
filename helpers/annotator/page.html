@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%20aria-hidden%3D%22true%22%3E%3Cg%20transform%3D%22rotate%2845%2032%2032%29%22%20stroke%3D%22%235a3b1c%22%20stroke-width%3D%221.7%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M25.6%204.6c2.1-1%2010.6-1%2012.7.1l.3%206.4H25.4z%22%20fill%3D%22%23d48a7e%22/%3E%3Cpath%20d%3D%22M25.4%2011.1h13.2l.1%205.6H25.3z%22%20fill%3D%22%23b8bcc0%22/%3E%3Cpath%20d%3D%22M25.6%2013.1h12.9M25.5%2015h13%22%20stroke%3D%22%238b9095%22%20stroke-width%3D%221%22/%3E%3Cpath%20d%3D%22M25.3%2016.7h13.4l-.2%2027.6H25.5z%22%20fill%3D%22%23d9a23f%22/%3E%3Cpath%20d%3D%22M29.8%2017l.2%2027M34.2%2017l-.1%2027%22%20stroke-width%3D%221.1%22/%3E%3Cpath%20d%3D%22M30.9%2017.4l.1%2026.4%22%20stroke%3D%22%23f0c86e%22%20stroke-width%3D%221.4%22/%3E%3Cpath%20d%3D%22M25.5%2044.3h13l-6.4%2012.9z%22%20fill%3D%22%23ead2a3%22/%3E%3Cpath%20d%3D%22M28.2%2047.6c1.4.9%202.4%202.6%202.6%204.4M35.6%2047.4c-1.1%201.1-1.7%202.8-1.8%204.6%22%20stroke%3D%22%23b58a52%22%20stroke-width%3D%220.9%22/%3E%3Cpath%20d%3D%22M30.1%2053.4h4l-2%203.8z%22%20fill%3D%22%233a3632%22%20stroke%3D%22%232b2724%22/%3E%3C/g%3E%3C/svg%3E">
 <style>
   /* the tool's own copies (helpers/annotator/fonts/, SIL Open Font License), so the look doesn't depend on the network */
-  @font-face { font-family: "Public Sans"; src: url("/fonts/PublicSans.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: "IBM Plex Sans"; src: url("/fonts/IBMPlexSans.woff2") format("woff2"); font-weight: 100 700; font-display: swap; }
   @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 </style>
 <style>
@@ -216,13 +216,13 @@
              border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
 
   /* ---------------------------------------------------------------- the look: one palette, navy and sky blue on paper;
-     Public Sans (the U.S. Web Design System's typeface; plain zeros), JetBrains Mono for anything code-like */
+     IBM Plex Sans (plain zeros), JetBrains Mono for anything code-like */
   :root {
     --bg: #f3f0ea; --panel: #fffdfa; --paper: #fffaf0; --tint: #f7f3ec; --line: #dcd5c9;
     --ink: #1f2933; --muted: #66707a; --label: #3e4a56;
     --navy: #1f3a5f; --navy-bg: #e7edf5; --sky: #3f7cc0; --sky-bg: #dcebfb; --steel-bg: #e8ebf5;
     --accent: var(--navy); --accent-bg: var(--navy-bg);
-    --subj: #11777a; --subj-bg: #e6f4f3; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #b8621c; --obj-bg: #fdf1e5;
+    --subj: #11777a; --subj-bg: #e6f4f3; --pred: #7a4d7a; --pred-bg: #f5ecf4; --obj: #4a5568; --obj-bg: #eef0f4;
     --soft: #f6e3b4; --strong: #efc36a;
     --bar: var(--navy); --bar-ink: #fdfaf3; --bar-soft: rgba(255, 255, 255, 0.14);
   }
@@ -231,17 +231,17 @@
       --bg: #14181c; --panel: #1c2127; --paper: #1f2329; --tint: #222830; --line: #2e353d;
       --ink: #e9e4da; --muted: #9aa3ab; --label: #c3c9cf;
       --navy: #8fb0d6; --navy-bg: #1f2c3b; --sky: #7fb0e3; --sky-bg: #1b2a3a; --steel-bg: #222838;
-      --subj: #6fd0cc; --subj-bg: #17292a; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #f2b27a; --obj-bg: #2e2419;
+      --subj: #6fd0cc; --subj-bg: #17292a; --pred: #c79ac3; --pred-bg: #2a2029; --obj: #b8c2d0; --obj-bg: #252a32;
       --soft: #4a3d1c; --strong: #6b5419;
       --bar: #172b45; --bar-ink: #ece6da; --bar-soft: rgba(255, 255, 255, 0.10);
     }
   }
-  body { font-family: "Public Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; background: var(--bg); }
+  body { font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; background: var(--bg); }
   header { background: var(--bar); box-shadow: none; border-bottom: 3px solid #6f9fd2; }
   @media (prefers-color-scheme: dark) { header { border-bottom-color: #3d6596; } }
   header h1 button { background: transparent; border: 0; color: var(--bar-ink); font: inherit; font-weight: 600;
                      font-size: 17px; padding: 4px 10px 4px 0; letter-spacing: 0.01em; }
-  .pencil { display: inline-block; width: 24px; height: 24px; margin-right: 8px; vertical-align: -6px; }
+  .pencil { display: inline-block; width: 24px; height: 24px; margin-left: 8px; vertical-align: -6px; }
   .pencil svg { width: 100%; height: 100%; }
   header h1 button:hover { background: transparent; text-decoration: underline; text-underline-offset: 4px; }
   header nav.tabs .tab.current, header nav.tabs .tab.current > button { background: var(--bar-ink); color: #1f3a5f; }
@@ -298,6 +298,16 @@
   .viewbox a { color: var(--navy); }
   .titleblock .headmeta { margin: 0; }
   .toolsmenu { position: relative; align-self: center; }
+  .panelhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .panelhead h3 { margin: 0; }
+  .triplenav button, .headline > button { color: var(--navy); }
+  .arrow { display: inline-flex; vertical-align: -2px; }
+  .rightstack { display: flex; flex-direction: column; align-items: stretch; gap: 6px; align-self: center; }
+  .rightstack .toolsmenu summary { display: block; text-align: center; }
+  .iddd { display: flex; align-items: center; gap: 8px; }
+  .iddd .fixed { white-space: nowrap; padding: 2px 8px; }
+  button.copy { padding: 2px 10px; font-size: 13px; white-space: nowrap; }
+  .recinfo dl { min-width: 0; width: max-content; max-width: 90vw; }
   .toolsmenu summary { list-style: none; cursor: pointer; padding: 5px 12px; border-radius: 8px; background: var(--navy-bg);
                        color: var(--navy); font-weight: 600; white-space: nowrap; }
   .toolsmenu summary::-webkit-details-marker { display: none; }
@@ -333,7 +343,7 @@
 <body>
 <header>
   <div class="topbar">
-    <h1><button id="homebutton" title="Home: what the tool is for, its views, and where its documents are"><span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span>Annotation tool</button></h1>
+    <h1><button id="homebutton" title="Home: what the tool is for, its views, and where its documents are">Annotation tool<span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span></button></h1>
     <nav class="tabs" aria-label="Views">
       <span class="tab" id="tab-batch" title="Correct a model's drafts into ground truth, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
       <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
@@ -341,7 +351,6 @@
       <button class="tab" id="additions" title="annotations/schema_additions.txt: for the schema step 060 extracts with">Schema additions</button>
     </nav>
     <span id="status"></span>
-    <button id="helpbutton" title="annotations/README.md: how to use the view you're on">Help</button>
   </div>
 </header>
 <ul id="warnings"></ul>
@@ -526,10 +535,39 @@ const TOOL_SCHEMA = el("button", { class: "tool", onclick: () => showSchema().ca
   "Ground truth schema", GAPCOUNT);
 // Ground truth's tools, in one menu: the Guidelines and the ground truth schema (its count shows on the menu too).
 const TOOLCOUNT = el("span", { class: "count", hidden: true });
-function toolsMenu() {
+// A button that copies a value (e.g. a record's id) to the clipboard, and says so for a moment.
+function copyButton(value) {
+  const b = el("button", { class: "copy", title: "Copy to the clipboard" }, "Copy");
+  b.addEventListener("click", async (e) => {
+    e.preventDefault();
+    try { await navigator.clipboard.writeText(value); }
+    catch (_) {                              // without clipboard access: select it, for Ctrl+C
+      const r = document.createRange(); r.selectNodeContents(b.previousSibling);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Ctrl+C"; return; }
+    b.textContent = "Copied ✓";
+    setTimeout(() => { b.textContent = "Copy"; }, 1400);
+  });
+  return b;
+}
+// An arrow drawn, not typed: some fonts on Windows draw the arrow characters in color.
+function arrow(dir) {                       // "up", "down", "left", "right"
+  const s = document.createElement("span");
+  s.className = "arrow";
+  s.innerHTML = `<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 2.5v11M3.8 9.3 8 13.5l4.2-4.2" ` +
+    `fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ` +
+    `transform="rotate(${{ down: 0, up: 180, left: 90, right: -90 }[dir]} 8 8)"/></svg>`;
+  return s;
+}
+function toolsMenu(...extra) {                // extra: the view's own tools (TOOL_GUIDELINES, TOOL_SCHEMA)
   return el("details", { class: "toolsmenu" },
-    el("summary", { title: "The Guidelines, and the ground truth schema" }, "Tools", TOOLCOUNT),
-    el("div", { class: "menu" }, TOOL_GUIDELINES, TOOL_SCHEMA));
+    el("summary", { title: "How to use this view, the terms, and this view's tools" }, "Tools",
+       extra.includes(TOOL_SCHEMA) ? TOOLCOUNT : null),
+    el("div", { class: "menu" },
+      el("button", { class: "tool", onclick: () => showHelp(),
+                     title: "annotations/README.md: this view's section" }, "How to use this view"),
+      el("button", { class: "tool", onclick: () => showHelp(`/api/doc?path=${encodeURIComponent("docs/terminology.md")}`),
+                     title: "docs/terminology.md: what each word of the tool and the project means" }, "The terms"),
+      extra));
 }
 document.addEventListener("click", (e) => {        // the menu closes on a choice, or a click anywhere else
   for (const m of document.querySelectorAll(".toolsmenu[open]"))
@@ -541,7 +579,6 @@ function chrome(view) {
     $(id).classList.toggle("current", view === v);
 }
 $("homebutton").addEventListener("click", () => showHome().catch(fail));
-$("helpbutton").addEventListener("click", () => showHelp());
 
 // ---------------------------------------------------------------- saving
 function changed() {
@@ -609,12 +646,12 @@ function show(i) {
                      title: listHidden ? "Show the list of the batch's records" : "Hide the list of the batch's records" },
          listHidden ? "☰ Records" : "☰ Hide records"),
       el("button", { onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0,
-                     title: "Previous record (or the ← key, when not typing in a field)" }, "←"),
+                     title: "Previous record (or the ← key, when not typing in a field)" }, arrow("left")),
       el("span", { class: "recnum", title: `Record ${current + 1} of the batch's ${batch.records.length}` },
          `${current + 1} / ${batch.records.length}`),
       el("button", { onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
                      disabled: current === batch.records.length - 1,
-                     title: "Next record (or the → key, when not typing in a field)" }, "→"),
+                     title: "Next record (or the → key, when not typing in a field)" }, arrow("right")),
       el("div", { class: "titleblock" },
         el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
         el("div", { class: "meta headmeta" },
@@ -629,13 +666,14 @@ function show(i) {
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
-              el("dt", {}, "Id"), el("dd", { class: "fixed" }, rec.id))),
+              el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)))),
           el("span", { id: "progress" }))),
-      toolsMenu(),
-      el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
-        el("input", { type: "checkbox", checked: rec.finished,
-                      onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
-        "All facts extracted")));
+      el("div", { class: "rightstack" },
+        el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
+          el("input", { type: "checkbox", checked: rec.finished,
+                        onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
+          "All facts extracted"),
+        toolsMenu(TOOL_GUIDELINES, TOOL_SCHEMA))));
 
   const text = el("section", { class: "card textcard" },
     el("h3", {}, "The record's text"),
@@ -673,11 +711,11 @@ function show(i) {
     oneAtATime && steps.length
       ? [el("div", { class: "triplenav" },
            el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: tripleAt === 0,
-                          title: "Previous (or the ↑ key, when not typing in a field)" }, "↑"),
+                          title: "Previous (or the ↑ key, when not typing in a field)" }, arrow("up")),
            el("strong", {}, atDescribes ? "Describes triple"
                                         : `Ground truth triple ${all.indexOf(at) + 1} of ${all.length}`),
            el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: tripleAt === steps.length - 1,
-                          title: "Next (or the ↓ key, when not typing in a field)" }, "↓")),
+                          title: "Next (or the ↓ key, when not typing in a field)" }, arrow("down"))),
          atDescribes ? describesRow(rec, at, false) : tripleRow(rec, at, false)]
       : [describes >= 0 ? describesRow(rec, describes) : null, all.map((j) => tripleRow(rec, j))],
     oneAtATime && !atDescribes ? null : none,
@@ -777,7 +815,9 @@ function describesRow(rec, j, heading = true) {
                       placeholder: "not chosen yet", "data-row": j,
                       oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target, true); },
                       onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }))),
-    el("p", { class: "hint" }, "No source text: this describes triple comes from the record's id and title, not from a passage of the text."),
+    el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
+      "subject (the record's id) and object (the record's title) are copied from the record by code, and the object's " +
+      "entity class, the kind of thing the title names, is proposed by the drafting model (step 050) and checked by you."),
     problemList(r, j));
 }
 function tripleRow(rec, j, heading = true) {
@@ -973,11 +1013,8 @@ async function showHome() {
       box("Partial pairs", "After step 070 has run: rule whether each partial pair states the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates and patterns to add to the schema step 060 extracts with.",
           () => openAdditions())),
-    el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch."),
-    el("p", { class: "doclinks" }, "Documents: ",
-       doc("annotations/README.md", "how to use the tool"), " · ",
-       doc("docs/terminology.md", "the terms"), " · ",
-       doc("docs/pipeline_in_pictures.md", "the pipeline in pictures"), ".")));
+    el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch. " +
+       "How to use a view, and the terms: its Tools menu.")));
 }
 
 function drawGaps(g) {
@@ -1043,8 +1080,7 @@ function drawMappingSummary() {
   const left = current.filter(toCheck).length;
   $("records").replaceChildren(
     el("div", { style: "padding:6px 8px" },
-      el("h3", {}, "Translation table"),
-      el("div", { class: "paneltools" }, TOOL_SCHEMA),
+      el("div", { class: "panelhead" }, el("h3", {}, "Translation table"), toolsMenu(TOOL_SCHEMA)),
       el("p", { class: "meta" }, `${current.length} row(s) for the current schema (the schema step 060 used last); ` +
                                   `${left} still to check.`),
       el("p", { class: "meta" }, "Step 070 evaluates only when every row for the current schema is checked. Step 070 " +
@@ -1227,7 +1263,7 @@ async function openPartial() {
 function drawPartial() {
   const left = partial.items.filter(i => !i.verdict).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
-    el("h3", {}, "Partial pairs"),
+    el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu()),
     el("p", { class: "meta" }, `${partial.items.length} pair(s) of tuning records; ${left} not reviewed yet.`),
     el("p", { class: "meta" }, "A partial pair is an extracted triple and a ground truth triple whose predicates agree, " +
       "and whose subjects, and whose objects, are each the same or one contained in the other as whole words. Such a " +
@@ -1305,7 +1341,7 @@ async function saveAdditions(entries) {
 function drawAdditions() {
   const left = additions.new_component_classes.filter(n => !n.added).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
-    el("h3", {}, "Schema additions"),
+    el("div", { class: "panelhead" }, el("h3", {}, "Schema additions"), toolsMenu()),
     el("p", { class: "meta" }, `${additions.entries.length} entr(ies) in ${additions.file}. Step 060 (extraction) adds ` +
       "these entries to the schema it extracts with (040's schema, by default); the combination is the current schema."),
     el("p", { class: "meta" }, "Every entity class and predicate added here needs a one-line definition, and every entry " +
@@ -1499,7 +1535,7 @@ function vocabEntry(kind, v) {
 function drawVocab() {
   const count = (k) => vocab.vocabulary[k].length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
-    el("h3", {}, "Ground truth schema"),
+    el("div", { class: "panelhead" }, el("h3", {}, "Ground truth schema"), toolsMenu()),
     el("p", { class: "meta" }, `${count("entity class")} entity class(es) and ${count("predicate")} predicate(s): every one ` +
       "in the ground truth schema, plus any the ground truth uses that it doesn't have yet (coined while annotating: " +
       "add each, or fix the typo, before step 070 runs)."),
