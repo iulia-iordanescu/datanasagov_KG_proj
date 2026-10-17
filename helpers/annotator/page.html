@@ -300,6 +300,7 @@
   .signature a { color: var(--navy); }
   .listblock .meta { font-size: 12px; line-height: 1.3; }
   .titleblock h2 { margin: 2px 0 2px; white-space: normal; overflow: visible; }
+  .titleblock .recof { font-size: 12px; }
   .viewbox a { color: var(--navy); }
   .titleblock .headmeta { margin: 0; }
   .toolsmenu { position: relative; align-self: center; }
@@ -450,6 +451,8 @@ const looseKey = (s) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 const predicateKey = (s) => (s || "").toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
   .replace(/[\s_\-]+/g, " ").trim();
 const isDescribes = (r) => looseKey(r.subject_class) === "catalogentry" && predicateKey(r.predicate) === "describes";
+// A record's ground truth triples, filled in (its describes triple not counted).
+const groundTruthCount = (rec) => rec.rows.filter((r) => !isDescribes(r) && r.subject && r.predicate && r.object).length;
 const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "error").length, 0);
 const flagsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "flag").length, 0);
 
@@ -464,6 +467,12 @@ function hintOpen() {                    // folded away unless opened earlier on
 function drawProgress() {
   const box = $("progress"), rec = batch && batch.records[current];
   if (!box || !rec) return;
+  const finishedRecs = batch.records.filter((r) => r.finished);
+  const total = finishedRecs.reduce((n, r) => n + groundTruthCount(r), 0);
+  if ($("batchgt")) $("batchgt").textContent =
+    `${total} ground truth triple${total === 1 ? "" : "s"} from ${finishedRecs.length} finished record${finishedRecs.length === 1 ? "" : "s"}`;
+  for (const id of ["gtdt", "gtdd"]) if ($(id)) $(id).hidden = !rec.finished;
+  if ($("gtdd")) $("gtdd").textContent = String(groundTruthCount(rec));
   const done = batch.records.filter((r) => r.finished).length, all = batch.records.length;
   const errors = errorsIn(rec), flags = flagsIn(rec);
   box.replaceChildren(...[                   // replaceChildren would write a null as the word "null"
@@ -659,11 +668,13 @@ function show(i) {
         el("button", { class: "listtoggle", onclick: toggleList,
                        title: listHidden ? "Show the list of the batch's records" : "Hide the list of the batch's records" },
            listHidden ? "☰ Records" : "☰ Hide records"),
-        el("div", { class: "meta" }, `Currently showing: record ${current + 1} of ${batch.records.length} in this batch`)),
+        el("div", { class: "meta", id: "batchgt",
+                    title: "The ground truth triples of this batch's finished records (describes triples not counted)" })),
       el("div", { class: "recnav" },
         el("button", { class: "bigarrow", onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0,
                        title: "Previous record (or the ← key, when not typing in a field)" }, arrow("left")),
       el("div", { class: "titleblock" },
+        el("div", { class: "meta recof" }, `Record ${current + 1} of ${batch.records.length} in this batch`),
         el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
         el("div", { class: "meta headmeta" },
           el("details", { class: "recinfo", open: infoOpen(),
@@ -677,7 +688,9 @@ function show(i) {
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
-              el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)))),
+              el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)),
+              el("dt", { id: "gtdt", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
+                 "Ground truth triples"), el("dd", { id: "gtdd" }))),
           el("span", { id: "progress" }))),
         el("button", { class: "bigarrow", onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
                        disabled: current === batch.records.length - 1,
