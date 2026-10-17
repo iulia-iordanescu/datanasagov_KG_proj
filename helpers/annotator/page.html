@@ -133,6 +133,8 @@
   .headline .listtoggle { color: var(--accent); }
   .headmeta { margin: 4px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
   .headmeta .pill { margin-left: 6px; }
+  button.pill.jump { border: 0; cursor: pointer; font: inherit; font-size: 12px; }
+  button.pill.jump:hover { filter: brightness(0.95); text-decoration: underline; }
   body.norecords main { grid-template-columns: 1fr; }
   body.norecords nav#records { display: none; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 600; }
@@ -476,8 +478,12 @@ function drawProgress() {
   const done = batch.records.filter((r) => r.finished).length, all = batch.records.length;
   const errors = errorsIn(rec), flags = flagsIn(rec);
   box.replaceChildren(...[                   // replaceChildren would write a null as the word "null"
-    errors ? el("span", { class: "pill error" }, `${errors} to fix (✖)`) : null,
-    flags ? el("span", { class: "pill flag" }, `${flags} to look at (⚑)`) : null,
+    errors ? el("button", { class: "pill error jump", onclick: () => goToNext("error"),
+                            title: "Go to the next ground truth triple with something to fix (after the last, back to the first)" },
+                `${errors} to fix (✖)`) : null,
+    flags ? el("button", { class: "pill flag jump", onclick: () => goToNext("flag"),
+                           title: "Go to the next ground truth triple with something to look at (after the last, back to the first)" },
+               `${flags} to look at (⚑)`) : null,
     !errors && !flags ? el("span", { class: "pill ok" }, "nothing to fix") : null].filter((x) => x !== null));
   const top = $("batchprogress");
   if (top) top.replaceChildren(
@@ -655,7 +661,7 @@ function drawList() {
 function show(i) {
   document.body.classList.toggle("norecords", listHidden);
   chrome("batch");
-  if (i !== current) { tripleAt = 0; shownRow = null; }
+  if (i !== current) { tripleAt = 0; shownRow = null; lastJump = { error: null, flag: null }; }
   current = i; activeRow = null;
   showIntro();
   drawList();
@@ -671,8 +677,8 @@ function show(i) {
         el("div", { class: "meta", id: "batchgt",
                     title: "The ground truth triples of this batch's finished records (describes triples not counted)" })),
       el("div", { class: "recnav" },
-        el("button", { class: "bigarrow", onclick: () => show(Math.max(current - 1, 0)), disabled: current === 0,
-                       title: "Previous record (or the ← key, when not typing in a field)" }, arrow("left")),
+        el("button", { class: "bigarrow", onclick: () => show(stepRecord(-1)), disabled: batch.records.length < 2,
+                       title: "Previous record; from the first, the last (or the ← key, when not typing in a field)" }, arrow("left")),
       el("div", { class: "titleblock" },
         el("div", { class: "meta recof" }, `Record ${current + 1} of ${batch.records.length} in this batch`),
         el("h2", { title: rec.title || "" }, rec.title || "(no title)"),
@@ -692,9 +698,8 @@ function show(i) {
               el("dt", { id: "gtdt", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
                  "Ground truth triples"), el("dd", { id: "gtdd" }))),
           el("span", { id: "progress" }))),
-        el("button", { class: "bigarrow", onclick: () => show(Math.min(current + 1, batch.records.length - 1)),
-                       disabled: current === batch.records.length - 1,
-                       title: "Next record (or the → key, when not typing in a field)" }, arrow("right"))),
+        el("button", { class: "bigarrow", onclick: () => show(stepRecord(1)), disabled: batch.records.length < 2,
+                       title: "Next record; from the last, the first (or the → key, when not typing in a field)" }, arrow("right"))),
       el("div", { class: "rightstack" },
         el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
           el("input", { type: "checkbox", checked: rec.finished,
@@ -737,12 +742,12 @@ function show(i) {
     el("h3", {}, "Describes triple and ground truth triples"),
     oneAtATime && steps.length
       ? [el("div", { class: "triplenav" },
-           el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: tripleAt === 0,
-                          title: "Previous (or the ↑ key, when not typing in a field)" }, arrow("up")),
+           el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: steps.length < 2,
+                          title: "Previous; from the describes triple, the last ground truth triple (or the ↑ key, when not typing in a field)" }, arrow("up")),
            el("strong", {}, atDescribes ? "Describes triple"
                                         : `Ground truth triple ${all.indexOf(at) + 1} of ${all.length}`),
-           el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: tripleAt === steps.length - 1,
-                          title: "Next (or the ↓ key, when not typing in a field)" }, arrow("down"))),
+           el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: steps.length < 2,
+                          title: "Next; from the last ground truth triple, the describes triple (or the ↓ key, when not typing in a field)" }, arrow("down"))),
          atDescribes ? describesRow(rec, at, false) : tripleRow(rec, at, false)]
       : [describes >= 0 ? describesRow(rec, describes) : null, all.map((j) => tripleRow(rec, j))],
     oneAtATime && !atDescribes ? null : none,
@@ -757,14 +762,34 @@ function show(i) {
 
 // Go to the record's k-th row to annotate (0 = its describes triple, if it has one); with one at a time, show it.
 // k counts from the one shown, in the order as it is now (a source text set since may have moved it).
-function goToTriple(k) {                  // true if it moved
+function goToTriple(k) {                  // true if it moved; past either end it loops round
   const steps = stepRows(batch.records[current]);
-  const target = (shownRow !== null && steps.includes(shownRow) ? steps.indexOf(shownRow) : tripleAt) + (k - tripleAt);
-  if (target < 0 || target >= steps.length) return false;
+  if (steps.length < 2) return false;
+  const from = shownRow !== null && steps.includes(shownRow) ? steps.indexOf(shownRow) : tripleAt;
+  const target = ((from + (k - tripleAt)) % steps.length + steps.length) % steps.length;
   tripleAt = target; shownRow = steps[target];
   show(current);
   return true;
 }
+// The record d steps from the one shown, looping round the batch (from the last record, the next is the first).
+function stepRecord(d) { const n = batch.records.length; return ((current + d) % n + n) % n; }
+
+// The next row with an error (kind "error") or a flag ("flag"), after the one shown (or the last one gone to), in
+// the order of the ↑ ↓ arrows, looping back to the first after the last. Shows it and puts the cursor in it.
+let lastJump = { error: null, flag: null };
+function goToNext(kind) {
+  const rec = batch.records[current], steps = stepRows(rec);
+  const marked = steps.filter((j) => rec.rows[j].problems.some((p) => p.type === kind));
+  if (!marked.length) return;
+  const from = oneAtATime ? (shownRow !== null && steps.includes(shownRow) ? shownRow : steps[tripleAt]) : lastJump[kind];
+  const at = from === null || from === undefined ? -1 : steps.indexOf(from);
+  const next = marked.find((j) => steps.indexOf(j) > at) ?? marked[0];
+  lastJump[kind] = next;
+  goToRow(next);
+  const box = document.querySelector(`[data-row-box="${next}"]`);
+  if (box) box.scrollIntoView({ block: "center" });
+}
+
 // The page's address names the view (and the batch, record, and triple shown), so a reload comes back to it; replaced,
 // not added, so the browser's Back button isn't filled with every move.
 function setHash(h) { history.replaceState(null, "", h ? "#" + h : location.pathname); }
@@ -1757,8 +1782,8 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideHelp()
 document.addEventListener("keydown", (e) => {
   if (!batch || e.altKey || e.ctrlKey || e.metaKey || !$("help").hidden) return;
   if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
-  if (e.key === "ArrowRight" && current < batch.records.length - 1) { e.preventDefault(); show(current + 1); }
-  if (e.key === "ArrowLeft" && current > 0) { e.preventDefault(); show(current - 1); }
+  if (e.key === "ArrowRight" && batch.records.length > 1) { e.preventDefault(); show(stepRecord(1)); }
+  if (e.key === "ArrowLeft" && batch.records.length > 1) { e.preventDefault(); show(stepRecord(-1)); }
   if (oneAtATime && e.key === "ArrowDown" && goToTriple(tripleAt + 1)) e.preventDefault();
   if (oneAtATime && e.key === "ArrowUp" && goToTriple(tripleAt - 1)) e.preventDefault();
 });

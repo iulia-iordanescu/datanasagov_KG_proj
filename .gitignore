@@ -225,3 +225,6 @@ docs/pipeline_implementation_prompt.md
 
 # Licensed books and papers (PDFs) are never committed: cite them by title and authors instead
 *.pdf
+
+# Research notes and plans kept locally only
+DONOTTRACK/
