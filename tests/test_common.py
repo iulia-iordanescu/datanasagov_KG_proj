@@ -108,6 +108,14 @@ class GroundTruthFiles(unittest.TestCase):
             ("batch_000.csv line 6", ["no_source_text"]),
             ("batch_000.csv line 8", ["id_not_in_records"])])
 
+    def test_run_order(self):
+        from common.audit import run_order
+        ids = ["070_evaluate_2026-10-17_1641-10", "070_evaluate_2026-10-17_1642", "070_evaluate_2026-10-17_1641",
+               "070_evaluate_2026-10-17_1641-2", "070_evaluate_2026-10-16_2359", "070_evaluate_2026-10-17_1641-9"]
+        self.assertEqual(sorted(ids, key=run_order),
+                         ["070_evaluate_2026-10-16_2359", "070_evaluate_2026-10-17_1641", "070_evaluate_2026-10-17_1641-2",
+                          "070_evaluate_2026-10-17_1641-9", "070_evaluate_2026-10-17_1641-10", "070_evaluate_2026-10-17_1642"])
+
     def test_vocabulary(self):
         gt_file(self.tmp, "batch_000.csv", [
             row("a", "a", "CatalogEntry", "DESCRIBES", "T", "Dataset", "(record structure)"),

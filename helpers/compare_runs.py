@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 
 
 import stats                                                                   # noqa: E402
 from moves import EVALUATIONS_DIR                                              # noqa: E402
+from common import audit                                                      # noqa: E402
 from common.files import write_text                                            # noqa: E402
 from common.step import REPORTS_DIR, RESULTS_DIR, repo_path                    # noqa: E402
 
@@ -36,7 +37,7 @@ LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 def available() -> list:
     """The evaluations kept so far, oldest first."""
-    return sorted(EVALUATIONS.glob("*.json")) if EVALUATIONS.is_dir() else []
+    return sorted(EVALUATIONS.glob("*.json"), key=lambda p: audit.run_order(p.stem)) if EVALUATIONS.is_dir() else []
 
 
 def load(run_id: str) -> dict:

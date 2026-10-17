@@ -41,6 +41,7 @@ import datetime as dt
 import functools
 import hashlib
 import logging
+import re
 import sys
 import time
 from pathlib import Path
@@ -64,6 +65,13 @@ def new_run_id(step_name: str, started: dt.datetime, folders: list) -> str:
     while any(any(folder.glob(f"{run_id}.*")) for folder in folders):
         run_id, n = f"{base}-{n}", n + 1
     return run_id
+
+
+def run_order(run_id: str) -> tuple:
+    """A key that sorts run ids in the order the runs started: by date, minute, and suffix (new_run_id's -2, -3,
+    ...). Sorting the names as text gets it wrong: "…_1641-6" sorts before "…_1641", and "-10" before "-2"."""
+    m = re.search(r"_(\d{4}-\d{2}-\d{2})_(\d{4})(?:-(\d+))?$", run_id)
+    return (m.group(1), m.group(2), int(m.group(3) or 1), run_id) if m else ("", "", 0, run_id)
 
 
 def sha256(files) -> str:

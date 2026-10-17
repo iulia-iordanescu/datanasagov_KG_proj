@@ -341,7 +341,9 @@ class Pipeline(unittest.TestCase):
             self.assertEqual(looks[0][k], looks[1][k], k)
         self.assertIn("nothing that sets the held-out numbers changed", out)
         # every run keeps its tuning records' counts; two runs of the same version compare as the same
-        kept = sorted((self.results / "070_evaluate" / "evaluations").glob("*.json"))
+        # in the order the runs started (common.audit.run_order: names alone sort "…_1641-6" before "…_1641")
+        from common.audit import run_order
+        kept = sorted((self.results / "070_evaluate" / "evaluations").glob("*.json"), key=lambda f: run_order(f.stem))
         self.assertGreaterEqual(len(kept), 2)
         last = json.loads(kept[-1].read_text(encoding="utf-8"))
         self.assertEqual({r["id"] for r in last["records"]}, set(metrics["evaluated"]["tuning"]))   # never held-out ones
