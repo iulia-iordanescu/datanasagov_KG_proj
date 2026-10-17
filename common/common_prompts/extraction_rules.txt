@@ -32,6 +32,7 @@
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.
 - Each fact once, even if the record states it twice or in other words.
+  Keep the wording that says the most: "Polar-Gridded" over "gridded".
 - Only facts the record states. Never use outside knowledge, and never
   infer what an unexplained code or acronym stands for.
 - Do NOT write "is a" triples ("MODIS is a spectroradiometer"): what kind

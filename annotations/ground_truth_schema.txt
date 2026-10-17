@@ -14,7 +14,7 @@ TimeSpan          a period with a start and an end
 PhysicalQuantity  a property that can be measured
 CelestialBody     a natural object in space
 Version           a label marking one release of something
-SpatialExtent     the part of the Earth or of another body that data cover: all of it (global), or part of it (the Arctic)
+SpatialExtent     the area the data cover, of the body they are about: all of it (global) or part of it (e.g. the Arctic, or the south pole of Mars)
 ProcessingLevel   how far data have been processed from what the instrument recorded, e.g. Level 2
 Value             a number with its unit, e.g. 500 m
 Algorithm         a method applied to data to compute a result, e.g. an index or a series of screens
