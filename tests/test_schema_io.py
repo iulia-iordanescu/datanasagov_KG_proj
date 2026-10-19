@@ -62,6 +62,22 @@ class Reading(unittest.TestCase):
         self.assertEqual(len(s["unread"]), 2)                        # the repeat and the prose line
         self.assertTrue(any("repeats" in u for u in s["unread"]))
 
+    def test_pins(self):
+        text = TEXT.replace("                  source: mentor, 2026-10-01\n",
+                            "                  source: mentor, 2026-10-01\n                  only: any -> Dataset; Instrument -> Spacecraft\n")
+        path = self.write("pins.txt", text)
+        s = schema_io.read_schema(path)
+        self.assertEqual(s["pinned"], {"HAS_PART": [("any", "Dataset"), ("Instrument", "Spacecraft")]})
+        self.assertEqual(len(s["unread"]), 2)                        # the "only:" line is read
+        self.assertIn("only: any -> Dataset; Instrument -> Spacecraft", schema_io.schema_text(s))
+        # renaming an entity class renames it in the pins; renaming the predicate keeps its pins
+        path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "entity class", "Dataset", "Collection")[0])
+        self.assertEqual(schema_io.read_schema(path)["pinned"]["HAS_PART"], [("any", "Collection"), ("Instrument", "Spacecraft")])
+        path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "predicate", "HAS_PART", "HAS_COMPONENT")[0])
+        self.assertEqual(schema_io.read_schema(path)["pinned"], {"HAS_COMPONENT": [("any", "Collection"), ("Instrument", "Spacecraft")]})
+        path.write_bytes(schema_io.redefine_in_ground_truth_schema(path, "predicate", "HAS_COMPONENT", "has as a component"))
+        self.assertIn("HAS_COMPONENT", schema_io.read_schema(path)["pinned"])
+
     def test_old_heading_bom_crlf(self):
         text = TEXT.replace("ENTITY CLASSES\n--------------", "CLASSES\n-------").replace("\n", "\r\n")
         s = schema_io.read_schema(self.write("s.txt", "﻿" + text))

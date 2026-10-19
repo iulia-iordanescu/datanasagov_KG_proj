@@ -125,6 +125,7 @@ Run against the [record](../docs/terminology.md#1-records-and-their-text)'s **wh
 | `subject_class_not_in_schema`, `object_class_not_in_schema`, `describes_class_not_in_schema` | flag | A coined entity class: a new one, or a typo. |
 | `predicate_not_in_schema` | flag | A coined [predicate](../docs/terminology.md#3-schemas): a new one, or a typo. |
 | `pattern_not_in_schema` | flag | The predicate is in the [schema](../docs/terminology.md#3-schemas), but the [ground truth schema](../docs/terminology.md#3-schemas) has no pattern with this [subject class](../docs/terminology.md#2-triples), predicate, and [object class](../docs/terminology.md#2-triples). |
+| `pattern_not_pinned` | flag | The predicate is a [pinned predicate](../docs/terminology.md#3-schemas) of the ground truth schema, and its "only:" line doesn't list this subject class and object class. |
 | `conflicting_classes` | flag | The same subject instance, predicate, and [object instance](../docs/terminology.md#2-triples) appear in another row with a different subject class or object class; both rows are flagged. |
 
 "In the text" means found once [evened out](../docs/terminology.md#2-triples). Entity classes and predicates are compared with the schema's by [loose match](../docs/terminology.md#3-schemas), so `has version` is `HAS_VERSION`.

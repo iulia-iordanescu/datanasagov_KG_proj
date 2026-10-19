@@ -96,15 +96,25 @@ ONE_WORD = ("the component class must be one word: letters or digits, no spaces,
 ENTRY = re.compile(r"^(\S+) {2,}(\S.*)$")         # "Instrument  definition"
 PAIR = re.compile(r"^\s*(\S+)\s*->\s*(\S+)\s*$")   # "Subject -> Object"
 PATTERN_LINE = re.compile(r"^(\S+)\s+(\S+)\s+(\S+)$")   # "Instrument ABOARD Mission", in a PATTERNS section
+#: A pinned predicate's line under it: "only: Dataset -> Instrument; any -> Person". Its predicate joins only these
+#: entity classes ("any": any entity class); the checks flag any other pattern (pattern_not_pinned).
+PINNED = "only:"
+ANY = "any"
 #: The text shape's section headings ("CLASSES" is the older heading of the
 #: entity classes, still read).
 SECTIONS = {"ENTITY CLASSES": "entity_classes", "CLASSES": "entity_classes", "PREDICATES": "predicates",
             "PATTERNS": "patterns"}
 
 
+def _pins_of(line: str) -> list:
+    """The pairs of an "only:" line, [(subject class, object class)], or [] if it isn't one."""
+    pairs = [PAIR.match(p) for p in line.strip()[len(PINNED):].split(";")]
+    return [p.groups() for p in pairs] if pairs and all(pairs) else []
+
+
 def _empty() -> dict:
     return {"entity_classes": {}, "predicates": {}, "patterns": [], "pattern_entries": [],
-            "sources": {"entity_classes": {}, "predicates": {}, "patterns": {}}, "unread": []}
+            "sources": {"entity_classes": {}, "predicates": {}, "patterns": {}}, "unread": [], "pinned": {}}
 
 
 def pattern_key(pattern) -> str:
@@ -148,6 +158,11 @@ def _read_text(path) -> dict:
             if head.lower().startswith("source:"):
                 schema["sources"][section][entry_name] = head[len("source:"):].strip()
                 continue
+            if section == "predicates" and head.lower().startswith(PINNED):
+                pins = _pins_of(head)
+                if pins:
+                    schema["pinned"][entry_name] = pins
+                    continue
             if section == "predicates":
                 pairs = [PAIR.match(p) for p in head.split(";")]
                 if pairs and all(pairs):
@@ -210,6 +225,8 @@ def schema_text(schema: dict) -> str:
         lines.append(f"{name.ljust(width)}{d}".rstrip())
         if by_predicate.get(name):
             lines.append(" " * width + "; ".join(by_predicate[name]))
+        if schema.get("pinned", {}).get(name):
+            lines.append(" " * width + PINNED + " " + _pairs_text(schema["pinned"][name]))
     return "\n".join(lines)
 
 
@@ -393,7 +410,8 @@ def _file_lines(path) -> tuple:
 
 def _as_read(schema: dict) -> tuple:
     return (schema["entity_classes"], schema["predicates"], set(schema["patterns"]), schema["sources"],
-            sorted(u.split(": ", 1)[-1] for u in schema["unread"]))
+            sorted(u.split(": ", 1)[-1] for u in schema["unread"]),
+            {p: set(v) for p, v in schema.get("pinned", {}).items()})
 
 
 def _checked(path, bom: str, newline: str, lines: list, expected: dict, what: str) -> bytes:
@@ -488,12 +506,15 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
         else:
             m = ENTRY.match(lines[i])
             lines[i] = target.ljust(max(m.start(2), len(target) + 2)) + m.group(2)
-    if key == "entity_classes":                    # every pattern under a predicate
+    if key == "entity_classes":                    # every pattern under a predicate, and every pin
         p_start, p_end = _section(lines, "predicates", path)
         for j in range(p_start, p_end):
             if _is_pairs_line(lines[j]):
                 pairs = [(swap(s), swap(o)) for s, o in _pairs_of(lines[j])]
                 lines[j] = _indent(lines[j]) + _pairs_text(list(dict.fromkeys(pairs)))
+            elif lines[j][:1].isspace() and _pins_of(lines[j]):
+                pins = [(swap(s), swap(o)) for s, o in _pins_of(lines[j])]
+                lines[j] = _indent(lines[j]) + PINNED + " " + _pairs_text(list(dict.fromkeys(pins)))
     if moved:
         p_start, p_end = _section(lines, "predicates", path)
         t = _entry_line(lines, p_start, p_end, target)
@@ -528,7 +549,9 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
         return out
 
     patterns = [trio(t) for t in before["patterns"]]
-    expected = {**before, key: renamed(before[key]), "patterns": patterns,
+    pinned = ({p: [(swap(s), swap(o)) for s, o in v] for p, v in before["pinned"].items()} if key == "entity_classes"
+              else renamed(before["pinned"]))
+    expected = {**before, key: renamed(before[key]), "patterns": patterns, "pinned": pinned,
                 "sources": {**before["sources"], key: renamed(before["sources"][key]),
                             "patterns": {pattern_key(trio(tuple(n.split(" ")))): v
                                          for n, v in before["sources"]["patterns"].items()}}}

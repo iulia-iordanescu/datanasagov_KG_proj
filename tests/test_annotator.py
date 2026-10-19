@@ -2,6 +2,7 @@
 in a temporary copy of the repository: opening and saving a batch, adding
 to the ground truth schema, the translation table, the schema additions, and
 partial pair reviews. Nothing in the real annotations/ is touched."""
+import collections
 import csv
 import json
 import shutil
@@ -104,7 +105,7 @@ class A_Paths(unittest.TestCase):
         from common import validate
         codes = set(validate.ERRORS) | set(validate.FLAGS) | {
             "subject_class_not_in_schema", "object_class_not_in_schema", "predicate_not_in_schema",
-            "pattern_not_in_schema", "describes_undecided", "describes_class_not_in_schema",
+            "pattern_not_in_schema", "pattern_not_pinned", "describes_undecided", "describes_class_not_in_schema",
             "describes_subject_not_id", "empty"}
         self.assertEqual(codes, set(server.MESSAGES))
 
@@ -158,6 +159,13 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(sorted(b["definitions"]["entity_classes"]), b["entity_classes"])
         self.assertEqual(sorted(b["definitions"]["predicates"]), b["predicates"])
         self.assertEqual(set(b["coined"]), {"entity_classes", "predicates"})
+        # the pattern buttons' list: every pattern a ground truth triple uses, with how many use it
+        used = collections.Counter((r["subject_class"], r["predicate"], r["object_class"]) for rec in b["records"]
+                                   for r in rec["rows"] if r["predicate"] not in ("", "DESCRIBES") and r["object_class"])
+        listed = {tuple(p[:3]): p[3] for p in b["patterns"]}
+        self.assertTrue(used)
+        for pattern, n in used.items():
+            self.assertEqual(listed.get(pattern), n, pattern)
         r1 = b["records"][1]
         codes = [p["code"] for row in r1["rows"] for p in row["problems"]]
         self.assertIn("describes_undecided", codes)
@@ -177,7 +185,9 @@ class B_Batch(unittest.TestCase):
         recs[2]["finished"] = True
         recs[2]["rows"] = []                                                   # states no facts
         recs[3]["rows"][0]["predicate"] = ""                                   # incomplete
-        problems = post("/api/save", {"n": 0, "records": recs})["problems"]
+        saved = post("/api/save", {"n": 0, "records": recs})
+        problems = saved["problems"]
+        self.assertTrue(all(len(p) == 4 for p in saved["patterns"]))          # the pattern buttons' list, as saved
         self.assertEqual([len(p) for p in problems], [3, 2, 0, 1])               # one list per row sent
         self.assertEqual([[p["code"] for p in row] for row in problems[0]], [[], [], ["empty"]])
         self.assertEqual([p["code"] for p in problems[3][0]], ["empty"])

@@ -16,7 +16,7 @@ A ground truth triple that isn't within reach can never be found. Extraction wri
 A ground truth triple is **within strict reach** when (the ground truth triple is within reach) ∧ (the translation table has a checked row that translates an [entity class](../../docs/terminology.md#3-schemas) of the current schema to the ground truth triple's [subject class](../../docs/terminology.md#2-triples)) ∧ (the translation table has a checked row that translates an entity class of the current schema to the ground truth triple's [object class](../../docs/terminology.md#2-triples)).
 
 - Example: besides the MOUNTED_ON row above, checked rows translate Sensor (current schema) to Instrument (ground truth schema), and Satellite (current schema) to Spacecraft (ground truth schema). So the ground truth triple "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft) is within strict reach.
-- Example: no checked row translates any entity class of the current schema to Dataset (ground truth schema). So the ground truth triple "MODIS Snow Cover" (Dataset) ACQUIRED_BY "MODIS" (Instrument) isn't within strict reach, even when the ground truth triple is within reach.
+- Example: no checked row translates any entity class of the current schema to Dataset (ground truth schema). So the ground truth triple "MODIS Snow Cover" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument) isn't within strict reach, even when the ground truth triple is within reach.
 
 A ground truth triple that isn't within strict reach can never be in a [strict pair](pairs.md), for the same reason: a translated extracted triple can only have entity classes of the ground truth schema that some checked row translates to.
 
@@ -63,13 +63,13 @@ Worked example: [Recall upper bound: example](#example). Sources: [Recall upper 
 
 ## Example
 
-*Suppose:* the [ground truth schema](../../docs/terminology.md#3-schemas) has the [predicates](../../docs/terminology.md#3-schemas) ABOARD, ACQUIRED_BY, and HAS_TIME_SPAN, and the [entity classes](../../docs/terminology.md#3-schemas) Instrument, Spacecraft, Dataset, and TimeSpan. The checked rows of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) translate [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) to ABOARD, ACQUIRED_BY, Instrument, Spacecraft, and TimeSpan, but none translates to HAS_TIME_SPAN or Dataset. A [record](../../docs/terminology.md#1-records-and-their-text)'s [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has 5 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples):
+*Suppose:* the [ground truth schema](../../docs/terminology.md#3-schemas) has the [predicates](../../docs/terminology.md#3-schemas) ABOARD, ACQUIRED_BY_INSTRUMENT, and HAS_TIME_SPAN, and the [entity classes](../../docs/terminology.md#3-schemas) Instrument, Spacecraft, Dataset, and TimeSpan. The checked rows of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) translate [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) to ABOARD, ACQUIRED_BY_INSTRUMENT, Instrument, Spacecraft, and TimeSpan, but none translates to HAS_TIME_SPAN or Dataset. A [record](../../docs/terminology.md#1-records-and-their-text)'s [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has 5 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples):
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | Within reach | Within strict reach |
 |---|---|---|---|---|---|
 | G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 | G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
-| G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY | MODIS (Instrument) | yes | no: nothing translates to Dataset |
+| G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY_INSTRUMENT | MODIS (Instrument) | yes | no: nothing translates to Dataset |
 | G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) | no: nothing translates to HAS_TIME_SPAN | no |
 | G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 

@@ -42,11 +42,14 @@ Each entry below reads subject -> object, and lists its patterns (subject class 
 Every pattern the ground truth itself uses counts too (code reads them from the
 ground truth files), so a new pattern is never added here. Use a predicate
 wherever its meaning fits.
+A line "only: Subject -> Object; ..." pins a predicate: it joins only those
+entity classes ("any": any entity class), and the checks flag any other pattern.
 
 ABOARD               is carried on
                      Instrument -> Spacecraft
-ACQUIRED_BY          was collected by
+ACQUIRED_BY_INSTRUMENT  was collected by this instrument
                      Dataset -> Instrument
+                     only: Dataset -> Instrument
 ALSO_KNOWN_AS        is the same thing under another name
                      WebTool -> WebTool
 FROM_MISSION         came from
@@ -65,18 +68,21 @@ HAS_TIME_SPAN        covers the period
                      Dataset -> TimeSpan; MissionPhase -> TimeSpan
 HAS_VERSION          carries the version label
                      Dataset -> Version
-PROVIDES_ACCESS_TO   makes available
+PROVIDES_ACCESS_TO_DOCUMENT  makes this document available
                      Organization -> Document
-SPONSORED_BY         is sponsored by
+                     only: Organization -> Document
+SPONSORED_BY_PARTY   is sponsored by this person or organization
                      WebTool -> Organization
+                     only: any -> Organization; any -> Person
 HAS_SPATIAL_COVERAGE  covers the area
                       Dataset -> SpatialExtent
 HAS_PROCESSING_LEVEL  is processed to the level
                       Dataset -> ProcessingLevel
 HAS_SPATIAL_RESOLUTION  each value covers this size on the ground, e.g. 500 m
                         Dataset -> Value
-PRODUCED_USING       was made by applying a method or algorithm
+PRODUCED_USING_ALGORITHM  was made by applying this algorithm
                      source: ground truth tuning #2
+                     only: any -> Algorithm
 DERIVED_FROM         was computed from
                      source: ground truth tuning #2
 HAS_DOI              has the Digital Object Identifier
@@ -89,8 +95,9 @@ HAS_TEMPORAL_RESOLUTION  gives a value once every, e.g. daily, weekly
                          source: ground truth tuning #2, #3
 BASED_IN             belongs to the country
                      source: ground truth tuning #3
-DEVELOPED_BY         was built or created by
+DEVELOPED_BY_PARTY   was built or created by this person or organization
                      source: ground truth tuning #3
+                     only: any -> Organization; any -> Person
 HAS_TIME_OF_DAY      was observed during this part of the day
                      source: ground truth tuning #4
 LAUNCHED_BY          was launched into space by

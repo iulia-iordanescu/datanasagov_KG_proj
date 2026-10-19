@@ -56,13 +56,13 @@ Worked example: [Recall within reach: example](#example). Sources: [Recall withi
 
 ## Example
 
-*Suppose:* the [ground truth schema](../../docs/terminology.md#3-schemas) has the [predicates](../../docs/terminology.md#3-schemas) ABOARD, ACQUIRED_BY, and HAS_TIME_SPAN, and the [entity classes](../../docs/terminology.md#3-schemas) Instrument, Spacecraft, Dataset, and TimeSpan. The checked rows of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) translate [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) to ABOARD, ACQUIRED_BY, Instrument, Spacecraft, and TimeSpan (each to itself), but none translates to HAS_TIME_SPAN or Dataset. A [record](../../docs/terminology.md#1-records-and-their-text)'s [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has the 5 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples) of [Recall upper bound: example](recall_upper_bound.md#example):
+*Suppose:* the [ground truth schema](../../docs/terminology.md#3-schemas) has the [predicates](../../docs/terminology.md#3-schemas) ABOARD, ACQUIRED_BY_INSTRUMENT, and HAS_TIME_SPAN, and the [entity classes](../../docs/terminology.md#3-schemas) Instrument, Spacecraft, Dataset, and TimeSpan. The checked rows of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) translate [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) to ABOARD, ACQUIRED_BY_INSTRUMENT, Instrument, Spacecraft, and TimeSpan (each to itself), but none translates to HAS_TIME_SPAN or Dataset. A [record](../../docs/terminology.md#1-records-and-their-text)'s [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has the 5 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples) of [Recall upper bound: example](recall_upper_bound.md#example):
 
 | | Subject instance (subject class) | Predicate | Object instance ([object class](../../docs/terminology.md#2-triples)) | Within reach | Within strict reach |
 |---|---|---|---|---|---|
 | G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 | G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
-| G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY | MODIS (Instrument) | yes | no |
+| G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY_INSTRUMENT | MODIS (Instrument) | yes | no |
 | G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) | no | no |
 | G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 

@@ -190,7 +190,7 @@ class Pipeline(unittest.TestCase):
             keep.append({**{c: r[c] for c in COLUMNS}, "all_facts_extracted": "1",
                          "object_class": "Dataset" if r["object_class"] == "X" else r["object_class"]})
         title = keep[0]["object"]                                               # record 0: a fact only a person saw
-        keep.insert(2, {**keep[0], "subject": title, "subject_class": "Dataset", "predicate": "ACQUIRED_BY",
+        keep.insert(2, {**keep[0], "subject": title, "subject_class": "Dataset", "predicate": "ACQUIRED_BY_INSTRUMENT",
                         "object": "MODIS", "object_class": "Instrument", "source_text": title,
                         "drafted_by": ""})                                      # a row the person wrote
         write_csv(self.annotations / "ground_truth" / "batch_001.csv", keep, COLUMNS)

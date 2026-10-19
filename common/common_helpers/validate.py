@@ -79,6 +79,9 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
 #     predicate_not_in_schema        the predicate isn't in it
 #     pattern_not_in_schema          the predicate is in it, but never with
 #                                    these two entity classes
+#     pattern_not_pinned             the predicate is pinned (an "only:" line
+#                                    in the schema), and not to these two
+#                                    entity classes
 #
 #     ON THE DESCRIBES TRIPLE (common/common_helpers/triples_io.py)
 #     describes_undecided            ERROR: no describes class named
@@ -102,6 +105,9 @@ class SchemaEntries:
         self.spelling = {kind: {component_class_key(n): n for n in schema.get(kind, {})}
                          for kind in ("entity_classes", "predicates")}
         self.patterns = {tuple(component_class_key(x) for x in p) for p in schema.get("patterns", [])}
+        #: {predicate: {(subject class, object class)}}: a pinned predicate joins only these ("any" for any)
+        self.pinned = {component_class_key(p): {tuple(component_class_key(x) for x in pair) for pair in pins}
+                       for p, pins in schema.get("pinned", {}).items()}
 
 
 def check_against_schema(instance: dict, schema_entries: SchemaEntries) -> list:
@@ -110,9 +116,13 @@ def check_against_schema(instance: dict, schema_entries: SchemaEntries) -> list:
     flags = [f"{slot}_not_in_schema" for slot in ("subject_class", "object_class")
              if k(instance.get(slot)) not in schema_entries.entity_classes]
     predicate = k(instance.get("predicate"))
+    s, o = k(instance.get("subject_class")), k(instance.get("object_class"))
     if predicate not in schema_entries.predicates:
         flags.append("predicate_not_in_schema")
-    elif (k(instance.get("subject_class")), predicate, k(instance.get("object_class"))) not in schema_entries.patterns:
+    elif predicate in schema_entries.pinned:       # a pinned predicate: its pins, not the patterns seen, decide
+        if not any(ps in (s, "any") and po in (o, "any") for ps, po in schema_entries.pinned[predicate]):
+            flags.append("pattern_not_pinned")
+    elif (s, predicate, o) not in schema_entries.patterns:
         flags.append("pattern_not_in_schema")
     return flags
 

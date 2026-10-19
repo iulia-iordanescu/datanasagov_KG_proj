@@ -242,6 +242,17 @@ class Checks(unittest.TestCase):
         self.assertEqual(validate.check_against_schema({**t, "predicate": "CARRIES", "subject_class": "Probe"}, entries),
                          ["subject_class_not_in_schema", "predicate_not_in_schema"])
         self.assertEqual(entries.spelling["entity_classes"]["spacecraft"], "Spacecraft")
+        # a pinned predicate: its pins decide, "any" for any entity class; a pattern not seen yet but pinned is fine
+        pinned = validate.SchemaEntries({"entity_classes": {"Instrument": "", "Spacecraft": "", "Person": ""},
+                                         "predicates": {"BUILT_BY": ""}, "patterns": [],
+                                         "pinned": {"BUILT_BY": [("any", "Person"), ("Spacecraft", "Instrument")]}})
+        b = {"subject_class": "Instrument", "predicate": "BUILT_BY", "object_class": "Person"}
+        self.assertEqual(validate.check_against_schema(b, pinned), [])
+        self.assertEqual(validate.check_against_schema({**b, "subject_class": "Spacecraft", "object_class": "Instrument"},
+                                                       pinned), [])
+        self.assertEqual(validate.check_against_schema({**b, "object_class": "Spacecraft"}, pinned), ["pattern_not_pinned"])
+        self.assertEqual(validate.check_against_schema({**b, "subject_class": "Instrument", "object_class": "Instrument"},
+                                                       pinned), ["pattern_not_pinned"])
         head = triples_io.describes_triple("r", "T", "Probe")
         self.assertEqual(validate.check_describes(head, "r", entries), ([], ["describes_class_not_in_schema"]))
         self.assertEqual(validate.check_describes(head, "other")[0], ["describes_subject_not_id"])

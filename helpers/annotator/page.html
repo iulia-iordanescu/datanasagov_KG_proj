@@ -134,6 +134,10 @@
   .headmeta { margin: 4px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
   .headmeta .pill { margin-left: 6px; }
   button.pill.jump { border: 0; cursor: pointer; font: inherit; font-size: 12px; }
+  .patterns { margin: 4px 0; }
+  .patterns button.patbtn { font-size: 12px; padding: 1px 8px; margin-right: 6px; }
+  .patterns .patlist { margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--muted); }
+  .patterns .patlist ul { margin: 4px 0; padding-left: 18px; }
   button.pill.jump:hover { filter: brightness(0.95); text-decoration: underline; }
   body.norecords main { grid-template-columns: 1fr; }
   body.norecords nav#records { display: none; }
@@ -624,6 +628,7 @@ async function save() {
   try {
     const sent = batch.records;
     const data = await api("/api/save", { n: batch.n, records: sent });
+    if (data.patterns) batch.patterns = data.patterns;
     data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
     status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
     refreshProblems();
@@ -881,7 +886,7 @@ function tripleRow(rec, j, heading = true) {
   const r = rec.rows[j];
   // Its number among the record's ground truth triples, in the text's order (the describes triple isn't one).
   const n = tripleRows(rec).indexOf(j) + 1;
-  return el("div", { class: "row", "data-row-box": j },
+  return el("div", { class: "row", "data-row-box": j, oninput: (e) => { const b = e.currentTarget.querySelector(".patterns"); if (b) b.refresh(); } },
     heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
     el("div", { class: "triple" },
       field(rec, j, "subject", "Subject", { multiline: true }),
@@ -890,6 +895,7 @@ function tripleRow(rec, j, heading = true) {
       el("span"),
       field(rec, j, "object", "Object", { multiline: true }),
       field(rec, j, "object_class", "Object class", { list: "entity_classes", class: "cls" })),
+    patternButtons(r, j),
     el("div", { class: "source" },
       el("label", { title: "Copied exactly from the record's text" }, "Source text",
         el("textarea", { "data-row": j, class: "grow", rows: 1, onfocus: () => { setActive(j); hideClasses(); },
@@ -897,6 +903,43 @@ function tripleRow(rec, j, heading = true) {
       el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"),
       el("button", { title: "Delete this ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
     problemList(r, j));
+}
+
+// Three buttons under a ground truth triple, one per component class: each shows the ground truth schema's patterns
+// with that component class in the same place (its subject class as subject class, its predicate as predicate, its
+// object class as object class), with how many ground truth triples use each; this triple's own pattern in bold.
+// The patterns are the saved ground truth's, so they change only once an edit is saved.
+function patternButtons(r, j) {
+  const list = el("div", { class: "patlist", hidden: true });
+  let open = null;
+  const toggle = (place, label) => {
+    if (open === place) { open = null; list.hidden = true; return; }
+    open = place; list.hidden = false;
+    const want = looseKey(r[place]), own = ["subject_class", "predicate", "object_class"].map(c => looseKey(r[c]));
+    const i = { subject_class: 0, predicate: 1, object_class: 2 }[place];
+    const found = (batch.patterns || []).filter(p => looseKey(p[i]) === want);
+    list.replaceChildren(
+      el("div", { class: "meta" }, `Patterns with ${label}: ${found.length}`),
+      found.length
+        ? el("ul", {}, found.map(p => el("li", {},
+            el(p.slice(0, 3).every((x, k) => looseKey(x) === own[k]) ? "b" : "span", {}, `${p[0]} ${p[1]} ${p[2]}`),
+            el("span", { class: "meta" }, `  ${p[3]} ground truth triple${p[3] === 1 ? "" : "s"}`))))
+        : el("p", { class: "empty" }, `None yet: no pattern of the ground truth schema has ${label}.`));
+  };
+  const label = (place, what) => `${r[place] || "(empty)"} as ${what}`;
+  const places = [["subject_class", "subject class"], ["predicate", "predicate"], ["object_class", "object class"]];
+  const buttons = places.map(([place, what]) => el("button", { class: "patbtn",
+    onclick: () => { setActive(j); refresh(); toggle(place, label(place, what)); } }));
+  // the buttons name the triple's component classes as they are now: redrawn when one is typed or picked
+  const refresh = () => places.forEach(([place, what], k) => {
+    buttons[k].textContent = label(place, what); buttons[k].disabled = !looseKey(r[place]);
+    buttons[k].title = `The patterns with ${label(place, what)}`;
+    if (open === place) { open = null; if (buttons[k].disabled) list.hidden = true; else toggle(place, label(place, what)); }
+  });
+  refresh();
+  const bar = el("div", { class: "patterns", onpointerenter: refresh }, el("span", { class: "meta" }, "Patterns: "), buttons, list);
+  bar.refresh = refresh;
+  return bar;
 }
 
 function setActive(j) {

@@ -187,6 +187,9 @@ MESSAGES = {
                              "{object_class}: a pattern used for the first time, or a wrong entity class or "
                              "direction. If it's right, there's nothing to do: from now on it's one of the ground "
                              "truth schema's patterns.",
+    "pattern_not_pinned": "{predicate} is pinned in the ground truth schema (its \"only:\" line): it joins only "
+                          "the entity classes listed there, not {subject_class} and {object_class}. Use another "
+                          "predicate, or fix the entity classes.",
     "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
     "describes_undecided": "No describes class yet (the describes triple's object class is X or empty). Type or "
@@ -326,7 +329,17 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
             # for the page's list of component classes: each one's definition (empty for a coined one)
             "definitions": {"entity_classes": vocab["entity_classes"], "predicates": vocab["predicates"]},
-            "coined": vocab["coined"]}
+            "coined": vocab["coined"], "patterns": patterns_view(data, gt)}
+
+
+def patterns_view(data: Data, gt=None) -> list:
+    """The ground truth schema's patterns (the file's, then every one the ground truth uses), for the page's
+    pattern buttons under a ground truth triple: [subject class, predicate, object class, how many ground truth
+    triples use it]."""
+    gt = gt or read_ground_truth()
+    uses = pattern_uses(gt.rows)
+    return [[s, p, o, uses[tuple(component_class_key(x) for x in (s, p, o))]]
+            for s, p, o in with_coined(data.hand, gt)["patterns"]]
 
 
 # --------------------------------------------------------------------------
@@ -1018,7 +1031,8 @@ def make_handler(data: Data):
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if url.path == "/api/save":
-                    self._json({"problems": save_batch(data, int(body["n"]), body["records"])})
+                    problems = save_batch(data, int(body["n"]), body["records"])
+                    self._json({"problems": problems, "patterns": patterns_view(data)})
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
                     self._json({"saved": True})

@@ -14,7 +14,7 @@ from common.partial_reviews import NOT_SAME, SAME, pair_key   # noqa: E402
 from common.triples_io import component_class_key            # noqa: E402
 
 ENTITY = ["Instrument", "Spacecraft", "Dataset", "TimeSpan", "Mission", "Agency"]
-PREDICATES = ["ABOARD", "ACQUIRED_BY", "HAS_TIME_SPAN", "SPONSORED_BY"]
+PREDICATES = ["ABOARD", "ACQUIRED_BY_INSTRUMENT", "HAS_TIME_SPAN", "SPONSORED_BY_PARTY"]
 
 
 def translation(entity=ENTITY, predicates=PREDICATES, extra_entity=None, extra_predicates=None,
@@ -56,12 +56,12 @@ def counts_record(extracted, gt, pairs, strict, stratum="g", **more):
 # metrics/pairs.md, Example
 G = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
      triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-     triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument"),
+     triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument"),
      triple("MODIS Snow Cover", "Dataset", "HAS_TIME_SPAN", "2002–2023", "TimeSpan"),
      triple("CERES", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
 E = [triple("the MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
      triple("AIRS", "Dataset", "ABOARD", "Aqua", "Spacecraft"),
-     triple("MODIS Snow Cover 5-Min L2 Swath", "Dataset", "ACQUIRED_BY",
+     triple("MODIS Snow Cover 5-Min L2 Swath", "Dataset", "ACQUIRED_BY_INSTRUMENT",
             "Moderate Resolution Imaging Spectroradiometer (MODIS)", "Instrument"),
      triple("MODIS Snow Cover", "Dataset", "HAS_TIME_SPAN", "the period 2002–2023", "Dataset"),
      triple("MODIS", "Instrument", "ABOARD", "Terra", "Spacecraft"),
@@ -116,7 +116,7 @@ class Pairing(unittest.TestCase):
 
     def test_predicate_must_match(self):
         c = self.pairs([triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")],
-                       [triple("MODIS", "Instrument", "ACQUIRED_BY", "Aqua", "Spacecraft")])
+                       [triple("MODIS", "Instrument", "ACQUIRED_BY_INSTRUMENT", "Aqua", "Spacecraft")])
         self.assertEqual(c["pairs"], [])
 
     def test_predicate_loose_spelling(self):
@@ -146,7 +146,7 @@ class Pairing(unittest.TestCase):
     def test_largest_pairing(self):
         # metrics/pairs.md, Example, "The largest set of pairs": G0 can pair with E0 or E1; G1 only with E0.
         # Taking G0's first partner (E0) would leave G1 unpaired; the largest pairing pairs both.
-        acquired = lambda o: triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", o, "Instrument")  # noqa: E731
+        acquired = lambda o: triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY_INSTRUMENT", o, "Instrument")  # noqa: E731
         g = [acquired("Aqua MODIS"), acquired("Terra MODIS")]
         e = [acquired("MODIS"), acquired("the Aqua MODIS instrument")]
         c = self.pairs(g, e)
@@ -220,9 +220,9 @@ class Pairing(unittest.TestCase):
 
     def test_whole_words_not_any_overlap(self):
         # metrics/pairs.md, Example, "Whole words inside, not any overlap": a shared word isn't enough
-        g = [triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")]
-        self.assertEqual(self.pairs(g, [triple("MODIS Land Surface Temperature", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")])["pairs"], [])
-        self.assertEqual(self.pairs(g, [triple("MODIS Snow Cover 5-Min L2 Swath", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")])["pairs"],
+        g = [triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")]
+        self.assertEqual(self.pairs(g, [triple("MODIS Land Surface Temperature", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")])["pairs"], [])
+        self.assertEqual(self.pairs(g, [triple("MODIS Snow Cover 5-Min L2 Swath", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")])["pairs"],
                          [(0, 0, "partial")])
 
     def test_wrong_pair(self):
@@ -300,7 +300,7 @@ class Pairing(unittest.TestCase):
     def test_exact_pairs_first_can_cost_partial_pairs(self):
         # metrics/pairs.md, Example, "Exact pairs first": E0-G0 exact leaves G1 and E1 unpairable, though pairing
         # both levels together could have made two partial pairs (E1-G0, E0-G1; E0-G1 a wrong one)
-        by_modis = lambda s: triple(s, "Dataset", "ACQUIRED_BY", "MODIS", "Instrument")  # noqa: E731
+        by_modis = lambda s: triple(s, "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")  # noqa: E731
         g = [by_modis("MODIS Snow Cover"), by_modis("MODIS Snow Cover Daily")]
         e = [by_modis("MODIS Snow Cover"), by_modis("the MODIS Snow Cover product")]
         self.assertEqual(self.pairs(g, e)["pairs"], [(0, 0, "exact")])
@@ -313,8 +313,8 @@ class Pairing(unittest.TestCase):
         self.assertEqual(c["pairs"], [(1, 0, "exact")])
 
     def test_reversed_row_swaps(self):
-        t = translation(extra_predicates={"FUNDS": ("SPONSORED_BY", True)})
-        c = self.pairs([triple("Aqua", "Mission", "SPONSORED_BY", "NASA", "Agency")],
+        t = translation(extra_predicates={"FUNDS": ("SPONSORED_BY_PARTY", True)})
+        c = self.pairs([triple("Aqua", "Mission", "SPONSORED_BY_PARTY", "NASA", "Agency")],
                        [triple("NASA", "Agency", "FUNDS", "Aqua", "Mission")], t)
         self.assertEqual(c["pairs"], [(0, 0, "exact")])
         self.assertEqual(c["counts"]["exact_strict_pairs"], 1)    # entity classes swapped too
@@ -366,7 +366,7 @@ class Reach(unittest.TestCase):
 
     def test_example(self):
         t = translation(reachable_entity=["Instrument", "Spacecraft", "TimeSpan"],
-                        reachable_predicates=["ABOARD", "ACQUIRED_BY"])
+                        reachable_predicates=["ABOARD", "ACQUIRED_BY_INSTRUMENT"])
         c = pairing.compare_record(record(G, E), t)["compared"]
         self.assertEqual(c["within_reach"], [True, True, True, False, True])
         self.assertEqual(c["within_strict_reach"], [True, True, False, False, True])
@@ -376,7 +376,7 @@ class Reach(unittest.TestCase):
 
     def test_strict_reach_needs_the_predicate(self):
         t = translation(reachable_predicates=["ABOARD"])                     # every entity class reachable
-        c = pairing.compare_record(record([triple("Aqua", "Spacecraft", "SPONSORED_BY", "NASA", "Agency")], []), t)
+        c = pairing.compare_record(record([triple("Aqua", "Spacecraft", "SPONSORED_BY_PARTY", "NASA", "Agency")], []), t)
         self.assertEqual((c["compared"]["within_reach"], c["compared"]["within_strict_reach"]), ([False], [False]))
 
 
@@ -471,10 +471,10 @@ class RecallWithinReach(unittest.TestCase):
 
     def test_example(self):
         t = translation(reachable_entity=["Instrument", "Spacecraft", "TimeSpan"],
-                        reachable_predicates=["ABOARD", "ACQUIRED_BY"])
+                        reachable_predicates=["ABOARD", "ACQUIRED_BY_INSTRUMENT"])
         gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
               triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-              triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY", "MODIS", "Instrument"),
+              triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument"),
               triple("MODIS Snow Cover", "Dataset", "HAS_TIME_SPAN", "2002–2023", "TimeSpan"),
               triple("CERES", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         ex = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
@@ -489,8 +489,8 @@ class RecallWithinReach(unittest.TestCase):
 class Mismatches(unittest.TestCase):
 
     def test_entity_class_and_predicate(self):
-        t = translation(extra_entity={"Satellite": "Instrument"}, extra_predicates={"CARRIES": ("ACQUIRED_BY", False),
-                                                                                   "HOSTS": ("ACQUIRED_BY", False)})
+        t = translation(extra_entity={"Satellite": "Instrument"}, extra_predicates={"CARRIES": ("ACQUIRED_BY_INSTRUMENT", False),
+                                                                                   "HOSTS": ("ACQUIRED_BY_INSTRUMENT", False)})
         gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
               triple("Aqua", "Spacecraft", "ABOARD", "MODIS", "Instrument"),
               triple("CERES", "Instrument", "ABOARD", "Terra", "Spacecraft")]
@@ -503,9 +503,9 @@ class Mismatches(unittest.TestCase):
         self.assertEqual(found, [
             {"kind": "entity class", "crt_component_class": "Satellite", "translated_to": "Instrument",
              "gtt_component_class": "Spacecraft", "swapped": False, "count": 1},
-            {"kind": "predicate", "crt_component_class": "CARRIES", "translated_to": "ACQUIRED_BY",
+            {"kind": "predicate", "crt_component_class": "CARRIES", "translated_to": "ACQUIRED_BY_INSTRUMENT",
              "gtt_component_class": "ABOARD", "swapped": False, "count": 1},
-            {"kind": "predicate", "crt_component_class": "HOSTS", "translated_to": "ACQUIRED_BY",
+            {"kind": "predicate", "crt_component_class": "HOSTS", "translated_to": "ACQUIRED_BY_INSTRUMENT",
              "gtt_component_class": "ABOARD", "swapped": True, "count": 1}])
 
     def test_none_when_all_agree(self):
