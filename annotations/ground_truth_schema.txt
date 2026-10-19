@@ -27,6 +27,14 @@ TemporalResolution  how often data give a value, e.g. daily, weekly, monthly
                     source: ground truth tuning #2, #3
 Country           a nation, e.g. U.S., Argentina
                   source: ground truth tuning #3
+TimeOfDay         a part of the day of the body observed, when observations were made, e.g. daytime, nighttime
+                  source: ground truth tuning #4
+Date              one day in the calendar, e.g. May 4, 2002
+                  source: ground truth tuning #4
+Orbit             the path a spacecraft travels around a body
+                  source: ground truth tuning #4
+SatelliteFormation  a group of satellites flying together in formation, e.g. the A-train
+                    source: ground truth tuning #4
 
 PREDICATES
 ----------
@@ -83,3 +91,15 @@ BASED_IN             belongs to the country
                      source: ground truth tuning #3
 DEVELOPED_BY         was built or created by
                      source: ground truth tuning #3
+HAS_TIME_OF_DAY      was observed during this part of the day
+                     source: ground truth tuning #4
+LAUNCHED_BY          was launched into space by
+                     source: ground truth tuning #4
+LAUNCHED_ON          was launched into space on
+                     source: ground truth tuning #4
+HAS_ORBIT            travels in the orbit
+                     source: ground truth tuning #4
+FLIES_IN             flies in formation as part of
+                     source: ground truth tuning #4
+HAS_SPECTRAL_BANDS   measures light in this many spectral bands
+                     source: ground truth tuning #4
