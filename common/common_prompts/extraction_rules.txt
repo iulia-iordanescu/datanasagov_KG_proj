@@ -39,6 +39,12 @@
   at another time step or resolution ("daily, weekly, and monthly products are
   available"): that data set has its own record. Give only what is this
   record's own, from where the record says it is (usually the title).
+- A list joined by "and": one triple per item, when each item alone is a
+  complete object; copy the words the items share onto each ("derived from
+  the 11 and 12 micron channels" gives "11 micron channel" and "12 micron
+  channel"). When an item alone needs other words of the sentence ("to study
+  the dynamics of the atmosphere, land and oceans": "atmosphere" alone is not
+  a purpose), keep the whole phrase as one object.
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Polar-Gridded" over "gridded".
 - Only facts the record states. Never use outside knowledge, and never

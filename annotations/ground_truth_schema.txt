@@ -35,6 +35,8 @@ Orbit             the path a spacecraft travels around a body
                   source: ground truth tuning #4
 SatelliteFormation  a group of satellites flying together in formation, e.g. the A-train
                     source: ground truth tuning #4
+Channel           a range of wavelengths an instrument measures separately, e.g. the 11 and 12 micron channels
+                  source: ground truth tuning #4
 
 PREDICATES
 ----------

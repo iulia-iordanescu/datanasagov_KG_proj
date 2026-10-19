@@ -334,12 +334,8 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 
 def patterns_view(data: Data, gt=None) -> list:
     """The ground truth schema's patterns (the file's, then every one the ground truth uses), for the page's
-    pattern buttons under a ground truth triple: [subject class, predicate, object class, how many ground truth
-    triples use it]."""
-    gt = gt or read_ground_truth()
-    uses = pattern_uses(gt.rows)
-    return [[s, p, o, uses[tuple(component_class_key(x) for x in (s, p, o))]]
-            for s, p, o in with_coined(data.hand, gt)["patterns"]]
+    pattern buttons under a ground truth triple: [subject class, predicate, object class]."""
+    return [list(t) for t in with_coined(data.hand, gt or read_ground_truth())["patterns"]]
 
 
 # --------------------------------------------------------------------------

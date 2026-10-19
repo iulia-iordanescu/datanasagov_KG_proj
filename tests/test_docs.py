@@ -330,6 +330,7 @@ class RulesInStep(unittest.TestCase):
          "A name with its abbreviation in parentheses is one instance"),
         ("A table of values inside the record", "Not the values inside a data table"),
         ("Each fact once", "Each fact once"),
+        ("A list joined by \"and\": one triple per item", "A list joined by \"and\": one ground truth triple per item"),
         ("General facts: include them, unless they're about another data set",
          "General facts: include them, unless they're about another data set"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),
