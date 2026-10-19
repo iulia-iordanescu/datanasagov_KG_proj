@@ -442,7 +442,11 @@ def save_batch(data: Data, n: int, records: list) -> list:
                 written.append(row)
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
-    write_csv(GROUND_TRUTH_DIR / file_name(n), FILE_COLUMNS, out)
+    # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone
+    path = GROUND_TRUTH_DIR / file_name(n)
+    now = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n") if path.exists() else None
+    if now != _csv_bytes(FILE_COLUMNS, out).decode("utf-8"):
+        write_csv(path, FILE_COLUMNS, out)
     return problems
 
 

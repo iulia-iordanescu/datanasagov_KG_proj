@@ -201,6 +201,11 @@ class B_Batch(unittest.TestCase):
         gt = ground_truth.read_ground_truth(TMP / "annotations" / "ground_truth")
         self.assertEqual(gt.problems, [])
         self.assertTrue(gt.records["r2"]["finished"])
+        # saving again with nothing new leaves the file untouched
+        path = TMP / "annotations" / "ground_truth" / "batch_000.csv"
+        stamp = path.stat().st_mtime_ns
+        post("/api/save", {"n": 0, "records": get("/api/batch?n=0")["records"]})
+        self.assertEqual(path.stat().st_mtime_ns, stamp)
         listed = get("/api/batches")["batches"]
         self.assertEqual(listed, [{"n": 0, "draft": "drafted_triples_batch0.csv", "ground_truth": "batch_000.csv",
                                    "records": 4, "finished": 3}])
