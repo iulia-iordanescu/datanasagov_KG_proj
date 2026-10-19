@@ -330,6 +330,8 @@ class RulesInStep(unittest.TestCase):
          "A name with its abbreviation in parentheses is one instance"),
         ("A table of values inside the record", "Not the values inside a data table"),
         ("Each fact once", "Each fact once"),
+        ("General facts: include them, unless they're about another data set",
+         "General facts: include them, unless they're about another data set"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),
         ('Do NOT write "is a" triples', 'Not "is a" facts'),
         ("describes_class: the entity class", "## The describes triple"),
