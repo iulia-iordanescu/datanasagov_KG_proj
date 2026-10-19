@@ -13,6 +13,7 @@ The schema is the [current schema](../docs/terminology.md#6-extracting-with-a-sc
 What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for every step; `py run_pipeline.py --status` (or the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s home page) lists what is waiting now. For this step, in short:
 
 - Choose the model before the real runs ([*Before the first run*](../docs/upkeep.md#before-the-first-run)).
+- Before each run, read what the model is given: the rules (`common/common_prompts/extraction_rules.txt`) and the prompts (*Prompts*, below) ([*Before the first run*](../docs/upkeep.md#before-the-first-run)).
 - Run it again after finishing more [ground truth](../docs/terminology.md#4-ground-truth-and-samples) records, and consider, for the [schema additions](../docs/terminology.md#3-schemas), the [component classes](../docs/terminology.md#3-schemas) outside the schema it used, from [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) only ([*After step 060*](../docs/upkeep.md#after-step-060)).
 ## Inputs
 

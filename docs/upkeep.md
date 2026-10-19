@@ -11,6 +11,7 @@ The terms: [`terminology.md`](terminology.md).
 - **A trial harvest** (`--max_records`) only checks that harvesting works: step 030 writes `outputs/intermediate_results/030_split/splits.json` only once, so it won't split a trial catalog. Run the full harvest before steps 020 and 030.
 - **Choose the models** before the real runs, since every saved answer is tied to its model ([`running_on_nasa_laptop.md`](running_on_nasa_laptop.md), *Choosing a model*): for 040, the strongest one the service lets you use; for 050, the strongest one too, from a different maker than extraction's; for 060, from a different maker than 050's, and for the run over every record, the cheapest whose metrics are within the [margin of error](../070_evaluate/metrics/approximately.md) of the best.
 - **Make the test run** ([`running_on_nasa_laptop.md`](running_on_nasa_laptop.md), *Test run first*): about 20 [paid calls](terminology.md#8-the-pipeline) that show everything works.
+- **Before each extraction (step 060), read what the model is given:** the rules, `common/common_prompts/extraction_rules.txt`, which should say what the [annotation guidelines](terminology.md#4-ground-truth-and-samples) (`annotations/guidelines.md`) say, and the step's prompts ([`060_extract.md`](../060_extract/060_extract.md), *Prompts*). The rules change while annotating, and the model follows only its own copy.
 
 ## Running the steps again
 

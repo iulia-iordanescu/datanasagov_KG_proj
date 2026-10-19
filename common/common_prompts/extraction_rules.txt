@@ -1,6 +1,7 @@
 - subject and object: the record's own words for them, as written. Do not
   paraphrase them or expand acronyms. Where the record states a fact about what its
-  title names, use the title as the subject.
+  title names, use the title as the subject. Two exceptions, below: some
+  qualifiers are taken out, and a list's shared words are copied onto each item.
 - The subject of a fact is whatever the sentence is about, which is not
   always the title.
 - source_text: the shortest passage copied EXACTLY from the record that
@@ -13,14 +14,15 @@
 - A number with a unit: the object is the number and its unit, as written
   ("250 m"); the predicate says what the number measures.
 - A qualifier that is a time step, an area covered, a processing level, a
-  size on the ground, or a country is a triple of its own, and is taken out
-  of the subject or object: "This global data set provides daily snow cover"
-  gives "snow cover", and the data set's time step "daily" and area covered
-  "global" as triples of their own; "the U.S. National Aeronautics and Space
-  Administration (NASA)" gives "National Aeronautics and Space Administration
-  (NASA)", and the triple that NASA is based in the U.S. Any other qualifier
-  stays in the subject or object, as written: "sea surface salinity" stays
-  whole.
+  size on the ground, a country, or a time of day is a triple of its own,
+  and is taken out of the subject or object: "This global data set provides
+  daily snow cover" gives "snow cover", and the data set's time step "daily"
+  and area covered "global" as triples of their own; "nighttime SST" gives
+  "SST" and the time of day "nighttime"; "the U.S. National Aeronautics and
+  Space Administration (NASA)" gives "National Aeronautics and Space
+  Administration (NASA)", and the triple that NASA is based in the U.S. Any
+  other qualifier stays in the subject or object, as written: "sea surface
+  salinity" stays whole.
 - A name with its abbreviation in parentheses is one subject or object, as
   written: "Level-2 (L2)", with no separate triple saying L2 is another name
   for Level-2. Write such a triple only when the record states the other
