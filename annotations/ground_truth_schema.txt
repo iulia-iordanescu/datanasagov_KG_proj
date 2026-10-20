@@ -45,9 +45,9 @@ WebPage           a web address, written as the address itself, e.g. https://oce
                   source: ground truth tuning #4
 Team              a group of people without a name of its own, e.g. Peter Minnett and his team
                   source: ground truth tuning #4
-Task              a piece of work someone is in charge of
+Task              a piece of work a person, team, or organization does or is in charge of, e.g. quality flagging
                   source: ground truth tuning #4
-Role              a named job an organization or person holds, e.g. an official archive
+Role              a position a person, team, or organization holds, what they are, e.g. the official archive for SST
                   source: ground truth tuning #4
 Retrieval         an estimate of a physical quantity, computed from an instrument's measurements by one particular method, and held in a dataset's files, e.g. SST4
                   source: ground truth tuning #4
