@@ -232,6 +232,23 @@ class B_Batch(unittest.TestCase):
         self.assertEqual([[p["code"] for p in found] for found in server.connection_problems("r1", rows)], expected)
         self.assertEqual(server.connection_problems("r1", rows[:1]), [[]])     # only the describes triple
 
+    def test_not_in_source_but_elsewhere(self):
+        """Suppose r1's text is "AIRS aboard Aqua; Aqua orbits Earth." and a ground truth triple's source text is
+        "Aqua orbits Earth". Then a subject instance "AIRS" (elsewhere in the text) gets the "not in the source
+        text" flag with the note that it may be on purpose; "MODIS" (in neither) gets the flag without it."""
+        def problem(subject):
+            row = {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r1", "subject": subject,
+                   "subject_class": "Instrument", "predicate": "ABOARD", "object": "Aqua",
+                   "object_class": "Spacecraft", "source_text": "Aqua orbits Earth"}
+            found = {p["code"]: p["message"] for p in server.check_row(server.Data(), row, "Title r1")}
+            return found["subject_not_in_source"], "subject_not_in_text" in found
+        message, not_in_text = problem("AIRS")
+        self.assertFalse(not_in_text)
+        self.assertTrue(message.endswith(server.ELSEWHERE_IN_TEXT))
+        message, not_in_text = problem("MODIS")
+        self.assertTrue(not_in_text)
+        self.assertEqual(message, server.MESSAGES["subject_not_in_source"])
+
 
 class C_HandSchema(unittest.TestCase):
 

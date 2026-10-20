@@ -210,6 +210,13 @@ MESSAGES = {
 }
 
 
+#: Added to subject_not_in_source / object_not_in_source when the instance is elsewhere in the record's text (the
+#: row has no subject_not_in_text / object_not_in_text).
+ELSEWHERE_IN_TEXT = (" It does appear elsewhere in the record's text, so it may be written this way on purpose, to "
+                     "follow a rule: e.g. rule 13 (one wording for a thing within a record) or rule 2 (the title "
+                     "states facts too); if so, nothing to do.")
+
+
 # --------------------------------------------------------------------------
 # reading
 # --------------------------------------------------------------------------
@@ -278,9 +285,17 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     every = errors + flags
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
-    return [{"code": c, "type": kind, "message": MESSAGES[c].format(**{k: row.get(k) or "(none)" for k in COLUMNS}),
-             "add": _offer(c, row, every)}
+    return [{"code": c, "type": kind, "message": _message(c, row, every), "add": _offer(c, row, every)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
+
+
+def _message(code: str, row: dict, every: list) -> str:
+    """The check's message, filled in; a "not in the source text" flag says so when the instance is still in the
+    record's text (its "not in the text" flag absent)."""
+    message = MESSAGES[code].format(**{k: row.get(k) or "(none)" for k in COLUMNS})
+    if code.endswith("_not_in_source") and code.replace("_source", "_text") not in every:
+        message += ELSEWHERE_IN_TEXT
+    return message
 
 
 def connection_problems(rid: str, rows: list) -> list:
