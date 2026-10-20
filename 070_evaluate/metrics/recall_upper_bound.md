@@ -63,14 +63,14 @@ Worked example: [Recall upper bound: example](#example). Sources: [Recall upper 
 
 ## Example
 
-*Suppose:* the [ground truth schema](../../docs/terminology.md#3-schemas) has the [predicates](../../docs/terminology.md#3-schemas) ABOARD, ACQUIRED_BY_INSTRUMENT, and HAS_TIME_SPAN, and the [entity classes](../../docs/terminology.md#3-schemas) Instrument, Spacecraft, Dataset, and TimeSpan. The checked rows of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) translate [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) to ABOARD, ACQUIRED_BY_INSTRUMENT, Instrument, Spacecraft, and TimeSpan, but none translates to HAS_TIME_SPAN or Dataset. A [record](../../docs/terminology.md#1-records-and-their-text)'s [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has 5 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples):
+*Suppose:* the [ground truth schema](../../docs/terminology.md#3-schemas) has the [predicates](../../docs/terminology.md#3-schemas) ABOARD, ACQUIRED_BY_INSTRUMENT, and HAS_TIME_SPAN, and the [entity classes](../../docs/terminology.md#3-schemas) Instrument, Spacecraft, Dataset, and Time. The checked rows of the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070) translate [component classes](../../docs/terminology.md#3-schemas) of the [current schema](../../docs/terminology.md#6-extracting-with-a-schema-step-060) to ABOARD, ACQUIRED_BY_INSTRUMENT, Instrument, Spacecraft, and Time, but none translates to HAS_TIME_SPAN or Dataset. A [record](../../docs/terminology.md#1-records-and-their-text)'s [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has 5 [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples):
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | Within reach | Within strict reach |
 |---|---|---|---|---|---|
 | G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 | G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 | G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY_INSTRUMENT | MODIS (Instrument) | yes | no: nothing translates to Dataset |
-| G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) | no: nothing translates to HAS_TIME_SPAN | no |
+| G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (Time) | no: nothing translates to HAS_TIME_SPAN | no |
 | G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) | yes | yes |
 
 *Then:* recall upper bound = 4 ÷ 5 = 80%; strict recall upper bound = 3 ÷ 5 = 60%. Whatever extraction gives for this record, at most 4 of its ground truth triples can be found, and at most 3 in [strict pairs](pairs.md).

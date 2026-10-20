@@ -10,7 +10,7 @@ Discipline        a field of science
 Organization      a named institution or one of its named parts, e.g. NASA, OBPG; not a mission
 Instrument        a device that takes measurements
 Spacecraft        a craft that operates in space
-TimeSpan          a time period written as its start and its end, e.g. 2015-10-22 to 2015-12-31
+Time              a point or period on the calendar, which happens once, e.g. May 4, 2002; March 11 19:08:03; 2015-10-22 to 2015-12-31; the first week of February
 PhysicalQuantity  a property that can be measured
 CelestialBody     a natural object in space
 Version           a label marking one release of something
@@ -25,9 +25,7 @@ SpatialRepresentation  how data are laid out over the ground: either along the s
                        source: ground truth tuning #2
 Country           a nation, e.g. U.S., Argentina
                   source: ground truth tuning #3
-TimeOfDay         a part of the day of the body observed, when observations were made, e.g. daytime, nighttime
-                  source: ground truth tuning #4
-Date              one point in time, written alone: a day, or a day with a time, e.g. May 4, 2002; March 11 19:08:03
+TimeOfDay         a part of the day or a clock time, not on the calendar, which happens every day, e.g. nighttime, morning, 2:39 PM
                   source: ground truth tuning #4
 Orbit             the path a spacecraft travels around a body
                   source: ground truth tuning #4
@@ -87,8 +85,7 @@ HAS_PURPOSE          is meant to achieve
 HAS_TARGET           is about the body
                      Dataset -> CelestialBody
 HAS_TIME_SPAN        covers the period
-                     Dataset -> TimeSpan; MissionPhase -> TimeSpan
-                     only: any -> TimeSpan
+                     Dataset -> Time; MissionPhase -> Time
 HAS_VERSION          carries the version label
                      Dataset -> Version
                      only: any -> Version

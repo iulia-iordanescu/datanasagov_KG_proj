@@ -107,7 +107,7 @@ E1 and E2 are two elements of the [set of extracted triples](../../docs/terminol
 | G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) |
 | G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) |
 | G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY_INSTRUMENT | MODIS (Instrument) |
-| G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (TimeSpan) |
+| G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (Time) |
 | G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) |
 
 The translation table translates every component class here to itself, except:
@@ -125,7 +125,7 @@ Its translated extracted triples, and what each becomes:
 | E1 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | exact pair with G1 ("the" is ignored); strict |
 | E2 | AIRS (Dataset) | ABOARD | Aqua (Spacecraft) | exact pair with G2; not strict ([subject class](../../docs/terminology.md#2-triples) Dataset, not Instrument) |
 | E3 | MODIS Snow Cover 5-Min L2 Swath (Dataset) | ACQUIRED_BY_INSTRUMENT | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | partial pair with G3 ("MODIS Snow Cover" is inside the [subject instance](../../docs/terminology.md#2-triples), "MODIS" inside the [object instance](../../docs/terminology.md#2-triples)); strict |
-| E4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | the period 2002–2023 (Dataset) | partial pair with G4 ("2002–2023" is inside the object instance); not strict ([object class](../../docs/terminology.md#2-triples) Dataset, not TimeSpan) |
+| E4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | the period 2002–2023 (Dataset) | partial pair with G4 ("2002–2023" is inside the object instance); not strict ([object class](../../docs/terminology.md#2-triples) Dataset, not Time) |
 | E5 | MODIS (Instrument) | ABOARD | Terra (Spacecraft) | extracted only: the record's text doesn't say MODIS is aboard Terra (in the real world a MODIS instrument is, but this record doesn't state it), so no ground truth triple has the [object](../../docs/terminology.md#2-triples) instance Terra |
 | E6 | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: it repeats G1's fact, with the subject instance named in full; it would form a partial pair with G1, but G1 already has an exact partner, E1, and a ground truth triple has at most one partner |
 | E7 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: extracted as "the MODIS" (Sensor) MOUNTED_ON "Aqua" (Satellite), it translates to exactly what E1 translates to, so the record's multiset of translated extracted triples holds that element twice; G1 can have only one partner, and takes the occurrence from E1 (either occurrence would make the same exact, strict pair) |
@@ -147,7 +147,7 @@ flowchart LR
     G1["G1: MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
     G2["G2: AIRS (Instrument) ABOARD Aqua (Spacecraft)"]
     G3["G3: MODIS Snow Cover (Dataset) ACQUIRED_BY_INSTRUMENT MODIS (Instrument)"]
-    G4["G4: MODIS Snow Cover (Dataset) HAS_TIME_SPAN 2002–2023 (TimeSpan)"]
+    G4["G4: MODIS Snow Cover (Dataset) HAS_TIME_SPAN 2002–2023 (Time)"]
     G5["G5: CERES (Instrument) ABOARD Aqua (Spacecraft)"]
   end
   E1 ---|exact, strict| G1

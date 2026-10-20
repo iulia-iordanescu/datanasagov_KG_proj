@@ -82,7 +82,7 @@ notes: The MODIS instrument aboard Aqua …
 
 **Component class, by example.** `Instrument` is the component class of the subject instances "MODIS" and "AIRS"; `ABOARD` is the component class of the predicate instances "is aboard" and "is mounted on".
 
-**Patterns, domain, and range.** A predicate's patterns together give its domain (the subject classes that appear in them) and its range (the object classes). `HAS_TIME_SPAN`, with the patterns `Dataset HAS_TIME_SPAN TimeSpan` and `MissionPhase HAS_TIME_SPAN TimeSpan`, has the domain {Dataset, MissionPhase} and the range {TimeSpan}. Patterns say more than domain and range together: they say which subject class goes with which object class. Patterns record where a predicate was seen: in step 040's texts for the induced schema, and in the ground truth for the ground truth schema; not necessarily everywhere it is allowed.
+**Patterns, domain, and range.** A predicate's patterns together give its domain (the subject classes that appear in them) and its range (the object classes). `HAS_TIME_SPAN`, with the patterns `Dataset HAS_TIME_SPAN Time` and `MissionPhase HAS_TIME_SPAN Time`, has the domain {Dataset, MissionPhase} and the range {Time}. Patterns say more than domain and range together: they say which subject class goes with which object class. Patterns record where a predicate was seen: in step 040's texts for the induced schema, and in the ground truth for the ground truth schema; not necessarily everywhere it is allowed.
 
 **In a graph database.** These terms belong to no particular type of graph. In a labeled property graph (LPG) such as Neo4j:
 

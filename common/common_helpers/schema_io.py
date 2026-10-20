@@ -32,7 +32,7 @@ shapes:
     ABOARD               is carried on
                          Instrument -> Spacecraft
     HAS_TIME_SPAN        covers the period
-                         Dataset -> TimeSpan; MissionPhase -> TimeSpan
+                         Dataset -> Time; MissionPhase -> Time
                          source: mentor, 2026-10-01
 
     PATTERNS
