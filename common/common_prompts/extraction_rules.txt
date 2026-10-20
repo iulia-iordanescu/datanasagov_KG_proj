@@ -14,8 +14,8 @@
   as approximate is stated: "approximately 250 m" is the object.
 - A number with a unit: the object is the number and its unit, as written
   ("250 m"); the predicate says what the number measures.
-- A qualifier that is a time step, an area covered, a processing level, a
-  size on the ground, a country, or a time of day is a triple of its own,
+- A qualifier that is a time step, an area the data cover, a processing level,
+  a size on the ground, a country, or a time of day is a triple of its own,
   and is taken out of the subject or object: "This global data set provides
   daily snow cover" gives "snow cover", and the data set's time step "daily"
   and area covered "global" as triples of their own; "nighttime SST" gives
