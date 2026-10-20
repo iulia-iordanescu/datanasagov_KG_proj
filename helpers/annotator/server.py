@@ -76,7 +76,10 @@ is in the ground truth schema), shown in plain words (MESSAGES). The ground
 truth schema's patterns are its file's plus every one the ground truth uses
 (common/common_helpers/ground_truth.with_coined), so a pattern is flagged only
 the first time it is used, for a look (a wrong entity class or direction),
-and never needs adding. The component classes
+and never needs adding. One check is the tool's own (connection_problems): a
+ground truth triple that no chain of the record's ground truth triples links to
+the catalog entry is flagged (not_connected), so the fact that connects it is
+looked for. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
 component class is offered for reuse. A coined component class is an error
@@ -122,7 +125,7 @@ from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
-from common.text_match import Text
+from common.text_match import Text, norm_text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
 from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
@@ -199,6 +202,11 @@ MESSAGES = {
                                      "If it's new, add it to the ground truth schema with the button below, "
                                      "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
     "describes_subject_not_id": "The describes triple's subject should be the record's id.",
+    # the tool's own check (connection_problems), on a record's rows together: {piece} is filled with the component
+    # instances this ground truth triple is connected to
+    "not_connected": "No chain of ground truth triples links this ground truth triple to the catalog entry (the "
+                     "describes triple and the title). Look for the fact that connects it, and add it only if the "
+                     "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
 }
 
 
@@ -275,6 +283,37 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
 
 
+def connection_problems(rid: str, rows: list) -> list:
+    """For each of a record's rows, its not_connected flag (a list of one), or []. The rows form a graph: each
+    ground truth triple joins its subject instance and its object instance (direction ignored; instances compared
+    as norm_text evens them out), the describes triple joining the record's id (the catalog entry) to its title. A
+    ground truth triple is connected when a chain of them links it to the record's id. Rows not filled in, or
+    lacking a subject or an object, are skipped."""
+    parent = {}
+
+    def root(k: str) -> str:
+        while parent.setdefault(k, k) != k:
+            parent[k] = k = parent[parent[k]]
+        return k
+
+    ends = []
+    for row in rows:
+        subject = rid if is_describes(row) else str(row.get("subject") or "").strip()   # as save_batch writes it
+        pair = (subject, str(row.get("object") or "").strip())
+        ends.append(pair if all(pair) else None)
+        if all(pair):
+            parent[root(norm_text(pair[0]))] = root(norm_text(pair[1]))
+    pieces = collections.defaultdict(dict)                 # {piece: {evened-out instance: its first spelling}}
+    for pair in filter(None, ends):
+        for x in pair:
+            pieces[root(norm_text(x))].setdefault(norm_text(x), x)
+    entry = root(norm_text(rid))
+    return [[] if pair is None or root(norm_text(pair[0])) == entry else
+            [{"code": "not_connected", "type": "flag", "add": None, "message": MESSAGES["not_connected"].format(
+                piece=", ".join(f'"{x}"' for x in pieces[root(norm_text(pair[0]))].values()))}]
+            for pair in ends]
+
+
 #: The flags a person resolves by adding a component class to the ground truth schema: (kind, the row's column holding it).
 ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
         "object_class_not_in_schema": ("entity class", "object_class"),
@@ -313,7 +352,8 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title, uses)} for r in rows],
+        "rows": [{**r, "problems": check_row(data, r, title, uses) + extra}
+                 for r, extra in zip(rows, connection_problems(rid, rows))],
     }
 
 
@@ -436,6 +476,7 @@ def save_batch(data: Data, n: int, records: list) -> list:
             found.append(check_row(data, row, title, uses))
             if not _is_blank(row):
                 written.append(row)
+        found = [f + extra for f, extra in zip(found, connection_problems(rec["id"], rec.get("rows", [])))]
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
     # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone

@@ -17,7 +17,7 @@ Version           a label marking one release of something
 SpatialExtent     the area the data cover, of the body they are about: all of it (global) or part of it (e.g. the Arctic, or the south pole of Mars)
 ProcessingLevel   how far data have been processed from what the instrument recorded, e.g. Level 2
 Value             a number with its unit, e.g. 500 m
-Algorithm         a method applied to data to compute a result, e.g. an index or a series of screens
+Algorithm         a method applied to data to compute a result, e.g. a series of screens, or a modified nonlinear SST algorithm
                   source: ground truth tuning #2
 Identifier        a code that names one thing for good, e.g. a DOI
                   source: ground truth tuning #2
@@ -50,6 +50,8 @@ Team              a group of people who work together, e.g. Peter Minnett and hi
 Task              a piece of work someone is in charge of
                   source: ground truth tuning #4
 Role              a named job an organization or person holds, e.g. an official archive
+                  source: ground truth tuning #4
+Retrieval         an estimate of a physical quantity, computed from an instrument's measurements by one particular method, e.g. SST4
                   source: ground truth tuning #4
 
 PREDICATES
@@ -152,3 +154,7 @@ SUPERSEDES           replaces this earlier one
                      source: ground truth tuning #4
 FROM_SPACECRAFT      was collected from this spacecraft
                      source: ground truth tuning #1
+HAS_RETRIEVAL        holds this retrieval in its files
+                     source: ground truth tuning #4
+ESTIMATES            gives approximate values for
+                     source: ground truth tuning #4

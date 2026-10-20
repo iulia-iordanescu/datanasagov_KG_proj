@@ -105,7 +105,7 @@ class A_Paths(unittest.TestCase):
         codes = set(validate.ERRORS) | set(validate.FLAGS) | {
             "subject_class_not_in_schema", "object_class_not_in_schema", "predicate_not_in_schema",
             "pattern_not_in_schema", "pattern_not_pinned", "describes_undecided", "describes_class_not_in_schema",
-            "describes_subject_not_id", "empty"}
+            "describes_subject_not_id", "empty", "not_connected"}
         self.assertEqual(codes, set(server.MESSAGES))
 
     def test_fonts(self):
@@ -186,8 +186,9 @@ class B_Batch(unittest.TestCase):
         problems = saved["problems"]
         self.assertTrue(all(len(p) == 3 for p in saved["patterns"]))          # the pattern buttons' list, as saved
         self.assertEqual([len(p) for p in problems], [3, 2, 0, 1])               # one list per row sent
-        self.assertEqual([[p["code"] for p in row] for row in problems[0]], [[], [], ["empty"]])
-        self.assertEqual([p["code"] for p in problems[3][0]], ["empty"])
+        # MODIS aboard Aqua: no chain links it to the catalog entry (r0, Title r0)
+        self.assertEqual([[p["code"] for p in row] for row in problems[0]], [[], ["not_connected"], ["empty"]])
+        self.assertEqual([p["code"] for p in problems[3][0]], ["empty", "not_connected"])   # r3 has no describes triple
         rows = gt_rows()
         self.assertEqual([r["id"] for r in rows], ["r0", "r0", "r1", "r1", "r2", "r3"])
         self.assertEqual(rows[0]["subject"], "r0")
@@ -209,6 +210,27 @@ class B_Batch(unittest.TestCase):
 
     def test_3_missing_batch(self):
         self.assertIn("error", get("/api/batch?n=7"))
+
+    def test_not_connected(self):
+        """A record whose ground truth triples form two pieces: the piece not linked to the catalog entry is
+        flagged, row by row, naming its component instances; the piece linked to it (as evened out: "the Aqua
+        satellite" is "Aqua satellite") isn't. The view and a save agree."""
+        def row(s, p, o):
+            return {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r1", "subject": s, "predicate": p, "object": o}
+        rows = [{**row("r1", "DESCRIBES", "Title r1"), "subject_class": "CatalogEntry"},
+                row("Title r1", "FROM", "the Aqua satellite"),
+                row("AIRS", "ABOARD", "Aqua satellite"),
+                row("Aqua", "ORBITS", "Earth"),                                # another piece
+                row("Earth", "HAS", "Moon"),
+                row("", "", ""),                                               # not filled in: skipped
+                row("Sun", "", "")]                                            # no object: skipped
+        expected = [[], [], [], ["not_connected"], ["not_connected"], [], []]
+        view = server.record_view(server.Data(), "r1", rows, False)
+        self.assertEqual([[p["code"] for p in r["problems"] if p["code"] == "not_connected"] for r in view["rows"]],
+                         expected)
+        self.assertIn('Not connected: "Aqua", "Earth", "Moon".', view["rows"][3]["problems"][-1]["message"])
+        self.assertEqual([[p["code"] for p in found] for found in server.connection_problems("r1", rows)], expected)
+        self.assertEqual(server.connection_problems("r1", rows[:1]), [[]])     # only the describes triple
 
 
 class C_HandSchema(unittest.TestCase):
