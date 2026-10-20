@@ -49,7 +49,7 @@ Task              a piece of work someone is in charge of
                   source: ground truth tuning #4
 Role              a named job an organization or person holds, e.g. an official archive
                   source: ground truth tuning #4
-Retrieval         an estimate of a physical quantity, computed from an instrument's measurements by one particular method, e.g. SST4
+Retrieval         an estimate of a physical quantity, computed from an instrument's measurements by one particular method, and held in a dataset's files, e.g. SST4
                   source: ground truth tuning #4
 Person            one named human being, e.g. Peter Minnett
                   source: ground truth tuning #4
