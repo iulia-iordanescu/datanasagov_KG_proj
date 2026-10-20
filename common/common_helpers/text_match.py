@@ -18,7 +18,11 @@ both sides first, and nothing else:
              passage is looked up in a text (Text.contains), punctuation
              inside either one counts as a space, so "MODIS aboard Aqua" is
              found in "The MODIS, aboard Aqua". Two component instances being
-             compared (norm_text) keep their inner punctuation.
+             compared (norm_text) keep their inner punctuation. A number
+             written against its unit gets a space, so "500m" is "500 m"
+             and "3.95micron" is "3.95 micron": only for a unit in UNITS,
+             and only when the number and the unit are each whole
+             ("MOD021KM" and "500 meters" are left as they are).
     not same anything else: "MODIS" is not "Moderate Resolution Imaging
              Spectroradiometer", "on Aqua" is not "aboard Aqua", and digits
              are kept, so "Level-2" is not "Level 3".
@@ -70,13 +74,29 @@ LEADING_WORDS = ("the", "a", "an")
 
 _LEADING = re.compile(r"^(?:%s)\s+" % "|".join(map(re.escape, LEADING_WORDS))) if LEADING_WORDS else None
 
+#: Units that, written right after a number ("500m", "4.63km", "3.95micron"), get a space before them, so they match
+#: the same number and unit written with one ("500 m"). One space is the evened-out form because it is how the SI
+#: Brochure writes a value, and how 080 is to write every exported value. Written as they are once evened out:
+#: casefolded ("K" is "k", "MHz" is "mhz") and NFKC ("µm" with the micro sign is "μm"). Because case is evened out
+#: first, "500k" (a thousand) and "500M" (a million) also get a space; harmless, as both sides of a comparison get the
+#: same. Kept short on purpose: units only. No day, days, week, month or year: "8 Day" and "8day" differ little, and
+#: a day word after a number is often part of a name ("8-Day", "Day 1"), where a space put in risks making two
+#: different things look the same.
+UNITS = ("m", "km", "cm", "mm", "nm", "μm", "um", "micron", "microns", "s", "sec", "min", "h", "hr", "ms",
+         "hz", "khz", "mhz", "ghz", "k", "°c", "degc", "hpa", "pa", "db", "m/s", "km/h")
+
+# A whole number (not the end of a name like "MOD021KM", nor the tail of "4.63"), then, with no space, a whole unit:
+# no letter or digit after it, so "500meters" and "5mins" are left as they are. Longest unit first: "m/s" before "m".
+_NUMBER_UNIT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(%s)(?!\w)"
+                          % "|".join(map(re.escape, sorted(UNITS, key=len, reverse=True))))
+
 
 def even(s) -> str:
     """Case, spacing, Unicode variants, and dashes evened out; quote marks
-    removed."""
+    removed; a number written against its unit (UNITS) given a space."""
     s = unicodedata.normalize("NFKC", str(s or "")).translate(QUOTES_AND_DASHES)
     s = s.replace('"', "").replace("'", "")
-    return re.sub(r"\s+", " ", s.casefold())
+    return _NUMBER_UNIT.sub(r"\1 \2", re.sub(r"\s+", " ", s.casefold()))
 
 
 def norm_text(s) -> str:

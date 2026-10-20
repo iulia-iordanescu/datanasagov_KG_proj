@@ -114,6 +114,15 @@ class Pairing(unittest.TestCase):
                 c = self.pairs(g, [triple(s, "Instrument", "ABOARD", o, "Spacecraft")])
                 self.assertEqual(c["pairs"], [(0, 0, "exact")])
 
+    def test_number_and_unit_with_or_without_a_space(self):
+        # extracted "500 m", ground truth "500m": the same value, an exact pair; "500 mm" is another value
+        g = [triple("MODIS", "Instrument", "HAS_RESOLUTION", "500m", "Resolution")]
+        t = translation(entity=ENTITY + ["Resolution"], predicates=PREDICATES + ["HAS_RESOLUTION"])
+        c = self.pairs(g, [triple("MODIS", "Instrument", "HAS_RESOLUTION", "500 m", "Resolution")], t)
+        self.assertEqual(c["pairs"], [(0, 0, "exact")])
+        c = self.pairs(g, [triple("MODIS", "Instrument", "HAS_RESOLUTION", "500 mm", "Resolution")], t)
+        self.assertEqual(c["pairs"], [])
+
     def test_predicate_must_match(self):
         c = self.pairs([triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")],
                        [triple("MODIS", "Instrument", "ACQUIRED_BY_INSTRUMENT", "Aqua", "Spacecraft")])

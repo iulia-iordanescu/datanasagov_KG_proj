@@ -13,8 +13,9 @@ partner for another triple), not just each triple's first possible partner,
 and among the largest sets, one with the most strict pairs:
 
   1. exact   subject and object equal once evened out (common/common_helpers/text_match.py
-             norm_text: case, spacing, quote marks, dashes, edge punctuation
-             and a leading "the/a/an" ignored), predicate the same
+             norm_text: case, spacing, quote marks, dashes, edge punctuation,
+             a leading "the/a/an", and the space between a number and its
+             unit ignored, so "500m" is "500 m"), predicate the same
   2. partial among the triples still unpaired: the same, except that the
              subject (or object) may be CONTAINED in the other one as whole
              words, the extracted one in the ground truth one or the

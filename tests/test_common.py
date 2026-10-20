@@ -203,6 +203,31 @@ class Checks(unittest.TestCase):
             self.assertFalse(t.contains(needle), needle)
         self.assertTrue(text_match.Text("See Aquarius. Aqua too.").contains("Aqua"))     # a later whole-word match
 
+    def test_number_and_unit(self):
+        # a number and a unit in UNITS match with or without a space; anything else is left as it was
+        norm = text_match.norm_text
+        for a, b in [("500m", "500 m"), ("4.63km", "4.63 km"), ("3.95 micron", "3.95micron"), ("1KM", "1 km"),
+                     ("10µm", "10 μm"), ("25°C", "25 °C"), ("5m/s", "5 m/s"), ("8.5GHz", "8.5 ghz"),
+                     ("1,000m", "1,000 m")]:
+            self.assertEqual(norm(a), norm(b), (a, b))
+        self.assertEqual(norm("4.63km"), "4.63 km")                                     # one space is the evened-out form
+        self.assertEqual(norm("the 3 and 9micron channels"), "3 and 9 micron channels")  # only "9micron"
+        for s, unchanged in [("the 3 and 9 micron channels", "3 and 9 micron channels"), ("8 Day", "8 day"),
+                             ("8Day", "8day"), ("500 meters", "500 meters"), ("500meters", "500meters"),
+                             ("Level 3", "level 3"), ("V 2019", "v 2019"), ("V061", "v061"), ("5-Min", "5-min"),
+                             ("2015-10-22 to 2015-12-31", "2015-10-22 to 2015-12-31"), ("L2 pixels", "l2 pixels"),
+                             ("L2s", "l2s"), ("36 spectral bands", "36 spectral bands"), ("m", "m"),
+                             ("MOD021KM", "mod021km"), ("500m2", "500m2"), ("5mins", "5mins")]:
+            self.assertEqual(norm(s), unchanged, s)
+        for a, b in [("500 mm", "500 m"), ("500mm", "500m"), ("500 meters", "500 m"), ("8 Day", "8Day"), ("5 ms", "5 m")]:
+            self.assertNotEqual(norm(a), norm(b), (a, b))
+        # in a lookup too, whichever side lost the space
+        t = text_match.Text("Swath at 500m and 4.63 km, from the 3 and 9micron channels.")
+        for needle in ["500 m", "500m", "4.63km", "4.63 km", "9 micron channels", "3 and 9 micron"]:
+            self.assertTrue(t.contains(needle), needle)
+        for needle in ["500 mm", "500", "463 km", "3 micron"]:
+            self.assertEqual(t.contains(needle), needle == "500", needle)
+
     def test_keys(self):
         self.assertEqual(triples_io.component_class_key("physical quantity"), triples_io.component_class_key("PhysicalQuantity"))
         self.assertEqual(triples_io.component_class_key("HAS_VERSION"), triples_io.component_class_key("has-version"))

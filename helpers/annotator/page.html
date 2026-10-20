@@ -980,14 +980,15 @@ function useSelection(rec, j) {
 
 // ---------------------------------------------------------------- highlighting
 // Finds a source text in the text, for highlighting only: the letters and digits must
-// match, in order, and anything else between them may differ. That is more forgiving
+// match, in order, and anything else between them may differ or be missing ("500m" for
+// "500 m", as evening out also allows). That is more forgiving
 // than the server's check (evened out, as docs/terminology.md defines it),
 // so a highlighted source text can still get the server's ✖ "isn't in the record's text".
 function findSpan(text, source) {
-  const words = (source || "").match(/[\p{L}\p{N}]+/gu);
+  const words = (source || "").match(/\p{L}+|\p{N}+/gu);
   if (!words) return null;
   const esc = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const m = new RegExp(esc.join("[^\\p{L}\\p{N}]+"), "iu").exec(text);
+  const m = new RegExp(esc.join("[^\\p{L}\\p{N}]*"), "iu").exec(text);
   return m ? [m.index, m.index + m[0].length] : null;
 }
 function drawText() {
