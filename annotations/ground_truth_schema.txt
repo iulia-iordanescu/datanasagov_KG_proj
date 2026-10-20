@@ -53,6 +53,8 @@ Role              a named job an organization or person holds, e.g. an official 
                   source: ground truth tuning #4
 Retrieval         an estimate of a physical quantity, computed from an instrument's measurements by one particular method, e.g. SST4
                   source: ground truth tuning #4
+Person            one named human being, e.g. Peter Minnett
+                  source: ground truth tuning #4
 
 PREDICATES
 ----------
@@ -89,9 +91,9 @@ HAS_VERSION          carries the version label
 PROVIDES_ACCESS_TO_DOCUMENT  makes this document available
                      Organization -> Document
                      only: Organization -> Document
-SPONSORED_BY_PARTY   is sponsored by this person or organization
+SPONSORED_BY_PARTY   is sponsored by this person, team, or organization
                      WebTool -> Organization
-                     only: any -> Organization; any -> Person
+                     only: any -> Organization; any -> Person; any -> Team
 HAS_SPATIAL_COVERAGE  covers the area
                       Dataset -> SpatialExtent
 HAS_PROCESSING_LEVEL  is processed to the level
@@ -113,9 +115,9 @@ HAS_TEMPORAL_RESOLUTION  gives a value once every, e.g. daily, weekly
                          source: ground truth tuning #2, #3
 BASED_IN             belongs to the country
                      source: ground truth tuning #3
-DEVELOPED_BY_PARTY   was built or created by this person or organization
+DEVELOPED_BY_PARTY   was built or created by this person, team, or organization
                      source: ground truth tuning #3
-                     only: any -> Organization; any -> Person
+                     only: any -> Organization; any -> Person; any -> Team
 OBSERVED_AT_TIME_OF_DAY  was observed during this part of the day
                      source: ground truth tuning #4
                      only: any -> TimeOfDay
