@@ -331,6 +331,7 @@ class RulesInStep(unittest.TestCase):
         ("A table of values inside the record", "Not the values inside a data table"),
         ("Each fact once", "Each fact once"),
         ("A list joined by \"and\": one triple per item", "A list joined by \"and\": one ground truth triple per item"),
+        ("One thing, one wording", "One thing, one wording, within a record"),
         ("General facts: include them, unless they're about another data set",
          "General facts: include them, unless they're about another data set"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),

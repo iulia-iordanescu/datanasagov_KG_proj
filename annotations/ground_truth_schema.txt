@@ -37,6 +37,20 @@ SatelliteFormation  a group of satellites flying together in formation, e.g. the
                     source: ground truth tuning #4
 Channel           a range of wavelengths an instrument measures separately, e.g. the 11 and 12 micron channels
                   source: ground truth tuning #4
+Phenomenon        something that happens in nature and can be observed, e.g. sun glint
+                  source: ground truth tuning #4
+Grid              a fixed set of cells that data values are collected into, e.g. ISEAG
+                  source: ground truth tuning #4
+MapProjection     a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical
+                  source: ground truth tuning #4
+WebPage           a page on the web, given by its address
+                  source: ground truth tuning #4
+Team              a group of people who work together, e.g. Peter Minnett and his team
+                  source: ground truth tuning #4
+Task              a piece of work someone is in charge of
+                  source: ground truth tuning #4
+Role              a named job an organization or person holds, e.g. an official archive
+                  source: ground truth tuning #4
 
 PREDICATES
 ----------
@@ -85,7 +99,7 @@ HAS_SPATIAL_RESOLUTION  each value covers this size on the ground, e.g. 500 m
 PRODUCED_USING_ALGORITHM  was made by applying this algorithm
                      source: ground truth tuning #2
                      only: any -> Algorithm
-DERIVED_FROM         was computed from
+COMPUTED_FROM        is the output of processing this input
                      source: ground truth tuning #2
 HAS_DOI              has the Digital Object Identifier
                      source: ground truth tuning #2
@@ -100,8 +114,9 @@ BASED_IN             belongs to the country
 DEVELOPED_BY_PARTY   was built or created by this person or organization
                      source: ground truth tuning #3
                      only: any -> Organization; any -> Person
-HAS_TIME_OF_DAY      was observed during this part of the day
+OBSERVED_AT_TIME_OF_DAY  was observed during this part of the day
                      source: ground truth tuning #4
+                     only: any -> TimeOfDay
 LAUNCHED_BY          was launched into space by
                      source: ground truth tuning #4
 LAUNCHED_ON          was launched into space on
@@ -111,4 +126,27 @@ HAS_ORBIT            travels in the orbit
 FLIES_IN             flies in formation as part of
                      source: ground truth tuning #4
 HAS_SPECTRAL_BANDS   measures light in this many spectral bands
+                     source: ground truth tuning #4
+UNIQUE_TO_INSTRUMENT  is found only on this instrument
+                      source: ground truth tuning #4
+                      only: any -> Instrument
+HAS_LOWER_UNCERTAINTY_THAN  its values are more certain than those of
+                            source: ground truth tuning #4
+LIMITED_BY           its use is restricted by
+                     source: ground truth tuning #4
+BINNED_INTO          its values were collected into the cells of this grid
+                     source: ground truth tuning #4
+MAPPED_INTO          its values were laid onto a map drawn with this projection
+                     source: ground truth tuning #4
+DOCUMENTED_AT        more details about it are written at
+                     source: ground truth tuning #4
+AFFILIATED_WITH      works at or belongs to this organization
+                     source: ground truth tuning #4
+RESPONSIBLE_FOR      is in charge of this task
+                     source: ground truth tuning #4
+OBTAINS_DATA_FROM    receives data from
+                     source: ground truth tuning #4
+SERVES_AS            holds this role
+                     source: ground truth tuning #4
+SUPERSEDES           replaces this earlier one
                      source: ground truth tuning #4
