@@ -13,6 +13,7 @@ The changes to make to the pipeline itself: what to change, why, and where the i
 - **README, *How to reproduce*:** setup and running are in [`running_on_nasa_laptop.md`](running_on_nasa_laptop.md); building the graph waits for step 080. From: my old to-do list.
 - **Other catalogs:** some things fit only data.nasa.gov. The catalog's address is fixed in the code (`010_harvest/010_harvest_helpers/ckan_client.py`); "undefined" is treated as a maintainer (`020_clean/020_clean_helpers/maintainers.py`); splitting into strata needs a maintainer field that other catalogs may not fill; step 040's prompts say "a catalog of NASA datasets". From: the methods review of 2026-10-11, item 11.
 - **Competency questions:** 10 to 20 questions the knowledge graph should answer, to judge it by. From: the literature review of 2026-10-07.
+- **An entity class hierarchy for the schemas:** the ground truth schema is flat (no entity class is a kind of another). An umbrella entity class with subclasses is standard in knowledge graph schemas (subClassOf in RDF Schema); for people and groups it has a standard name, Agent, with Person, Organization and Group under it (FOAF; PROV-O). With it, a pin could say any -> Agent instead of listing Organization, Person and Team (DEVELOPED_BY_PARTY, SPONSORED_BY_PARTY), and the graph could answer questions across the kinds. It touches the schema reader and its file format, the pin check, step 040's induced schema, and step 070's translation table, so it is a design change for after the first run. From: 2026-10-20.
 
 ## 020_clean
 
