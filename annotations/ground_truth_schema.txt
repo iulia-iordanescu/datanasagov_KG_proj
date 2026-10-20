@@ -103,7 +103,7 @@ HAS_SPATIAL_COVERAGE  covers the area
 HAS_PROCESSING_LEVEL  is processed to the level
                       Dataset -> ProcessingLevel
                       only: any -> ProcessingLevel
-HAS_SPATIAL_RESOLUTION  each value covers this size on the ground, e.g. 500 m
+HAS_SPATIAL_RESOLUTION  each of its values covers this size on the ground, e.g. 500 m
                         Dataset -> Value
 PRODUCED_USING_ALGORITHM  was made by applying this algorithm
                      source: ground truth tuning #2
@@ -112,7 +112,7 @@ COMPUTED_FROM        is the output of processing this input
                      source: ground truth tuning #2
 HAS_DOI              has the Digital Object Identifier
                      source: ground truth tuning #2
-HAS_GRANULE_DURATION  each file of the data covers this long
+HAS_GRANULE_DURATION  each of its files covers this long
                       source: ground truth tuning #2
 HAS_SPATIAL_REPRESENTATION  lays out its data as
                             source: ground truth tuning #2
