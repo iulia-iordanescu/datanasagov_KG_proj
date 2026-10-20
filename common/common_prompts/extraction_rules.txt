@@ -64,10 +64,11 @@
   terms used interchangeably): keep both, as the rule on names says.
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Polar-Gridded" over "gridded".
-- Only facts the record states. Never use outside knowledge, and never infer
-  what an unexplained code or acronym stands for. The title states facts
-  too: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says the data set
-  was collected by MODIS and has a spatial resolution of 500m.
+- Only facts the record states. Never use outside knowledge, and never write
+  what an unexplained code or acronym stands for (seeing that two mentions are
+  the same thing is allowed: see the rule on one wording). The title states
+  facts too: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says the data
+  set was collected by MODIS and has a spatial resolution of 500m.
 - Connect your triples: every triple should link, through the others, to the
   record's title. If one doesn't, look for the fact the record states that
   connects it; never invent one.
