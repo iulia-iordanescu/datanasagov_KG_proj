@@ -10,7 +10,7 @@ Discipline        a field of science
 Organization      a named institution or one of its named parts, e.g. NASA, OBPG; not a mission
 Instrument        a device that takes measurements
 Spacecraft        a craft that operates in space
-TimeSpan          a period with a start and an end
+TimeSpan          a time period written as its start and its end, e.g. 2015-10-22 to 2015-12-31
 PhysicalQuantity  a property that can be measured
 CelestialBody     a natural object in space
 Version           a label marking one release of something
@@ -27,7 +27,7 @@ Country           a nation, e.g. U.S., Argentina
                   source: ground truth tuning #3
 TimeOfDay         a part of the day of the body observed, when observations were made, e.g. daytime, nighttime
                   source: ground truth tuning #4
-Date              one day in the calendar, e.g. May 4, 2002
+Date              one point in time, written alone: a day, or a day with a time, e.g. May 4, 2002; March 11 19:08:03
                   source: ground truth tuning #4
 Orbit             the path a spacecraft travels around a body
                   source: ground truth tuning #4
