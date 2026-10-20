@@ -211,10 +211,11 @@ MESSAGES = {
 
 
 #: Added to subject_not_in_source / object_not_in_source when the instance is elsewhere in the record's text (the
-#: row has no subject_not_in_text / object_not_in_text).
-ELSEWHERE_IN_TEXT = (" It does appear elsewhere in the record's text, so it may be written this way on purpose, to "
-                     "follow a rule: e.g. rule 13 (one wording for a thing within a record) or rule 2 (the title "
-                     "states facts too); if so, nothing to do.")
+#: row has no subject_not_in_text / object_not_in_text); {slot} is "subject" or "object".
+ELSEWHERE_IN_TEXT = (" However, the {slot} instance does appear elsewhere in the record's text, so it may be written "
+                     "this way on purpose, to follow a rule: e.g. rule 13 of \"Writing a classed triple\" (one wording "
+                     "for a thing within a record) or rule 2 of \"What counts as a fact\" (the title states facts "
+                     "too); if so, nothing to do.")
 
 
 # --------------------------------------------------------------------------
@@ -294,7 +295,7 @@ def _message(code: str, row: dict, every: list) -> str:
     record's text (its "not in the text" flag absent)."""
     message = MESSAGES[code].format(**{k: row.get(k) or "(none)" for k in COLUMNS})
     if code.endswith("_not_in_source") and code.replace("_source", "_text") not in every:
-        message += ELSEWHERE_IN_TEXT
+        message += ELSEWHERE_IN_TEXT.format(slot=code.split("_")[0])
     return message
 
 

@@ -235,19 +235,28 @@ class B_Batch(unittest.TestCase):
     def test_not_in_source_but_elsewhere(self):
         """Suppose r1's text is "AIRS aboard Aqua; Aqua orbits Earth." and a ground truth triple's source text is
         "Aqua orbits Earth". Then a subject instance "AIRS" (elsewhere in the text) gets the "not in the source
-        text" flag with the note that it may be on purpose; "MODIS" (in neither) gets the flag without it."""
-        def problem(subject):
+        text" flag with the note, naming the subject instance, that it may be on purpose; "MODIS" (in neither) gets
+        the flag without it. The same for the object instance: with source text "AIRS aboard", an object instance
+        "Aqua" gets the note naming the object instance."""
+        def problem(slot, subject, obj, source):
             row = {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r1", "subject": subject,
-                   "subject_class": "Instrument", "predicate": "ABOARD", "object": "Aqua",
-                   "object_class": "Spacecraft", "source_text": "Aqua orbits Earth"}
+                   "subject_class": "Instrument", "predicate": "ABOARD", "object": obj,
+                   "object_class": "Spacecraft", "source_text": source}
             found = {p["code"]: p["message"] for p in server.check_row(server.Data(), row, "Title r1")}
-            return found["subject_not_in_source"], "subject_not_in_text" in found
-        message, not_in_text = problem("AIRS")
+            return found[f"{slot}_not_in_source"], f"{slot}_not_in_text" in found
+        note = (" However, the {} instance does appear elsewhere in the record's text, so it may be written this way "
+                "on purpose, to follow a rule: e.g. rule 13 of \"Writing a classed triple\" (one wording for a thing "
+                "within a record) or rule 2 of \"What counts as a fact\" (the title states facts too); if so, "
+                "nothing to do.")
+        message, not_in_text = problem("subject", "AIRS", "Aqua", "Aqua orbits Earth")
         self.assertFalse(not_in_text)
-        self.assertTrue(message.endswith(server.ELSEWHERE_IN_TEXT))
-        message, not_in_text = problem("MODIS")
+        self.assertEqual(message, server.MESSAGES["subject_not_in_source"] + note.format("subject"))
+        message, not_in_text = problem("subject", "MODIS", "Aqua", "Aqua orbits Earth")
         self.assertTrue(not_in_text)
         self.assertEqual(message, server.MESSAGES["subject_not_in_source"])
+        message, not_in_text = problem("object", "AIRS", "Aqua", "AIRS aboard")
+        self.assertFalse(not_in_text)
+        self.assertEqual(message, server.MESSAGES["object_not_in_source"] + note.format("object"))
 
 
 class C_HandSchema(unittest.TestCase):
