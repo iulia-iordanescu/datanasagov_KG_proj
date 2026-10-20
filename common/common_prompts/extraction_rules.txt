@@ -59,9 +59,10 @@
   only if the record states one. To see that two mentions are the same
   thing, use clues anywhere in the record, and what you know about the
   words (e.g. that MID-IR means mid-infrared); but never add a fact the
-  record doesn't state, and never write an expansion it doesn't give.
-  Except where the record gives a second name on purpose ("X, or Y";
-  terms used interchangeably): keep both, as the rule on names says.
+  record doesn't state, and write only a wording the record itself uses
+  for that thing. Except where the record gives a second name on purpose
+  ("X, or Y"; terms used interchangeably): keep both, as the rule on names
+  says.
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Polar-Gridded" over "gridded".
 - Only facts the record states. Never use outside knowledge, and never write
