@@ -7,7 +7,7 @@ Purpose           an aim something is meant to achieve
 Mission           a named spaceflight effort
 MissionPhase      a named phase of a mission
 Discipline        a field of science
-Organization      an institution or one of its parts; not a mission
+Organization      a named institution or one of its named parts, e.g. NASA, OBPG; not a mission
 Instrument        a device that takes measurements
 Spacecraft        a craft that operates in space
 TimeSpan          a period with a start and an end
@@ -43,7 +43,7 @@ MapProjection     a way of drawing the curved Earth on a flat map, e.g. equidist
                   source: ground truth tuning #4
 WebPage           a page on the web, given by its address
                   source: ground truth tuning #4
-Team              a group of people who work together, e.g. Peter Minnett and his team
+Team              a group of people without a name of its own, e.g. Peter Minnett and his team
                   source: ground truth tuning #4
 Task              a piece of work someone is in charge of
                   source: ground truth tuning #4
