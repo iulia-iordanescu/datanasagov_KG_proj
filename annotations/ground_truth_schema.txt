@@ -16,15 +16,13 @@ CelestialBody     a natural object in space
 Version           a label marking one release of something
 SpatialExtent     the area the data cover, of the body they are about: all of it (global) or part of it (e.g. the Arctic, or the south pole of Mars)
 ProcessingLevel   how far data have been processed from what the instrument recorded, e.g. Level 2
-Value             a number with its unit, e.g. 500 m
+Value             an amount: a number with its unit, or a word that stands for one, e.g. 500 m, daily, 36 spectral bands
 Algorithm         a method applied to data to compute a result, e.g. a series of screens, or a modified nonlinear SST algorithm
                   source: ground truth tuning #2
 Identifier        a code that names one thing for good, e.g. a DOI
                   source: ground truth tuning #2
 SpatialRepresentation  how data are laid out over the ground: either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
                        source: ground truth tuning #2
-TemporalResolution  how often data give a value, e.g. daily, weekly, monthly
-                    source: ground truth tuning #2, #3
 Country           a nation, e.g. U.S., Argentina
                   source: ground truth tuning #3
 TimeOfDay         a part of the day of the body observed, when observations were made, e.g. daytime, nighttime
@@ -121,7 +119,6 @@ HAS_SPATIAL_REPRESENTATION  lays out its data as
                             only: any -> SpatialRepresentation
 HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily, weekly (8 day)
                          source: ground truth tuning #2, #3
-                         only: any -> TemporalResolution
 BASED_IN             belongs to the country
                      source: ground truth tuning #3
 DEVELOPED_BY_PARTY   was built or created by this person, team, or organization
