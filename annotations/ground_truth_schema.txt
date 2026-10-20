@@ -150,3 +150,5 @@ SERVES_AS            holds this role
                      source: ground truth tuning #4
 SUPERSEDES           replaces this earlier one
                      source: ground truth tuning #4
+FROM_SPACECRAFT      was collected from this spacecraft
+                     source: ground truth tuning #1
