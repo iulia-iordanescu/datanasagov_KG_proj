@@ -105,7 +105,7 @@ HAS_PROCESSING_LEVEL  is processed to the level
                       only: any -> ProcessingLevel
 HAS_SPATIAL_RESOLUTION  each of its values covers this size on the ground, e.g. 500 m
                         Dataset -> Value
-PRODUCED_USING_ALGORITHM  was made by applying this algorithm
+PRODUCED_USING_ALGORITHM  was made or detected by applying this algorithm
                      source: ground truth tuning #2
                      only: any -> Algorithm
 COMPUTED_FROM        is the output of processing this input
@@ -124,7 +124,7 @@ BASED_IN             belongs to the country
 DEVELOPED_BY_PARTY   was built or created by this person, team, or organization
                      source: ground truth tuning #3
                      only: any -> Organization; any -> Person; any -> Team
-OBSERVED_AT_TIME_OF_DAY  was observed during this part of the day
+OBSERVED_AT_TIME_OF_DAY  comes from observations made during this part of the day
                      source: ground truth tuning #4
                      only: any -> TimeOfDay
 LAUNCHED_BY          was launched into space by
