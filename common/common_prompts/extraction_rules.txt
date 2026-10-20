@@ -25,12 +25,13 @@
   other qualifier stays in the subject or object, as written: "sea surface
   salinity" stays whole.
 - A name with its abbreviation in parentheses is one subject or object, as
-  written: "Level-2 (L2)", with no separate triple saying L2 is another name
-  for Level-2. Write such a triple only when the record states the other
-  name in words of its own ("X, or Y"). When the record gives two names for
-  something of its dataset, such as its release ("the terms X and Y are used
-  interchangeably in reference to this release"), write each as a fact about
-  the dataset (two version triples), not a triple between the two names.
+  written: "Level-2 (L2)", with no also-known-as triple. Write an
+  also-known-as triple only when the record gives the other name in words of
+  its own ("X, or Y"); the other triples then use one of the two names, as the
+  rule on one wording says. When the record says "the terms 'Version 61' and
+  'Collection 6.1' are used interchangeably in reference to this release",
+  give the dataset's version "Version 61", and "Version 61" also known as
+  "Collection 6.1".
 - A table of values inside the record (rows of measurements, one per object):
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.
@@ -60,9 +61,7 @@
   thing, use clues anywhere in the record, and what you know about the
   words (e.g. that MID-IR means mid-infrared); but never add a fact the
   record doesn't state, and write only a wording the record itself uses
-  for that thing. Except where the record gives a second name on purpose
-  ("X, or Y"; terms used interchangeably): keep both, as the rule on names
-  says.
+  for that thing.
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Polar-Gridded" over "gridded".
 - Only facts the record states. Never use outside knowledge, and never write
