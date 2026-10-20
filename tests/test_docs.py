@@ -1,8 +1,9 @@
 """The docs say what the code does: each step guide's Inputs, Settings and
 Prompts tables match its run.py and its prompts folder; every file path
-named in the docs and code exists; docs/terminology.md defines each term once; and
+named in the docs and code exists; docs/terminology.md defines each term once;
 "class" never stands alone (docs/terminology.md: say entity class, subject
-class, object class, or component class)."""
+class, object class, or component class); and the model's prompts quote no
+ground truth record."""
 import ast
 import re
 import subprocess
@@ -355,6 +356,37 @@ class RulesInStep(unittest.TestCase):
                 self.assertIn(said, flat)
                 if guideline:
                     self.assertIn(guideline, guidelines)
+
+
+class PromptsQuoteNoGroundTruth(unittest.TestCase):
+    """The model's prompts use invented examples, never text from ground truth records: a prompt that quotes a ground
+    truth record could hand the model an answer it is scored on. Every quoted phrase of 3 or more words in a prompt
+    file ("..." or '...') must occur in no subject, object (the describes triples' objects are the titles), or
+    source_text of annotations/ground_truth/."""
+
+    def test_no_quote_from_ground_truth(self):
+        import csv
+        prompts = sorted(p for p in ROOT.glob("*/*_prompts/*.txt") if not p.is_relative_to(ROOT / "to_be_reshaped"))
+        truth = sorted((ROOT / "annotations" / "ground_truth").glob("*.csv"))
+        self.assertTrue(prompts, "no prompt files found under */*_prompts/")
+        self.assertTrue(truth, "no ground truth files found in annotations/ground_truth/")
+        flat = lambda s: " ".join(s.split()).lower()
+        texts = []
+        for path in truth:
+            with open(path, encoding="utf-8-sig", newline="") as fh:
+                rows = list(csv.DictReader(fh))
+            self.assertTrue(rows, f"{path.relative_to(ROOT).as_posix()} has no rows")
+            texts += [flat(row[k]) for row in rows for k in ("subject", "object", "source_text")]
+        found, quotes = [], 0
+        for path in prompts:
+            text = " ".join(path.read_text(encoding="utf-8").split())
+            for q in re.findall(r'"([^"]+)"', text) + re.findall(r"(?<!\w)'([^']+?)'(?!\w)", text):
+                if len(q.split()) >= 3:
+                    quotes += 1
+                    found += [f"{path.relative_to(ROOT).as_posix()}: \"{q}\" is in a ground truth record; "
+                              f"replace it with an invented example of the same shape"] * any(flat(q) in t for t in texts)
+        self.assertTrue(quotes, "no quoted phrase of 3 or more words found in the prompts: the test would check nothing")
+        self.assertFalse(found, "\n" + "\n".join(found))
 
 
 if __name__ == "__main__":

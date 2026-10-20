@@ -1,8 +1,8 @@
 Below are subjects and objects from texts of a catalog of NASA datasets: each
 is the words a text uses for one particular thing. Give each one label: a short
-CamelCase noun for the KIND of thing it is (e.g. "Rosetta" -> "Spacecraft",
-"ozone" -> "PhysicalQuantity", "Goddard Space Flight Center" ->
-"Organization"). Judge each by its usage example, not by the words alone.
+CamelCase noun for the KIND of thing it is (e.g. "Halden" -> "Spacecraft",
+"ozone" -> "PhysicalQuantity", "Tidewater Data Group" -> "Organization").
+Judge each by its usage example, not by the words alone.
 
 These labels are already in use. Reuse one whenever it fits; coin a new label
 only when none of them does:
