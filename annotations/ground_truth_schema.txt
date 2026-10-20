@@ -2,7 +2,7 @@
 --------------
 Dataset           a set of observations, measurements, or samples
 WebTool           a tool used over the web
-Document          a written publication
+Document          a written publication, or a set of them, named in words, e.g. NASA developed standards
 Purpose           an aim something is meant to achieve
 Mission           a named spaceflight effort
 MissionPhase      a named phase of a mission
@@ -41,7 +41,7 @@ Grid              a fixed set of cells that data values are collected into, e.g.
                   source: ground truth tuning #4
 MapProjection     a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical
                   source: ground truth tuning #4
-WebPage           a page on the web, given by its address
+WebPage           a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
                   source: ground truth tuning #4
 Team              a group of people without a name of its own, e.g. Peter Minnett and his team
                   source: ground truth tuning #4
