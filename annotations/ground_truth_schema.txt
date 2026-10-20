@@ -119,7 +119,7 @@ HAS_GRANULE_DURATION  each file of the data covers this long
 HAS_SPATIAL_REPRESENTATION  lays out its data as
                             source: ground truth tuning #2
                             only: any -> SpatialRepresentation
-HAS_TEMPORAL_RESOLUTION  gives a value once every, e.g. daily, weekly
+HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily, weekly (8 day)
                          source: ground truth tuning #2, #3
                          only: any -> TemporalResolution
 BASED_IN             belongs to the country
