@@ -19,7 +19,7 @@ ProcessingLevel   how far data have been processed from what the instrument reco
 Value             an amount: a number with its unit, or a word that stands for one, e.g. 500 m, daily, 36 spectral bands
 Algorithm         a method applied to data to compute a result, e.g. a series of screens, or a modified nonlinear SST algorithm
                   source: ground truth tuning #2
-Identifier        a code that names one thing for good, e.g. a DOI
+Identifier        a code that names one thing permanently, e.g. a DOI
                   source: ground truth tuning #2
 SpatialRepresentation  how data are laid out over the ground: either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
                        source: ground truth tuning #2
