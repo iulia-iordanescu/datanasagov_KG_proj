@@ -94,7 +94,7 @@ HAS_VERSION          carries the version label
                      only: any -> Version
 PROVIDES_ACCESS_TO_DOCUMENT  makes this document available
                      Organization -> Document
-                     only: Organization -> Document
+                     only: any -> Document
 SPONSORED_BY_PARTY   is sponsored by this person, team, or organization
                      WebTool -> Organization
                      only: any -> Organization; any -> Person; any -> Team
