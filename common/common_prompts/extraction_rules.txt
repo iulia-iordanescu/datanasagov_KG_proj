@@ -21,9 +21,11 @@
   dataset's temporal resolution "daily" and area the data cover "global" as
   triples of their own; "nighttime CTH" gives "CTH" and the time of day
   "nighttime"; "the U.K. Coastal Survey Bureau (CSB)" gives "Coastal Survey
-  Bureau (CSB)", and the triple that CSB is based in the U.K. Any other
-  qualifier stays in the subject or object, as written: "glacier surface
-  albedo" stays whole.
+  Bureau (CSB)", and the triple that CSB is based in the U.K. A qualifier
+  stays in the subject or object, as written, if it is any other kind
+  ("glacier surface albedo" stays whole), or if taking it out would give a
+  triple that isn't true: "an afternoon orbit" stays whole, since the orbit
+  doesn't come from observations made in the afternoon.
 - A name with its abbreviation in parentheses is one subject or object, as
   written: "Tier-3 (T3)", with no also-known-as triple. Write an
   also-known-as triple only when the record gives the other name in words of
