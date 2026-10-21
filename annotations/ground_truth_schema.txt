@@ -25,7 +25,7 @@ SpatialRepresentation  how data are laid out over the ground: either along the s
                        source: ground truth tuning #2
 Country           a nation, e.g. U.S., Argentina
                   source: ground truth tuning #3
-TimeOfDay         a part of the day or a clock time, not on the calendar, which happens every day, e.g. nighttime, morning, 2:39 PM
+TimeOfDay         a part of the day or a clock time, which comes back every day rather than happening once on the calendar, e.g. nighttime, morning, 2:39 PM
                   source: ground truth tuning #4
 Orbit             the path a spacecraft travels around a body
                   source: ground truth tuning #4
