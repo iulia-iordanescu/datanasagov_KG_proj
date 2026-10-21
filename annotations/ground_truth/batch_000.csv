@@ -21,7 +21,7 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_SPATIAL_COVERAGE,global,SpatialExtent,This global Level-2 (L2) data set,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_PROCESSING_LEVEL,Level-2 (L2),ProcessingLevel,Level-2 (L2) data set,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_MEASUREMENTS_OF,snow cover,PhysicalQuantity,provides daily snow cover,1,claude-opus-5.5
-6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_TEMPORAL_RESOLUTION,daily,Value,provides daily snow cover,1,claude-opus-5.5
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,provides daily snow cover,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,snow cover,PhysicalQuantity,PRODUCED_USING_ALGORITHM,Normalized Difference Snow Index (NDSI),Algorithm,daily snow cover detected using Normalized Difference Snow Index (NDSI),1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,snow cover,PhysicalQuantity,PRODUCED_USING_ALGORITHM,a series of screens,Algorithm,daily snow cover detected using Normalized Difference Snow Index (NDSI) and a series of screens,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,a series of screens,Algorithm,HAS_PURPOSE,alleviate errors,Purpose,a series of screens designed to alleviate errors,1,claude-opus-5.5
@@ -31,11 +31,11 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,Moderate Resolution Imaging Spectroradiometer (MODIS),Instrument,ABOARD,Aqua,Spacecraft,Moderate Resolution Imaging Spectroradiometer (MODIS) on board the Aqua satellite,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_GRANULE_DURATION,5 minutes,Value,Each data granule contains 5 minutes of swath data,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_SPATIAL_REPRESENTATION,swath,SpatialRepresentation,5 minutes of swath data,1,claude-opus-5.5
-6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_SPATIAL_RESOLUTION,500m,Value,observed at a resolution of 500 m,1,claude-opus-5.5
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_SPATIAL_RESOLUTION,500m,SpatialResolution,observed at a resolution of 500 m,1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,HAS_VERSION,Version 61,Version,"The terms ""Version 61"" and ""Collection 6.1"" are used interchangeably in reference to this release of MODIS data",1,claude-opus-5.5
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,Version 61,Version,ALSO_KNOWN_AS,Collection 6.1,Version,"The terms ""Version 61"" and ""Collection 6.1"" are used interchangeably in reference to this release of MODIS data",1,claude-opus-5.5
 2705e0d1-95e7-4588-813b-ca91a6da94ff,2705e0d1-95e7-4588-813b-ca91a6da94ff,CatalogEntry,DESCRIBES,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,(record structure),1,
-2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_TEMPORAL_RESOLUTION,weekly,Value,weekly gridded Level-3 products,1,claude-opus-5.5
+2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_TEMPORAL_RESOLUTION,weekly,TemporalResolution,weekly gridded Level-3 products,1,claude-opus-5.5
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_SPATIAL_REPRESENTATION,Polar-Gridded,SpatialRepresentation,Polar-Gridded,1,claude-opus-5.5
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_PROCESSING_LEVEL,Level-3,ProcessingLevel,gridded Level-3 products,1,claude-opus-5.5
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_MEASUREMENTS_OF,Sea Surface Salinity (SSS),PhysicalQuantity,Aquarius L-band radiometer Sea Surface Salinity (SSS) retrievals,1,
@@ -48,8 +48,8 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_VERSION,V005,Version,Salinity V005,1,
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,03a09af3-081e-4db6-9e3b-ea7c0e3138bd,CatalogEntry,DESCRIBES,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,(record structure),0,
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_PROCESSING_LEVEL,Level 3,ProcessingLevel,Level 3,0,claude-opus-5.5
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_TEMPORAL_RESOLUTION,weekly (8 day),Value,"Average daily, weekly (8 day), monthly and annual skin SST products",0,claude-opus-5.5
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_SPATIAL_RESOLUTION,4.63 km,Value,available at both 4.63 and 9.26 km spatial resolution,0,claude-opus-5.5
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_TEMPORAL_RESOLUTION,weekly (8 day),TemporalResolution,"Average daily, weekly (8 day), monthly and annual skin SST products",0,claude-opus-5.5
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_SPATIAL_RESOLUTION,4.63 km,SpatialResolution,available at both 4.63 and 9.26 km spatial resolution,0,claude-opus-5.5
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,OBSERVED_AT_TIME_OF_DAY,night,TimeOfDay,Nighttime,0,claude-opus-5.5
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_SPATIAL_COVERAGE,global,SpatialExtent,global NASA skin sea surface temperature (SST) products,0,claude-opus-5.5
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_SPATIAL_REPRESENTATION,spatially gridded,SpatialRepresentation,spatially gridded (L3),0,claude-opus-5.5

@@ -16,7 +16,7 @@ CelestialBody     a natural object in space
 Version           a label marking one release of something
 SpatialExtent     the area the data cover, of the body they are about: all of it (global) or part of it (e.g. the Arctic, or the south pole of Mars)
 ProcessingLevel   how far data have been processed from what the instrument recorded, e.g. Level 2
-Value             an amount: a number with its unit, or a word that stands for one, e.g. 500 m, daily, 36 spectral bands
+Value             an amount, as a number with its unit or in words, e.g. 36 spectral bands, 5 minutes
 Algorithm         a method applied to data to compute a result, e.g. a series of screens, or a modified nonlinear SST algorithm
                   source: ground truth tuning #2
 Identifier        a code that names one thing permanently, e.g. a DOI
@@ -51,6 +51,10 @@ Retrieval         an estimate of a physical quantity, computed from an instrumen
                   source: ground truth tuning #4
 Person            one named human being, e.g. Peter Minnett
                   source: ground truth tuning #4
+SpatialResolution  how much ground each value of the data covers, e.g. 500 m, 4.63 km
+                   source: ground truth tuning #2, #4
+TemporalResolution  how much time passes between one value of the data and the next, e.g. daily, weekly (8 day)
+                    source: ground truth tuning #2, #3, #4
 
 PREDICATES
 ----------
@@ -101,7 +105,8 @@ HAS_PROCESSING_LEVEL  is processed to the level
                       Dataset -> ProcessingLevel
                       only: any -> ProcessingLevel
 HAS_SPATIAL_RESOLUTION  each of its values covers this size on the ground, e.g. 500 m
-                        Dataset -> Value
+                        Dataset -> SpatialResolution
+                        only: any -> SpatialResolution
 PRODUCED_USING_ALGORITHM  was made or detected by applying this algorithm
                      source: ground truth tuning #2
                      only: any -> Algorithm
@@ -116,6 +121,7 @@ HAS_SPATIAL_REPRESENTATION  lays out its data as
                             only: any -> SpatialRepresentation
 HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily, weekly (8 day)
                          source: ground truth tuning #2, #3
+                         only: any -> TemporalResolution
 BASED_IN             belongs to the country
                      source: ground truth tuning #3
 DEVELOPED_BY_PARTY   was built or created by this person, team, or organization

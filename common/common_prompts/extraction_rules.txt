@@ -14,15 +14,16 @@
   as approximate is stated: "approximately 350 m" is the object.
 - A number with a unit: the object is the number and its unit, as written
   ("350 m"); the predicate says what the number measures.
-- A qualifier that is a time step, an area the data cover, a processing level,
-  a size on the ground, a country, or a time of day is a triple of its own,
-  and is taken out of the subject or object: "This global dataset provides
-  daily lake ice extent" gives "lake ice extent", and the dataset's time step
-  "daily" and area the data cover "global" as triples of their own;
-  "nighttime CTH" gives "CTH" and the time of day "nighttime"; "the U.K.
-  Coastal Survey Bureau (CSB)" gives "Coastal Survey Bureau (CSB)", and the
-  triple that CSB is based in the U.K. Any other qualifier stays in the
-  subject or object, as written: "glacier surface albedo" stays whole.
+- A qualifier that is a temporal resolution, an area the data cover, a
+  processing level, a spatial resolution, a country, or a time of day is a
+  triple of its own, and is taken out of the subject or object: "This global
+  dataset provides daily lake ice extent" gives "lake ice extent", and the
+  dataset's temporal resolution "daily" and area the data cover "global" as
+  triples of their own; "nighttime CTH" gives "CTH" and the time of day
+  "nighttime"; "the U.K. Coastal Survey Bureau (CSB)" gives "Coastal Survey
+  Bureau (CSB)", and the triple that CSB is based in the U.K. Any other
+  qualifier stays in the subject or object, as written: "glacier surface
+  albedo" stays whole.
 - A name with its abbreviation in parentheses is one subject or object, as
   written: "Tier-3 (T3)", with no also-known-as triple. Write an
   also-known-as triple only when the record gives the other name in words of
