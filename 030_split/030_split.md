@@ -152,6 +152,6 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 
 ## Known limits
 
-- **The [pool](../docs/terminology.md#4-ground-truth-and-samples) describes the catalog of 2026-09-21** (36,323 [records](../docs/terminology.md#1-records-and-their-text)), not today's. Records added since can't be in it, and records removed since are dropped. Its [maintainers](../docs/terminology.md#1-records-and-their-text) match 020's joined names exactly on 2026-09-28.
+- **The [pool](../docs/terminology.md#4-ground-truth-and-samples) describes the catalog it was drawn from, not today's:** drawn on 2026-09-21 from 36,323 [records](../docs/terminology.md#1-records-and-their-text) (the count the harvest of 2026-09-02 returned; `ground_truth_candidates.json` doesn't name the harvest). Records added since can't be in it, and records removed since are dropped. Its [maintainers](../docs/terminology.md#1-records-and-their-text) match 020's joined names exactly on 2026-09-28.
 - **The order is only as fixed as `splits.json`.** Because the order is written once and kept, a re-harvest doesn't change it; records added to the catalog after `splits.json` was written are never [induction candidates](../docs/terminology.md#4-ground-truth-and-samples) until it is deliberately redrawn.
 - **Replaces an earlier sample.** The earlier `best_induce_schema.py` drew its own induction sample (seed 7, from `inputs.json`) and didn't exclude the pool; no [schema](../docs/terminology.md#3-schemas) learned from that sample is kept in this repo, so nothing needs it.
