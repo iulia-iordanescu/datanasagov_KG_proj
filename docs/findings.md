@@ -13,7 +13,16 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 - **150 texts are enough to find the entity classes, and nearly enough for the predicates** (the last 25 texts added 2.8), but not the patterns, which keep growing. The patterns are the part to trim before extraction runs on the whole catalog. [Evidence](#saturation)
 - **Tables of numbers inside the `notes` field** (about 2% of records) are described, not copied cell by cell (rule 8 of the annotation guidelines). [Evidence](#data-tables-in-the-notes-field)
 - **Prompt caching** (paying a fraction for the part of a request that is the same every time) **works through NASA's LiteLLM for Claude**, the way 060 sends it. Extraction (060) uses it; nothing else repeats enough to be worth it. For Gemini it's unclear. [Evidence](#2026-10-12--litellm--prompt-caching-works-after-a-first-write-per-copy-of-the-model), [more](#2026-10-12--litellm--caching-inside-the-user-message-and-gemini)
+- **Gemini 2.5 Pro's hidden thinking can use up the answer limit:** in 050's run of 2026-10-21, 79% of a cut-off answer's tokens went to thinking. 050 now caps the thinking (`--thinking`, default `low`); whether that makes drafts worse isn't measured yet. [Evidence](#2026-10-21--step-050--why-a-drafted-answer-was-cut-off)
 - **The safety filter of the model's service** sometimes stops answers about space-biology phrases (e.g. "was more virulent than"). Step 040 works around it; extraction (060) on space-biology records may lose some facts, to be watched in its report. [Evidence](#2026-10-12--step-040--what-the-content-filter-stopped-on)
+
+## 2026-10-21 · Step 050 · Why a drafted answer was cut off
+
+**The run.** On the NASA laptop, `py 050_annotate/run.py --records_per_batch 2`, model `gemini-2.5-pro` through LiteLLM, no thinking setting sent, answer limit 16,000 tokens (`MAX_ANSWER_TOKENS` in `common/common_helpers/llm.py`). Record d5477563-0415-4e65-ab7c-d4bc9ed809e5 (a 1,503-character text, one text piece) failed: its answer was cut off after 10,623 characters. The log (`outputs/logs/050_annotate_2026-10-21_1443.log`, line 35) gives the service's token counts.
+
+**The numbers.** 15,996 answer tokens in all: 12,615 (79%) of Gemini 2.5 Pro's hidden thinking and 3,381 of visible answer. Prompt: 4,872 tokens.
+
+**What it means.** The cause is confirmed: the thinking, which counts against the answer limit, used most of it, leaving the visible answer too few tokens to finish. The 3,381 visible tokens for 10,623 characters (about 3.1 characters a token) are ordinary. It doesn't show whether the visible answer repeats itself, nor whether less thinking drafts worse; those are in `docs/improvements.md` (050).
 
 ## 2026-10-12 · LiteLLM · Caching inside the user message, and Gemini
 
