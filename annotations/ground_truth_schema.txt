@@ -127,7 +127,7 @@ BASED_IN             belongs to this Country
 DEVELOPED_BY_PARTY   was built or created by this Person, Team, or Organization
                      source: ground truth tuning #3
                      only: any -> Organization; any -> Person; any -> Team
-OBSERVED_AT_TIME_OF_DAY  comes from observations made during this part of the day
+OBSERVED_AT_TIME_OF_DAY  comes from observations made at or during this TimeOfDay
                      source: ground truth tuning #4
                      only: any -> TimeOfDay
 LAUNCHED_BY          was launched into space by
