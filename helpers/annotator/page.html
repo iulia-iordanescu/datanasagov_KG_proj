@@ -234,7 +234,7 @@
   .mapfilters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 0; }
   .mapfilters .mapsearch { flex: 1 1 260px; min-width: 0; }
   .mapfilters label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-  .maphead, .mapgrid { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); column-gap: 8px; }
+  .maphead, .mapgrid { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); column-gap: 8px; }
   .maphead { position: sticky; top: 60px; z-index: 1; background: var(--navy-bg); color: var(--navy); font-size: 12px;
              font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 12px 6px 15px;
              border-radius: 8px; margin-bottom: 6px; }
@@ -243,18 +243,24 @@
   .mapbox.todo { border-left-color: var(--flag); }
   .mapbox:hover { border-color: var(--stripe); }
   .mapbox.todo:hover { border-left-color: var(--flag); }
-  /* an entity class or predicate never breaks inside a word: one line, cut with … (the full text in its tooltip) */
-  .mapname { min-width: 0; font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 13.5px; font-weight: 600;
+  /* an entity class or predicate never breaks inside a word: one line, cut with … (the full text in its tooltip);
+     in the tool's own typeface, like every other name in the tool */
+  .mapname { min-width: 0; font-size: 14.5px; font-weight: 600;
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; align-self: center; }
   .mapname select { width: 100%; font: inherit; padding: 3px 8px; text-overflow: ellipsis; }
   .mapname select.none { color: var(--muted); font-style: italic; font-weight: 400; }
-  .maparrow { color: var(--muted); text-align: center; align-self: center; font-size: 16px; }
+  .maparrow { color: var(--sky); display: flex; justify-content: center; align-self: center; }
+  .maparrow svg { width: 30px; height: 30px; }
+  .maphead .maparrow { color: var(--navy); }
+  .maphead .maparrow svg { width: 22px; height: 22px; }
   .mapdef { font-size: 13px; line-height: 1.45; color: var(--label); margin-top: 4px; overflow-wrap: break-word; }
   .mapdef.empty { color: var(--muted); font-style: italic; }
-  .mapbox .example { margin-top: 6px; padding: 3px 8px; font-size: 12.5px; background: var(--tint); }
+  .mapbox .example { margin-top: 6px; padding: 3px 8px; font-family: inherit; font-size: 13px; background: var(--tint);
+                    overflow-wrap: break-word; }
   .mapflags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding-top: 6px;
               border-top: 1px dashed var(--line); font-size: 13px; }
   .mapflags .pill { margin-left: 0; }
+  .mapflags .pill.jump { white-space: normal; text-align: left; }      /* a long flag wraps at spaces, never inside a word */
   .mapflag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 10px 1px 6px; border-radius: 999px;
              background: var(--tint); border: 1px solid var(--line); color: var(--label); cursor: pointer; white-space: nowrap; }
   .mapflag.on { background: var(--sky-bg); border-color: var(--sky); color: var(--navy); font-weight: 600; }
@@ -263,6 +269,34 @@
   .mapflags .mapdelete { margin-left: auto; padding: 1px 10px; font-size: 12.5px; }
   .mapbox .problems { margin-top: 6px; }
   .mapempty { padding: 12px 4px; }
+  /* partial pairs: one compact box per pair, in the translation table's style: the record on top, then the two
+     triples side by side, each under its label, then the verdict buttons at the bottom */
+  .pairhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 600; }
+  .pairhead .pairpos { color: var(--muted); }
+  .pairhead .part { font-weight: 400; }
+  .pairgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 16px; margin-top: 8px; }
+  .pairside { min-width: 0; }
+  .pairside + .pairside { border-left: 1px solid var(--line); padding-left: 16px; }
+  .pairlabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--navy);
+               background: var(--navy-bg); border-radius: 6px; padding: 3px 8px; margin-bottom: 6px; }
+  .pairpart { display: grid; grid-template-columns: 7.2em minmax(0, 1fr); column-gap: 8px; padding: 2px 0;
+              font-size: 14px; line-height: 1.45; }
+  .pairtag { font-size: 12px; font-weight: 600; padding-top: 1px; }
+  .pairtag.f-subj { color: var(--subj); } .pairtag.f-pred { color: var(--pred); } .pairtag.f-obj { color: var(--obj); }
+  .pairval { min-width: 0; overflow-wrap: break-word; }
+  .pairbox details { margin-top: 8px; }
+  .pairbox summary { cursor: pointer; }
+  .pairtext { white-space: pre-wrap; overflow-wrap: break-word; max-height: 40vh; overflow: auto; margin-top: 4px;
+              padding: 8px 12px; border-radius: 8px; background: var(--paper); border: 1px solid var(--line); }
+  .pairexplain p { margin: 0 0 6px; }
+  .pairexplain ul { margin: 0 0 8px; padding-left: 18px; }
+  .pairexplain li { margin: 2px 0; }
+  .mapflag.no { background: var(--flag-bg); border-color: var(--flag); color: var(--flag); font-weight: 600; }
+  .mapflags .pairverdict { margin-left: auto; }
+  @media (max-width: 700px) {
+    .pairgrid { grid-template-columns: minmax(0, 1fr); }
+    .pairside + .pairside { border-left: 0; padding-left: 0; border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px; }
+  }
 
   /* ---------------------------------------------------------------- the look: one palette, navy and sky blue on paper;
      Libre Franklin (chosen 2026-10-14, from eight samples), JetBrains Mono for anything code-like */
@@ -331,6 +365,16 @@
   @media (prefers-color-scheme: dark) { .problems li.error { color: #2a0f0c; } }
   .problems li.flag, .pill.flag { background: var(--flag-bg); color: var(--flag); }
   header .topbar { padding: 10px 24px; gap: 8px; }
+  /* the view bar never moves: the title and the view buttons keep their size and place in every view; the status
+     message takes the rest of the line and wraps there (onto a line of its own when too little is left), never cut */
+  header .topbar { flex-wrap: wrap; align-items: flex-start; }
+  header h1, header nav.tabs { flex: none; min-height: 40px; display: flex; align-items: center; }
+  /* a view button is as wide as its bold label, current view or not, so making it current moves nothing */
+  header nav.tabs button.tab[data-label]::after { content: attr(data-label); display: block; height: 0; overflow: hidden;
+                                                  visibility: hidden; font-weight: 600; }
+  header #status { flex: 1 1 auto; min-width: 8em; min-height: 40px; display: flex; align-items: center; justify-content: flex-end;
+                   text-align: right; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word;
+                   line-height: 1.3; }
   header h1 { margin-right: 28px; padding-right: 28px; border-right: 1px solid var(--bar-soft); }
   header nav.tabs button, header nav.tabs .tab select { padding: 7px 14px; }
   header nav.tabs .tab { border-radius: 999px; }
@@ -421,9 +465,9 @@
     <h1><button id="homebutton" title="Home: what the tool is for, and its views">Annotation tool<span class="pencil"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(45 32 32)" stroke="#5a3b1c" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M25.6 4.6c2.1-1 10.6-1 12.7.1l.3 6.4H25.4z" fill="#d48a7e"/><path d="M25.4 11.1h13.2l.1 5.6H25.3z" fill="#b8bcc0"/><path d="M25.6 13.1h12.9M25.5 15h13" stroke="#8b9095" stroke-width="1"/><path d="M25.3 16.7h13.4l-.2 27.6H25.5z" fill="#d9a23f"/><path d="M29.8 17l.2 27M34.2 17l-.1 27" stroke-width="1.1"/><path d="M30.9 17.4l.1 26.4" stroke="#f0c86e" stroke-width="1.4"/><path d="M25.5 44.3h13l-6.4 12.9z" fill="#ead2a3"/><path d="M28.2 47.6c1.4.9 2.4 2.6 2.6 4.4M35.6 47.4c-1.1 1.1-1.7 2.8-1.8 4.6" stroke="#b58a52" stroke-width="0.9"/><path d="M30.1 53.4h4l-2 3.8z" fill="#3a3632" stroke="#2b2724"/></g></svg></span></button></h1>
     <nav class="tabs" aria-label="Views">
       <span class="tab" id="tab-batch" title="Correct a model's drafted triples into ground truth triples, record by record: choose a batch"><select id="batch" aria-label="Ground truth: choose a batch"></select></span>
-      <button class="tab" id="mapping" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
-      <button class="tab" id="partial" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
-      <button class="tab" id="additions" title="annotations/schema_additions.txt: schema entries a person adds to the current schema">Schema additions</button>
+      <button class="tab" id="mapping" data-label="Translation table" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
+      <button class="tab" id="partial" data-label="Partial pairs" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
+      <button class="tab" id="additions" data-label="Schema additions" title="annotations/schema_additions.txt: schema entries a person adds to the current schema">Schema additions</button>
     </nav>
     <span id="status"></span>
   </div>
@@ -1219,8 +1263,8 @@ async function showHome() {
       box("Translation table", "Extraction and the ground truth use different schemas. Once step 070 has run, choose " +
           "for each entity class and predicate of the current schema the one of the ground truth schema that means " +
           "the same thing.", openMapping),
-      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an occurrence, which is a translated extracted " +
-          "triple of the record, and a ground truth triple that only partly match) whether the two state the same fact.", openPartial),
+      box("Partial pairs", "Once step 070 has run, decide for each partial pair (an occurrence and a ground truth triple " +
+          "that nearly match) whether the two state the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates, and patterns a person adds to the current schema, each with " +
           "where it was found.",
           () => openAdditions())),
@@ -1293,6 +1337,7 @@ let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyTo
 let mapKind = "entity class", mapSearch = "", mapCounterpart = "any";   // which rows the table shows
 const mapOpen = new Set();                                               // rows opened, by line in the file
 const MAP_KINDS = [["entity class", "Entity classes"], ["predicate", "Predicates"]];
+const aOrAn = (what) => what === "entity class" ? "an" : "a";               // an entity class, a predicate
 // A row "of the current schema": its component class is in the current schema
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
@@ -1351,9 +1396,12 @@ function drawMappingFrame() {
   const cards = [];
   if (mapping.repeats.length)
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
-      "✖ Each component class may have only one row, but " + mapping.repeats.map(r => `${r.kind} ${r.component_class} (a past or the current schema; lines ${r.lines.join(", ")})`).join("; ") +
-      " has more than one. Keep the correct row (usually the one whose stored definition matches the current " +
-      "schema's definition) and delete the others below. Step 070 won't evaluate until then."))));
+      `✖ Each entity class and predicate of a past or the current schema may have only one row in ${mapping.file}, ` +
+      "but these have more than one: " +
+      mapping.repeats.map(r => `${r.component_class} (${r.kind}; lines ${r.lines.join(", ")})`).join("; ") +
+      ". Keep the correct row of each (usually the one whose stored definition matches the current schema's " +
+      "definition) and delete the others with the “Delete this row” button in their boxes below. Step 070 won't " +
+      "evaluate until then."))));
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       "outputs/intermediate_results/060_extract/schema_used.json wasn't found, so the current schema's definitions can't be shown. Run py 060_extract/run.py, then open Translation table again.")));
@@ -1361,11 +1409,10 @@ function drawMappingFrame() {
   const search = el("input", { type: "search", class: "mapsearch", value: mapSearch,
     placeholder: "Search entity classes, predicates and definitions", "aria-label": "Search the translation table",
     oninput: (e) => { mapSearch = e.target.value; drawMapping(); } });
-  const counterpart = el("select", { "aria-label": "Rows by their ground truth schema counterpart",
+  // its options name the open tab's kind (entity class or predicate): drawMapping writes them
+  const counterpart = el("select", { id: "mapcounterpart", "aria-label": "Rows by what they translate to",
     onchange: (e) => { mapCounterpart = e.target.value; drawMapping(); } },
-    el("option", { value: "any", selected: mapCounterpart === "any" }, "Any counterpart"),
-    el("option", { value: "has", selected: mapCounterpart === "has" }, "With a ground truth schema counterpart"),
-    el("option", { value: "none", selected: mapCounterpart === "none" }, `${mapping.none} only`));
+    ["any", "has", "none"].map(v => el("option", { value: v, selected: mapCounterpart === v })));
   cards.push(el("section", { class: "card mapcard" },
     el("div", { class: "maptabs", id: "maptabs", role: "tablist" }),
     el("div", { class: "mapfilters" },
@@ -1374,7 +1421,8 @@ function drawMappingFrame() {
         el("input", { type: "checkbox", checked: onlyToCheck,
                       onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
         " Only rows to check"),
-      past ? el("label", { class: "meta", title: "kept, so that a component class that comes back needn't be checked again" },
+      past ? el("label", { class: "meta", title: "Rows for entity classes and predicates that only past schemas used: kept, " +
+                                                  "so that one the current schema uses again needn't be checked again" },
         el("input", { type: "checkbox", checked: showPast,
                       onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
         ` Also the ${past} row(s) only past schemas used`) : null),
@@ -1408,6 +1456,12 @@ function drawMapping() {
       left ? el("span", { class: "pill flag" }, `${left} to check`) : null);
   });
   $("maptabs").replaceChildren(...tabs);
+  const what = mapKind === "predicate" ? "predicate" : "entity class";
+  const whats = mapKind === "predicate" ? "predicates" : "entity classes";
+  const optionTexts = { any: "All rows, whatever they translate to",
+                        has: `Rows that translate to a ground truth schema ${what}`,
+                        none: `Rows that translate to ${mapping.none}: nothing in the ground truth schema` };
+  for (const o of $("mapcounterpart").options) o.textContent = optionTexts[o.value];
   const shown = [];
   mapping.rows.forEach((r, i) => { if (r.kind === mapKind && mapShown(r)) shown.push([r, i]); });
   if (shown.length === 0) {
@@ -1415,14 +1469,13 @@ function drawMapping() {
     $("maptable").replaceChildren(el("p", { class: "empty mapempty" },
       !mapping.rows.length ? "The table has no rows yet: evaluation adds them."
       : onlyToCheck && !mapSearch.trim() && mapCounterpart === "any" && kindRows.length
-        ? `Every ${mapKind} row is checked.`
-        : `No ${mapKind} rows match these filters.`));
+        ? `Every row for ${aOrAn(what)} ${what} of the current schema is checked.`
+        : `No rows for ${whats} match the search and filters above.`));
     return;
   }
-  const what = mapKind === "predicate" ? "predicate" : "entity class";
   // column headings, aligned with every box's two columns
   const head = el("div", { class: "maphead" },
-    el("div", {}, `Current schema ${what}`), el("div", { "aria-hidden": "true" }),
+    el("div", {}, `Current schema ${what}`), mapArrow(),
     el("div", { title: `${mapping.none}: nothing in the ground truth schema means this` }, `Ground truth schema ${what}`));
   $("maptable").replaceChildren(head, ...shown.map(([r, i]) => mappingRow(r, i)));
 }
@@ -1431,11 +1484,22 @@ function exampleLine(r) {
   if (r.kind !== "predicate") return null;
   const ex = r.example || { subject: "A", object: "B" };
   const before = `${ex.subject}  ${r.component_class_from_past_or_crt_schema}  ${ex.object}`;
-  const after = r.component_class_in_gtt === mapping.none ? "(not translated: nothing in the ground truth schema means this)"
+  const after = r.component_class_in_gtt === mapping.none
+    ? `(not translated: nothing in the ground truth schema means ${r.component_class_from_past_or_crt_schema})`
     : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.component_class_in_gtt}  ${ex.subject}`
     : `${ex.subject}  ${r.component_class_in_gtt}  ${ex.object}`;
-  return el("div", { class: "example", title: r.example ? "the first such extracted triple" : "a made-up example" },
-    `${before}   -->   ${after}`);
+  return el("div", { class: "example", title: r.example
+      ? `An extracted triple, before and after translation: the first one step 060 extracted with ${r.component_class_from_past_or_crt_schema}`
+      : "A made-up triple (subject instance A, object instance B), before and after translation" },
+    `${before}   →   ${after}`);
+}
+
+// the arrow from the current schema's side to the ground truth schema's side: thick, so it is seen at a glance
+function mapArrow() {
+  const d = el("div", { class: "maparrow", "aria-hidden": "true" });
+  d.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" ' +
+                'stroke-linejoin="round"><path d="M3 12h17M13 5l7 7-7 7"/></svg>';
+  return d;
 }
 
 // text shown exactly as written (an entity class or predicate is never reformatted)
@@ -1443,53 +1507,67 @@ function plainText(tag, attrs, text) { const n = el(tag, attrs); n.textContent =
 
 // A row of the table, as a compact box: the names line (current schema → ground truth schema),
 // both definitions under them, a predicate's example, then one line of flags at the bottom
-// (swap, checked, notes); a note's full text opens below that line on a click.
+// (swap, checked, notes); a note's full text opens below that line on a click. Every flag
+// names the entity classes or predicates it is about, and the schema each one is in.
 function mappingRow(r, i) {
   const vocab = mapping.gtt[r.kind] || [];
   const known = vocab.some(v => v.component_class === r.component_class_in_gtt);
   const none = r.component_class_in_gtt === mapping.none;
+  const what = r.kind === "predicate" ? "predicate" : "entity class";
+  const whats = r.kind === "predicate" ? "predicates" : "entity classes";
+  const crtName = r.component_class_from_past_or_crt_schema;
+  const gttName = r.component_class_in_gtt;
+  const crtLabel = `${crtName} (${isCurrent(r) ? "current" : "past"} schema ${what})`;
+  const gttLabel = none ? mapping.none : `${gttName} (ground truth schema ${what})`;
   const options = [el("option", { value: mapping.none, selected: none }, mapping.none)];
   if (!known && !none)
-    options.push(el("option", { value: r.component_class_in_gtt, selected: true },
-                    `⚠ ${r.component_class_in_gtt} (not in the ground truth schema: pick another)`));
-  for (const v of vocab) options.push(el("option", { value: v.component_class, selected: v.component_class === r.component_class_in_gtt }, v.component_class));
-  const chosen = vocab.find(v => v.component_class === r.component_class_in_gtt);
+    options.push(el("option", { value: gttName, selected: true },
+                    `⚠ ${gttName}: not a ground truth schema ${what}; pick another`));
+  for (const v of vocab) options.push(el("option", { value: v.component_class, selected: v.component_class === gttName }, v.component_class));
+  const chosen = vocab.find(v => v.component_class === gttName);
   // Other component classes of the current schema already translated to the same component_class:
   // evaluation won't be able to tell them apart.
   const sharing = r.in_crt && !none
-    ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.component_class_in_gtt === r.component_class_in_gtt)
+    ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.component_class_in_gtt === gttName)
                   .map(o => o.component_class_from_past_or_crt_schema) : [];
   const same = r.checked === "same component class";
   // A (none) row whose component class the ground truth schema now has: probably out of date.
   const nowExists = none && r.same_component_class_in_gtt ? { component_class: r.same_component_class_in_gtt } : null;
   // a row accepted automatically (same spelling) can be changed; changing it makes it an ordinary row to check
   const update = (key, value) => { r[key] = value; if (same && key !== "checked") r.checked = "no"; mapChanged(); drawMapping(); };
-  const crtName = r.component_class_from_past_or_crt_schema;
-  const what = r.kind === "predicate" ? "predicate" : "entity class";
+  const tickAgain = "then tick “Checked: this translation is right” again.";
+  const andList = (xs) => xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 
   const notes = [];          // [kind, short label, full text]
-  if (r.stale) notes.push(["flag", "current schema definition changed",
-    "⚑ This row was checked when the component class was defined as: “" + (r.definition_from_past_or_crt_schema || "(no definition)") +
-    "”. The meaning of " + crtName + " may have changed since: check this translation again."]);
-  if (r.stale_gtt) notes.push(["flag", "ground truth schema definition changed",
-    "⚑ This row was checked when the ground truth schema defined " + r.component_class_in_gtt +
-    " (ground truth schema) as: “" + (r.definition_in_gtt || "(no definition)") +
-    "”. The ground truth schema now defines " + r.component_class_in_gtt + " as shown above, on the ground truth schema side: check this translation again."]);
-  if (none && r.suggested_gtt && !nowExists) notes.push(["flag", `suggested: ${r.suggested_gtt}`,
-    `⚑ The model suggests ${crtName} (current schema) may ` +
-    `mean ${r.suggested_gtt} (ground truth schema), a component class the ground truth schema gained since this row was ` +
-    `checked. Pick ${r.suggested_gtt} if that is right; otherwise keep (none).`]);
-  if (nowExists) notes.push(["flag", `${nowExists.component_class} now exists`,
-    `⚑ ${nowExists.component_class} (ground truth schema) now exists: should ${crtName} ` +
-    `(current schema) translate to ${nowExists.component_class}? Keep (none) only if the two mean different things.`]);
-  if (sharing.length) notes.push(["flag", `same counterpart as ${sharing.length} other`,
-    `⚑ ${[crtName, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
-    `both translate to ${r.component_class_in_gtt} (ground truth schema), so step 070 can't tell these component classes apart: ` +
-    `extraction loses nothing by mixing them up. That is fine if your ground truth doesn't distinguish them; if your ground ` +
-    `truth should distinguish them, annotate with separate component classes in the ground truth.`]);
-  if (r.repeated) notes.push(["error", `line ${r._line}, repeated`,
-    "✖ This " + what + " has more than one row. Stored definition (when this row was checked): “" +
-    (r.definition_from_past_or_crt_schema || "none") + "”. Keep the correct row and delete the others."]);
+  if (r.stale) notes.push(["flag", `${crtName}: its current schema definition changed`,
+    `⚑ This row was checked when the current schema defined ${crtLabel} as: “` +
+    (r.definition_from_past_or_crt_schema || "(no definition)") + `”. The current schema now defines it as shown on ` +
+    `the left. Check that ${crtName} still translates to ${gttLabel}, ${tickAgain}`]);
+  if (r.stale_gtt) notes.push(["flag", `${gttName}: its ground truth schema definition changed`,
+    `⚑ This row was checked when the ground truth schema defined ${gttLabel} as: “` +
+    (r.definition_in_gtt || "(no definition)") + `”. The ground truth schema now defines it as shown on the right. ` +
+    `Check that ${crtLabel} still translates to ${gttName}, ${tickAgain}`]);
+  if (none && r.suggested_gtt && !nowExists) notes.push(["flag", `Suggested: ${r.suggested_gtt} (ground truth schema ${what})`,
+    `⚑ The model suggests ${crtLabel} may mean ${r.suggested_gtt} (ground truth schema ${what}), ${aOrAn(what)} ${what} the ground truth ` +
+    `schema gained since this row was checked. If that is right, pick ${r.suggested_gtt} in ` +
+    `this box's dropdown; otherwise keep ${mapping.none}.`]);
+  if (nowExists) notes.push(["flag", `${nowExists.component_class} (ground truth schema ${what}) now exists`,
+    `⚑ The ground truth schema now has ${nowExists.component_class} (ground truth schema ${what}), spelled like ` +
+    `${crtLabel}, which this row translates to ${mapping.none}. If the two mean the same, pick ` +
+    `${nowExists.component_class} in this box's dropdown; keep ${mapping.none} only if they mean different things.`]);
+  if (sharing.length) notes.push(["flag",
+    `Also translated to ${gttLabel}: ${sharing.join(", ")} (current schema ${sharing.length === 1 ? what : whats})`,
+    `⚑ ${andList([crtName, ...sharing])} (current schema ${whats}) ${sharing.length === 1 ? "both" : "all"} translate to ` +
+    `${gttLabel}, so step 070 can't tell them apart: extraction loses nothing by mixing them up. Nothing to do if the ` +
+    `ground truth doesn't distinguish them; if it should, use separate ground truth schema ${whats} for them in the ground truth.`]);
+  if (r.repeated) {
+    const lines = (mapping.repeats.find(x => x.kind === r.kind && x.lines.includes(r._line)) || { lines: [r._line] }).lines;
+    notes.push(["error", `${crtName} has ${lines.length} rows (lines ${lines.join(", ")}): keep one`,
+      `✖ ${crtLabel} has ${lines.length} rows in ${mapping.file} (lines ${lines.join(", ")}); this box is line ${r._line}. ` +
+      `Definition stored when this row was checked: “${r.definition_from_past_or_crt_schema || "none"}”. Keep the correct ` +
+      `row (usually the one whose stored definition matches the current schema's definition) and delete the others with ` +
+      `their “Delete this row” buttons.`]);
+  }
 
   const open = mapOpen.has(r._line);
   const toggle = () => { if (mapOpen.has(r._line)) mapOpen.delete(r._line); else mapOpen.add(r._line); drawMapping(); };
@@ -1500,35 +1578,43 @@ function mappingRow(r, i) {
   return el("section", { class: "mapbox" + (toCheck(r) || r.repeated ? " todo" : "") },
     // the names line, current schema → ground truth schema, and under each its definition
     el("div", { class: "mapgrid" },
-      el("div", { class: "mapname" }, plainText("span", { title: crtName }, crtName)),
-      el("div", { class: "maparrow", "aria-hidden": "true" }, "→"),
+      el("div", { class: "mapname" }, plainText("span", { title: crtLabel }, crtName)),
+      mapArrow(),
       el("div", { class: "mapname" },
-        el("select", { id: `m${i}`, class: none ? "none" : "", title: r.component_class_in_gtt,
-                       "aria-label": `Ground truth schema ${what} that ${crtName} (current schema) means`,
+        el("select", { id: `m${i}`, class: none ? "none" : "", title: gttLabel,
+                       "aria-label": `Ground truth schema ${what} that ${crtLabel} translates to`,
                        onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
-      definition(r.crt_definition, "no definition in the current schema"),
+      definition(r.crt_definition, mapping.schema_found ? `The current schema has no definition of ${crtName}.`
+        : "Not shown: step 060's schema_used.json wasn't found."),
       el("div", {}),
-      none ? definition(null, "nothing in the ground truth schema means this")
-        : chosen ? definition(chosen.definition, "coined while annotating; no definition yet (add one to the ground truth schema)")
-        : definition(null, "not in the ground truth schema: pick another")),
+      none ? definition(null, `${mapping.none}: nothing in the ground truth schema means ${crtName}.`)
+        : chosen ? definition(chosen.definition, `${gttName} was coined while annotating and has no definition yet: ` +
+                                                 `add one in the ground truth schema.`)
+        : definition(null, `${gttName} isn't in the ground truth schema: pick another ground truth schema ${what} in the dropdown.`)),
     exampleLine(r),
     // one line of flags, at the bottom
     el("div", { class: "mapflags" },
       r.kind === "predicate" ? el("label", { class: "mapflag" + (r.swap_subject_and_object === "yes" ? " on" : ""),
-                    title: "Swap subject and object (the ground truth's predicate states the relation the other way round)" },
+                    title: none ? `Swap subject and object: only for a row that translates to a ground truth schema predicate, ` +
+                                  `not to ${mapping.none}`
+                         : `Swap subject and object: ${gttName} (ground truth schema predicate) states the relation the ` +
+                           `other way round from ${crtName} (current schema predicate)` },
         el("input", { type: "checkbox", disabled: none, checked: r.swap_subject_and_object === "yes",
                       onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
         " Swap subject and object") : null,
       autoAccepted
-        ? el("span", { class: "pill ok", title: "Accepted automatically, because the component class is spelled the same in the current " +
-            "schema and in the ground truth schema. Compare the two definitions above; if the two mean different things, pick the right translation." },
-            "✓ Accepted: same spelling")
+        ? el("span", { class: "pill ok", title: `Accepted automatically, because ${crtName} is spelled the same in the current ` +
+            `schema and in the ground truth schema. Compare the two definitions above; if they mean different things, pick ` +
+            `the right ground truth schema ${what} in the dropdown.` },
+            "✓ Accepted: spelled the same in both schemas")
         : el("label", { class: "mapflag" + (isChecked ? " ok" : "") },
             el("input", { type: "checkbox", checked: isChecked,
                           onchange: (e) => { r.stale = false; r.stale_gtt = false;
                                              update("checked", e.target.checked ? "yes" : "no"); } }),
             " Checked: this translation is right"),
-      !isCurrent(r) ? el("span", { class: "pill todo", title: "only past schemas used this " + what }, "past schema only") : null,
+      !isCurrent(r) ? el("span", { class: "pill todo", title: `Only past schemas used ${crtName} (${what}), not the current ` +
+            `schema. Its row is kept, so that if the current schema uses ${crtName} again, it needn't be checked again.` },
+            `${crtName}: only in past schemas`) : null,
       notes.map(([k, label, full]) => el("button", { class: `pill ${k} jump`, title: full, "aria-expanded": open ? "true" : "false",
                                                      onclick: toggle }, (k === "error" ? "✖ " : "⚑ ") + label)),
       r.repeated ? el("button", { class: "mapdelete", onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
@@ -1572,6 +1658,7 @@ async function saveMapping() {
 // Evaluation's partial pairs of tuning records (one subject or object only
 // contained in the other), to mark "same fact" or "not the same fact".
 let partial = null, onlyUnreviewed = true;
+const pairOpen = new Set();                    // pairs whose note is open
 
 async function openPartial() {
   await flush();
@@ -1592,7 +1679,7 @@ async function openPartial() {
     return;
   }
   onlyUnreviewed = partial.items.some(i => !i.verdict);
-  status(`Saving verdicts to ${partial.file}`, "saved");
+  status(`Verdicts save to ${partial.file.split("/").pop()}`, "saved");
   drawPartial();
 }
 
@@ -1601,12 +1688,21 @@ function drawPartial() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu()),
     el("p", { class: "meta" }, `${partial.items.length} partial pair(s) of tuning records; ${left} not reviewed yet.`),
-    el("p", { class: "meta" }, "A partial pair is an occurrence (a translated extracted triple of the record) and a ground " +
-      "truth triple whose predicates agree, and whose subject instances, and whose object instances, are each the " +
-      "same or one contained in the other as whole words. Such a " +
-      "pairing can be wrong (MODIS vs MODIS Terra). A pair you mark “not the same fact” is never paired again: step 070 " +
-      "then pairs each of the two with another partner if it can; otherwise the ground truth triple is ground truth " +
-      "only, and the occurrence is extracted only."),
+    el("div", { class: "meta pairexplain" },
+      el("p", {}, "A partial pair is an occurrence (a translated extracted triple of a record) and a ground truth triple " +
+                  "of the same record that nearly match:"),
+      el("ul", {},
+        el("li", {}, "the same predicate (by loose match);"),
+        el("li", {}, "subject instances, once evened out: the same, or one contains the other as whole words;"),
+        el("li", {}, "object instances, once evened out: the same, or one contains the other as whole words.")),
+      el("p", {}, "Such a match can be wrong. Example: “MODIS” and “MODIS Terra”: one contains the other, but they may " +
+                  "not be the same instrument."),
+      el("p", {}, "For each pair, decide whether the two state the same fact."),
+      el("ul", {},
+        el("li", {}, "Same fact: the pairing doesn't change; the pair counts as reviewed."),
+        el("li", {}, "Not the same fact: step 070 won't pair these two, in its next run and every later one, unless you " +
+                     "change your verdict. It looks for another partner for each; one left without a partner counts as extracted only (the occurrence) or ground " +
+                     "truth only (the ground truth triple)."))),
     el("label", { class: "meta" },
       el("input", { type: "checkbox", checked: onlyUnreviewed,
                     onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
@@ -1617,8 +1713,13 @@ function drawPartial() {
       "No partial pairs in step 070's last run."))]));
 }
 
+// A pair, as a compact box: the record, then the ground truth triple and the extracted triple side by side,
+// each under its label; the record's text on a click; the verdict buttons at the bottom.
 function partialCard(i) {
-  const triple = (who, s, p, o) => el("div", { class: "example" }, `${who}:  ${s}  ${p}  ${o}`);
+  const side = (label, s, p, o) => el("div", { class: "pairside" },
+    el("div", { class: "pairlabel" }, label),
+    [["f-subj", "Subject instance", s], ["f-pred", "Predicate", p], ["f-obj", "Object instance", o]].map(([cls, tag, v]) =>
+      el("div", { class: "pairpart" }, el("span", { class: `pairtag ${cls}` }, tag), plainText("span", { class: "pairval" }, v || ""))));
   const pick = async (verdict) => {
     try {
       await api("/api/partial/review", { ...i, verdict });
@@ -1627,23 +1728,42 @@ function partialCard(i) {
       drawPartial();
     } catch (e) { fail(e); }
   };
-  return el("section", { class: "card maprow" + (i.verdict ? "" : " todo") },
-    el("h3", {}, `#${i.position ?? "?"} `, el("span", { class: "part tuning" }, "tuning"), " ", i.title),
-    triple("Ground truth (ground truth schema)", i.ground_truth_subject, i.ground_truth_predicate,
-           i.ground_truth_object),
-    triple("Extracted (translated into the ground truth schema)", i.translated_subject,
-           i.translated_predicate, i.translated_object),
+  const verdictButton = (verdict, label, cls) => el("button", { class: "mapflag" + (i.verdict === verdict ? ` ${cls}` : ""),
+    "aria-pressed": i.verdict === verdict ? "true" : "false", onclick: () => pick(verdict) },
+    (i.verdict === verdict ? "✓ " : "") + label);
+  const occ = i.occurrences && i.occurrences.length > 1 ? i.occurrences : null;   // multiplicity above 1
+  // its full text opens below the flags on a click, as a translation table note does
+  const key = JSON.stringify([i.record_id, i.ground_truth_subject, i.ground_truth_predicate, i.ground_truth_object,
+                              i.translated_subject, i.translated_predicate, i.translated_object]);
+  const open = pairOpen.has(key);
+  const toggle = () => { if (pairOpen.has(key)) pairOpen.delete(key); else pairOpen.add(key); drawPartial(); };
+  return el("section", { class: "mapbox pairbox" + (i.verdict ? "" : " todo") },
+    el("div", { class: "pairhead" }, el("span", { class: "pairpos" }, `#${i.position ?? "?"}`),
+       el("span", { class: "part tuning" }, "tuning"), plainText("span", {}, i.title)),
+    el("div", { class: "pairgrid" },
+      side("Ground truth triple (ground truth schema)", i.ground_truth_subject, i.ground_truth_predicate, i.ground_truth_object),
+      side("Extracted triple, translated into the ground truth schema", i.translated_subject, i.translated_predicate,
+           i.translated_object)),
     i.text ? el("details", {}, el("summary", { class: "meta" }, "The record's text"),
-                el("div", { class: "meta", style: "white-space:pre-wrap" }, i.text)) : null,
-    el("div", { class: "bar" },
-      el("button", { onclick: () => pick("same fact"), class: i.verdict === "same fact" ? "current" : "" },
-         (i.verdict === "same fact" ? "✓ " : "") + "Same fact"),
-      el("button", { onclick: () => pick("not the same fact"),
-                     class: i.verdict === "not the same fact" ? "current" : "" },
-         (i.verdict === "not the same fact" ? "✓ " : "") + "Not the same fact"),
-      i.verdict ? el("button", { onclick: () => pick("") }, "Take back") : null,
-      el("span", { class: "meta" }, i.verdict ? `Your verdict: ${i.verdict}` : "Not reviewed yet")));
+                plainText("div", { class: "meta pairtext" }, i.text)) : null,
+    el("div", { class: "mapflags" },
+      verdictButton("same fact", "Same fact", "ok"),
+      verdictButton("not the same fact", "Not the same fact", "no"),
+      el("span", { class: "meta pairverdict" }, i.verdict ? `Your verdict: ${i.verdict}` : "Not reviewed yet"),
+      i.verdict ? el("button", { class: "mapdelete", onclick: () => pick("") }, "Take back") : null,
+      occ ? el("button", { class: "pill flag jump", "aria-expanded": open ? "true" : "false", onclick: toggle },
+               `⚑ This translated extracted triple occurs ${occ.length} times in this record`) : null),
+    occ && open ? el("ul", { class: "problems" }, el("li", { class: "flag" },
+      `⚑ This translated extracted triple occurs ${occ.length} times in this record's multiset of translated extracted ` +
+      `triples (its multiplicity is ${occ.length}): ${occ.length} extracted triples (current schema) translate to it. ` +
+      `Only one occurrence can pair with this ground truth triple. Its occurrences:`,
+      el("ul", {}, occ.map(o => el("li", {}, plainText("span", {}, extractedText(o.extracted)), " (current schema): ",
+        o.this ? "the occurrence in this pair"
+          : o.status === "extracted only" ? "extracted only"
+          : /pair$/.test(o.status) ? `paired with another ground truth triple (${o.status})` : o.status))))) : null);
 }
+// an extracted triple in one line: “subject instance” (subject class) predicate “object instance” (object class)
+const extractedText = (t) => `“${t.subject}” (${t.subject_class}) ${t.predicate} “${t.object}” (${t.object_class})`;
 
 // ---------------------------------------------------------------- schema additions
 // annotations/schema_additions.txt, through a form. A source naming the ground
