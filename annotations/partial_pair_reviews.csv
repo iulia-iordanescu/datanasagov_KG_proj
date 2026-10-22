@@ -1,1 +1,6 @@
 record_id,ground_truth_subject,ground_truth_predicate,ground_truth_object,translated_subject,translated_predicate,translated_object,verdict
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,HAS_MISSION_PHASE,COMET ESCORT 4,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,HAS_MISSION_PHASE,COMET ESCORT 4 phase,same fact
+cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,HAS_MEASUREMENTS_OF,Gravity,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0,HAS_MEASUREMENTS_OF,Global Gravity,same fact
+2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius/Satélite de Aplicaciones Científicas (SAC-D),DEVELOPED_BY_PARTY,National Aeronautics and Space Administration (NASA),Aquarius/Satélite de Aplicaciones Científicas (SAC-D),DEVELOPED_BY_PARTY,U.S. National Aeronautics and Space Administration (NASA),same fact
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,HAS_TEMPORAL_RESOLUTION,weekly (8 day),MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,HAS_TEMPORAL_RESOLUTION,8 Day,same fact
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,V2019.0,SUPERSEDES,v2014.1,V2019.0,SUPERSEDES,v2014.1 datasets,same fact
