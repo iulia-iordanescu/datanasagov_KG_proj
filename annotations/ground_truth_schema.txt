@@ -11,7 +11,7 @@ Organization      a named institution or one of its named parts, not a Mission, 
 Instrument        a device that takes measurements
 Spacecraft        a craft that operates in space
 Time              a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; the first week of February 2003; 2015-10-22 to 2015-12-31
-PhysicalQuantity  a property that can be measured
+PhysicalQuantity  a property that can be measured, in general, whatever method measures it, e.g. sea surface temperature; snow cover
 CelestialBody     a natural object in space
 Version           a label that marks one release of something
 SpatialExtent     the area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars)
