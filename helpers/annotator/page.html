@@ -134,7 +134,7 @@
   .headmeta { margin: 4px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
   .headmeta .pill { margin-left: 6px; }
   button.pill.jump { border: 0; cursor: pointer; font: inherit; font-size: 12px; }
-  .patterns { margin: 4px 0; }
+  .patterns { margin: 0; }
   .patterns button.patbtn { font-size: 12px; padding: 1px 8px; margin-right: 6px; }
   .patterns .patlist { margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--muted); }
   .patterns .patlist ul { margin: 4px 0; padding-left: 18px; }
@@ -147,7 +147,10 @@
   label.finished { background: var(--ok-bg); color: var(--ok); border-radius: 8px; padding: 4px 10px; }
   .hintbox { margin-top: 8px; }
   .hintbox summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
-  .triple { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 34%); gap: 8px 10px; }
+  /* a triple's parts, each its own group: subject + subject class, predicate, object + object class; then the
+     pattern buttons and the source text. A thin line and some space between groups. */
+  .triple .group { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 34%); gap: 8px 10px; }
+  .triple .group + .group, .row > .patterns, .row > .source { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
   .triple label, .source label { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-weight: 600;
                                  color: var(--label); min-width: 0; }
   .triple label input, .triple label textarea, .source label textarea { font-weight: 400; font-size: 14.5px; }
@@ -162,10 +165,9 @@
   .schemaview h3 { color: var(--accent); }
   .triple .cls { font-size: 13px; }
   .triple .def { font-weight: 400; font-size: 12px; }
-  @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
-  .source { display: flex; gap: 8px; align-items: flex-end; margin-top: 6px; }
-  .source label { flex: 1; }
+  @media (max-width: 800px) { .triple .group { grid-template-columns: 1fr; } }
   .source textarea { width: 100%; }
+  .source .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }   /* under the source text */
   .problems { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; }
   .problems li { padding: 3px 8px; border-radius: 5px; margin-top: 3px; }
   .problems li.error { background: var(--error-bg); color: var(--error); }
@@ -887,18 +889,21 @@ function describesRow(rec, j, heading = true) {
   return el("div", { class: "row", "data-row-box": j },
     heading ? el("div", { class: "rowhead" }, "Describes triple") : null,
     el("div", { class: "triple" },
-      fixed("Subject (the record's id)", r.subject, "subj"),
-      fixed("Subject class", r.subject_class, "subj"),
-      fixed("Predicate", r.predicate, "pred"),
-      el("span"),
-      fixed("Object (the record's title)", r.object, "obj"),
-      el("label", { class: "f-obj" }, "Object class (the describes class)",
-        el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
-                      placeholder: "not chosen yet", "data-row": j,
-                      oninput: (e) => { r.object_class = e.target.value; changed(); showDefinition(e.target);
-                                        showClasses("entity_classes", e.target, true); },
-                      onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }),
-        definitionLine("entity_classes", r.object_class === "X" ? "" : r.object_class))),
+      el("div", { class: "group" },
+        fixed("Subject (the record's id)", r.subject, "subj"),
+        fixed("Subject class", r.subject_class, "subj")),
+      el("div", { class: "group" },
+        fixed("Predicate", r.predicate, "pred"),
+        el("span")),
+      el("div", { class: "group" },
+        fixed("Object (the record's title)", r.object, "obj"),
+        el("label", { class: "f-obj" }, "Object class (the describes class)",
+          el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
+                        placeholder: "not chosen yet", "data-row": j,
+                        oninput: (e) => { r.object_class = e.target.value; changed(); showDefinition(e.target);
+                                          showClasses("entity_classes", e.target, true); },
+                        onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }),
+          definitionLine("entity_classes", r.object_class === "X" ? "" : r.object_class)))),
     el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
       "subject (the record's id) and object (the record's title) are copied from the record by code, and the " +
       "object class (the describes class), the type of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
@@ -912,19 +917,23 @@ function tripleRow(rec, j, heading = true) {
   return el("div", { class: "row", "data-row-box": j, oninput: (e) => { const b = e.currentTarget.querySelector(".patterns"); if (b) b.refresh(); } },
     heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
     el("div", { class: "triple" },
-      field(rec, j, "subject", "Subject", { multiline: true }),
-      field(rec, j, "subject_class", "Subject class", { list: "entity_classes", class: "cls" }),
-      field(rec, j, "predicate", "Predicate", { list: "predicates" }),
-      el("span"),
-      field(rec, j, "object", "Object", { multiline: true }),
-      field(rec, j, "object_class", "Object class", { list: "entity_classes", class: "cls" })),
+      el("div", { class: "group" },
+        field(rec, j, "subject", "Subject", { multiline: true }),
+        field(rec, j, "subject_class", "Subject class", { list: "entity_classes", class: "cls" })),
+      el("div", { class: "group" },
+        field(rec, j, "predicate", "Predicate", { list: "predicates" }),
+        el("span")),
+      el("div", { class: "group" },
+        field(rec, j, "object", "Object", { multiline: true }),
+        field(rec, j, "object_class", "Object class", { list: "entity_classes", class: "cls" }))),
     patternButtons(r, j),
     el("div", { class: "source" },
       el("label", { title: "Copied exactly from the record's text" }, "Source text",
         el("textarea", { "data-row": j, class: "grow", rows: 1, onfocus: () => { setActive(j); hideClasses(); },
                          oninput: (e) => { r.source_text = e.target.value; grow(e.target); drawText(); changed(); } }, r.source_text)),
-      el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"),
-      el("button", { title: "Delete this ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete")),
+      el("div", { class: "actions" },
+        el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"),
+        el("button", { title: "Delete this ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete"))),
     problemList(r, j));
 }
 
