@@ -10,28 +10,72 @@ they all read it the same way. The record format is described in
     from common.records_io import load_records, has_text, read_ids
     records = load_records(inputs["records"])      # {id: record}, in file order
     ids = read_ids(settings["ids"])                # a step's "ids" setting (050, 060)
+
+It also finds a record elsewhere: its saved copy from step 010's harvest
+(saved_copy, harvest_date), and its web page in the live catalog
+(catalog_page_link).
 """
 from __future__ import annotations
 
+import functools
 import json
 import re
 from pathlib import Path
 
-from common.step import repo_path
+from common.step import MANIFEST_NAME, RESULTS_DIR, repo_path
 from common.stop import Stop
 
 #: The free-text fields every record has (020 always writes them).
 TEXT_FIELDS = ("title", "notes")
 
-#: A record's full entry in the live catalog, by its id: the catalog's API
-#: answer for that one record (the address the old link script printed).
-CATALOG_ENTRY_URL = "https://data.nasa.gov/api/3/action/package_show?id={id}"
+#: A record's web page in the live catalog, by its id (the catalog also
+#: answers /dataset/<name>, but the name can change and the id doesn't).
+CATALOG_PAGE_URL = "https://data.nasa.gov/dataset/{id}"
 
 
-def catalog_link(rid: str) -> str:
-    """The address of the record's entry in the live catalog. Only built, never
-    fetched: the entry may since have been removed or moved."""
-    return CATALOG_ENTRY_URL.format(id=rid)
+def catalog_page_link(rid: str) -> str:
+    """The address of the record's web page in the live catalog. Only built,
+    never fetched: the page may since have been removed or moved."""
+    return CATALOG_PAGE_URL.format(id=rid)
+
+
+#: Step 010's folder: the harvest's batch_*.json files and its manifest.
+HARVEST_DIR = RESULTS_DIR / "010_harvest"
+#: How a cleaned record's _origin names its entry in the harvest (common/common_helpers/audit.py).
+HARVEST_REF = re.compile(r"010_harvest/(batch_\d+\.json)#(.+)")
+
+
+def harvest_file(record: dict, harvest_dir: Path = HARVEST_DIR) -> Path | None:
+    """The harvest's batch file that holds the record, from its _origin, or
+    None when the record names none or the file isn't on this computer. Only
+    a batch_<digits>.json name in harvest_dir is ever returned."""
+    for ref in record.get("_origin") or []:
+        m = HARVEST_REF.fullmatch(ref)
+        if m and m.group(2) == record.get("id") and (harvest_dir / m.group(1)).is_file():
+            return harvest_dir / m.group(1)
+    return None
+
+
+@functools.lru_cache(maxsize=2)
+def _harvest_batch(path: Path, mtime: float) -> dict:
+    """{id: raw record} of one batch file (each about 7 MB); the last two read are kept."""
+    return {r["id"]: r for r in json.loads(path.read_text(encoding="utf-8"))["records"]}
+
+
+def saved_copy(record: dict, harvest_dir: Path = HARVEST_DIR) -> dict | None:
+    """The record's entry exactly as step 010 saved it from the catalog, or
+    None when its batch file isn't on this computer or doesn't hold it."""
+    path = harvest_file(record, harvest_dir)
+    return _harvest_batch(path, path.stat().st_mtime).get(record["id"]) if path else None
+
+
+def harvest_date(harvest_dir: Path = HARVEST_DIR) -> str | None:
+    """The saved harvest's date, from step 010's manifest (e.g. "2026-10-01"),
+    or None when the manifest isn't on this computer or has none."""
+    try:
+        return json.loads((harvest_dir / MANIFEST_NAME).read_text(encoding="utf-8")).get("harvest_date")
+    except (OSError, ValueError):
+        return None
 
 
 def load_records(path) -> dict:

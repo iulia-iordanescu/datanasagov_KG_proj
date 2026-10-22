@@ -108,7 +108,7 @@ import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 from common.audit import ORIGIN_FIELD
 from common.chunking import full_text
@@ -120,7 +120,7 @@ from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_CO
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
-from common.records_io import catalog_link, load_records
+from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
@@ -149,6 +149,7 @@ HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
 HELP_ALSO = {"batch": ("### What the tool can do", "### What the tool can't do")}
 EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
 SPLITS = RESULTS_DIR / "030_split" / "splits.json"
+HARVEST = HARVEST_DIR                               # step 010's saved harvest, for a record's saved copy
 GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 PAGE = Path(__file__).with_name("page.html")
 #: The page's typefaces (Libre Franklin and JetBrains Mono, SIL Open Font License: the OFL-*.txt beside them).
@@ -362,7 +363,9 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
     title = record.get("title") or ""
     return {
         "id": rid,
-        "catalog_url": catalog_link(rid),
+        "catalog_page_url": catalog_page_link(rid),
+        "saved_copy": {"url": f"/api/raw_record?id={quote(rid, safe='')}", "harvest_date": harvest_date(HARVEST)}
+                      if record and harvest_file(record, HARVEST) else None,     # None: not on this computer
         "maintainer": record.get("maintainer"),
         "position": data.positions.get(rid),
         "part": data.parts.get(rid),
@@ -1082,6 +1085,14 @@ def make_handler(data: Data):
                     self._json(additions_view(data))
                 elif url.path == "/api/vocab":
                     self._json(vocab_view(data))
+                elif url.path == "/api/raw_record":
+                    rid = q.get("id", [""])[0]
+                    raw = saved_copy(data.records[rid], HARVEST) if rid in data.records else None
+                    if raw is None:
+                        self._json({"error": f"No saved copy from the harvest for the id {rid!r} on this computer."}, 404)
+                    else:
+                        self._send(200, json.dumps(raw, ensure_ascii=False, indent=2).encode("utf-8"),
+                                   "application/json; charset=utf-8")
                 elif url.path == "/api/batch":
                     n = int(q["n"][0])
                     self._json(batch_view(data, n, open_batch(n)))

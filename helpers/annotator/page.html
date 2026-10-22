@@ -710,7 +710,14 @@ function show(i) {
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
               el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)),
               el("dt", {}, ""), el("dd", { class: "catalog" },
-                el("a", { href: rec.catalog_url, target: "_blank", rel: "noopener" }, "Open in the catalog ↗"),
+                el("div", {}, rec.saved_copy
+                  ? el("a", { href: rec.saved_copy.url, target: "_blank", rel: "noopener",
+                              title: "The record exactly as step 010 saved it from the catalog, on this computer" },
+                       rec.saved_copy.harvest_date ? `Saved copy (harvest of ${rec.saved_copy.harvest_date}) ↗`
+                                                   : "Saved copy (harvest date unknown) ↗")
+                  : el("span", { class: "catnote" }, "Saved copy: not on this computer")),
+                el("div", {}, el("a", { href: rec.catalog_page_url, target: "_blank", rel: "noopener" },
+                                 "Web page in the catalog (live) ↗")),
                 el("div", { class: "catnote" }, "The catalog is live: this entry may since have been removed or moved, so the link may not work.")),
               el("dt", { id: "gtdt", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
                  "Ground truth triples"), el("dd", { id: "gtdd" }))),

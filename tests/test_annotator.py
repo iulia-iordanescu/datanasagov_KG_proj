@@ -9,7 +9,9 @@ import sys
 import threading
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
+from unittest import mock
 
 from support import temp_repo
 
@@ -33,7 +35,12 @@ ABOARD            is carried on
 RESULTS = TMP / "outputs" / "intermediate_results"
 RECORDS = {"r0": "MODIS aboard Aqua.", "r1": "AIRS aboard Aqua; Aqua orbits Earth.", "r2": "No facts here.",
            "r3": "CERES aboard Terra."}
-POOL = ["r0", "r1", "r2", "r3"] + [f"p{i}" for i in range(4, 9)] + ["r8"]      # r8: position 9, tuning
+#: Where each stand-in record came from in the harvest (its _origin): r1's batch file is saved in HARVEST, r2's isn't.
+ORIGINS = {"r1": ["010_harvest/batch_00000.json#r1"], "r2": ["010_harvest/batch_01000.json#r2"]}
+HARVEST = TMP / "harvest_stand_in"                  # a stand-in for step 010's folder, so 010 itself looks not run
+RAW_R1 = {"id": "r1", "name": "airs-aqua", "title": "Title r1", "notes": "AIRS aboard Aqua; Aqua orbits Earth.",
+          "extras": [{"key": "harvest_source", "value": "ünïcode"}]}
+POOL = ["r0", "r1", "r2", "r3"] +[f"p{i}" for i in range(4, 9)] + ["r8"]      # r8: position 9, tuning
 
 
 def setUpModule():
@@ -42,7 +49,11 @@ def setUpModule():
         (RESULTS / step).mkdir(parents=True)
     with open(RESULTS / "020_clean" / "records.jsonl", "w", encoding="utf-8") as fh:
         for rid, notes in RECORDS.items():
-            fh.write(json.dumps({"id": rid, "title": f"Title {rid}", "notes": notes, "maintainer": "m"}) + "\n")
+            fh.write(json.dumps({"id": rid, "title": f"Title {rid}", "notes": notes, "maintainer": "m",
+                                 **({"_origin": ORIGINS[rid]} if rid in ORIGINS else {})}) + "\n")
+    HARVEST.mkdir()
+    (HARVEST / "batch_00000.json").write_text(json.dumps({"request": "GET …", "records": [RAW_R1]}), encoding="utf-8")
+    (HARVEST / "_manifest.json").write_text(json.dumps({"harvest_date": "2026-10-01"}), encoding="utf-8")
     pool = [{"id": rid, "position": i, "part": "held-out" if i == 8 else "tuning"} for i, rid in enumerate(POOL)]
     pool[3]["part"] = "held-out"                                                   # r3: held-out, for the tests
     (RESULTS / "030_split" / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}))
@@ -243,11 +254,37 @@ class B_Batch(unittest.TestCase):
         self.assertEqual([[p["code"] for p in found] for found in server.connection_problems("r1", rows)], expected)
         self.assertEqual(server.connection_problems("r1", rows[:1]), [[]])     # only the describes triple
 
-    def test_catalog_link(self):
-        """Suppose the stand-in record r1 is shown. Then About this record gets the address of r1's entry in the
-        live catalog, built from its id (nothing is fetched)."""
-        view = server.record_view(server.Data(), "r1", [], False)
-        self.assertEqual(view["catalog_url"], "https://data.nasa.gov/api/3/action/package_show?id=r1")
+    def test_record_links(self):
+        """Suppose the stand-in record r1's batch file from the harvest of 2026-10-01 is on this computer, and r2's
+        and r0's aren't (r2 names a batch file that isn't there; r0 names none). Then About this record gets, for r1,
+        a link to its saved copy, with the harvest's date, and for r2 and r0 none (the page says "not on this
+        computer"); every record gets the address of its web page in the live catalog, built from its id (nothing is
+        fetched)."""
+        with mock.patch.object(server, "HARVEST", HARVEST):
+            data = server.Data()
+            views = {rid: server.record_view(data, rid, [], False) for rid in ("r0", "r1", "r2")}
+        self.assertEqual(views["r1"]["saved_copy"], {"url": "/api/raw_record?id=r1", "harvest_date": "2026-10-01"})
+        self.assertIsNone(views["r2"]["saved_copy"])
+        self.assertIsNone(views["r0"]["saved_copy"])
+        self.assertEqual(views["r1"]["catalog_page_url"], "https://data.nasa.gov/dataset/r1")
+
+    def test_raw_record(self):
+        """Suppose r1's batch file from the harvest is on this computer, holding r1's entry as the catalog sent it.
+        Then /api/raw_record?id=r1 answers with that entry exactly, as indented JSON. An id that isn't a record's
+        (an unknown one, a path, an empty one) or a record whose batch file isn't here (r2, r0) gets an error, and
+        no file is read."""
+        with mock.patch.object(server, "HARVEST", HARVEST):
+            answer = urllib.request.urlopen(url("/api/raw_record?id=r1"))
+            body = answer.read().decode("utf-8")
+            self.assertEqual(answer.headers["Content-Type"], "application/json; charset=utf-8")
+            self.assertEqual(json.loads(body), RAW_R1)
+            self.assertIn('\n  "name": "airs-aqua"', body)                      # indented, not on one line
+            self.assertIn("ünïcode", body)
+            for bad in ("nope", "../../annotations/ground_truth_schema.txt", "batch_00000.json", "", "r2", "r0"):
+                with self.subTest(id=bad), self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(url("/api/raw_record?id=" + urllib.parse.quote(bad, safe="")))
+                caught.exception.close()
+                self.assertEqual(caught.exception.code, 404)
 
     def test_not_in_source_but_elsewhere(self):
         """Suppose r1's text is "AIRS aboard Aqua; Aqua orbits Earth." and a ground truth triple's source text is
