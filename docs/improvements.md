@@ -46,6 +46,7 @@ The changes to make to the pipeline itself: what to change, why, and where the i
 - **Prompt size and cost:** measure both on the first run. From: 2026-10-12.
 - **The content filter:** in step 040 the service refused phrases from GeneLab (space biology) records. Watch whether 060's failed records cluster there. From: [`findings.md`](findings.md), 2026-10-12.
 - **A fixed schema for the full run,** chosen and kept in Git, so that the full run doesn't depend on whatever `outputs/` holds. From: 2026-10-12.
+- **Extraction stops short on long records:** in the first evaluation (070 run 2026-10-22_1615, 6 tuning records), 33 of the 73 missed ground truth triples were within reach of the current schema. 17 of them are facts about things other than the dataset (an algorithm's purpose, the channels a variable is computed from, an input's DOIs, an instrument's parts) and 10 are dataset facts simply skipped. Record 03a09af3 (pool position 4, MODIS Aqua SST) alone has 15: its model call finished normally (status extracted, no error, 1 text piece) with 11 extracted triples, against 49 ground truth triples, so it was not cut off. To try, one change at a time and measured against this baseline: a prompt instruction to state the facts about every thing the record names, not only the dataset; splitting long records into more text pieces (lower the setting `max_chars`, default 8,000, below the record's text length). From: 2026-10-22.
 
 ## 070_evaluate
 
