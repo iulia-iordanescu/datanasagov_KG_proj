@@ -284,6 +284,12 @@
   .pairtag { font-size: 12px; font-weight: 600; padding-top: 1px; }
   .pairtag.f-subj { color: var(--subj); } .pairtag.f-pred { color: var(--pred); } .pairtag.f-obj { color: var(--obj); }
   .pairval { min-width: 0; overflow-wrap: break-word; }
+  /* a subject instance, predicate, or object instance that differs between the two triples, once evened out: filled on
+     both sides, the words only that side has a stronger shade */
+  .pairpart { padding: 2px 6px; border-radius: 6px; }
+  .pairpart.differs { background: var(--soft); }
+  .pairextra, .pairlegend .swatch.extra { background: var(--strong); border-radius: 3px; font-weight: 600; }
+  .pairlegend .swatch { padding: 0 5px; border-radius: 4px; background: var(--soft); color: var(--ink); }
   .pairbox details { margin-top: 8px; }
   .pairbox summary { cursor: pointer; }
   .pairtext { white-space: pre-wrap; overflow-wrap: break-word; max-height: 40vh; overflow: auto; margin-top: 4px;
@@ -1688,6 +1694,9 @@ function drawPartial() {
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Partial pairs"), toolsMenu()),
     el("p", { class: "meta" }, `${partial.items.length} partial pair(s) of tuning records; ${left} not reviewed yet.`),
+    el("p", { class: "meta pairlegend" }, el("span", { class: "swatch" }, "Filled:"),
+       " a subject instance, predicate, or object instance that differs between the two triples, once evened out;",
+       " ", el("span", { class: "swatch extra" }, "Darker:"), " the words only that triple has."),
     el("div", { class: "meta pairexplain" },
       el("p", {}, "A partial pair is an occurrence (a translated extracted triple of a record) and a ground truth triple " +
                   "of the same record that nearly match:"),
@@ -1716,10 +1725,25 @@ function drawPartial() {
 // A pair, as a compact box: the record, then the ground truth triple and the extracted triple side by side,
 // each under its label; the record's text on a click; the verdict buttons at the bottom.
 function partialCard(i) {
-  const side = (label, s, p, o) => el("div", { class: "pairside" },
+  const diff = i.differences || {};
+  // a field that differs from the other triple's, once evened out (the server's pair_differences): filled, with the
+  // words only this triple has in a stronger shade
+  const value = (slot, which, v) => {
+    const d = diff[slot];
+    if (!d) return plainText("span", { class: "pairval" }, v || "");
+    return el("span", { class: "pairval" }, d[which].map(([w, extra]) => {
+      const word = w.trimEnd();
+      return [extra ? plainText("span", { class: "pairextra" }, word) : document.createTextNode(word),
+              document.createTextNode(w.slice(word.length))];
+    }));
+  };
+  const side = (label, which, s, p, o) => el("div", { class: "pairside" },
     el("div", { class: "pairlabel" }, label),
-    [["f-subj", "Subject instance", s], ["f-pred", "Predicate", p], ["f-obj", "Object instance", o]].map(([cls, tag, v]) =>
-      el("div", { class: "pairpart" }, el("span", { class: `pairtag ${cls}` }, tag), plainText("span", { class: "pairval" }, v || ""))));
+    [["subject", "f-subj", "Subject instance", s], ["predicate", "f-pred", "Predicate", p],
+     ["object", "f-obj", "Object instance", o]].map(([slot, cls, tag, v]) =>
+      el("div", { class: "pairpart" + (diff[slot] ? " differs" : ""),
+                  title: diff[slot] ? "Differs from the other triple's, once evened out" : null },
+         el("span", { class: `pairtag ${cls}` }, tag), value(slot, which, v))));
   const pick = async (verdict) => {
     try {
       await api("/api/partial/review", { ...i, verdict });
@@ -1741,8 +1765,8 @@ function partialCard(i) {
     el("div", { class: "pairhead" }, el("span", { class: "pairpos" }, `#${i.position ?? "?"}`),
        el("span", { class: "part tuning" }, "tuning"), plainText("span", {}, i.title)),
     el("div", { class: "pairgrid" },
-      side("Ground truth triple (ground truth schema)", i.ground_truth_subject, i.ground_truth_predicate, i.ground_truth_object),
-      side("Extracted triple, translated into the ground truth schema", i.translated_subject, i.translated_predicate,
+      side("Ground truth triple (ground truth schema)", "ground_truth", i.ground_truth_subject, i.ground_truth_predicate, i.ground_truth_object),
+      side("Extracted triple, translated into the ground truth schema", "translated", i.translated_subject, i.translated_predicate,
            i.translated_object)),
     i.text ? el("details", {}, el("summary", { class: "meta" }, "The record's text"),
                 plainText("div", { class: "meta pairtext" }, i.text)) : null,

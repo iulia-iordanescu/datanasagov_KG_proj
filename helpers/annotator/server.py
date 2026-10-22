@@ -67,7 +67,10 @@ with the section of docs/upkeep.md that explains it.
 Partial pairs (common/common_helpers/partial_reviews.py): evaluation's last run's partial
 pairs of TUNING records, each with its two triples and the record's text, for a
 person to mark "same fact" or "not the same fact"; pairs ruled out earlier
-are shown too, so a verdict can be changed. Held-out records are never
+are shown too, so a verdict can be changed. Where the two triples' subject
+instances, predicates, or object instances differ once evened out (norm_text,
+as step 070 compares them), the page fills both fields and marks the words
+only one side has (pair_differences). Held-out records are never
 shown or accepted (reviewing them would mean looking at held-out results).
 
 The checks are step 050's own, all from common/common_helpers/validate.py (source texts,
@@ -101,6 +104,7 @@ from __future__ import annotations
 
 import collections
 import csv
+import difflib
 import io
 import json
 import os
@@ -771,6 +775,32 @@ def _read_reviews_rows() -> list:
         return [{c: (r.get(c) or "").strip() for c in REVIEW_COLUMNS} for r in csv.DictReader(fh)]
 
 
+def _words(s: str) -> list:
+    """s cut into words, each with the spaces after it."""
+    return re.findall(r"\S+\s*", s or "")
+
+
+def pair_differences(row: dict) -> dict:
+    """For a pair's subject instances, predicates, and object instances: whether
+    the two sides differ once evened out (norm_text, as step 070 compares them),
+    and if so each side cut into words, each word marked when only that side has
+    it (words compared evened out, in order)."""
+    out = {}
+    for slot in ("subject", "predicate", "object"):
+        gt, tr = row.get(f"ground_truth_{slot}", ""), row.get(f"translated_{slot}", "")
+        if norm_text(gt) == norm_text(tr):
+            out[slot] = None
+            continue
+        a, b = _words(gt), _words(tr)
+        sides = [[[w, True] for w in a], [[w, True] for w in b]]
+        match = difflib.SequenceMatcher(None, [norm_text(w) for w in a], [norm_text(w) for w in b], autojunk=False)
+        for i, j, n in match.get_matching_blocks():
+            for k in range(n):
+                sides[0][i + k][1] = sides[1][j + k][1] = False
+        out[slot] = {"ground_truth": sides[0], "translated": sides[1]}
+    return out
+
+
 def partial_view(data: Data) -> dict:
     """Evaluation's last run's partial pairs of tuning records, plus pairs
     ruled out by an earlier review (no longer paired, so not in compared_triples.csv),
@@ -779,8 +809,9 @@ def partial_view(data: Data) -> dict:
     its record's multiset of translated extracted triples, "occurrences" lists
     every occurrence: the extracted triple (current schema) that translates
     to it, what step 070 made of it (its status in compared_triples.csv), and
-    whether it is the one in this pair. Read from compared_triples.csv (one
-    row per occurrence); step 070 itself is not changed."""
+    whether it is the one in this pair. "differences" is pair_differences.
+    Read from compared_triples.csv (one row per occurrence); step 070 itself
+    is not changed."""
     reviews = {row_key(r): r["verdict"] for r in _read_reviews_rows()}
     items, seen = [], set()
     rows = []
@@ -815,7 +846,8 @@ def partial_view(data: Data) -> dict:
         items.append({**{c: row.get(c, "") for c in REVIEW_COLUMNS if c != "verdict"},
                       "verdict": verdict, "position": data.positions.get(rid),
                       "title": record.get("title") or rid,
-                      "text": full_text(record) if record else None, "occurrences": occurrences(row)})
+                      "text": full_text(record) if record else None, "occurrences": occurrences(row),
+                      "differences": pair_differences(row)})
 
     for r in rows:
         if r.get("status") == "partial pair":
