@@ -262,8 +262,21 @@ def reasoning_tokens(usage) -> int:
     return int(details.get("reasoning_tokens") or 0) if isinstance(details, dict) else 0
 
 
-#: What the latest call in this thread got back (finish_reason, usage), for the test call's check (PaidCalls.start).
+#: What the latest request in this thread sent and got back, for the test call's check (PaidCalls.start) and the
+#: failed-call record (PaidCalls._record): settings_sent (every setting of the request but its prompt), request_bytes,
+#: http_status, error_body (the service's error, up to ERROR_BODY_CHARS), usage (whole), finish_reason,
+#: native_finish_reason (the model maker's own reason, when the service passes it on), served_as.
 _last = threading.local()
+
+#: How much of a service's error body the failed-call record keeps, in characters.
+ERROR_BODY_CHARS = 4000
+
+
+def _http_reply(resp) -> None:
+    """Note a reply's HTTP status, and its body when it is an error, in _last.reply."""
+    _last.reply["http_status"] = resp.status_code
+    if resp.status_code >= 400:
+        _last.reply["error_body"] = str(resp.text or "")[:ERROR_BODY_CHARS]
 
 
 def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
@@ -276,15 +289,17 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
     use nothing but the text in front of it, and retrieved references are
     billed input tokens on all N calls. There is no max-tokens parameter on
     this endpoint, so output length cannot be capped from here."""
+    payload = {"message": prompt, "model": model, "temperature": TEMPERATURE, "dataset": "none",
+               "limit_references": 0}
+    _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "message"},
+                   "request_bytes": len(json.dumps(payload).encode("utf-8"))}
     # Fetched for each request, not once per run: a 401 clears the cache
     # below, and the next attempt must log in again.
     resp = requests.post(f"{SERVER_BASE}/query",
                          headers={"x-access-tokens": _asksage_token()},
-                         json={"message": prompt, "model": model,
-                               "temperature": TEMPERATURE,
-                               "dataset": "none",
-                               "limit_references": 0},
+                         json=payload,
                          timeout=(5, read_timeout))
+    _http_reply(resp)
     if resp.status_code == 401:
         # The token is cached for the whole run, so one expiry would
         # otherwise fail every remaining call - and each failure still
@@ -307,6 +322,8 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
     # text, with nothing naming the real cause.
     body = body if isinstance(body, dict) else {}
     err = body.get("error")
+    if err or str(body.get("status", "")).isdigit() and int(body["status"]) >= 400:
+        _last.reply["error_body"] = json.dumps(body, ensure_ascii=False)[:ERROR_BODY_CHARS]
     if isinstance(err, dict) and (err.get("code")
                                   or err.get("http_status")):
         code = err.get("code") or "error"
@@ -400,15 +417,17 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
                "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS}
     if thinking_sent(model, "litellm"):
         payload["reasoning_effort"] = thinking_sent(model, "litellm")
-    _last.reply = {}
+    _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "messages"},
+                   "request_bytes": len(json.dumps(payload).encode("utf-8"))}
     resp = _post(url, headers=headers, json=payload, timeout=(5, read_timeout))
+    _http_reply(resp)
     if resp.status_code in RETRY_STATUSES:
         raise RetryLater(_litellm_error(resp), _retry_after(resp))   # worth retrying
     if resp.status_code >= 400:
         raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
     body = resp.json()
     _count_tokens(body.get("usage"))
-    _last.reply = {"usage": body.get("usage") if isinstance(body.get("usage"), dict) else {}}
+    _last.reply["usage"] = body.get("usage") if isinstance(body.get("usage"), dict) else {}
     try:
         choice = body["choices"][0]
         text = choice["message"]["content"]
@@ -416,8 +435,13 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
         raise RuntimeError(f"LiteLLM's reply has no answer in it: {str(body)[:300]}") from None
     if body.get("model"):
         SERVED.add(str(body["model"]))
+        _last.reply["served_as"] = str(body["model"])
     reason = choice.get("finish_reason")
     _last.reply["finish_reason"] = reason
+    # The model maker's own reason (e.g. Gemini's "MAX_TOKENS" or "SAFETY"), when LiteLLM passes it on: at the choice's
+    # top level, or among its provider_specific_fields.
+    extra = choice.get("provider_specific_fields") if isinstance(choice.get("provider_specific_fields"), dict) else {}
+    _last.reply["native_finish_reason"] = choice.get("native_finish_reason") or extra.get("native_finish_reason")
     if reason == "length":
         # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see why it ran long:
         # many facts, or the model repeating itself.
@@ -444,6 +468,18 @@ def _with_reply(error: Exception, text, body: dict, reason) -> Exception:
     return error
 
 
+def _with_call(error: Exception, attempts: int, began: float, cause: Exception | None = None) -> Exception:
+    """error, carrying what its last request sent and got back (_last.reply), how many attempts were made, and how
+    long they took, for the failed-call record. cause: the exception error replaces (e.g. requests' ReadTimeout)."""
+    try:
+        error.call = {**(getattr(_last, "reply", None) or {}), "attempts": attempts,
+                      "seconds": round(time.monotonic() - began, 1),
+                      **({"cause_type": type(cause).__name__} if cause is not None else {})}
+    except AttributeError:                                  # an exception that takes no attributes
+        pass
+    return error
+
+
 # ------------------------------ either service ------------------------------
 
 def list_models(service: str | None = None) -> list:
@@ -459,18 +495,23 @@ def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=
     model, service = model or MODEL, service or SERVICE
     # cache_until: where the prompt's identical start ends, for prompt caching (_messages); only LiteLLM uses it
     ask = _ask_litellm if service == "litellm" else _ask_asksage
+    began, _last.reply = time.monotonic(), {}
     for attempt in range(attempts):
         with _requests_lock:
             REQUESTS["sent"] += 1
         try:
-            return ask(prompt, model, read_timeout, cache_until)
-        except requests.ReadTimeout:
+            text = ask(prompt, model, read_timeout, cache_until)
+            _last.timing = {"attempts": attempt + 1, "seconds": round(time.monotonic() - began, 1)}
+            return text
+        except requests.ReadTimeout as e:
             # Not asked again: the service may still be writing, and billing, the first answer.
-            raise ApiError(f"no answer within {read_timeout} s (READ_TIMEOUT in common/common_helpers/llm.py); not "
-                           f"asked again, since the service may still be writing, and billing, the first answer")
-        except (RuntimeError, ValueError,
-                requests.ConnectionError, requests.Timeout) as e:
-            if attempt == attempts - 1:
+            raise _with_call(ApiError(f"no answer within {read_timeout} s (READ_TIMEOUT in "
+                                      f"common/common_helpers/llm.py); not asked again, since the service may still be "
+                                      f"writing, and billing, the first answer"), attempt + 1, began, e) from e
+        except Exception as e:                              # noqa: BLE001
+            retry = isinstance(e, (RuntimeError, ValueError, requests.ConnectionError, requests.Timeout))
+            if not retry or attempt == attempts - 1:
+                _with_call(e, attempt + 1, began)
                 raise
             # 5, 10, 20 s, or longer when the service says so, plus up to 2 s so parallel calls don't retry together
             wait = max(2 ** attempt * 5, getattr(e, "wait", None) or 0) + random.uniform(0, 2)
@@ -515,8 +556,15 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
     not parse at all - and used to surface three frames away as an opaque
     AttributeError. Both failures are treated the same way here: re-ask once
     with a correction, then give up."""
+    seconds = 0.0
     for attempt in range(retries + 1):
-        text = call_llm(prompt, read_timeout=read_timeout, cache_until=cache_until)
+        try:
+            text = call_llm(prompt, read_timeout=read_timeout, cache_until=cache_until)
+        except Exception as e:                              # noqa: BLE001
+            if attempt and isinstance(getattr(e, "call", None), dict):
+                e.call["seconds"] = round(e.call["seconds"] + seconds, 1)       # the first ask's time too
+            raise
+        seconds += (getattr(_last, "timing", None) or {}).get("seconds", 0)
         try:
             data = _best_effort_json(text)
             if not isinstance(data, dict):
@@ -533,6 +581,8 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
                                  f"\"unusable answer\"")
                 reply = getattr(_last, "reply", None) or {}
                 error.answer, error.usage, error.finish_reason = text, reply.get("usage") or {}, reply.get("finish_reason")
+                error.call = {**reply, "attempts": (getattr(_last, "timing", None) or {}).get("attempts"),
+                              "asks": retries + 1, "seconds": round(seconds, 1)}
                 raise error from None
             log.warning(f"The model's reply isn't a JSON object ({e}); asking once more, reminding it to reply with "
                         f"the JSON object only. Nothing to do.")
@@ -841,8 +891,16 @@ class PaidCalls:
         if error is None:
             entry["why"] = "not made: the early stop stopped the run before this call"
         else:
-            entry.update({"finish_reason": getattr(error, "finish_reason", None), **_usage_counts(usage),
-                          "error_type": type(error).__name__, "error": str(error),
+            call = getattr(error, "call", None) or {}
+            usage = usage or call.get("usage")
+            entry.update({"finish_reason": getattr(error, "finish_reason", None) or call.get("finish_reason"),
+                          "native_finish_reason": call.get("native_finish_reason"), **_usage_counts(usage),
+                          "usage": usage or None, "http_status": call.get("http_status"),
+                          "error_body": call.get("error_body"), "error_type": type(error).__name__,
+                          "cause_type": call.get("cause_type"), "error": str(error),
+                          "settings_sent": call.get("settings_sent"), "request_bytes": call.get("request_bytes"),
+                          "served_as": call.get("served_as"), "attempts": call.get("attempts"),
+                          "asks": call.get("asks"), "seconds": call.get("seconds"),
                           "answer": getattr(error, "answer", None), "what_to_do": advice(error)})
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "a", encoding="utf-8", newline="\n") as fh:

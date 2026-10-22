@@ -256,6 +256,55 @@ class Guards(unittest.TestCase):
         self.assertNotIn("stand-in\"", text.replace("-stand-in", ""))                  # no key
         self.assertEqual((llm.OUTCOMES["failed"], llm.OUTCOMES["cut_off"]), (2, 1))
 
+    def test_failed_call_record_root_cause(self):
+        """Each failed call's line holds what settles its cause: the HTTP status and the service's error body, the
+        settings sent, the request's size, the attempts and their time, the whole usage, and the maker's own reason."""
+        calls = self.calls()
+        os.environ["KG_STAND_IN_CUT_OFF"] = "#r01#"
+        os.environ["KG_STAND_IN_FAIL"] = "#r02#"
+
+        def post(url, headers=None, json=None, timeout=None, **_):
+            prompt = json["messages"][0]["content"]
+            if "#r03#" in prompt:                                                       # rate limited every time
+                return stand_ins.StandInReply(429, {"error": {"message": "stand-in: too many requests", "code": 429}})
+            reply = stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+            if "#r01#" in prompt:                                                       # the maker's own reason
+                reply._body["choices"][0]["provider_specific_fields"] = {"native_finish_reason": "MAX_TOKENS"}
+            return reply
+
+        with mock.patch.object(llm, "_post", post), self.assertRaises(llm.EarlyStop):   # 3 of the first 4 failed
+            self.ask(calls, ["r00", "r01", "r02", "r03"])
+        cut, refused, limited = sorted(self.entries(), key=lambda e: e["record"])
+        self.assertEqual((cut["finish_reason"], cut["native_finish_reason"], cut["http_status"]),
+                         ("length", "MAX_TOKENS", 200))
+        self.assertEqual(cut["usage"]["completion_tokens_details"]["reasoning_tokens"], cut["reasoning_tokens"])
+        self.assertEqual(cut["served_as"], "gemini-2.5-pro-stand-in")
+        self.assertEqual(cut["settings_sent"], {"model": "gemini-2.5-pro", "temperature": 0, "max_tokens": 16000,
+                                                "reasoning_effort": "low"})
+        self.assertEqual((refused["http_status"], refused["error_type"], refused["attempts"]), (400, "ApiError", 1))
+        self.assertIn("stand-in: the service refuses this request", refused["error_body"])
+        self.assertEqual((limited["http_status"], limited["error_type"], limited["attempts"]), (429, "RetryLater", 4))
+        self.assertIn("too many requests", limited["error_body"])
+        for entry in (cut, refused, limited):
+            self.assertGreater(entry["request_bytes"], entry["prompt_characters"])
+            self.assertIsInstance(entry["seconds"], float)
+        self.assertNotIn("Bearer", json.dumps(self.entries()))                         # no key
+
+    def test_failed_call_record_timeout(self):
+        calls = self.calls()
+
+        def post(url, headers=None, json=None, timeout=None, **_):
+            if "#r01#" in json["messages"][0]["content"]:
+                raise llm.requests.ReadTimeout("stand-in: read timed out")
+            return stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+
+        with mock.patch.object(llm, "_post", post):
+            self.ask(calls, ["r00", "r01"])
+        [entry] = self.entries()
+        self.assertEqual((entry["error_type"], entry["cause_type"], entry["attempts"], entry["http_status"]),
+                         ("ApiError", "ReadTimeout", 1, None))
+        self.assertIn("no answer within", entry["error"])
+
     def test_no_record_without_failures(self):
         self.ask(self.calls(), ["r00", "r01"])
         self.assertIsNone(self.entries())
