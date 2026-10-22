@@ -29,7 +29,7 @@ TimeOfDay         a point or period in the day, which comes back every day, e.g.
                   source: ground truth tuning #4
 Orbit             the path a Spacecraft travels around a CelestialBody
                   source: ground truth tuning #4
-SatelliteFormation  a group of satellites flying together in formation, e.g. the A-train
+SatelliteFormation  a group of Spacecraft flying together in formation in orbit, e.g. the A-train
                     source: ground truth tuning #4
 Channel           a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel
                   source: ground truth tuning #4
