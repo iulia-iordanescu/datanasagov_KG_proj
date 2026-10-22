@@ -333,6 +333,7 @@ class RulesInStep(unittest.TestCase):
         ("Each fact once", "Each fact once"),
         ("A list joined by \"and\": one triple per item", "A list joined by \"and\": one ground truth triple per item"),
         ("One thing, one wording", "One thing, one wording, within a record"),
+        ("A processing step", "A processing step: output_i = method_i(input_i)"),
         ("General facts: include them, unless they're about another dataset",
          "General facts: include them, unless they're about another dataset"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),

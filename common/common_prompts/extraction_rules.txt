@@ -69,6 +69,17 @@
   what you know about the words (e.g. that VLF means very low frequency);
   but never add a fact the record doesn't state, and write only a wording
   the record itself uses for that thing, after any qualifiers are taken out.
+- A processing step: output_i = method_i(input_i). For each processing step i
+  the record describes, find its output_i, method_i, and input_i, and write
+  at most two triples: output_i computed-from input_i, and output_i
+  produced-using-algorithm method_i. Write each only if the record names
+  both of its parts. Steps chain: one step's output can be the next step's
+  input. When a record says a dataset holds "ice cover detected using the
+  IWI and a cloud mask" and "the IWI is derived from reflectance data":
+  step 1 is IWI = method_1(reflectance data), with method_1 not named,
+  which gives "IWI" computed-from "reflectance data"; step 2 is the
+  dataset = cloud mask(IWI), which gives the dataset computed-from "IWI"
+  and the dataset produced-using-algorithm "a cloud mask".
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Ocean-Masked" over "masked".
 - Only facts the record states. Never use outside knowledge, and never write
