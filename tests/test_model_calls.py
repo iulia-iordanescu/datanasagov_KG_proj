@@ -147,6 +147,47 @@ class Guards(unittest.TestCase):
         self.assertIn("050_annotate_2026-10-22_1200_failed_calls.jsonl", message)
         self.assertEqual([e["stage"] for e in self.entries()], ["test call"])
 
+    # ---------------------------------------------------------------- the cut-off advice: from the token counts
+
+    def cut_off_advice(self, reasoning, **settings):
+        """The advice for record r01's answer, cut off with KG_STAND_IN_REASONING = reasoning."""
+        os.environ["KG_STAND_IN_CUT_OFF"] = "#r01#"
+        os.environ["KG_STAND_IN_REASONING"] = reasoning
+        self.ask(self.calls(**settings), ["r00", "r01"])
+        (cut,) = self.entries()
+        return cut["what_to_do"]
+
+    def test_cut_off_advice_thinking(self):
+        """Thinking took most of the tokens though capped at low: the advice says so, not that the answer is long."""
+        text = self.cut_off_advice("12000")
+        self.assertIn("Thinking used most of the tokens: the model spent 12,000 of the 16,000 tokens thinking, "
+                      "leaving 4,000 for the answer", text)
+        self.assertIn("already at its lowest cap (low): raise MAX_ANSWER_TOKENS", text)
+        self.assertIn("`--thinking model_default`", text)
+        self.assertNotIn("answer itself is long", text)
+
+    def test_cut_off_advice_thinking_lower(self):
+        text = self.cut_off_advice("12000", thinking="high")
+        self.assertIn("set the step's thinking setting lower (it is high; `--thinking medium` or `--thinking low`)",
+                      text)
+
+    def test_cut_off_advice_answer(self):
+        """Little thinking, and the answer used the rest: the answer itself is long."""
+        text = self.cut_off_advice("900", thinking="high")
+        self.assertIn("The answer itself is long: the model spent 900 of the 16,000 tokens thinking and 15,100 on "
+                      "the answer; raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py (now 16,000)", text)
+        self.assertIn("max_chars", text)
+        self.assertNotIn("--thinking", text)
+
+    def test_cut_off_advice_unreported(self):
+        """No thinking count from the service: the advice says it can't tell, and gives both fixes."""
+        text = self.cut_off_advice("unreported", thinking="medium")
+        self.assertIn("Thinking tokens not reported; can't tell which used the 16,000 tokens, the model's thinking "
+                      "or the answer itself (the answer got 16,000 tokens in all)", text)
+        self.assertIn("if the model thinks, set the step's thinking setting lower (it is medium; `--thinking low`)",
+                      text)
+        self.assertIn("if not, raise MAX_ANSWER_TOKENS", text)
+
     # ---------------------------------------------------------------- the early stop
 
     def test_early_stop(self):
@@ -242,12 +283,12 @@ class Guards(unittest.TestCase):
         cut, failed = self.entries()
         self.assertEqual((cut["outcome"], cut["record"], cut["text_piece"], cut["stage"]), ("cut_off", "r01", 1, "draft"))
         self.assertEqual(cut["finish_reason"], "length")
-        self.assertEqual(cut["reasoning_tokens"], 16000 - len(cut["answer"]) // 4)
+        self.assertEqual((cut["reasoning_tokens"], cut["answer_tokens"]), (300, 16000))
         self.assertTrue(cut["answer"].startswith('{"ok"'))                              # the partial answer, whole
         self.assertEqual(cut["call_settings"], {"temperature": 0, "max_answer_tokens": 16000, "thinking": "low",
                                                 "thinking_sent": "low", "read_timeout_s": llm.READ_TIMEOUT})
         self.assertEqual(len(cut["prompt_sha256"]), 64)
-        self.assertIn("thinking", cut["what_to_do"])
+        self.assertIn("The answer itself is long", cut["what_to_do"])
         self.assertEqual((failed["outcome"], failed["error_type"]), ("failed", "ApiError"))
         self.assertIn("HTTP 400", failed["error"])
         self.assertEqual((cut["run_id"], cut["step"], cut["model"]),

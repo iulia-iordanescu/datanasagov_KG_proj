@@ -21,7 +21,9 @@ gets the fault):
 
     KG_STAND_IN_CUT_OFF      the answer is cut off (finish_reason "length")
     KG_STAND_IN_FAIL         the service refuses the call (HTTP 400)
-    KG_STAND_IN_REASONING    the thinking tokens every reply reports (a number; default 0)
+    KG_STAND_IN_REASONING    the thinking tokens every reply reports (a number; default 0; on a
+                             cut-off answer, thinking takes all the tokens the answer didn't when
+                             no number is given); "unreported": the usage holds no thinking count
     KG_STAND_IN_DELAY        seconds each call takes (default 0), so calls overlap as real ones do
 """
 import hashlib
@@ -282,12 +284,20 @@ def stand_in_post(url, headers=None, json=None, timeout=None, **_):
         CALLS.append(prompt)
         return StandInReply(400, {"error": {"message": "stand-in: the service refuses this request"}})
     answer = stand_in_model(prompt, model=json["model"])
-    thought = int(os.environ.get("KG_STAND_IN_REASONING") or 0)
-    reason = "stop"
+    given = os.environ.get("KG_STAND_IN_REASONING") or ""
+    thought = int(given) if given.isdigit() else 0
+    answer_tokens, reason = len(answer) // 4, "stop"
     if _fault("KG_STAND_IN_CUT_OFF", prompt):
+        # The tokens reach the limit: what KG_STAND_IN_REASONING doesn't give to thinking went to the answer; when it
+        # gives no number, thinking took them.
         answer, reason = answer[:len(answer) // 2], "length"
-        thought = max(thought, json["max_tokens"] - len(answer) // 4)
-    usage = {"prompt_tokens": len(prompt) // 4, "completion_tokens": len(answer) // 4 + thought,
-             "completion_tokens_details": {"reasoning_tokens": thought}}
+        if given.isdigit():
+            answer_tokens = json["max_tokens"] - thought
+        else:
+            answer_tokens = len(answer) // 4
+            thought = json["max_tokens"] - answer_tokens
+    usage = {"prompt_tokens": len(prompt) // 4, "completion_tokens": answer_tokens + thought}
+    if given != "unreported":
+        usage["completion_tokens_details"] = {"reasoning_tokens": thought}
     return StandInReply(200, {"model": json["model"] + "-stand-in", "usage": usage,
                               "choices": [{"message": {"content": answer}, "finish_reason": reason}]})

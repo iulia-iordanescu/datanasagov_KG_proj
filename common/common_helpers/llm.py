@@ -134,11 +134,17 @@ def thinking_sent(model: str | None = None, service: str | None = None) -> str |
     (https://docs.litellm.ai/docs/providers/gemini). Not to Anthropic's Claude models, which think only when asked
     (https://docs.litellm.ai/docs/providers/anthropic), and not to others, which might refuse a parameter they don't
     take. Ask Sage's query takes no such parameter."""
+    return None if THINKING == "model_default" or not takes_thinking_cap(model, service) else THINKING
+
+
+def takes_thinking_cap(model: str | None = None, service: str | None = None) -> bool:
+    """Whether the thinking cap is sent to this model through this service, whatever `thinking` is (thinking_sent
+    says where, and why)."""
     model, service = model or MODEL, service or SERVICE
-    if service != "litellm" or THINKING == "model_default" or maker(model) != "Google":
-        return None
+    if service != "litellm" or maker(model) != "Google":
+        return False
     version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
-    return THINKING if version and float(version.group(1)) >= 2.5 else None
+    return bool(version and float(version.group(1)) >= 2.5)
 
 
 def model_label() -> str:
@@ -642,25 +648,49 @@ class EarlyStop(SystemExit):
         self.paid = paid
 
 
-def cut_off_advice(usage=None) -> str:
-    """What to change after an answer was cut off at MAX_ANSWER_TOKENS, from the thinking the service reported."""
-    thought, sent = reasoning_tokens(usage), thinking_sent()
+def _lower_thinking() -> str | None:
+    """How to leave the answer more of MAX_ANSWER_TOKENS by thinking less, with this run's settings; None when the
+    pipeline can't cap this model's thinking."""
+    sent = thinking_sent()
     if sent and sent != "low":
-        fix = (f"set the step's thinking setting lower (it is {sent}; `--thinking low`), so more of the tokens are left "
-               f"for the answer")
-    elif thought and THINKING == "model_default" and maker(MODEL) == "Google":
-        fix = ("the thinking isn't capped (thinking is model_default): give `--thinking low`, so more of the tokens are "
-               "left for the answer")
-    elif thought and not sent:
-        fix = ("the pipeline can't cap this model's thinking: raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py, "
-               "or choose another model (`--model`)")
-    else:
-        fix = (f"the answer itself is long: raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py (now "
-               f"{MAX_ANSWER_TOKENS:,}), or, when the text piece is long, lower the step's max_chars so each answer is "
-               f"shorter")
-    if thought:
-        return f"The model spent {thought:,} of the {MAX_ANSWER_TOKENS:,} tokens thinking; {fix}"
-    return fix[0].upper() + fix[1:]
+        lower = " or ".join(f"`--thinking {t}`" for t in reversed(THINKING_LEVELS[:THINKING_LEVELS.index(sent)]))
+        return f"set the step's thinking setting lower (it is {sent}; {lower})"
+    if THINKING == "model_default" and takes_thinking_cap():
+        return "give `--thinking low` (the thinking isn't capped: thinking is model_default)"
+    return None
+
+
+def cut_off_advice(usage=None) -> str:
+    """What to change after an answer was cut off at MAX_ANSWER_TOKENS (or a test call thought too much), from the
+    token counts the service reported, not from the settings: thinking took most of the tokens, the answer itself is
+    long, or the service didn't say how many were thinking."""
+    usage = usage if isinstance(usage, dict) else {}
+    details = usage.get("completion_tokens_details")
+    reported = isinstance(details, dict) and details.get("reasoning_tokens") is not None
+    thought, total = reasoning_tokens(usage), usage.get("completion_tokens")
+    limit = f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py (now {MAX_ANSWER_TOKENS:,})"
+    shorter = f"raise {limit}, or, when the text piece is long, lower the step's max_chars so each answer is shorter"
+    if not reported:
+        lower = _lower_thinking()
+        got = f" (the answer got {total:,} tokens in all)" if isinstance(total, int) else ""
+        return (f"Thinking tokens not reported; can't tell which used the {MAX_ANSWER_TOKENS:,} tokens, the model's "
+                f"thinking or the answer itself{got}: "
+                + (f"if the model thinks, {lower}, so more of the tokens are left for the answer; if not, " if lower
+                   else "") + shorter)
+    if thought >= THINKING_WARN_SHARE * MAX_ANSWER_TOKENS:
+        sent = thinking_sent()
+        if sent == "low":
+            fix = (f"the thinking is already at its lowest cap (low): raise {limit} and give `--thinking "
+                   f"model_default`, or choose another model (`--model`)")
+        else:
+            fix = _lower_thinking()
+            fix = (f"{fix}, so more of the tokens are left for the answer" if fix else
+                   f"the pipeline can't cap this model's thinking: raise {limit}, or choose another model (`--model`)")
+        return (f"Thinking used most of the tokens: the model spent {thought:,} of the {MAX_ANSWER_TOKENS:,} tokens "
+                f"thinking, leaving {MAX_ANSWER_TOKENS - thought:,} for the answer; {fix}")
+    answer = f" and {total - thought:,} on the answer" if isinstance(total, int) else ""
+    return (f"The answer itself is long: the model spent {thought:,} of the {MAX_ANSWER_TOKENS:,} tokens thinking"
+            f"{answer}; {shorter}")
 
 
 def advice(error) -> str:
