@@ -130,8 +130,9 @@ DEVELOPED_BY_PARTY   was built or created by this Person, Team, or Organization
 OBSERVED_AT_TIME_OF_DAY  comes from observations made at or during this TimeOfDay
                      source: ground truth tuning #4
                      only: any -> TimeOfDay
-LAUNCHED_BY          was launched into space by
+LAUNCHED_BY_PARTY    was launched into space by this Person, Team, or Organization
                      source: ground truth tuning #4
+                     only: any -> Organization; any -> Person; any -> Team
 LAUNCHED_ON          was launched into space on
                      source: ground truth tuning #4
 HAS_ORBIT            travels in this Orbit
