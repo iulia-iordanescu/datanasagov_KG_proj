@@ -119,7 +119,9 @@
   .row { border: 1px solid var(--line); border-left: 4px solid var(--stripe); border-radius: 10px; padding: 12px 14px;
          margin-bottom: 12px; background: var(--tint); }
   .row.active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .rowhead { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+  .rowhead { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px;
+             display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .rowhead button.deltriple { padding: 2px 10px; font-size: 12.5px; font-weight: 400; color: var(--ink); white-space: nowrap; }
   .pill { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 9px; margin-left: 6px; }
   .pill.error { background: var(--error-bg); color: var(--error); }
   .pill.flag { background: var(--flag-bg); color: var(--flag); }
@@ -374,8 +376,6 @@
   <div id="record"></div>
 </main>
 <div id="help" hidden></div>
-<datalist id="entity_classes"></datalist>
-<datalist id="predicates"></datalist>
 
 <script>
 "use strict";
@@ -546,8 +546,6 @@ async function openBatch(n, at, step = 0) {
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
   tripleAt = step;                         // a newly opened batch: the row the address names, else the record's first
-  $("entity_classes").replaceChildren(...batch.entity_classes.map(c => el("option", { value: c })));
-  $("predicates").replaceChildren(...batch.predicates.map(p => el("option", { value: p })));
   status(`Editing annotations/ground_truth/${batch.file}`, "saved");
   current = Math.min(at || 0, Math.max(batch.records.length - 1, 0));   // so show() keeps tripleAt
   show(current);
@@ -856,7 +854,8 @@ function showDefinition(input) {
 }
 function refreshDefinitions() { document.querySelectorAll("[data-def]").forEach((d) => showDefinition(d.previousElementSibling)); }
 
-// A field of a ground truth triple; multiline: a box that grows to show all of a long value (still one line of text).
+// A field of a ground truth triple; multiline: a box that grows to show all of a long value (still one line of text),
+// wrapping it rather than cutting it off when the column is narrow.
 function field(rec, j, key, label, extra = {}) {
   const r = rec.rows[j];
   const kind = key === "predicate" ? "predicates" : key.endsWith("_class") ? "entity_classes" : null;
@@ -869,11 +868,13 @@ function field(rec, j, key, label, extra = {}) {
       if (kind) { showDefinition(e.target); showClasses(kind, e.target, true); } },
     onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); else hideClasses(); } };
   return el("label", { class: role ? "f-" + role : "" }, label, multiline
-    ? el("textarea", { ...attrs, ...on, class: "grow", rows: 1, onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); } }, r[key])
+    ? el("textarea", { ...attrs, ...on, class: ["grow", attrs.class].filter(Boolean).join(" "), rows: 1, onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); } }, r[key])
     : el("input", { value: r[key], ...attrs, ...on }),
     kind ? definitionLine(kind, r[key]) : null);
 }
 function grow(box) { box.style.height = "auto"; box.style.height = box.scrollHeight + 2 + "px"; }
+// a wider or narrower window wraps the boxes' text differently: each grows or shrinks to fit it again
+window.addEventListener("resize", () => document.querySelectorAll("#record textarea.grow").forEach(grow));
 function problemList(r, j) {
   return el("ul", { class: "problems", "data-problems": j },
     r.problems.map(p => el("li", { class: p.type }, (p.type === "error" ? "✖ " : "⚑ ") + p.message,
@@ -898,11 +899,13 @@ function describesRow(rec, j, heading = true) {
       el("div", { class: "group" },
         fixed("Object (the record's title)", r.object, "obj"),
         el("label", { class: "f-obj" }, "Object class (the describes class)",
-          el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
-                        placeholder: "not chosen yet", "data-row": j,
-                        oninput: (e) => { r.object_class = e.target.value; changed(); showDefinition(e.target);
-                                          showClasses("entity_classes", e.target, true); },
-                        onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }),
+          el("textarea", { class: "cls grow", rows: 1, placeholder: "not chosen yet", "data-row": j,
+                           onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); },
+                           oninput: (e) => { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
+                                             grow(e.target); r.object_class = e.target.value; changed(); showDefinition(e.target);
+                                             showClasses("entity_classes", e.target, true); },
+                           onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } },
+             r.object_class === "X" ? "" : r.object_class),
           definitionLine("entity_classes", r.object_class === "X" ? "" : r.object_class)))),
     el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
       "subject (the record's id) and object (the record's title) are copied from the record by code, and the " +
@@ -915,25 +918,26 @@ function tripleRow(rec, j, heading = true) {
   // Its number among the record's ground truth triples, in the text's order (the describes triple isn't one).
   const n = tripleRows(rec).indexOf(j) + 1;
   return el("div", { class: "row", "data-row-box": j, oninput: (e) => { const b = e.currentTarget.querySelector(".patterns"); if (b) b.refresh(); } },
-    heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
+    // its header line: its name (all at once), and on the right the button that deletes the whole ground truth triple
+    el("div", { class: "rowhead" }, heading ? `Ground truth triple ${n}` : el("span"),
+      el("button", { class: "deltriple", title: "Delete this whole ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete triple")),
     el("div", { class: "triple" },
       el("div", { class: "group" },
         field(rec, j, "subject", "Subject", { multiline: true }),
-        field(rec, j, "subject_class", "Subject class", { list: "entity_classes", class: "cls" })),
+        field(rec, j, "subject_class", "Subject class", { multiline: true, class: "cls" })),
       el("div", { class: "group" },
-        field(rec, j, "predicate", "Predicate", { list: "predicates" }),
+        field(rec, j, "predicate", "Predicate", { multiline: true }),
         el("span")),
       el("div", { class: "group" },
         field(rec, j, "object", "Object", { multiline: true }),
-        field(rec, j, "object_class", "Object class", { list: "entity_classes", class: "cls" }))),
+        field(rec, j, "object_class", "Object class", { multiline: true, class: "cls" }))),
     patternButtons(r, j),
     el("div", { class: "source" },
       el("label", { title: "Copied exactly from the record's text" }, "Source text",
         el("textarea", { "data-row": j, class: "grow", rows: 1, onfocus: () => { setActive(j); hideClasses(); },
                          oninput: (e) => { r.source_text = e.target.value; grow(e.target); drawText(); changed(); } }, r.source_text)),
       el("div", { class: "actions" },
-        el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"),
-        el("button", { title: "Delete this ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete"))),
+        el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"))),
     problemList(r, j));
 }
 
