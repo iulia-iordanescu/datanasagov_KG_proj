@@ -363,7 +363,8 @@ class PromptsQuoteNoGroundTruth(unittest.TestCase):
     """The model's prompts use invented examples, never text from ground truth records: a prompt that quotes a ground
     truth record could hand the model an answer it is scored on. Every quoted phrase of 3 or more words in a prompt
     file ("..." or '...') must occur in no subject, object (the describes triples' objects are the titles), or
-    source_text of annotations/ground_truth/."""
+    source_text of annotations/ground_truth/, and no run of 5 words of a prompt file
+    occurs in one."""
 
     def test_no_quote_from_ground_truth(self):
         import csv
@@ -387,6 +388,28 @@ class PromptsQuoteNoGroundTruth(unittest.TestCase):
                     found += [f"{path.relative_to(ROOT).as_posix()}: \"{q}\" is in a ground truth record; "
                               f"replace it with an invented example of the same shape"] * any(flat(q) in t for t in texts)
         self.assertTrue(quotes, "no quoted phrase of 3 or more words found in the prompts: the test would check nothing")
+        self.assertFalse(found, "\n" + "\n".join(found))
+
+    def test_no_five_word_run_from_ground_truth(self):
+        """Unquoted copying too: no run of 5 consecutive words of a prompt file (case, spacing, and punctuation
+        ignored) occurs in a ground truth subject, object, or source_text."""
+        import csv
+        prompts = sorted(p for p in ROOT.glob("*/*_prompts/*.txt") if not p.is_relative_to(ROOT / "to_be_reshaped"))
+        truth = sorted((ROOT / "annotations" / "ground_truth").glob("*.csv"))
+        self.assertTrue(prompts, "no prompt files found under */*_prompts/")
+        self.assertTrue(truth, "no ground truth files found in annotations/ground_truth/")
+        words = lambda s: re.sub(r"\W+", " ", s.lower()).split()
+        runs = lambda w: {" ".join(w[i:i + 5]) for i in range(len(w) - 4)}
+        truth_runs = set()
+        for path in truth:
+            with open(path, encoding="utf-8-sig", newline="") as fh:
+                for row in csv.DictReader(fh):
+                    for k in ("subject", "object", "source_text"):
+                        truth_runs |= runs(words(row[k]))
+        self.assertTrue(truth_runs, "no 5-word run found in the ground truth: the test would check nothing")
+        found = [f"{path.relative_to(ROOT).as_posix()}: \"{r}\" is in a ground truth record; "
+                 f"replace the passage with an invented example sharing no 5-word run with any record"
+                 for path in prompts for r in sorted(runs(words(path.read_text(encoding="utf-8"))) & truth_runs)]
         self.assertFalse(found, "\n" + "\n".join(found))
 
 

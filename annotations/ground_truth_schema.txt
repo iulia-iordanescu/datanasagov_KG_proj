@@ -3,6 +3,7 @@
 Dataset           a set of observations, measurements, or samples
 WebTool           a tool used over the web
 Document          a written publication, or a set of them, named in words or by a reference key, e.g. NASA developed standards; LAWRENCEETAL2013
+                  source: ground truth tuning #0, #5
 Purpose           an aim something is meant to achieve
 Mission           a named spaceflight effort
 MissionPhase      a named phase of a Mission
