@@ -98,7 +98,15 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,JPL,Organization,SERVES_AS,official Physical Oceanography Data Archive (PO.DAAC) for SST,Role,JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST,0,claude-opus-5.5
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,V2019.0,Version,SUPERSEDES,v2014.1,Version,The R2019.0 supersedes the previous v2014.1 datasets,0,claude-opus-5.5
 99dff022-24ac-48cb-bc83-09fec8b90ad7,99dff022-24ac-48cb-bc83-09fec8b90ad7,CatalogEntry,DESCRIBES,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,(record structure),0,
-99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_MEASUREMENTS_OF,fast neutron residual count rates,PhysicalQuantity,residual count rates from the GRaND plus Z boron loaded sensor,0,
-99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND plus Z boron loaded sensor,Instrument,residual count rates from the GRaND plus Z boron loaded sensor,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,FROM_SPACECRAFT,DAWN,Spacecraft,DAWN,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND,Instrument,GRAND,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_SPATIAL_REPRESENTATION,map,SpatialRepresentation,These data are maps,0,
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_TARGET,Vesta,CelestialBody,The residual map is related to the average atomic mass on Vesta,0,
-99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_VERSION,V1.0,Version,RESIDUAL V1.0,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_VARIABLE,fast neutron residual count rates,Variable,These data are maps of fast neutron     residual count rates,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_VERSION,V1.0,Version,V1.0,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND plus Z boron loaded sensor,Instrument,These data are maps of fast neutron     residual count rates from the GRaND plus Z boron loaded sensor,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,GRaND plus Z boron loaded sensor,Instrument,PART_OF,GRaND,Instrument,the GRaND plus Z boron loaded sensor,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,COMPUTED_FROM,nominal fast neutron count rates,Variable,The    nominal fast neutron count rates were detrended using the GRaND         epithermal neutron map to produced this residual map,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,COMPUTED_FROM,GRaND epithermal neutron map,Dataset,The    nominal fast neutron count rates were detrended using the GRaND         epithermal neutron map to produced this residual map,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,RELATED_TO,average atomic mass,PhysicalQuantity,The residual map is related to the average atomic mass on Vesta,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,DOCUMENTED_AT,LAWRENCEETAL2013,Document,Details of the map and data reduction are described in LAWRENCEETAL2013,0,
