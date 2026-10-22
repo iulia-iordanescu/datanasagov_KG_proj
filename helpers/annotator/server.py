@@ -120,7 +120,7 @@ from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_CO
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key
-from common.records_io import load_records
+from common.records_io import catalog_link, load_records
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
@@ -362,6 +362,7 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
     title = record.get("title") or ""
     return {
         "id": rid,
+        "catalog_url": catalog_link(rid),
         "maintainer": record.get("maintainer"),
         "position": data.positions.get(rid),
         "part": data.parts.get(rid),

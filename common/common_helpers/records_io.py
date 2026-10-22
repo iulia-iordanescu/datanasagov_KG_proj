@@ -23,6 +23,16 @@ from common.stop import Stop
 #: The free-text fields every record has (020 always writes them).
 TEXT_FIELDS = ("title", "notes")
 
+#: A record's full entry in the live catalog, by its id: the catalog's API
+#: answer for that one record (the address the old link script printed).
+CATALOG_ENTRY_URL = "https://data.nasa.gov/api/3/action/package_show?id={id}"
+
+
+def catalog_link(rid: str) -> str:
+    """The address of the record's entry in the live catalog. Only built, never
+    fetched: the entry may since have been removed or moved."""
+    return CATALOG_ENTRY_URL.format(id=rid)
+
 
 def load_records(path) -> dict:
     """{id: record}, in the file's order. A repeated id stops the step: 020

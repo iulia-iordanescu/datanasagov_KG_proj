@@ -329,6 +329,7 @@
   .rightstack .toolsmenu summary { display: block; text-align: center; }
   .iddd { display: flex; align-items: center; gap: 8px; }
   .iddd .fixed { white-space: nowrap; padding: 2px 8px; }
+  .recinfo .catnote { color: var(--muted); font-size: 12px; max-width: 34em; }
   button.copy { padding: 2px 10px; font-size: 13px; white-space: nowrap; }
   .recinfo dl { min-width: 0; width: max-content; max-width: 90vw; }
   .toolsmenu summary { list-style: none; cursor: pointer; padding: 5px 12px; border-radius: 8px; background: var(--navy-bg);
@@ -708,6 +709,9 @@ function show(i) {
                 : "none (not in the pool)"),
               el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
               el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)),
+              el("dt", {}, ""), el("dd", { class: "catalog" },
+                el("a", { href: rec.catalog_url, target: "_blank", rel: "noopener" }, "Open in the catalog ↗"),
+                el("div", { class: "catnote" }, "The catalog is live: this entry may since have been removed or moved, so the link may not work.")),
               el("dt", { id: "gtdt", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
                  "Ground truth triples"), el("dd", { id: "gtdd" }))),
           el("span", { id: "progress" }))),

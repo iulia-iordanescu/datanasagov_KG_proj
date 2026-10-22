@@ -243,6 +243,12 @@ class B_Batch(unittest.TestCase):
         self.assertEqual([[p["code"] for p in found] for found in server.connection_problems("r1", rows)], expected)
         self.assertEqual(server.connection_problems("r1", rows[:1]), [[]])     # only the describes triple
 
+    def test_catalog_link(self):
+        """Suppose the stand-in record r1 is shown. Then About this record gets the address of r1's entry in the
+        live catalog, built from its id (nothing is fetched)."""
+        view = server.record_view(server.Data(), "r1", [], False)
+        self.assertEqual(view["catalog_url"], "https://data.nasa.gov/api/3/action/package_show?id=r1")
+
     def test_not_in_source_but_elsewhere(self):
         """Suppose r1's text is "AIRS aboard Aqua; Aqua orbits Earth." and a ground truth triple's source text is
         "Aqua orbits Earth". Then a subject instance "AIRS" (elsewhere in the text) gets the "not in the source
