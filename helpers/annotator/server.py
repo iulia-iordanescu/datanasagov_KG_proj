@@ -383,9 +383,15 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
     vocab = with_coined(data.hand, gt)
     return {"n": n, "file": path.name, "records": records,
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
-            # for the page's list of component classes: each one's definition (empty for a coined one)
-            "definitions": {"entity_classes": vocab["entity_classes"], "predicates": vocab["predicates"]},
-            "coined": vocab["coined"], "patterns": patterns_view(data, gt)}
+            **definitions_view(data, gt), "patterns": patterns_view(data, gt)}
+
+
+def definitions_view(data: Data, gt=None) -> dict:
+    """For the page's list of component classes and the definition under each component class field: each one's
+    definition (empty for a coined one), and which are coined. Sent again after each save, as the schema may grow."""
+    vocab = with_coined(data.hand, gt or read_ground_truth())
+    return {"definitions": {"entity_classes": vocab["entity_classes"], "predicates": vocab["predicates"]},
+            "coined": vocab["coined"]}
 
 
 def patterns_view(data: Data, gt=None) -> list:
@@ -1089,7 +1095,8 @@ def make_handler(data: Data):
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if url.path == "/api/save":
                     problems = save_batch(data, int(body["n"]), body["records"])
-                    self._json({"problems": problems, "patterns": patterns_view(data)})
+                    gt = read_ground_truth()
+                    self._json({"problems": problems, "patterns": patterns_view(data, gt), **definitions_view(data, gt)})
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
                     self._json({"saved": True})

@@ -134,6 +134,7 @@ class A_Paths(unittest.TestCase):
         self.assertEqual([s["step"] for s in st["steps"]][:2], ["010_harvest", "020_clean"])
         self.assertTrue(all(i["doc"].startswith("docs/upkeep.md#") for i in st["items"]))
         self.assertIn("drawNextUp()", page)
+        self.assertIn("refreshDefinitions()", page)                            # a component class field's definition
         self.assertIn('showHelp("/api/guidelines")', page)                      # the rules, one click away while annotating
         terms = get("/api/terms")                                                  # a term's definition, on hover
         self.assertIn("ground truth schema", terms)
@@ -158,6 +159,14 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(sorted(b["definitions"]["entity_classes"]), b["entity_classes"])
         self.assertEqual(sorted(b["definitions"]["predicates"]), b["predicates"])
         self.assertEqual(set(b["coined"]), {"entity_classes", "predicates"})
+        # the definition under each component class field: every component class the batch uses has an entry
+        # (the describes triple's subject class and predicate are written by code: no field, no definition)
+        for rec in b["records"]:
+            for r in rec["rows"]:
+                for key, kind in (("subject_class", "entity_classes"), ("predicate", "predicates"),
+                                  ("object_class", "entity_classes")):
+                    if r[key] and r[key] != "X" and (key == "object_class" or r["predicate"] != "DESCRIBES"):
+                        self.assertIn(r[key], b["definitions"][kind], (rec["id"], key))
         # the pattern buttons' list: every pattern a ground truth triple uses
         used = {(r["subject_class"], r["predicate"], r["object_class"]) for rec in b["records"]
                 for r in rec["rows"] if r["predicate"] not in ("", "DESCRIBES") and r["object_class"]}
@@ -185,6 +194,8 @@ class B_Batch(unittest.TestCase):
         saved = post("/api/save", {"n": 0, "records": recs})
         problems = saved["problems"]
         self.assertTrue(all(len(p) == 3 for p in saved["patterns"]))          # the pattern buttons' list, as saved
+        self.assertEqual((saved["definitions"], saved["coined"]), (b["definitions"], b["coined"]))  # the definitions
+                                                                    # under the fields, refreshed after each save
         self.assertEqual([len(p) for p in problems], [3, 2, 0, 1])               # one list per row sent
         # MODIS aboard Aqua: no chain links it to the catalog entry (r0, Title r0)
         self.assertEqual([[p["code"] for p in row] for row in problems[0]], [[], ["not_connected"], ["empty"]])

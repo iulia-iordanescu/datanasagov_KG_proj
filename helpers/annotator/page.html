@@ -161,6 +161,7 @@
   .schematable th { background: var(--tint); }
   .schemaview h3 { color: var(--accent); }
   .triple .cls { font-size: 13px; }
+  .triple .def { font-weight: 400; font-size: 12px; }
   @media (max-width: 800px) { .triple { grid-template-columns: 1fr; } }
   .source { display: flex; gap: 8px; align-items: flex-end; margin-top: 6px; }
   .source label { flex: 1; }
@@ -629,6 +630,7 @@ async function save() {
     const sent = batch.records;
     const data = await api("/api/save", { n: batch.n, records: sent });
     if (data.patterns) batch.patterns = data.patterns;
+    if (data.definitions) { batch.definitions = data.definitions; batch.coined = data.coined; refreshDefinitions(); }
     data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
     status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
     refreshProblems();
@@ -834,6 +836,24 @@ function showClasses(kind, input, typed = false) {
   if (held && !typed) held.scrollIntoView({ block: "nearest" });
 }
 
+// Under a component class field of a triple: that component class's definition in the ground truth schema, found
+// by loose match ("physical quantity" finds PhysicalQuantity); nothing while the field is empty. Kept up to date as
+// the field is typed in or a suggestion picked, and after each save (refreshDefinitions: the schema may have grown).
+function definitionOf(kind, value) {
+  const want = looseKey(value);
+  if (!want || !batch.definitions) return "";
+  const defs = batch.definitions[kind] || {}, coined = new Set(((batch.coined || {})[kind] || []).map(looseKey));
+  const name = Object.keys(defs).find((n) => looseKey(n) === want);
+  if (!name || coined.has(want)) return "Not in the ground truth schema yet.";
+  return defs[name] || "No definition yet (it can be added in the view Ground truth schema).";
+}
+const definitionLine = (kind, value) => el("div", { class: "meta def", "data-def": kind }, definitionOf(kind, value));
+function showDefinition(input) {
+  const line = input.nextElementSibling;
+  if (line && line.dataset.def) line.textContent = definitionOf(line.dataset.def, input.value);
+}
+function refreshDefinitions() { document.querySelectorAll("[data-def]").forEach((d) => showDefinition(d.previousElementSibling)); }
+
 // A field of a ground truth triple; multiline: a box that grows to show all of a long value (still one line of text).
 function field(rec, j, key, label, extra = {}) {
   const r = rec.rows[j];
@@ -844,11 +864,12 @@ function field(rec, j, key, label, extra = {}) {
     oninput: (e) => {
       if (multiline) { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " "); grow(e.target); }
       r[key] = e.target.value; if (key === "source_text") drawText(); changed();
-      if (kind) showClasses(kind, e.target, true); },
+      if (kind) { showDefinition(e.target); showClasses(kind, e.target, true); } },
     onfocus: (e) => { setActive(j); if (kind) showClasses(kind, e.target); else hideClasses(); } };
   return el("label", { class: role ? "f-" + role : "" }, label, multiline
     ? el("textarea", { ...attrs, ...on, class: "grow", rows: 1, onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); } }, r[key])
-    : el("input", { value: r[key], ...attrs, ...on }));
+    : el("input", { value: r[key], ...attrs, ...on }),
+    kind ? definitionLine(kind, r[key]) : null);
 }
 function grow(box) { box.style.height = "auto"; box.style.height = box.scrollHeight + 2 + "px"; }
 function problemList(r, j) {
@@ -874,8 +895,10 @@ function describesRow(rec, j, heading = true) {
       el("label", { class: "f-obj" }, "Object class (the describes class)",
         el("input", { value: r.object_class === "X" ? "" : r.object_class, list: "entity_classes", class: "cls",
                       placeholder: "not chosen yet", "data-row": j,
-                      oninput: (e) => { r.object_class = e.target.value; changed(); showClasses("entity_classes", e.target, true); },
-                      onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }))),
+                      oninput: (e) => { r.object_class = e.target.value; changed(); showDefinition(e.target);
+                                        showClasses("entity_classes", e.target, true); },
+                      onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } }),
+        definitionLine("entity_classes", r.object_class === "X" ? "" : r.object_class))),
     el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
       "subject (the record's id) and object (the record's title) are copied from the record by code, and the " +
       "object class (the describes class), the type of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
