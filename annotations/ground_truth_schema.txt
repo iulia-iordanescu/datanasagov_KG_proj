@@ -5,33 +5,33 @@ WebTool           a tool used over the web
 Document          a written publication, or a set of them, named in words, e.g. NASA developed standards
 Purpose           an aim something is meant to achieve
 Mission           a named spaceflight effort
-MissionPhase      a named phase of a mission
+MissionPhase      a named phase of a Mission
 Discipline        a field of science
-Organization      a named institution or one of its named parts, e.g. NASA, OBPG; not a mission
+Organization      a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
 Instrument        a device that takes measurements
 Spacecraft        a craft that operates in space
-Time              a point or period on the calendar, which happens once, e.g. May 4, 2002; March 11 19:08:03; 2015-10-22 to 2015-12-31; the first week of February
+Time              a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; the first week of February 2003; 2015-10-22 to 2015-12-31
 PhysicalQuantity  a property that can be measured
 CelestialBody     a natural object in space
-Version           a label marking one release of something
-SpatialExtent     the area the data cover, of the body they are about: all of it (global) or part of it (e.g. the Arctic, or the south pole of Mars)
-ProcessingLevel   how far data have been processed from what the instrument recorded, e.g. Level 2
-Value             an amount, as a number with its unit or in words, e.g. 36 spectral bands, 5 minutes
-Algorithm         a method applied to data to compute a result, e.g. a series of screens, or a modified nonlinear SST algorithm
+Version           a label that marks one release of something
+SpatialExtent     the area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars)
+ProcessingLevel   how far data have been processed from what the Instrument recorded, e.g. Level 2
+Value             an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes
+Algorithm         a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
                   source: ground truth tuning #2
 Identifier        a code that names one thing permanently, e.g. a DOI
                   source: ground truth tuning #2
-SpatialRepresentation  how data are laid out over the ground: either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
+SpatialRepresentation  how data are laid out over the ground: along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
                        source: ground truth tuning #2
-Country           a nation, e.g. U.S., Argentina
+Country           a nation, e.g. U.S.; Argentina
                   source: ground truth tuning #3
-TimeOfDay         a part of the day or a clock time, which comes back every day rather than happening once on the calendar, e.g. nighttime, morning, 2:39 PM
+TimeOfDay         a point or period in the day, which comes back every day, e.g. 2:39 PM; morning; nighttime
                   source: ground truth tuning #4
-Orbit             the path a spacecraft travels around a body
+Orbit             the path a Spacecraft travels around a CelestialBody
                   source: ground truth tuning #4
 SatelliteFormation  a group of satellites flying together in formation, e.g. the A-train
                     source: ground truth tuning #4
-Channel           a range of wavelengths an instrument measures separately, e.g. the 11 and 12 micron channels
+Channel           a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel
                   source: ground truth tuning #4
 Phenomenon        something that happens in nature and can be observed, e.g. sun glint
                   source: ground truth tuning #4
@@ -43,17 +43,17 @@ WebPage           a web address, written as the address itself, e.g. https://oce
                   source: ground truth tuning #4
 Team              a group of people without a name of its own, e.g. Peter Minnett and his team
                   source: ground truth tuning #4
-Task              a piece of work a person, team, or organization does or is in charge of, e.g. quality flagging
+Task              a piece of work a Person, Team, or Organization does or is in charge of, e.g. quality flagging
                   source: ground truth tuning #4
-Role              a position a person, team, or organization holds, what they are, e.g. the official archive for SST
+Role              a position a Person, Team, or Organization holds, what they are, e.g. the official archive for SST
                   source: ground truth tuning #4
-Variable          one named kind of value computed from an instrument's measurements by one particular method, e.g. SST4, NDSI
+Variable          one named kind of value computed from an Instrument's measurements by one particular Algorithm, e.g. SST4; NDSI
                   source: ground truth tuning #4
 Person            one named human being, e.g. Peter Minnett
                   source: ground truth tuning #4
-SpatialResolution  how much ground each value of the data covers, e.g. 500 m, 4.63 km
+SpatialResolution  the amount of ground each value of the data covers, e.g. 500 m; 4.63 km
                    source: ground truth tuning #2, #4
-TemporalResolution  how much time passes between one value of the data and the next, e.g. daily, weekly (8 day)
+TemporalResolution  the amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
                     source: ground truth tuning #2, #3, #4
 
 PREDICATES
@@ -67,64 +67,64 @@ entity classes ("any": any entity class), and the checks flag any other pattern.
 
 ABOARD               is carried on
                      Instrument -> Spacecraft
-ACQUIRED_BY_INSTRUMENT  was collected by this instrument
+ACQUIRED_BY_INSTRUMENT  was collected by this Instrument
                      Dataset -> Instrument
                      only: Dataset -> Instrument
 ALSO_KNOWN_AS        is the same thing under another name
                      WebTool -> WebTool
-FROM_MISSION         came from
+FROM_MISSION         came from this Mission
                      Dataset -> Mission
                      only: any -> Mission
-HAS_DISCIPLINE       belongs to the field
+HAS_DISCIPLINE       belongs to this Discipline
                      Dataset -> Discipline
                      only: any -> Discipline
 HAS_MEASUREMENTS_OF  holds measurements of
                      Dataset -> PhysicalQuantity
-HAS_MISSION_PHASE    was collected during
+HAS_MISSION_PHASE    was collected during this MissionPhase
                      Dataset -> MissionPhase
                      only: any -> MissionPhase
 HAS_PURPOSE          is meant to achieve
                      WebTool -> Purpose
                      only: any -> Purpose
-HAS_TARGET           is about the body
+HAS_TARGET           is about this CelestialBody
                      Dataset -> CelestialBody
-HAS_TIME_SPAN        covers the period
+HAS_TIME_SPAN        covers this period
                      Dataset -> Time; MissionPhase -> Time
-HAS_VERSION          carries the version label
+HAS_VERSION          carries this Version
                      Dataset -> Version
                      only: any -> Version
-PROVIDES_ACCESS_TO_DOCUMENT  makes this document available
+PROVIDES_ACCESS_TO_DOCUMENT  makes this Document available
                      Organization -> Document
                      only: any -> Document
-SPONSORED_BY_PARTY   is sponsored by this person, team, or organization
+SPONSORED_BY_PARTY   is sponsored by this Person, Team, or Organization
                      WebTool -> Organization
                      only: any -> Organization; any -> Person; any -> Team
-HAS_SPATIAL_COVERAGE  covers the area
+HAS_SPATIAL_COVERAGE  covers this area
                       Dataset -> SpatialExtent
-HAS_PROCESSING_LEVEL  is processed to the level
+HAS_PROCESSING_LEVEL  is processed to this ProcessingLevel
                       Dataset -> ProcessingLevel
                       only: any -> ProcessingLevel
-HAS_SPATIAL_RESOLUTION  each of its values covers this size on the ground, e.g. 500 m
+HAS_SPATIAL_RESOLUTION  each of its values covers this much ground, e.g. 500 m
                         Dataset -> SpatialResolution
                         only: any -> SpatialResolution
-PRODUCED_USING_ALGORITHM  was made or detected by applying this algorithm
+PRODUCED_USING_ALGORITHM  was made or detected by applying this Algorithm
                      source: ground truth tuning #2
                      only: any -> Algorithm
-COMPUTED_FROM        is the output of processing this input
+COMPUTED_FROM        was made by processing this input
                      source: ground truth tuning #2
 HAS_DOI              has the Digital Object Identifier
                      source: ground truth tuning #2
-HAS_GRANULE_DURATION  each of its files covers this long
+HAS_GRANULE_DURATION  each of its files covers this much time
                       source: ground truth tuning #2
 HAS_SPATIAL_REPRESENTATION  lays out its data as
                             source: ground truth tuning #2
                             only: any -> SpatialRepresentation
-HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily, weekly (8 day)
+HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily; weekly (8 day)
                          source: ground truth tuning #2, #3
                          only: any -> TemporalResolution
-BASED_IN             belongs to the country
+BASED_IN             belongs to this Country
                      source: ground truth tuning #3
-DEVELOPED_BY_PARTY   was built or created by this person, team, or organization
+DEVELOPED_BY_PARTY   was built or created by this Person, Team, or Organization
                      source: ground truth tuning #3
                      only: any -> Organization; any -> Person; any -> Team
 OBSERVED_AT_TIME_OF_DAY  comes from observations made during this part of the day
@@ -134,40 +134,40 @@ LAUNCHED_BY          was launched into space by
                      source: ground truth tuning #4
 LAUNCHED_ON          was launched into space on
                      source: ground truth tuning #4
-HAS_ORBIT            travels in the orbit
+HAS_ORBIT            travels in this Orbit
                      source: ground truth tuning #4
                      only: any -> Orbit
 FLIES_IN             flies in formation as part of
                      source: ground truth tuning #4
 HAS_SPECTRAL_BANDS   measures light in this many spectral bands
                      source: ground truth tuning #4
-UNIQUE_TO_INSTRUMENT  is found only on this instrument
+UNIQUE_TO_INSTRUMENT  is found only on this Instrument
                       source: ground truth tuning #4
                       only: any -> Instrument
 HAS_LOWER_UNCERTAINTY_THAN  its values are more certain than those of
                             source: ground truth tuning #4
 LIMITED_BY           its use is restricted by
                      source: ground truth tuning #4
-BINNED_INTO          its values were collected into the cells of this grid
+BINNED_INTO          its values were collected into the cells of this Grid
                      source: ground truth tuning #4
-MAPPED_INTO          its values were laid onto a map drawn with this projection
+MAPPED_INTO          its values were laid onto a map drawn with this MapProjection
                      source: ground truth tuning #4
 DOCUMENTED_AT        more details about it are written at
                      source: ground truth tuning #4
-AFFILIATED_WITH      works at or belongs to this organization
+AFFILIATED_WITH      works at or belongs to this Organization
                      source: ground truth tuning #4
-RESPONSIBLE_FOR      is in charge of this task
+RESPONSIBLE_FOR      is in charge of this Task
                      source: ground truth tuning #4
 OBTAINS_DATA_FROM    receives data from
                      source: ground truth tuning #4
-SERVES_AS            holds this role
+SERVES_AS            holds this Role
                      source: ground truth tuning #4
 SUPERSEDES           replaces this earlier one
                      source: ground truth tuning #4
-FROM_SPACECRAFT      was collected from this spacecraft
+FROM_SPACECRAFT      was collected from this Spacecraft
                      source: ground truth tuning #1
                      only: any -> Spacecraft
-HAS_VARIABLE         holds this variable in its files
+HAS_VARIABLE         holds this Variable in its files
                      source: ground truth tuning #4
                      only: any -> Variable
 ESTIMATES            gives approximate values for
