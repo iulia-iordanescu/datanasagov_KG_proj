@@ -27,13 +27,13 @@ entity class,DataProduct,Dataset,no,yes,"A specific processed output of data, su
 entity class,Location,(none),no,yes,"A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.",
 entity class,Quantity,Value,no,yes,"An amount, count, measure, or estimated value of something, often expressed with a number and a unit or descriptor.","an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes"
 entity class,Topic,Discipline,no,yes,"A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.",a field of science
-entity class,Number,Value,no,yes,A bare numeral or number word used to count or enumerate items.,
+entity class,Number,Value,no,yes,A bare numeral or number word used to count or enumerate items.,"an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes"
 entity class,PhysicalPhenomenon,Phenomenon,no,yes,"A natural or induced process, event, or effect, such as radiation-belt electron losses, signal refraction, or biological responses to spaceflight, that is observed or studied.","something that happens in nature and can be observed, e.g. sun glint"
 entity class,Method,Algorithm,no,yes,"A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.","a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm"
 entity class,Study,(none),no,yes,"A named scientific survey, project, or investigation, such as SWIRE or COSMOS, that systematically gathers data on a subject.",
 entity class,AstronomicalObject,CelestialBody,no,yes,"A celestial body or source, such as a galaxy, star, or X-ray or infrared point source, that is observed or cataloged.",a natural object in space
 entity class,Observation,(none),no,yes,"An act or record of observing a target or phenomenon, such as images or measurements taken at a given wavelength or by a given mission.",
-entity class,Catalog,Dataset,no,yes,"A published, organized list of astronomical sources or objects with their properties, typically derived from a survey or mission.",
+entity class,Catalog,Dataset,no,yes,"A published, organized list of astronomical sources or objects with their properties, typically derived from a survey or mission.","a set of observations, measurements, or samples"
 entity class,Chemical,(none),no,yes,"A chemical substance, molecule, biomolecule, or reagent, such as methane, collagen, RNA, or a preservation solution.",
 entity class,Organism,(none),no,yes,"A living organism or biological sample from one, such as a bacterium, fungus, plant, or animal tissue source, used in a study.",
 entity class,Program,(none),no,yes,"A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.",
@@ -44,26 +44,26 @@ entity class,Paper,Document,no,yes,"A published scientific article or manuscript
 entity class,Status,(none),no,yes,"The condition or state of a dataset, target, or process, such as complete, ongoing, or characterized.",
 entity class,Wavelength,Channel,no,yes,"A wavelength band or spectral range, such as an infrared filter band, in which observations are made.","a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel"
 entity class,DataFormat,(none),no,yes,"A file format, data structure, or storage medium, such as HDF-EOS5, swath objects, or CD-ROM, in which data are organized or delivered.",
-entity class,Frequency,TemporalResolution,no,yes,"A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.",
+entity class,Frequency,TemporalResolution,no,yes,"A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.","the amount of time between one value of the data and the next, e.g. daily; weekly (8 day)"
 entity class,URL,WebPage,no,yes,"A web address pointing to an online resource such as a document, dataset, or information page.","a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/"
 entity class,DataTable,(none),no,yes,"A tabular arrangement of data, or a part of one such as its columns, presented in a dataset or publication.",
 entity class,Experiment,(none),no,yes,"A controlled scientific procedure or investigation, such as an exposure, irradiation, or validation experiment, performed to test or measure something.",
 entity class,Tissue,(none),no,yes,"A biological tissue, fluid, or structural component, such as spleen tissue, blood plasma, or collagen fibrils, sampled for analysis.",
 entity class,Issue,(none),no,yes,"A known problem, anomaly, artifact, or review concern affecting data quality or processing.",
-entity class,CoordinateSystem,MapProjection,no,yes,"A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data.",
+entity class,CoordinateSystem,MapProjection,no,yes,"A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data.","a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical"
 entity class,Software,(none),no,yes,"A computer program, tool, function or software system used to process, analyze or manage scientific data.",
-entity class,Comet,CelestialBody,no,yes,"A specific comet, or a reference to one as an observation target, identified by its name or designation.",
-entity class,Database,Dataset,no,yes,"An organized collection or repository of data records, sources or proposals that can be stored, queried and accessed.",
-entity class,Facility,Organization,no,yes,"A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.",
+entity class,Comet,CelestialBody,no,yes,"A specific comet, or a reference to one as an observation target, identified by its name or designation.",a natural object in space
+entity class,Database,Dataset,no,yes,"An organized collection or repository of data records, sources or proposals that can be stored, queried and accessed.","a set of observations, measurements, or samples"
+entity class,Facility,Organization,no,yes,"A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.","a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG"
 entity class,Website,WebTool,no,yes,"A web site or online portal that provides information, documentation or data access for a mission, project or dataset.",a tool used over the web
 entity class,SpaceStation,Spacecraft,no,yes,"A crewed orbiting space station, such as the International Space Station, used as a platform for research and observation.",a craft that operates in space
-entity class,Altitude,Value,no,yes,"A height or vertical level at which a measurement or platform is located, expressed as a distance, a pressure level or a flight level.",
+entity class,Altitude,Value,no,yes,"A height or vertical level at which a measurement or platform is located, expressed as a distance, a pressure level or a flight level.","an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes"
 entity class,DataRelease,Version,no,yes,"A specific published version, delivery or release of a dataset or data product collection.",a label that marks one release of something
 entity class,Disease,(none),no,yes,"A medical disorder, physiological dysfunction or impairment of health affecting an organism.",
 entity class,Unit,(none),no,yes,A unit of measurement or quantity scale used to express the values of measured or derived data.,
 entity class,Aircraft,(none),no,yes,A crewed or research airplane used as a platform for airborne observations or measurements.,
 entity class,DocumentArchive,(none),no,yes,"An archive, bundle or collection that stores documents and data products associated with a mission or scientific campaign.",
-entity class,Mass,Value,no,yes,"A quantity of mass, such as an object's weight or a particle mass-to-charge value, stated as a value or a set of values.",
+entity class,Mass,Value,no,yes,"A quantity of mass, such as an object's weight or a particle mass-to-charge value, stated as a value or a set of values.","an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes"
 entity class,DOI,Identifier,no,yes,"A Digital Object Identifier, given as a bare identifier or a resolver URL, that persistently identifies a dataset or publication.","a code that names one thing permanently, e.g. a DOI"
 entity class,EmailAddress,(none),no,yes,An electronic mail address used to contact a person or organization associated with a dataset.,
 entity class,Acknowledgement,(none),no,yes,"A statement giving credit or required permission, such as from a principal investigator, for the use of data or resources.",
@@ -71,16 +71,16 @@ entity class,Container,(none),no,yes,"A physical vessel, chamber or medium that 
 predicate,CONTAINS,PART_OF,yes,yes,"The subject (a dataset, product, version, file or experiment) includes the object as a component, content item, added feature or member.",is one part of
 predicate,HAS_PROPERTY,(none),no,yes,"The subject (a dataset, version, observation, research effort or object) is characterized by the object, a stated attribute, state, value or improvement.",
 predicate,USES,(none),no,yes,"The subject (a program, survey, project or user) employs the object (an instrument, band, tool or data version) to carry out its work.",
-predicate,COVERS,HAS_TIME_SPAN,no,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",
+predicate,COVERS,HAS_TIME_SPAN,no,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",covers this period
 predicate,DERIVED_FROM,COMPUTED_FROM,no,yes,"The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.",was made by processing this input
 predicate,SOURCED_FROM,(none),no,yes,"The subject (a dataset, file, objective or person) originates from the object, a source instrument, platform, observation set, data portion or institution.",
-predicate,USED_TO_STUDY,HAS_PURPOSE,no,yes,"The subject (a mission, instrument, program or dataset) is designed or used to investigate, characterize or trace the object, a scientific phenomenon or process.",
-predicate,COLLECTED_DURING,HAS_MISSION_PHASE,no,yes,"The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.",
+predicate,USED_TO_STUDY,HAS_PURPOSE,no,yes,"The subject (a mission, instrument, program or dataset) is designed or used to investigate, characterize or trace the object, a scientific phenomenon or process.",is meant to achieve
+predicate,COLLECTED_DURING,HAS_MISSION_PHASE,no,yes,"The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.",was collected during this MissionPhase
 predicate,CREATED_BY,DEVELOPED_BY_PARTY,no,yes,"The subject (a dataset, website, instrument or signal) is produced, built, generated or funded into existence by the object, a person, organization, project or source system.","was built or created by this Person, Team, or Organization"
 predicate,MEASURES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, mission, dataset or product) measures or provides data on the object, a physical quantity, variable or phenomenon.",holds measurements of
 predicate,LOCATED_IN,(none),no,yes,"The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.",
 predicate,HAS_START_DATE,(none),no,yes,"The subject (a campaign, dataset, mission phase or event) begins or occurred on the object, a date or time.",
-predicate,PROVIDES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.",
+predicate,PROVIDES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.",holds measurements of
 predicate,AVAILABLE_AT,(none),no,yes,"The subject (a dataset, document or piece of information) can be accessed at the object, a URL, repository, website or data center.",
 predicate,ACQUIRED_BY,ACQUIRED_BY_INSTRUMENT,no,yes,"The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.",was collected by this Instrument
 predicate,HAS_END_DATE,(none),no,yes,"The subject (a campaign, dataset, product or mission phase) ends, was decommissioned or stopped being acquired on the object, a date.",
@@ -91,7 +91,7 @@ predicate,DESCRIBES,(none),no,yes,"The subject (a document, label or data item) 
 predicate,OBSERVES,(none),no,yes,"The subject (a survey, instrument, spacecraft or signal) observes, surveys or views the object, a field, region, target or medium.",
 predicate,IS_A,(none),no,yes,"The subject (an entity, dataset, mission or term) is an instance, classification or definition given by the object, a category or descriptive definition.",
 predicate,DESCRIBED_IN,DOCUMENTED_AT,no,yes,"The subject (a dataset, product, file or result) is documented, reported or accompanied by the object, a publication, document, label or website.",more details about it are written at
-predicate,HAS_DURATION,HAS_GRANULE_DURATION,no,yes,"The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.",
+predicate,HAS_DURATION,HAS_GRANULE_DURATION,no,yes,"The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.",each of its files covers this much time
 predicate,AFFECTS,(none),no,yes,"The subject (a factor, effect, flag or physical quantity) influences or impacts the object, a measurement, product, region or system.",
 predicate,CREATION_DATE,(none),no,yes,"The subject (a dataset, catalog or version) was created, published, released or ingested at the object, a date.",
 predicate,HAS_FREQUENCY,(none),no,yes,"The subject (an instrument or dataset) has the object as its operating frequency or band, or as a rate of occurrence such as orbits or granules per day.",
@@ -109,7 +109,7 @@ predicate,HAS_SENSITIVITY,(none),no,yes,"The subject (an instrument, image or su
 predicate,CREATED,DEVELOPED_BY_PARTY,yes,yes,"The subject (an organization, person, team or device) produced, compiled, generated or conducted the object, such as an archive, product, catalog, signal or activity.","was built or created by this Person, Team, or Organization"
 predicate,HAS_PARAMETER,(none),no,yes,"The subject (a dataset, data variable, version or measurement) is characterized, sampled or adjusted by the object, a parameter, keyword, setting or condition.",
 predicate,SUBJECT_TO_POLICY,LIMITED_BY,no,yes,"The subject (data users or data products) is bound by the object, a usage policy, requirement, restriction or obligation such as citing, notifying or obtaining consent from the PI.",its use is restricted by
-predicate,STANDS_FOR,ALSO_KNOWN_AS,yes,yes,"The subject (an acronym, abbreviation or placeholder symbol) expands to or denotes the object, its full name or meaning.",
+predicate,STANDS_FOR,ALSO_KNOWN_AS,yes,yes,"The subject (an acronym, abbreviation or placeholder symbol) expands to or denotes the object, its full name or meaning.",is the same thing under another name
 predicate,CARRIES,ABOARD,yes,yes,"The subject (a balloon, spacecraft or flight mission) carried or flew the object as its payload, such as instruments or experimental organisms.",is carried on
 predicate,CAUSED_BY,(none),no,yes,"The subject (a property, limitation, condition or decision) is the result of, or is explained by, the object, a cause or reason.",
 predicate,COMPARED_WITH,(none),no,yes,"The subject (an observation, measurement, object or result) is compared against, or stated to differ from, the object in some quantity or characteristic.",
@@ -156,7 +156,7 @@ predicate,HAS_EFFICIENCY,(none),no,yes,"Links a survey or technique to its state
 predicate,HAS_FILE_NAME_PATTERN,(none),no,yes,Links a dataset to the naming convention or template used for its data files.,
 predicate,HAS_FILE_SIZE,(none),no,yes,Links a data product to the stated size of its files.,
 predicate,IMPROVED_BY,(none),no,yes,Links a technique or process to a factor or method that enhances it.,
-predicate,MEASURED_BY,HAS_MEASUREMENTS_OF,yes,yes,"Links a measured quantity to the instrument, system or method used to measure it.",
+predicate,MEASURED_BY,HAS_MEASUREMENTS_OF,yes,yes,"Links a measured quantity to the instrument, system or method used to measure it.",holds measurements of
 predicate,MORE_ACCURATE_THAN,HAS_LOWER_UNCERTAINTY_THAN,no,yes,Links a measurement method or instrument to another method that it outperforms in accuracy.,its values are more certain than those of
 predicate,PI_OF,(none),no,yes,"Links a person to the grant, project or study for which they served as principal investigator.",
 predicate,RELEASE_DATE,(none),no,yes,"Links a dataset or publication to the date, place or event of its formal release.",
