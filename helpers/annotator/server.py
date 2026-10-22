@@ -135,6 +135,8 @@ SCHEMA_USED = RESULTS_DIR / "060_extract" / "schema_used.json"
 EXTRACTED = RESULTS_DIR / "060_extract" / "extracted_triples.csv"
 METRICS = RESULTS_DIR / "070_evaluate" / "metrics.json"
 COMPARED = RESULTS_DIR / "070_evaluate" / "compared_triples.csv"
+#: An occurrence's triple in compared_triples.csv (columns extracted_* and translated_*).
+OCCURRENCE = ("subject", "subject_class", "predicate", "object", "object_class")
 ADDITIONS = ANNOTATIONS_DIR / "schema_additions.txt"
 README = ANNOTATIONS_DIR / "README.md"
 GUIDELINES = ANNOTATIONS_DIR / "guidelines.md"           # what to write in the ground truth: Help -> Guidelines
@@ -772,9 +774,37 @@ def _read_reviews_rows() -> list:
 def partial_view(data: Data) -> dict:
     """Evaluation's last run's partial pairs of tuning records, plus pairs
     ruled out by an earlier review (no longer paired, so not in compared_triples.csv),
-    each with the verdict so far and the record's title, position, and text."""
+    each with the verdict so far and the record's title, position, and text.
+    When the pair's translated extracted triple has multiplicity above 1 in
+    its record's multiset of translated extracted triples, "occurrences" lists
+    every occurrence: the extracted triple (current schema) that translates
+    to it, what step 070 made of it (its status in compared_triples.csv), and
+    whether it is the one in this pair. Read from compared_triples.csv (one
+    row per occurrence); step 070 itself is not changed."""
     reviews = {row_key(r): r["verdict"] for r in _read_reviews_rows()}
     items, seen = [], set()
+    rows = []
+    if COMPARED.exists():
+        with open(COMPARED, encoding="utf-8-sig", newline="") as fh:
+            rows = list(csv.DictReader(fh))
+    # a record's occurrences, by their translated extracted triple as written (two that read the same are one element)
+    by_triple = collections.defaultdict(list)
+    for r in rows:
+        if r.get("status") != "ground truth only":
+            by_triple[(r["record_id"],) + tuple(r.get(f"translated_{k}", "") for k in OCCURRENCE)].append(r)
+
+    def occurrences(row: dict) -> list | None:
+        if "translated_subject_class" in row:            # a pair in compared_triples.csv: its whole triple
+            same = by_triple.get((row["record_id"],) + tuple(row.get(f"translated_{k}", "") for k in OCCURRENCE), [])
+        else:                                            # a ruled-out pair: its entity classes are unknown, so only if unambiguous
+            keys = [k for k in by_triple if k[0] == row["record_id"] and
+                    [k[1 + OCCURRENCE.index(s)] for s in ("subject", "predicate", "object")] ==
+                    [row.get(f"translated_{s}", "") for s in ("subject", "predicate", "object")]]
+            same = by_triple[keys[0]] if len(keys) == 1 else []
+        if len(same) < 2:
+            return None
+        return [{"extracted": {k: o.get(f"extracted_{k}", "") for k in OCCURRENCE}, "status": o.get("status", ""),
+                 "this": o is row} for o in same]
 
     def add(row: dict, verdict):
         rid = row["record_id"]
@@ -785,13 +815,11 @@ def partial_view(data: Data) -> dict:
         items.append({**{c: row.get(c, "") for c in REVIEW_COLUMNS if c != "verdict"},
                       "verdict": verdict, "position": data.positions.get(rid),
                       "title": record.get("title") or rid,
-                      "text": full_text(record) if record else None})
+                      "text": full_text(record) if record else None, "occurrences": occurrences(row)})
 
-    if COMPARED.exists():
-        with open(COMPARED, encoding="utf-8-sig", newline="") as fh:
-            for r in csv.DictReader(fh):
-                if r.get("status") == "partial pair":
-                    add(r, reviews.get(row_key(r)))
+    for r in rows:
+        if r.get("status") == "partial pair":
+            add(r, reviews.get(row_key(r)))
     for r in _read_reviews_rows():
         if r["verdict"] == NOT_SAME:
             add(r, NOT_SAME)
