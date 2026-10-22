@@ -108,5 +108,6 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 99dff022-24ac-48cb-bc83-09fec8b90ad7,GRaND plus Z boron loaded sensor,Instrument,PART_OF,GRaND,Instrument,the GRaND plus Z boron loaded sensor,0,
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,COMPUTED_FROM,nominal fast neutron count rates,Variable,The    nominal fast neutron count rates were detrended using the GRaND         epithermal neutron map to produced this residual map,0,
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,COMPUTED_FROM,GRaND epithermal neutron map,Dataset,The    nominal fast neutron count rates were detrended using the GRaND         epithermal neutron map to produced this residual map,0,
+99dff022-24ac-48cb-bc83-09fec8b90ad7,GRaND epithermal neutron map,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND,Instrument,the GRaND         epithermal neutron map,0,
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,RELATED_TO,average atomic mass,PhysicalQuantity,The residual map is related to the average atomic mass on Vesta,0,
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,DOCUMENTED_AT,LAWRENCEETAL2013,Document,Details of the map and data reduction are described in LAWRENCEETAL2013,0,
