@@ -328,10 +328,11 @@
   .rightstack .toolsmenu { align-self: stretch; }
   .rightstack .toolsmenu summary { display: block; text-align: center; }
   .iddd { display: flex; align-items: center; gap: 8px; }
-  .iddd .fixed { white-space: nowrap; padding: 2px 8px; }
-  .recinfo .catnote { color: var(--muted); font-size: 12px; max-width: 34em; }
+  .iddd .fixed { padding: 2px 8px; min-width: 0; font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+                 font-size: 13px; }
+  .recinfo .catnote { color: var(--muted); font-size: 12px; line-height: 1.35; max-width: 34em; }
   button.copy { padding: 2px 10px; font-size: 13px; white-space: nowrap; }
-  .recinfo dl { min-width: 0; width: max-content; max-width: 90vw; }
+  .recinfo dl { width: max-content; max-width: min(90vw, 40em); }
   .toolsmenu summary { list-style: none; cursor: pointer; padding: 5px 12px; border-radius: 8px; background: var(--navy-bg);
                        color: var(--navy); font-weight: 600; white-space: nowrap; }
   .toolsmenu summary::-webkit-details-marker { display: none; }
@@ -346,10 +347,22 @@
   .headmeta { gap: 8px; }
   .recinfo summary { cursor: pointer; color: var(--navy); font-weight: 600; }
   .recinfo { position: relative; }              /* the details open in a panel below it: the button doesn't move */
-  .recinfo dl { position: absolute; left: 0; top: 100%; z-index: 4; margin: 4px 0 0; padding: 10px 14px; min-width: 360px;
-                display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; background: var(--panel);
+  .recinfo dl { position: absolute; left: 0; top: 100%; z-index: 4; margin: 4px 0 0; padding: 8px 16px; min-width: min(360px, 90vw);
+                display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0; background: var(--panel);
                 border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(20, 30, 40, 0.15); }
-  .recinfo dt { color: var(--muted); } .recinfo dd { margin: 0; color: var(--ink); }
+  /* label column only as wide as the longest label, right-aligned so each label sits next to its value */
+  .recinfo dt { color: var(--muted); font-size: 12.5px; text-align: right; padding: 6px 12px 6px 0; line-height: 1.5; }
+  .recinfo dd { margin: 0; color: var(--ink); padding: 5px 0; min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
+  .recinfo dt.nolabel { padding: 0; } .recinfo dd.catalog { padding-top: 0; padding-bottom: 8px; }
+  .recinfo dd.catalog > div + div { margin-top: 2px; }
+  /* a thin line starts each group: the record (id, links) / where it comes from / its ground truth */
+  .recinfo dt.grp, .recinfo dd.grp { border-top: 1px solid var(--line); padding-top: 9px; margin-top: 3px; }
+  @media (max-width: 500px) {
+    .recinfo dl { grid-template-columns: minmax(0, 1fr); }
+    .recinfo dt { text-align: left; padding: 6px 0 0; }
+    .recinfo dd { padding: 1px 0 6px; }
+    .recinfo dd.grp { border-top: 0; padding-top: 1px; margin-top: 0; }
+  }
   #batchprogress { padding: 8px 8px 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   .batchline { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
   .segments { display: flex; gap: 3px; margin-top: 6px; }
@@ -701,15 +714,8 @@ function show(i) {
                           ontoggle: (e) => { try { localStorage.setItem("recordInfoOpen", e.target.open ? "1" : "0"); } catch (_) {} } },
             el("summary", {}, "About this record"),
             el("dl", {},
-              el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
-              el("dt", {}, "Part"), el("dd", {}, rec.part
-                ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-                    ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
-                    : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
-                : "none (not in the pool)"),
-              el("dt", {}, "Maintainer"), el("dd", {}, rec.maintainer || "unknown"),
               el("dt", {}, "Id"), el("dd", { class: "iddd" }, el("span", { class: "fixed" }, rec.id), copyButton(rec.id)),
-              el("dt", {}, ""), el("dd", { class: "catalog" },
+              el("dt", { class: "nolabel" }, ""), el("dd", { class: "catalog" },
                 el("div", {}, rec.saved_copy
                   ? el("a", { href: rec.saved_copy.url, target: "_blank", rel: "noopener",
                               title: "The record exactly as step 010 saved it from the catalog, on this computer" },
@@ -719,8 +725,15 @@ function show(i) {
                 el("div", {}, el("a", { href: rec.catalog_page_url, target: "_blank", rel: "noopener" },
                                  "Web page in the catalog (live) ↗")),
                 el("div", { class: "catnote" }, "The catalog is live: this entry may since have been removed or moved, so the link may not work.")),
-              el("dt", { id: "gtdt", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
-                 "Ground truth triples"), el("dd", { id: "gtdd" }))),
+              el("dt", { class: "grp" }, "Maintainer"), el("dd", { class: "grp" }, rec.maintainer || "unknown"),
+              el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
+              el("dt", {}, "Part"), el("dd", {}, rec.part
+                ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
+                    ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
+                    : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
+                : "none (not in the pool)"),
+              el("dt", { id: "gtdt", class: "grp", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
+                 "Ground truth triples"), el("dd", { id: "gtdd", class: "grp" }))),
           el("span", { id: "progress" }))),
         el("button", { class: "bigarrow", onclick: () => show(stepRecord(1)), disabled: batch.records.length < 2,
                        title: "Next record; from the last, the first (or the → key, when not typing in a field)" }, arrow("right"))),
