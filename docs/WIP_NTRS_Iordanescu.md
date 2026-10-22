@@ -34,6 +34,8 @@ The WebNLG+ 2020 shared task [4] had a text-to-RDF track that scored extracted t
 
 A reference set drafted by a model and corrected by a person brings its own problems. In controlled experiments, automatic pre-annotation improved annotation speed and quality but also introduced biases that annotators should be warned about [7]. Annotators shown a model's suggestions tend to keep them, which raises the measured performance of models evaluated on those labels [8]. And the errors of different language models are correlated, even across providers [9], so an extraction model may miss the same facts as the drafting model.
 
+When the schema is induced rather than given, a ground truth triple can be missed for three different reasons: the current schema has no entity class or predicate that can express it, extraction misses or misstates it, or a row of the translation table translates it wrongly. With a schema given in advance, as in [1] and [4], only the second can happen. The recall upper bound and recall within reach (section 6.2) separate the first reason from the second, and checking the translation table limits the third. I did not find this separation in the evaluations cited above.
+
 ### 2.4 Statistics for small evaluation sets
 
 Annotating by hand limits the ground truth to a small sample, so every metric is an estimate. I use the bootstrap with percentile intervals [10], redrawing whole records rather than single triples, since a record's triples come from one model call and succeed or fail together [11]. Two versions of the pipeline are compared on the same records with the paired bootstrap [12]. Part of the sample is held out until the end, since a test set used to choose between versions no longer gives an unbiased estimate [13].
