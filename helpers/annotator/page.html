@@ -119,9 +119,9 @@
   .row { border: 1px solid var(--line); border-left: 4px solid var(--stripe); border-radius: 10px; padding: 12px 14px;
          margin-bottom: 12px; background: var(--tint); }
   .row.active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .rowhead { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px;
-             display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .rowhead button.deltriple { padding: 2px 10px; font-size: 12.5px; font-weight: 400; color: var(--ink); white-space: nowrap; }
+  .rowhead { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+  .rowfoot { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .rowfoot button.deltriple { padding: 2px 10px; font-size: 12.5px; font-weight: 400; color: var(--ink); white-space: nowrap; }
   .pill { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 9px; margin-left: 6px; }
   .pill.error { background: var(--error-bg); color: var(--error); }
   .pill.flag { background: var(--flag-bg); color: var(--flag); }
@@ -151,13 +151,18 @@
   .hintbox summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
   /* a triple's parts, each its own group: subject + subject class, predicate, object + object class; then the
      pattern buttons and the source text. A thin line and some space between groups. */
-  .triple .group { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 34%); gap: 8px 10px; }
+  /* the component class column is a third of the width, or wider when a component class's longest word needs it */
+  .triple .group { display: grid; grid-template-columns: minmax(0, 1fr) minmax(min-content, 34%); gap: 8px 10px; }
+  .triple .group.wide { grid-template-columns: minmax(0, 1fr); }       /* the predicate: the triple's full width */
   .triple .group + .group, .row > .patterns, .row > .source { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
   .triple label, .source label { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-weight: 600;
                                  color: var(--label); min-width: 0; }
   .triple label input, .triple label textarea, .source label textarea { font-weight: 400; font-size: 14.5px; }
   .triple input, .triple textarea { width: 100%; min-width: 0; }
   textarea.grow { resize: none; overflow: hidden; line-height: 1.4; }
+  /* a component class wraps only at spaces, never inside a word; a word wider than its field scrolls sideways */
+  .triple .nobreak { overflow-wrap: normal; word-break: normal; min-width: 130px; }
+  textarea.grow.nobreak, .fixed.nobreak { overflow-x: auto; }
   .triple label.f-subj { color: var(--subj); } .triple label.f-pred { color: var(--pred); } .triple label.f-obj { color: var(--obj); }
   .f-subj input, .f-subj textarea { background: var(--subj-bg); }
   .f-pred input, .f-pred textarea { background: var(--pred-bg); }
@@ -509,14 +514,15 @@ const nextBatch = () => {
   return upward.find((b) => b.ground_truth && b.finished < b.records) || upward.find((b) => !b.ground_truth)
       || upward[upward.length - 1] || null;
 };
-// The Ground truth dropdown: one entry per batch; `chosen` stays selected.
+// The Ground truth dropdown: one entry per batch; `chosen` stays selected. Its prompt shows only while no batch is
+// chosen: it isn't in the opened list.
 function fillBatchList(data, chosen) {
   BATCHES = data.batches;
   const pick = $("batch");
-  pick.replaceChildren(el("option", { value: "" }, "Ground truth: choose a batch"));
+  pick.replaceChildren(el("option", { value: "", disabled: true, selected: true, hidden: true }, "Ground truth: choose a batch"));
   for (const b of data.batches) {
-    const what = b.ground_truth ? `${b.finished} of ${b.records} finished` : "a new drafted batch, not opened yet";
-    pick.append(el("option", { value: b.n }, `Ground truth: batch ${b.n} (${what})`));
+    const what = b.ground_truth ? `${b.finished} of ${b.records} finished` : "not opened yet";
+    pick.append(el("option", { value: b.n, "data-new": b.ground_truth ? null : "" }, `Batch ${b.n} (${what})`));
   }
   if (chosen !== undefined) pick.value = String(chosen);
 }
@@ -550,7 +556,7 @@ async function openBatch(n, at, step = 0) {
   current = Math.min(at || 0, Math.max(batch.records.length - 1, 0));   // so show() keeps tripleAt
   show(current);
   const opt = [...$("batch").options].find(o => o.value === String(n));
-  if (opt && opt.textContent.includes("not opened yet")) fillBatchList(await api("/api/batches"), n);   // it now has its copy
+  if (opt && opt.hasAttribute("data-new")) fillBatchList(await api("/api/batches"), n);   // it now has its copy
 }
 $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBatch(+e.target.value, 0).catch(fail); });
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
@@ -872,7 +878,19 @@ function field(rec, j, key, label, extra = {}) {
     : el("input", { value: r[key], ...attrs, ...on }),
     kind ? definitionLine(kind, r[key]) : null);
 }
-function grow(box) { box.style.height = "auto"; box.style.height = box.scrollHeight + 2 + "px"; }
+// A box's height fits its text (plus its borders, and a sideways scroll bar when it has one). A component class's box is
+// at least as wide as its longest word (and 130px), up to 60% of its line, so a name isn't split inside a word.
+function grow(box) {
+  if (box.classList.contains("nobreak")) {
+    const look = getComputedStyle(box), pen = (grow.pen ||= document.createElement("canvas").getContext("2d"));
+    pen.font = `${look.fontWeight} ${look.fontSize} ${look.fontFamily}`;
+    const word = Math.max(0, ...box.value.split(/\s+/).map(w => pen.measureText(w).width));
+    const edges = parseFloat(look.paddingLeft) + parseFloat(look.paddingRight) + parseFloat(look.borderLeftWidth) + parseFloat(look.borderRightWidth);
+    const line = box.closest(".group") ? box.closest(".group").clientWidth : Infinity;
+    box.style.minWidth = Math.max(130, Math.min(Math.ceil(word + edges + 2), 0.6 * line)) + "px";
+  }
+  box.style.height = "auto"; box.style.height = box.scrollHeight + box.offsetHeight - box.clientHeight + "px";
+}
 // a wider or narrower window wraps the boxes' text differently: each grows or shrinks to fit it again
 window.addEventListener("resize", () => document.querySelectorAll("#record textarea.grow").forEach(grow));
 function problemList(r, j) {
@@ -885,21 +903,20 @@ function problemList(r, j) {
 // its object class (the describes class) is the person's. It has no source text.
 function describesRow(rec, j, heading = true) {
   const r = rec.rows[j];
-  const fixed = (label, value, role) => el("label", { title: "Written by code; it can't be changed.", class: "f-" + role }, label,
-    el("div", { class: "fixed" }, value));
+  const fixed = (label, value, role, nobreak) => el("label", { title: "Written by code; it can't be changed.", class: "f-" + role }, label,
+    el("div", { class: nobreak ? "fixed nobreak" : "fixed" }, value));
   return el("div", { class: "row", "data-row-box": j },
     heading ? el("div", { class: "rowhead" }, "Describes triple") : null,
     el("div", { class: "triple" },
       el("div", { class: "group" },
         fixed("Subject (the record's id)", r.subject, "subj"),
-        fixed("Subject class", r.subject_class, "subj")),
-      el("div", { class: "group" },
-        fixed("Predicate", r.predicate, "pred"),
-        el("span")),
+        fixed("Subject class", r.subject_class, "subj", true)),
+      el("div", { class: "group wide" },
+        fixed("Predicate", r.predicate, "pred", true)),
       el("div", { class: "group" },
         fixed("Object (the record's title)", r.object, "obj"),
         el("label", { class: "f-obj" }, "Object class (the describes class)",
-          el("textarea", { class: "cls grow", rows: 1, placeholder: "not chosen yet", "data-row": j,
+          el("textarea", { class: "cls nobreak grow", rows: 1, placeholder: "not chosen yet", "data-row": j,
                            onkeydown: (e) => { if (e.key === "Enter") e.preventDefault(); },
                            oninput: (e) => { if (/\n/.test(e.target.value)) e.target.value = e.target.value.replace(/\s*\n\s*/g, " ");
                                              grow(e.target); r.object_class = e.target.value; changed(); showDefinition(e.target);
@@ -918,19 +935,16 @@ function tripleRow(rec, j, heading = true) {
   // Its number among the record's ground truth triples, in the text's order (the describes triple isn't one).
   const n = tripleRows(rec).indexOf(j) + 1;
   return el("div", { class: "row", "data-row-box": j, oninput: (e) => { const b = e.currentTarget.querySelector(".patterns"); if (b) b.refresh(); } },
-    // its header line: its name (all at once), and on the right the button that deletes the whole ground truth triple
-    el("div", { class: "rowhead" }, heading ? `Ground truth triple ${n}` : el("span"),
-      el("button", { class: "deltriple", title: "Delete this whole ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete triple")),
+    heading ? el("div", { class: "rowhead" }, `Ground truth triple ${n}`) : null,
     el("div", { class: "triple" },
       el("div", { class: "group" },
         field(rec, j, "subject", "Subject", { multiline: true }),
-        field(rec, j, "subject_class", "Subject class", { multiline: true, class: "cls" })),
-      el("div", { class: "group" },
-        field(rec, j, "predicate", "Predicate", { multiline: true }),
-        el("span")),
+        field(rec, j, "subject_class", "Subject class", { multiline: true, class: "cls nobreak" })),
+      el("div", { class: "group wide" },
+        field(rec, j, "predicate", "Predicate", { multiline: true, class: "nobreak" })),
       el("div", { class: "group" },
         field(rec, j, "object", "Object", { multiline: true }),
-        field(rec, j, "object_class", "Object class", { multiline: true, class: "cls" }))),
+        field(rec, j, "object_class", "Object class", { multiline: true, class: "cls nobreak" }))),
     patternButtons(r, j),
     el("div", { class: "source" },
       el("label", { title: "Copied exactly from the record's text" }, "Source text",
@@ -938,7 +952,10 @@ function tripleRow(rec, j, heading = true) {
                          oninput: (e) => { r.source_text = e.target.value; grow(e.target); drawText(); changed(); } }, r.source_text)),
       el("div", { class: "actions" },
         el("button", { class: "primary", title: "Copy the passage you selected in the record's text into this ground truth triple's source text", onclick: () => useSelection(rec, j) }, "Use selection"))),
-    problemList(r, j));
+    problemList(r, j),
+    // last, in the bottom right corner: the button that deletes the whole ground truth triple
+    el("div", { class: "rowfoot" },
+      el("button", { class: "deltriple", title: "Delete this whole ground truth triple", onclick: () => deleteRow(rec, j) }, "🗑 Delete triple")));
 }
 
 // Three buttons under a ground truth triple, one per component class: each shows the ground truth schema's patterns
