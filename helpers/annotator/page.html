@@ -219,10 +219,50 @@
   .kind { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line);
           border-radius: 10px; padding: 0 7px; margin-right: 6px; vertical-align: middle; }
   .maprow.todo { border-left: 4px solid var(--flag); }
-  .maprow .means { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
-  .maprow select { max-width: 100%; }
   .example { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg);
              border-radius: 6px; padding: 6px 8px; margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  /* the translation table: tabs (Entity classes, Predicates), search and filters, then one compact box per row:
+     current schema → ground truth schema (names, then definitions, in two aligned columns), flags at the bottom */
+  .mapcard { padding: 12px 16px; }
+  .maptabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .maptab { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 14px; font-weight: 600; color: var(--navy); }
+  .maptab.current { background: var(--navy); border-color: var(--navy); color: var(--panel); }
+  .maptab.current .mapcount { background: var(--panel); }
+  .maptab.current:hover { background: var(--navy); filter: brightness(1.1); }
+  .maptab .mapcount { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 0 7px; background: var(--navy-bg); color: var(--navy); }
+  .maptab .pill { margin-left: 0; }
+  .mapfilters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 0; }
+  .mapfilters .mapsearch { flex: 1 1 260px; min-width: 0; }
+  .mapfilters label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .maphead, .mapgrid { display: grid; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); column-gap: 8px; }
+  .maphead { position: sticky; top: 60px; z-index: 1; background: var(--navy-bg); color: var(--navy); font-size: 12px;
+             font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 12px 6px 15px;
+             border-radius: 8px; margin-bottom: 6px; }
+  .mapbox { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 10px; background: var(--panel);
+            padding: 8px 12px 8px; margin-bottom: 6px; }
+  .mapbox.todo { border-left-color: var(--flag); }
+  .mapbox:hover { border-color: var(--stripe); }
+  .mapbox.todo:hover { border-left-color: var(--flag); }
+  /* an entity class or predicate never breaks inside a word: one line, cut with … (the full text in its tooltip) */
+  .mapname { min-width: 0; font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 13.5px; font-weight: 600;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; align-self: center; }
+  .mapname select { width: 100%; font: inherit; padding: 3px 8px; text-overflow: ellipsis; }
+  .mapname select.none { color: var(--muted); font-style: italic; font-weight: 400; }
+  .maparrow { color: var(--muted); text-align: center; align-self: center; font-size: 16px; }
+  .mapdef { font-size: 13px; line-height: 1.45; color: var(--label); margin-top: 4px; overflow-wrap: break-word; }
+  .mapdef.empty { color: var(--muted); font-style: italic; }
+  .mapbox .example { margin-top: 6px; padding: 3px 8px; font-size: 12.5px; background: var(--tint); }
+  .mapflags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding-top: 6px;
+              border-top: 1px dashed var(--line); font-size: 13px; }
+  .mapflags .pill { margin-left: 0; }
+  .mapflag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 10px 1px 6px; border-radius: 999px;
+             background: var(--tint); border: 1px solid var(--line); color: var(--label); cursor: pointer; white-space: nowrap; }
+  .mapflag.on { background: var(--sky-bg); border-color: var(--sky); color: var(--navy); font-weight: 600; }
+  .mapflag.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+  .mapflag input { margin: 0; }
+  .mapflags .mapdelete { margin-left: auto; padding: 1px 10px; font-size: 12.5px; }
+  .mapbox .problems { margin-top: 6px; }
+  .mapempty { padding: 12px 4px; }
 
   /* ---------------------------------------------------------------- the look: one palette, navy and sky blue on paper;
      Libre Franklin (chosen 2026-10-14, from eight samples), JetBrains Mono for anything code-like */
@@ -1247,7 +1287,12 @@ function gapsList() {
 // One row per component class of the current schema (the one extraction used):
 // which component class of the ground truth schema it means. Only component_class_in_gtt,
 // swap_subject_and_object and checked can be changed here.
+// Shown as one compact list per kind (Entity classes, Predicates), one box per row, its
+// definitions always shown; a note's full text opens below the box's flags on a click.
 let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
+let mapKind = "entity class", mapSearch = "", mapCounterpart = "any";   // which rows the table shows
+const mapOpen = new Set();                                               // rows opened, by line in the file
+const MAP_KINDS = [["entity class", "Entity classes"], ["predicate", "Predicates"]];
 // A row "of the current schema": its component class is in the current schema
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
@@ -1277,12 +1322,17 @@ async function openMapping() {
   }
   status(`Editing ${mapping.file}`, "saved");
   onlyToCheck = mapping.rows.some(r => isCurrent(r) && toCheck(r));   // open on the rows that need you
+  // open on the first kind with rows to check
+  const first = MAP_KINDS.find(([k]) => mapping.rows.some(r => r.kind === k && isCurrent(r) && toCheck(r)));
+  mapKind = first ? first[0] : "entity class";
+  mapOpen.clear();
+  mapping.rows.forEach(r => { if (r.repeated) mapOpen.add(r._line); });   // a repeated row opens on its Delete button
+  drawMappingFrame();
   drawMapping();
 }
 
 function drawMappingSummary() {
   const current = mapping.rows.filter(isCurrent);
-  const past = mapping.rows.length - current.length;
   const left = current.filter(toCheck).length;
   $("records").replaceChildren(
     el("div", { style: "padding:6px 8px" },
@@ -1291,19 +1341,13 @@ function drawMappingSummary() {
                                   `${left} still to check.`),
       el("p", { class: "meta" }, "Step 070 evaluates only when every row for the current schema is checked. Step 070 " +
                                   "adds rows to this table itself, and never changes a row already there."),
-      el("label", { class: "meta", style: "display:block" },
-        el("input", { type: "checkbox", checked: onlyToCheck,
-                      onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
-        " Show only rows to check"),
-      past ? el("label", { class: "meta", style: "display:block" },
-        el("input", { type: "checkbox", checked: showPast,
-                      onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
-        ` Show the ${past} row(s) for component classes only past schemas used (kept, so that a component class that comes back needn't be checked again)`)
-        : null));
+      el("p", { class: "meta" }, "Each box: an entity class or predicate of the current schema → what it means in the " +
+                                  "ground truth schema, each with its definition. A ⚑ note opens its full text on a click.")));
 }
 
-function drawMapping() {
-  drawMappingSummary();
+// The parts of the view that stay while rows change: the problems above the table, the kind
+// tabs, the search box and the filters (so typing in the search box keeps its place).
+function drawMappingFrame() {
   const cards = [];
   if (mapping.repeats.length)
     cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "error" },
@@ -1313,13 +1357,74 @@ function drawMapping() {
   if (!mapping.schema_found)
     cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
       "outputs/intermediate_results/060_extract/schema_used.json wasn't found, so the current schema's definitions can't be shown. Run py 060_extract/run.py, then open Translation table again.")));
-  mapping.rows.forEach((r, i) => {
-    if (r.repeated || ((isCurrent(r) || showPast) && (!onlyToCheck || toCheck(r)))) cards.push(mappingRow(r, i));
-  });
-  if (cards.length === 0)
-    cards.push(el("section", { class: "card" }, el("p", { class: "empty" },
-      mapping.rows.length ? "Every row is checked." : "The table has no rows yet: evaluation adds them.")));
+  const past = mapping.rows.filter(r => !isCurrent(r)).length;
+  const search = el("input", { type: "search", class: "mapsearch", value: mapSearch,
+    placeholder: "Search entity classes, predicates and definitions", "aria-label": "Search the translation table",
+    oninput: (e) => { mapSearch = e.target.value; drawMapping(); } });
+  const counterpart = el("select", { "aria-label": "Rows by their ground truth schema counterpart",
+    onchange: (e) => { mapCounterpart = e.target.value; drawMapping(); } },
+    el("option", { value: "any", selected: mapCounterpart === "any" }, "Any counterpart"),
+    el("option", { value: "has", selected: mapCounterpart === "has" }, "With a ground truth schema counterpart"),
+    el("option", { value: "none", selected: mapCounterpart === "none" }, `${mapping.none} only`));
+  cards.push(el("section", { class: "card mapcard" },
+    el("div", { class: "maptabs", id: "maptabs", role: "tablist" }),
+    el("div", { class: "mapfilters" },
+      search, counterpart,
+      el("label", { class: "meta" },
+        el("input", { type: "checkbox", checked: onlyToCheck,
+                      onchange: (e) => { onlyToCheck = e.target.checked; drawMapping(); } }),
+        " Only rows to check"),
+      past ? el("label", { class: "meta", title: "kept, so that a component class that comes back needn't be checked again" },
+        el("input", { type: "checkbox", checked: showPast,
+                      onchange: (e) => { showPast = e.target.checked; drawMapping(); } }),
+        ` Also the ${past} row(s) only past schemas used`) : null),
+    el("div", { id: "maptable" })));
   $("record").replaceChildren(...cards);
+}
+
+// Whether a row passes the filters (the kind tab aside). A repeated row always shows: it must be dealt with.
+function mapShown(r) {
+  if (r.repeated) return true;
+  if (!(isCurrent(r) || showPast) || (onlyToCheck && !toCheck(r))) return false;
+  if (mapCounterpart === "has" && r.component_class_in_gtt === mapping.none) return false;
+  if (mapCounterpart === "none" && r.component_class_in_gtt !== mapping.none) return false;
+  const q = mapSearch.trim().toLowerCase();
+  if (!q) return true;
+  const chosen = (mapping.gtt[r.kind] || []).find(v => v.component_class === r.component_class_in_gtt);
+  return [r.component_class_from_past_or_crt_schema, r.component_class_in_gtt, r.crt_definition,
+          chosen && chosen.definition].some(s => (s || "").toLowerCase().includes(q));
+}
+
+function drawMapping() {
+  drawMappingSummary();
+  if (!$("maptable")) drawMappingFrame();
+  const tabs = MAP_KINDS.map(([kind, label]) => {
+    const rows = mapping.rows.filter(r => r.kind === kind && (r.repeated || isCurrent(r) || showPast));
+    const left = rows.filter(toCheck).length;
+    return el("button", { class: "maptab" + (kind === mapKind ? " current" : ""), role: "tab",
+                          "aria-selected": kind === mapKind ? "true" : "false",
+                          onclick: () => { mapKind = kind; drawMapping(); } },
+      label, el("span", { class: "mapcount" }, String(rows.length)),
+      left ? el("span", { class: "pill flag" }, `${left} to check`) : null);
+  });
+  $("maptabs").replaceChildren(...tabs);
+  const shown = [];
+  mapping.rows.forEach((r, i) => { if (r.kind === mapKind && mapShown(r)) shown.push([r, i]); });
+  if (shown.length === 0) {
+    const kindRows = mapping.rows.filter(r => r.kind === mapKind);
+    $("maptable").replaceChildren(el("p", { class: "empty mapempty" },
+      !mapping.rows.length ? "The table has no rows yet: evaluation adds them."
+      : onlyToCheck && !mapSearch.trim() && mapCounterpart === "any" && kindRows.length
+        ? `Every ${mapKind} row is checked.`
+        : `No ${mapKind} rows match these filters.`));
+    return;
+  }
+  const what = mapKind === "predicate" ? "predicate" : "entity class";
+  // column headings, aligned with every box's two columns
+  const head = el("div", { class: "maphead" },
+    el("div", {}, `Current schema ${what}`), el("div", { "aria-hidden": "true" }),
+    el("div", { title: `${mapping.none}: nothing in the ground truth schema means this` }, `Ground truth schema ${what}`));
+  $("maptable").replaceChildren(head, ...shown.map(([r, i]) => mappingRow(r, i)));
 }
 
 function exampleLine(r) {
@@ -1333,77 +1438,101 @@ function exampleLine(r) {
     `${before}   -->   ${after}`);
 }
 
+// text shown exactly as written (an entity class or predicate is never reformatted)
+function plainText(tag, attrs, text) { const n = el(tag, attrs); n.textContent = text; return n; }
+
+// A row of the table, as a compact box: the names line (current schema → ground truth schema),
+// both definitions under them, a predicate's example, then one line of flags at the bottom
+// (swap, checked, notes); a note's full text opens below that line on a click.
 function mappingRow(r, i) {
   const vocab = mapping.gtt[r.kind] || [];
   const known = vocab.some(v => v.component_class === r.component_class_in_gtt);
-  const options = [el("option", { value: mapping.none, selected: r.component_class_in_gtt === mapping.none },
-                      `${mapping.none}: nothing in the ground truth schema means this`)];
-  if (!known && r.component_class_in_gtt !== mapping.none)
+  const none = r.component_class_in_gtt === mapping.none;
+  const options = [el("option", { value: mapping.none, selected: none }, mapping.none)];
+  if (!known && !none)
     options.push(el("option", { value: r.component_class_in_gtt, selected: true },
                     `⚠ ${r.component_class_in_gtt} (not in the ground truth schema: pick another)`));
   for (const v of vocab) options.push(el("option", { value: v.component_class, selected: v.component_class === r.component_class_in_gtt }, v.component_class));
   const chosen = vocab.find(v => v.component_class === r.component_class_in_gtt);
   // Other component classes of the current schema already translated to the same component_class:
   // evaluation won't be able to tell them apart.
-  const sharing = r.in_crt && r.component_class_in_gtt !== mapping.none
+  const sharing = r.in_crt && !none
     ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.component_class_in_gtt === r.component_class_in_gtt)
                   .map(o => o.component_class_from_past_or_crt_schema) : [];
   const same = r.checked === "same component class";
   // A (none) row whose component class the ground truth schema now has: probably out of date.
-  const nowExists = r.component_class_in_gtt === mapping.none && r.same_component_class_in_gtt ? { component_class: r.same_component_class_in_gtt } : null;
+  const nowExists = none && r.same_component_class_in_gtt ? { component_class: r.same_component_class_in_gtt } : null;
   // a row accepted automatically (same spelling) can be changed; changing it makes it an ordinary row to check
   const update = (key, value) => { r[key] = value; if (same && key !== "checked") r.checked = "no"; mapChanged(); drawMapping(); };
+  const crtName = r.component_class_from_past_or_crt_schema;
+  const what = r.kind === "predicate" ? "predicate" : "entity class";
 
-  return el("section", { class: "card maprow" + (toCheck(r) || r.repeated ? " todo" : "") },
-    el("h3", {}, el("span", { class: "kind" }, r.kind), r.component_class_from_past_or_crt_schema,
-       el("span", { class: "meta" }, isCurrent(r) ? "  (current schema)" : "  (past schema only)"),
-       r.repeated ? el("span", { class: "meta" }, `  (line ${r._line}, repeated) `) : null,
-       r.repeated ? el("button", { onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
-    r.repeated ? el("div", { class: "meta" }, "Stored definition (when this row was checked): ",
-       r.definition_from_past_or_crt_schema || el("span", { class: "empty" }, "none")) : null,
-    el("div", { class: "meta" }, "In the current schema: ",
-       r.crt_definition ? r.crt_definition : el("span", { class: "empty" }, "no definition")),
-    r.stale ? el("div", { class: "problems" }, el("li", { class: "flag" },
-       "⚑ This row was checked when the component class was defined as: “" +
-       (r.definition_from_past_or_crt_schema || "(no definition)") +
-       "”. The meaning of " + r.component_class_from_past_or_crt_schema + " may have changed since: check this translation again.")) : null,
-    r.stale_gtt ? el("div", { class: "problems" }, el("li", { class: "flag" },
-       "⚑ This row was checked when the ground truth schema defined " + r.component_class_in_gtt +
-       " (ground truth schema) as: “" + (r.definition_in_gtt || "(no definition)") +
-       "”. The ground truth schema now defines " + r.component_class_in_gtt + " as shown below, under “In the ground truth schema”: check this translation again.")) : null,
-    el("div", { class: "means" },
-      el("label", { class: "meta", for: `m${i}` }, "Means, in the ground truth schema:"),
-      el("select", { id: `m${i}`, onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
-    r.component_class_in_gtt === mapping.none && r.suggested_gtt && !nowExists ? el("ul", { class: "problems" },
-      el("li", { class: "flag" }, `⚑ The model suggests ${r.component_class_from_past_or_crt_schema} (current schema) may ` +
-        `mean ${r.suggested_gtt} (ground truth schema), a component class the ground truth schema gained since this row was ` +
-        `checked. Pick ${r.suggested_gtt} if that is right; otherwise keep (none).`)) : null,
-    nowExists ? el("ul", { class: "problems" }, el("li", { class: "flag" },
-      `⚑ ${nowExists.component_class} (ground truth schema) now exists: should ${r.component_class_from_past_or_crt_schema} ` +
-      `(current schema) translate to ${nowExists.component_class}? Keep (none) only if the two mean different things.`)) : null,
-    sharing.length ? el("ul", { class: "problems" }, el("li", { class: "flag" },
-      `⚑ ${[r.component_class_from_past_or_crt_schema, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
-      `both translate to ${r.component_class_in_gtt} (ground truth schema), so step 070 can't tell these component classes apart: ` +
-      `extraction loses nothing by mixing them up. That is fine if your ground truth doesn't distinguish them; if your ground ` +
-      `truth should distinguish them, annotate with separate component classes in the ground truth.`)) : null,
-    chosen ? el("div", { class: "meta" }, "In the ground truth schema: ",
-                chosen.definition ? chosen.definition
-                  : el("span", { class: "empty" }, "coined while annotating; no definition yet (add one to the ground truth schema)")) : null,
-    r.kind === "predicate" ? el("label", { class: "meta", style: "display:block;margin-top:6px" },
-      el("input", { type: "checkbox", disabled: r.component_class_in_gtt === mapping.none,
-                    checked: r.swap_subject_and_object === "yes",
-                    onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
-      " Swap subject and object (the ground truth's predicate states the relation the other way round)") : null,
+  const notes = [];          // [kind, short label, full text]
+  if (r.stale) notes.push(["flag", "current schema definition changed",
+    "⚑ This row was checked when the component class was defined as: “" + (r.definition_from_past_or_crt_schema || "(no definition)") +
+    "”. The meaning of " + crtName + " may have changed since: check this translation again."]);
+  if (r.stale_gtt) notes.push(["flag", "ground truth schema definition changed",
+    "⚑ This row was checked when the ground truth schema defined " + r.component_class_in_gtt +
+    " (ground truth schema) as: “" + (r.definition_in_gtt || "(no definition)") +
+    "”. The ground truth schema now defines " + r.component_class_in_gtt + " as shown above, on the ground truth schema side: check this translation again."]);
+  if (none && r.suggested_gtt && !nowExists) notes.push(["flag", `suggested: ${r.suggested_gtt}`,
+    `⚑ The model suggests ${crtName} (current schema) may ` +
+    `mean ${r.suggested_gtt} (ground truth schema), a component class the ground truth schema gained since this row was ` +
+    `checked. Pick ${r.suggested_gtt} if that is right; otherwise keep (none).`]);
+  if (nowExists) notes.push(["flag", `${nowExists.component_class} now exists`,
+    `⚑ ${nowExists.component_class} (ground truth schema) now exists: should ${crtName} ` +
+    `(current schema) translate to ${nowExists.component_class}? Keep (none) only if the two mean different things.`]);
+  if (sharing.length) notes.push(["flag", `same counterpart as ${sharing.length} other`,
+    `⚑ ${[crtName, ...sharing].map(n => `${n} (current schema)`).join(" and ")} ` +
+    `both translate to ${r.component_class_in_gtt} (ground truth schema), so step 070 can't tell these component classes apart: ` +
+    `extraction loses nothing by mixing them up. That is fine if your ground truth doesn't distinguish them; if your ground ` +
+    `truth should distinguish them, annotate with separate component classes in the ground truth.`]);
+  if (r.repeated) notes.push(["error", `line ${r._line}, repeated`,
+    "✖ This " + what + " has more than one row. Stored definition (when this row was checked): “" +
+    (r.definition_from_past_or_crt_schema || "none") + "”. Keep the correct row and delete the others."]);
+
+  const open = mapOpen.has(r._line);
+  const toggle = () => { if (mapOpen.has(r._line)) mapOpen.delete(r._line); else mapOpen.add(r._line); drawMapping(); };
+  const autoAccepted = same && !r.stale && !r.stale_gtt;
+  const isChecked = r.checked === "yes" && !r.stale && !r.stale_gtt;
+  const definition = (text, missing) => text ? el("div", { class: "mapdef" }, text) : el("div", { class: "mapdef empty" }, missing);
+
+  return el("section", { class: "mapbox" + (toCheck(r) || r.repeated ? " todo" : "") },
+    // the names line, current schema → ground truth schema, and under each its definition
+    el("div", { class: "mapgrid" },
+      el("div", { class: "mapname" }, plainText("span", { title: crtName }, crtName)),
+      el("div", { class: "maparrow", "aria-hidden": "true" }, "→"),
+      el("div", { class: "mapname" },
+        el("select", { id: `m${i}`, class: none ? "none" : "", title: r.component_class_in_gtt,
+                       "aria-label": `Ground truth schema ${what} that ${crtName} (current schema) means`,
+                       onchange: (e) => update("component_class_in_gtt", e.target.value) }, options)),
+      definition(r.crt_definition, "no definition in the current schema"),
+      el("div", {}),
+      none ? definition(null, "nothing in the ground truth schema means this")
+        : chosen ? definition(chosen.definition, "coined while annotating; no definition yet (add one to the ground truth schema)")
+        : definition(null, "not in the ground truth schema: pick another")),
     exampleLine(r),
-    el("div", { class: "bar" }, same && !r.stale && !r.stale_gtt
-      ? el("span", { class: "meta" }, "Accepted automatically, because the component class is spelled the same in the current " +
-           "schema and in the ground truth schema. Compare the two definitions above (In the current schema, In the ground truth " +
-           "schema); if the two mean different things, pick the right translation.")
-      : el("label", { class: "finished" },
-          el("input", { type: "checkbox", checked: r.checked === "yes" && !r.stale && !r.stale_gtt,
-                        onchange: (e) => { r.stale = false; r.stale_gtt = false;
-                                           update("checked", e.target.checked ? "yes" : "no"); } }),
-          "Checked: this translation is right")));
+    // one line of flags, at the bottom
+    el("div", { class: "mapflags" },
+      r.kind === "predicate" ? el("label", { class: "mapflag" + (r.swap_subject_and_object === "yes" ? " on" : ""),
+                    title: "Swap subject and object (the ground truth's predicate states the relation the other way round)" },
+        el("input", { type: "checkbox", disabled: none, checked: r.swap_subject_and_object === "yes",
+                      onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
+        " Swap subject and object") : null,
+      autoAccepted
+        ? el("span", { class: "pill ok", title: "Accepted automatically, because the component class is spelled the same in the current " +
+            "schema and in the ground truth schema. Compare the two definitions above; if the two mean different things, pick the right translation." },
+            "✓ Accepted: same spelling")
+        : el("label", { class: "mapflag" + (isChecked ? " ok" : "") },
+            el("input", { type: "checkbox", checked: isChecked,
+                          onchange: (e) => { r.stale = false; r.stale_gtt = false;
+                                             update("checked", e.target.checked ? "yes" : "no"); } }),
+            " Checked: this translation is right"),
+      !isCurrent(r) ? el("span", { class: "pill todo", title: "only past schemas used this " + what }, "past schema only") : null,
+      notes.map(([k, label, full]) => el("button", { class: `pill ${k} jump`, title: full, "aria-expanded": open ? "true" : "false",
+                                                     onclick: toggle }, (k === "error" ? "✖ " : "⚑ ") + label)),
+      r.repeated ? el("button", { class: "mapdelete", onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
+    open && notes.length ? el("ul", { class: "problems" }, notes.map(([k, , full]) => el("li", { class: k }, full))) : null);
 }
 
 async function deleteMappingRow(r) {
