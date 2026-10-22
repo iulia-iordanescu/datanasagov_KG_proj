@@ -93,6 +93,8 @@
   .classopt.current { background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }   /* what the field holds */
   .triplenav { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 8px; }
   .triplenav button { padding: 4px 12px; }
+  .listbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 0 0 10px; }
+  .listbar .triplenav { margin: 0; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   nav { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
         max-height: calc(100vh - 88px); overflow: auto; position: sticky; top: 72px; align-self: start; }
@@ -860,21 +862,16 @@ function show(i) {
   shownRow = steps.length ? at : null;
   setHash(`b=${batch.n}&r=${i}` + (oneAtATime ? `&t=${tripleAt}` : ""));
   const add = el("button", { class: "primary", onclick: () => addRow(rec) }, "+ Add a ground truth triple");
-  const switcher = el("button", { onclick: () => { oneAtATime = !oneAtATime;
-      try { localStorage.setItem("oneAtATime", oneAtATime ? "1" : "0"); } catch (_) {}
-      show(current); } }, oneAtATime ? "Show all at once" : "Show one at a time");
+  const switcher = oneAtATimeButton(() => show(current));
   const none = all.length === 0
     ? el("p", { class: "empty" }, "This record has no ground truth triples: annotations/ground_truth/ saves it as “annotated, states no facts”.") : null;
   const rows = el("section", { class: "card triplecard" },
     el("h3", {}, "Describes triple and ground truth triples"),
     oneAtATime && steps.length
-      ? [el("div", { class: "triplenav" },
-           el("button", { onclick: () => goToTriple(tripleAt - 1), disabled: steps.length < 2,
-                          title: "Previous; from the describes triple, the last ground truth triple (or the ↑ key, when not typing in a field)" }, arrow("up")),
-           el("strong", {}, atDescribes ? "Describes triple"
-                                        : `Ground truth triple ${all.indexOf(at) + 1} of ${all.length}`),
-           el("button", { onclick: () => goToTriple(tripleAt + 1), disabled: steps.length < 2,
-                          title: "Next; from the last ground truth triple, the describes triple (or the ↓ key, when not typing in a field)" }, arrow("down"))),
+      ? [stepNav(atDescribes ? "Describes triple" : `Ground truth triple ${all.indexOf(at) + 1} of ${all.length}`,
+                 () => goToTriple(tripleAt - 1), () => goToTriple(tripleAt + 1), steps.length,
+                 "Previous; from the describes triple, the last ground truth triple (or the ↑ key, when not typing in a field)",
+                 "Next; from the last ground truth triple, the describes triple (or the ↓ key, when not typing in a field)"),
          atDescribes ? describesRow(rec, at, false) : tripleRow(rec, at, false)]
       : [describes >= 0 ? describesRow(rec, describes) : null, all.map((j) => tripleRow(rec, j))],
     oneAtATime && !atDescribes ? null : none,
@@ -898,6 +895,46 @@ function goToTriple(k) {                  // true if it moved; past either end i
   show(current);
   return true;
 }
+// One at a time or all at once, in every view that goes through items (a batch's triples, the partial pairs, the
+// translation table's rows, the component classes outside the schema): the same switch, the same ↑ ↓ arrows and keys,
+// and one choice for the whole tool, remembered on this computer.
+function oneAtATimeButton(redraw) {
+  return el("button", { onclick: () => { oneAtATime = !oneAtATime;
+      try { localStorage.setItem("oneAtATime", oneAtATime ? "1" : "0"); } catch (_) {}
+      redraw(); } }, oneAtATime ? "Show all at once" : "Show one at a time");
+}
+function stepNav(label, prev, next, n, prevTitle, nextTitle) {
+  return el("div", { class: "triplenav" },
+    el("button", { onclick: prev, disabled: n < 2, title: prevTitle }, arrow("up")),
+    el("strong", {}, label),
+    el("button", { onclick: next, disabled: n < 2, title: nextTitle }, arrow("down")));
+}
+// In a view other than a batch: the items its filters, tabs and search let through (keys: one string per item, so the
+// one shown stays shown when the list around it changes; one that leaves the list, say on a verdict while only those
+// not reviewed yet are shown, gives way to the one now in its place). Returns the index of the item to show (null: all
+// of them) and the line to put above the items: the arrows, when one at a time, and the switch.
+const listAt = {};                       // view -> { key, at }: the item shown, one at a time
+let listStep = null;                     // { view, go }: the ↑ ↓ keys in that view
+function itemsOneAtATime(view, keys, noun, redraw) {
+  listStep = null;
+  const sw = oneAtATimeButton(redraw);
+  if (!oneAtATime || !keys.length) return { at: null, bar: el("div", { class: "bar listbar" }, sw) };
+  const s = listAt[view] || (listAt[view] = { key: null, at: 0 });
+  let at = keys.indexOf(s.key);
+  if (at < 0) at = Math.max(0, Math.min(s.at, keys.length - 1));
+  s.key = keys[at]; s.at = at;
+  const go = (d) => {
+    if (keys.length < 2) return false;
+    const k = ((at + d) % keys.length + keys.length) % keys.length;   // past either end it loops round
+    s.key = keys[k]; s.at = k; redraw(); return true;
+  };
+  listStep = { view, go };
+  return { at, bar: el("div", { class: "listbar" },
+    stepNav(`${noun} ${at + 1} of ${keys.length}`, () => go(-1), () => go(1), keys.length,
+            "Previous; from the first, the last (or the ↑ key, when not typing in a field)",
+            "Next; from the last, the first (or the ↓ key, when not typing in a field)"), sw) };
+}
+
 // The record d steps from the one shown, looping round the batch (from the last record, the next is the first).
 function stepRecord(d) { const n = batch.records.length; return ((current + d) % n + n) % n; }
 
@@ -1471,6 +1508,7 @@ function drawMapping() {
   const shown = [];
   mapping.rows.forEach((r, i) => { if (r.kind === mapKind && mapShown(r)) shown.push([r, i]); });
   if (shown.length === 0) {
+    listStep = null;
     const kindRows = mapping.rows.filter(r => r.kind === mapKind);
     $("maptable").replaceChildren(el("p", { class: "empty mapempty" },
       !mapping.rows.length ? "The table has no rows yet: evaluation adds them."
@@ -1483,7 +1521,8 @@ function drawMapping() {
   const head = el("div", { class: "maphead" },
     el("div", {}, `Current schema ${what}`), mapArrow(),
     el("div", { title: `${mapping.none}: nothing in the ground truth schema means this` }, `Ground truth schema ${what}`));
-  $("maptable").replaceChildren(head, ...shown.map(([r, i]) => mappingRow(r, i)));
+  const { at, bar } = itemsOneAtATime("mapping", shown.map(([r]) => `${r.kind}|${r._line}`), "Row", drawMapping);
+  $("maptable").replaceChildren(bar, head, ...(at === null ? shown : [shown[at]]).map(([r, i]) => mappingRow(r, i)));
 }
 
 function exampleLine(r) {
@@ -1717,10 +1756,15 @@ function drawPartial() {
                     onchange: (e) => { onlyUnreviewed = e.target.checked; drawPartial(); } }),
       " Show only pairs not reviewed yet")));
   const shown = partial.items.filter(i => !onlyUnreviewed || !i.verdict);
-  $("record").replaceChildren(...(shown.length ? shown.map(partialCard) : [el("section", { class: "card" },
+  const { at, bar } = itemsOneAtATime("partial", shown.map(pairKey), "Partial pair", drawPartial);
+  $("record").replaceChildren(...(shown.length ? [bar, ...(at === null ? shown : [shown[at]]).map(partialCard)]
+    : [el("section", { class: "card" },
     el("p", { class: "empty" }, partial.items.length ? "Every pair is reviewed." :
       "No partial pairs in step 070's last run."))]));
 }
+// a pair, as one string: its record and both triples
+const pairKey = (i) => JSON.stringify([i.record_id, i.ground_truth_subject, i.ground_truth_predicate, i.ground_truth_object,
+                                       i.translated_subject, i.translated_predicate, i.translated_object]);
 
 // A pair, as a compact box: the record, then the ground truth triple and the extracted triple side by side,
 // each under its label; the record's text on a click; the verdict buttons at the bottom.
@@ -1757,8 +1801,7 @@ function partialCard(i) {
     (i.verdict === verdict ? "✓ " : "") + label);
   const occ = i.occurrences && i.occurrences.length > 1 ? i.occurrences : null;   // multiplicity above 1
   // its full text opens below the flags on a click, as a translation table note does
-  const key = JSON.stringify([i.record_id, i.ground_truth_subject, i.ground_truth_predicate, i.ground_truth_object,
-                              i.translated_subject, i.translated_predicate, i.translated_object]);
+  const key = pairKey(i);
   const open = pairOpen.has(key);
   const toggle = () => { if (pairOpen.has(key)) pairOpen.delete(key); else pairOpen.add(key); drawPartial(); };
   return el("section", { class: "mapbox pairbox" + (i.verdict ? "" : " todo") },
@@ -1864,13 +1907,21 @@ function drawAdditions() {
           el("p", { class: "meta" }, "Patterns aren't listed: step 060 keeps an extracted triple whose pattern the schema " +
             "lacks (it only flags it), so a missing pattern costs nothing. To add one anyway, use + Add an entry, Pattern."))
       : el("p", { class: "meta" }, "outputs/intermediate_results/060_extract/extracted_triples_details.json wasn't found, so the component classes outside the schema from step 060's last run can't be listed. Run py 060_extract/run.py, then open Schema additions again."),
-    additions.new_component_classes.map(n => el("div", { class: "row" },
+    additionsOutside()));
+  $("record").replaceChildren(...cards);
+}
+
+// The component classes outside the schema, each with Add; one at a time or all at once.
+function additionsOutside() {
+  const all = additions.new_component_classes;
+  const { at, bar } = itemsOneAtATime("additions", all.map(n => `${n.kind}|${n.component_class}`), "Component class",
+                                      drawAdditions);
+  return [all.length ? bar : null, (at === null ? all : [all[at]]).map(n => el("div", { class: "row" },
       el("span", { class: "kind" }, n.kind), el("b", {}, n.component_class), ` (used by the model; not in the current schema) · ` +
       `${n.records} record(s) · source: ${n.source}`, " ",
       n.added ? el("span", { class: "meta" }, "added") :
         el("button", { onclick: () => { editing = { entry_type: n.kind, component_class: n.component_class, definition: "", source: n.source,
-                                                    patterns: [] }; drawAdditions(); window.scrollTo(0, 0); } }, "Add")))));
-  $("record").replaceChildren(...cards);
+                                                    patterns: [] }; drawAdditions(); window.scrollTo(0, 0); } }, "Add")))];
 }
 
 // An entry's name for messages: a component class, or a pattern written as "Subject PREDICATE Object".
@@ -2179,6 +2230,14 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft" && batch.records.length > 1) { e.preventDefault(); show(stepRecord(-1)); }
   if (oneAtATime && e.key === "ArrowDown" && goToTriple(tripleAt + 1)) e.preventDefault();
   if (oneAtATime && e.key === "ArrowUp" && goToTriple(tripleAt - 1)) e.preventDefault();
+});
+// ↑ and ↓ go to the previous and next item, one at a time, in the other views that go through items (itemsOneAtATime).
+document.addEventListener("keydown", (e) => {
+  if (batch || !oneAtATime || !listStep || listStep.view !== currentView()) return;
+  if (e.altKey || e.ctrlKey || e.metaKey || !$("help").hidden) return;
+  if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.key === "ArrowDown" && listStep.go(1)) e.preventDefault();
+  if (e.key === "ArrowUp" && listStep.go(-1)) e.preventDefault();
 });
 // A followed link opens its document in the help window (a term: docs/terminology.md).
 document.addEventListener("click", (e) => {
