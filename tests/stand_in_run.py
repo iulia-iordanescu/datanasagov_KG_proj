@@ -20,7 +20,11 @@ import stand_ins                                  # noqa: E402
 from common import llm                            # noqa: E402
 
 assert Path(llm.__file__).resolve().is_relative_to(repo), "the copy's code must be the one running"
-llm.call_llm = stand_ins.stand_in_model
+# The stand-in answers LiteLLM's requests, so the request and the reading of the reply are the real code's. No key
+# is read: .env is never loaded.
+os.environ.update(LITELLM_API_KEY="stand-in", LITELLM_BASE_URL="http://stand-in.invalid")
+llm.load_dotenv = lambda *a, **k: None
+llm._post = stand_ins.stand_in_post
 
 spec = importlib.util.spec_from_file_location("panel", repo / step / "run.py")
 panel = importlib.util.module_from_spec(spec)
@@ -35,3 +39,5 @@ try:
              may_be_empty=getattr(panel, "MAY_BE_EMPTY", ()))
 finally:
     print(f"[stand-in model answered {len(stand_ins.CALLS)} prompt(s)]")
+    sent = sorted({str(p.get("reasoning_effort")) for p in stand_ins.PAYLOADS})
+    print(f"[stand-in model got reasoning_effort: {', '.join(sent) or '-'}]")

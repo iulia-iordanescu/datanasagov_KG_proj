@@ -78,8 +78,12 @@ def write_step_report(path: Path, run: dict, settings: dict, input_rows: list,
               f"| Git commit | {run['git_commit']} |",
               f"| Harvest date | {run['harvest_date'] or 'unknown'}"
               f"{' (a trial harvest: part of the catalog only)' if run.get('harvest_partial') else ''} |",
-              f"| Log | {_link(run['log'], path)} |",
-              "",
+              f"| Log | {_link(run['log'], path)} |"]
+    if run.get("failed_calls"):
+        f = run["failed_calls"]
+        lines.append(f"| Failed model calls | {_link(f['file'], path)}: {f['entries']:,} (one line each: why it "
+                     f"failed, the service's token counts, the answer if any, and what to change) |")
+    lines += ["",
               "The run's full recipe: the Git commit above (the code), its Settings (the model among them), "
               "its Prompts and its Inputs (each with the run that made it), below.", ""]
 
@@ -177,8 +181,18 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
               f"| sent, not from the cache | {llm.REQUESTS['input_tokens']:,} |",
               f"| sent, read from the cache (billed at a fraction) | {llm.REQUESTS['cache_read_tokens']:,} |",
               f"| sent, written to the cache (billed a little above normal) | {llm.REQUESTS['cache_write_tokens']:,} |",
-              f"| received | {llm.REQUESTS['output_tokens']:,} |", "",
-              "Token counts come only from LiteLLM, whose replies carry them; through Ask Sage they show 0.", "",
+              f"| received | {llm.REQUESTS['output_tokens']:,} |",
+              f"| received as thinking (reasoning tokens, where the service reports them) | "
+              f"{llm.REQUESTS['reasoning_tokens']:,} |", "",
+              "| Calls that failed | |", "|---|---:|",
+              f"| failed (after the model client's own retries), cut-offs included | {llm.OUTCOMES['failed']:,} |",
+              f"| cut off at the answer length limit ({llm.MAX_ANSWER_TOKENS:,} tokens) | {llm.OUTCOMES['cut_off']:,} |",
+              "",
+              "Token counts come only from LiteLLM, whose replies carry them; through Ask Sage they show 0. "
+              "Thinking: the step's `thinking` setting was "
+              f"`{llm.THINKING}`" + (f", sent as `reasoning_effort` `{llm.thinking_sent()}`." if llm.thinking_sent()
+                                    else ", not sent to this model.")
+              + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else ""), "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet.", ""]
     return lines

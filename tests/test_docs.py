@@ -29,7 +29,7 @@ def panel(step: str) -> dict:
     """INPUTS and SETTINGS of a step's run.py, read without running it."""
     tree = ast.parse((ROOT / step / "run.py").read_text(encoding="utf-8"))
     llm = (ROOT / "common" / "common_helpers" / "llm.py").read_text(encoding="utf-8")
-    named = {n: re.search(rf'^{n} = "([^"]+)"', llm, re.M).group(1) for n in ("MODEL", "DRAFTING_MODEL", "SERVICE")}  # defaults from llm.py
+    named = {n: re.search(rf'^{n} = "([^"]+)"', llm, re.M).group(1) for n in ("MODEL", "DRAFTING_MODEL", "SERVICE", "THINKING")}  # defaults from llm.py
     out = {}
     for node in tree.body:
         if isinstance(node, ast.Assign) and node.targets[0].id in ("INPUTS", "SETTINGS"):

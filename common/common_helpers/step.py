@@ -414,6 +414,22 @@ def _stamp(t: dt.datetime) -> str:
     return t.isoformat(timespec="seconds")
 
 
+def _model_call_warnings() -> list:
+    """What the run found while paying for model calls (common/common_helpers/llm.py, RUN_WARNINGS: the test call's
+    check), for the report's Warnings. Empty for a step that calls no model."""
+    llm = sys.modules.get("common.llm")
+    return list(llm.RUN_WARNINGS) if llm else []
+
+
+def _failed_calls() -> dict | None:
+    """{"file", "entries"} of the run's failed-call record (common/common_helpers/llm.py, failed_calls_file), when the
+    run wrote one; else None."""
+    llm = sys.modules.get("common.llm")
+    if not llm or not llm.OUTCOMES["file"]:
+        return None
+    return {"file": llm.OUTCOMES["file"], "entries": llm.OUTCOMES["failed"] + llm.OUTCOMES["not_sent"]}
+
+
 @dataclass
 class RunError:
     summary: str                    # the one line people need
@@ -478,7 +494,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         results = main(chosen_inputs, chosen_settings, output)
         if not isinstance(results, Results):
             raise TypeError(f"main() must return common.step.Results, got {type(results).__name__}")
-        results.warnings = input_warnings + list(results.warnings)
+        results.warnings = input_warnings + list(results.warnings) + _model_call_warnings()
         run["harvest_date"] = results.harvest_date or (
             ", ".join(sorted(harvest_dates)) if harvest_dates else None)
         if results.harvest_partial is not None:
@@ -499,6 +515,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     except Exception as exc:  # noqa: BLE001 -- any failure must still produce a report
         run["status"], error = "failed", RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:
+        run["failed_calls"] = _failed_calls()            # also for a stopped or failed run, before the run id is gone
         audit.end_run()
         run["prompts"] = prompt_files.prompts_used()      # also for a stopped or failed run
 
@@ -529,6 +546,9 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     log.info(f"{step_name}: {run['status']} in {run['duration_s']} s")
     log.info(f"  report: {run['report']}")
     log.info(f"  log:    {run['log']}")
+    if run["failed_calls"]:
+        log.info(f"  failed model calls: {run['failed_calls']['file']} ({run['failed_calls']['entries']:,}; each "
+                 f"says why, and what to change)")
     audit.stop_log()
     if error:
         sys.exit({"interrupted": 130, "stopped": 2}.get(run["status"], 1))

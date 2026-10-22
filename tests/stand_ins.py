@@ -10,9 +10,23 @@ page (503 once), a failing page (404), or a page that isn't JSON.
 stand_in_model(prompt) answers every prompt of steps 040 to 070, from the
 prompt's own text, deterministically, with deliberate faults the steps must
 catch (see each branch). A test sets common.llm.call_llm = stand_in_model.
+
+stand_in_post(url, headers, json, timeout) is the same model behind
+LiteLLM's reply shape (finish_reason, usage with reasoning tokens), so the
+request the pipeline builds and the way it reads the reply are tested too: a
+test sets common.llm._post = stand_in_post (tests/stand_in_run.py does). It
+keeps every request body in PAYLOADS. Faults, chosen by environment
+variables (each a list of words separated by "|": a prompt containing one
+gets the fault):
+
+    KG_STAND_IN_CUT_OFF      the answer is cut off (finish_reason "length")
+    KG_STAND_IN_FAIL         the service refuses the call (HTTP 400)
+    KG_STAND_IN_REASONING    the thinking tokens every reply reports (a number; default 0)
+    KG_STAND_IN_DELAY        seconds each call takes (default 0), so calls overlap as real ones do
 """
 import hashlib
 import json
+import os
 import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -235,3 +249,45 @@ def stand_in_model(prompt, attempts=4, read_timeout=180, model=None, cache_until
     if '{"ok": true}' in prompt:
         return '{"ok": true}'
     raise AssertionError("stand-in model: a prompt it doesn't know:\n" + prompt[:500])
+
+
+PAYLOADS = []       # every request body stand_in_post received
+
+
+class StandInReply:
+    """What requests.post returns, as far as common/common_helpers/llm.py reads it."""
+
+    def __init__(self, status: int, body: dict):
+        self.status_code, self._body, self.headers = status, body, {}
+        self.text = json.dumps(body)
+
+    def json(self):
+        return self._body
+
+
+def _fault(name: str, prompt: str) -> bool:
+    words = [w for w in os.environ.get(name, "").split("|") if w]
+    return any(w in prompt for w in words)
+
+
+def stand_in_post(url, headers=None, json=None, timeout=None, **_):
+    """LiteLLM's /v1/chat/completions, answered by stand_in_model, with the faults the environment asks for."""
+    PAYLOADS.append(json)
+    if float(os.environ.get("KG_STAND_IN_DELAY") or 0):
+        import time
+        time.sleep(float(os.environ["KG_STAND_IN_DELAY"]))
+    prompt = "".join(m["content"] if isinstance(m["content"], str) else m["content"][0]["text"]
+                     for m in json["messages"])
+    if _fault("KG_STAND_IN_FAIL", prompt):
+        CALLS.append(prompt)
+        return StandInReply(400, {"error": {"message": "stand-in: the service refuses this request"}})
+    answer = stand_in_model(prompt, model=json["model"])
+    thought = int(os.environ.get("KG_STAND_IN_REASONING") or 0)
+    reason = "stop"
+    if _fault("KG_STAND_IN_CUT_OFF", prompt):
+        answer, reason = answer[:len(answer) // 2], "length"
+        thought = max(thought, json["max_tokens"] - len(answer) // 4)
+    usage = {"prompt_tokens": len(prompt) // 4, "completion_tokens": len(answer) // 4 + thought,
+             "completion_tokens_details": {"reasoning_tokens": thought}}
+    return StandInReply(200, {"model": json["model"] + "-stand-in", "usage": usage,
+                              "choices": [{"message": {"content": answer}, "finish_reason": reason}]})

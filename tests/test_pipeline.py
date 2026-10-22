@@ -55,11 +55,12 @@ class Pipeline(unittest.TestCase):
         cls.catalog.__exit__()
         shutil.rmtree(cls.repo)
 
-    def run_step(self, step, *args, expect=0):
-        """Run one step; return (output, prompts the stand-in model answered)."""
+    def run_step(self, step, *args, expect=0, env=None):
+        """Run one step; return (output, prompts the stand-in model answered). env: more environment variables
+        (e.g. the stand-in model's faults, tests/stand_ins.py)."""
         r = subprocess.run([sys.executable, str(HERE / "stand_in_run.py"), str(self.repo), step, *args],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
-                           env={**os.environ, "KG_TEST_CATALOG": self.catalog.url})
+                           env={**os.environ, "KG_TEST_CATALOG": self.catalog.url, **(env or {})})
         out = r.stdout + r.stderr
         self.assertEqual(r.returncode, expect, f"{step} {args}:\n{out[-3000:]}")
         self.assertNotIn("Traceback", out, out[-3000:])
@@ -163,7 +164,11 @@ class Pipeline(unittest.TestCase):
 
     def test_t05_annotate(self):
         self.assertEqual(list((self.annotations / "ground_truth").iterdir()), [])     # a first run: no ground truth yet
-        self.run_step("050_annotate", *NO_CONFIRM, "--records_per_batch", "9")
+        out, _ = self.run_step("050_annotate", *NO_CONFIRM, "--records_per_batch", "9")
+        self.assertIn("stand-in model got reasoning_effort: low]", out)        # gemini-2.5-pro: the thinking cap sent
+        self.assertIn("test call: ok (answer ", out)
+        self.assertIn("model calls: 9 of 9 done, 0 failed, took", out)          # the last progress line
+        self.assertNotIn("failed model calls:", out)                           # nothing failed: no failed-call record
         rows = read_csv(self.output("050_annotate", "drafted_triples_batch1.csv"))
         pool = [r["id"] for r in read_csv(self.annotations / "ground_truth_candidates.csv")]
         ids = list(dict.fromkeys(r["id"] for r in rows))
@@ -198,9 +203,24 @@ class Pipeline(unittest.TestCase):
 
     # ---------------------------------------------------------------- 060
 
+    def test_t06z_extract_stops_early(self):
+        """Every call refused: the early stop ends the run after 3, before paying for the rest; the report and the
+        run's last lines name the failed-call record, one line per failed or not-made call."""
+        out, prompts = self.run_step("060_extract", *NO_CONFIRM, expect=2,
+                                     env={"KG_STAND_IN_FAIL": "BEGIN RECORD", "KG_STAND_IN_DELAY": "0.3"})
+        self.assertIn("Step 060 stopped early: 3 of the first 3 model calls of this run failed", out)
+        self.assertLess(prompts, 10)                                            # not every record was asked (4 at a time)
+        record = re.search(r"failed model calls: (outputs/logs/\S+_failed_calls\.jsonl) \((\d+);", out)
+        lines = (self.repo / record.group(1)).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), int(record.group(2)))
+        self.assertEqual(len(lines), 9)                                         # 3 failed, 6 not made
+        report = sorted((self.repo / "outputs" / "reports").glob("060_extract_*.md"))[-1].read_text(encoding="utf-8")
+        self.assertIn("| Failed model calls |", report)
+
     def test_t07_extract(self):
         out, prompts = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(prompts, 10)                                           # 9 records, 1 test call
+        self.assertIn("stand-in model got reasoning_effort: None]", out)       # claude-opus-5.5: nothing sent
         self.assertNotIn("the same model as this run's", out)              # 050 drafts with another maker's model
         self.assertNotIn("a model from the same maker", out)
         kept = read_csv(self.output("060_extract", "extracted_triples.csv"))

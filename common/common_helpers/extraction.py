@@ -12,7 +12,8 @@ and 060 is evaluated against 050 on equal terms.
     prompt(...)                a step's prompt filled with all of the above
     wrap(piece)                a text piece between BEGIN/END RECORD lines
     ask_model(...)             one cached model call per text piece; a record
-                               with a failed call is left out whole
+                               with a failed call is left out whole; an answer
+                               cut off earlier with the same limit isn't asked again
     failed_note(replies, where)   the report's warning for those records
     build_rows(...)            a record's replies -> checked rows + removed items
                                (050, 060: rows with entity classes)
@@ -48,7 +49,7 @@ from pathlib import Path
 
 from common import llm
 from common.audit import log
-from common.cache import Cache, key
+from common.cache import NOT_ASKED_AGAIN, Cache, key
 from common.chunking import text_fields
 from common.prompt_files import fill, load
 from common.report import named
@@ -142,8 +143,10 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
 class Replies:
     of: dict = field(default_factory=dict)        # {id: [reply per piece]} for records fully answered
     failed: dict = field(default_factory=dict)    # {id: why}
+    cut_off: dict = field(default_factory=dict)   # {id: the service's usage} of the failed ones that were cut off
     calls: int = 0                                # model calls made
     reused: int = 0                               # pieces answered from the cache
+    cut_reused: int = 0                           # pieces cut off in an earlier run, not asked again
 
 
 def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: str, verb: str,
@@ -152,27 +155,40 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     prompt_for(item, piece) giving the prompt. Every answer is kept in
     cache/<stage>.json (common/common_helpers/cache.py) the moment it arrives, so a rerun
     pays only for what it doesn't have. A record with any failed call is
-    left out of `of`, never half answered; the next run asks it again.
+    left out of `of`, never half answered; the next run asks it again, unless
+    the answer was cut off at the length limit: that is kept too
+    (common/common_helpers/cache.py, Cache.cut_off), and a rerun with the same
+    limit reuses the failure instead of paying for the same cut.
     plan is the confirmation's first words ("050 will draft 10 record(s)
     into drafted batch 3"); verb names the work in the log ("drafting")."""
     cache = Cache(calls.cache_dir, stage)
-    answers, todo = {}, {}
+    answers, todo, cut_before = {}, {}, {}
     for item in items:
         for i, piece in enumerate(item["pieces"]):
             prompt = prompt_for(item, piece)
             k = key(prompt)
             stored = cache.get(k)
+            cut = cache.cut_off(k) if stored is None else None
             if stored is not None:
                 answers[(item["id"], i)] = stored
+            elif cut:
+                cut_before[(item["id"], i)] = (cut, cache.cut_off_usage(k))
             else:
                 todo[(item["id"], i)] = (k, prompt)
 
-    result = Replies(reused=len(answers))
+    result = Replies(reused=len(answers), cut_reused=len(cut_before))
+    for (rid, i), (why, usage) in cut_before.items():
+        result.failed[rid] = f"piece {i + 1}: {why} {NOT_ASKED_AGAIN}"
+        result.cut_off[rid] = usage
+    if cut_before:
+        log.info(f"  {len(cut_before)} text piece(s) were cut off at the answer length limit in an earlier run with "
+                 f"the same settings, so they aren't asked again (the report's warnings say what to change)")
     if todo:
         n_records = len({rid for rid, _ in todo})
         calls.paid.start(f"  {plan}: {len(todo)} model call(s) for {n_records} record(s)"
                          + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""))
         before = calls.paid.made
+        calls.paid.expect(len(todo))
 
         def ask(k, prompt):
             reply = llm.call_llm_json(prompt, cache_until=cache_until)
@@ -180,18 +196,26 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
             return k, reply
 
         def handle(n, where, answer, error):
+            at = {"stage": stage, "record": where[0], "text_piece": where[1] + 1}
             if error is not None:
                 result.failed[where[0]] = f"piece {where[1] + 1}: {error}"
+                if isinstance(error, llm.CutOff):
+                    cache.put_cut_off(todo[where][0], error)
+                    result.cut_off[where[0]] = getattr(error, "usage", None) or {}
                 log.warning(f"{verb} failed for {where[0]} piece {where[1] + 1}: {error}")
+                calls.paid.outcome(at, todo[where][1], error)
                 return
             k, reply = answer
             answers[where] = reply
             cache.put(k, reply)
             log.debug(f"{verb} {where[0]} piece {where[1] + 1} ({n}/{len(todo)})")
+            calls.paid.outcome(at, todo[where][1])
 
         llm.run_parallel(ask, dict(todo), workers, handle,
                          "Answers already received are kept in the cache; nothing else was written. Run the step "
-                         "again to ask the rest: the answers already received are reused, not paid for again.")
+                         "again to ask the rest: the answers already received are reused, not paid for again.",
+                         not_sent=lambda keys: calls.paid.not_sent(
+                             [({"stage": stage, "record": w[0], "text_piece": w[1] + 1}, todo[w][1]) for w in keys]))
         result.calls = calls.paid.made - before
 
     for item in items:
@@ -199,7 +223,8 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
         if item["id"] not in result.failed and all(r is not None for r in replies):
             result.of[item["id"]] = replies
     log.info(f"  {len(result.of)} record(s) answered, {len(result.failed)} failed "
-             f"({result.calls} calls, {result.reused} text piece(s) from the cache)")
+             f"({result.calls} calls, {result.reused} text piece(s) from the cache"
+             + (f", {result.cut_reused} cut off in an earlier run" if result.cut_reused else "") + ")")
     return result
 
 
@@ -208,10 +233,14 @@ def failed_note(replies: Replies, where: str) -> str | None:
     where: what they are missing from ("the drafted batch", "the output", …)."""
     if not replies.failed:
         return None
-    cut = sum("cut off at the longest length allowed" in why for why in replies.failed.values())
+    cut = len(replies.cut_off)
+    usage = max(replies.cut_off.values(), key=llm.reasoning_tokens) if cut else None
+    file = llm.OUTCOMES["file"]
     return (f"{len(replies.failed)} record(s) failed: a model call for one of their text pieces failed, so each "
             f"is left out of {where} whole ({named([f'{i}: {why}' for i, why in replies.failed.items()], 3, '; ')}). "
-            f"Run the step again: only the failed pieces are asked again; every answer already paid for is reused."
-            + (f" But {cut} of them had their answer cut off at the length limit, which a rerun would only repeat: "
-               f"first lower the step's max_chars, or raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py "
-               f"(docs/running_on_nasa_laptop.md, section 7)." if cut else ""))
+            + (f"Each failed call of this run is described in {file}. " if file else "")
+            + ("Run the step again: only the failed pieces are asked again; every answer already paid for is reused."
+               if cut < len(replies.failed) else "")
+            + (f"{' But' if cut < len(replies.failed) else ''} {cut} of them had their answer cut off at the answer "
+               f"length limit, which a rerun with the same settings would only repeat, so it doesn't ask them again: "
+               f"{llm.cut_off_advice(usage)} (docs/running_on_nasa_laptop.md, section 7)." if cut else "")).strip()

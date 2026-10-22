@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
-from common.llm import MODEL, SERVICE
+from common.llm import MODEL, SERVICE, THINKING
 from common.step import load_moves, run_step
 
 INPUTS = {
@@ -41,6 +41,7 @@ SETTINGS = {
     "workers":               4,     # model calls made at the same time
     "service":               SERVICE, # the service that reaches the model: asksage or litellm
     "model":                 MODEL, # the AI model to ask (py helpers/models.py lists them)
+    "thinking":              THINKING, # how much a model that thinks may think: low, medium, high, or model_default
     "confirm_paid_calls":    True,  # stop and ask before the first model call; false for unattended runs
 }
 

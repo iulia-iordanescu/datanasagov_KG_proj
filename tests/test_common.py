@@ -393,6 +393,7 @@ class AskCached(unittest.TestCase):
             started, answers = [], iter([{"n": 1}, {"n": 2}])
             paid = SimpleNamespace(made=0, start=started.append)
             paid.made_call = lambda: setattr(paid, "made", paid.made + 1)
+            paid.outcome = lambda where, prompt, error=None, watched=True: None
             calls = SimpleNamespace(paid=paid)
             c = cache_module.Cache(tmp, "stage")
             with mock.patch.object(llm, "call_llm_json", lambda prompt, read_timeout=180: next(answers)):
@@ -679,7 +680,8 @@ class LiteLLM(unittest.TestCase):
         llm.SERVED.add("claude-sonnet-5-20260101")
         self.assertEqual(llm.describe(), {"service": "litellm", "model": "claude-sonnet-5",
                                           "served_as": ["claude-sonnet-5-20260101"], "temperature": 0,
-                                          "max_answer_tokens": llm.MAX_ANSWER_TOKENS})
+                                          "max_answer_tokens": llm.MAX_ANSWER_TOKENS, "thinking": llm.THINKING,
+                                          "thinking_sent": None})
         self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
 
     def test_unknown_service(self):

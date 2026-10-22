@@ -10,8 +10,8 @@ instead of printed.
 
 It holds, in this order:
 
-    THE RUN'S MODEL       MODEL, SERVICE; describe and model_label for the
-                          run's record and report; cache_identity
+    THE RUN'S MODEL       MODEL, SERVICE, THINKING; describe and model_label
+                          for the run's record and report; cache_identity
     THE ASK SAGE CLIENT and THE LITELLM CLIENT: one request each
     EITHER SERVICE
         list_models       the model names the service lists (free; see py helpers/models.py)
@@ -25,7 +25,9 @@ It holds, in this order:
     A PAID RUN
         PaidCalls         asks once before a run's first paid call (showing
                           any notes about the run first), makes a one-line
-                          test call, and counts the calls
+                          test call and checks its token counts, counts the
+                          calls, shows their progress, records each failed
+                          call, and stops early when the first calls fail
         Calls, paid_calls what a step's stages share: PaidCalls and the
                           folder its answers are cached in (common/common_helpers/cache.py)
         run_parallel      runs jobs a few at a time; Ctrl-C cancels those
@@ -46,6 +48,8 @@ ASKSAGE_API_KEY (Ask Sage) or LITELLM_API_KEY (LiteLLM), and the packages
 requests and python-dotenv.
 """
 
+import datetime as dt
+import hashlib
 import json
 import os
 import random
@@ -84,6 +88,17 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 #: Every call asks for the model's most likely answer, the same each time as far as the model allows.
 TEMPERATURE = 0
 
+#: How much a model that thinks before answering may think: the default of every step's `thinking` setting, which
+#: paid_calls() puts here for the run. A model's thinking is hidden, billed as answer tokens, and counts against
+#: MAX_ANSWER_TOKENS (Google's Gemini docs: the answer limit includes "thought tokens"), so uncapped thinking leaves
+#: less room for the answer: on 2026-10-21, gemini-2.5-pro's answer for a 1,503-character record was cut off after
+#: 10,623 characters, far fewer than 16,000 tokens hold. Sent as LiteLLM's `reasoning_effort`, only where LiteLLM
+#: documents it (thinking_sent): for Gemini 2.5 Pro, LiteLLM turns "low" into a thinking budget of 1,024 tokens, so
+#: the answer keeps about 15,000 of MAX_ANSWER_TOKENS; for Gemini 3, into its thinking level "low". "model_default"
+#: sends nothing, so the model thinks as it would by default.
+THINKING = "low"
+THINKING_LEVELS = ("low", "medium", "high", "model_default")
+
 #: The longest answer a call may get, in tokens, asked for explicitly so the service's own default doesn't apply: on
 #: 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000 characters, mid-JSON. With
 #: 16,000, one answer was still cut off, at 25,658 characters: fewer than 16,000 tokens usually hold, so tokens the
@@ -97,7 +112,8 @@ READ_TIMEOUT = 600
 
 #: Every request sent to the service in this run, retries, re-asks, and failures included: what is billed, as far as
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
-REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0}
+REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0,
+            "reasoning_tokens": 0}
 _requests_lock = threading.Lock()
 
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
@@ -109,7 +125,20 @@ def describe() -> dict:
     """What answered this run's calls, for the run's record (each step's "made"): the service, the model as asked
     for, the exact model the service said answered (when it says), and the settings every call is sent with."""
     return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), "temperature": TEMPERATURE,
-            "max_answer_tokens": MAX_ANSWER_TOKENS}
+            "max_answer_tokens": MAX_ANSWER_TOKENS, "thinking": THINKING, "thinking_sent": thinking_sent()}
+
+
+def thinking_sent(model: str | None = None, service: str | None = None) -> str | None:
+    """The `reasoning_effort` a call sends (THINKING), or None when it sends none. Sent only through LiteLLM, and only
+    to the models LiteLLM documents it for that think unless told otherwise: Google's Gemini 2.5 and later
+    (https://docs.litellm.ai/docs/providers/gemini). Not to Anthropic's Claude models, which think only when asked
+    (https://docs.litellm.ai/docs/providers/anthropic), and not to others, which might refuse a parameter they don't
+    take. Ask Sage's query takes no such parameter."""
+    model, service = model or MODEL, service or SERVICE
+    if service != "litellm" or THINKING == "model_default" or maker(model) != "Google":
+        return None
+    version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
+    return THINKING if version and float(version.group(1)) >= 2.5 else None
 
 
 def model_label() -> str:
@@ -122,8 +151,10 @@ def model_label() -> str:
 def cache_identity() -> str:
     """The model as the cache key names it (common/common_helpers/cache.py). Ask Sage's is the model name alone, as
     it was before a second service existed, so answers already paid for stay valid; another service's names the
-    service too, since two services may use one name for different models."""
-    return MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}"
+    service too, since two services may use one name for different models; and the thinking cap, when one is sent
+    (thinking_sent), since it changes the answer."""
+    sent = thinking_sent()
+    return (MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}") + (f"|thinking:{sent}" if sent else "")
 
 
 def _env(name: str, why: str) -> str:
@@ -220,7 +251,19 @@ def _retry_after(resp) -> float | None:
 
 class CutOff(ApiError):
     """The answer reached the longest length allowed (MAX_ANSWER_TOKENS) and was cut off. Not retried: asking again
-    with the same limit gets the same cut."""
+    with the same limit gets the same cut. Carries what the service sent (answer, usage, finish_reason), for the
+    failed-call record."""
+
+
+def reasoning_tokens(usage) -> int:
+    """The thinking tokens a reply's usage reports (OpenAI's shape, which LiteLLM uses:
+    usage.completion_tokens_details.reasoning_tokens), 0 when it reports none."""
+    details = usage.get("completion_tokens_details") if isinstance(usage, dict) else None
+    return int(details.get("reasoning_tokens") or 0) if isinstance(details, dict) else 0
+
+
+#: What the latest call in this thread got back (finish_reason, usage), for the test call's check (PaidCalls.start).
+_last = threading.local()
 
 
 def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
@@ -341,22 +384,31 @@ def _count_tokens(usage: dict) -> None:
         REQUESTS["cache_read_tokens"] += read
         REQUESTS["cache_write_tokens"] += write
         REQUESTS["output_tokens"] += usage.get("completion_tokens") or 0
+        REQUESTS["reasoning_tokens"] += reasoning_tokens(usage)
+
+
+def _post(*args, **kwargs):
+    """requests.post, looked up when called: the one place a LiteLLM request leaves (the tests' stand-in replaces it)."""
+    return requests.post(*args, **kwargs)
 
 
 def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
     """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
     when the reply names it, goes into SERVED for the run's record."""
     url, headers = _litellm("/v1/chat/completions")
-    resp = requests.post(url, headers=headers,
-                         json={"model": model, "messages": _messages(prompt, model, cache_until),
-                               "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS},
-                         timeout=(5, read_timeout))
+    payload = {"model": model, "messages": _messages(prompt, model, cache_until),
+               "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS}
+    if thinking_sent(model, "litellm"):
+        payload["reasoning_effort"] = thinking_sent(model, "litellm")
+    _last.reply = {}
+    resp = _post(url, headers=headers, json=payload, timeout=(5, read_timeout))
     if resp.status_code in RETRY_STATUSES:
         raise RetryLater(_litellm_error(resp), _retry_after(resp))   # worth retrying
     if resp.status_code >= 400:
         raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
     body = resp.json()
     _count_tokens(body.get("usage"))
+    _last.reply = {"usage": body.get("usage") if isinstance(body.get("usage"), dict) else {}}
     try:
         choice = body["choices"][0]
         text = choice["message"]["content"]
@@ -365,20 +417,31 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     if body.get("model"):
         SERVED.add(str(body["model"]))
     reason = choice.get("finish_reason")
+    _last.reply["finish_reason"] = reason
     if reason == "length":
         # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see why it ran long:
         # many facts, or the model repeating itself.
         log.debug(f"cut-off answer from {model}, {len(text or ''):,} characters, usage {body.get('usage')}:\n{text}")
-        raise CutOff(f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, "
-                     f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py), after {len(text or ''):,} characters")
+        thought = reasoning_tokens(body.get("usage"))
+        raise _with_reply(CutOff(
+            f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, MAX_ANSWER_TOKENS "
+            f"in common/common_helpers/llm.py), after {len(text or ''):,} characters"
+            + (f"; the model spent {thought:,} of those tokens thinking" if thought else "")), text, body, reason)
     if reason not in (None, "stop") or not (text or "").strip():
         # e.g. "content_filter": a safety or recitation filter withheld the answer. Asking again gets the same. What
         # came before the stop goes to the log file (DEBUG), so a person can see where it stopped.
         log.debug(f"answer stopped by the service from {model} (finish_reason {reason!r}), {len(text or ''):,} "
                   f"characters, usage {body.get('usage')}:\n{text}")
-        raise ApiError(f"the model gave no usable answer (finish_reason {reason!r}, {len(text or ''):,} characters"
-                       + (": the service's content filter withheld it" if reason == "content_filter" else "") + ")")
+        raise _with_reply(ApiError(f"the model gave no usable answer (finish_reason {reason!r}, {len(text or ''):,} "
+                                   f"characters" + (": the service's content filter withheld it"
+                                                    if reason == "content_filter" else "") + ")"), text, body, reason)
     return text
+
+
+def _with_reply(error: Exception, text, body: dict, reason) -> Exception:
+    """error, carrying what the service sent (the answer, usage, finish_reason), for the failed-call record."""
+    error.answer, error.usage, error.finish_reason = text or "", body.get("usage") or {}, reason
+    return error
 
 
 # ------------------------------ either service ------------------------------
@@ -465,9 +528,12 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
             log.debug(f"unusable answer from {MODEL} (attempt {attempt + 1} of {retries + 1}), "
                       f"{len(text):,} characters, {e}:\n{text}")
             if attempt == retries:
-                raise BadReply(f"the model's answer isn't a valid JSON object, {retries + 1} times ({e}); each answer "
-                               f"is in this run's log (outputs/logs/<run id>.log), on a DEBUG line starting "
-                               f"\"unusable answer\"") from None
+                error = BadReply(f"the model's answer isn't a valid JSON object, {retries + 1} times ({e}); each "
+                                 f"answer is in this run's log (outputs/logs/<run id>.log), on a DEBUG line starting "
+                                 f"\"unusable answer\"")
+                reply = getattr(_last, "reply", None) or {}
+                error.answer, error.usage, error.finish_reason = text, reply.get("usage") or {}, reply.get("finish_reason")
+                raise error from None
             log.warning(f"The model's reply isn't a JSON object ({e}); asking once more, reminding it to reply with "
                         f"the JSON object only. Nothing to do.")
             prompt += ("\n\nYour last reply was not a valid JSON object. "
@@ -490,16 +556,111 @@ def fence_safe(text: str, end_line: str) -> str:
 
 # ------------------------------ a paid run ---------------------------------
 
-class PaidCalls:
-    """Asks once, just before a run's first paid call, and counts the calls.
+#: The early stop: when EARLY_STOP_FAILURES of a run's first EARLY_STOP_WINDOW calls about records' text pieces
+#: (common/common_helpers/extraction.py, ask_model: 040's extraction, 050, 060; the test call not counted) fail,
+#: cut-offs included, the step stops before paying for more: a fault that hits that many of the first calls (a limit
+#: too small for the model's thinking, a model that answers in the wrong shape) would most likely hit the rest too.
+#: Later failures don't stop the run: by then most calls have worked, and the failed ones are left out and listed.
+EARLY_STOP_WINDOW = 10
+EARLY_STOP_FAILURES = 3
 
-    A stage calls start(plan) before it makes any call a cache couldn't
-    answer, and made_call() for each call. The first start() logs the plan,
-    asks the person to press Enter (unless confirm is False, for runs with
-    nobody at the keyboard), and makes one tiny test call, so a wrong model
-    name or key fails once here instead of once per text. A run whose every
-    answer comes from the cache never asks and never pays. Declining exits
-    the run having spent nothing.
+#: The test call's check (PaidCalls.start): a one-line answer whose thinking used this share of MAX_ANSWER_TOKENS or
+#: more leaves a record's answer too little room, so the run asks again before paying for more.
+THINKING_WARN_SHARE = 0.5
+
+#: The progress lines while calls are made: at most one every PROGRESS_SECONDS seconds (the first and the last call
+#: of a stage always shown), with the time left estimated once PROGRESS_ESTIMATE_AFTER calls have finished.
+PROGRESS_SECONDS = 10
+PROGRESS_ESTIMATE_AFTER = 3
+
+#: This run's failed model calls: how many failed, how many of them were cut off, how many weren't made because of the
+#: early stop, and the file that describes each (failed_calls_file), for the report and the run's last lines.
+#: Reset by paid_calls.
+OUTCOMES = {"failed": 0, "cut_off": 0, "not_sent": 0, "file": None}
+
+#: Warnings found while the run paid (the test call's check), for the report's Warnings (common/common_helpers/step.py).
+RUN_WARNINGS = []
+
+
+class EarlyStop(SystemExit):
+    """The early stop (EARLY_STOP_FAILURES of the first EARLY_STOP_WINDOW calls failed). A SystemExit, so the step
+    stops with its report and log; run_parallel first lets the calls already under way finish and keeps their
+    answers."""
+
+    def __init__(self, message: str, paid):
+        super().__init__(message)
+        self.paid = paid
+
+
+def cut_off_advice(usage=None) -> str:
+    """What to change after an answer was cut off at MAX_ANSWER_TOKENS, from the thinking the service reported."""
+    thought, sent = reasoning_tokens(usage), thinking_sent()
+    if sent and sent != "low":
+        fix = (f"set the step's thinking setting lower (it is {sent}; `--thinking low`), so more of the tokens are left "
+               f"for the answer")
+    elif thought and THINKING == "model_default" and maker(MODEL) == "Google":
+        fix = ("the thinking isn't capped (thinking is model_default): give `--thinking low`, so more of the tokens are "
+               "left for the answer")
+    elif thought and not sent:
+        fix = ("the pipeline can't cap this model's thinking: raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py, "
+               "or choose another model (`--model`)")
+    else:
+        fix = (f"the answer itself is long: raise MAX_ANSWER_TOKENS in common/common_helpers/llm.py (now "
+               f"{MAX_ANSWER_TOKENS:,}), or, when the text piece is long, lower the step's max_chars so each answer is "
+               f"shorter")
+    if thought:
+        return f"The model spent {thought:,} of the {MAX_ANSWER_TOKENS:,} tokens thinking; {fix}"
+    return fix[0].upper() + fix[1:]
+
+
+def advice(error) -> str:
+    """What to do about one failed call, in words: the same advice the messages and the failed-call record give."""
+    if isinstance(error, CutOff):
+        return cut_off_advice(getattr(error, "usage", None))
+    if getattr(error, "finish_reason", None) == "content_filter":
+        return ("Look at the record's text; if the service's filter withholds answers often with this model, choose "
+                "another (`--model`)")
+    if "no answer within" in str(error):
+        return "Run the step again later; if it keeps happening, lower the step's max_chars"
+    if isinstance(error, BadReply):
+        return ("Read the answer (in the failed-call record or the log) to see what the model wrote instead of the "
+                "JSON object; if this model keeps doing it, choose another (`--model`)")
+    return ("Read the error: rate limits and server errors usually pass, so run the step again; if it keeps failing, "
+            "check the connection and the key in .env")
+
+
+def failed_calls_file() -> Path | None:
+    """outputs/logs/<run id>_failed_calls.jsonl, beside the run's log; None outside a run."""
+    from common.audit import current_run_id
+    from common.step import LOGS_DIR
+    run_id = current_run_id()
+    return LOGS_DIR / f"{run_id}_failed_calls.jsonl" if run_id else None
+
+
+def _usage_counts(usage) -> dict:
+    usage = usage if isinstance(usage, dict) else {}
+    return {"prompt_tokens": usage.get("prompt_tokens"), "answer_tokens": usage.get("completion_tokens"),
+            "reasoning_tokens": reasoning_tokens(usage) if usage else None}
+
+
+def _duration(seconds: float) -> str:
+    return f"{seconds:.0f} s" if seconds < 90 else f"{seconds / 60:.0f} min" if seconds < 5400 else f"{seconds / 3600:.1f} h"
+
+
+class PaidCalls:
+    """Asks once, just before a run's first paid call; checks the test call; counts the calls, shows their progress,
+    records each failed one, and stops the run early when its first calls fail.
+
+    A stage calls start(plan) before it makes any call a cache couldn't answer, expect(n) before n calls, and, as each
+    call ends, made_call() (when it answered) and outcome(where, prompt, error). The first start() logs the plan,
+    asks the person to press Enter (unless confirm is False, for runs with nobody at the keyboard), and makes one tiny
+    test call, so a wrong model name or key fails once here instead of once per text; its token counts are checked
+    (an answer cut off, or thinking that leaves too little room, is said before paying for more). A run whose every
+    answer comes from the cache never asks and never pays. Declining exits the run having spent nothing.
+
+    outcome() prints the progress (at most every PROGRESS_SECONDS), writes a failed call to the run's failed-call
+    record (failed_calls_file), and raises EarlyStop when EARLY_STOP_FAILURES of the first EARLY_STOP_WINDOW calls
+    failed.
 
     notes: what the step found, BEFORE any call, that differs from what the
     person asked for (an id that isn't in the catalog, fewer texts than
@@ -516,33 +677,177 @@ class PaidCalls:
         self.made = 0                       # calls made by the stages
         self.test_calls = 0                 # 1 once the run has started paying
         self._lock = threading.Lock()
+        self.clock = time.monotonic         # replaced by the tests
+        self.ended = 0                      # calls the early stop watches, ended this run, answered or failed
+        self.failures = []                  # (where, error) of each of those that failed
+        self.stopped = False
+        self._batch = {"total": None, "done": 0, "failed": 0, "cut": 0, "began": 0.0, "shown": None}
 
     def start(self, plan: str) -> None:
         if self.started:
             return
         log.info(plan)
-        log.info(f"model: {MODEL}, through {SERVICES.get(SERVICE, SERVICE)}")
+        log.info(f"model: {MODEL}, through {SERVICES.get(SERVICE, SERVICE)}"
+                 + (f", thinking {thinking_sent()}" if thinking_sent() else ""))
         if self.notes:
             show_warnings(self.step, self.notes)
         if self.confirm:
             confirm("Press Enter to start (1 test call first), or anything else to cancel."
                     if not self.notes else
                     "Press Enter to go ahead anyway (1 test call first), or anything else to cancel.")
+        again = f"`py {self.step}/run.py`" if self.step else "the step"
+        service = SERVICES.get(SERVICE, SERVICE)
         try:
             call_llm(TEST_PROMPT, attempts=2)
         except Exception as e:                              # noqa: BLE001
-            again = f"`py {self.step}/run.py`" if self.step else "the step"
-            sys.exit(f"Test call to {MODEL} through {SERVICES.get(SERVICE, SERVICE)} failed ({e}), so no other model "
-                     f"call was made. If {SERVICES.get(SERVICE, SERVICE)} says the model "
-                     f"isn't allowed, give another with --model <name> (`py helpers/models.py --service {SERVICE} --try <name> ...` "
-                     f"tells which you may use); otherwise "
-                     f"check your key in .env and that you're on NASA's network. Then run {again} again.")
+            OUTCOMES["failed"] += 1
+            OUTCOMES["cut_off"] += isinstance(e, CutOff)
+            self._record({"stage": "test call"}, TEST_PROMPT, e)
+            self._test_call_failed(e, again, service)
         self.started = True
         self.test_calls = 1
+        self._check_test_call()
+
+    def _test_call_failed(self, e: Exception, again: str, service: str) -> None:
+        """Stop the run: the test call failed (e), so no other call is made."""
+        file = f" The call is described in {OUTCOMES['file']}." if OUTCOMES["file"] else ""
+        if isinstance(e, CutOff):
+            sys.exit(f"Test call to {MODEL} through {service} was cut off at the longest length allowed "
+                     f"({MAX_ANSWER_TOKENS:,} tokens) on a one-line answer, so no other model call was made: every "
+                     f"answer of this run would be cut off too. {cut_off_advice(getattr(e, 'usage', None))}; then run "
+                     f"{again} again.{file}")
+        sys.exit(f"Test call to {MODEL} through {service} failed ({e}), so no other model "
+                 f"call was made. If {service} says the model "
+                 f"isn't allowed, give another with --model <name> (`py helpers/models.py --service {SERVICE} --try <name> ...` "
+                 f"tells which you may use)"
+                 + (f"; if it names reasoning_effort, give `--thinking model_default`, which sends no thinking cap"
+                    if thinking_sent() else "")
+                 + f"; otherwise check your key in .env and that you're on NASA's network. Then run {again} again.{file}")
+
+    def _check_test_call(self) -> None:
+        """One line on the test call's token counts, and a stop to think when its thinking leaves too little room."""
+        reply = getattr(_last, "reply", None) or {}
+        usage = reply.get("usage") or {}
+        if not usage:
+            log.info(f"  test call: ok ({SERVICES.get(SERVICE, SERVICE)} reports no token counts)")
+            return
+        thought = reasoning_tokens(usage)
+        answer = (usage.get("completion_tokens") or 0) - thought
+        log.info(f"  test call: ok (answer {answer:,} tokens, thinking "
+                 + (f"{thought:,} tokens)" if "completion_tokens_details" in usage else "not reported)"))
+        if thought < THINKING_WARN_SHARE * MAX_ANSWER_TOKENS:
+            return
+        note = (f"The test call's one-line answer used {thought:,} tokens thinking, {thought / MAX_ANSWER_TOKENS:.0%} "
+                f"of the {MAX_ANSWER_TOKENS:,} tokens each answer may use (MAX_ANSWER_TOKENS in "
+                f"common/common_helpers/llm.py), so a record's longer answer is likely to be cut off. "
+                f"{cut_off_advice(usage)}.")
+        RUN_WARNINGS.append(note)
+        show_warnings(self.step, [note])
+        if self.confirm:
+            confirm("Press Enter to go ahead anyway, or anything else to cancel (only the test call was paid for).")
+
+    def expect(self, total: int) -> None:
+        """The next total calls are one stage's: its progress lines count them."""
+        with self._lock:
+            self._batch = {"total": total, "done": 0, "failed": 0, "cut": 0, "began": self.clock(), "shown": None}
 
     def made_call(self) -> None:
         with self._lock:                    # stages may call from several threads
             self.made += 1
+
+    def outcome(self, where: dict, prompt: str, error: Exception | None = None, watched: bool = True) -> None:
+        """One paid call ended: answered (error None) or failed. Shows the progress, records a failed call, and
+        raises EarlyStop when too many of the run's first calls failed. where: {"stage", "record", "text_piece"}, as
+        much as the stage knows. watched: whether the early stop counts the call; False for the stages that ask one
+        prompt at a time (common/common_helpers/cache.py, ask_cached), which are few, and where a failure is often
+        expected and handled (040's labeling asks a refused batch again in halves, to find the item refused)."""
+        with self._lock:
+            b = self._batch
+            if not b["began"]:
+                b["began"] = self.clock()
+            b["done"] += 1
+            self.ended += watched
+            if error is not None:
+                b["failed"] += 1
+                b["cut"] += isinstance(error, CutOff)
+                if watched:
+                    self.failures.append((where, error))
+                OUTCOMES["failed"] += 1
+                OUTCOMES["cut_off"] += isinstance(error, CutOff)
+                self._record(where, prompt, error)
+            self._progress()
+            early = (watched and not self.stopped and self.ended <= EARLY_STOP_WINDOW
+                     and len(self.failures) >= EARLY_STOP_FAILURES)
+            if early:
+                self.stopped = True
+        if early:
+            raise EarlyStop(self._early_stop_message(), self)
+
+    def _progress(self) -> None:
+        b, now = self._batch, self.clock()
+        last = b["total"] is not None and b["done"] >= b["total"]
+        if not (b["shown"] is None or last or now - b["shown"] >= PROGRESS_SECONDS):
+            return
+        b["shown"] = now
+        failed = f"{b['failed']:,} failed" + (f" ({b['cut']:,} cut off)" if b["cut"] else "")
+        if b["total"] is None:
+            log.info(f"  model calls: {b['done']:,} done, {failed}")
+            return
+        if last:
+            left = f"took {_duration(now - b['began'])}"
+        elif b["done"] < PROGRESS_ESTIMATE_AFTER:
+            left = "estimating the time left…"
+        else:
+            left = f"about {_duration((now - b['began']) / b['done'] * (b['total'] - b['done']))} left"
+        log.info(f"  model calls: {b['done']:,} of {b['total']:,} done, {failed}, {left}")
+
+    def _early_stop_message(self) -> str:
+        what = [f"{w.get('record', w.get('stage', '?'))}"
+                + (f" piece {w['text_piece']}" if w.get("text_piece") else "") + f": {e}" for w, e in self.failures]
+        cut = [e for _, e in self.failures if isinstance(e, CutOff)]
+        todo = cut_off_advice(max((getattr(e, "usage", None) or {} for e in cut), key=reasoning_tokens)) if cut \
+            else advice(self.failures[-1][1])
+        file = OUTCOMES["file"]
+        return (f"Step {self.step.split('_')[0]} stopped early: {len(self.failures)} of the first {self.ended} model "
+                f"calls of this run failed ({'; '.join(what)}), so it made no more: the rest would most likely fail "
+                f"the same way and be paid for nothing (the early stop: {EARLY_STOP_FAILURES} failed among the first "
+                f"{EARLY_STOP_WINDOW}, in common/common_helpers/llm.py). What to do: {todo}."
+                + (f" Each failed call is described in {file}." if file else "")
+                + f" Answers already received are kept in the cache, so the next run pays only for the rest: run "
+                  f"`py {self.step}/run.py` again once that is changed.")
+
+    def not_sent(self, jobs: list) -> None:
+        """The calls the early stop prevented, [(where, prompt)]: one line each in the failed-call record."""
+        with self._lock:
+            for where, prompt in jobs:
+                OUTCOMES["not_sent"] += 1
+                self._record(where, prompt, None)
+
+    def _record(self, where: dict, prompt: str, error: Exception | None) -> None:
+        """One line of the failed-call record: everything needed to see why the call failed (never a key)."""
+        path = failed_calls_file()
+        if path is None:
+            return
+        usage = getattr(error, "usage", None)
+        entry = {"time": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "step": self.step,
+                 "run_id": path.name.removesuffix("_failed_calls.jsonl"), **where,
+                 "outcome": "not_sent" if error is None else "cut_off" if isinstance(error, CutOff) else "failed",
+                 "service": SERVICE, "model": MODEL,
+                 "call_settings": {"temperature": TEMPERATURE, "max_answer_tokens": MAX_ANSWER_TOKENS,
+                                   "thinking": THINKING, "thinking_sent": thinking_sent(),
+                                   "read_timeout_s": READ_TIMEOUT},
+                 "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                 "prompt_characters": len(prompt)}
+        if error is None:
+            entry["why"] = "not made: the early stop stopped the run before this call"
+        else:
+            entry.update({"finish_reason": getattr(error, "finish_reason", None), **_usage_counts(usage),
+                          "error_type": type(error).__name__, "error": str(error),
+                          "answer": getattr(error, "answer", None), "what_to_do": advice(error)})
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8", newline="\n") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        OUTCOMES["file"] = path.relative_to(path.parents[2]).as_posix()
 
 
 @dataclass
@@ -555,9 +860,9 @@ class Calls:
 
 def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     """The Calls of one run: uses the model the setting `model` names, through the service the setting `service`
-    names; asks before paying (setting confirm_paid_calls), showing notes first; answers kept in cache/ inside the
-    step's output folder."""
-    global MODEL, SERVICE
+    names, with the thinking cap the setting `thinking` gives; asks before paying (setting confirm_paid_calls),
+    showing notes first; answers kept in cache/ inside the step's output folder."""
+    global MODEL, SERVICE, THINKING
     service = str(settings.get("service") or SERVICE).strip().lower()
     if service not in SERVICES:
         raise ValueError(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
@@ -567,15 +872,22 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     if not name:
         raise ValueError(f"The setting model is empty, so no model can be called. Give one with --model <name> "
                          f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
-    MODEL, SERVICE = name, service
+    thinking = str(settings.get("thinking") or THINKING).strip().lower()
+    if thinking not in THINKING_LEVELS:
+        raise ValueError(f"The setting thinking is {thinking!r}, which isn't a level the pipeline knows, so no model "
+                         f"can be called. Give one of {', '.join(THINKING_LEVELS)} with --thinking <level>, then run "
+                         f"`py {Path(output).name}/run.py` again.")
+    MODEL, SERVICE, THINKING = name, service, thinking
     SERVED.clear()
     for k in REQUESTS:
         REQUESTS[k] = 0
+    OUTCOMES.update(failed=0, cut_off=0, not_sent=0, file=None)
+    RUN_WARNINGS.clear()
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
                  cache_dir=Path(output) / "cache")
 
 
-def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:
+def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str, not_sent=None) -> None:
     """Run fn(*args) for every (key, args) in jobs, workers at a time, and
     call handle(n, key, result, error) in this thread as each finishes (n
     counts from 1; error is None on success, result None on failure).
@@ -583,8 +895,13 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:
     Ctrl-C cancels every call not yet started, so a stopped run spends
     nothing more than what is already in flight, then exits with stop_note.
     Calls already in flight cannot be recalled; their results are not
-    handled."""
+    handled.
+
+    When handle raises EarlyStop (PaidCalls.outcome), every call not yet started is cancelled, the calls already under
+    way are waited for and handled (so their paid answers are kept), not_sent(keys of the cancelled jobs) is called,
+    and the EarlyStop goes on."""
     pool = ThreadPoolExecutor(workers)
+    futures, handled = {}, set()
     try:
         futures = {pool.submit(fn, *args): key for key, args in jobs.items()}
         for n, future in enumerate(as_completed(futures), 1):
@@ -592,7 +909,20 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str) -> None:
                 result, error = future.result(), None
             except Exception as e:                      # noqa: BLE001
                 result, error = None, e
+            handled.add(future)
             handle(n, futures[future], result, error)
+    except EarlyStop:
+        cancelled = [f for f in futures if f.cancel()]
+        under_way = [f for f in futures if f not in handled and f not in cancelled]
+        for n, future in enumerate(under_way, len(handled) + 1):
+            try:
+                result, error = future.result(), None
+            except Exception as e:                      # noqa: BLE001
+                result, error = None, e
+            handle(n, futures[future], result, error)
+        if not_sent is not None:
+            not_sent([futures[f] for f in cancelled])
+        raise
     except KeyboardInterrupt:
         pool.shutdown(wait=False, cancel_futures=True)
         sys.exit(f"\nStopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. "

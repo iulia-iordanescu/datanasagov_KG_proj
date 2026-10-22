@@ -108,7 +108,7 @@ In `outputs/intermediate_results/060_extract/`:
 
 For evaluation: a record **missing** from `extracted_triples.csv` wasn't extracted (a failed call) and must be left out, not evaluated as zero. A record with **only its describes triple** was extracted and states no [fact](../docs/terminology.md#2-triples) the schema can express.
 
-Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`.
+Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and wrote, its numbers, its warnings) and `outputs/logs/<run id>.log` (everything it did, line by line); how to read them: `helpers/audit.md`. A run in which a model call failed also leaves `outputs/logs/<run id>_failed_calls.jsonl`, the failed-call record: each failed call, why, and what to change (`docs/running_on_nasa_laptop.md`, section 5).
 
 ## Settings
 
@@ -120,6 +120,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the report: what it read and
 | `workers` | 4 | Model calls made at the same time. | Lower it if the service refuses calls for coming too fast. |
 | `service` | litellm | The service that reaches the model: `asksage` (NASA's Ask Sage) or `litellm` (NASA's LiteLLM). Each has its own key in `.env` and its own model names. Every cached answer is tied to its service and model. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
 | `model` | claude-opus-5.5 | The AI [model](../docs/terminology.md#8-the-pipeline) to ask. `py helpers/models.py --service <service>` lists the models the service shows your account; a listed one may still refuse you, which the [run](../docs/terminology.md#8-the-pipeline)'s [test call](../docs/terminology.md#8-the-pipeline) finds out for the price of that call. Every cached answer is tied to its model (and service): another model asks everything again, and switching back reuses the earlier answers. | See *Choosing a model* in `docs/running_on_nasa_laptop.md`. |
+| `thinking` | low | How much a model that thinks before it answers may think: `low`, `medium`, `high`, or `model_default` (nothing sent). Sent only to the models that take it (Gemini 2.5 and later, through LiteLLM); its thinking counts against the longest answer allowed. | When the report's warning says an answer was cut off with most of its tokens spent thinking. See *The thinking cap* in `docs/running_on_nasa_laptop.md`, section 5. |
 | `confirm_paid_calls` | true | Stop and ask before the first model call. | `false` for runs with nobody at the keyboard, e.g. the whole pipeline. |
 
 ## How to run
@@ -139,7 +140,7 @@ py 060_extract/run.py --confirm_paid_calls false              don't ask (unatten
 
 **Paying.** Before its first [model call](../docs/terminology.md#8-the-pipeline), 060 logs its plan (how many [records](../docs/terminology.md#1-records-and-their-text), how many calls, the [model](../docs/terminology.md#8-the-pipeline)) and waits: Enter starts, anything else stops the [run](../docs/terminology.md#8-the-pipeline) having spent nothing. If the run can't do exactly what you asked, it says so first, above the question (*Step 060 found N warnings:*, then each one, numbered; they're listed under *Checks and warnings*). Its first call is the [test call](../docs/terminology.md#8-the-pipeline), which checks that the model name and key work. A run whose answers are all in the cache never asks and never pays. Model calls: one per record, plus one per extra [text](../docs/terminology.md#1-records-and-their-text) piece, plus the test call.
 
-**The cache.** Every model answer is kept in `cache/`, under a [fingerprint](../docs/terminology.md#8-the-pipeline) of everything that decided it: the model, the prompt's exact text, and what was sent. A rerun reuses every answer whose fingerprint is unchanged: a failed call isn't kept, so a rerun asks only the calls that failed; editing a prompt asks again exactly the calls that use it; deleting `cache/` (or all of `outputs/`) means paying for every call again.
+**The cache.** Every model answer is kept in `cache/`, under a [fingerprint](../docs/terminology.md#8-the-pipeline) of everything that decided it: the model, the prompt's exact text, and what was sent. A rerun reuses every answer whose fingerprint is unchanged: a failed call isn't kept, so a rerun asks only the calls that failed (but an answer cut off at the length limit is kept as cut off, and not asked again with the same settings: *A cut-off isn't paid for twice* in `docs/running_on_nasa_laptop.md`, section 5); editing a prompt asks again exactly the calls that use it; deleting `cache/` (or all of `outputs/`) means paying for every call again.
 
 ## How it works
 
@@ -220,7 +221,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 | Message | Meaning | What to do |
 |---|---|---|
-| *N record(s) failed: a model call for one of their text pieces failed, so each is left out of the output whole* | A [model call](../docs/terminology.md#8-the-pipeline) for a [text piece](../docs/terminology.md#1-records-and-their-text) of those records failed (after the model client's own retries), so each is left out whole, never half extracted. The report gives each record's id and why. | Run the step again: only the failed pieces are asked again, and every answer already paid for is reused. |
+| *N record(s) failed: a model call for one of their text pieces failed, so each is left out of the output whole* | A [model call](../docs/terminology.md#8-the-pipeline) for a [text piece](../docs/terminology.md#1-records-and-their-text) of those records failed (after the model client's own retries), so each is left out whole, never half extracted. The report gives each record's id and why. | Run the step again: only the failed pieces are asked again, and every answer already paid for is reused. An answer cut off at the length limit isn't asked again with the same settings: first change the setting the warning names (`docs/running_on_nasa_laptop.md`, section 7). Each failed call is described in `outputs/logs/<run id>_failed_calls.jsonl`. |
 | *N of M rows have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
 **The step stops** with:
@@ -233,7 +234,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *extract_from must be one of ground_truth, all* | A typo in the [setting](../docs/terminology.md#8-the-pipeline). | Use `ground_truth` or `all`. |
 | *Nothing to extract: none of the records chosen can be extracted from …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
-| *The setting model is empty …*, *The setting service is …*, *Test call to … failed*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
+| *The setting model is empty …*, *The setting service is …*, *The setting thinking is …*, *Test call to … failed*, *Test call to … was cut off …*, *The test call's one-line answer used N tokens thinking …*, *Step NNN stopped early: …*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops (and the [test call](../docs/terminology.md#8-the-pipeline)'s warning) every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
 
 ## Audit trail
 
