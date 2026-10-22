@@ -59,15 +59,15 @@
   "7.41 km" in the notes: "7.41 km"; "T3" in the title, "Tier 3" in the
   notes: "Tier 3"); if they are two equal names, use the one the record uses
   most often (on a tie, the one it gives first); the other appears only in
-  an also-known-as triple, and only if the record states one. A type word
-  that only describes the thing doesn't count as saying more: "the Halden
-  satellite" gives "Halden" (the entity class says it is a satellite). A
-  type word that is part of the name stays: "Hurricane Katrina", "Lake
-  Erie". To see that two mentions are the same thing, use clues anywhere in
-  the record, and what you know about the words (e.g. that VLF means very
-  low frequency); but never add a fact the record doesn't state, and write
-  only a wording the record itself uses for that thing, after any qualifiers
-  are taken out.
+  an also-known-as triple, and only if the record states one. Leave out a
+  type word that only describes the thing, written in lowercase beside the
+  name: write "Halden", not "Halden satellite", since its entity class
+  already says it is a satellite. Keep a type word written as part of the
+  name, capitalized: write "Hurricane Katrina", not "Katrina". To see that
+  two mentions are the same thing, use clues anywhere in the record, and
+  what you know about the words (e.g. that VLF means very low frequency);
+  but never add a fact the record doesn't state, and write only a wording
+  the record itself uses for that thing, after any qualifiers are taken out.
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Ocean-Masked" over "masked".
 - Only facts the record states. Never use outside knowledge, and never write
