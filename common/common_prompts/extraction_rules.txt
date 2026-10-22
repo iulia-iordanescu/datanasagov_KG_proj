@@ -46,9 +46,10 @@
   available"): that dataset has its own record. Give only what is this
   record's own.
 - A list joined by "and": one triple per item, when each item alone is a
-  complete object; copy the words the items share onto each ("derived from
-  the 3 and 9 micron channels" gives "3 micron channel" and "9 micron
-  channel"). When an item alone needs other words of the sentence ("to
+  complete object; copy the words the items share onto each, and write each
+  in the singular, since each is now one item ("derived from the 3 and 9
+  micron channels" gives "3 micron channel" and "9 micron channel").
+  When an item alone needs other words of the sentence ("to
   monitor the health of lakes, rivers and wetlands": "lakes" alone is not a
   purpose), keep the whole phrase as one object.
 - One thing, one wording: when the record names the same thing more than
