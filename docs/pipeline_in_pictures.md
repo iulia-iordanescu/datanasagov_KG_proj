@@ -7,6 +7,24 @@ The pipeline at a glance, in six diagrams. Each says what it shows in a sentence
 Eight steps, run in order: `py run_pipeline.py` runs them all (README, *Pipeline overview*), and each also runs on its own, `py <step>/run.py`. Three of them ask a model; in two of them a person has work to do.
 
 ```mermaid
+---
+config:
+  look: handDrawn
+  handDrawnSeed: 3
+  theme: base
+  themeVariables:
+    fontFamily: '"Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive'
+    fontSize: 15px
+    primaryColor: "#fffdf8"
+    primaryTextColor: "#3b3128"
+    primaryBorderColor: "#6e5b49"
+    lineColor: "#8a7560"
+    textColor: "#3b3128"
+    clusterBkg: "#efe8d8"
+    clusterBorder: "#a8957f"
+    edgeLabelBackground: "#f8f4ea"
+  themeCSS: ".rough-node g:first-child path:first-child { stroke-width: 3px; }"
+---
 flowchart LR
     API[(data.nasa.gov)] --> S010["010 harvest"]
     S010 --> S020["020 clean"]
@@ -19,7 +37,7 @@ flowchart LR
     P1(["a person corrects the drafted batches"]) -.- S050
     P2(["a person checks the translation table"]) -.- S070
 
-    classDef model fill:#fbefc4,stroke:#85601a
+    classDef model fill:#f1dc9a,stroke:#8a6a2a
     classDef notbuilt stroke-dasharray: 5 5
     class S040,S050,S060 model
     class S080 notbuilt
@@ -32,6 +50,24 @@ Yellow: the step asks a model (040 learns the induced schema, 050 drafts classed
 A step reads what earlier steps wrote in `outputs/intermediate_results/`, plus files people keep in `annotations/`, and writes only its own folder. One exception: 070 adds rows to two files in `annotations/` (the translation table, and the log of looks at the held-out part).
 
 ```mermaid
+---
+config:
+  look: handDrawn
+  handDrawnSeed: 3
+  theme: base
+  themeVariables:
+    fontFamily: '"Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive'
+    fontSize: 15px
+    primaryColor: "#fffdf8"
+    primaryTextColor: "#3b3128"
+    primaryBorderColor: "#6e5b49"
+    lineColor: "#8a7560"
+    textColor: "#3b3128"
+    clusterBkg: "#efe8d8"
+    clusterBorder: "#a8957f"
+    edgeLabelBackground: "#f8f4ea"
+  themeCSS: ".rough-node g:first-child path:first-child { stroke-width: 3px; }"
+---
 flowchart LR
     subgraph steps["the steps (outputs/intermediate_results/)"]
         direction TB
@@ -68,6 +104,24 @@ The induction candidates and the pool never share a record, so the schema is nev
 How the ground truth is made and used, and where a person comes in (in the annotation tool, `py helpers/annotate.py`).
 
 ```mermaid
+---
+config:
+  look: handDrawn
+  handDrawnSeed: 3
+  theme: base
+  themeVariables:
+    fontFamily: '"Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive'
+    fontSize: 15px
+    primaryColor: "#fffdf8"
+    primaryTextColor: "#3b3128"
+    primaryBorderColor: "#6e5b49"
+    lineColor: "#8a7560"
+    textColor: "#3b3128"
+    clusterBkg: "#efe8d8"
+    clusterBorder: "#a8957f"
+    edgeLabelBackground: "#f8f4ea"
+  themeCSS: ".rough-node g:first-child path:first-child { stroke-width: 3px; }"
+---
 flowchart TD
     D["050 drafts the next drafted batch"] --> C["You correct it: Ground truth"]
     C -->|"a coined entity class or predicate"| GS["You add it to the ground truth schema,<br/>with a one-line definition"]
@@ -88,6 +142,24 @@ Each box where you act is a view of the annotation tool; what each view does: `a
 How 070 compares one record's extracted triples with its ground truth triples (in full: [`070_evaluate/metrics/pairs.md`](../070_evaluate/metrics/pairs.md)).
 
 ```mermaid
+---
+config:
+  look: handDrawn
+  handDrawnSeed: 3
+  theme: base
+  themeVariables:
+    fontFamily: '"Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive'
+    fontSize: 15px
+    primaryColor: "#fffdf8"
+    primaryTextColor: "#3b3128"
+    primaryBorderColor: "#6e5b49"
+    lineColor: "#8a7560"
+    textColor: "#3b3128"
+    clusterBkg: "#efe8d8"
+    clusterBorder: "#a8957f"
+    edgeLabelBackground: "#f8f4ea"
+  themeCSS: ".rough-node g:first-child path:first-child { stroke-width: 3px; }"
+---
 flowchart LR
     X["extracted triple<br/>(the current schema's component classes)"] -->|"translation table"| TX["translated extracted triple<br/>(the ground truth schema's component classes)"]
     G["ground truth triple"] --> PAIR{"pairs<br/>exact, then partial"}
@@ -103,6 +175,24 @@ Each occurrence (of a translated extracted triple) pairs with at most one ground
 What every run leaves behind, so that any output can be traced back to where it came from ([`helpers/audit.md`](../helpers/audit.md)).
 
 ```mermaid
+---
+config:
+  look: handDrawn
+  handDrawnSeed: 3
+  theme: base
+  themeVariables:
+    fontFamily: '"Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", cursive'
+    fontSize: 15px
+    primaryColor: "#fffdf8"
+    primaryTextColor: "#3b3128"
+    primaryBorderColor: "#6e5b49"
+    lineColor: "#8a7560"
+    textColor: "#3b3128"
+    clusterBkg: "#efe8d8"
+    clusterBorder: "#a8957f"
+    edgeLabelBackground: "#f8f4ea"
+  themeCSS: ".rough-node g:first-child path:first-child { stroke-width: 3px; }"
+---
 flowchart TD
     subgraph run["One run, e.g. 020_clean_2026-10-12_1030"]
         R["report<br/>outputs/reports/&lt;run id&gt;.md"]
