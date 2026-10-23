@@ -195,15 +195,15 @@ config:
 ---
 flowchart TD
     subgraph run["One run, e.g. 020_clean_2026-10-12_1030"]
-        R["report<br/>outputs/reports/&lt;run id&gt;.md"]
-        L["log<br/>outputs/logs/&lt;run id&gt;.log"]
+        R["report<br/>outputs/reports/#lt;run id#gt;.md"]
+        L["log<br/>outputs/logs/#lt;run id#gt;.log"]
         M["_manifest.json<br/>files in and out, with hashes"]
         O["_origin, inside each output item<br/>the input item(s) it was made from"]
     end
     O -->|"file and item"| U["010's batch file and its record"]
     U -->|"the request that fetched it"| API[(data.nasa.gov)]
     M -->|"which run made each input"| U
-    PR["previous_runs/&lt;run id&gt;/<br/>the earlier version of each file a run changed"] -.- run
+    PR["previous_runs/#lt;run id#gt;/<br/>the earlier version of each file a run changed"] -.- run
 ```
 
 `py helpers/audit.py <record id>` follows the origins back, step by step. Measured results that rest on these runs: [`findings.md`](findings.md).
