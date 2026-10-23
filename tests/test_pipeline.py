@@ -73,6 +73,18 @@ class Pipeline(unittest.TestCase):
     def manifest(self, step):
         return json.loads(self.output(step, "_manifest.json").read_text(encoding="utf-8"))
 
+    def per_text(self, step, counts: dict):
+        """The latest report of `step` shows, in its per-text count table (common/common_helpers/report.py), each
+        row label's counts as computed here from the step's output files: {row label: [count per text]}."""
+        report = max((self.repo / "outputs" / "reports").glob(f"{step}_*.md"),
+                     key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8")
+        for label, c in counts.items():
+            row = re.search(r"^\| " + re.escape(label) + r" \| (.*) \|$", report, re.M)
+            self.assertTrue(row, f"{step}: no row {label!r} in its report")
+            texts, low, high, _, _, total, none = [x.replace(",", "") for x in row.group(1).split(" | ")]
+            self.assertEqual((int(texts), int(low), int(high), int(total), int(none)),
+                             (len(c), min(c), max(c), sum(c), c.count(0)), label)
+
     # ------------------------------------------------------------- 010 to 030
 
     def test_t01_harvest(self):
@@ -155,6 +167,15 @@ class Pipeline(unittest.TestCase):
         sat = evidence["saturation"]["curve"]
         self.assertEqual(sat["texts"][-1], len(evidence["texts"]))              # the curve ends at every text read
         self.assertGreaterEqual(round(sat["entity classes"][-1]), len(found))    # before the too-vague check
+        raw = [len(t["triple_instances"]) + len(t["unverified"]) for t in evidence["texts"]]
+        verified = [len(t["triple_instances"]) for t in evidence["texts"]]
+        self.assertGreater(sum(raw), sum(verified))                            # the stand-in's invented ones
+        self.per_text("040_induce_schema", {"raw (everything the model listed: verified + unverified)": raw,
+                                            "verified (kept)": verified})
+        headline = self.manifest("040_induce_schema")["headline"]
+        self.assertEqual((headline["raw triple instances"], headline["verified triple instances"]),
+                         (sum(raw), sum(verified)))
+        self.assertEqual(headline["verified triple instances, mean per text"], round(sum(verified) / len(verified), 1))
         _, again = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
                                  "--texts_per_maintainer", "4")
         self.assertEqual(again, 0, "a rerun paid again")
@@ -184,6 +205,9 @@ class Pipeline(unittest.TestCase):
         satellite = [f for (_, c), f in flags.items() if c == "Satellite"]
         self.assertTrue(satellite and all("object_class_not_in_schema" in f for f in satellite))
         self.assertTrue(any(r["object_class"] == "X" and "describes_undecided" in r["flags"] for r in rows))
+        drafted = [sum(1 for r in rows if r["id"] == rid and r["predicate"] != "DESCRIBES") for rid in ids]
+        self.per_text("050_annotate", {"drafted (everything the model listed)": drafted})
+        self.assertEqual(self.manifest("050_annotate")["headline"]["drafted triples"], sum(drafted))
 
     def test_t06_person_corrects(self):
         """What a person does with the annotation tool, written directly."""
@@ -229,6 +253,17 @@ class Pipeline(unittest.TestCase):
         self.assertFalse([r for r in kept if r["object"] == "Moon" or r["object_class"] == "Satellite"])
         self.assertEqual(sorted({r["reason"] for r in removed}),
                          ["component_class_not_in_schema", "duplicate", "malformed", "source_text"])
+        ids = list(dict.fromkeys(r["id"] for r in kept))
+        facts = [sum(1 for r in kept if r["id"] == rid and r["predicate"] != "DESCRIBES") for rid in ids]
+        checked_out = [sum(1 for r in removed if r["id"] == rid and r["reason"] not in ("malformed", "duplicate"))
+                       for rid in ids]
+        self.assertTrue(any(checked_out))
+        self.per_text("060_extract", {"raw (everything the model listed: kept + removed by a check)":
+                                      [a + b for a, b in zip(facts, checked_out)],
+                                      "kept (extracted triples)": facts})
+        headline = self.manifest("060_extract")["headline"]
+        self.assertEqual((headline["raw classed triples"], headline["extracted triples"]),
+                         (sum(facts) + sum(checked_out), sum(facts)))
         used = json.loads(self.output("060_extract", "schema_used.json").read_text(encoding="utf-8"))
         schema = json.loads(self.output("040_induce_schema", "the_schema.json").read_text(encoding="utf-8"))
         self.assertEqual({e["component_class"] for e in used["entity_classes"]},
@@ -336,6 +371,9 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(read_csv(self.annotations / "held_out_looks.csv"), [])
         report = max((self.repo / "outputs" / "reports").glob("070_evaluate_*.md"), key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8")
         self.assertIn("Drafted by a model (step 050) and corrected by a person", report)   # the guide says the report says so
+        # per text, worked out by hand: 8 records, one ground truth triple each and two for record 0; one occurrence each
+        self.assertRegex(report, r"\| ground truth triples \| 8 \| 1 \| 2 \| 1\.1 \| 1 \| 9 \| 0 \|")
+        self.assertRegex(report, r"\| occurrences \(translated extracted triples\) \| 8 \| 1 \| 1 \| 1\.0 \| 1 \| 8 \| 0 \|")
         # the ground truth schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
         compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}

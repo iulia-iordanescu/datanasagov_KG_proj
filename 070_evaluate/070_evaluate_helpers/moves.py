@@ -27,7 +27,7 @@ import stats
 from common import audit, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
-from common.report import cell, model_calls, named, this_report
+from common.report import cell, model_calls, named, per_text_table, this_report
 from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
 
@@ -499,6 +499,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
                       f"error: these numbers could easily have come out very differently. Don't draw "
                       f"conclusions from them yet.**", ""]
+        part_records = [r for r in evaluated.records if r["part"] == part]
+        lines += per_text_table("Per text", [("ground truth triples", [len(r["gt"]) for r in part_records]),
+                                             ("occurrences (translated extracted triples)",
+                                              [len(r["compared"]["translated"]) for r in part_records])])
+        lines += ["", "One text is one evaluated record's text; describes triples aren't counted.", ""]
         lines += ["| Pair level | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
         for level in pairing.LEVELS:
             L = n[level]
