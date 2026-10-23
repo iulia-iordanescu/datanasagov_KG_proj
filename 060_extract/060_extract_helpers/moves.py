@@ -20,7 +20,7 @@ import schema as schema_stage
 from common import audit, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.report import cell, counted, model_calls, named
+from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table
 from common.step import Results
 from common.triples_io import COLUMNS as TRIPLE_COLUMNS, ENTRY_PREDICATE
 
@@ -142,6 +142,15 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         warnings.append(missing)
 
     n_kept_facts = sum(1 for r in kept if r["predicate"] != ENTRY_PREDICATE)
+    # per text: kept (extracted triples), and raw = kept + removed by a check (not "malformed" or "duplicate":
+    # build_rows' removals, which weren't triple instances or were the same classed triple again)
+    kept_of = {rid: sum(1 for r in rows.kept[rid] if r["predicate"] != ENTRY_PREDICATE)
+               for rid in (i["id"] for i in chosen.items) if rid in rows.kept}
+    checked_out = {rid: sum(1 for x in rows.removed.get(rid, []) if x["reason"] not in ("malformed", "duplicate"))
+                   for rid in kept_of}
+    per_text = [("raw (everything the model listed: kept + removed by a check)",
+                 [kept_of[rid] + checked_out[rid] for rid in kept_of]),
+                ("kept (extracted triples)", list(kept_of.values()))]
     only_describes = sum(1 for rid, rs in rows.kept.items() if len(rs) == 1)
     added = {k: sum(v == "additions" for v in schema.came_from[k].values())
              for k in ("entity_classes", "predicates", "patterns")}
@@ -156,7 +165,10 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              f"classes, {len(c['predicates'])} predicates, {len(c['patterns'])} patterns, of which added: "
              f"{added['entity_classes']} entity classes, {added['predicates']} predicates, {added['patterns']} "
              f"patterns. This run's schema, from now on the current schema, is in `{SCHEMA_NAME}`.", "",
-             "### Extracted triples", "",
+             "### Extracted triples", "", *per_text_table("Classed triples per text", per_text), "",
+             "One text is one record's text; its describes triple isn't counted. A classed triple two text pieces "
+             "of a text both state counts once; items in the replies that weren't triple instances, and texts whose "
+             "model call failed, aren't counted.", "",
              f"- Extracted triples: {n_kept_facts:,}, plus one describes triple per record, in `{KEPT_NAME}`.",
              f"- Flags on extracted triples (worth a look): {counted(rows.flags)}.",
              f"- Removed: {len(removed):,} ({counted(rows.reasons)}), in `{REMOVED_NAME}` with the reason. "
@@ -181,7 +193,9 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
 
     return Results(
         files=list(paths.values()),
-        headline={"records extracted": len(rows.kept), "extracted triples": n_kept_facts},
+        headline={"records extracted": len(rows.kept),
+                  **per_text_headline([("raw classed triples", per_text[0][1]),
+                                       ("extracted triples", per_text[1][1])])},
         details="\n".join(lines),
         warnings=warnings,
     )
