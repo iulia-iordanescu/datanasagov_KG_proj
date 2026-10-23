@@ -36,7 +36,7 @@ from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.ground_truth import read_ground_truth, twin_kinds, twin_table, with_coined
 from common.schema_io import read_ground_truth_schema
-from common.report import cell, counted, model_calls, named
+from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table
 from common.step import Results, repo_path
 
 SCHEMA_NAME = "the_schema.json"
@@ -178,7 +178,9 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         if missing:
             warnings.append(missing)
 
-    n_verified = sum(len(t["triple_instances"]) for t in triples.texts)
+    per_text = [("raw (everything the model listed: verified + unverified)",
+                 [len(t["triple_instances"]) + len(t["unverified"]) for t in triples.texts]),
+                ("verified (kept)", [len(t["triple_instances"]) for t in triples.texts])]
     split = sum(n > 1 for n in pieces.values())
     lines = [
         "### What this run worked on", "",
@@ -198,9 +200,14 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                                      (f"all {len(texts.candidates):,} induction candidates",
                                       f"the {len(texts.candidates):,} induction candidates", texts.candidates)])
     twins = sum(1 for k in twin_kinds(texts.pool, learned).values() if k)
-    lines += ["", "### Triple instances and labels", "",
-              f"- {n_verified:,} verified triple instances from {counts.texts_with_triple_instances} texts: "
-              f"each one's source text is in its record's text (checked in code, `common/common_helpers/validate.py`).",
+    lines += ["", "### Triple instances and labels", ""]
+    lines += per_text_table("Triple instances per text", per_text) + [
+              "",
+              "One text is one record's text. A triple instance two text pieces of a text both state counts once; "
+              "items in the replies that weren't triple instances, and texts whose model call failed, aren't "
+              "counted.", "",
+              "- Verified: each one's source text is in its record's text (checked in code, "
+              "`common/common_helpers/validate.py`).",
               f"- Describes class (`describes_class`, the entity class of what the title names): named for "
               f"{counts.texts_with_describes_class} of {len(triples.texts)} texts.",
               f"- Left out as unverified: {sum(triples.errors.values()):,} ({counted(triples.errors)}); "
@@ -258,7 +265,9 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     return Results(
         files=[schema_path, evidence_path],
         headline={"entity classes": len(schema.entity_classes), "predicates": len(schema.predicates),
-                  "patterns": len(schema.patterns), "twins in the pool": f"{twins} of {len(texts.pool):,}"},
+                  "patterns": len(schema.patterns), "twins in the pool": f"{twins} of {len(texts.pool):,}",
+                  **per_text_headline([("raw triple instances", per_text[0][1]),
+                                       ("verified triple instances", per_text[1][1])])},
         details="\n".join(lines),
         warnings=warnings,
     )
