@@ -702,5 +702,32 @@ class AnnotationsReadCleanly(unittest.TestCase):
         self.assertEqual(len({r["id"] for r in rows}), 1000)
 
 
+class PerTextCounts(unittest.TestCase):
+    """The per-text count table and headline numbers 040, 050, 060, and 070 share (common/common_helpers/report.py)."""
+
+    def test_stats(self):
+        from common.report import per_text_stats
+        self.assertEqual(per_text_stats([3, 0, 7, 2]),
+                         {"texts": 4, "min": 0, "max": 7, "mean": 3, "median": 2.5, "total": 12, "none": 1})
+        self.assertEqual(per_text_stats([5])["median"], 5)
+        self.assertEqual(per_text_stats([1, 2, 9])["median"], 2)                    # odd count: the middle one
+        self.assertEqual(per_text_stats(iter([0, 0]))["none"], 2)                  # any iterable
+
+    def test_empty(self):
+        from common.report import per_text_headline, per_text_stats, per_text_table
+        self.assertEqual(per_text_stats([]),
+                         {"texts": 0, "min": None, "max": None, "mean": None, "median": None, "total": 0, "none": 0})
+        self.assertEqual(per_text_table("X per text", [("raw", [])])[2], "| raw | 0 | – | – | – | – | 0 | 0 |")
+        self.assertEqual(per_text_headline([("raw X", [])]), {"raw X": 0, "raw X, mean per text": "–"})
+
+    def test_table_and_headline(self):
+        from common.report import per_text_headline, per_text_table
+        lines = per_text_table("Triple instances per text", [("raw (a | b)", [3, 0, 8, 2]), ("kept", [1000, 1, 2])])
+        self.assertEqual(lines[0], "| Triple instances per text | Texts | Min | Max | Mean | Median | Total | Texts with none |")
+        self.assertEqual(lines[2], "| raw (a \| b) | 4 | 0 | 8 | 3.2 | 2.5 | 13 | 1 |")      # mean 1 decimal, | escaped
+        self.assertEqual(lines[3], "| kept | 3 | 1 | 1,000 | 334.3 | 2 | 1,003 | 0 |")
+        self.assertEqual(per_text_headline([("raw", [3, 0, 8, 2])]), {"raw": 13, "raw, mean per text": 3.2})
+
+
 if __name__ == "__main__":
     unittest.main()

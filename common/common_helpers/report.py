@@ -49,6 +49,51 @@ def counted(counter: dict) -> str:
     return ", ".join(f"{k} {v:,}" for k, v in sorted(counter.items())) or "none"
 
 
+def per_text_stats(counts) -> dict:
+    """Count statistics over texts, one count per text (one text = one record): {"texts", "min", "max", "mean",
+    "median", "total", "none"}, where "none" is the number of texts whose count is 0. With no texts, min, max,
+    mean, and median are None. Shared by every step that gets triple instances or classed triples from a model."""
+    import statistics
+    counts = list(counts)
+    if not counts:
+        return {"texts": 0, "min": None, "max": None, "mean": None, "median": None, "total": 0, "none": 0}
+    return {"texts": len(counts), "min": min(counts), "max": max(counts), "mean": statistics.mean(counts),
+            "median": statistics.median(counts), "total": sum(counts), "none": sum(1 for c in counts if c == 0)}
+
+
+def _number(value, decimals: bool = False) -> str:
+    """A statistic as a table cell: "–" for None; the mean with 1 decimal; a median of 2.5 as 2.5, of 3 as 3."""
+    if value is None:
+        return "–"
+    if decimals or value != int(value):
+        return f"{value:,.1f}"
+    return f"{int(value):,}"
+
+
+def per_text_table(what: str, rows: list) -> list:
+    """The per-text count table every step that gets triple instances or classed triples from a model shows in its
+    report's Results, worded the same everywhere. what: the first column's header ("Triple instances per text");
+    rows: [(row label, [count per text])]."""
+    lines = [f"| {what} | Texts | Min | Max | Mean | Median | Total | Texts with none |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for label, counts in rows:
+        s = per_text_stats(counts)
+        lines.append(f"| {cell(label)} | {s['texts']:,} | {_number(s['min'])} | {_number(s['max'])} | "
+                     f"{_number(s['mean'], True)} | {_number(s['median'])} | {s['total']:,} | {s['none']:,} |")
+    return lines
+
+
+def per_text_headline(rows: list) -> dict:
+    """The headline numbers for the same counts: rows [(what, [count per text])] -> {what: total, "<what>, mean
+    per text": mean, 1 decimal ("–" with no texts)}, for the top of the report and the run's _manifest.json."""
+    out = {}
+    for what, counts in rows:
+        s = per_text_stats(counts)
+        out[what] = s["total"]
+        out[f"{what}, mean per text"] = "–" if s["mean"] is None else round(s["mean"], 1)
+    return out
+
+
 def _link(target: str, report: Path) -> str:
     """A link from the report to a file elsewhere in the repo; target is a
     path relative to the repo root."""
