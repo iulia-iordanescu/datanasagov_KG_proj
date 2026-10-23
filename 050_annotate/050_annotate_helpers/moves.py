@@ -24,7 +24,7 @@ from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
                                  file_name)
-from common.report import cell, counted, model_calls, named, this_report
+from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table, this_report
 from common.step import Results, repo_path
 from common.triples_io import ENTRY_PREDICATE
 
@@ -136,6 +136,9 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if missing:
         warnings.append(missing)
 
+    per_text = [("drafted (everything the model listed)",
+                 [sum(1 for r in drafts.rows[i["id"]] if r["predicate"] != ENTRY_PREDICATE)
+                  for i in chosen.items if i["id"] in drafts.rows])]
     gt = chosen.ground_truth
     lines = ["### What this run worked on", ""]
     if csv_rows:
@@ -153,7 +156,13 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                          f"{cell(item['title'])} | {len(rows)} | {sum(bool(r['errors']) for r in rows)} | "
                          f"{sum(bool(r['flags']) for r in rows)} |")
     removed = collections.Counter(x["reason"] for v in drafts.removed.values() for x in v)
-    lines += ["", f"- Errors (must be fixed): {counted(drafts.errors)}.",
+    lines += [""] + per_text_table("Classed triples per text", per_text) + [
+              "",
+              "One text is one record's text; its describes triple isn't counted. A classed triple two text pieces "
+              "of a text both state counts once; items in the replies that weren't triple instances, and texts whose "
+              "model call failed, aren't counted. Nothing is removed for a check (you decide, in the annotation "
+              "tool), so everything the model listed is drafted: one row.",
+              "", f"- Errors (must be fixed): {counted(drafts.errors)}.",
               f"- Flags (worth a look; a component class not in the ground truth schema is often a good new one): {counted(drafts.flags)}.",
               f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).",
               "", "### Fair sample", "", fair_words(chosen.fair, chosen.positions), ""]
@@ -176,7 +185,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     return Results(
         files=files,
         headline={"records drafted": len(drafts.rows),
-                  "drafted triples": sum(1 for r in csv_rows if r["predicate"] != ENTRY_PREDICATE)},
+                  **per_text_headline([("drafted triples", per_text[0][1])])},
         details="\n".join(lines),
         warnings=warnings,
     )
