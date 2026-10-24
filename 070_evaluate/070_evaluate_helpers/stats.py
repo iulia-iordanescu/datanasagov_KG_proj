@@ -214,6 +214,7 @@ def per_component_class(records: list) -> dict:
     over records' counts (pairing.component_class_counts), each with its margin of error from the same redraws of
     whole records as the other numbers (none below MIN_RECORDS). {table: [row]}, each row {"component_class",
     "within_reach" (whether some checked row translates to it; None for one whose row says (none)), "occurrences",
+    "occurrences_multiplicity_above_1" (of those, the ones whose element has multiplicity above 1 in its record),
     "ground_truth_triples", "within_strict_reach" (of those ground truth triples), "strict_recall_upper_bound",
     "counted_against" (occurrences and ground truth triples with no exact pair that counts for it), "<level>":
     {"pairs", "strict_pairs", "precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
@@ -246,6 +247,7 @@ def per_component_class(records: list) -> dict:
     out = {table: [] for table, _ in PER_COMPONENT_CLASS}
     for key, c in total.items():
         row = {"component_class": labels[key], "within_reach": reach[key], "occurrences": c["occurrences"],
+               "occurrences_multiplicity_above_1": c["occurrences_multiplicity_above_1"],
                "ground_truth_triples": c["ground_truth_triples"], "within_strict_reach": c["within_strict_reach"],
                "counted_against": c["occurrences"] + c["ground_truth_triples"] - 2 * c["exact_pairs"]}
         for level, m in _component_class_numbers(c).items():
@@ -272,14 +274,18 @@ def per_record(records: list) -> list:
     """Each record's own numbers, from its own counts by the same formulas as numbers() (None where a denominator is
     0), with no margin of error: for finding the weak records, never averaged into the part's numbers, which pool
     every record's counts (070_evaluate/metrics.md, *Pooled, not averaged*). [{"id", "position", "title",
-    "occurrences", "ground_truth_triples", "counted_against" (occurrences and ground truth triples with no exact
+    "occurrences", "occurrences_multiplicity_above_1" (of those, the ones whose element has multiplicity above 1 in
+    the record's multiset of translated extracted triples), "ground_truth_triples", "within_reach",
+    "within_strict_reach" (of those ground truth triples), "counted_against" (occurrences and ground truth triples with no exact
     pair), "recall_upper_bound", "strict_recall_upper_bound", "<level>": {"pairs", "strict_pairs", and each of
     PER_RECORD_NUMBERS}}], sorted by counted_against, most first (as per_component_class), then by pool position."""
     rows = []
     for r in records:
         n, c = numbers([r]), r["compared"]["counts"]
         row = {"id": r["id"], "position": r["position"], "title": r["title"], "occurrences": c["extracted"],
-               "ground_truth_triples": c["gt"], "counted_against": c["extracted"] + c["gt"] - 2 * c["exact_pairs"],
+               "occurrences_multiplicity_above_1": c["occurrences_multiplicity_above_1"],
+               "ground_truth_triples": c["gt"], "within_reach": c["within_reach"],
+               "within_strict_reach": c["within_strict_reach"], "counted_against": c["extracted"] + c["gt"] - 2 * c["exact_pairs"],
                "recall_upper_bound": n["recall_upper_bound"], "strict_recall_upper_bound": n["strict_recall_upper_bound"]}
         for level in LEVELS:
             row[level] = {"pairs": n[level]["pairs"], "strict_pairs": n[level]["strict_pairs"],

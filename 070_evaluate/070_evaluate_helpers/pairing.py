@@ -108,6 +108,15 @@ def translate(triple: dict, translation) -> dict:
     return t
 
 
+def multiset_element(t: dict) -> tuple:
+    """Which element of the record's multiset of translated extracted triples an occurrence is: two occurrences are
+    of the same element when they read the same (subject instances and object instances evened out, as for an
+    exact pair; component classes by loose match), as translated (070_evaluate/metrics/pairs.md, Example, *A
+    multiset of translated extracted triples*)."""
+    return (norm_text(t["subject"]), component_class_key(t["subject_class"]), component_class_key(t["predicate"]),
+            norm_text(t["object"]), component_class_key(t["object_class"]))
+
+
 def _can_pair(g: dict, t: dict, level: str) -> bool:
     """Whether g and t pair at this level as written (subject with subject)."""
     if component_class_key(g["predicate"]) != component_class_key(t["predicate"]):
@@ -253,8 +262,11 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         return swapped(ex[ei]) if (gi, ei) in turned else ex[ei]
     reach = [_within_reach(g, translation) for g in gt]
     strict_reach = [_within_strict_reach(g, translation) for g in gt]
+    element = collections.Counter(multiset_element(t) for t in ex)
+    multiplicity = [element[multiset_element(t)] for t in ex]     # each occurrence's element's multiplicity
     counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach),
-              "within_strict_reach": sum(strict_reach)}
+              "within_strict_reach": sum(strict_reach),
+              "occurrences_multiplicity_above_1": sum(m > 1 for m in multiplicity)}
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
         counts[f"{level}_pairs"] = len(used)
@@ -276,7 +288,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
-        "translated": ex, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
+        "translated": ex, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed},
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and component_class_key(truth) == component_class_key(said))},
@@ -291,7 +303,8 @@ PER_COMPONENT_CLASS = (("predicate", "predicate"), ("subject class", "subject_cl
 
 def component_class_counts(record: dict, translation) -> dict:
     """One record's counts for stats.per_component_class: {"counts": {(table, component_class_key): Counter} with "occurrences",
-    "ground_truth_triples", "within_strict_reach" (of those ground truth triples), and per level "<level>_pairs" and
+    "occurrences_multiplicity_above_1" (of those occurrences, the ones whose element has multiplicity above 1 in the
+    record's multiset of translated extracted triples), "ground_truth_triples", "within_strict_reach" (of those ground truth triples), and per level "<level>_pairs" and
     "<level>_strict_pairs", "labels": {(table, key): spelling}, "within_reach": {(table, key): whether some checked
     row of the translation table translates to it (translation.reachable), or None for a component class of the
     current schema whose row says (none)}}.
@@ -329,6 +342,8 @@ def component_class_counts(record: dict, translation) -> dict:
         t = as_paired(c, partner[ei][0], ei) if ei in partner else ex[ei]
         for table, slot in PER_COMPONENT_CLASS:
             add(table, t[slot], "occurrences")
+            if c["multiplicity"][ei] > 1:
+                add(table, t[slot], "occurrences_multiplicity_above_1")
         if ei not in partner:
             continue
         gi, level = partner[ei]

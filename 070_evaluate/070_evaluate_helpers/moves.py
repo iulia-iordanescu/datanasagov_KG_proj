@@ -154,6 +154,13 @@ PER_COMPONENT_CLASS_NUMBERS = (("precision", "Precision"), ("recall", "Recall"),
                                ("strict_precision", "Precision"), ("strict_recall", "Recall"), ("strict_f1", "F1"),
                                ("strict_recall_within_reach", "Recall within reach"))
 NONE_WITHIN_STRICT_REACH = "no value: none within strict reach"
+#: The column counting occurrences whose element has multiplicity above 1 in its record's multiset of translated
+#: extracted triples (070_evaluate/metrics/pairs.md, Example, *A multiset of translated extracted triples*).
+MULTIPLIED = "Occurrences with multiplicity > 1"
+MULTIPLIED_NOTE = ("*Occurrences with multiplicity > 1*: of those occurrences, the ones whose element of the record's "
+                   "multiset of translated extracted triples has multiplicity above 1, i.e. two or more extracted "
+                   "triples of the record translate to the same translated extracted triple; at most one of them can "
+                   "pair with a given ground truth triple (`070_evaluate/metrics/pairs.md`, Example).")
 
 
 def _per_component_class_lines(n: dict, tables: dict) -> list:
@@ -173,7 +180,7 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
              "*Reach* says whether some checked row of the translation table translates to the row's predicate or "
              "entity class, and how many of its ground truth triples are within strict reach (their predicate and "
              "both entity classes are); its strict recall upper bound is that proportion of them, and its strict "
-             "recall within reach counts its strict pairs out of only those. Details: "
+             "recall within reach counts its strict pairs out of only those. " + MULTIPLIED_NOTE + " Details: "
              "`070_evaluate/070_evaluate.md`, *Per predicate and per entity class*.", ""]
     lines += [_too_few(n), ""] if not n["margins"] else         ["With many rows, about 1 in 20 margins misses by chance, so one odd row is not a finding.", ""]
     for table, head in (("predicate", "Predicate"), ("subject class", "Subject class"), ("object class", "Object class")):
@@ -181,7 +188,7 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
         numbers = [f"{label} ({'strict ' if key.startswith('strict') else ''}{level})"
                    for level in pairing.LEVELS for key, label in PER_COMPONENT_CLASS_NUMBERS]
         heads = ([f"{head} (ground truth schema)", "Reach", "Strict recall upper bound", "Occurrences",
-                  "Ground truth triples", "Counted against it (exact)", "Exact pairs that count for it"]
+                  MULTIPLIED, "Ground truth triples", "Counted against it (exact)", "Exact pairs that count for it"]
                  + numbers[:7] + ["Pairs that count for it (partial level)"] + numbers[7:])
         lines += ["| " + " | ".join(heads) + " |", "|---|---|" + "---:|" * (len(heads) - 2)]
         empty = " |" * (len(heads) - 1)
@@ -189,7 +196,7 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
             values = [NONE_WITHIN_STRICT_REACH if key == "strict_recall_within_reach" and not r["within_strict_reach"]
                       else _with_margin(r[level][key]) for level in pairing.LEVELS for key, _ in PER_COMPONENT_CLASS_NUMBERS]
             cells = ([cell(r["component_class"]), _reach_cell(r), _with_margin(r["strict_recall_upper_bound"]),
-                      r["occurrences"], r["ground_truth_triples"], r["counted_against"], r["exact"]["pairs"]]
+                      r["occurrences"], r["occurrences_multiplicity_above_1"], r["ground_truth_triples"], r["counted_against"], r["exact"]["pairs"]]
                      + values[:7] + [r["partial"]["pairs"]] + values[7:])
             lines.append("| " + " | ".join(str(x) for x in cells) + " |")
         if len(rows) > SHOW:
@@ -231,18 +238,18 @@ def _per_record_lines(rows: list) -> list:
              f"margin of error: one record is too few. *{NO_VALUE}*: nothing to divide by (e.g. precision of a record "
              "with no occurrences). Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
              "exact pair (each against its precision) plus its ground truth triples with no exact pair (each against "
-             "its recall), most first, then by pool position. Each record's pairs: "
+             "its recall), most first, then by pool position. " + MULTIPLIED_NOTE + " Each record's pairs: "
              f"`{PER_RECORD_NAME}`.", ""]
     heads = (["Pool position", f"Record id (first {ID_SHOWN} characters)", f"Title (first {TITLE_SHOWN} characters)",
-              "Occurrences", "Ground truth triples", "Counted against it (exact)", "Recall upper bound",
+              "Occurrences", MULTIPLIED, "Ground truth triples", "Counted against it (exact)", "Recall upper bound",
               "Strict recall upper bound"]
              + [label.format(level) for level in pairing.LEVELS for _, label in PER_RECORD_COLUMNS])
     lines += ["| " + " | ".join(heads) + " |", "|---:|---|---|" + "---:|" * (len(heads) - 3)]
     empty = " |" * (len(heads) - 1)
     for r in rows[:SHOW]:
         cells = ([r["position"], f"`{r['id'][:ID_SHOWN]}`", cell(_short(r["title"] or "", TITLE_SHOWN)),
-                  r["occurrences"], r["ground_truth_triples"], r["counted_against"],
-                  _no_value(r["recall_upper_bound"]), _no_value(r["strict_recall_upper_bound"])]
+                  r["occurrences"], r["occurrences_multiplicity_above_1"], r["ground_truth_triples"],
+                  r["counted_against"], _no_value(r["recall_upper_bound"]), _no_value(r["strict_recall_upper_bound"])]
                  + [r[level][key] if key.endswith("pairs") else _no_value(r[level][key])
                     for level in pairing.LEVELS for key, _ in PER_RECORD_COLUMNS])
         lines.append("| " + " | ".join(str(x) for x in cells) + " |")
@@ -255,7 +262,8 @@ def _per_record_lines(rows: list) -> list:
 
 def _record_block(r: dict) -> list:
     """A record's own numbers (stats.per_record), at the top of its section of per_record.md."""
-    lines = [f"Occurrences {r['occurrences']} · ground truth triples {r['ground_truth_triples']} · counted against it "
+    lines = [f"Occurrences {r['occurrences']} (with multiplicity > 1: {r['occurrences_multiplicity_above_1']}) · "
+             f"ground truth triples {r['ground_truth_triples']} · counted against it "
              f"(exact) {r['counted_against']} · recall upper bound {_no_value(r['recall_upper_bound'])} · strict "
              f"recall upper bound {_no_value(r['strict_recall_upper_bound'])}", "",
              "| | exact | partial | strict exact | strict partial |", "|---|---:|---:|---:|---:|"]
@@ -303,6 +311,19 @@ def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
 
 def _triple(f: dict) -> str:
     return f"{f['subject']} ({f['subject_class']}) {f['predicate']} {f['object']} ({f['object_class']})"
+
+
+def _multiplied(r: dict, ei: int) -> str:
+    """per_record.md's mark on an occurrence whose element has multiplicity above 1 in the record's multiset of
+    translated extracted triples: the extracted triples that translate to it, as extracted (current schema)."""
+    c = r["compared"]
+    m = c["multiplicity"][ei]
+    if m < 2:
+        return ""
+    same = [r["extracted"][i] for i, t in enumerate(c["translated"])
+            if pairing.multiset_element(t) == pairing.multiset_element(c["translated"][ei])]
+    return (f" — ×{m}: {m} extracted triples translate to this (as extracted, current schema): "
+            + "; ".join(_triple(f) for f in same))
 
 
 def _fingerprint(value) -> str:
@@ -408,14 +429,14 @@ def _per_record(records: list, hidden: int) -> str:
                 strict = pairing.classes_agree(gt[gi], pairing.as_paired(c, gi, ei))
                 lines.append(f"- {'✓ exact' if level == 'exact' else '≈ partial'}"
                              f"{', matched with subject and object swapped' if turned else ''}"
-                             f"{'' if strict else ', entity classes differ'}: {_triple(ex[ei])}")
+                             f"{'' if strict else ', entity classes differ'}: {_triple(ex[ei])}{_multiplied(r, ei)}")
                 if level == "partial" or not strict or turned:
                     lines.append(f"  - ground truth: {_triple(gt[gi])}")
             lines.append("")
-        extra = [ex[i] for i in range(len(ex)) if i not in paired_e]
+        extra = [i for i in range(len(ex)) if i not in paired_e]
         if extra:
             lines += ["**Extracted only** (occurrences without a partner; against precision)", ""]
-            lines += [f"- ✗ {_triple(f)}" for f in extra] + [""]
+            lines += [f"- ✗ {_triple(ex[i])}{_multiplied(r, i)}" for i in extra] + [""]
         missed = [(gt[i], c["within_reach"][i]) for i in range(len(gt)) if i not in paired_g]
         if missed:
             lines += ["**Ground truth only** (ground truth triples without a partner; against recall)", ""]

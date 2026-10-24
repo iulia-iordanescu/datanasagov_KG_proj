@@ -42,7 +42,7 @@ def record(gt, extracted, rid="r1", gt_class=None, said_class=None, stratum="g",
 
 def counts_record(extracted, gt, pairs, strict, stratum="g", **more):
     """A compared record with only the counts set, for the metric formulas."""
-    c = {"extracted": extracted, "gt": gt, "within_reach": more.get("within_reach", gt),
+    c = {"extracted": extracted, "gt": gt, "within_reach": more.get("within_reach", gt), "occurrences_multiplicity_above_1": 0,
          "within_strict_reach": more.get("within_strict_reach", gt)}
     for level in pairing.LEVELS:
         c[f"{level}_pairs"] = pairs

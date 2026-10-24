@@ -113,7 +113,7 @@ class PerComponentClass(unittest.TestCase):
             "object class": {"Instrument": (True, 0, 1, 0.0, None), "Spacecraft": (True, 2, 2, 1.0, 0.5)}})
         text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, tables))
         self.assertIn("| ACQUIRED_BY_INSTRUMENT | out of reach; within strict reach: 0 of 1 ground truth triple | 0% | 0 "
-                      "| 1 | 1 | 0 | – | 0% | 0% | – | 0% | 0% | no value: none within strict reach | 0 |", text)
+                      "| 0 | 1 | 1 | 0 | – | 0% | 0% | – | 0% | 0% | no value: none within strict reach | 0 |", text)
         self.assertIn("| Instrument | within reach; within strict reach: 0 of 1 ground truth triple | 0% |", text)
 
     def test_counts_agree_with_the_totals(self):
@@ -157,17 +157,18 @@ class PerComponentClass(unittest.TestCase):
         n = {"records": 1, "margins": False}
         text = "\n".join(moves._per_component_class_lines(n, self.tables))
         self.assertIn("**Too few records (1, fewer than 20) for a margin of error", text)
-        self.assertIn("| Predicate (ground truth schema) | Reach | Strict recall upper bound | Occurrences | Ground truth "
+        self.assertIn("| Predicate (ground truth schema) | Reach | Strict recall upper bound | Occurrences | Occurrences with "
+                      "multiplicity > 1 | Ground truth "
                       "triples | Counted against it (exact) | Exact pairs that count for it | Precision (exact) | Recall "
                       "(exact) | F1 (exact) | Precision (strict exact) | Recall (strict exact) | F1 (strict exact) | "
                       "Recall within reach (strict exact) | Pairs that count for it (partial level) | Precision (partial) "
                       "| Recall (partial) | F1 (partial) | Precision (strict partial) | Recall (strict partial) | F1 "
                       "(strict partial) | Recall within reach (strict partial) |", text)
-        self.assertIn("| ABOARD | within reach; within strict reach: 2 of 2 ground truth triples | 100% | 3 | 2 | 1 | 2 | "
+        self.assertIn("| ABOARD | within reach; within strict reach: 2 of 2 ground truth triples | 100% | 3 | 0 | 2 | 1 | 2 | "
                       "67% | 100% | 80% | 33% | 50% | 40% | 50% | 2 | 67% | 100% | 80% | 33% | 50% | 40% | 50% |", text)
-        self.assertIn("| Dataset | within reach; within strict reach: 1 of 1 ground truth triple | 100% | 3 | 1 | 4 | 0 | "
+        self.assertIn("| Dataset | within reach; within strict reach: 1 of 1 ground truth triple | 100% | 3 | 0 | 1 | 4 | 0 | "
                       "0% | 0% | 0% | 0% | 0% | 0% | 0% | 1 | 33% | 100% | 50% | 33% | 100% | 50% | 100% |", text)
-        self.assertIn(f"| Gadget{NONE} | none: not in the ground truth schema | – | 1 | 0 | 1 | 0 | 0% | – | 0% | 0% | – | "
+        self.assertIn(f"| Gadget{NONE} | none: not in the ground truth schema | – | 1 | 0 | 0 | 1 | 0 | 0% | – | 0% | 0% | – | "
                       f"0% | no value: none within strict reach | 0 | 0% | – | 0% | 0% | – | 0% | no value: none within "
                       f"strict reach |", text)
         n["margins"] = True
@@ -211,35 +212,64 @@ class PerRecord(unittest.TestCase):
         self.assertEqual((row["exact"]["precision"], row["exact"]["recall"], row["recall_upper_bound"],
                           row["exact"]["recall_within_reach"]), (0.0, None, None, None))
         text = "\n".join(moves._per_record_lines([row]))
-        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 1 | no value | no value | 0 | 0 | 0% | no value | 0% |", text)
+        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 0 | 1 | no value | no value | 0 | 0 | 0% | no value | 0% |", text)
 
     def test_report_table(self):
         text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
         self.assertIn("never averaged into them (`070_evaluate/metrics.md`, *Pooled, not averaged*)", text)
         self.assertIn("| Pool position | Record id (first 8 characters) | Title (first 50 characters) | Occurrences | "
-                      "Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
+                      "Occurrences with multiplicity > 1 | Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
                       "bound | Pairs (exact) | Strict pairs (exact) | Precision (exact) | Recall (exact) | F1 (exact) | "
                       "Precision (strict exact) | Recall (strict exact) | F1 (strict exact) | Recall within reach "
                       "(exact) | Recall within reach (strict exact) | Pairs (partial) | Strict pairs (partial) | "
                       "Precision (partial) | Recall (partial) | F1 (partial) | Precision (strict partial) | Recall "
                       "(strict partial) | F1 (strict partial) | Recall within reach (partial) | Recall within reach "
                       "(strict partial) |", text)
-        self.assertIn("| 3 | `r1` | MODIS and AIRS aboard Aqua: a title longer than fi\u2026 | 5 | 3 | 4 | 100% | 100% | "
+        self.assertIn("| 3 | `r1` | MODIS and AIRS aboard Aqua: a title longer than fi\u2026 | 5 | 0 | 3 | 4 | 100% | 100% | "
                       "2 | 1 | 40% | 67% | 50% | 20% | 33% | 25% | 67% | 33% | "
                       "3 | 2 | 60% | 100% | 75% | 40% | 67% | 50% | 100% | 67% |", text)
         many = stats.per_record([dict(compared(rid=f"r{i}"), position=i, title="") for i in range(moves.SHOW + 2)])
         self.assertIn("| \u2026 2 more, in `metrics.json` and `per_record.md` |", "\n".join(moves._per_record_lines(many)))
-        self.assertEqual(moves._per_record_lines([])[-2], "| none |" + " |" * 27)
+        self.assertEqual(moves._per_record_lines([])[-2], "| none |" + " |" * 28)
 
     def test_block_in_per_record_md(self):
         text = moves._per_record([self.r], 0)
-        block = ("Occurrences 5 \u00b7 ground truth triples 3 \u00b7 counted against it (exact) 4 \u00b7 recall "
+        block = ("Occurrences 5 (with multiplicity > 1: 0) \u00b7 ground truth triples 3 \u00b7 counted against it (exact) 4 \u00b7 recall "
                  "upper bound 100% \u00b7 strict recall upper bound 100%\n\n"
                  "| | exact | partial | strict exact | strict partial |\n|---|---:|---:|---:|---:|\n"
                  "| Pairs | 2 | 3 | 1 | 2 |\n| Precision | 40% | 60% | 20% | 40% |\n| Recall | 67% | 100% | 33% | 67% |\n"
                  "| F1 | 50% | 75% | 25% | 50% |\n| Recall within reach | 67% | 100% | 33% | 67% |\n")
         self.assertIn(block, text)
         self.assertLess(text.index(block), text.index("**Pairs**"))           # above the record's pairs
+
+
+class Multiplicity(unittest.TestCase):
+    """Two extracted triples that translate to the same translated extracted triple: "MODIS" and "the MODIS"
+    (Instrument) ABOARD "Aqua" (Spacecraft) read the same once evened out, so that element of the record's multiset
+    of translated extracted triples has multiplicity 2. Only one of its occurrences pairs with the ground truth
+    triple; the other is extracted only."""
+    def setUp(self):
+        ex = [EXTRACTED[0], triple("the MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"), EXTRACTED[2]]
+        self.r = dict(compared(GT[:1], ex), position=0, title="T")
+
+    def test_counted(self):
+        c = self.r["compared"]
+        self.assertEqual(c["multiplicity"], [2, 2, 1])
+        self.assertEqual(c["counts"]["occurrences_multiplicity_above_1"], 2)
+        (row,) = stats.per_record([self.r])
+        self.assertEqual((row["occurrences"], row["occurrences_multiplicity_above_1"]), (3, 2))
+        tables = stats.per_component_class([self.r])
+        self.assertEqual({r["component_class"]: (r["occurrences"], r["occurrences_multiplicity_above_1"])
+                          for r in tables["object class"]}, {"Spacecraft": (3, 2)})
+
+    def test_marked_in_per_record_md(self):
+        text = moves._per_record([self.r], 0)
+        mark = (" \u2014 \u00d72: 2 extracted triples translate to this (as extracted, current schema): MODIS "
+                "(Instrument) ABOARD Aqua (Spacecraft); the MODIS (Instrument) ABOARD Aqua (Spacecraft)")
+        self.assertIn("- \u2713 exact: MODIS (Instrument) ABOARD Aqua (Spacecraft)" + mark + "\n", text)
+        self.assertIn("- \u2717 the MODIS (Instrument) ABOARD Aqua (Spacecraft)" + mark + "\n", text)
+        self.assertIn("- \u2717 MODIS (Instrument) ABOARD Terra (Spacecraft)\n", text)     # multiplicity 1: no mark
+        self.assertIn("Occurrences 3 (with multiplicity > 1: 2)", text)
 
 
 class PooledNotAveraged(unittest.TestCase):
