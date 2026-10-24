@@ -176,6 +176,15 @@ class Pipeline(unittest.TestCase):
         self.assertEqual((headline["raw triple instances"], headline["verified triple instances"]),
                          (sum(raw), sum(verified)))
         self.assertEqual(headline["verified triple instances, mean per text"], round(sum(verified) / len(verified), 1))
+        # helpers/audit.py --induction reads these real files: every triple instance matches ".", and the summary
+        # accounts for each one once
+        r = subprocess.run([sys.executable, str(self.repo / "helpers" / "audit.py"), "--induction", ".", "--limit",
+                            "10000", "--folder", str(self.output("040_induce_schema", ""))], capture_output=True,
+                           text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("IN THE SCHEMA", r.stdout)
+        summary = r.stdout.split("Summary: matched triple instances per final predicate", 1)[1]
+        self.assertEqual(sum(int(n) for n in re.findall(r"^ +(\d+)  ", summary, re.M)), sum(raw), r.stdout[-2000:])
         _, again = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
                                  "--texts_per_maintainer", "4")
         self.assertEqual(again, 0, "a rerun paid again")

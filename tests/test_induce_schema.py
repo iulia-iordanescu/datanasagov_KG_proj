@@ -257,5 +257,81 @@ class Saturation(unittest.TestCase):
         self.assertIn("### Saturation", lines)
 
 
+class TracingInduction(unittest.TestCase):
+    """helpers/audit.py --induction (common/common_helpers/induction_trace.py), on files laid out as
+    moves.results writes them: a label merged and then spelling-folded, a deferred predicate, an unlabeled
+    predicate instance, an unverified triple instance, the --limit cap, a missing file."""
+
+    def setUp(self):
+        self.folder = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.folder)
+        ti = lambda s, p, o, src: {"subject": s, "predicate": p, "object": o, "source_text": src}
+        evidence = {
+            "made": {"run_id": "040_induce_schema_2026-10-20_1000"},
+            "texts": [
+                {"id": "R1", "maintainer": "PDS", "title": "T1", "describes_class": "Dataset",
+                 "triple_instances": [ti("samples", "came from", "Apollo 11", "samples from the Apollo 11 mission"),
+                                      ti("MODIS", "is aboard", "Aqua", "MODIS aboard Aqua")],
+                 "unverified": [{**ti("data", "taken from", "Viking", "not in the text"), "errors": ["source_text"]}]},
+                {"id": "R2", "maintainer": "NSIDC", "title": "T2", "describes_class": "Dataset",
+                 "triple_instances": [ti("images", "originate from", "Cassini", "images from the Cassini spacecraft"),
+                                      ti("grid", "is gridded on", "EASE", "gridded on EASE")]}],
+            "labels": {"entity": {}, "predicate": {"came from": "FROM", "is aboard": "ABOARD",
+                                                   "originate from": "ORIGINATES_FROM"}},
+            "unlabeled": {"entity": [], "predicate": ["is gridded on"]},
+            "refused": {"labels": {"entity": [], "predicate": []}, "definitions": []},
+            "merges": [{"kind": "predicate", "label": "ORIGINATES_FROM", "into": "From", "component_instances": 1,
+                        "texts": 1},
+                       {"kind": "entity class", "label": "FROM", "into": "Nonsense", "component_instances": 1,
+                        "texts": 1}],
+            "spelling_folds": [{"kind": "predicate", "into": "FROM", "folded": ["FROM", "From"]}],
+            "counts": {"predicates": [{"component_class": "FROM", "support": 2, "maintainers": ["NSIDC", "PDS"]},
+                                      {"component_class": "ABOARD", "support": 1, "maintainers": ["PDS"]}]}}
+        schema = {"entity_classes": [], "patterns": [],
+                  "predicates": [{"component_class": "ABOARD", "support": 1, "maintainers": ["PDS"]}],
+                  "deferred": [{"entry_type": "predicate", "schema_entry": "FROM", "support": 2,
+                                "reason": "too vague: says nothing about what kind of origin"}]}
+        for name, data in (("induction_evidence.json", evidence), ("the_schema.json", schema)):
+            (self.folder / name).write_text(json.dumps(data), encoding="utf-8")
+
+    def trace(self, regex, limit=30):
+        from common.induction_trace import trace_induction
+        lines = []
+        n = trace_induction(regex, limit=limit, folder=self.folder, out=lines.append)
+        return n, "\n".join(lines)
+
+    def test_chain_and_status(self):
+        n, out = self.trace("from|mission")
+        self.assertEqual(n, 3)                              # 2 verified, 1 unverified; "is aboard" doesn't match
+        self.assertIn("label ORIGINATES_FROM -> merged into From (stage 4) -> spelling fold to FROM (stage 5) = "
+                      "FROM: DEFERRED (too vague: says nothing about what kind of origin); support 2, 2 maintainer(s)",
+                      out)
+        self.assertIn("label FROM = FROM: DEFERRED", out)    # an entity class merge of the same word isn't used
+        self.assertIn("UNVERIFIED (source_text)", out)
+        self.assertNotIn("MODIS", out)
+        self.assertIn("     2  FROM: DEFERRED", out)
+        self.assertIn("     1  (unverified): left out", out)
+
+    def test_matches_the_label_and_unlabeled(self):
+        n, out = self.trace("^ABOARD$")                      # the label, not the words
+        self.assertEqual(n, 1)
+        self.assertIn("label ABOARD = ABOARD: IN THE SCHEMA; support 1, 1 maintainer(s)", out)
+        n, out = self.trace("gridded")
+        self.assertIn("no label: the model left it unlabeled, even asked twice: counts toward no predicate", out)
+
+    def test_limit_and_nothing(self):
+        n, out = self.trace(".", limit=1)
+        self.assertEqual(n, 5)
+        self.assertIn("... 4 more triple instance(s) not shown (--limit 5 shows all)", out)
+        self.assertIn("more predicate(s) not shown", out)
+        self.assertEqual(self.trace("zzz")[0], 0)
+
+    def test_missing_file_names_the_step(self):
+        (self.folder / "the_schema.json").unlink()
+        with self.assertRaises(FileNotFoundError) as e:
+            self.trace(".")
+        self.assertIn("py 040_induce_schema/run.py", str(e.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
