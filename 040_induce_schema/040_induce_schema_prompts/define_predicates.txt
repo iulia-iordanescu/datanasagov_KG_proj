@@ -1,8 +1,8 @@
-Below are predicates, relations stated in texts of a catalog of NASA
-datasets: each is a kind of relation, read from subject to object, with
+Below are predicates, relationships stated in texts of a catalog of NASA
+datasets: each is a kind of relationship, read from subject to object, with
 examples (facts from texts that state it, "subject -- predicate -- object")
 and the number of texts it was found in. For each predicate, write ONE
-sentence defining the relation, saying what the subject and the object are,
+sentence defining the relationship, saying what the subject and the object are,
 general enough to cover its examples.
 
 If a predicate is too vague to tell anything apart (e.g. "RELATED_TO",

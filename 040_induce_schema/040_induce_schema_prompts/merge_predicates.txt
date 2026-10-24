@@ -1,8 +1,8 @@
-Below are the predicate labels given to relations stated in texts of a catalog
+Below are the predicate labels given to relationships stated in texts of a catalog
 of NASA datasets, each read from subject to object, with the predicates (the
-texts' own words for relations) that most often got it. Some labels may name
-the same relation under different words (e.g. "ABOARD" and "MOUNTED_ON").
-Find each set of labels that name the SAME relation and merge the set into one
+texts' own words for relationships) that most often got it. Some labels may name
+the same relationship under different words (e.g. "ABOARD" and "MOUNTED_ON").
+Find each set of labels that name the SAME relationship and merge the set into one
 of its labels, the clearest.
 
 Merge only true synonyms, in the same direction. Labels that are merely

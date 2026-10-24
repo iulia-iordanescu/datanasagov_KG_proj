@@ -68,7 +68,7 @@
   already says it is a satellite. Keep a type word written as part of the
   name, capitalized: write "Hurricane Katrina", not "Katrina". Keep it too
   when the words without it aren't a name: "the Kestrel low gain sensor"
-  stays whole. To see that two mentions are the same thing, use clues
+  stays whole. To see that two wordings name the same thing, use clues
   anywhere in the record, and what you know about the words (e.g. that VLF
   means very low frequency); but never add a fact the record doesn't state,
   and write only a wording the record itself uses for that thing, after any
@@ -87,7 +87,7 @@
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Ocean-Masked" over "masked".
 - Only facts the record states. Never use outside knowledge, and never write
-  what an unexplained code or acronym stands for (seeing that two mentions are
+  what an unexplained code or acronym stands for (seeing that two wordings name
   the same thing is allowed: see the rule on one wording). The title states
   facts too: "Kestrel/Halden Lake Ice 20-Min L2 Swath 800m V027" says the
   dataset was collected by Kestrel and has a spatial resolution of 800m.
