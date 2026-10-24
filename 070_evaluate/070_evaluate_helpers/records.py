@@ -3,7 +3,10 @@ records.py -- stage 1: which records are evaluated, and what is known about
 each.
 
 Evaluation refuses to run while the ground truth has the same classed triple
-twice in a record (common/common_helpers/ground_truth.py, gt.repeats). Every
+twice in a record (common/common_helpers/ground_truth.py, gt.repeats), or while
+a finished record uses an entity class or predicate the ground truth schema
+lacks (a coined one: common.ground_truth.with_coined), since stage 2 can't
+translate into it. Both stop before anything is shown or asked. Every
 other warning found here (ground truth problems, records left out, …) is
 shown before anything is evaluated, and the person is asked whether to go
 ahead (unless confirm_paid_calls is false).
@@ -28,16 +31,21 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 
+from common.audit import ref_path
 from common.files import read_csv
-from common.ground_truth import fair_prefix, read_ground_truth, read_pool, twin_kinds
+from common.ground_truth import coined_uses, fair_prefix, read_ground_truth, read_pool, twin_kinds, with_coined
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews
 from common.records_io import load_records
 from common.report import named
+from common.schema_io import read_ground_truth_schema
 from common.step import MANIFEST_NAME, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.triples_io import is_describes
+
+AGAIN = "then run `py 070_evaluate/run.py` again."
 
 
 @dataclass
@@ -80,6 +88,21 @@ def refusal(repeats: list) -> str:
             f"copy could be paired.")
     return head + "\n" + numbered([r["message"][0].upper() + r["message"][1:] for r in repeats])
 
+
+
+def check_coined(gt, ground_truth_schema_path) -> None:
+    """Stop if a finished record's ground truth triples or describes triple use an entity class or predicate that
+    the ground truth schema lacks (a coined one): stage 2 translates only into the ground truth schema. Only the
+    finished records are evaluated, so only theirs must use it."""
+    finished = SimpleNamespace(rows=[r for r in gt.rows if gt.records.get(r["id"], {}).get("finished")])
+    coined = with_coined(read_ground_truth_schema(ground_truth_schema_path), finished)["coined"]
+    if coined["entity_classes"] or coined["predicates"]:
+        uses = coined_uses(finished, coined)
+        raise Stop(f"The finished records' ground truth triples and describes triples use {len(uses)} "
+                   f"entity class(es) or predicate(s) that aren't in the ground truth schema ({ref_path(Path(ground_truth_schema_path))}), so 070 can't translate into "
+                   f"them: {named(uses, 10, '; ')}. For each one, either add it to the ground truth schema with a "
+                   f"one-line definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a "
+                   f"button), or fix the typo where it's used; {AGAIN}")
 
 
 def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
@@ -126,6 +149,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     evaluated.notes += [f"Ground truth, {p}" for p in gt.problems]
     if gt.repeats:
         raise Stop(refusal(gt.repeats))
+    check_coined(gt, inputs["ground_truth_schema"])
     pool_rows = read_pool(inputs["splits"])
     if any("part" not in r for r in pool_rows):
         splits = repo_path(inputs["splits"])

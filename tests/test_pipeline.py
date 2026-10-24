@@ -443,6 +443,10 @@ class Pipeline(unittest.TestCase):
             out, _ = self.run_step("070_evaluate", *args, expect=2)
             self.assertIn("use 1 entity class(es) or predicate(s) that aren't in the ground truth schema", out)
             self.assertIn("Gizmo (entity class): batch_001.csv line ", out)
+            # with someone to ask: the same stop comes first (stage 1), before the warnings are shown and asked about
+            out, _ = self.run_step("070_evaluate", "--component_class_mapping", str(self.repo / "own_table.csv"), expect=2)
+            self.assertIn("use 1 entity class(es) or predicate(s) that aren't in the ground truth schema", out)
+            self.assertNotIn("Press Enter to evaluate anyway", out)
             # another entity class of the ground truth schema: only warns
             write_csv(path, self.ground_truth + [{**fact, "object_class": "Mission"}], COLUMNS)
             out, _ = self.run_step("070_evaluate", *args)

@@ -4,7 +4,7 @@ schema (the one 060 used) into the ground truth schema.
 
 The ground truth triples use the GROUND TRUTH SCHEMA's component classes
 (annotations/ground_truth_schema.txt); a finished record that uses one it
-lacks (a coined one) stops the step first. 060 uses the component classes of the schema it was
+lacks (a coined one) has already stopped the step in stage 1 (records.py). 060 uses the component classes of the schema it was
 given (by default the induced schema plus the schema additions): the current schema. Before comparing, each of the
 current schema's entity classes and predicates is translated to a component class of
 the ground truth schema, through the table a person checks:
@@ -40,13 +40,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 from pathlib import Path
 
 from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
-from common.ground_truth import coined_uses, with_coined
 from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions, is_stale,
                                             is_stale_gtt, read_mapping, repeats)
 from common.prompt_files import fill, load
@@ -146,17 +144,6 @@ def _row(name: str, r: dict) -> str:
 
 def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     path = Path(inputs["component_class_mapping"])
-    # only the finished records are evaluated, so only their ground truth triples must use the ground truth schema
-    gt = evaluated.ground_truth
-    finished = SimpleNamespace(rows=[r for r in gt.rows if gt.records.get(r["id"], {}).get("finished")])
-    coined = with_coined(read_ground_truth_schema(inputs["ground_truth_schema"]), finished)["coined"]
-    if coined["entity_classes"] or coined["predicates"]:
-        uses = coined_uses(finished, coined)
-        raise Stop(f"The finished records' ground truth triples and describes triples use {len(uses)} "
-                   f"entity class(es) or predicate(s) that aren't in the ground truth schema ({ref_path(Path(inputs['ground_truth_schema']))}), so 070 can't translate into "
-                   f"them: {named(uses, 10, '; ')}. For each one, either add it to the ground truth schema with a "
-                   f"one-line definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a "
-                   f"button), or fix the typo where it's used; {AGAIN}")
     translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]))
     rows = read_mapping(path)
     repeated = repeats(rows)
