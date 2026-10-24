@@ -17,11 +17,11 @@ In PowerShell, in the folder where the repository lives (or where you want it):
 git clone https://github.com/iulia-iordanescu/datanasagov_KG_proj.git     # first time only
 cd datanasagov_KG_proj
 git fetch
-git switch design-refactoring
+git switch main
 git pull
 ```
 
-The work is on the branch `design-refactoring`, not `main`.
+The work is on the branch `main`.
 
 If Git then shows many files as changed although you didn't touch them, that's the line-ending rule (`.gitattributes`) settling in. Run this once, then check that `git status` is clean:
 
