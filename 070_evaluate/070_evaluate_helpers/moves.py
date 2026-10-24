@@ -109,6 +109,46 @@ def _margin_check_lines(checks: dict | None) -> list:
 
 
 
+def _too_few(n: dict) -> str:
+    """The warning above a part's numbers when there are too few records for a margin of error."""
+    return (f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of error: these "
+            f"numbers could easily have come out very differently. Don't draw conclusions from them yet.**")
+
+
+def _per_component_class_lines(n: dict, tables: dict) -> list:
+    """The report's tables of precision and recall per predicate, per subject class, and per object class
+    (stats.per_component_class)."""
+    lines = ["#### Per predicate and per entity class", "",
+             "Precision and recall for each predicate, subject class, and object class of the ground truth schema "
+             "(a component class of the current schema whose row of the translation table says (none) is shown as "
+             "itself, marked so). An occurrence counts for its translated predicate, subject class, and object "
+             "class; a ground truth triple for its own. A pair counts for the predicate of its two triples, and for "
+             "a subject class (or object class) only when both its triples have that one there: so a wrong entity "
+             "class counts against the precision of the one extraction named, and against the recall of the one the "
+             "ground truth has. Rows are sorted by *Counted against it*: the occurrences with no exact pair that "
+             "counts for it (each against its precision) plus the ground truth triples with no such pair (each "
+             "against its recall), most first, so the rows that cost the most come first, and one seen only once "
+             "can cost at most 2. Details: `070_evaluate/070_evaluate.md`, *Per predicate and per entity class*.", ""]
+    lines += [_too_few(n), ""] if not n["margins"] else         ["With many rows, about 1 in 20 margins misses by chance, so one odd row is not a finding.", ""]
+    for table, head in (("predicate", "Predicate"), ("subject class", "Subject class"), ("object class", "Object class")):
+        rows = tables[table]
+        lines += [f"| {head} (ground truth schema) | Occurrences | Ground truth triples | Counted against it (exact) "
+                  f"| Exact pairs that count for it | Precision (exact) | Recall (exact) | Pairs that count for it "
+                  f"(partial level) | Precision (partial) | Recall (partial) |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for r in rows[:SHOW]:
+            lines.append(f"| {cell(r['component_class'])} | {r['occurrences']} | {r['ground_truth_triples']} | "
+                         f"{r['counted_against']} | {r['exact']['pairs']} | {_with_margin(r['exact']['precision'])} | "
+                         f"{_with_margin(r['exact']['recall'])} | {r['partial']['pairs']} | "
+                         f"{_with_margin(r['partial']['precision'])} | {_with_margin(r['partial']['recall'])} |")
+        if len(rows) > SHOW:
+            lines.append(f"| … {len(rows) - SHOW} more, in `{METRICS_NAME}` | | | | | | | | | |")
+        if not rows:
+            lines.append("| none | | | | | | | | | |")
+        lines.append("")
+    return lines
+
+
 def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
     """The report's table of the numbers without the twins (docs/terminology.md; stats.twins)."""
     lines = ["#### Twins", "",
@@ -361,6 +401,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         "left_out": evaluated.left_out,
         "learned_from": evaluated.learned_from,
         "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
+                      "per_component_class": v["per_component_class"],
                       "twins": v["twins"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
@@ -499,9 +540,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         lines += [f"### Metrics: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
                   f"{n['extracted']} occurrences)", ""]
         if not n["margins"]:
-            lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
-                      f"error: these numbers could easily have come out very differently. Don't draw "
-                      f"conclusions from them yet.**", ""]
+            lines += [_too_few(n), ""]
         part_records = [r for r in evaluated.records if r["part"] == part]
         lines += per_text_table("Per text", [("ground truth triples", [len(r["gt"]) for r in part_records]),
                                              ("occurrences (translated extracted triples)",
@@ -553,6 +592,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
+        lines += _per_component_class_lines(n, v["per_component_class"])
         lines += _twin_lines(part, v, recs, evaluated.learned_from)
         lines += _margin_check_lines(v["margin_checks"])
     lines += ["A margin of error covers only which records happened to be evaluated: not mistakes in the ground "

@@ -383,6 +383,17 @@ class Pipeline(unittest.TestCase):
         # per text, worked out by hand: 8 records, one ground truth triple each and two for record 0; one occurrence each
         self.assertRegex(report, r"\| ground truth triples \| 8 \| 1 \| 2 \| 1\.1 \| 1 \| 9 \| 0 \|")
         self.assertRegex(report, r"\| occurrences \(translated extracted triples\) \| 8 \| 1 \| 1 \| 1\.0 \| 1 \| 8 \| 0 \|")
+        # per predicate and per entity class, worked out by hand: all 8 occurrences pair exactly, with the right entity
+        # classes; record 0's second ground truth triple is the only one left without a partner
+        self.assertIn("#### Per predicate and per entity class", report)
+        tables = metrics["parts"]["tuning"]["per_component_class"]
+        for table in ("predicate", "subject class", "object class"):
+            rows = tables[table]
+            self.assertEqual([sum(r[k] for r in rows) for k in ("occurrences", "ground_truth_triples", "counted_against")],
+                             [8, 9, 1], table)
+            self.assertEqual(sum(r["exact"]["pairs"] for r in rows), 8, table)
+            self.assertEqual(rows[0]["counted_against"], 1, table)                # the one that costs something first
+            self.assertTrue(all(r["exact"]["precision"]["value"] in (1.0, None) for r in rows), table)
         # the ground truth schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
         compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}

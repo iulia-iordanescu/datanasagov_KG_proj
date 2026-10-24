@@ -27,7 +27,7 @@ from __future__ import annotations
 import collections
 import random
 
-from pairing import LEVELS
+from pairing import LEVELS, PER_COMPONENT_CLASS
 from common.triples_io import component_class_key
 
 #: Fewer evaluated records than this: no margin of error (a bootstrap on very
@@ -94,6 +94,11 @@ def _get(d: dict, path: tuple):
     return d
 
 
+def _middle_95(vals: list) -> tuple:
+    """The middle 95% of sorted redraw results: (low, high)."""
+    return vals[int(0.025 * (len(vals) - 1))], vals[int(round(0.975 * (len(vals) - 1)))]
+
+
 def with_margins(records: list) -> dict:
     """numbers(records), each number in WITH_MARGIN turned into
     {"value", "low", "high"} (low/high None below MIN_RECORDS)."""
@@ -114,7 +119,7 @@ def with_margins(records: list) -> dict:
         low = high = None
         vals = sorted(samples[path])
         if enough and vals:
-            low, high = vals[int(0.025 * (len(vals) - 1))], vals[int(round(0.975 * (len(vals) - 1)))]
+            low, high = _middle_95(vals)
         target = point
         for p in path[:-1]:
             target = target[p]
@@ -188,9 +193,65 @@ def twins(records: list) -> dict | None:
     return {"records": twin, "without": with_margins(rest) if twin and rest else None}
 
 
+def _component_class_numbers(c) -> dict:
+    """Precision and recall at each level from summed counts."""
+    return {level: {"precision": _ratio(c[f"{level}_pairs"], c["occurrences"]),
+                    "recall": _ratio(c[f"{level}_pairs"], c["ground_truth_triples"])} for level in LEVELS}
+
+
+def per_component_class(records: list) -> dict:
+    """Precision and recall per predicate, per subject class, and per object class (each of the ground truth
+    schema, or of the current schema marked as translating to (none)), at each pair level, over records' counts
+    (pairing.component_class_counts), each with its margin of error from the same redraws of whole records as the other
+    numbers (none below MIN_RECORDS). {table: [row]}, each row {"component_class", "occurrences",
+    "ground_truth_triples", "counted_against" (occurrences and ground truth triples with no exact pair that counts
+    for it), "<level>": {"pairs", "precision", "recall"} (each a {"value", "low", "high"})}, sorted by
+    counted_against, most first: what the component class costs at the exact level, so the frequent and badly
+    extracted ones come first, and one seen once can cost at most two."""
+    per_record = [r["compared"]["component_class_counts"] for r in records]
+    labels = {}
+    for x in reversed(per_record):           # the spelling first met
+        labels.update(x["labels"])
+    total = collections.defaultdict(collections.Counter)
+    for x in per_record:
+        for key, c in x["counts"].items():
+            total[key].update(c)
+    enough = len(records) >= MIN_RECORDS
+    samples = collections.defaultdict(list)
+    if enough:
+        rng = random.Random(SEED)
+        for _ in range(REDRAWS):
+            drawn = collections.defaultdict(collections.Counter)
+            for x in (rng.choice(per_record) for _ in records):
+                for key, c in x["counts"].items():
+                    drawn[key].update(c)
+            for key in total:
+                for level, m in _component_class_numbers(drawn.get(key, collections.Counter())).items():
+                    for what, v in m.items():
+                        if v is not None:
+                            samples[(key, level, what)].append(v)
+    out = {table: [] for table, _ in PER_COMPONENT_CLASS}
+    for key, c in total.items():
+        row = {"component_class": labels[key], "occurrences": c["occurrences"],
+               "ground_truth_triples": c["ground_truth_triples"],
+               "counted_against": c["occurrences"] + c["ground_truth_triples"] - 2 * c["exact_pairs"]}
+        for level, m in _component_class_numbers(c).items():
+            row[level] = {"pairs": c[f"{level}_pairs"]}
+            for what, v in m.items():
+                vals = sorted(samples.get((key, level, what), []))
+                low = high = None
+                if enough and vals:
+                    low, high = _middle_95(vals)
+                row[level][what] = {"value": v, "low": low, "high": high}
+        out[key[0]].append(row)
+    for rows in out.values():
+        rows.sort(key=lambda r: (-r["counted_against"], component_class_key(r["component_class"])))
+    return out
+
+
 def compute_metrics(evaluated, settings: dict) -> dict:
     """Every number, per part: the tuning part always; the held-out part only
-    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion"},
+    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion", "per_component_class", ...},
     "kept_aside": {part: records not shown}}."""
     parts = by_part(evaluated)
     shown = ["tuning"] + (["held-out"] if settings["evaluate_held_out"] else [])
@@ -201,6 +262,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
         result[part] = {"numbers": numbers,
                         "strata": strata_table(recs, evaluated.pool_strata) if recs else [],
                         "confusion": describes_confusion(recs),
+                        "per_component_class": per_component_class(recs),
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
                         if numbers and numbers["margins"] else None,
                         "twins": twins(recs)}

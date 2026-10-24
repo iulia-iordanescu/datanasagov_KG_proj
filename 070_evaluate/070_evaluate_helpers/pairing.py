@@ -56,6 +56,7 @@ one may just be extraction choosing the wrong component class.
 """
 from __future__ import annotations
 
+import collections
 import re
 
 from common.audit import log
@@ -280,7 +281,51 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and component_class_key(truth) == component_class_key(said))},
     }
+    record["compared"]["component_class_counts"] = component_class_counts(record)
     return record
+
+
+#: The tables of stats.per_component_class: what each row is, and which slot of a classed triple names it.
+PER_COMPONENT_CLASS = (("predicate", "predicate"), ("subject class", "subject_class"), ("object class", "object_class"))
+
+
+def component_class_counts(record: dict) -> dict:
+    """One record's counts for stats.per_component_class: {"counts": {(table, component_class_key): Counter} with "occurrences",
+    "ground_truth_triples", and per level "<level>_pairs", "labels": {(table, key): spelling}}.
+
+    Attribution (070_evaluate/070_evaluate.md, *Per predicate and per entity class*):
+      - an occurrence counts for its translated predicate, subject class, and object class (the way round it was
+        paired, if it was; a component class whose row says (none) keeps its own spelling, marked);
+      - a ground truth triple counts for its own predicate, subject class, and object class;
+      - a pair counts for a predicate when its two triples have it (pairing needs the same predicate, so always),
+        and for a subject class (or object class) only when both its triples have that one there, so that a
+        wrong entity class counts against the precision of the one extraction named and the recall of the one
+        the ground truth has."""
+    c = record["compared"]
+    gt, ex = record["gt"], c["translated"]
+    partner = {ei: (gi, level) for gi, ei, level in c["pairs"]}
+    counts, labels = collections.defaultdict(collections.Counter), {}
+
+    def add(table, name, field):
+        key = (table, component_class_key(name))
+        labels.setdefault(key, name)
+        counts[key][field] += 1
+    for g in gt:
+        for table, slot in PER_COMPONENT_CLASS:
+            add(table, g[slot], "ground_truth_triples")
+    for ei in range(len(ex)):
+        t = as_paired(c, partner[ei][0], ei) if ei in partner else ex[ei]
+        for table, slot in PER_COMPONENT_CLASS:
+            add(table, t[slot], "occurrences")
+        if ei not in partner:
+            continue
+        gi, level = partner[ei]
+        for table, slot in PER_COMPONENT_CLASS:
+            if component_class_key(gt[gi][slot]) == component_class_key(t[slot]):
+                for counted in LEVELS:
+                    if counted == "partial" or level == "exact":
+                        counts[(table, component_class_key(t[slot]))][f"{counted}_pairs"] += 1
+    return {"counts": counts, "labels": labels}
 
 
 def as_paired(compared: dict, gi: int, ei: int) -> dict:
