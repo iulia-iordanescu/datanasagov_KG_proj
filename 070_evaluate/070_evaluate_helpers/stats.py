@@ -263,6 +263,31 @@ def per_component_class(records: list) -> dict:
     return out
 
 
+#: The numbers of each level in a row of per_record, besides its pairs.
+PER_RECORD_NUMBERS = ("precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
+                      "recall_within_reach", "strict_recall_within_reach")
+
+
+def per_record(records: list) -> list:
+    """Each record's own numbers, from its own counts by the same formulas as numbers() (None where a denominator is
+    0), with no margin of error: for finding the weak records, never averaged into the part's numbers, which pool
+    every record's counts (070_evaluate/metrics.md, *Pooled, not averaged*). [{"id", "position", "title",
+    "occurrences", "ground_truth_triples", "counted_against" (occurrences and ground truth triples with no exact
+    pair), "recall_upper_bound", "strict_recall_upper_bound", "<level>": {"pairs", "strict_pairs", and each of
+    PER_RECORD_NUMBERS}}], sorted by counted_against, most first (as per_component_class), then by pool position."""
+    rows = []
+    for r in records:
+        n, c = numbers([r]), r["compared"]["counts"]
+        row = {"id": r["id"], "position": r["position"], "title": r["title"], "occurrences": c["extracted"],
+               "ground_truth_triples": c["gt"], "counted_against": c["extracted"] + c["gt"] - 2 * c["exact_pairs"],
+               "recall_upper_bound": n["recall_upper_bound"], "strict_recall_upper_bound": n["strict_recall_upper_bound"]}
+        for level in LEVELS:
+            row[level] = {"pairs": n[level]["pairs"], "strict_pairs": n[level]["strict_pairs"],
+                          **{k: n[level][k] for k in PER_RECORD_NUMBERS}}
+        rows.append(row)
+    return sorted(rows, key=lambda x: (-x["counted_against"], x["position"]))
+
+
 def removed_by_reason(records: list) -> list:
     """What 060's checks removed from records, per reason as 060 wrote it (records.py, "removed"): [{"reason",
     "removed", "records" (how many of the records had any)}], most removed first."""
@@ -276,7 +301,7 @@ def removed_by_reason(records: list) -> list:
 
 def compute_metrics(evaluated, settings: dict) -> dict:
     """Every number, per part: the tuning part always; the held-out part only
-    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion", "per_component_class", "removed_by_060", ...},
+    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion", "per_component_class", "per_record", "removed_by_060", ...},
     "kept_aside": {part: records not shown}}."""
     parts = by_part(evaluated)
     shown = ["tuning"] + (["held-out"] if settings["evaluate_held_out"] else [])
@@ -288,6 +313,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
                         "strata": strata_table(recs, evaluated.pool_strata) if recs else [],
                         "confusion": describes_confusion(recs),
                         "per_component_class": per_component_class(recs),
+                        "per_record": per_record(recs),
                         "removed_by_060": removed_by_reason(recs),
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
                         if numbers and numbers["margins"] else None,

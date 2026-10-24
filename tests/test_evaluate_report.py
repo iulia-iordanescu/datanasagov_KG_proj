@@ -1,5 +1,6 @@
 """Evaluation's report (070_evaluate_helpers/stats.py and moves.py): precision and recall per predicate and per
-entity class, on a case worked out by hand; what 060 removed, per reason."""
+entity class, and per record, on a case worked out by hand; the part's numbers pooled, not averaged over records;
+what 060 removed, per reason."""
 import unittest
 
 from support import use_step
@@ -8,7 +9,7 @@ use_step("070_evaluate")
 import moves                                     # noqa: E402
 import pairing                                   # noqa: E402
 import stats                                     # noqa: E402
-from test_evaluate_pairing import record, translation, triple   # noqa: E402
+from test_evaluate_pairing import counts_record, record, translation, triple   # noqa: E402
 
 # Worked out by hand. The translation table: every component class below translates to itself; USES_GADGET and
 # Gadget (current schema) have rows that say (none).
@@ -171,6 +172,87 @@ class PerComponentClass(unittest.TestCase):
                       f"strict reach |", text)
         n["margins"] = True
         self.assertIn("about 1 in 20 margins misses by chance", "\n".join(moves._per_component_class_lines(n, self.tables)))
+
+
+class PerRecord(unittest.TestCase):
+    """Each record's own numbers, on the case above: 5 occurrences, 3 ground truth triples; exact pairs e0-g0 and
+    e1-g1, partial pair e3-g2; strict: e0 (exact) and e3 (partial), since e1's subject class is wrong; all 3 ground
+    truth triples within reach and within strict reach."""
+    def setUp(self):
+        self.r = dict(compared(), position=3, part="tuning", stratum="g",
+                      title="MODIS and AIRS aboard Aqua: a title longer than fifty characters")
+
+    def test_numbers(self):
+        (row,) = stats.per_record([self.r])
+        self.assertEqual((row["id"], row["position"], row["occurrences"], row["ground_truth_triples"],
+                          row["counted_against"], row["recall_upper_bound"], row["strict_recall_upper_bound"]),
+                         ("r1", 3, 5, 3, 4, 1.0, 1.0))                        # 5 + 3 - 2 x 2 exact pairs
+        self.assertEqual(row["exact"], {"pairs": 2, "strict_pairs": 1, "precision": 2 / 5, "recall": 2 / 3,
+                                        "f1": 4 / 8, "strict_precision": 1 / 5, "strict_recall": 1 / 3,
+                                        "strict_f1": 2 / 8, "recall_within_reach": 2 / 3,
+                                        "strict_recall_within_reach": 1 / 3})
+        self.assertEqual(row["partial"], {"pairs": 3, "strict_pairs": 2, "precision": 3 / 5, "recall": 1.0,
+                                          "f1": 6 / 8, "strict_precision": 2 / 5, "strict_recall": 2 / 3,
+                                          "strict_f1": 4 / 8, "recall_within_reach": 1.0,
+                                          "strict_recall_within_reach": 2 / 3})
+
+    def test_worst_first_then_pool_position(self):
+        perfect = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        recs = [dict(compared(perfect, perfect, rid="good"), position=0, title=""),
+                dict(compared(rid="late"), position=9, title=""), dict(compared(rid="early"), position=5, title="")]
+        self.assertEqual([(x["id"], x["counted_against"]) for x in stats.per_record(recs)],
+                         [("early", 4), ("late", 4), ("good", 0)])
+
+    def test_no_value(self):
+        """A record with no occurrences: no precision; with no ground truth triples: no recall, no upper bound."""
+        (row,) = stats.per_record([dict(compared(GT, [], rid="none said"), position=0, title="")])
+        self.assertEqual((row["exact"]["precision"], row["exact"]["recall"], row["exact"]["f1"]), (None, 0.0, 0.0))
+        (row,) = stats.per_record([dict(compared([], EXTRACTED[:1], rid="no truth"), position=0, title="")])
+        self.assertEqual((row["exact"]["precision"], row["exact"]["recall"], row["recall_upper_bound"],
+                          row["exact"]["recall_within_reach"]), (0.0, None, None, None))
+        text = "\n".join(moves._per_record_lines([row]))
+        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 1 | no value | no value | 0 | 0 | 0% | no value | 0% |", text)
+
+    def test_report_table(self):
+        text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
+        self.assertIn("never averaged into them (`070_evaluate/metrics.md`, *Pooled, not averaged*)", text)
+        self.assertIn("| Pool position | Record id (first 8 characters) | Title (first 50 characters) | Occurrences | "
+                      "Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
+                      "bound | Pairs (exact) | Strict pairs (exact) | Precision (exact) | Recall (exact) | F1 (exact) | "
+                      "Precision (strict exact) | Recall (strict exact) | F1 (strict exact) | Recall within reach "
+                      "(exact) | Recall within reach (strict exact) | Pairs (partial) | Strict pairs (partial) | "
+                      "Precision (partial) | Recall (partial) | F1 (partial) | Precision (strict partial) | Recall "
+                      "(strict partial) | F1 (strict partial) | Recall within reach (partial) | Recall within reach "
+                      "(strict partial) |", text)
+        self.assertIn("| 3 | `r1` | MODIS and AIRS aboard Aqua: a title longer than fi\u2026 | 5 | 3 | 4 | 100% | 100% | "
+                      "2 | 1 | 40% | 67% | 50% | 20% | 33% | 25% | 67% | 33% | "
+                      "3 | 2 | 60% | 100% | 75% | 40% | 67% | 50% | 100% | 67% |", text)
+        many = stats.per_record([dict(compared(rid=f"r{i}"), position=i, title="") for i in range(moves.SHOW + 2)])
+        self.assertIn("| \u2026 2 more, in `metrics.json` and `per_record.md` |", "\n".join(moves._per_record_lines(many)))
+        self.assertEqual(moves._per_record_lines([])[-2], "| none |" + " |" * 27)
+
+    def test_block_in_per_record_md(self):
+        text = moves._per_record([self.r], 0)
+        block = ("Occurrences 5 \u00b7 ground truth triples 3 \u00b7 counted against it (exact) 4 \u00b7 recall "
+                 "upper bound 100% \u00b7 strict recall upper bound 100%\n\n"
+                 "| | exact | partial | strict exact | strict partial |\n|---|---:|---:|---:|---:|\n"
+                 "| Pairs | 2 | 3 | 1 | 2 |\n| Precision | 40% | 60% | 20% | 40% |\n| Recall | 67% | 100% | 33% | 67% |\n"
+                 "| F1 | 50% | 75% | 25% | 50% |\n| Recall within reach | 67% | 100% | 33% | 67% |\n")
+        self.assertIn(block, text)
+        self.assertLess(text.index(block), text.index("**Pairs**"))           # above the record's pairs
+
+
+class PooledNotAveraged(unittest.TestCase):
+    """070_evaluate/metrics.md, *Pooled, not averaged*: record A has 2 ground truth triples and extraction found 2,
+    record B has 48 and extraction found 12."""
+    def test_part_pools_and_differs_from_the_mean_of_the_records(self):
+        recs = [counts_record(2, 2, 2, 2, id="A", position=0), counts_record(12, 48, 12, 12, id="B", position=1)]
+        pooled = stats.numbers(recs)["exact"]["recall"]
+        own = [x["exact"]["recall"] for x in stats.per_record(recs)]
+        self.assertAlmostEqual(pooled, 14 / 50)
+        self.assertEqual(sorted(own), [0.25, 1.0])
+        self.assertAlmostEqual(sum(own) / len(own), 0.625)
+        self.assertNotAlmostEqual(pooled, sum(own) / len(own))
 
 
 class RemovedBy060(unittest.TestCase):

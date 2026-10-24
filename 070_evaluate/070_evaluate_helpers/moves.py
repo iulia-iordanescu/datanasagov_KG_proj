@@ -200,6 +200,74 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
     return lines
 
 
+NO_VALUE = "no value"
+POOLED = "`070_evaluate/metrics.md`, *Pooled, not averaged*"
+ID_SHOWN, TITLE_SHOWN = 8, 50                 # characters of a record's id and title in the report's table per record
+
+
+def _no_value(x) -> str:
+    """A proportion of a record's own, or "no value" when its denominator is 0."""
+    return NO_VALUE if x is None else readings.pct(x)
+
+
+def _short(text: str, n: int) -> str:
+    return text if len(text) <= n else text[:n] + "…"
+
+
+#: A record's numbers at each level, as (key in stats.per_record, column label), the version named in brackets.
+PER_RECORD_COLUMNS = (("pairs", "Pairs ({})"), ("strict_pairs", "Strict pairs ({})"),
+                      ("precision", "Precision ({})"), ("recall", "Recall ({})"), ("f1", "F1 ({})"),
+                      ("strict_precision", "Precision (strict {})"), ("strict_recall", "Recall (strict {})"),
+                      ("strict_f1", "F1 (strict {})"), ("recall_within_reach", "Recall within reach ({})"),
+                      ("strict_recall_within_reach", "Recall within reach (strict {})"))
+
+
+def _per_record_lines(rows: list) -> list:
+    """The report's table of each evaluated record's own numbers (stats.per_record)."""
+    lines = ["#### Per record", "",
+             "Each evaluated record's own precision, recall, and F1, and their strict versions, recall upper bound, and "
+             "recall within reach, by the same formulas as the part's numbers above, for finding the weak records. "
+             f"The part's numbers pool every record's counts, and these are never averaged into them ({POOLED}). No "
+             f"margin of error: one record is too few. *{NO_VALUE}*: nothing to divide by (e.g. precision of a record "
+             "with no occurrences). Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
+             "exact pair (each against its precision) plus its ground truth triples with no exact pair (each against "
+             "its recall), most first, then by pool position. Each record's pairs: "
+             f"`{PER_RECORD_NAME}`.", ""]
+    heads = (["Pool position", f"Record id (first {ID_SHOWN} characters)", f"Title (first {TITLE_SHOWN} characters)",
+              "Occurrences", "Ground truth triples", "Counted against it (exact)", "Recall upper bound",
+              "Strict recall upper bound"]
+             + [label.format(level) for level in pairing.LEVELS for _, label in PER_RECORD_COLUMNS])
+    lines += ["| " + " | ".join(heads) + " |", "|---:|---|---|" + "---:|" * (len(heads) - 3)]
+    empty = " |" * (len(heads) - 1)
+    for r in rows[:SHOW]:
+        cells = ([r["position"], f"`{r['id'][:ID_SHOWN]}`", cell(_short(r["title"] or "", TITLE_SHOWN)),
+                  r["occurrences"], r["ground_truth_triples"], r["counted_against"],
+                  _no_value(r["recall_upper_bound"]), _no_value(r["strict_recall_upper_bound"])]
+                 + [r[level][key] if key.endswith("pairs") else _no_value(r[level][key])
+                    for level in pairing.LEVELS for key, _ in PER_RECORD_COLUMNS])
+        lines.append("| " + " | ".join(str(x) for x in cells) + " |")
+    if len(rows) > SHOW:
+        lines.append(f"| … {len(rows) - SHOW} more, in `{METRICS_NAME}` and `{PER_RECORD_NAME}` |{empty}")
+    if not rows:
+        lines.append(f"| none |{empty}")
+    return lines + [""]
+
+
+def _record_block(r: dict) -> list:
+    """A record's own numbers (stats.per_record), at the top of its section of per_record.md."""
+    lines = [f"Occurrences {r['occurrences']} · ground truth triples {r['ground_truth_triples']} · counted against it "
+             f"(exact) {r['counted_against']} · recall upper bound {_no_value(r['recall_upper_bound'])} · strict "
+             f"recall upper bound {_no_value(r['strict_recall_upper_bound'])}", "",
+             "| | exact | partial | strict exact | strict partial |", "|---|---:|---:|---:|---:|"]
+    for label, key, strict_key in (("Pairs", "pairs", "strict_pairs"), ("Precision", "precision", "strict_precision"),
+                                   ("Recall", "recall", "strict_recall"), ("F1", "f1", "strict_f1"),
+                                   ("Recall within reach", "recall_within_reach", "strict_recall_within_reach")):
+        show = (lambda x: x) if key == "pairs" else _no_value
+        lines.append(f"| {label} | " + " | ".join(str(show(r[level][k])) for k in (key, strict_key)
+                                                  for level in pairing.LEVELS) + " |")
+    return lines + [""]
+
+
 def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:
     """The report's table of the numbers without the twins (docs/terminology.md; stats.twins)."""
     lines = ["#### Twins", "",
@@ -313,7 +381,10 @@ def _per_record(records: list, hidden: int) -> str:
              "occurrence; its occurrences left extracted only (each counts against precision); and its ground "
              "truth triples left ground truth only (each counts against recall). Occurrences are shown translated "
              "into the ground truth schema. Terms: docs/terminology.md, section *Evaluating extraction*; "
-             "pairs: 070_evaluate/metrics/pairs.md.", ""]
+             "pairs: 070_evaluate/metrics/pairs.md. Above each record's pairs, its own numbers, by the same formulas "
+             f"as the report's (*{NO_VALUE}*: nothing to divide by); the report's numbers pool every record's counts, "
+             f"and these are never averaged into them ({POOLED}).", ""]
+    own = {x["id"]: x for x in stats.per_record(records)}
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "
                   f"(`--evaluate_held_out true` lists them, and logs the look).", ""]
@@ -322,6 +393,7 @@ def _per_record(records: list, hidden: int) -> str:
         gt, ex = r["gt"], c["translated"]
         lines += [f"## {r['title'] or r['id']}", "",
                   f"Pool position {r['position']} · {r['part']} · stratum {r['stratum'] or '(none)'} · id `{r['id']}`", ""]
+        lines += _record_block(own[r["id"]])
         d = c["describes"]
         mark = "✓" if d["right"] else "✗"
         lines += [f"Describes class: {mark} extraction named `{d['said'] or '(none named)'}` (translated into the ground truth "
@@ -452,7 +524,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         "left_out": evaluated.left_out,
         "learned_from": evaluated.learned_from,
         "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
-                      "per_component_class": v["per_component_class"], "removed_by_060": v["removed_by_060"],
+                      "per_component_class": v["per_component_class"], "per_record": v["per_record"],
+                      "removed_by_060": v["removed_by_060"],
                       "twins": v["twins"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
@@ -644,6 +717,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
         lines += _per_component_class_lines(n, v["per_component_class"])
+        lines += _per_record_lines(v["per_record"])
         lines += _removed_lines(n["records"], v["removed_by_060"])
         lines += _twin_lines(part, v, recs, evaluated.learned_from)
         lines += _margin_check_lines(v["margin_checks"])
@@ -664,7 +738,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     headline = {}
     if tuning:
         headline = {"precision (tuning, exact)": readings.pct(tuning["exact"]["precision"]["value"]),
-                    "recall (tuning, exact)": readings.pct(tuning["exact"]["recall"]["value"])}
+                    "recall (tuning, exact)": readings.pct(tuning["exact"]["recall"]["value"]),
+                    "pooled over": f"{tuning['records']} records ({POOLED})"}
         twins = metrics["tuning"]["twins"]
         headline["twins (tuning)"] = ("not known" if twins is None else
                                       f"{len(twins['records'])} of {tuning['records']} evaluated")

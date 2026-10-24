@@ -49,7 +49,8 @@ def counts_record(extracted, gt, pairs, strict, stratum="g", **more):
         c[f"{level}_strict_pairs"] = strict
         c[f"{level}_pairs_within_reach"] = pairs
         c[f"{level}_strict_pairs_within_strict_reach"] = strict
-    return {"stratum": stratum, "part": "tuning",
+    return {"id": more.get("id", "r1"), "position": more.get("position", 0), "title": more.get("title", ""),
+            "stratum": stratum, "part": "tuning",
             "compared": {"counts": c, "describes": more.get("describes", {"truth": None, "said": None, "right": False}),
                          "component_class_counts": {"counts": {}, "labels": {}, "within_reach": {}}}}
 
