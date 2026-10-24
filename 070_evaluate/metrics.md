@@ -20,6 +20,20 @@ Read them in this order: what they count first, then each metric, then why each 
 | [Describes accuracy](metrics/describes.md) | how often extraction names the right [describes class](../docs/terminology.md#2-triples), next to always naming the most common one |
 | [Why "approximately"](metrics/approximately.md) | the reasons every metric shares, including the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) |
 
+## Versions of each metric
+
+| Metric | Versions |
+|---|---|
+| [Precision](metrics/precision.md) | exact, partial, strict exact, strict partial |
+| [Recall](metrics/recall.md) | exact, partial, strict exact, strict partial |
+| [F1](metrics/f1.md) | exact, partial, strict exact, strict partial |
+| [Recall within reach](metrics/recall_within_reach.md) | exact, partial, strict exact, strict partial |
+| [Entity-class accuracy](metrics/entity_class_accuracy.md) | exact, partial (each also by slot: [subject-class accuracy](metrics/entity_class_accuracy.md) and [object-class accuracy](metrics/entity_class_accuracy.md)) |
+| [Recall upper bound](metrics/recall_upper_bound.md) | recall upper bound, [strict recall upper bound](metrics/recall_upper_bound.md) |
+| [Describes accuracy](metrics/describes.md) | one version (shown with the [describes baseline](metrics/describes.md) and the [describes per-entity-class average](metrics/describes.md)) |
+
+For precision, recall, F1 and entity-class accuracy, the versions differ only in which [pairs](metrics/pairs.md) count: exact counts the [exact pairs](metrics/pairs.md); partial counts the exact pairs and the [partial pairs](metrics/pairs.md); strict keeps, of those, only the [strict pairs](metrics/pairs.md) (the same [subject classes](../docs/terminology.md#2-triples) and the same [object classes](../docs/terminology.md#2-triples), by [loose match](../docs/terminology.md#3-schemas)). Recall within reach counts the same pairs as recall, and its strict versions divide only by the [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) [within strict reach](metrics/recall_upper_bound.md), not all those [within reach](metrics/recall_upper_bound.md). The recall upper bound counts no pairs: its strict version counts the ground truth triples within strict reach instead of those within reach.
+
 ## Which part of the pipeline each number speaks for
 
 The numbers can tell some parts of the pipeline apart, so a weak result can be traced to the part that caused it.
