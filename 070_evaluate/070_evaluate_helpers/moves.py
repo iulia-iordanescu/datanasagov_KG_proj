@@ -126,16 +126,18 @@ def _removed_lines(records: int, removed: list) -> list:
     """The report's table of what 060's checks removed from the evaluated records, per reason
     (stats.removed_by_reason)."""
     lines = ["#### Removed by 060", "",
-             f"Before 070 sees them, 060's checks removed some of the items its model listed for these {records} "
-             f"record(s): each a classed triple, except those removed as `malformed`. Removed ones are never "
+             f"Before 070 sees them, 060's checks remove every item its model listed for these {records} "
+             f"record(s) that fails one of them: each item a classed triple, except those removed as `malformed`. Removed ones are never "
              f"evaluated: they count neither for nor against precision, and can't pair with a ground truth triple. "
              f"Each, with its reason: `060_extract/extracted_triples_removed.csv`; the checks: "
              f"`060_extract/060_extract.md`, *How it works*.", ""]
     if not removed:
         return lines + ["None: 060 removed nothing from these records.", ""]
-    lines += ["| Reason (as 060 wrote it) | What it means | Removed | Records with any |", "|---|---|---:|---:|"]
+    lines += ["| Reason (as 060 wrote it) | What it means | Items removed | Records with any item removed for it |",
+              "|---|---|---:|---:|"]
     for x in removed:
-        means = " and ".join(REMOVED_REASONS.get(w, "a reason 070 doesn't know") for w in x["reason"].split())
+        means = " and ".join(REMOVED_REASONS.get(w, "a reason 070 doesn't know: not one of those in "
+                                                     "`060_extract/060_extract.md`, *How it works*") for w in x["reason"].split())
         lines.append(f"| `{cell(x['reason'])}` | {cell(means)} | {x['removed']} | {x['records']} |")
     return lines + [f"| all | | {sum(x['removed'] for x in removed)} | |", ""]
 
@@ -143,24 +145,25 @@ def _removed_lines(records: int, removed: list) -> list:
 def _reach_cell(r: dict) -> str:
     """A row's Reach mark (070_evaluate.md, *Per predicate and per entity class*)."""
     if r["within_reach"] is None:
-        return "none: not in the ground truth schema"
+        return "none: translates to (none), so not in the ground truth schema"
     n = r["ground_truth_triples"]
-    return (f"{'within' if r['within_reach'] else 'out of'} reach; within strict reach: {r['within_strict_reach']} of "
-            f"{n} ground truth triple{'' if n == 1 else 's'}")
+    return (f"{'within' if r['within_reach'] else 'out of'} reach; {r['within_strict_reach']} of {n} ground truth "
+            f"triple{'' if n == 1 else 's'} within strict reach")
 
 
 #: The numbers of each level in a row of the report's tables per predicate and per entity class, in column order.
 PER_COMPONENT_CLASS_NUMBERS = (("precision", "Precision"), ("recall", "Recall"), ("f1", "F1"),
                                ("strict_precision", "Precision"), ("strict_recall", "Recall"), ("strict_f1", "F1"),
                                ("strict_recall_within_reach", "Recall within reach"))
-NONE_WITHIN_STRICT_REACH = "no value: none within strict reach"
+NONE_WITHIN_STRICT_REACH = "no value: 0 ground truth triples within strict reach to divide by"
 #: The column counting occurrences whose element has multiplicity above 1 in its record's multiset of translated
 #: extracted triples (070_evaluate/metrics/pairs.md, Example, *A multiset of translated extracted triples*).
 MULTIPLIED = "Occurrences with multiplicity > 1"
-MULTIPLIED_NOTE = ("*Occurrences with multiplicity > 1*: of those occurrences, the ones whose element of the record's "
-                   "multiset of translated extracted triples has multiplicity above 1, i.e. two or more extracted "
-                   "triples of the record translate to the same translated extracted triple; at most one of them can "
-                   "pair with a given ground truth triple (`070_evaluate/metrics/pairs.md`, Example).")
+MULTIPLIED_NOTE = ("*Occurrences with multiplicity > 1*: of the row's occurrences, the ones whose element of their "
+                   "record's multiset of translated extracted triples has multiplicity above 1, i.e. two or more "
+                   "extracted triples of the record translate to the same translated extracted triple; at most one of "
+                   "those copies can pair with a given ground truth triple (`070_evaluate/metrics/pairs.md`, Example, "
+                   "*A multiset of translated extracted triples*).")
 
 
 def _per_component_class_lines(n: dict, tables: dict) -> list:
@@ -168,21 +171,26 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
     (stats.per_component_class)."""
     lines = ["#### Per predicate and per entity class", "",
              "Precision and recall for each predicate, subject class, and object class of the ground truth schema "
-             "(a component class of the current schema whose row of the translation table says (none) is shown as "
-             "itself, marked so). An occurrence counts for its translated predicate, subject class, and object "
+             f"(a component class of the current schema whose row of the translation table says (none) has a row "
+             f"of its own, under its own name followed by *{pairing.NO_TRANSLATION.strip()}*). An occurrence counts for its translated predicate, subject class, and object "
              "class; a ground truth triple for its own. A pair counts for the predicate of its two triples, and for "
              "a subject class (or object class) only when both its triples have that one there: so a wrong entity "
              "class counts against the precision of the one extraction named, and against the recall of the one the "
-             "ground truth has. Rows are sorted by *Counted against it*: the occurrences with no exact pair that "
+             "ground truth has. Rows are sorted by *Counted against it (exact)*: the occurrences with no exact pair that "
              "counts for it (each against its precision) plus the ground truth triples with no such pair (each "
-             "against its recall), most first, so the rows that cost the most come first, and one seen only once "
-             "can cost at most 2. Strict counts only the pairs whose two triples also have the same entity classes. "
-             "*Reach* says whether some checked row of the translation table translates to the row's predicate or "
-             "entity class, and how many of its ground truth triples are within strict reach (their predicate and "
-             "both entity classes are); its strict recall upper bound is that proportion of them, and its strict "
-             "recall within reach counts its strict pairs out of only those. " + MULTIPLIED_NOTE + " Details: "
+             "against its recall), most first, so the rows that cost the most come first; a row with 1 occurrence "
+             "and 1 ground truth triple costs at most 2. The strict versions count only the strict pairs: those "
+             "whose two triples also have the same subject class and the same object class "
+             "(`070_evaluate/metrics/pairs.md`, Definition). *Reach* says whether some checked row of the "
+             "translation table translates a component class of the current schema to the row's predicate or entity "
+             "class (within reach) or none does (out of reach), and how many of the row's ground truth triples are "
+             "within strict reach (checked rows translate to their predicate and to both their entity classes; "
+             "both terms: `070_evaluate/metrics/recall_upper_bound.md`, Definition). *Strict recall upper bound* "
+             "is that number ÷ the row's ground truth triples, and *Recall within reach* (strict) is the row's "
+             "strict pairs ÷ that number. " + MULTIPLIED_NOTE + " Details: "
              "`070_evaluate/070_evaluate.md`, *Per predicate and per entity class*.", ""]
-    lines += [_too_few(n), ""] if not n["margins"] else         ["With many rows, about 1 in 20 margins misses by chance, so one odd row is not a finding.", ""]
+    lines += [_too_few(n), ""] if not n["margins"] else         ["With many rows, about 1 in 20 of their margins of error misses the true value by chance (each is a "
+          "95% range), so one row that looks unusually good or bad is not, alone, a finding.", ""]
     for table, head in (("predicate", "Predicate"), ("subject class", "Subject class"), ("object class", "Object class")):
         rows = tables[table]
         numbers = [f"{label} ({'strict ' if key.startswith('strict') else ''}{level})"
@@ -235,10 +243,11 @@ def _per_record_lines(rows: list) -> list:
     """The report's table of each evaluated record's own numbers (stats.per_record)."""
     lines = ["#### Per record", "",
              "Each evaluated record's own precision, recall, and F1, and their strict versions, recall upper bound, and "
-             "recall within reach, by the same formulas as the part's numbers above, for finding the weak records. "
-             f"The part's numbers pool every record's counts, and these are never averaged into them ({POOLED}). No "
-             f"margin of error: one record is too few. *{NO_VALUE}*: nothing to divide by (e.g. precision of a record "
-             "with no occurrences). Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
+             "recall within reach, by the same formulas as the part's numbers above, for finding the records "
+             "extraction does worst on. The part's numbers above add up all its records' counts before dividing "
+             f"(pooled), and are never an average of these (why: {POOLED}). No margin of error: it needs at least "
+             f"{stats.MIN_RECORDS} records (`070_evaluate/metrics/approximately.md`), and each row is one record. "
+             f"*{NO_VALUE}*: the formula would divide by 0 (e.g. precision of a record with no occurrences). Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
              "exact pair (each against its precision) plus its ground truth triples with no exact pair (each against "
              "its recall), most first, then by pool position. " + MULTIPLIED_NOTE + " Each record's pairs: "
              f"`{PER_RECORD_NAME}`.", ""]
@@ -406,8 +415,10 @@ def _per_record(records: list, hidden: int) -> str:
              "truth triples left ground truth only (each counts against recall). Occurrences are shown translated "
              "into the ground truth schema. Terms: docs/terminology.md, section *Evaluating extraction*; "
              "pairs: 070_evaluate/metrics/pairs.md. Above each record's pairs, its own numbers, by the same formulas "
-             f"as the report's (*{NO_VALUE}*: nothing to divide by); the report's numbers pool every record's counts, "
-             f"and these are never averaged into them ({POOLED}).", ""]
+             f"as the report's (*{NO_VALUE}*: the formula would divide by 0; *counted against it (exact)*: its "
+             f"occurrences with no exact pair plus its ground truth triples with no exact pair), and its reading (the "
+             f"rules: {readings.RULES}). The report's numbers add up all the records' counts before dividing "
+             f"(pooled), and are never an average of these (why: {POOLED}).", ""]
     own = {x["id"]: x for x in stats.per_record(records)}
     if hidden:
         lines += [f"The {hidden} held-out record(s) are not listed: they are kept for the end "

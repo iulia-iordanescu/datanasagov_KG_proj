@@ -114,9 +114,10 @@ class PerComponentClass(unittest.TestCase):
             "subject class": {"Dataset": (False, 0, 1, 0.0, None), "Instrument": (True, 2, 2, 1.0, 0.5)},
             "object class": {"Instrument": (True, 0, 1, 0.0, None), "Spacecraft": (True, 2, 2, 1.0, 0.5)}})
         text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, tables))
-        self.assertIn("| ACQUIRED_BY_INSTRUMENT | out of reach; within strict reach: 0 of 1 ground truth triple | 0% | 0 "
-                      "| 0 | 1 | 1 | 0 | – | 0% | 0% | – | 0% | 0% | no value: none within strict reach | 0 |", text)
-        self.assertIn("| Instrument | within reach; within strict reach: 0 of 1 ground truth triple | 0% |", text)
+        self.assertIn("| ACQUIRED_BY_INSTRUMENT | out of reach; 0 of 1 ground truth triple within strict reach | 0% | 0 "
+                      "| 0 | 1 | 1 | 0 | – | 0% | 0% | – | 0% | 0% | no value: 0 ground truth triples within strict reach to divide "
+                      "by | 0 |", text)
+        self.assertIn("| Instrument | within reach; 0 of 1 ground truth triple within strict reach | 0% |", text)
 
     def test_counts_agree_with_the_totals(self):
         """Each table's occurrences, ground truth triples, and predicate pairs add up to the part's counts."""
@@ -166,15 +167,15 @@ class PerComponentClass(unittest.TestCase):
                       "Recall within reach (strict exact) | Pairs that count for it (partial level) | Precision (partial) "
                       "| Recall (partial) | F1 (partial) | Precision (strict partial) | Recall (strict partial) | F1 "
                       "(strict partial) | Recall within reach (strict partial) |", text)
-        self.assertIn("| ABOARD | within reach; within strict reach: 2 of 2 ground truth triples | 100% | 3 | 0 | 2 | 1 | 2 | "
+        self.assertIn("| ABOARD | within reach; 2 of 2 ground truth triples within strict reach | 100% | 3 | 0 | 2 | 1 | 2 | "
                       "67% | 100% | 80% | 33% | 50% | 40% | 50% | 2 | 67% | 100% | 80% | 33% | 50% | 40% | 50% |", text)
-        self.assertIn("| Dataset | within reach; within strict reach: 1 of 1 ground truth triple | 100% | 3 | 0 | 1 | 4 | 0 | "
+        self.assertIn("| Dataset | within reach; 1 of 1 ground truth triple within strict reach | 100% | 3 | 0 | 1 | 4 | 0 | "
                       "0% | 0% | 0% | 0% | 0% | 0% | 0% | 1 | 33% | 100% | 50% | 33% | 100% | 50% | 100% |", text)
-        self.assertIn(f"| Gadget{NONE} | none: not in the ground truth schema | – | 1 | 0 | 0 | 1 | 0 | 0% | – | 0% | 0% | – | "
-                      f"0% | no value: none within strict reach | 0 | 0% | – | 0% | 0% | – | 0% | no value: none within "
-                      f"strict reach |", text)
+        self.assertIn(f"| Gadget{NONE} | none: translates to (none), so not in the ground truth schema | – | 1 | 0 | 0 | 1 | 0 | 0% | – | 0% | 0% | – | "
+                      f"0% | {moves.NONE_WITHIN_STRICT_REACH} | 0 | 0% | – | 0% | 0% | – | 0% | "
+                      f"{moves.NONE_WITHIN_STRICT_REACH} |", text)
         n["margins"] = True
-        self.assertIn("about 1 in 20 margins misses by chance", "\n".join(moves._per_component_class_lines(n, self.tables)))
+        self.assertIn("about 1 in 20 of their margins of error misses the true value by chance (each is a 95% range)", "\n".join(moves._per_component_class_lines(n, self.tables)))
 
 
 class PerRecord(unittest.TestCase):
@@ -218,7 +219,9 @@ class PerRecord(unittest.TestCase):
 
     def test_report_table(self):
         text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
-        self.assertIn("never averaged into them (`070_evaluate/metrics.md`, *Pooled, not averaged*)", text)
+        self.assertIn("are never an average of these (why: `070_evaluate/metrics.md`, *Pooled, not averaged*)", text)
+        self.assertIn("No margin of error: it needs at least 20 records (`070_evaluate/metrics/approximately.md`), and "
+                      "each row is one record. *no value*: the formula would divide by 0", text)
         self.assertIn("| Pool position | Record id (first 8 characters) | Title (first 50 characters) | Occurrences | "
                       "Occurrences with multiplicity > 1 | Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
                       "bound | Pairs (exact) | Strict pairs (exact) | Precision (exact) | Recall (exact) | F1 (exact) | "
@@ -507,6 +510,10 @@ class RemovedBy060(unittest.TestCase):
         self.assertIn("| `component_class_not_in_schema source_text` | an entity class or predicate the current schema "
                       "doesn't have and its source text is missing, or isn't in the record's text | 1 | 1 |", text)
         self.assertIn("| all | | 5 | |", text)
+        self.assertIn("| Reason (as 060 wrote it) | What it means | Items removed | Records with any item removed for it |",
+                      text)
+        self.assertIn("| `nonsense` | a reason 070 doesn't know: not one of those in `060_extract/060_extract.md`, *How it "
+                      "works* | 1 | 1 |", "\n".join(moves._removed_lines(1, [{"reason": "nonsense", "removed": 1, "records": 1}])))
         self.assertIn("None: 060 removed nothing from these records.", "\n".join(moves._removed_lines(1, [])))
 
 
