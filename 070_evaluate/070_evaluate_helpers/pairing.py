@@ -25,6 +25,14 @@ and among the largest sets, one with the most strict pairs:
              Partial pairs; common/common_helpers/partial_reviews.py): two triples marked "not
              the same fact" are never paired.
 
+A SYMMETRIC predicate of the ground truth schema (SYMMETRIC_PREDICATES:
+ALSO_KNOWN_AS, "is the same thing under another name") says the same fact
+either way round, so for it both passes also try the occurrence with its
+subject and object swapped (and its subject class and object class with them):
+a pair "matched with subject and object swapped" (record["compared"]["swapped"]).
+Strictness then compares the swapped entity classes. Every other predicate
+pairs only as written.
+
 The "exact" level counts pass 1's pairs; the "partial" level counts both
 passes'. At each level a pair is STRICT when both entity classes are also
 the same. A ground truth triple is WITHIN REACH when its predicate is
@@ -56,6 +64,10 @@ from common.text_match import norm_text
 from common.triples_io import UNDECIDED, component_class_key
 
 LEVELS = ("exact", "partial")
+#: Predicates of the ground truth schema that say the same fact either way round
+#: (subject and object may be swapped when pairing). The ground truth schema's
+#: file has no marker for this, so they are listed here.
+SYMMETRIC_PREDICATES = frozenset({"ALSO_KNOWN_AS"})
 MISMATCH_WARN = 2                 # a component class mismatch seen this often is a warning: a row to look at
 
 
@@ -96,11 +108,34 @@ def translate(triple: dict, translation) -> dict:
 
 
 def _can_pair(g: dict, t: dict, level: str) -> bool:
+    """Whether g and t pair at this level as written (subject with subject)."""
     if component_class_key(g["predicate"]) != component_class_key(t["predicate"]):
         return False
     if level == "exact":
         return norm_text(g["subject"]) == norm_text(t["subject"]) and norm_text(g["object"]) == norm_text(t["object"])
     return _contains(g["subject"], t["subject"]) and _contains(g["object"], t["object"])
+
+
+def is_symmetric(predicate) -> bool:
+    """Whether the predicate (ground truth schema) says the same fact either way round."""
+    return component_class_key(predicate) in {component_class_key(p) for p in SYMMETRIC_PREDICATES}
+
+
+def swapped(t: dict) -> dict:
+    """The translated triple with subject and object swapped, and their entity classes with them."""
+    s = dict(t, subject=t["object"], object=t["subject"], subject_class=t["object_class"], object_class=t["subject_class"])
+    if "crt" in t:
+        s["crt"] = dict(t["crt"], subject_class=t["crt"]["object_class"], object_class=t["crt"]["subject_class"])
+    return s
+
+
+def _ways(g: dict, t: dict, level: str) -> list:
+    """The ways t can pair with g at this level: [False] as written, [True]
+    with subject and object swapped (a symmetric predicate only), both, or none."""
+    ways = [False] if _can_pair(g, t, level) else []
+    if is_symmetric(g["predicate"]) and _can_pair(g, swapped(t), level):
+        ways.append(True)
+    return ways
 
 
 def classes_agree(g: dict, t: dict) -> bool:
@@ -121,22 +156,28 @@ def _within_strict_reach(g: dict, translation) -> bool:
         component_class_key(g["object_class"]) in translation.reachable["entity class"]
 
 
-def _max_pairs(can: dict, strict) -> dict:
+def _max_pairs(can: dict, strict, turned=lambda gi, ei: False) -> dict:
     """The largest pairing {gt index: extracted index}, each triple in either
     list with zero or one partner from the other, each gt triple paired with
     one of the extracted triples it can pair with (can[gi]); among the
-    largest pairings, one with the most strict pairs (strict(gi, ei)).
+    largest pairings, one with the most strict pairs (strict(gi, ei)), and
+    among those, one with the fewest pairs matched with subject and object
+    swapped (turned(gi, ei)), so an occurrence as written is preferred.
     Taking each gt triple's first free partner instead can leave a triple
     unpaired that another choice would have paired, or pair a triple with a
     partner whose entity classes differ while another partner's agree.
 
     The standard method for this: a minimum-cost maximum matching by
-    successive shortest augmenting paths (a pair costs 0 if strict, 1 if
-    not; Bellman-Ford finds each path, since swapping partners along a path
+    successive shortest augmenting paths (a pair costs 0 if strict, BIG if
+    not, plus 1 if turned, BIG being more than all the turned pairs together;
+    Bellman-Ford finds each path, since swapping partners along a path
     can lower the cost). Each augmentation adds one pair at the lowest cost
     possible, so the result has the most pairs and, among those, the fewest
-    non-strict ones. Deterministic: triples are tried in order."""
-    cost = {(gi, ei): 0 if strict(gi, ei) else 1 for gi in can for ei in can[gi]}
+    non-strict ones, then the fewest turned ones. Deterministic: triples are
+    tried in order."""
+    edges = [(gi, ei) for gi in can for ei in can[gi]]
+    big = len(edges) + 1
+    cost = {(gi, ei): (0 if strict(gi, ei) else big) + (1 if turned(gi, ei) else 0) for gi, ei in edges}
     partner_of_g, partner_of_e = {}, {}               # the pairing so far, both ways
     while True:
         # shortest path from any unpaired gt triple, alternating "pair with
@@ -185,14 +226,30 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         return reviews.get(pair_key(record["id"], gt[gi], ex[ei])) != NOT_SAME
 
     pairs = []                                        # (gt index, extracted index, "exact" | "partial")
+    turned = set()                                    # pairs matched with subject and object swapped
     free_g, free_e = set(range(len(gt))), set(range(len(ex)))
     for level in LEVELS:
-        can = {gi: [ei for ei in sorted(free_e) if _can_pair(gt[gi], ex[ei], level) and allowed(gi, ei)]
-               for gi in sorted(free_g)}
-        for gi, ei in sorted(_max_pairs(can, lambda gi, ei: classes_agree(gt[gi], ex[ei])).items()):
+        way = {}                                      # (gi, ei): swapped?, as written when both work unless only swapped is strict
+        for gi in sorted(free_g):
+            for ei in sorted(free_e):
+                ways = _ways(gt[gi], ex[ei], level) if allowed(gi, ei) else []
+                if ways:
+                    agree = [w for w in ways if classes_agree(gt[gi], swapped(ex[ei]) if w else ex[ei])]
+                    way[(gi, ei)] = (agree or ways)[0]
+        can = {gi: [ei for ei in sorted(free_e) if (gi, ei) in way] for gi in sorted(free_g)}
+
+        def oriented(gi, ei):
+            return swapped(ex[ei]) if way[(gi, ei)] else ex[ei]
+        for gi, ei in sorted(_max_pairs(can, lambda gi, ei: classes_agree(gt[gi], oriented(gi, ei)),
+                                        lambda gi, ei: way[(gi, ei)]).items()):
             pairs.append((gi, ei, level))
+            if way[(gi, ei)]:
+                turned.add((gi, ei))
             free_g.discard(gi)
             free_e.discard(ei)
+
+    def paired(gi, ei):                               # the occurrence the way round it was paired
+        return swapped(ex[ei]) if (gi, ei) in turned else ex[ei]
     reach = [_within_reach(g, translation) for g in gt]
     strict_reach = [_within_strict_reach(g, translation) for g in gt]
     counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach),
@@ -200,10 +257,10 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
         counts[f"{level}_pairs"] = len(used)
-        strict = [(gi, ei) for gi, ei in used if classes_agree(gt[gi], ex[ei])]
+        strict = [(gi, ei) for gi, ei in used if classes_agree(gt[gi], paired(gi, ei))]
         counts[f"{level}_strict_pairs"] = len(strict)
         for slot in ("subject_class", "object_class"):           # each entity class alone: which slot goes wrong
-            counts[f"{level}_{slot}_pairs"] = sum(component_class_key(gt[gi][slot]) == component_class_key(ex[ei][slot])
+            counts[f"{level}_{slot}_pairs"] = sum(component_class_key(gt[gi][slot]) == component_class_key(paired(gi, ei)[slot])
                                                   for gi, ei in used)
         counts[f"{level}_pairs_within_reach"] = sum(reach[gi] for gi, _ in used)
         counts[f"{level}_strict_pairs_within_strict_reach"] = sum(strict_reach[gi] for gi, _ in strict)
@@ -214,16 +271,23 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     if ed and ed["object_class"] not in ("", UNDECIDED):
         said = translation.entity.get(component_class_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
     rejected = sum(1 for gi in range(len(gt)) for ei in range(len(ex))
-                   if not allowed(gi, ei) and _can_pair(gt[gi], ex[ei], "partial"))
+                   if not allowed(gi, ei) and _ways(gt[gi], ex[ei], "partial"))
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
-        "translated": ex, "pairs": pairs, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
+        "translated": ex, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed},
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and component_class_key(truth) == component_class_key(said))},
     }
     return record
+
+
+def as_paired(compared: dict, gi: int, ei: int) -> dict:
+    """The pair's occurrence the way round it was paired: its translated triple,
+    with subject and object swapped if the pair was matched that way."""
+    t = compared["translated"][ei]
+    return swapped(t) if (gi, ei) in compared.get("swapped", ()) else t
 
 
 def component_class_mismatches(records: list) -> list:
@@ -243,9 +307,10 @@ def component_class_mismatches(records: list) -> list:
         c = rec["compared"]
         gt, ex = rec["gt"], c["translated"]
         for gi, ei, _ in c["pairs"]:
+            t = as_paired(c, gi, ei)
             for slot in ("subject_class", "object_class"):
-                if component_class_key(gt[gi][slot]) != component_class_key(ex[ei][slot]):
-                    add("entity class", ex[ei]["crt"][slot], ex[ei][slot], gt[gi][slot])
+                if component_class_key(gt[gi][slot]) != component_class_key(t[slot]):
+                    add("entity class", t["crt"][slot], t[slot], gt[gi][slot])
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         for gi, g in enumerate(gt):

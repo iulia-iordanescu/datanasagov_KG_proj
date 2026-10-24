@@ -44,7 +44,7 @@ TRIPLE = ("subject", "subject_class", "predicate", "object", "object_class")
 SHOW = 20                        # rows listed in the report before "…"
 TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a person checks the translation table
 AGAIN = "then run `py 070_evaluate/run.py` again."
-COMPARED_COLUMNS = (["record_id", "position", "part", "stratum", "status", "entity_classes_right", "within_reach", "within_strict_reach"]
+COMPARED_COLUMNS = (["record_id", "position", "part", "stratum", "status", "entity_classes_right", "subject_and_object_swapped", "within_reach", "within_strict_reach"]
                  + [f"extracted_{c}" for c in TRIPLE] + [f"translated_{c}" for c in TRIPLE]
                  + [f"ground_truth_{c}" for c in TRIPLE] + [ORIGIN_COLUMN])
 
@@ -241,10 +241,12 @@ def _per_record(records: list, hidden: int) -> str:
             lines.append("**Pairs**")
             lines.append("")
             for gi, ei, level in c["pairs"]:
-                strict = pairing.classes_agree(gt[gi], ex[ei])
+                turned = (gi, ei) in c["swapped"]
+                strict = pairing.classes_agree(gt[gi], pairing.as_paired(c, gi, ei))
                 lines.append(f"- {'✓ exact' if level == 'exact' else '≈ partial'}"
+                             f"{', matched with subject and object swapped' if turned else ''}"
                              f"{'' if strict else ', entity classes differ'}: {_triple(ex[ei])}")
-                if level == "partial" or not strict:
+                if level == "partial" or not strict or turned:
                     lines.append(f"  - ground truth: {_triple(gt[gi])}")
             lines.append("")
         extra = [ex[i] for i in range(len(ex)) if i not in paired_e]
@@ -282,7 +284,8 @@ def _compared_rows(records: list) -> list:
                 origins = gt[gi].get(audit.ORIGIN_FIELD) or []
                 out[ORIGIN_COLUMN] = "; ".join(filter(None, [out.get(ORIGIN_COLUMN), *origins]))
             if gi is not None and ei is not None:
-                out["entity_classes_right"] = "yes" if pairing.classes_agree(gt[gi], ex[ei]) else "no"
+                out["entity_classes_right"] = "yes" if pairing.classes_agree(gt[gi], pairing.as_paired(c, gi, ei)) else "no"
+                out["subject_and_object_swapped"] = "yes" if (gi, ei) in c["swapped"] else "no"
             return out
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}

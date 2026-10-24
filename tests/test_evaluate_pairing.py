@@ -801,5 +801,93 @@ class TranslationBatches(unittest.TestCase):
         self.assertTrue(all(r["component_class_in_gtt"] == "Device" for r in rows))
 
 
+class SymmetricPredicates(unittest.TestCase):
+    """ALSO_KNOWN_AS (ground truth schema) says the same fact either way round:
+    an occurrence pairs with subject and object as written or swapped."""
+    AKA = "ALSO_KNOWN_AS"
+
+    def t(self):
+        return translation(entity=ENTITY + ["WebTool"], predicates=PREDICATES + [self.AKA])
+
+    def compare(self, gt, ex, reviews=None):
+        return pairing.compare_record(record(gt, ex), self.t(), reviews)["compared"]
+
+    def test_exact_swapped(self):
+        g = [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        c = self.compare(g, [triple("EOSDIS Worldview", "WebTool", self.AKA, "Worldview", "WebTool")])
+        self.assertEqual(c["pairs"], [(0, 0, "exact")])
+        self.assertEqual(c["swapped"], {(0, 0)})
+        self.assertEqual(c["counts"]["exact_strict_pairs"], 1)
+
+    def test_as_written_is_not_marked_swapped(self):
+        g = [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        c = self.compare(g, [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")])
+        self.assertEqual((c["pairs"], c["swapped"]), ([(0, 0, "exact")], set()))
+
+    def test_partial_swapped(self):
+        g = [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        # as written, "EOSDIS Worldview" and "Worldview app" hold neither the other; swapped, both pairs of instances do
+        c = self.compare(g, [triple("EOSDIS Worldview tool", "WebTool", self.AKA, "Worldview app", "WebTool")])
+        self.assertEqual(c["pairs"], [(0, 0, "partial")])
+        self.assertEqual(c["swapped"], {(0, 0)})
+        self.assertEqual(c["partial_review"]["unreviewed"], 1)
+
+    def test_partial_review_key_still_works(self):
+        # the verdict is filed under the occurrence as written (as compared_triples.csv shows it)
+        g = [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        e = [triple("EOSDIS Worldview tool", "WebTool", self.AKA, "Worldview app", "WebTool")]
+        key = pair_key("r1", g[0], self.compare(g, e)["translated"][0])
+        self.assertEqual(self.compare(g, e, {key: SAME})["partial_review"]["unreviewed"], 0)
+        rejected = self.compare(g, e, {key: NOT_SAME})
+        self.assertEqual((rejected["pairs"], rejected["partial_review"]["rejected"]), ([], 1))
+
+    def test_strict_with_swapped_classes(self):
+        # swapped, the occurrence's entity classes swap too: Dataset/WebTool against WebTool/Dataset
+        g = [triple("Worldview", "WebTool", self.AKA, "Worldview imagery", "Dataset")]
+        c = self.compare(g, [triple("Worldview imagery", "Dataset", self.AKA, "Worldview", "WebTool")])
+        self.assertEqual(c["pairs"], [(0, 0, "exact")])
+        self.assertEqual(c["counts"]["exact_strict_pairs"], 1)
+        self.assertEqual((c["counts"]["exact_subject_class_pairs"], c["counts"]["exact_object_class_pairs"]), (1, 1))
+        # entity classes that agree as written do not once swapped: not strict
+        c = self.compare(g, [triple("Worldview imagery", "WebTool", self.AKA, "Worldview", "Dataset")])
+        self.assertEqual((c["counts"]["exact_pairs"], c["counts"]["exact_strict_pairs"]), (1, 0))
+        self.assertEqual(sorted((m["crt_component_class"], m["gtt_component_class"]) for m in pairing.component_class_mismatches([{"gt": g, "compared": c}])),
+                         [("Dataset", "WebTool"), ("WebTool", "Dataset")])
+
+    def test_non_symmetric_predicate_swapped_does_not_pair(self):
+        for p in PREDICATES:
+            with self.subTest(p=p):
+                g = [triple("MODIS", "Instrument", p, "Aqua", "Spacecraft")]
+                c = self.compare(g, [triple("Aqua", "Spacecraft", p, "MODIS", "Instrument")])
+                self.assertEqual((c["pairs"], c["swapped"]), ([], set()))
+                c = self.compare(g, [triple("Aqua satellite", "Spacecraft", p, "MODIS", "Instrument")])
+                self.assertEqual(c["pairs"], [])
+
+    def test_both_directions_in_the_record(self):
+        # the ground truth states it once; extraction states it both ways: one pair (as written), one extracted only
+        g = [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        e = [triple("EOSDIS Worldview", "WebTool", self.AKA, "Worldview", "WebTool"),
+             triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        c = self.compare(g, e)
+        self.assertEqual((c["pairs"], c["swapped"]), ([(0, 1, "exact")], set()))
+        # both ways in each list: two pairs, each as written
+        g2 = g + [triple("EOSDIS Worldview", "WebTool", self.AKA, "Worldview", "WebTool")]
+        c = self.compare(g2, e)
+        self.assertEqual((sorted(c["pairs"]), c["swapped"]), ([(0, 1, "exact"), (1, 0, "exact")], set()))
+
+    def test_shown_in_compared_triples_and_per_record(self):
+        import moves                                 # noqa: E402
+        g = [triple("Worldview", "WebTool", self.AKA, "EOSDIS Worldview", "WebTool")]
+        e = [dict(triple("EOSDIS Worldview", "WebTool", self.AKA, "Worldview", "WebTool"), _position=1)]
+        r = pairing.compare_record(dict(record(g, e), position=1, title="T"), self.t())
+        rows = moves._compared_rows([r])
+        self.assertEqual([(x["status"], x["subject_and_object_swapped"], x["entity_classes_right"]) for x in rows],
+                         [("exact pair", "yes", "yes")])
+        self.assertEqual(rows[0]["translated_subject"], "EOSDIS Worldview")      # as written, for the review key
+        text = moves._per_record([r], 0)
+        self.assertIn("✓ exact, matched with subject and object swapped", text)
+        self.assertIn("  - ground truth: ", text)
+
+
 if __name__ == "__main__":
     unittest.main()
