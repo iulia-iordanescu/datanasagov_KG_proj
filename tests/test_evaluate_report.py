@@ -307,8 +307,8 @@ class RowReadings(unittest.TestCase):
 
     @staticmethod
     def rec(O, G, W, Ws, Pe, Se, many=0):
-        """A row of the table per record, from its counts."""
-        return {"id": "03a09af3-0000", "position": 4, "occurrences": O, "ground_truth_triples": G, "within_reach": W,
+        """A row of the table per record, from its counts (a made-up record, not a real one)."""
+        return {"id": "hypothetical", "position": 9, "occurrences": O, "ground_truth_triples": G, "within_reach": W,
                 "within_strict_reach": Ws, "counted_against": O + G - 2 * Pe, "occurrences_multiplicity_above_1": many,
                 "exact": {"pairs": Pe, "strict_pairs": Se, "recall": Pe / G if G else None,
                           "precision": Pe / O if O else None}}
@@ -393,7 +393,7 @@ class RowReadings(unittest.TestCase):
                       readings.record_reading(self.rec(1, 1, 1, 1, 0, 0)))
         self.assertNotIn("too few", readings.record_reading(self.rec(2, 1, 1, 1, 0, 0)))
         self.assertEqual(readings.record_reading(self.rec(0, 0, 0, 0, 0, 0)),
-                         "Record 03a09af3 (pool position 4): no occurrences and no ground truth triples: nothing to "
+                         "Record hypothet (pool position 9): no occurrences and no ground truth triples: nothing to "
                          "compare." + self.END)
 
     def test_out_of_reach(self):
@@ -421,14 +421,14 @@ class RowReadings(unittest.TestCase):
                          "stated with a predicate within reach a fact the ground truth has with one out of reach, "
                          "restated a fact already in an exact pair, or repeated an occurrence (multiplicity > 1); the "
                          "counts don't tell which." + self.END)
-        self.assertEqual(readings.record_reading(self.rec(11, 47, 47, 47, 8, 8)),
-                         "Record 03a09af3 (pool position 4): 11 occurrences and 47 ground truth triples (47 within "
-                         "reach, 47 within strict reach); 8 exact pairs, 8 of them strict; exact recall 17%, exact "
-                         "precision 73%. 39 of its ground truth triples within reach have no exact pair, but only 3 of "
-                         "its occurrences lack one, so at least 36 of the record's facts within reach have no "
-                         "occurrence left that could state them: step 060's extraction left out at least 36." + self.END)
+        self.assertEqual(readings.record_reading(self.rec(10, 40, 40, 40, 6, 6)),           # the guide's example
+                         "Record hypothet (pool position 9): 10 occurrences and 40 ground truth triples (40 within "
+                         "reach, 40 within strict reach); 6 exact pairs, 6 of them strict; exact recall 15%, exact "
+                         "precision 60%. 34 of its ground truth triples within reach have no exact pair, but only 4 of "
+                         "its occurrences lack one, so at least 30 of the record's facts within reach have no "
+                         "occurrence left that could state them: step 060's extraction left out at least 30." + self.END)
         self.assertEqual(readings.record_reading(self.rec(3, 4, 3, 2, 1, 0)),
-                         "Record 03a09af3 (pool position 4): 3 occurrences and 4 ground truth triples (3 within reach, "
+                         "Record hypothet (pool position 9): 3 occurrences and 4 ground truth triples (3 within reach, "
                          "2 within strict reach); 1 exact pair, 0 of them strict; exact recall 25%, exact precision 33%. "
                          f"1 of its ground truth triples is out of reach (no checked row translates a predicate of the "
                          f"current schema to theirs), so it can't be in any pair: either {self.SCHEMA} has no "
