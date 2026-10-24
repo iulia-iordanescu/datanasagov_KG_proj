@@ -10,7 +10,8 @@ its tuning part by default; the held-out part is kept for the end. Terms:
 docs/terminology.md, section "Evaluating extraction".
 
 Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
-         extracted_triples_details.json and schema_used.json (060),
+         extracted_triples_removed.csv, extracted_triples_details.json and
+         schema_used.json (060),
          annotations/ground_truth_candidates.csv,
          annotations/ground_truth_schema.txt,
          annotations/ground_truth/, annotations/component_class_mapping.csv,
@@ -32,6 +33,7 @@ INPUTS = {
     "records":                   "020_clean/records.jsonl",
     "splits":                    "030_split/splits.json",
     "extracted_triples":         "060_extract/extracted_triples.csv",
+    "extracted_triples_removed": "060_extract/extracted_triples_removed.csv",
     "extracted_triples_details": "060_extract/extracted_triples_details.json",
     "schema_used":               "060_extract/schema_used.json",
     "candidates":                "./annotations/ground_truth_candidates.csv",

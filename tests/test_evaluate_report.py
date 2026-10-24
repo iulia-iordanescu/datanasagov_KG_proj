@@ -1,5 +1,5 @@
 """Evaluation's report (070_evaluate_helpers/stats.py and moves.py): precision and recall per predicate and per
-entity class, on a case worked out by hand."""
+entity class, on a case worked out by hand; what 060 removed, per reason."""
 import unittest
 
 from support import use_step
@@ -108,6 +108,27 @@ class PerComponentClass(unittest.TestCase):
         self.assertIn(f"| Gadget{NONE} | 1 | 0 | 1 | 0 | 0% | – | 0 | 0% | – |", text)
         n["margins"] = True
         self.assertIn("about 1 in 20 margins misses by chance", "\n".join(moves._per_component_class_lines(n, self.tables)))
+
+
+class RemovedBy060(unittest.TestCase):
+    """What 060's checks removed from the evaluated records, per reason as 060 wrote it."""
+    RECORDS = [{"removed": {"source_text": 2, "duplicate": 1}},
+               {"removed": {"source_text": 1, "component_class_not_in_schema source_text": 1}},
+               {"removed": {}}]
+
+    def test_per_reason(self):
+        self.assertEqual(stats.removed_by_reason(self.RECORDS), [
+            {"reason": "source_text", "removed": 3, "records": 2},
+            {"reason": "component_class_not_in_schema source_text", "removed": 1, "records": 1},
+            {"reason": "duplicate", "removed": 1, "records": 1}])
+
+    def test_report_table(self):
+        text = "\n".join(moves._removed_lines(3, stats.removed_by_reason(self.RECORDS)))
+        self.assertIn("| `source_text` | its source text is missing, or isn't in the record's text | 3 | 2 |", text)
+        self.assertIn("| `component_class_not_in_schema source_text` | an entity class or predicate the current schema "
+                      "doesn't have and its source text is missing, or isn't in the record's text | 1 | 1 |", text)
+        self.assertIn("| all | | 5 | |", text)
+        self.assertIn("None: 060 removed nothing from these records.", "\n".join(moves._removed_lines(1, [])))
 
 
 if __name__ == "__main__":

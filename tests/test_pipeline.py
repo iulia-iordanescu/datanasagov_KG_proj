@@ -9,6 +9,7 @@ what it says, the model's deliberate faults are caught, a rerun pays
 nothing twice, and evaluation's numbers are right on a case worked out by
 hand: 8 tuning records, each with one fact extraction finds, plus one fact
 only the ground truth has."""
+import collections
 import csv
 import json
 import os
@@ -394,6 +395,12 @@ class Pipeline(unittest.TestCase):
             self.assertEqual(sum(r["exact"]["pairs"] for r in rows), 8, table)
             self.assertEqual(rows[0]["counted_against"], 1, table)                # the one that costs something first
             self.assertTrue(all(r["exact"]["precision"]["value"] in (1.0, None) for r in rows), table)
+        # what 060 removed from the 8 tuning records, per reason: the same as counted in 060's file of removed items
+        removed = collections.Counter(r["reason"] for r in read_csv(self.output("060_extract", "extracted_triples_removed.csv"))
+                                      if r["id"] in set(metrics["evaluated"]["tuning"]))
+        self.assertEqual({x["reason"]: x["removed"] for x in metrics["parts"]["tuning"]["removed_by_060"]}, dict(removed))
+        self.assertIn("#### Removed by 060", report)
+        self.assertEqual(set(removed), {"source_text", "component_class_not_in_schema", "duplicate", "malformed"})  # the stand-in's mistakes
         # the ground truth schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
         compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}

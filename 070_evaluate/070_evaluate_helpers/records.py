@@ -22,12 +22,14 @@ the pool at all (hand-picked) is left out and listed, with what to do.
 For each evaluated record: its pool position, its part (tuning or held-out,
 from 030), its stratum (from the pool file), its title, its ground
 truth triples and describes triple, 060's extracted triples and describes triple,
+how many items 060's checks removed from it, per reason (extracted_triples_removed.csv),
 and its twin kind (docs/terminology.md, twin): what it shares with a record
 the current schema was learned from (060's schema_used.json, learned_from),
 "" when it isn't a twin, None when that isn't known.
 """
 from __future__ import annotations
 
+import collections
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -168,6 +170,9 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     evaluated.extraction_manifest = json.loads(manifest.read_text(encoding="utf-8")) if manifest.is_file() else {}
     extracted_ids = {r["id"] for r in details["records"] if r["status"] == "extracted"}
     evaluated.schema_used = json.loads(Path(inputs["schema_used"]).read_text(encoding="utf-8"))
+    removed = {}
+    for row in read_csv(Path(inputs["extracted_triples_removed"])):
+        removed.setdefault(row["id"], collections.Counter())[row["reason"]] += 1
     extracted = {}
     for position, row in enumerate(read_csv(Path(inputs["extracted_triples"]))):
         extracted.setdefault(row["id"], []).append({**row, "_position": position})
@@ -212,6 +217,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "id": rid, "position": by_id[rid]["position"], "part": by_id[rid]["part"],
             "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
+            "removed": dict(removed.get(rid, {})),
         })
     _mark_twins(evaluated, catalog, inputs)
     missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]

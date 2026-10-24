@@ -115,6 +115,31 @@ def _too_few(n: dict) -> str:
             f"numbers could easily have come out very differently. Don't draw conclusions from them yet.**")
 
 
+#: What each of 060's reasons for removing an item means (060_extract/060_extract.md, *How it works*).
+REMOVED_REASONS = {"source_text": "its source text is missing, or isn't in the record's text",
+                   "component_class_not_in_schema": "an entity class or predicate the current schema doesn't have",
+                   "duplicate": "the same classed triple twice in the record (one copy is kept)",
+                   "malformed": "not a classed triple at all"}
+
+
+def _removed_lines(records: int, removed: list) -> list:
+    """The report's table of what 060's checks removed from the evaluated records, per reason
+    (stats.removed_by_reason)."""
+    lines = ["#### Removed by 060", "",
+             f"Before 070 sees them, 060's checks removed some of the items its model listed for these {records} "
+             f"record(s): each a classed triple, except those removed as `malformed`. Removed ones are never "
+             f"evaluated: they count neither for nor against precision, and can't pair with a ground truth triple. "
+             f"Each, with its reason: `060_extract/extracted_triples_removed.csv`; the checks: "
+             f"`060_extract/060_extract.md`, *How it works*.", ""]
+    if not removed:
+        return lines + ["None: 060 removed nothing from these records.", ""]
+    lines += ["| Reason (as 060 wrote it) | What it means | Removed | Records with any |", "|---|---|---:|---:|"]
+    for x in removed:
+        means = " and ".join(REMOVED_REASONS.get(w, "a reason 070 doesn't know") for w in x["reason"].split())
+        lines.append(f"| `{cell(x['reason'])}` | {cell(means)} | {x['removed']} | {x['records']} |")
+    return lines + [f"| all | | {sum(x['removed'] for x in removed)} | |", ""]
+
+
 def _per_component_class_lines(n: dict, tables: dict) -> list:
     """The report's tables of precision and recall per predicate, per subject class, and per object class
     (stats.per_component_class)."""
@@ -401,7 +426,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         "left_out": evaluated.left_out,
         "learned_from": evaluated.learned_from,
         "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
-                      "per_component_class": v["per_component_class"],
+                      "per_component_class": v["per_component_class"], "removed_by_060": v["removed_by_060"],
                       "twins": v["twins"],
                       "describes_confusion": [{"truth": t, "said": s, "records": n}
                                               for (t, s), n in v["confusion"].items()]}
@@ -593,6 +618,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
         lines += _per_component_class_lines(n, v["per_component_class"])
+        lines += _removed_lines(n["records"], v["removed_by_060"])
         lines += _twin_lines(part, v, recs, evaluated.learned_from)
         lines += _margin_check_lines(v["margin_checks"])
     lines += ["A margin of error covers only which records happened to be evaluated: not mistakes in the ground "

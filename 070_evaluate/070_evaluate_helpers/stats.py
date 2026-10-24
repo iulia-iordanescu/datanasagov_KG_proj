@@ -249,9 +249,20 @@ def per_component_class(records: list) -> dict:
     return out
 
 
+def removed_by_reason(records: list) -> list:
+    """What 060's checks removed from records, per reason as 060 wrote it (records.py, "removed"): [{"reason",
+    "removed", "records" (how many of the records had any)}], most removed first."""
+    removed, having = collections.Counter(), collections.Counter()
+    for r in records:
+        removed.update(r.get("removed") or {})
+        having.update(set(r.get("removed") or {}))
+    return [{"reason": k, "removed": n, "records": having[k]}
+            for k, n in sorted(removed.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
 def compute_metrics(evaluated, settings: dict) -> dict:
     """Every number, per part: the tuning part always; the held-out part only
-    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion", "per_component_class", ...},
+    with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion", "per_component_class", "removed_by_060", ...},
     "kept_aside": {part: records not shown}}."""
     parts = by_part(evaluated)
     shown = ["tuning"] + (["held-out"] if settings["evaluate_held_out"] else [])
@@ -263,6 +274,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
                         "strata": strata_table(recs, evaluated.pool_strata) if recs else [],
                         "confusion": describes_confusion(recs),
                         "per_component_class": per_component_class(recs),
+                        "removed_by_060": removed_by_reason(recs),
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
                         if numbers and numbers["margins"] else None,
                         "twins": twins(recs)}
