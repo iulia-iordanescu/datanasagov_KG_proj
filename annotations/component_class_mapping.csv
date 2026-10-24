@@ -78,7 +78,7 @@ predicate,USED_TO_STUDY,HAS_PURPOSE,no,yes,"The subject (a mission, instrument, 
 predicate,COLLECTED_DURING,HAS_MISSION_PHASE,no,yes,"The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.",was collected during this MissionPhase
 predicate,CREATED_BY,DEVELOPED_BY_PARTY,no,yes,"The subject (a dataset, website, instrument or signal) is produced, built, generated or funded into existence by the object, a person, organization, project or source system.","was built or created by this Person, Team, or Organization"
 predicate,MEASURES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, mission, dataset or product) measures or provides data on the object, a physical quantity, variable or phenomenon.",holds measurements of
-predicate,LOCATED_IN,(none),no,yes,"The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.",
+predicate,LOCATED_IN,BASED_IN,no,yes,"The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.",belongs to this Country
 predicate,HAS_START_DATE,(none),no,yes,"The subject (a campaign, dataset, mission phase or event) begins or occurred on the object, a date or time.",
 predicate,PROVIDES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.",holds measurements of
 predicate,AVAILABLE_AT,(none),no,yes,"The subject (a dataset, document or piece of information) can be accessed at the object, a URL, repository, website or data center.",
