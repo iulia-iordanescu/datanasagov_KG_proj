@@ -235,7 +235,7 @@ def schema_text(schema: dict) -> str:
 # --------------------------------------------------------------------------
 
 def ground_truth_source_problem(source: str, parts: dict) -> str | None:
-    """Why a schema entry whose source mentions the ground truth isn't fair to
+    """Why a schema entry whose source names the ground truth isn't fair to
     use, or None. Such a source must say "tuning" and name its records by
     pool position ("ground truth tuning #12, #15"), every one of them in the
     tuning part: a component class learned from a held-out record would let held-out

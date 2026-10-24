@@ -7,7 +7,7 @@ every fact the text states as a triple instance, with the text's own words as
 its subject instance and object instance, a short verb phrase in the model's
 words as its predicate instance ("MODIS" – "is aboard" – "Aqua"), and its
 source text, the passage that states it. Nothing tells the model which types of things or
-relations to look for; that is what the later stages learn. (The prompt says
+relationships to look for; that is what the later stages learn. (The prompt says
 "facts": it speaks plainly to the model.)
 
 Everything else is what 050 and 060 use too (common/common_helpers/extraction.py),

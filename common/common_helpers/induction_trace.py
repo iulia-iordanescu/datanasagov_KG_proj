@@ -118,7 +118,7 @@ def trace_induction(pattern: str, limit: int = 30, folder: Path | None = None, o
         f"final predicate; case ignored).")
     if not hits:
         out("Nothing matches: no text of this run states it in a way the regular expression catches. Try a wider "
-            "one (other words for the relation), or check the record ids with `py helpers/audit.py <record id>`.")
+            "one (other words for the relationship), or check the record ids with `py helpers/audit.py <record id>`.")
         return 0
     out("")
     for rid, ti, verified, final, how in hits[:limit]:

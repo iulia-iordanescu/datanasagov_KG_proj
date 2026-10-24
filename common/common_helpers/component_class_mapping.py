@@ -16,7 +16,7 @@ the current schema (the one step 060 used) means.
     component_class_in_gtt   a component class of the ground truth schema
                              (gtt: ground truth triples), or (none)
     swap_subject_and_object  predicates only: "yes" when the ground truth's
-                             predicate states the relation the other way round
+                             predicate states the relationship the other way round
     checked                  "same component class" (added by code: the two
                              component classes are equal),
                              "no" (proposed by the model, not checked yet),

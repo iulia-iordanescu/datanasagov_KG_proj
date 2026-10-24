@@ -288,7 +288,7 @@ def _additions_items(parts: dict) -> list:
             items.append(_item("Schema additions", LOOK, f"Step 060's model used {len(new)} component class(es) "
                                f"outside the schema, so step 060 removed those extracted triples: "
                                f"{named([n['component_class'] for n in new], 4)}. Add the ones that name a real type "
-                               f"of thing or relation (annotation tool, Schema additions).", "after-step-060",
+                               f"of thing or relationship (annotation tool, Schema additions).", "after-step-060",
                                m.get("run_id", "")))
     return items
 

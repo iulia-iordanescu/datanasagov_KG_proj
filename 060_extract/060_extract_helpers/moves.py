@@ -179,7 +179,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
                   f"Component classes outside the schema (the current schema: the schema file plus "
                   f"the schema additions) the model used, counted over {where}, most used first (held-out records "
                   f"are never counted). One that keeps coming back, and that names a real type of thing or "
-                  f"relation, may be added to `annotations/schema_additions.txt`, with a one-line definition and "
+                  f"relationship, may be added to `annotations/schema_additions.txt`, with a one-line definition and "
                   f"the `source:` line given here: every component class listed is fair to add.", "",
                   "| Kind | Component class (used by the model; not in the current schema) | Records | source: line for "
                   "`annotations/schema_additions.txt` |", "|---|---|---:|---|"]

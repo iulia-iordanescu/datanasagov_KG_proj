@@ -4,8 +4,8 @@ merge.py -- stage 4: one last look at all the labels, to merge synonyms.
 Stage 3's running vocabulary prevents most synonymous labels, but a few can
 slip through (a label coined early, before its better-known synonym was in
 use). So the finished list of labels goes to the model in ONE call per kind
-(the labels of entity component instances, then the labels of predicate
-component instances), each label with the component instances that most
+(the labels of subject and object instances, then the labels of predicate
+instances), each label with the component instances that most
 often got it (prompts/merge_entity_classes.txt, merge_predicates.txt). Every
 label is seen beside every other, so no pair of synonyms is missed for being
 in different batches.

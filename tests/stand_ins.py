@@ -38,7 +38,7 @@ from urllib.parse import parse_qs, urlparse
 
 MAINTAINERS = ["Kristan Morgan", "KRISTAN MORGAN", "Morgan, Kristan", "Dr. Jane Roe", "Jane  Roe",
                "Earthdata Forum", "Ames Team", "", None]
-#: Instruments and spacecraft the made-up notes mention, so the stand-in model
+#: Instruments and spacecraft the made-up notes name, so the stand-in model
 #: finds real passages.
 INSTRUMENTS = ["MODIS", "AIRS", "CERES", "OMI", "MLS"]
 SPACECRAFT = ["Aqua", "Terra", "Aura"]

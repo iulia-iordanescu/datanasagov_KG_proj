@@ -149,7 +149,7 @@ TIER_SOURCE = "source"
 #: double-escaped input (`&amp;rsquo;` -> `&rsquo;` -> `'`); the third is
 #: headroom. Decoding stops as soon as the text stops changing, so this
 #: only bounds pathological input. Lowering it to 2 reduces the (remote)
-#: risk of over-decoding text that deliberately displays an entity.
+#: risk of over-decoding text that deliberately displays an HTML entity.
 MAX_DECODE_PASSES = 3
 
 
@@ -914,7 +914,7 @@ SELFTESTS = [
     ("subscript and superscript",
      'nu&lt;sub&gt;peak&lt;/sub&gt; and 10&lt;sup&gt;-14&lt;/sup&gt;',
      ["nu_peak", "10^-14"]),
-    ("double-escaped entity",
+    ("double-escaped HTML entity",
      'technology&amp;rsquo;s size',
      ["technology\u2019s size"]),
     ("list item does not fuse with next heading",

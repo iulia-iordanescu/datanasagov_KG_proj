@@ -4,7 +4,7 @@ vocabulary.
 
 A label is the general word for a component instance: for a subject
 or object instance, the type of thing it is ("MODIS" → `Instrument`), which
-becomes an entity class; for a predicate instance, the relation it
+becomes an entity class; for a predicate instance, the relationship it
 expresses ("is aboard" → `ABOARD`), which becomes a predicate. The two kinds
 are labeled in two separate passes, each with its own running vocabulary.
 
@@ -23,7 +23,7 @@ entry.
 
 A text's title is not sent: its label is the describes_class stage 2 got
 for it, judged from the whole text. Those labels also start the running
-vocabulary of the entity pass (most common first), so other component instances reuse them.
+vocabulary of entity class labels (most common first), so other component instances reuse them.
 
 Each batch's answer is cached under a key that includes the labels in use
 before it, so a rerun reuses every batch whose component instances and
@@ -50,7 +50,7 @@ from common.prompt_files import fill, load
 #: object slots (labeled with entity classes), "predicate" for the predicate
 #: slot (labeled with predicates).
 KINDS = ("entity", "predicate")
-#: What each kind of label becomes: the labels of entity component instances
+#: What each kind of label becomes: the labels of subject and object instances
 #: are entity classes; those of predicate component instances are predicates.
 BECOMES = {"entity": "entity class", "predicate": "predicate"}
 

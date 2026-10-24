@@ -154,11 +154,157 @@ class Vocabulary(unittest.TestCase):
                 found.append(f"{f}:{text.count(chr(10), 0, m.start()) + 1}: {line.strip()[:120]}")
         self.assertEqual(found, [])
 
+    def test_no_field_words(self):
+        """The docs use only docs/terminology.md's words, not the research field's for the same things (FIELD_WORDS
+        says which, and what to write instead), outside the places FIELD_WORDS_ALLOWED lists."""
+        self.assertEqual(field_words_found(), [])
+
+    def test_field_words_near_misses(self):
+        """What counts and what doesn't, on made-up text: (file kind, text, how many field words are reported)."""
+        cases = [
+            ("a.md", "The model finds each relation in the text.", 1),
+            ("a.md", "Pass the argument --schema.", 1),                      # in a doc, never a Python argument
+            ("a.md", "two triplets, two mentions, a span, its boundaries", 4),
+            ("a.md", "It requires \"both arguments' entity types\" to match.", 2),   # a quote with no meaning given
+            ("a.md", "what \"Boundaries\" counts", 1),                         # a quoted word alone needs it too
+            ("a.md", "A resumed harvest spans several days.", 1),              # the verb too
+            ("a.txt", "predicates (kinds of relations)", 1),
+            ("a.py", "# the relation it\n# expresses\nx = 1\n", 1),
+            ("a.py", "x = (\"a wrong entity \"\n     \"type\")\n", 1),             # strings joined: "entity type"
+            ("a.html", "<p>A new relation between two things</p>", 1),
+            ("a.md", "A relationship between two things; records mentioning a value; it was mentioned.", 0),
+            ("a.md", "an entity class, entity classes, entity-class accuracy, HAS_TIME_SPAN", 0),
+            ("a.md", "relation classification, relation\nextraction", 0),
+            ("a.md", "Pink et al. (2014), \"Analysing recall loss in named entity slot filling\", EMNLP", 0),
+            ("a.md", "S. Wadhwa, \"Revisiting Relations,\" in *Proceedings of ACL*", 0),
+            ("a.md", "Smith, \"Arguments and Spans\" ([paper](https://example.org/x))", 0),
+            ("a.md", "\"both arguments' [the subject instance's and the object instance's] entity types [entity "
+                     "classes]\"", 0),
+            ("a.md", "\"Boundaries\" [the words right, entity classes not checked]", 0),
+            ("a.md", "`entity`, [predicates](x/relations.md), https://x.org/entity\n```\nspan\n```", 0),
+            ("a.md", "an HTML entity, a word boundary, a code span", 0),
+            ("a.txt", "too vague (e.g. \"Thing\", \"Entity\")", 0),               # a label, quoted
+            ("a.py", "def f(argument):\n    \"\"\"Its argument's span.\"\"\"\n    return {\"entity\": argument}\n", 0),
+        ]
+        for rel, text, n in cases:
+            with self.subTest(text=text):
+                self.assertEqual(len(field_words_in(rel, text)), n, field_words_in(rel, text))
+
     def test_terms_defined_once(self):
         text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
         terms = [t.lower() for t in re.findall(r"^\| \*\*([^*]+)\*\*", text, re.M)]
         self.assertGreater(len(terms), 30)
         self.assertEqual(sorted(t for t in set(terms) if terms.count(t) > 1), [])
+
+
+#: The research field's words for things docs/terminology.md names otherwise: (the word, what to write instead).
+#: The docs, the prompts, and the code's comments and strings use only terminology.md's words. Matched as whole
+#: words, case ignored; "entity-class", "HAS_TIME_SPAN", and `entity` (code) are other words. "relationship" is
+#: plain English and allowed, and so are "mentioned" and "mentioning" (only verbs; "mention" can be the field's noun).
+FIELD_WORDS = [
+    (r"arguments?", "the subject instance and the object instance"),
+    (r"entity\s+types?", "entity class(es)"),
+    (r"named\s+entit(?:y|ies)", "subject instance or object instance"),
+    (r"entit(?:y|ies)(?!\s+class)", "subject instance or object instance (a thing), or entity class (a kind)"),
+    (r"relation\s+types?", "predicate"),
+    (r"relations?(?!\s+(?:classification|extraction))", "predicate (a schema entry), or, in plain English, relationship; "
+                                                       "relation classification and relation extraction are terms"),
+    (r"boundar(?:y|ies)", "the words of a subject instance or object instance"),
+    (r"triplets?", "triple(s)"),
+    (r"mentions?", "a wording, or a verb such as names or says"),
+    (r"spans?", "a passage, the source text, or the words"),
+    (r"slot[\s-]+filling", "say what is done, in terminology.md's words"),
+]
+FIELD_WORD = re.compile(r"(?<![\w`-])(?:%s)(?![\w`-])" % "|".join(w for w, _ in FIELD_WORDS), re.I)
+#: Where a field word is allowed. Everywhere:
+#:   - a paper's title, in a citation: a quoted passage followed by its venue or link ("…", EMNLP / ," in *… /
+#:     ([paper](…)); the field's name for itself, relation extraction, is a term (terminology.md, section 6);
+#:   - a phrase with another meaning: HTML entity, word boundary, code span.
+#: In the docs (*.md): code (fenced blocks, `code spans`, link targets) isn't read; a direct quote may hold a field
+#: word only when the word is followed at once by its meaning in our words in square brackets:
+#:   "both arguments' [the subject instance's and the object instance's] entity types [entity classes]".
+#: In the prompts (*.txt) and code (*.py: comments and strings only; *.html): a quoted word alone is a label or a
+#: key ("Entity", a too vague label; "entity", a key of step 040's files), not prose. In code only: argument(s)
+#: (a function's or the command line's) and span(s) (an HTML tag; a regular expression match's span()).
+FIELD_WORDS_ALLOWED_PHRASES = re.compile(r"HTML\s+entit(?:y|ies)|word\s+boundar(?:y|ies)|code\s+spans?", re.I)
+FIELD_WORDS_ALLOWED_IN_CODE = re.compile(r"arguments?|spans?", re.I)
+#: Files not swept: this file (it lists the words), and old notes kept as they were written.
+FIELD_WORDS_SKIP = ("tests/test_docs.py", "annotations/archive/", "to_be_reshaped/", "DONOTTRACK/")
+TITLE_AFTER = re.compile(r"\s*,?\s*(?:in\s+\*|[A-Z][A-Za-z]*[A-Z]\w*\b|\(?\[paper\]\(|arXiv|doi:)")
+GLOSS_AFTER = re.compile(r"(?:'s|'|’s|’)?[\"”]?\s*\[[^\]\n]+\](?!\()")
+
+
+def field_word_texts(rel: str, text: str) -> list:
+    """[(first line, text)]: the parts of a file a person reads. A doc or prompt: all of it, with code and link
+    targets blanked out in a doc (line numbers kept). Python: each comment (a run of comment lines joined) and each
+    string, an f-string's {…} as {}. HTML: all of it."""
+    import io
+    import tokenize
+    blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))           # noqa: E731
+    if rel.endswith(".md"):
+        text = re.sub(r"```.*?```", blank, text, flags=re.S)
+        text = re.sub(r"`[^`\n]*`", blank, text)
+        text = re.sub(r"(?<=\]\()[^)\n]*(?=\))", blank, text)
+        text = re.sub(r"https?://\S+", blank, text)
+    if not rel.endswith(".py"):
+        return [(1, text)]
+    parts, inner = [], set()
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)                 # a stray escape in a string isn't our concern
+        tree = ast.parse(text)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            inner |= {id(v) for v in node.values}
+            parts.append((node.lineno, "".join(v.value if isinstance(v, ast.Constant) else "{}" for v in node.values)))
+    parts += [(n.lineno, n.value) for n in ast.walk(tree)
+              if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in inner]
+    run, last = None, -1
+    for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+        if tok.type == tokenize.COMMENT:
+            if run and tok.start[0] == last + 1:
+                run[1] += " " + tok.string.lstrip("#")
+            else:
+                run = [tok.start[0], tok.string.lstrip("#")]
+                parts.append(run)
+            last = tok.start[0]
+    return [tuple(p) for p in parts]
+
+
+def field_words_found() -> list:
+    """["file:line: word (write instead: …): the line"]: each field word, in every file swept, outside the places it
+    is allowed."""
+    files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    files += [p.relative_to(ROOT).as_posix() for p in (ROOT / "tests").glob("*.py")]
+    return [f for rel in sorted(set(files))
+            if rel.endswith((".md", ".txt", ".py", ".html")) and not rel.startswith(FIELD_WORDS_SKIP) and (ROOT / rel).exists()
+            for f in field_words_in(rel, (ROOT / rel).read_text(encoding="utf-8-sig"))]
+
+
+def field_words_in(rel: str, whole: str) -> list:
+    """The field words of one file's text outside the places allowed (`rel` says the file's kind by its extension)."""
+    found, doc, code = [], rel.endswith(".md"), rel.endswith((".py", ".html"))
+    quoted = re.compile(r"\"[^\"\n]*\"|“[^”\n]*”" + (r"|'[^'\n]*'" if code else ""))
+    for first, text in field_word_texts(rel, whole):
+        allowed = [m.span() for m in FIELD_WORDS_ALLOWED_PHRASES.finditer(text)]
+        quotes = [m.span() for m in quoted.finditer(text)]
+        for m in FIELD_WORD.finditer(text):
+            if any(a <= m.start() < b for a, b in allowed) or (code and FIELD_WORDS_ALLOWED_IN_CODE.fullmatch(m.group(0))):
+                continue
+            if rel.endswith(".py") and text.strip().lower() == m.group(0).lower():
+                continue                                                       # a string that is the word alone: a key
+            quote = next(((a, b) for a, b in quotes if a < m.start() < b), None)
+            if quote and TITLE_AFTER.match(text, quote[1]):
+                continue                                                       # a paper's title
+            if quote and not doc and text[quote[0] + 1:quote[1] - 1].strip().lower() == m.group(0).lower():
+                continue                                                       # a label or key, quoted
+            if quote and doc and GLOSS_AFTER.match(text, m.end()):
+                continue                                                       # a quote, with its meaning in brackets
+            line = text[text.rfind("\n", 0, m.start()) + 1:].split("\n", 1)[0]
+            instead = next(i for w, i in FIELD_WORDS if re.fullmatch(w, m.group(0), re.I))
+            found.append(f"{rel}:{first + text.count(chr(10), 0, m.start())}: {m.group(0)} "
+                         f"(write instead: {instead}): {line.strip()[:120]}")
+    return found
 
 
 #: The docs whose terms link to docs/terminology.md (every non-code doc except the prompts,
@@ -191,7 +337,10 @@ def multiword_terms() -> list:
 class TermLinks(unittest.TestCase):
     """Each term has one home (docs/terminology.md, or the doc it points to); the docs link to it."""
 
-    PROTECT = re.compile(r"`[^`\n]*`|\[[^\[\]\n]*\]\([^)\n]*\)|<[^>\n]+>|https?://\S+|(?<![*\w])\*(?!\*)[^*\n]+\*(?![*\w])")
+    #: Not read for first uses: code, links, HTML, web addresses, *italic names*, and "quoted passages" (a quote or a
+    #: paper's title is someone else's words: no link goes inside it).
+    PROTECT = re.compile(r"`[^`\n]*`|\[[^\[\]\n]*\]\([^)\n]*\)|<[^>\n]+>|https?://\S+|(?<![*\w])\*(?!\*)[^*\n]+\*(?![*\w])"
+                         r'|"[^"\n]*"|“[^”\n]*”')
 
     def test_anchors_exist(self):
         """Every link to a heading of a doc (e.g. terminology.md#2-triples) lands on a heading that exists."""

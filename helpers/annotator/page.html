@@ -1642,7 +1642,7 @@ function mappingRow(r, i) {
       r.kind === "predicate" ? el("label", { class: "mapflag" + (r.swap_subject_and_object === "yes" ? " on" : ""),
                     title: none ? `Swap subject and object: only for a row that translates to a ground truth schema predicate, ` +
                                   `not to ${mapping.none}`
-                         : `Swap subject and object: ${gttName} (ground truth schema predicate) states the relation the ` +
+                         : `Swap subject and object: ${gttName} (ground truth schema predicate) states the relationship the ` +
                            `other way round from ${crtName} (current schema predicate)` },
         el("input", { type: "checkbox", disabled: none, checked: r.swap_subject_and_object === "yes",
                       onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
@@ -1900,7 +1900,7 @@ function drawAdditions() {
             "doesn't have, and step 060 removes those extracted triples. Each one it used is listed here, counted over " +
             `${additions.counted_over}. Held-out records are never counted, since they must not shape the schema, so any ` +
             "one listed may be added."),
-          el("p", {}, "If one names a real type of thing or relation that the schema lacks, " +
+          el("p", {}, "If one names a real type of thing or relationship that the schema lacks, " +
             "press Add: the form above opens, filled in, for you to write its definition. The next run of step 060 can then " +
             "extract it. If it doesn't (a vague or wrong one), leave it: nothing changes until you add it. " +
             `${left} not added yet.`),
@@ -1957,7 +1957,7 @@ function additionForm(e) {
         el("button", { class: e.entry_type === k ? "primary" : "", onclick: () => { e.entry_type = k; drawAdditions(); } }, words))),
     el("p", { class: "meta" }, {
       "entity class": "A new type of thing that extraction may use as a subject class or an object class.",
-      "predicate": "A new relation between two things, with the pairs of entity classes it joins (its patterns).",
+      "predicate": "A new relationship between two things, with the pairs of entity classes it joins (its patterns).",
       "pattern": "A new pair of entity classes for a predicate that the schema (or this file) already has." }[e.entry_type]),
     ...({
       "entity class": [input("component_class", "Entity class: one word in CamelCase (e.g. SpaceMission)"),
