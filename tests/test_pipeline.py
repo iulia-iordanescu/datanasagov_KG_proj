@@ -395,6 +395,16 @@ class Pipeline(unittest.TestCase):
             self.assertEqual(sum(r["exact"]["pairs"] for r in rows), 8, table)
             self.assertEqual(rows[0]["counted_against"], 1, table)                # the one that costs something first
             self.assertTrue(all(r["exact"]["precision"]["value"] in (1.0, None) for r in rows), table)
+            # the 8 pairs have the right entity classes, so all are strict; F1 and the reach numbers by their formulas
+            self.assertEqual(sum(r["exact"]["strict_pairs"] for r in rows), 8, table)
+            for r in rows:
+                both = r["occurrences"] + r["ground_truth_triples"]
+                self.assertAlmostEqual(r["exact"]["strict_f1"]["value"], 2 * r["exact"]["strict_pairs"] / both)
+                if r["ground_truth_triples"]:
+                    self.assertTrue(r["within_reach"], r["component_class"])
+                    self.assertAlmostEqual(r["strict_recall_upper_bound"]["value"],
+                                           r["within_strict_reach"] / r["ground_truth_triples"])
+        self.assertIn("| Predicate (ground truth schema) | Reach | Strict recall upper bound | Occurrences |", report)
         # what 060 removed from the 8 tuning records, per reason: the same as counted in 060's file of removed items
         removed = collections.Counter(r["reason"] for r in read_csv(self.output("060_extract", "extracted_triples_removed.csv"))
                                       if r["id"] in set(metrics["evaluated"]["tuning"]))

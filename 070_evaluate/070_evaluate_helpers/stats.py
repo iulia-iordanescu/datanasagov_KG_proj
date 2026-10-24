@@ -194,24 +194,37 @@ def twins(records: list) -> dict | None:
 
 
 def _component_class_numbers(c) -> dict:
-    """Precision and recall at each level from summed counts."""
-    return {level: {"precision": _ratio(c[f"{level}_pairs"], c["occurrences"]),
-                    "recall": _ratio(c[f"{level}_pairs"], c["ground_truth_triples"])} for level in LEVELS}
+    """Precision, recall, and F1, their strict versions, and strict recall within reach, at each level, and the
+    strict recall upper bound ("row": the same at both levels), from summed counts (the same formulas as numbers;
+    a strict pair's ground truth triple is always within strict reach, so strict recall within reach counts every
+    strict pair)."""
+    out = {"row": {"strict_recall_upper_bound": _ratio(c["within_strict_reach"], c["ground_truth_triples"])}}
+    for level in LEVELS:
+        m, s, both = c[f"{level}_pairs"], c[f"{level}_strict_pairs"], c["occurrences"] + c["ground_truth_triples"]
+        out[level] = {"precision": _ratio(m, c["occurrences"]), "recall": _ratio(m, c["ground_truth_triples"]),
+                      "f1": _ratio(2 * m, both), "strict_precision": _ratio(s, c["occurrences"]),
+                      "strict_recall": _ratio(s, c["ground_truth_triples"]), "strict_f1": _ratio(2 * s, both),
+                      "strict_recall_within_reach": _ratio(s, c["within_strict_reach"])}
+    return out
 
 
 def per_component_class(records: list) -> dict:
-    """Precision and recall per predicate, per subject class, and per object class (each of the ground truth
-    schema, or of the current schema marked as translating to (none)), at each pair level, over records' counts
-    (pairing.component_class_counts), each with its margin of error from the same redraws of whole records as the other
-    numbers (none below MIN_RECORDS). {table: [row]}, each row {"component_class", "occurrences",
-    "ground_truth_triples", "counted_against" (occurrences and ground truth triples with no exact pair that counts
-    for it), "<level>": {"pairs", "precision", "recall"} (each a {"value", "low", "high"})}, sorted by
+    """Precision, recall, and F1, and their strict versions, per predicate, per subject class, and per object class
+    (each of the ground truth schema, or of the current schema marked as translating to (none)), at each pair level,
+    over records' counts (pairing.component_class_counts), each with its margin of error from the same redraws of
+    whole records as the other numbers (none below MIN_RECORDS). {table: [row]}, each row {"component_class",
+    "within_reach" (whether some checked row translates to it; None for one whose row says (none)), "occurrences",
+    "ground_truth_triples", "within_strict_reach" (of those ground truth triples), "strict_recall_upper_bound",
+    "counted_against" (occurrences and ground truth triples with no exact pair that counts for it), "<level>":
+    {"pairs", "strict_pairs", "precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
+    "strict_recall_within_reach"}} (each number a {"value", "low", "high"}), sorted by
     counted_against, most first: what the component class costs at the exact level, so the frequent and badly
     extracted ones come first, and one seen once can cost at most two."""
     per_record = [r["compared"]["component_class_counts"] for r in records]
-    labels = {}
+    labels, reach = {}, {}
     for x in reversed(per_record):           # the spelling first met
         labels.update(x["labels"])
+        reach.update(x["within_reach"])
     total = collections.defaultdict(collections.Counter)
     for x in per_record:
         for key, c in x["counts"].items():
@@ -232,17 +245,18 @@ def per_component_class(records: list) -> dict:
                             samples[(key, level, what)].append(v)
     out = {table: [] for table, _ in PER_COMPONENT_CLASS}
     for key, c in total.items():
-        row = {"component_class": labels[key], "occurrences": c["occurrences"],
-               "ground_truth_triples": c["ground_truth_triples"],
+        row = {"component_class": labels[key], "within_reach": reach[key], "occurrences": c["occurrences"],
+               "ground_truth_triples": c["ground_truth_triples"], "within_strict_reach": c["within_strict_reach"],
                "counted_against": c["occurrences"] + c["ground_truth_triples"] - 2 * c["exact_pairs"]}
         for level, m in _component_class_numbers(c).items():
-            row[level] = {"pairs": c[f"{level}_pairs"]}
+            if level != "row":
+                row[level] = {"pairs": c[f"{level}_pairs"], "strict_pairs": c[f"{level}_strict_pairs"]}
             for what, v in m.items():
                 vals = sorted(samples.get((key, level, what), []))
                 low = high = None
                 if enough and vals:
                     low, high = _middle_95(vals)
-                row[level][what] = {"value": v, "low": low, "high": high}
+                (row if level == "row" else row[level])[what] = {"value": v, "low": low, "high": high}
         out[key[0]].append(row)
     for rows in out.values():
         rows.sort(key=lambda r: (-r["counted_against"], component_class_key(r["component_class"])))

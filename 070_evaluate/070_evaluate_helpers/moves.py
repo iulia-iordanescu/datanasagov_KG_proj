@@ -140,6 +140,22 @@ def _removed_lines(records: int, removed: list) -> list:
     return lines + [f"| all | | {sum(x['removed'] for x in removed)} | |", ""]
 
 
+def _reach_cell(r: dict) -> str:
+    """A row's Reach mark (070_evaluate.md, *Per predicate and per entity class*)."""
+    if r["within_reach"] is None:
+        return "none: not in the ground truth schema"
+    n = r["ground_truth_triples"]
+    return (f"{'within' if r['within_reach'] else 'out of'} reach; within strict reach: {r['within_strict_reach']} of "
+            f"{n} ground truth triple{'' if n == 1 else 's'}")
+
+
+#: The numbers of each level in a row of the report's tables per predicate and per entity class, in column order.
+PER_COMPONENT_CLASS_NUMBERS = (("precision", "Precision"), ("recall", "Recall"), ("f1", "F1"),
+                               ("strict_precision", "Precision"), ("strict_recall", "Recall"), ("strict_f1", "F1"),
+                               ("strict_recall_within_reach", "Recall within reach"))
+NONE_WITHIN_STRICT_REACH = "no value: none within strict reach"
+
+
 def _per_component_class_lines(n: dict, tables: dict) -> list:
     """The report's tables of precision and recall per predicate, per subject class, and per object class
     (stats.per_component_class)."""
@@ -153,23 +169,33 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
              "ground truth has. Rows are sorted by *Counted against it*: the occurrences with no exact pair that "
              "counts for it (each against its precision) plus the ground truth triples with no such pair (each "
              "against its recall), most first, so the rows that cost the most come first, and one seen only once "
-             "can cost at most 2. Details: `070_evaluate/070_evaluate.md`, *Per predicate and per entity class*.", ""]
+             "can cost at most 2. Strict counts only the pairs whose two triples also have the same entity classes. "
+             "*Reach* says whether some checked row of the translation table translates to the row's predicate or "
+             "entity class, and how many of its ground truth triples are within strict reach (their predicate and "
+             "both entity classes are); its strict recall upper bound is that proportion of them, and its strict "
+             "recall within reach counts its strict pairs out of only those. Details: "
+             "`070_evaluate/070_evaluate.md`, *Per predicate and per entity class*.", ""]
     lines += [_too_few(n), ""] if not n["margins"] else         ["With many rows, about 1 in 20 margins misses by chance, so one odd row is not a finding.", ""]
     for table, head in (("predicate", "Predicate"), ("subject class", "Subject class"), ("object class", "Object class")):
         rows = tables[table]
-        lines += [f"| {head} (ground truth schema) | Occurrences | Ground truth triples | Counted against it (exact) "
-                  f"| Exact pairs that count for it | Precision (exact) | Recall (exact) | Pairs that count for it "
-                  f"(partial level) | Precision (partial) | Recall (partial) |",
-                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        numbers = [f"{label} ({'strict ' if key.startswith('strict') else ''}{level})"
+                   for level in pairing.LEVELS for key, label in PER_COMPONENT_CLASS_NUMBERS]
+        heads = ([f"{head} (ground truth schema)", "Reach", "Strict recall upper bound", "Occurrences",
+                  "Ground truth triples", "Counted against it (exact)", "Exact pairs that count for it"]
+                 + numbers[:7] + ["Pairs that count for it (partial level)"] + numbers[7:])
+        lines += ["| " + " | ".join(heads) + " |", "|---|---|" + "---:|" * (len(heads) - 2)]
+        empty = " |" * (len(heads) - 1)
         for r in rows[:SHOW]:
-            lines.append(f"| {cell(r['component_class'])} | {r['occurrences']} | {r['ground_truth_triples']} | "
-                         f"{r['counted_against']} | {r['exact']['pairs']} | {_with_margin(r['exact']['precision'])} | "
-                         f"{_with_margin(r['exact']['recall'])} | {r['partial']['pairs']} | "
-                         f"{_with_margin(r['partial']['precision'])} | {_with_margin(r['partial']['recall'])} |")
+            values = [NONE_WITHIN_STRICT_REACH if key == "strict_recall_within_reach" and not r["within_strict_reach"]
+                      else _with_margin(r[level][key]) for level in pairing.LEVELS for key, _ in PER_COMPONENT_CLASS_NUMBERS]
+            cells = ([cell(r["component_class"]), _reach_cell(r), _with_margin(r["strict_recall_upper_bound"]),
+                      r["occurrences"], r["ground_truth_triples"], r["counted_against"], r["exact"]["pairs"]]
+                     + values[:7] + [r["partial"]["pairs"]] + values[7:])
+            lines.append("| " + " | ".join(str(x) for x in cells) + " |")
         if len(rows) > SHOW:
-            lines.append(f"| … {len(rows) - SHOW} more, in `{METRICS_NAME}` | | | | | | | | | |")
+            lines.append(f"| … {len(rows) - SHOW} more, in `{METRICS_NAME}` |{empty}")
         if not rows:
-            lines.append("| none | | | | | | | | | |")
+            lines.append(f"| none |{empty}")
         lines.append("")
     return lines
 

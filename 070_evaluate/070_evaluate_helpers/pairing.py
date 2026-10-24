@@ -281,7 +281,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and component_class_key(truth) == component_class_key(said))},
     }
-    record["compared"]["component_class_counts"] = component_class_counts(record)
+    record["compared"]["component_class_counts"] = component_class_counts(record, translation)
     return record
 
 
@@ -289,9 +289,12 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
 PER_COMPONENT_CLASS = (("predicate", "predicate"), ("subject class", "subject_class"), ("object class", "object_class"))
 
 
-def component_class_counts(record: dict) -> dict:
+def component_class_counts(record: dict, translation) -> dict:
     """One record's counts for stats.per_component_class: {"counts": {(table, component_class_key): Counter} with "occurrences",
-    "ground_truth_triples", and per level "<level>_pairs", "labels": {(table, key): spelling}}.
+    "ground_truth_triples", "within_strict_reach" (of those ground truth triples), and per level "<level>_pairs" and
+    "<level>_strict_pairs", "labels": {(table, key): spelling}, "within_reach": {(table, key): whether some checked
+    row of the translation table translates to it (translation.reachable), or None for a component class of the
+    current schema whose row says (none)}}.
 
     Attribution (070_evaluate/070_evaluate.md, *Per predicate and per entity class*):
       - an occurrence counts for its translated predicate, subject class, and object class (the way round it was
@@ -300,19 +303,28 @@ def component_class_counts(record: dict) -> dict:
       - a pair counts for a predicate when its two triples have it (pairing needs the same predicate, so always),
         and for a subject class (or object class) only when both its triples have that one there, so that a
         wrong entity class counts against the precision of the one extraction named and the recall of the one
-        the ground truth has."""
+        the ground truth has;
+      - a pair that counts for a row is also strict for it when both its triples have the same entity classes.
+    Reach (070_evaluate.md, *Per predicate and per entity class*): a predicate or entity class is within reach when
+    some checked row translates to it; a ground truth triple within strict reach (pairing's within_strict_reach)
+    counts for its own predicate, subject class, and object class."""
     c = record["compared"]
     gt, ex = record["gt"], c["translated"]
     partner = {ei: (gi, level) for gi, ei, level in c["pairs"]}
-    counts, labels = collections.defaultdict(collections.Counter), {}
+    counts, labels, reach = collections.defaultdict(collections.Counter), {}, {}
+    kind = {"predicate": "predicate", "subject class": "entity class", "object class": "entity class"}
 
     def add(table, name, field):
         key = (table, component_class_key(name))
         labels.setdefault(key, name)
+        reach.setdefault(key, None if str(name).endswith(NO_TRANSLATION)
+                         else key[1] in translation.reachable[kind[table]])
         counts[key][field] += 1
-    for g in gt:
+    for gi, g in enumerate(gt):
         for table, slot in PER_COMPONENT_CLASS:
             add(table, g[slot], "ground_truth_triples")
+            if c["within_strict_reach"][gi]:
+                add(table, g[slot], "within_strict_reach")
     for ei in range(len(ex)):
         t = as_paired(c, partner[ei][0], ei) if ei in partner else ex[ei]
         for table, slot in PER_COMPONENT_CLASS:
@@ -320,12 +332,15 @@ def component_class_counts(record: dict) -> dict:
         if ei not in partner:
             continue
         gi, level = partner[ei]
+        strict = classes_agree(gt[gi], t)
         for table, slot in PER_COMPONENT_CLASS:
             if component_class_key(gt[gi][slot]) == component_class_key(t[slot]):
                 for counted in LEVELS:
                     if counted == "partial" or level == "exact":
                         counts[(table, component_class_key(t[slot]))][f"{counted}_pairs"] += 1
-    return {"counts": counts, "labels": labels}
+                        if strict:
+                            counts[(table, component_class_key(t[slot]))][f"{counted}_strict_pairs"] += 1
+    return {"counts": counts, "labels": labels, "within_reach": reach}
 
 
 def as_paired(compared: dict, gi: int, ei: int) -> dict:
