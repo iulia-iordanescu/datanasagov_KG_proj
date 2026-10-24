@@ -104,7 +104,7 @@ A data census (`to_be_reshaped/nasa_census.py`) is what decided this design. Thi
 - If a field's values answer no question anyone would ask the graph (`creator_user_id`, `isopen`), the field is ignored.
 - Values that mean "empty" become nothing, whatever their field.
 
-These decisions work because of convergence, meaning many different records mentioning the same value. When a value converges, such as 6,214 records sharing the [maintainer](docs/terminology.md#1-records-and-their-text) "Planetary Data System", storing it as one node attaches all 6,214 [edges](docs/terminology.md#8-the-pipeline) to it, and standing on that node answers "everything connected to this value" in one hop. A value only one record mentions would yield a node with a single edge, connecting nothing to nothing, so non-converging values stay properties.
+These decisions work because of convergence, meaning many different records mentioning the same value. When a value converges, such as 6,214 records sharing the [maintainer](docs/terminology.md#1-records-and-their-text) "Planetary Data System", storing it as one node attaches all 6,214 [edges](docs/terminology.md#8-the-pipeline) to it, and standing on that node answers "everything connected to this value" in one hop. A value only one record names would yield a node with a single edge, connecting nothing to nothing, so non-converging values stay properties.
 
 This node-versus-property criterion is standard in property-graph design. The criterion also involves judgment, not just counting: `license_title` has only 4 distinct values shared across thousands of records, but nobody would traverse from license to license, only filter by it, so per the first bullet it stays a [property](docs/terminology.md#8-the-pipeline).
 

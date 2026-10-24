@@ -47,7 +47,7 @@ What the trace flags along the way:
 - `[file no longer exists]`: the file an origin points to is gone.
 - `(item not found there)`: the file exists, but has no item with that key or position.
 
-## Tracing what step 040 did with a relation
+## Tracing what step 040 did with a predicate
 
 ```
 py helpers/audit.py --induction "<regex>"                e.g. "aboard|on board"
@@ -55,13 +55,13 @@ py helpers/audit.py --induction "<regex>" --limit 100    show more (default 30)
 py helpers/audit.py --induction "<regex>" --folder outputs/intermediate_results/040_induce_schema/previous_runs/<run id>
 ```
 
-Why is a relation I expected (e.g. a predicate of the [ground truth schema](../docs/terminology.md#3-schemas)) not in the [induced schema](../docs/terminology.md#5-learning-the-schema-step-040)? `--induction` reads step 040's `the_schema.json` and `induction_evidence.json` (no [model call](../docs/terminology.md#8-the-pipeline); it writes nothing) and lists every [triple instance](../docs/terminology.md#2-triples) whose [predicate instance](../docs/terminology.md#2-triples), [source text](../docs/terminology.md#1-records-and-their-text), predicate label, or final predicate matches the regular expression (case ignored; `|` separates alternatives). Code: `common/common_helpers/induction_trace.py`. For each triple instance:
+Why is a predicate I expected (e.g. one of the [ground truth schema](../docs/terminology.md#3-schemas)) not in the [induced schema](../docs/terminology.md#5-learning-the-schema-step-040)? `--induction` reads step 040's `the_schema.json` and `induction_evidence.json` (no [model call](../docs/terminology.md#8-the-pipeline); it writes nothing) and lists every [triple instance](../docs/terminology.md#2-triples) whose [predicate instance](../docs/terminology.md#2-triples), [source text](../docs/terminology.md#1-records-and-their-text), predicate label, or final predicate matches the regular expression (case ignored; `|` separates alternatives). Code: `common/common_helpers/induction_trace.py`. For each triple instance:
 
 - `<record id>  "subject instance" -- "predicate instance" -- "object instance"`: the record whose text states it, and the triple instance as stage 2 extracted it.
 - `source text: "…"`: its source text, cut at 220 characters.
 - Its predicate's path: `label X` (stage 3) `-> merged into Y (stage 4)` `-> spelling fold to Z (stage 5)` `= <final predicate>: IN THE SCHEMA` or `DEFERRED (<reason>)`, then the final predicate's support and how many maintainers back it. Stage 4 records each merge with the label at the end of its chain, so a chain A -> B -> C shows as A -> C. Instead of a path: `UNVERIFIED (<errors>)` for an unverified triple instance, or `no label: <why>` for a predicate instance the model left unlabeled or the service refused to label; neither counts toward any predicate.
 
-Then a summary: how many matched triple instances end in each final predicate, with its status, its support, and up to three of its predicate instances. If nothing matches, no triple instance of the run has the words: the model put the relation in other words (try a wider expression), or extracted no triple instance for it. The evidence keeps triple instances, not the records' texts, so a text that states the relation without a triple instance for it isn't found.
+Then a summary: how many matched triple instances end in each final predicate, with its status, its support, and up to three of its predicate instances. If nothing matches, no triple instance of the run has the words: the model put the relationship in other words (try a wider expression), or extracted no triple instance for it. The evidence keeps triple instances, not the records' texts, so a text that states the relationship without a triple instance for it isn't found.
 
 ## Origin format
 
