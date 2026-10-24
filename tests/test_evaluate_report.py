@@ -1,9 +1,10 @@
 """Evaluation's report (070_evaluate_helpers/stats.py and moves.py): precision and recall per predicate and per
 entity class, and per record, on a case worked out by hand; the part's numbers pooled, not averaged over records;
-what 060 removed, per reason."""
+what 060 removed, per reason; the reading of each row."""
+import re
 import unittest
 
-from support import use_step
+from support import ROOT, use_step
 
 use_step("070_evaluate")
 import moves                                     # noqa: E402
@@ -274,7 +275,18 @@ class Multiplicity(unittest.TestCase):
 
 
 class RowReadings(unittest.TestCase):
-    """One line per row below each table (070_evaluate.md, *Reading each row*), on the case above."""
+    """One line per row below each table (070_evaluate.md, *Reading each row*), on the case above, and on rows built
+    to meet each rule and cause of that section, with the near misses of the threshold for too few."""
+    END = " (rules: `070_evaluate/070_evaluate.md`, *Reading each row*)"
+    SCHEMA = "the current schema (by default step 040's induced schema plus the schema additions)"
+    TABLE = "the translation table (`annotations/component_class_mapping.csv`)"
+    UNPAIRED = ("step 060's extraction stated a fact the ground truth doesn't have (wrong, or right but not annotated), "
+                "stated one the ground truth has with {} or in words too different to pair even at the partial level, "
+                "restated a fact already in a pair, or repeated an occurrence (multiplicity > 1); or a row of the "
+                "translation table translates its predicate or an entity class to the wrong component class of the "
+                "ground truth schema; the counts don't tell which (each occurrence, with its pair if any: "
+                "`per_record.md`).")
+
     def setUp(self):
         self.r = dict(compared(), position=3, title="T")
         self.tables = stats.per_component_class([self.r])
@@ -283,71 +295,185 @@ class RowReadings(unittest.TestCase):
         row = next(x for x in self.tables[table] if x["component_class"] == name)
         return readings.component_class_reading(row, table)
 
+    @staticmethod
+    def row(O, G, k, Pe, Pp, Sp, reach=True, many=0, name="ABOARD"):
+        """A row of a table per predicate or per entity class, from its counts."""
+        return {"component_class": name, "occurrences": O, "ground_truth_triples": G, "within_strict_reach": k,
+                "within_reach": reach, "occurrences_multiplicity_above_1": many,
+                "exact": {"pairs": Pe}, "partial": {"pairs": Pp, "strict_pairs": Sp}}
+
+    @staticmethod
+    def rec(O, G, W, Ws, Pe, Se, many=0):
+        """A row of the table per record, from its counts."""
+        return {"id": "03a09af3-0000", "position": 4, "occurrences": O, "ground_truth_triples": G, "within_reach": W,
+                "within_strict_reach": Ws, "counted_against": O + G - 2 * Pe, "occurrences_multiplicity_above_1": many,
+                "exact": {"pairs": Pe, "strict_pairs": Se, "recall": Pe / G if G else None,
+                          "precision": Pe / O if O else None}}
+
     def test_component_class_rows(self):
         self.assertEqual(self.reading("predicate", "ABOARD"),
-                         "ABOARD: 3 occurrences, 2 ground truth triples (2 within strict reach); pairs that count for "
-                         "it: 2 at the partial level (2 exact), 1 of them strict: 1 pair with a different entity "
-                         "class, though every ground truth triple is within strict reach: a wrong entity class from "
-                         "extraction or from a row of the translation table, not a schema gap; 1 occurrence without "
-                         "such a pair, against its precision.")
+                         "ABOARD (predicate, ground truth schema): 3 occurrences and 2 ground truth triples (2 within "
+                         "strict reach); 2 pairs that count for it at the partial level (2 exact, 0 partial), 1 of them "
+                         "strict. In 1 pair, the two triples differ in subject class or object class: every one of this "
+                         "row's ground truth triples is within strict reach, so either step 060's extraction gave a "
+                         "wrong subject class or object class, or a row of the translation table translates one to the "
+                         "wrong one. 1 occurrence has no pair that counts for it (each against its precision): "
+                         + self.UNPAIRED.format("another predicate") + self.END)
         # e1 (AIRS, Dataset) pairs with g1 (AIRS, Instrument), but not for Instrument as subject class
         self.assertEqual(self.reading("subject class", "Instrument"),
-                         "Instrument: 2 occurrences, 2 ground truth triples (2 within strict reach); pairs that count "
-                         "for it: 1 at the partial level (1 exact), 1 of them strict: 1 ground truth triple without a "
-                         "pair that counts for it: within strict reach, so extraction missed it, gave it another "
-                         "subject class there, or stated it in other words; 1 occurrence without such a pair, against "
-                         "its precision.")
-        self.assertEqual(self.reading("predicate", "ACQUIRED_BY_INSTRUMENT"),        # 1 occurrence + 1 = TOO_FEW
-                         "ACQUIRED_BY_INSTRUMENT: seen only as 1 occurrence and 1 ground truth triple: too few to "
-                         "point at a cause.")
+                         "Instrument (subject class, ground truth schema): 2 occurrences and 2 ground truth triples (2 "
+                         "within strict reach); 1 pair that counts for it at the partial level (1 exact, 0 partial), 1 "
+                         "of them strict. 1 ground truth triple has no pair that counts for it (each against its "
+                         "recall): within strict reach, so step 060's extraction left the fact out, gave it another "
+                         "predicate or another subject class, or wrote a subject instance or object instance too "
+                         "differently to pair even at the partial level (`070_evaluate/metrics/pairs.md`, Definition). "
+                         "1 occurrence has no pair that counts for it (each against its precision): "
+                         + self.UNPAIRED.format("another predicate or another subject class") + self.END)
+        # 1 occurrence + 1 ground truth triple in a strict partial pair: nothing counts against it at the partial
+        # level, so not too few; the pair is partial, not exact (cause (g))
+        self.assertEqual(self.reading("predicate", "ACQUIRED_BY_INSTRUMENT"),
+                         "ACQUIRED_BY_INSTRUMENT (predicate, ground truth schema): 1 occurrence and 1 ground truth "
+                         "triple (1 within strict reach); 1 pair that counts for it at the partial level (0 exact, 1 "
+                         "partial), 1 of them strict. 1 of these pairs is partial, not exact: in each, the subject "
+                         "instance or object instance of one triple is inside the other's as whole words, not the same "
+                         "(`070_evaluate/metrics/pairs.md`, Definition), so at the exact level its two triples count "
+                         "against this row (column *Counted against it (exact)*): step 060's extraction wrote the "
+                         "instance more or less fully than the ground truth, or the pair is a wrong one "
+                         "(`070_evaluate/metrics/pairs.md`, *When a pair isn't the same fact*)." + self.END)
         self.assertEqual(self.reading("object class", f"Gadget{NONE}"),
-                         f"Gadget{NONE}: its row of the translation table says (none), so its 1 occurrence can have "
-                         f"no pair that counts for it (precision 0%): a component class the ground truth schema "
-                         f"lacks, or a row of the translation table to fix.")
+                         f"Gadget{NONE}: its row of {self.TABLE} says (none), so its 1 occurrence can't be in a pair "
+                         f"(precision 0%): either {self.SCHEMA} has an object class the ground truth schema lacks, or "
+                         f"that row should name one of the ground truth schema's." + self.END)
+        self.assertEqual(readings.component_class_reading(self.row(1, 2, 2, 1, 1, 1), "predicate"),
+                         "ABOARD (predicate, ground truth schema): 1 occurrence and 2 ground truth triples (2 within "
+                         "strict reach); 1 pair that counts for it at the partial level (1 exact, 0 partial), 1 of them "
+                         "strict. 1 ground truth triple has no pair that counts for it (each against its recall): "
+                         "within strict reach, so step 060's extraction left the fact out, gave it another predicate, "
+                         "or wrote a subject instance or object instance too differently to pair even at the partial "
+                         "level (`070_evaluate/metrics/pairs.md`, Definition)." + self.END)
+        self.assertEqual(readings.component_class_reading(self.row(2, 2, 2, 2, 2, 2), "predicate"),
+                         "ABOARD (predicate, ground truth schema): 2 occurrences and 2 ground truth triples (2 within "
+                         "strict reach); 2 pairs that count for it at the partial level (2 exact, 0 partial), 2 of them "
+                         "strict. Nothing counts against it at the partial level: every occurrence and ground truth "
+                         "triple is in a strict pair that counts for it." + self.END)
+
+    def test_not_all_within_strict_reach(self):
+        """With a ground truth triple out of strict reach, causes (d) and (e) name no one step."""
+        line = readings.component_class_reading(self.row(2, 3, 1, 2, 2, 1), "object class")
+        self.assertIn(": 2 occurrences and 3 ground truth triples (1 within strict reach); 2 pairs that count for it "
+                      "at the partial level (2 exact, 0 partial), 1 of them strict. 2 of its ground truth triples are "
+                      "out of strict reach (no checked row translates to their predicate, subject class, or object "
+                      f"class), so they can't be in a strict pair: either {self.SCHEMA} has no predicate or entity "
+                      f"class with that meaning, or {self.TABLE} has no checked row translating one of the current "
+                      "schema's to it. In 1 pair, the two triples differ in subject class: the ground truth triple is "
+                      "out of strict reach (above), step 060's extraction gave a wrong subject class, or a row of the "
+                      "translation table translates one to the wrong one; the counts don't tell which. 1 ground truth "
+                      "triple has no pair that counts for it (each against its recall): either some are out of strict "
+                      "reach (above), or step 060's extraction left the fact out, gave it another predicate or another "
+                      "object class, or wrote", line)
+
+    def test_too_few(self):
+        """At most TOO_FEW triples with something against it: no cause. One more triple, or nothing against it: read."""
+        self.assertEqual(readings.TOO_FEW, 2)
+        self.assertEqual(readings.component_class_reading(self.row(1, 1, 1, 0, 0, 0), "predicate"),
+                         "ABOARD (predicate, ground truth schema): 1 occurrence and 1 ground truth triple (1 within "
+                         "strict reach); 0 pairs that count for it at the partial level (0 exact, 0 partial), 0 of them "
+                         "strict: only 2 triples (1 occurrence + 1 ground truth triple), and 070 names a cause only for "
+                         "more than 2 (a rule of thumb, with no source): too few to say which step caused the 2 of them "
+                         "with no pair that counts for it at the partial level." + self.END)
+        self.assertIn("too few to say which step caused its 1 pair that isn't strict.",
+                      readings.component_class_reading(self.row(1, 1, 1, 1, 1, 0), "predicate"))
+        self.assertIn("too few", readings.component_class_reading(self.row(0, 1, 1, 0, 0, 0), "predicate"))
+        self.assertNotIn("too few", readings.component_class_reading(self.row(2, 1, 1, 0, 0, 0), "predicate"))
+        self.assertNotIn("too few", readings.component_class_reading(self.row(1, 1, 1, 1, 1, 1), "predicate"))
+        self.assertIn("too few to say which step caused the 2 of them with no exact pair.",
+                      readings.record_reading(self.rec(1, 1, 1, 1, 0, 0)))
+        self.assertNotIn("too few", readings.record_reading(self.rec(2, 1, 1, 1, 0, 0)))
+        self.assertEqual(readings.record_reading(self.rec(0, 0, 0, 0, 0, 0)),
+                         "Record 03a09af3 (pool position 4): no occurrences and no ground truth triples: nothing to "
+                         "compare." + self.END)
 
     def test_out_of_reach(self):
         t = translation(CLASSES, PREDICATES, reachable_entity=["Instrument", "Spacecraft"], reachable_predicates=["ABOARD"])
         tables = stats.per_component_class([pairing.compare_record(record(GT, EXTRACTED[:1]), t)])
         row = next(x for x in tables["predicate"] if x["component_class"] == "ACQUIRED_BY_INSTRUMENT")
         self.assertEqual(readings.component_class_reading(row, "predicate"),
-                         "ACQUIRED_BY_INSTRUMENT: out of reach: no checked row of the translation table translates "
-                         "to it, so its 1 ground truth triple can have no pair that counts for it (recall 0%): "
-                         "a gap in the current schema or in the translation table.")
+                         f"ACQUIRED_BY_INSTRUMENT (predicate, ground truth schema): out of reach: no checked row of "
+                         f"{self.TABLE} translates a predicate of the current schema to it, so none of its 1 ground "
+                         f"truth triple can be in a pair (recall 0%): either {self.SCHEMA} has no predicate with that "
+                         f"meaning, or {self.TABLE} has no checked row translating one of the current schema's to it."
+                         + self.END)
 
     def test_record_rows(self):
         (row,) = stats.per_record([self.r])
         self.assertEqual(readings.record_reading(row),
-                         "Record r1 (pool position 3): 5 occurrences against 3 ground truth triples; recall 67%, "
-                         "precision 40% (exact): 1 exact pair with a wrong entity class; more occurrences without an "
-                         "exact pair (3) than ground truth triples within reach without one (1): extraction erred, or "
-                         "stated facts the ground truth lacks, more than it stopped short.")
-        short = dict(row, id="03a09af3-0000", position=4, occurrences=11, ground_truth_triples=47, within_reach=47,
-                     exact=dict(row["exact"], pairs=8, strict_pairs=8, recall=8 / 47, precision=8 / 11))
-        self.assertEqual(readings.record_reading(short),
-                         "Record 03a09af3 (pool position 4): 11 occurrences against 47 ground truth triples; recall "
-                         "17%, precision 73% (exact): more ground truth triples within reach without an exact pair "
-                         "(39) than occurrences without one (3): extraction stopped short rather than erring.")
-        few = dict(row, occurrences=1, ground_truth_triples=0, within_reach=0,
-                   exact=dict(row["exact"], pairs=0, strict_pairs=0, recall=None, precision=0.0))
-        self.assertEqual(readings.record_reading(few), "Record r1 (pool position 3): 1 occurrence against 0 ground "
-                                                       "truth triples; recall no value, precision 0% (exact): too few "
-                                                       "to point at a cause.")
+                         "Record r1 (pool position 3): 5 occurrences and 3 ground truth triples (3 within reach, 3 "
+                         "within strict reach); 2 exact pairs, 1 of them strict; exact recall 67%, exact precision 40%. "
+                         "In 1 exact pair, the two triples differ in subject class or object class: every ground truth "
+                         "triple of the record is within strict reach, so either step 060's extraction gave a wrong "
+                         "entity class, or a row of the translation table translates one to the wrong one. 3 of its "
+                         "occurrences have no exact pair, but only 1 of its ground truth triples within reach lacks one, "
+                         "so at least 2 of its occurrences state no fact among those ground truth triples: step 060's "
+                         "extraction stated facts the ground truth doesn't have (wrong, or right but not annotated), "
+                         "stated with a predicate within reach a fact the ground truth has with one out of reach, "
+                         "restated a fact already in an exact pair, or repeated an occurrence (multiplicity > 1); the "
+                         "counts don't tell which." + self.END)
+        self.assertEqual(readings.record_reading(self.rec(11, 47, 47, 47, 8, 8)),
+                         "Record 03a09af3 (pool position 4): 11 occurrences and 47 ground truth triples (47 within "
+                         "reach, 47 within strict reach); 8 exact pairs, 8 of them strict; exact recall 17%, exact "
+                         "precision 73%. 39 of its ground truth triples within reach have no exact pair, but only 3 of "
+                         "its occurrences lack one, so at least 36 of the record's facts within reach have no "
+                         "occurrence left that could state them: step 060's extraction left out at least 36." + self.END)
+        self.assertEqual(readings.record_reading(self.rec(3, 4, 3, 2, 1, 0)),
+                         "Record 03a09af3 (pool position 4): 3 occurrences and 4 ground truth triples (3 within reach, "
+                         "2 within strict reach); 1 exact pair, 0 of them strict; exact recall 25%, exact precision 33%. "
+                         f"1 of its ground truth triples is out of reach (no checked row translates a predicate of the "
+                         f"current schema to theirs), so it can't be in any pair: either {self.SCHEMA} has no "
+                         f"predicate with that meaning, or {self.TABLE} has no checked row translating one of the "
+                         f"current schema's to it. In 1 exact pair, the two triples differ in subject class or object "
+                         f"class: the ground truth triple is out of strict reach, step 060's extraction gave a wrong "
+                         f"entity class, or a row of the translation table translates one to the wrong one; the counts "
+                         f"don't tell which. 2 of its ground truth triples within reach and 2 of its occurrences have no "
+                         f"exact pair: the counts don't tell whether step 060's extraction left facts out, stated them "
+                         f"with another predicate or in other words (column *Pairs (partial)*: how many pair at the "
+                         f"partial level), or stated facts the ground truth doesn't have." + self.END)
+        self.assertIn("exact precision no value (0 to divide by)", readings.record_reading(self.rec(0, 3, 3, 3, 0, 0)))
+        self.assertIn("Nothing counts against it at the exact level: every occurrence and ground truth triple is in a "
+                      "strict exact pair.", readings.record_reading(self.rec(3, 3, 3, 3, 3, 3)))
 
     def test_multiplicity_mentioned(self):
         ex = [EXTRACTED[0], triple("the MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"), EXTRACTED[2]]
         (row,) = stats.per_record([dict(compared(GT[:1], ex), position=0, title="")])
         self.assertTrue(readings.record_reading(row).endswith(
             " 2 of its occurrences have multiplicity > 1: two or more extracted triples of their record translate to "
-            "the same translated extracted triple."))
+            "the same translated extracted triple, and at most one of those copies can pair with a given ground truth "
+            "triple (`070_evaluate/metrics/pairs.md`, Example, *A multiset of translated extracted triples*)." + self.END))
 
     def test_below_each_table(self):
+        intro = ("Reading each row: one line per row above, in the same order. Each line gives the counts it rests on "
+                 "and, for each thing that counts against the row, the step that can cause it (step 040's schema, the "
+                 "translation table, step 060's extraction, or the ground truth), naming one only where the counts "
+                 "rule out the others. Every cause a line can name, the rule (numbers and conditions) that names it, "
+                 "and the threshold for too few: `070_evaluate/070_evaluate.md`, *Reading each row*.")
         text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, self.tables))
-        self.assertEqual(text.count("Reading each row (rules: `070_evaluate/070_evaluate.md`, *Reading each row*):"), 3)
-        self.assertIn("\n1. ACQUIRED_BY_INSTRUMENT: seen only as", text)
-        self.assertIn("\n2. ABOARD: 3 occurrences", text)
+        self.assertEqual(text.count(intro), 3)
+        self.assertIn("\n1. ACQUIRED_BY_INSTRUMENT (predicate, ground truth schema): 1 occurrence", text)
+        self.assertIn("\n2. ABOARD (predicate, ground truth schema): 3 occurrences", text)
+        lines = [x for x in text.split("\n") if re.match(r"\d+\. ", x)]
+        self.assertTrue(lines and all(x.endswith(self.END) for x in lines))
         text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
+        self.assertEqual(text.count(intro), 1)
         self.assertIn("\n1. Record r1 (pool position 3): 5 occurrences", text)
         self.assertIn("Reading: Record r1 (pool position 3): 5 occurrences", moves._per_record([self.r], 0))
+
+    def test_guide_states_the_rules(self):
+        """The guide's section gives the threshold the code uses, and the causes (a) to (h)."""
+        guide = (ROOT / "070_evaluate" / "070_evaluate.md").read_text(encoding="utf-8")
+        section = guide[guide.index("### Reading each row"):guide.index("### Twins")]
+        self.assertIn(f"*Too few*: O + G is at most {readings.TOO_FEW}", section)
+        self.assertIn("a rule of thumb, with no source", section)
+        for cause in "abcdefgh":
+            self.assertIn(f"| ({cause}) |", section)
 
 
 class PooledNotAveraged(unittest.TestCase):
