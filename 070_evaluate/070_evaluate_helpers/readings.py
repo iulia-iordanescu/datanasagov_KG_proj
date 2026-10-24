@@ -230,3 +230,108 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             + " No margin of error: a describes class with few records moves it a lot.",
             _sure(n, d["accuracy"], "this accuracy"), ""]
     return out
+
+
+# --------------------------------------------------------------------------
+# One line per row of the report's tables per predicate, per entity class, and per record (070_evaluate.md,
+# *Reading each row*). Each line names the counts it rests on and compares them; it names a cause only where the
+# counts settle it.
+
+#: A row (or record) whose occurrences and ground truth triples together number at most this is a fact seen once
+#: (one occurrence, one ground truth triple, or one of each): too few to point at a cause. A rule of thumb, not an
+#: established threshold: one more triple would change its percentages by 50 points or more.
+TOO_FEW = 2
+
+
+def _n(k: int, word: str) -> str:
+    """ "1 occurrence", "3 occurrences"."""
+    return f"{k} {word}{'' if k == 1 else 's'}"
+
+
+def _no_value(x) -> str:
+    return "no value" if x is None else pct(x)
+
+
+def _multiplied(k: int) -> str:
+    return (f" {k} of its occurrences have multiplicity > 1: two or more extracted triples of "
+            f"their record translate to the same translated extracted triple." if k else "")
+
+
+def component_class_reading(r: dict, table: str) -> str:
+    """One line reading a row of a table per predicate, per subject class, or per object class
+    (stats.per_component_class), at the partial level, with its exact pairs alongside."""
+    name, O, G, k = r["component_class"], r["occurrences"], r["ground_truth_triples"], r["within_strict_reach"]
+    Pe, Pp, Sp = r["exact"]["pairs"], r["partial"]["pairs"], r["partial"]["strict_pairs"]
+    if r["within_reach"] is None:
+        s = (f"{name}: its row of the translation table says (none), so its {_n(O, 'occurrence')} can have no "
+             f"pair that counts for it (precision 0%): a component class the ground truth schema lacks, or a row of "
+             f"the translation table to fix.")
+    elif r["within_reach"] is False:
+        s = (f"{name}: out of reach: no checked row of the translation table translates to it"
+             + (f", so its {_n(G, 'ground truth triple')} can have no pair that counts for it (recall 0%)"
+                if G else "")
+             + ": a gap in the current schema or in the translation table.")
+    elif O + G <= TOO_FEW:
+        s = f"{name}: seen only as {_n(O, 'occurrence')} and {_n(G, 'ground truth triple')}: too few to point at a cause."
+    else:
+        said = f"{_n(O, 'occurrence')}, {_n(G, 'ground truth triple')}"
+        if G:
+            said += (f" ({k} within strict reach); pairs that count for it: {Pp} at the partial level ({Pe} exact), "
+                     f"{Sp} of them strict")
+        causes = []
+        if G - k:
+            causes.append(f"{G - k} out of strict reach: a gap in the current schema or in the translation table")
+        if Pp - Sp:
+            causes.append(f"{_n(Pp - Sp, 'pair')} with a different entity class"
+                          + (", though every ground truth triple is within strict reach: a wrong entity class from "
+                             "extraction or from a row of the translation table, not a schema gap" if k == G else ""))
+        if G - Pp:
+            them = "it" if G - Pp == 1 else "them"
+            causes.append(f"{_n(G - Pp, 'ground truth triple')} without a pair that counts for it"
+                          + ((f": {'all ' if G - Pp > 1 else ''}within strict reach, so extraction missed {them}, "
+                              + ("" if table == "predicate" else f"gave {them} another {table} there, ")
+                              + f"or stated {them} in other words") if k == G else ""))
+        if O - Pp:
+            causes.append(f"{_n(O - Pp, 'occurrence')} without such a pair, {'each ' if O - Pp > 1 else ''}against "
+                          f"its precision")
+        s = (f"{name}: {said}: " + ("; ".join(causes) if causes
+                                    else "every occurrence and ground truth triple in a strict pair") + ".")
+    return s + _multiplied(r["occurrences_multiplicity_above_1"])
+
+
+def record_reading(r: dict) -> str:
+    """One line reading a row of the table per record (stats.per_record), at the exact level."""
+    O, G, W = r["occurrences"], r["ground_truth_triples"], r["within_reach"]
+    Pe, Se = r["exact"]["pairs"], r["exact"]["strict_pairs"]
+    s = (f"Record {r['id'][:8]} (pool position {r['position']}): {_n(O, 'occurrence')} against "
+         f"{_n(G, 'ground truth triple')}")
+    if not O + G:
+        return s + ": nothing to compare." + _multiplied(r["occurrences_multiplicity_above_1"])
+    s += f"; recall {_no_value(r['exact']['recall'])}, precision {_no_value(r['exact']['precision'])} (exact)"
+    if O + G <= TOO_FEW:
+        return s + ": too few to point at a cause." + _multiplied(r["occurrences_multiplicity_above_1"])
+    causes = []
+    if G - W:
+        causes.append(f"{G - W} ground truth triple{'' if G - W == 1 else 's'} out of reach: a gap in the current "
+                      f"schema or in the translation table")
+    if Pe - Se:
+        causes.append(f"{_n(Pe - Se, 'exact pair')} with a wrong entity class")
+    missing, unpaired = W - Pe, O - Pe       # every exact pair's ground truth triple is within reach
+    if missing > unpaired:
+        causes.append(f"more ground truth triples within reach without an exact pair ({missing}) than occurrences "
+                      f"without one ({unpaired}): extraction stopped short rather than erring")
+    elif unpaired > missing:
+        causes.append(f"more occurrences without an exact pair ({unpaired}) than ground truth triples within reach "
+                      f"without one ({missing}): extraction erred, or stated facts the ground truth lacks, more than "
+                      f"it stopped short")
+    elif missing:
+        causes.append(f"as many occurrences without an exact pair as ground truth triples within reach without one "
+                      f"({missing})")
+    s += ": " + ("; ".join(causes) if causes else "every occurrence and ground truth triple in a strict exact pair") + "."
+    return s + _multiplied(r["occurrences_multiplicity_above_1"])
+
+
+def row_readings(lines: list) -> list:
+    """The numbered list below a table: one reading per row shown, in the table's order."""
+    return ["Reading each row (rules: `070_evaluate/070_evaluate.md`, *Reading each row*):", ""] + \
+        [f"{i}. {line}" for i, line in enumerate(lines, 1)] + [""]

@@ -204,6 +204,8 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
         if not rows:
             lines.append(f"| none |{empty}")
         lines.append("")
+        if rows:
+            lines += readings.row_readings([readings.component_class_reading(r, table) for r in rows[:SHOW]])
     return lines
 
 
@@ -257,7 +259,8 @@ def _per_record_lines(rows: list) -> list:
         lines.append(f"| … {len(rows) - SHOW} more, in `{METRICS_NAME}` and `{PER_RECORD_NAME}` |{empty}")
     if not rows:
         lines.append(f"| none |{empty}")
-    return lines + [""]
+    lines.append("")
+    return lines + (readings.row_readings([readings.record_reading(r) for r in rows[:SHOW]]) if rows else [])
 
 
 def _record_block(r: dict) -> list:
@@ -273,7 +276,7 @@ def _record_block(r: dict) -> list:
         show = (lambda x: x) if key == "pairs" else _no_value
         lines.append(f"| {label} | " + " | ".join(str(show(r[level][k])) for k in (key, strict_key)
                                                   for level in pairing.LEVELS) + " |")
-    return lines + [""]
+    return lines + ["", f"Reading: {readings.record_reading(r)}", ""]
 
 
 def _twin_lines(part: str, v: dict, recs: list, learned: dict) -> list:

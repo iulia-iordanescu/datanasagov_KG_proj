@@ -8,6 +8,7 @@ from support import use_step
 use_step("070_evaluate")
 import moves                                     # noqa: E402
 import pairing                                   # noqa: E402
+import readings                                  # noqa: E402
 import stats                                     # noqa: E402
 from test_evaluate_pairing import counts_record, record, translation, triple   # noqa: E402
 
@@ -270,6 +271,83 @@ class Multiplicity(unittest.TestCase):
         self.assertIn("- \u2717 the MODIS (Instrument) ABOARD Aqua (Spacecraft)" + mark + "\n", text)
         self.assertIn("- \u2717 MODIS (Instrument) ABOARD Terra (Spacecraft)\n", text)     # multiplicity 1: no mark
         self.assertIn("Occurrences 3 (with multiplicity > 1: 2)", text)
+
+
+class RowReadings(unittest.TestCase):
+    """One line per row below each table (070_evaluate.md, *Reading each row*), on the case above."""
+    def setUp(self):
+        self.r = dict(compared(), position=3, title="T")
+        self.tables = stats.per_component_class([self.r])
+
+    def reading(self, table, name):
+        row = next(x for x in self.tables[table] if x["component_class"] == name)
+        return readings.component_class_reading(row, table)
+
+    def test_component_class_rows(self):
+        self.assertEqual(self.reading("predicate", "ABOARD"),
+                         "ABOARD: 3 occurrences, 2 ground truth triples (2 within strict reach); pairs that count for "
+                         "it: 2 at the partial level (2 exact), 1 of them strict: 1 pair with a different entity "
+                         "class, though every ground truth triple is within strict reach: a wrong entity class from "
+                         "extraction or from a row of the translation table, not a schema gap; 1 occurrence without "
+                         "such a pair, against its precision.")
+        # e1 (AIRS, Dataset) pairs with g1 (AIRS, Instrument), but not for Instrument as subject class
+        self.assertEqual(self.reading("subject class", "Instrument"),
+                         "Instrument: 2 occurrences, 2 ground truth triples (2 within strict reach); pairs that count "
+                         "for it: 1 at the partial level (1 exact), 1 of them strict: 1 ground truth triple without a "
+                         "pair that counts for it: within strict reach, so extraction missed it, gave it another "
+                         "subject class there, or stated it in other words; 1 occurrence without such a pair, against "
+                         "its precision.")
+        self.assertEqual(self.reading("predicate", "ACQUIRED_BY_INSTRUMENT"),        # 1 occurrence + 1 = TOO_FEW
+                         "ACQUIRED_BY_INSTRUMENT: seen only as 1 occurrence and 1 ground truth triple: too few to "
+                         "point at a cause.")
+        self.assertEqual(self.reading("object class", f"Gadget{NONE}"),
+                         f"Gadget{NONE}: its row of the translation table says (none), so its 1 occurrence can have "
+                         f"no pair that counts for it (precision 0%): a component class the ground truth schema "
+                         f"lacks, or a row of the translation table to fix.")
+
+    def test_out_of_reach(self):
+        t = translation(CLASSES, PREDICATES, reachable_entity=["Instrument", "Spacecraft"], reachable_predicates=["ABOARD"])
+        tables = stats.per_component_class([pairing.compare_record(record(GT, EXTRACTED[:1]), t)])
+        row = next(x for x in tables["predicate"] if x["component_class"] == "ACQUIRED_BY_INSTRUMENT")
+        self.assertEqual(readings.component_class_reading(row, "predicate"),
+                         "ACQUIRED_BY_INSTRUMENT: out of reach: no checked row of the translation table translates "
+                         "to it, so its 1 ground truth triple can have no pair that counts for it (recall 0%): "
+                         "a gap in the current schema or in the translation table.")
+
+    def test_record_rows(self):
+        (row,) = stats.per_record([self.r])
+        self.assertEqual(readings.record_reading(row),
+                         "Record r1 (pool position 3): 5 occurrences against 3 ground truth triples; recall 67%, "
+                         "precision 40% (exact): 1 exact pair with a wrong entity class; more occurrences without an "
+                         "exact pair (3) than ground truth triples within reach without one (1): extraction erred, or "
+                         "stated facts the ground truth lacks, more than it stopped short.")
+        short = dict(row, id="03a09af3-0000", position=4, occurrences=11, ground_truth_triples=47, within_reach=47,
+                     exact=dict(row["exact"], pairs=8, strict_pairs=8, recall=8 / 47, precision=8 / 11))
+        self.assertEqual(readings.record_reading(short),
+                         "Record 03a09af3 (pool position 4): 11 occurrences against 47 ground truth triples; recall "
+                         "17%, precision 73% (exact): more ground truth triples within reach without an exact pair "
+                         "(39) than occurrences without one (3): extraction stopped short rather than erring.")
+        few = dict(row, occurrences=1, ground_truth_triples=0, within_reach=0,
+                   exact=dict(row["exact"], pairs=0, strict_pairs=0, recall=None, precision=0.0))
+        self.assertEqual(readings.record_reading(few), "Record r1 (pool position 3): 1 occurrence against 0 ground "
+                                                       "truth triples; recall no value, precision 0% (exact): too few "
+                                                       "to point at a cause.")
+
+    def test_multiplicity_mentioned(self):
+        ex = [EXTRACTED[0], triple("the MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"), EXTRACTED[2]]
+        (row,) = stats.per_record([dict(compared(GT[:1], ex), position=0, title="")])
+        self.assertTrue(readings.record_reading(row).endswith(
+            " 2 of its occurrences have multiplicity > 1: two or more extracted triples of their record translate to "
+            "the same translated extracted triple."))
+
+    def test_below_each_table(self):
+        text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, self.tables))
+        self.assertEqual(text.count("Reading each row (rules: `070_evaluate/070_evaluate.md`, *Reading each row*):"), 3)
+        self.assertIn("\n1. ACQUIRED_BY_INSTRUMENT: seen only as", text)
+        self.assertIn("\n2. ABOARD: 3 occurrences", text)
+        text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
+        self.assertIn("\n1. Record r1 (pool position 3): 5 occurrences", text)
+        self.assertIn("Reading: Record r1 (pool position 3): 5 occurrences", moves._per_record([self.r], 0))
 
 
 class PooledNotAveraged(unittest.TestCase):
