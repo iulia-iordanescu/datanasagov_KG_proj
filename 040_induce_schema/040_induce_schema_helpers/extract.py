@@ -68,7 +68,7 @@ def _from_reply(reply: dict) -> tuple:
     three slots must hold non-empty text), and its describes_class ("" if
     none). The source text is kept as given ("" if missing); the checks
     judge it."""
-    items = reply.get("triples") if isinstance(reply, dict) and isinstance(reply.get("triples"), list) else []
+    items = reply["triples"] if isinstance(reply, dict) and not extraction.shape_error(reply) else []
     good = []
     for t in items:
         if isinstance(t, dict) and all(isinstance(t.get(k), str) and t[k].strip() for k in SLOTS):

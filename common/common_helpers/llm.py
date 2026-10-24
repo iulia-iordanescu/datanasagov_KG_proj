@@ -19,7 +19,7 @@ It holds, in this order:
                           limits and server errors with backoff
         try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         call_llm_json     the same, parsed as a JSON object; re-asks once if
-                          the reply is not one
+                          the reply is not one, or not of the shape the caller checks for
     PROMPT SAFETY
         fence_safe        keeps a record from ending its data block early
     A PAID RUN
@@ -223,6 +223,11 @@ class BadReply(ValueError):
     """A reply that arrived but is not usable as the JSON object we asked
     for. Kept separate from a transport error so it retries the PROMPT
     rather than the connection."""
+
+
+class WrongShape(BadReply):
+    """A reply that is a JSON object, but not of the shape the caller asked for (call_llm_json's check), e.g. with
+    no "triples" list. Its message says what is wrong."""
 
 
 class ApiError(Exception):
@@ -554,14 +559,19 @@ def _best_effort_json(text):
         raise
 
 
-def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None):
+def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None, check=None):
     """Return the JSON OBJECT the prompt asked for, or raise.
 
     Every caller immediately does .get() on the result, so a reply that
     parses into a list, a string, or a number is as useless as one that does
     not parse at all - and used to surface three frames away as an opaque
     AttributeError. Both failures are treated the same way here: re-ask once
-    with a correction, then give up."""
+    with a correction, then give up.
+
+    check: the caller's shape check, check(answer) -> what is wrong with the
+    answer's shape, or None when it is right (e.g. common/common_helpers/extraction.py,
+    shape_error). An object of the wrong shape is treated like one that isn't
+    JSON: asked once more, saying what was wrong, then BadReply."""
     seconds = 0.0
     for attempt in range(retries + 1):
         try:
@@ -576,13 +586,19 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
             if not isinstance(data, dict):
                 raise BadReply(f"expected a JSON object, got "
                                f"{type(data).__name__}")
+            wrong = check(data) if check else None
+            if wrong:
+                raise WrongShape(wrong)
             return data
         except (json.JSONDecodeError, BadReply) as e:
             # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see what broke it.
             log.debug(f"unusable answer from {MODEL} (attempt {attempt + 1} of {retries + 1}), "
                       f"{len(text):,} characters, {e}:\n{text}")
+            shape = isinstance(e, WrongShape)
             if attempt == retries:
-                error = BadReply(f"the model's answer isn't a valid JSON object, {retries + 1} times ({e}); each "
+                error = BadReply(f"the model's answer isn't "
+                                 + ("a JSON object of the shape asked for" if shape else "a valid JSON object")
+                                 + f", {retries + 1} times ({e}); each "
                                  f"answer is in this run's log (outputs/logs/<run id>.log), on a DEBUG line starting "
                                  f"\"unusable answer\"")
                 reply = getattr(_last, "reply", None) or {}
@@ -590,6 +606,12 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
                 error.call = {**reply, "attempts": (getattr(_last, "timing", None) or {}).get("attempts"),
                               "asks": retries + 1, "seconds": round(seconds, 1)}
                 raise error from None
+            if shape:
+                log.warning(f"The model's reply is a JSON object of the wrong shape ({e}); asking once more, saying "
+                            f"what was wrong. Nothing to do.")
+                prompt += (f"\n\nYour last reply was not in the shape asked for: {e}. "
+                           "Return ONLY the JSON object, in the shape asked for, no fences, no prose.")
+                continue
             log.warning(f"The model's reply isn't a JSON object ({e}); asking once more, reminding it to reply with "
                         f"the JSON object only. Nothing to do.")
             prompt += ("\n\nYour last reply was not a valid JSON object. "

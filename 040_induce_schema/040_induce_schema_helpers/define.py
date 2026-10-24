@@ -25,7 +25,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, ask_cached, ask_split
+from common.cache import Cache, ask_cached, ask_split, needs
 from common.audit import log
 from common.prompt_files import fill, load
 
@@ -54,6 +54,11 @@ class Definitions:
     reused: int = 0                                 # batches answered from the cache
 
 
+#: The shape of a defining answer (the prompts' reply format): a "definitions" object ("too_vague" may be left out
+#: when none is). One of another shape is asked again, never kept (common/common_helpers/cache.py, ask_cached).
+SHAPE = needs(definitions=dict)
+
+
 def write_definitions(counts, settings: dict, calls) -> Definitions:
     cache = Cache(calls.cache_dir, "define")
     result = Definitions()
@@ -69,7 +74,8 @@ def write_definitions(counts, settings: dict, calls) -> Definitions:
             # the reason (common.cache.ask_split).
             replies = ask_split(lambda part: ask_cached(
                 cache, calls, fill(PROMPTS[kind], entries=json.dumps(part, ensure_ascii=False, indent=0)),
-                f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call"), batch, refused)
+                f"  040 will ask the model to define the schema's entries, {DEFINE_BATCH} per call", check=SHAPE),
+                batch, refused)
             result.refused += [{"kind": WORD[kind], "component_class": e["component_class"], "why": why}
                                for e, why in refused]
             sent = {e["component_class"] for e in batch}

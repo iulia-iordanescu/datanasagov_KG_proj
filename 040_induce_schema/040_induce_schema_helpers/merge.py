@@ -35,7 +35,7 @@ import collections
 import json
 from pathlib import Path
 
-from common.cache import Cache, ask_cached
+from common.cache import Cache, ask_cached, needs
 from common.audit import log
 from common.prompt_files import fill, load
 from common.stop import Stop
@@ -60,6 +60,11 @@ def _final(decided: dict, label: str) -> str:
     while label in decided:
         label = decided[label]
     return label
+
+
+#: The shape of a merging answer (the prompts' reply format): a "merges" list. One of another shape is asked again,
+#: never kept (common/common_helpers/cache.py, ask_cached).
+SHAPE = needs(merges=list)
 
 
 def merge_labels(labels, triples, calls):
@@ -94,9 +99,9 @@ def merge_labels(labels, triples, calls):
             listing = [{"label": lbl, "texts": len(texts_with[lbl]),
                         "examples": [v for v, _ in instances_of[lbl].most_common(EXAMPLES)]} for lbl in sent]
             reply = ask_cached(cache, calls, fill(PROMPTS[kind], labels=json.dumps(listing, ensure_ascii=False, indent=0)),
-                               "  040 will ask the model to merge synonymous labels, one call per kind")
+                               "  040 will ask the model to merge synonymous labels, one call per kind", check=SHAPE)
             decided = {}
-            for m in reply.get("merges") if isinstance(reply.get("merges"), list) else []:
+            for m in reply["merges"]:
                 if not isinstance(m, dict):
                     continue
                 into = m.get("into")

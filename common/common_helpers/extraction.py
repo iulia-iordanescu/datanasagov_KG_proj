@@ -11,9 +11,11 @@ and 060 is evaluated against 050 on equal terms.
                                without (040, which learns them in a later stage)
     prompt(...)                a step's prompt filled with all of the above
     wrap(piece)                a text piece between BEGIN/END RECORD lines
+    shape_error(reply)         what is wrong with a reply's shape (no "triples" list), or None
     ask_model(...)             one cached model call per text piece; a record
                                with a failed call is left out whole; an answer
-                               cut off earlier with the same limit isn't asked again
+                               cut off earlier with the same limit isn't asked again;
+                               an answer of the wrong shape (shape_error) is asked again, never kept
     failed_note(replies, where)   the report's warning for those records
     build_rows(...)            a record's replies -> checked rows + removed items
                                (050, 060: rows with entity classes)
@@ -49,7 +51,7 @@ from pathlib import Path
 
 from common import llm
 from common.audit import log
-from common.cache import NOT_ASKED_AGAIN, Cache, key
+from common.cache import NOT_ASKED_AGAIN, Cache, key, needs
 from common.chunking import text_fields
 from common.prompt_files import fill, load
 from common.report import named
@@ -91,6 +93,12 @@ def wrap(piece: str) -> str:
     return llm.fence_safe(piece, END_LINE)
 
 
+#: What is wrong with the shape of a reply about one text piece, or None: it must hold a "triples" list (the reply
+#: format, common/common_prompts/extraction_reply.txt). ask_model asks again for a reply of the wrong shape, and never
+#: keeps one, so every reply read below has it.
+shape_error = needs(triples=list)
+
+
 def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
     """(rows, removed). rows: the describes triple, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
@@ -104,11 +112,10 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
     whole = Text(text)
     seen = {}                                   # triple key -> (first row, {entity class pairs})
     for reply in replies:
-        items = reply.get("triples") if isinstance(reply, dict) else None
-        if not isinstance(items, list):
+        if not isinstance(reply, dict) or shape_error(reply):
             removed.append({"reason": "malformed", "raw": json.dumps(reply, ensure_ascii=False)})
             continue
-        for item in items:
+        for item in reply["triples"]:
             t = clean_triple(item)
             if t is None:
                 removed.append({"reason": "malformed", "raw": json.dumps(item, ensure_ascii=False)})
@@ -158,7 +165,9 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     left out of `of`, never half answered; the next run asks it again, unless
     the answer was cut off at the length limit: that is kept too
     (common/common_helpers/cache.py, Cache.cut_off), and a rerun with the same
-    limit reuses the failure instead of paying for the same cut.
+    limit reuses the failure instead of paying for the same cut. A reply
+    without its "triples" list (shape_error) is asked once more, then fails;
+    one kept by an earlier run is asked again (common/common_helpers/cache.py, Cache.get).
     plan is the confirmation's first words ("050 will draft 10 record(s)
     into drafted batch 3"); verb names the work in the log ("drafting")."""
     cache = Cache(calls.cache_dir, stage)
@@ -167,7 +176,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
         for i, piece in enumerate(item["pieces"]):
             prompt = prompt_for(item, piece)
             k = key(prompt)
-            stored = cache.get(k)
+            stored = cache.get(k, shape_error)
             cut = cache.cut_off(k) if stored is None else None
             if stored is not None:
                 answers[(item["id"], i)] = stored
@@ -191,7 +200,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
         calls.paid.expect(len(todo))
 
         def ask(k, prompt):
-            reply = llm.call_llm_json(prompt, cache_until=cache_until)
+            reply = llm.call_llm_json(prompt, cache_until=cache_until, check=shape_error)
             calls.paid.made_call()
             return k, reply
 

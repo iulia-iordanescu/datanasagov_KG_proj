@@ -786,7 +786,7 @@ class TranslationBatches(unittest.TestCase):
         gtt = {"entity class": {"Device": "a device"}, "predicate": {}}
         sent = []
 
-        def answer(prompt, read_timeout=None):
+        def answer(prompt, read_timeout=None, check=None):
             names = re.findall(r'"component_class": "(Thing\d+)"', prompt)
             sent.append(len(names))
             return {"mapping": [{"kind": "entity class", "schema": x, "ground_truth": "Device"} for x in names]}

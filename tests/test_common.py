@@ -396,13 +396,84 @@ class AskCached(unittest.TestCase):
             paid.outcome = lambda where, prompt, error=None, watched=True: None
             calls = SimpleNamespace(paid=paid)
             c = cache_module.Cache(tmp, "stage")
-            with mock.patch.object(llm, "call_llm_json", lambda prompt, read_timeout=180: next(answers)):
+            with mock.patch.object(llm, "call_llm_json", lambda prompt, read_timeout=180, check=None: next(answers)):
                 self.assertEqual(cache_module.ask_cached(c, calls, "prompt A", "plan"), {"n": 1})
                 self.assertEqual(cache_module.ask_cached(c, calls, "prompt A", "plan"), {"n": 1})   # from the cache
                 self.assertEqual(cache_module.ask_cached(c, calls, "prompt B", "plan"), {"n": 2})   # changed: asked
             self.assertEqual((paid.made, c.reused, started), (2, 1, ["plan", "plan"]))
             self.assertEqual(cache_module.Cache(tmp, "stage").answers, c.answers)                   # kept on disk
         finally:
+            shutil.rmtree(tmp)
+
+    def shape_run(self, tmp, texts):
+        """ask_cached with the shape check needs(labels=dict), the model's answers (text, as the service sends
+        them) in turn: (cache, calls, the prompts sent, the failed calls given to outcome)."""
+        from types import SimpleNamespace
+        from common import cache as cache_module
+        sent, failed, answers = [], [], iter(texts)
+        paid = SimpleNamespace(made=0, start=lambda plan: None)
+        paid.made_call = lambda: setattr(paid, "made", paid.made + 1)
+        paid.outcome = lambda where, prompt, error=None, watched=True: error and failed.append((where, error))
+        return cache_module.Cache(tmp, "label"), SimpleNamespace(paid=paid), sent, failed, \
+            lambda prompt, **kw: sent.append(prompt) or next(answers)
+
+    def test_shape(self):
+        """A wrong-shaped answer is asked once more and never saved; twice wrong, it fails with what was wrong; a
+        saved wrong-shaped answer is ignored and asked again (the run's warnings name the file); a right-shaped
+        saved answer is reused without a call. Near misses: "labels" a list, "labels" missing, extra fields."""
+        from unittest import mock
+        from common import cache as cache_module, llm, step
+        check = cache_module.needs(labels=dict)
+        self.assertIsNone(check({"labels": {}, "extra": 1}))                                      # extra fields are fine
+        self.assertEqual(check({"labels": ["a"]}), '"labels" should be a JSON object, but is a JSON list')
+        self.assertEqual(check({"label": {}}), '"labels" should be a JSON object, but is missing')
+        self.assertEqual(check([]), "the answer should be a JSON object, but is a JSON list")    # a hand-edited file
+        tmp = Path(tempfile.mkdtemp())
+        saved_warnings = list(llm.RUN_WARNINGS)
+        llm.RUN_WARNINGS.clear()
+        try:
+            # 1. wrong, then right: asked twice, the right one saved
+            c, calls, sent, failed, model = self.shape_run(tmp, ['{"labels": ["Instrument"]}',
+                                                                 '{"labels": {"MODIS": "Instrument"}}'])
+            with mock.patch.object(llm, "call_llm", model):
+                self.assertEqual(cache_module.ask_cached(c, calls, "prompt A", "plan", check=check),
+                                 {"labels": {"MODIS": "Instrument"}})
+            self.assertEqual(len(sent), 2)
+            self.assertIn('not in the shape asked for: "labels" should be a JSON object, but is a JSON list', sent[1])
+            self.assertEqual(list(cache_module.Cache(tmp, "label").answers.values()), [{"labels": {"MODIS": "Instrument"}}])
+
+            # 2. wrong twice: not saved, BadReply saying what was wrong, given to outcome (the failed-call record)
+            c, calls, sent, failed, model = self.shape_run(tmp, ['{"merges": []}', '{"labels": "x"}'])
+            with mock.patch.object(llm, "call_llm", model), self.assertRaises(llm.BadReply) as e:
+                cache_module.ask_cached(c, calls, "prompt B", "plan", check=check)
+            self.assertIn("isn't a JSON object of the shape asked for, 2 times", str(e.exception))
+            self.assertIn('"labels" should be a JSON object, but is a JSON string', str(e.exception))
+            self.assertEqual([(w, type(x)) for w, x in failed], [({"stage": "label"}, llm.BadReply)])
+            self.assertEqual(len(cache_module.Cache(tmp, "label").answers), 1)                    # only prompt A's
+
+            # 3. a wrong-shaped answer saved before (an older version of the code): ignored, asked again, replaced
+            k = cache_module.key("prompt C")
+            c = cache_module.Cache(tmp, "label")
+            c.put(k, {"labels": ["Instrument"]})
+            c, calls, sent, failed, model = self.shape_run(tmp, ['{"labels": {"AIRS": "Instrument"}}'])
+            with mock.patch.object(llm, "call_llm", model):
+                self.assertEqual(cache_module.ask_cached(c, calls, "prompt C", "plan", check=check),
+                                 {"labels": {"AIRS": "Instrument"}})
+            self.assertEqual((len(sent), c.reused, calls.paid.made), (1, 0, 1))
+            self.assertEqual(cache_module.Cache(tmp, "label").answers[k], {"labels": {"AIRS": "Instrument"}})
+            self.assertEqual(len(llm.RUN_WARNINGS), 1)
+            self.assertIn("1 answer(s) saved in", llm.RUN_WARNINGS[0])
+            self.assertIn(f"{step.repo_path(c.path)} were JSON of the wrong shape", llm.RUN_WARNINGS[0])
+            self.assertIn('"labels" should be a JSON object, but is a JSON list', llm.RUN_WARNINGS[0])
+
+            # 4. right-shaped answers saved: reused, no call, no warning added
+            c, calls, sent, failed, model = self.shape_run(tmp, [])
+            with mock.patch.object(llm, "call_llm", model):
+                for prompt in ("prompt A", "prompt C"):
+                    cache_module.ask_cached(c, calls, prompt, "plan", check=check)
+            self.assertEqual((sent, c.reused, len(llm.RUN_WARNINGS)), ([], 2, 1))
+        finally:
+            llm.RUN_WARNINGS[:] = saved_warnings
             shutil.rmtree(tmp)
 
 

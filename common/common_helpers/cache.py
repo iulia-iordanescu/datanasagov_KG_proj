@@ -17,6 +17,11 @@ is unchanged, a rerun reuses the failure instead of paying for the same cut agai
 MAX_ANSWER_TOKENS asks again; so does a new thinking setting, for a model it is sent to (it is part
 of the key: llm.cache_identity).
 
+Only an answer of the shape the stage reads is stored: each stage passes its shape check (check(answer)
+-> what is wrong, or None), and an answer of the wrong shape is asked once more, then fails like one
+that isn't JSON (llm.call_llm_json). An answer stored before, of the wrong shape (by an older version
+of the code, or an edited file), is ignored and asked again, and the run's warnings name the file.
+
 The cache holds paid work: deleting it (or all of outputs/) means paying for
 those calls again.
 """
@@ -53,13 +58,38 @@ class Cache:
             except (ValueError, OSError):
                 self.answers = {}                 # unreadable: ask again
         self.reused = 0
+        self.wrong_shape = []                     # what was wrong with each stored answer ignored for its shape
 
-    def get(self, k: str):
-        """The answer stored under k, or None (a cut-off marker is no answer: see cut_off)."""
+    def get(self, k: str, check=None):
+        """The answer stored under k, or None (a cut-off marker is no answer: see cut_off). With check (the stage's
+        shape check), an answer of the wrong shape is None too, so it is asked again, and the run's warnings say so."""
         if k in self.answers and not _is_cut_off(self.answers[k]):
+            wrong = check(self.answers[k]) if check else None
+            if wrong:
+                self._ignored(wrong)
+                return None
             self.reused += 1
             return self.answers[k]
         return None
+
+    def _ignored(self, wrong: str) -> None:
+        """One more stored answer of the wrong shape ignored: the run's warning about this file, kept up to date."""
+        from common.step import repo_path
+        with self._lock:
+            note = self._note()
+            self.wrong_shape.append(wrong)
+            if note in llm.RUN_WARNINGS:
+                llm.RUN_WARNINGS.remove(note)
+            llm.RUN_WARNINGS.append(self._note())
+        llm.log.warning(f"An answer saved in {repo_path(self.path)} is JSON of the wrong shape ({wrong}), so it is "
+                        f"ignored and the model is asked again. Nothing to do.")
+
+    def _note(self) -> str:
+        from common.step import repo_path
+        n = len(self.wrong_shape)
+        return (f"{n} answer(s) saved in {repo_path(self.path)} were JSON of the wrong shape (the first: "
+                f"{self.wrong_shape[0] if n else ''}), so they were ignored and the model was asked again; the new "
+                f"answers replace them in that file. Nothing to do.")
 
     def cut_off(self, k: str) -> str | None:
         """Why the answer under k was cut off in an earlier run, when it was cut off with the MAX_ANSWER_TOKENS of
@@ -97,7 +127,8 @@ def _is_cut_off(stored) -> bool:
 NOT_ASKED_AGAIN = "(cut off in an earlier run with the same settings, so not asked again)"
 
 
-def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = llm.READ_TIMEOUT) -> dict:
+def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = llm.READ_TIMEOUT,
+               check=None) -> dict:
     """The model's answer to one filled prompt, from this stage's cache if it
     holds it, else from one model call (the run's first paid call shows plan
     and asks first: common/common_helpers/llm.py, PaidCalls), stored at once.
@@ -106,16 +137,18 @@ def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = 
     labeling, merging, and defining, and 070's translation table. (Extraction
     asks many text pieces at once: common/common_helpers/extraction.ask_model.)
     An answer cut off in an earlier run with the same limit raises llm.CutOff again without a call (Cache.cut_off).
+    check: the stage's shape check, check(answer) -> what is wrong with it, or None; an answer of the wrong shape
+    is never stored (asked once more, then llm.BadReply), and one stored before is asked again (Cache.get).
     Each call's end goes to calls.paid.outcome (progress, the failed-call record; not the early stop)."""
     k = key(prompt)
-    reply = cache.get(k)
+    reply = cache.get(k, check)
     if reply is None:
         cut = cache.cut_off(k)
         if cut:
             raise llm.CutOff(f"{cut} {NOT_ASKED_AGAIN}: {llm.cut_off_advice(cache.cut_off_usage(k))}")
         calls.paid.start(plan)
         try:
-            reply = llm.call_llm_json(prompt, read_timeout=read_timeout)
+            reply = llm.call_llm_json(prompt, read_timeout=read_timeout, check=check)
         except Exception as e:
             if isinstance(e, llm.CutOff):
                 cache.put_cut_off(k, e)
@@ -125,6 +158,27 @@ def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = 
         cache.put(k, reply)
         calls.paid.outcome({"stage": cache.stage}, prompt, watched=False)
     return reply
+
+
+def needs(**fields):
+    """A shape check (ask_cached's check) for an answer that must hold each of fields with its type, e.g.
+    needs(labels=dict): check(answer) says which field is missing or of another type, or None when none is."""
+    def check(answer: dict) -> str | None:
+        if not isinstance(answer, dict):                  # only in a cache file edited by hand
+            return f"the answer should be a JSON object, but is a JSON {_json_name(type(answer))}"
+        for name, kind in fields.items():
+            value = answer.get(name)
+            if not isinstance(value, kind):
+                got = "missing" if name not in answer else f"a JSON {_json_name(type(value))}"
+                return f'"{name}" should be a JSON {_json_name(kind)}, but is {got}'
+        return None
+    return check
+
+
+def _json_name(kind: type) -> str:
+    """What JSON calls a Python type: dict -> "object", list -> "list", str -> "string", None -> "null", ..."""
+    return {dict: "object", list: "list", str: "string", bool: "true or false", int: "number", float: "number",
+            type(None): "null"}.get(kind, kind.__name__)
 
 
 def ask_split(ask, batch: list, refused: list) -> list:

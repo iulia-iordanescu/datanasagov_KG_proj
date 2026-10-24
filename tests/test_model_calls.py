@@ -74,7 +74,7 @@ class Guards(unittest.TestCase):
 
     def ask(self, calls, ids, workers=1):
         items = [{"id": i, "pieces": ["text"]} for i in ids]
-        return extraction.ask_model(items, lambda item, piece: f'{llm.TEST_PROMPT} #{item["id"]}#', calls, workers,
+        return extraction.ask_model(items, lambda item, piece: f'{stand_ins.TRIPLES_PROMPT} #{item["id"]}#', calls, workers,
                                     "draft", "050 will draft", "drafting")
 
     # ---------------------------------------------------------------- the thinking cap
@@ -274,6 +274,32 @@ class Guards(unittest.TestCase):
             self.assertEqual(len(stand_ins.PAYLOADS), 2 if attempt == 0 else 0)          # test call and the call; none
         self.assertIn("not asked again", str(cut.exception))
 
+    def test_wrong_shape_per_text_piece(self):
+        """Extraction (040, 050, 060): an answer without its "triples" list is asked once more, then fails; the
+        failed-call record names the step, the record and text piece, and what was wrong; nothing is saved. A
+        wrong-shaped answer saved before is asked again (the run's warnings name the cache file); a right one is reused."""
+        items = [{"id": i, "pieces": ["text"]} for i in ("r00", "r01")]
+        prompts = {"r00": f"{llm.TEST_PROMPT} #r00#", "r01": f"{stand_ins.TRIPLES_PROMPT} #r01#"}    # r00: {"ok": true}
+        ask = lambda calls: extraction.ask_model(items, lambda item, piece: prompts[item["id"]], calls, 1, "draft",
+                                                 "050 will draft", "drafting")
+        first = ask(self.calls())
+        self.assertEqual((sorted(first.of), list(first.failed)), (["r01"], ["r00"]))
+        self.assertIn('"triples" should be a JSON list, but is missing', first.failed["r00"])
+        [entry] = self.entries()
+        self.assertEqual((entry["step"], entry["stage"], entry["record"], entry["text_piece"], entry["error_type"],
+                          entry["asks"]), ("050_annotate", "draft", "r00", 1, "BadReply", 2))
+        self.assertIn("isn't a JSON object of the shape asked for", entry["error"])
+        cache = cache_module.Cache(self.tmp / "050_annotate" / "cache", "draft")
+        self.assertEqual(list(cache.answers.values()), [{"triples": []}])                  # r00's not saved
+        prompts["r00"] = prompts["r00"].replace(llm.TEST_PROMPT, stand_ins.TRIPLES_PROMPT)  # stand-in now answers right
+        cache.put(cache_module.key(prompts["r00"]), {"ok": True})                          # as an older version saved it
+        stand_ins.PAYLOADS.clear()
+        second = ask(self.calls())
+        self.assertEqual((sorted(second.of), second.calls, second.reused), (["r00", "r01"], 1, 1))
+        self.assertEqual(len(stand_ins.PAYLOADS), 2)                                       # the test call and r00's
+        self.assertEqual(len(llm.RUN_WARNINGS), 1)
+        self.assertIn(f"{step.repo_path(cache.path)} were JSON of the wrong shape", llm.RUN_WARNINGS[0])
+
     def test_failed_call_record(self):
         calls = self.calls()
         os.environ["KG_STAND_IN_CUT_OFF"] = "#r01#"
@@ -284,7 +310,7 @@ class Guards(unittest.TestCase):
         self.assertEqual((cut["outcome"], cut["record"], cut["text_piece"], cut["stage"]), ("cut_off", "r01", 1, "draft"))
         self.assertEqual(cut["finish_reason"], "length")
         self.assertEqual((cut["reasoning_tokens"], cut["answer_tokens"]), (300, 16000))
-        self.assertTrue(cut["answer"].startswith('{"ok"'))                              # the partial answer, whole
+        self.assertTrue(cut["answer"].startswith('{"tri'))                              # the partial answer, whole
         self.assertEqual(cut["call_settings"], {"temperature": 0, "max_answer_tokens": 16000, "thinking": "low",
                                                 "thinking_sent": "low", "read_timeout_s": llm.READ_TIMEOUT})
         self.assertEqual(len(cut["prompt_sha256"]), 64)

@@ -250,7 +250,14 @@ def stand_in_model(prompt, attempts=4, read_timeout=180, model=None, cache_until
         return json.dumps(_definitions(prompt))
     if '{"ok": true}' in prompt:
         return '{"ok": true}'
+    if TRIPLES_PROMPT in prompt:
+        return '{"triples": []}'
     raise AssertionError("stand-in model: a prompt it doesn't know:\n" + prompt[:500])
+
+
+#: A prompt about a text piece, for the tests of the guards around paid calls: answered with no triple instances, in
+#: the shape extraction reads (common/common_helpers/extraction.py, shape_error).
+TRIPLES_PROMPT = 'Reply with ONLY this JSON: {"triples": []}'
 
 
 PAYLOADS = []       # every request body stand_in_post received

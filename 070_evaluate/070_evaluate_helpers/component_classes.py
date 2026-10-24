@@ -44,7 +44,7 @@ from types import SimpleNamespace
 from pathlib import Path
 
 from common.audit import ref_path
-from common.cache import Cache, ask_cached
+from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
 from common.ground_truth import coined_uses, with_coined
 from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions, is_stale,
@@ -93,6 +93,11 @@ def gtt_schema(ground_truth_schema_path) -> dict:
             for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
 
 
+#: The shapes of the two prompts' answers (their reply formats): a "mapping" list, a "suggestions" list. One of another
+#: shape is asked again, never kept (common/common_helpers/cache.py, ask_cached).
+MAP_SHAPE, SUGGEST_SHAPE = needs(mapping=list), needs(suggestions=list)
+
+
 def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict) -> tuple:
     """Rows proposed by the model for (kind, component class) pairs, and notes."""
     definitions = {("entity class", e["component_class"]): e.get("definition", "") for e in schema_used["entity_classes"]}
@@ -108,8 +113,8 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
         prompt = fill(PROMPT, ground_truth=vocabulary_json, schema=json.dumps(batch, ensure_ascii=False, indent=0))
         reply = ask_cached(cache, calls, prompt, f"  070 will ask the model to propose translations for {len(missing)} "
                                                  f"component class(es) of the current schema: {len(batches)} model "
-                                                 f"call(s), {TRANSLATE_BATCH} per call")
-        for item in reply.get("mapping", []) if isinstance(reply, dict) else []:
+                                                 f"call(s), {TRANSLATE_BATCH} per call", check=MAP_SHAPE)
+        for item in reply["mapping"]:
             if isinstance(item, dict) and item.get("kind") in KINDS and isinstance(item.get("schema"), str):
                 answers[(item["kind"], component_class_key(item["schema"]))] = item
     made = calls.paid.made - before
@@ -315,12 +320,12 @@ def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     before = calls.paid.made
     reply = ask_cached(cache, calls, prompt, f"  070 will ask the model whether {len(schema_side)} component class(es) "
                                              f"of the current schema translated to (none) now have a counterpart in the "
-                                             f"ground truth schema: 1 model call")
+                                             f"ground truth schema: 1 model call", check=SUGGEST_SHAPE)
     made = calls.paid.made - before
     asked = {(kind, component_class_key(n)): n for kind, n in schema_side}
     offered = {kind: {component_class_key(n): n for n in gtt_side[kind]} for kind in kinds}
     out = []
-    for item in reply.get("suggestions", []) if isinstance(reply, dict) else []:
+    for item in reply["suggestions"]:
         if not isinstance(item, dict) or item.get("kind") not in kinds:
             continue
         kind = item["kind"]

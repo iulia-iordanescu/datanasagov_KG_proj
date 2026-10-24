@@ -42,7 +42,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common.cache import Cache, ask_cached, ask_split
+from common.cache import Cache, ask_cached, ask_split, needs
 from common.audit import log
 from common.prompt_files import fill, load
 
@@ -130,6 +130,11 @@ def _match(sent: list, reply) -> tuple:
     return labels, missing
 
 
+#: The shape of a labeling answer (the prompts' reply format): a "labels" object. One of another shape is asked again,
+#: never kept (common/common_helpers/cache.py, ask_cached).
+SHAPE = needs(labels=dict)
+
+
 def label_component_instances(triples, calls) -> Labels:
     cache = Cache(calls.cache_dir, "label")
     result = Labels()
@@ -152,8 +157,9 @@ def label_component_instances(triples, calls) -> Labels:
             """The labels for one batch: from the cache, else from the model."""
             reply = ask_cached(cache, calls, fill(prompt, vocabulary=json.dumps(vocabulary, ensure_ascii=False),
                                                   items=json.dumps(items, ensure_ascii=False, indent=0)),
-                               f"  040 will ask the model to label component instances, {LABEL_BATCH} per call")
-            return reply.get("labels") if isinstance(reply.get("labels"), dict) else {}
+                               f"  040 will ask the model to label component instances, {LABEL_BATCH} per call",
+                               check=SHAPE)
+            return reply["labels"]
 
         refused = []
         for start in range(0, len(order), LABEL_BATCH):
