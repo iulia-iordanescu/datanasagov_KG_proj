@@ -99,7 +99,7 @@ def _margin_check_lines(checks: dict | None) -> list:
             f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
             f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow"
             f"{'; more evaluated records make this rarer' if bound else ''} |",
-            f"| No one record dominates | the largest record's proportion of the extracted triples: "
+            f"| No one record dominates | the largest record's proportion of the occurrences: "
             f"{readings.pct(big['extracted triples']['proportion'])} (`{big['extracted triples']['record']}`); of the "
             f"ground truth triples: {readings.pct(big['ground truth triples']['proportion'])} "
             f"(`{big['ground truth triples']['record']}`) | for reading: no established threshold |",
@@ -259,7 +259,7 @@ def _per_record(records: list, hidden: int) -> str:
             lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: no predicate of the current schema translates to this one")
                       for f, reach in missed] + [""]
         if not (c["pairs"] or extra or missed):
-            lines += ["No ground truth triples, and no extracted triples.", ""]
+            lines += ["No ground truth triples, and no occurrences.", ""]
     return "\n".join(lines)
 
 
@@ -307,11 +307,11 @@ def _mismatch_lines(mismatches: list) -> list:
              "these component class "
              "mismatches, counted together, happened 9 times:", "",
              "- **entity class, subject:** extraction used `Body` (current schema) as the subject class of an "
-             "extracted triple, translated to `Spacecraft` (ground truth schema), while the ground truth triple paired with it (a pair, "
-             "exact or partial) had `CelestialBody` (ground truth schema) as its subject class;",
+             "extracted triple, translated to `Spacecraft` (ground truth schema), while the ground truth triple paired with its "
+             "occurrence (a pair, exact or partial) had `CelestialBody` (ground truth schema) as its subject class;",
              "- **entity class, object:** extraction used a component class of the current schema as the object "
              "class of an extracted triple, translated to one component class of the ground truth "
-             "schema, while the ground truth triple paired with it had another as its object class. "
+             "schema, while the ground truth triple paired with its occurrence had another as its object class. "
              "One pair can count twice: once for the subject classes, once for the object classes;",
              "- **predicate:** an extracted only occurrence and a ground truth only triple had the same subject instance and "
              "object instance, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
@@ -389,11 +389,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                             f"`py 060_extract/run.py`, {AGAIN} Until then, read {repo_path(per_record_path)} rather "
                             f"than the numbers.")
         elif drifted:
-            warnings.append(f"The {part} part: {len(drifted)} stratum(s) whose share of the evaluated records differs "
-                            f"from its share of the pool by more than {100 * stats.SHARE_GAP:.0f} points: "
+            warnings.append(f"The {part} part: {len(drifted)} stratum(s) whose proportion of the evaluated records differs "
+                            f"from its proportion of the pool by more than {100 * stats.SHARE_GAP:.0f} points: "
                             + named([f"{g['stratum']} ({readings.pct(g['share_evaluated'])} of the evaluated records, "
                                      f"{readings.pct(g['share_pool'])} of the pool)" for g in drifted], 5, "; ")
-                            + ". The numbers lean toward the strata with more than their share, by chance (the fair "
+                            + ". The numbers lean toward the strata whose proportion of the evaluated records is above their proportion of the pool, by chance (the fair "
                               "sample is random). Nothing to do: the gap usually shrinks as more records are "
                               f"evaluated; read the numbers with it in mind ({this_report()}, section *Results*, "
                               f"subsection *Metrics: {part} part*, table *Per stratum*).")
@@ -417,13 +417,13 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                         f"now have a counterpart in the ground truth schema: "
                         + named([f"{s['component_class_from_past_or_crt_schema']} (current schema) --> {s['component_class_in_gtt']} "
                                  f"(ground truth schema)" for s in translation.suggested], 5, "; ")
-                        + f". While a row says (none), extracted triples that use its component class can't form "
+                        + f". While a row says (none), the occurrences of extracted triples that use its component class can't form "
                           f"pairs (a predicate) or strict pairs (an entity class). Rows aren't changed: check them "
                           f"({TABLE}, shows the suggestion), take the suggestion if right, else keep (none); {AGAIN}")
     if translation.outdated:
         warnings.append(f"{len(translation.outdated)} row(s) of annotations/component_class_mapping.csv translate to (none) though the ground "
                         f"truth schema now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
-                        f"date, and extracted triples that use those component classes can't form pairs (a predicate) "
+                        f"date, and the occurrences of extracted triples that use those component classes can't form pairs (a predicate) "
                         f"or strict pairs (an entity class). Check them ({TABLE}, marked *now exists*); keep (none) "
                         f"only if the ground truth schema's component class means something else; {AGAIN}")
     if unreviewed:
@@ -497,7 +497,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             continue
         n = v["numbers"]
         lines += [f"### Metrics: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
-                  f"{n['extracted']} extracted triples)", ""]
+                  f"{n['extracted']} occurrences)", ""]
         if not n["margins"]:
             lines += [f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of "
                       f"error: these numbers could easily have come out very differently. Don't draw "
@@ -545,7 +545,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
         lines += ["#### Per stratum", "", f"Numbers once a stratum has {stats.MIN_RECORDS} records; with many strata, "
                   f"about 1 in 20 margins misses by chance, so one odd stratum is not a finding.", "",
-                  "| Stratum | Records | Share evaluated | Share of pool | Precision (exact) | Recall (exact) |",
+                  "| Stratum | Records | Proportion of the evaluated records | Proportion of the pool | Precision (exact) | Recall (exact) |",
                   "|---|---:|---:|---:|---:|---:|"]
         for g in v["strata"]:
             gn = g["numbers"]

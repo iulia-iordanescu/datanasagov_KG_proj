@@ -19,12 +19,12 @@ import stats
 
 
 def pct(x) -> str:
-    """A share as a whole percentage: "50%", or "–" for none."""
+    """A proportion as a whole percentage: "50%", or "–" for none."""
     return "–" if x is None else f"{100 * x:.0f}%"
 
 
 def _of(k: int, n: int) -> str:
-    """k, with its share of n: "4 (50%)" (the sentence names n)."""
+    """k, with its proportion of n: "4 (50%)" (the sentence names n)."""
     return f"{k} ({pct(k / n) if n else '–'})"
 
 
@@ -141,7 +141,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     out += [f"#### F1: {pct(ex['f1']['value'])} (exact pairs), {pct(pa['f1']['value'])} (exact and partial pairs)",
             "",
             f"- Precision and recall in one number: 2 × precision × recall ÷ (precision + recall), here "
-            f"2 × {ex['pairs']} pairs ÷ ({E} extracted + {G} ground truth triples). It's high only when both are.",
+            f"2 × {ex['pairs']} pairs ÷ ({E} occurrences + {G} ground truth triples). It's high only when both are.",
             "- The usual headline number for comparing runs or models, and with published results. It weighs "
             "precision and recall equally; read them too when one matters more (for a knowledge graph, a wrong "
             "edge is often worse than a missing one).",

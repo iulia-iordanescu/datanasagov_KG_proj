@@ -36,7 +36,7 @@ from common.triples_io import component_class_key
 MIN_RECORDS = 20
 REDRAWS = 1000
 SEED = 70
-#: A stratum whose share of the evaluated records differs from its share
+#: A stratum whose proportion of the evaluated records differs from its proportion
 #: of the pool by more than this is pointed out (with enough records).
 SHARE_GAP = 0.10
 
@@ -151,7 +151,7 @@ def by_part(evaluated) -> dict:
 
 
 def strata_table(records: list, pool_strata: dict) -> list:
-    """Per stratum: records evaluated, share of evaluated vs share of the
+    """Per stratum: records evaluated, proportion of the evaluated records vs proportion of the
     pool, and its numbers when it has enough records."""
     total_pool = sum(pool_strata.values())
     by_stratum = collections.defaultdict(list)
