@@ -6,9 +6,9 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 
 ## Before you start
 
-- **Work in pool order, without skipping.** Make [drafted batches](../docs/terminology.md#4-ground-truth-and-samples) with `py 050_annotate/run.py` and correct them in the order of the pool: a record after a gap isn't evaluated until the records before it are done (`docs/upkeep.md`, *After step 050 drafts a batch*).
+- **Work in pool order within each part, without skipping.** Make [drafted batches](../docs/terminology.md#4-ground-truth-and-samples) with `py 050_annotate/run.py` ([tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) by default; `--part held-out` for held-out ones) and correct them in the order of the pool: a record after a gap in its own part (tuning or held-out) isn't evaluated until the records of that part before it are done; the other part is not held back (`docs/upkeep.md`, *After step 050 drafts a batch*).
 - **Read the record's text first, then its ground truth triples.** The [drafted triples](../docs/terminology.md#4-ground-truth-and-samples) were written by a model: reading the text first makes it easier to see what they got wrong, and above all what it missed.
-- **Annotate [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) and [held-out records](../docs/terminology.md#7-evaluating-extraction-step-070) the same way.** The tool shows each record's part; it changes nothing about how you annotate.
+- **Annotate tuning records and [held-out records](../docs/terminology.md#7-evaluating-extraction-step-070) the same way.** The tool shows each record's part; it changes nothing about how you annotate.
 
 ## What counts as a fact
 

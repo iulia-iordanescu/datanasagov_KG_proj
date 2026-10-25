@@ -165,7 +165,8 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
               "", f"- Errors (must be fixed): {counted(drafts.errors)}.",
               f"- Flags (worth a look; a component class not in the ground truth schema is often a good new one): {counted(drafts.flags)}.",
               f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).",
-              "", "### Fair sample", "", fair_words(chosen.fair, chosen.positions), ""]
+              "", "### Fair sample", ""]
+    lines += [f"- {fair_words(fair, chosen.positions, part=name)}" for name, fair in chosen.fair.items()] + [""]
     if chosen.skipped:
         lines += ["Passed over while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
                   + ".", ""]

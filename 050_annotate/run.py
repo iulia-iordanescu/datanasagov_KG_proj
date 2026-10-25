@@ -39,6 +39,7 @@ MAY_BE_EMPTY = ("ground_truth",)
 SETTINGS = {
     "records_per_batch":  10,    # how many records to draft this run
     "start_position":     0,     # the pool position to start from (records already done are skipped)
+    "part":               "tuning", # which part of the pool to draft from: tuning, held-out, or both
     "ids":                "",    # or exactly these records: ids separated by commas, or a file with one per line
     "max_chars":          8000,  # a longer text is split into text pieces, one call each
     "workers":            4,     # model calls made at the same time

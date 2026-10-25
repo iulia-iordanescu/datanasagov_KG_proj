@@ -4,7 +4,8 @@ that choice the person should know BEFORE paying.
 
 By default, the next records of the ground truth candidates pool, in the
 pool's order (splits.json, from 030), from pool position `start_position`
-on, `records_per_batch` of them. Given `ids`, those records instead, in the
+on, `records_per_batch` of them, of the part(s) the setting `part` names
+(tuning by default: held-out records are drafted only when asked for). Given `ids`, those records instead, in the
 order listed (still at most `records_per_batch`).
 
 Always skipped, whatever was asked:
@@ -20,9 +21,11 @@ skipped, fewer records than asked, …) becomes a NOTE: shown before the
 paid-call question (common/common_helpers/llm.py PaidCalls) and in the report.
 
 Fair sample: the pool is shuffled, so its first N records are a fair sample
-of the catalog, and step 070 can only claim results for the whole catalog
-from such a sample. `fair` says whether the ground truth, the drafted batches waiting
-and this drafted batch together are still exactly the first N of the pool.
+of the catalog, and so are the first N of each part (tuning, held-out) taken
+alone; step 070 can only claim results from such a sample. `fair` says, for
+each part, whether the ground truth, the drafted batches waiting and this
+drafted batch together are still exactly the first N records of that part
+in pool order.
 
 The model is shown the ground truth schema plus the component classes a
 person coined in the ground truth and hasn't added to it yet
@@ -37,8 +40,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, read_ground_truth,
-                                 read_pool, with_coined)
+from common.ground_truth import (PARTS, DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, pool_parts,
+                                 read_ground_truth, read_pool, with_coined)
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -61,7 +64,8 @@ class Chosen:
     schema_text: str = ""                          # the ground truth schema, as the prompt shows it
     schema_entries: object = None  # the ground truth schema's entries, as the checks compare them (common.validate.SchemaEntries)
     coined: dict = field(default_factory=dict)     # {kind: [component classes]} used in the ground truth, not in the ground truth schema
-    fair: dict = field(default_factory=dict)       # see common/common_helpers/ground_truth.fair_sample()
+    fair: dict = field(default_factory=dict)       # {part: common/common_helpers/ground_truth.fair_sample()'s answer}
+    parts: dict = field(default_factory=dict)      # {id: "tuning" or "held-out"}
     how: str = ""                                  # the choice in words, for the report
     skipped: dict = field(default_factory=dict)    # {reason: [ids]} passed over while choosing
 
@@ -107,11 +111,16 @@ def _waiting(output: Path) -> tuple:
 
 def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     check_settings(settings, {"records_per_batch": 1, "start_position": 0})
+    part = settings["part"]
+    if part not in (*PARTS, "both"):
+        raise Stop(f"The setting part is {part!r}, but it must be tuning, held-out, or both. Set --part to one of "
+                   f"them, then run `py 050_annotate/run.py` again.")
     chosen = Chosen()
     chosen.records = load_records(inputs["records"])
     pool_rows = read_pool(inputs["splits"])
     chosen.pool = [r["id"] for r in pool_rows]
     chosen.positions = {r["id"]: r["position"] for r in pool_rows}
+    chosen.parts = {r["id"]: r["part"] for r in pool_rows}
     gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent)   # none yet: no record done
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
@@ -143,6 +152,9 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
 
     if ids:
         chosen.how = f"the {len(ids)} id(s) given in the setting ids"
+        if part != "tuning":
+            chosen.notes.append(f"part ({part}) is ignored, because the setting ids names the records: this run "
+                                f"drafts the records listed in ids, whatever part they are in.")
         if settings["start_position"]:
             chosen.notes.append(f"start_position ({settings['start_position']}) is ignored, because the setting "
                                 f"ids names the records: this run drafts the records listed in ids. To draft "
@@ -156,17 +168,25 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
                                 f"set --records_per_batch {len(ok)}.")
     else:
         start = settings["start_position"]
-        chosen.how = f"the next records of the pool from position {start}"
+        which = "" if part == "both" else f"{part} "
+        chosen.how = f"the next {which}records of the pool from position {start}"
         for rid in chosen.pool:
             if len(picked) == per:
                 break
-            if chosen.positions[rid] >= start and usable(rid):
+            if chosen.positions[rid] >= start and part in ("both", chosen.parts[rid]) and usable(rid):
                 picked.append(rid)
+        if picked:
+            other = "held-out" if part == "tuning" else "tuning"
+            chosen.notes.append(
+                f"This run drafts {len(picked)} {which}record(s), at pool positions "
+                f"{', '.join(str(chosen.positions[r]) for r in picked)} (setting part: {part}"
+                + (f"; the {other} records are not drafted" if part != "both" else "") + ").")
         if len(picked) < per:
             passed = "; ".join(f"{len(v)} {k}" for k, v in skipped.items() if v) or "none"
             chosen.notes.append(f"You asked for {per} records (records_per_batch), but only {len(picked)} "
-                                f"are left in the pool from position {start} on, so this drafted batch has "
-                                f"{len(picked)}. The other pool records from position {start} on: {passed}. "
+                                f"are left in the {which}pool from position {start} on, so this drafted batch has "
+                                f"{len(picked)}. The other {which}pool records from position {start} on: {passed}. "
+                                + ("To draft the other part too, set --part both. " if part != "both" else "")
                                 + (f"To draft records before position {start}, set a lower --start_position."
                                    if start else "Nothing to do: the pool has no other record to draft."))
 
@@ -192,15 +212,18 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
         chosen.items.append({"id": rid, "position": chosen.positions.get(rid), "title": record.get("title") or "",
                              "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})
 
-    before = fair_sample(chosen.pool, chosen.done | set(chosen.waiting))
-    chosen.fair = fair_sample(chosen.pool, chosen.done | set(chosen.waiting) | set(picked))
-    if before["fair"] and not chosen.fair["fair"] and picked:
-        chosen.notes.append("With this drafted batch, the ground truth is no longer the first records of the pool "
-                            "(a fair sample of the catalog): " + fair_words(chosen.fair, chosen.positions) +
-                            " Step 070 evaluates only the fair sample, so the records after the first one not "
-                            "taken won't be evaluated until the records before them are annotated. Nothing to "
-                            "do if you chose these records on purpose; otherwise leave ids empty and set "
-                            "--start_position 0, so the drafted batch takes the pool's next records.")
+    taken_now, taken_after = chosen.done | set(chosen.waiting), chosen.done | set(chosen.waiting) | set(picked)
+    for name, in_part in pool_parts(pool_rows).items():
+        members = set(in_part)
+        before = fair_sample(in_part, taken_now & members)
+        chosen.fair[name] = fair_sample(in_part, taken_after & members)
+        if before["fair"] and not chosen.fair[name]["fair"] and picked:
+            chosen.notes.append(f"With this drafted batch, the ground truth is no longer the first records of the {name} part of the pool "
+                                "(a fair sample of that part): " + fair_words(chosen.fair[name], chosen.positions, part=name) +
+                                f" Step 070 evaluates only the fair sample of each part, so the {name} records after the "
+                                "first one not taken won't be evaluated until the records before them are annotated. Nothing to "
+                                "do if you chose these records on purpose; otherwise leave ids empty and set "
+                                "--start_position 0, so the drafted batch takes the pool's next records.")
     if not chosen.items:
         raise Stop("Nothing to draft: none of the records chosen can be drafted, so 050 can't write a drafted batch. "
                    + " ".join(chosen.notes) + " Change the settings as these reasons say, then run "
