@@ -501,7 +501,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         if results.harvest_partial is not None:
             run["harvest_partial"] = results.harvest_partial
         output_rows = _describe_outputs(output, results)
-        run["status"] = "done"
+        run["status"] = "ran"            # the statuses and exit codes: docs/running_on_nasa_laptop.md, section 4
     except InputMissing as exc:
         run["status"], error = "failed", RunError(str(exc))
     except KeyboardInterrupt:
@@ -532,7 +532,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         if error.traceback:
             log.debug("full traceback:\n" + error.traceback.rstrip())
 
-    if run["status"] == "done":
+    if run["status"] == "ran":
         _write_manifest(output, run, chosen_settings, input_rows, output_rows, results)
     else:
         _restore_manifest(output, old_manifest)

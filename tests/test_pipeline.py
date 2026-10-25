@@ -97,6 +97,8 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(m["warnings"], 2)                                      # a repeated id, a record with no id
         self.assertEqual(len(m["outputs"]), 4)
         self.assertIs(m["harvest_partial"], False)                              # the whole catalog
+        report = sorted((self.repo / "outputs" / "reports").glob("010_harvest_*.md"))[-1].read_text(encoding="utf-8")
+        self.assertIn("| Status | ran |", report)                             # the word run_pipeline.py uses too
 
     def test_t02_clean(self):
         self.run_step("020_clean")

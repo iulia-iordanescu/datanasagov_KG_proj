@@ -159,6 +159,17 @@ class GroundTruthFiles(unittest.TestCase):
         self.assertIn("pool position 1", ground_truth.fair_words(gap, {"p1": 1}))
 
 
+class UnitsListed(unittest.TestCase):
+
+    def test_terminology_lists_every_unit(self):
+        """docs/terminology.md (evened out) lists exactly text_match.UNITS, in its order."""
+        import re
+        text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
+        listed = text.split("(`UNITS` in that file): ", 1)[1].split("; and only when", 1)[0]
+        listed = re.sub(r" \(also written with the micro sign, `µm`\)", "", listed)
+        self.assertEqual(tuple(re.findall(r"`([^`]+)`", listed)), text_match.UNITS)
+
+
 class FinishedMarks(unittest.TestCase):
     """all_facts_extracted is 0 or 1; any other value is a problem of the ground truth, and the record isn't
     finished (ground_truth.read_ground_truth)."""
@@ -549,6 +560,15 @@ class SameModel(unittest.TestCase):
         self.assertEqual(maker("llama-3.1-70b"), "Meta")
         self.assertIsNone(maker("some-new-model"))
         self.assertIsNone(maker(""))
+
+    def test_guide_lists_every_maker(self):
+        """060's guide lists the makers and their words exactly as llm.MAKERS has them."""
+        from common.llm import MAKERS
+        guide = (ROOT / "060_extract" / "060_extract.md").read_text(encoding="utf-8")
+        listed = guide.split("`MAKERS`): ", 1)[1].split("; a model whose name", 1)[0]
+        import re
+        found = tuple((m, tuple(re.findall(r"`([^`]+)`", words))) for m, words in re.findall(r"(\w+) \(([^)]*)\)", listed))
+        self.assertEqual(found, MAKERS)
 
     def test_drafted_by_read(self):
         tmp = Path(tempfile.mkdtemp())
