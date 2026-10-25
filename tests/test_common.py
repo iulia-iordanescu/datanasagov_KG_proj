@@ -666,7 +666,7 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
 
 class Confirm(unittest.TestCase):
     """The question before paying (llm.confirm): Enter, y, or yes (any case, spaces ignored) go ahead; anything
-    else, Ctrl+C, or a closed input stop, as docs/running_on_nasa_laptop.md, section 5, says."""
+    else, or a closed input stop (Ctrl+C interrupts), as docs/running_on_nasa_laptop.md, section 5, says."""
 
     def answer(self, typed):
         import builtins
@@ -685,7 +685,7 @@ class Confirm(unittest.TestCase):
             self.assertEqual(self.answer(typed), "went ahead", typed)
 
     def test_stop(self):
-        for typed in ("n", "no", "ye", "yess", "ok", "1", EOFError, KeyboardInterrupt):
+        for typed in ("n", "no", "ye", "yess", "ok", "1", EOFError):       # Ctrl+C: test_model_calls.py, CtrlC
             self.assertEqual(self.answer(typed), "Cancelled. Nothing was spent.", typed)
 
 

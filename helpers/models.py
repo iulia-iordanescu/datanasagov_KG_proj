@@ -76,4 +76,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt as e:       # Ctrl+C, at the question or during the test calls
+        sys.exit(f"\n{str(e).strip() or 'Stopped with Ctrl+C.'}")

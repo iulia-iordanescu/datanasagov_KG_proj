@@ -846,7 +846,8 @@ class PaidCalls:
         RUN_WARNINGS.append(note)
         show_warnings(self.step, [note])
         if self.confirm:
-            confirm("Press Enter to go ahead anyway, or anything else to cancel (only the test call was paid for).")
+            confirm("Press Enter to go ahead anyway, or anything else to cancel (only the test call was paid for).",
+                    spent="Only the test call was paid for.")
 
     def expect(self, total: int) -> None:
         """The next total calls are one stage's: its progress lines count them."""
@@ -1002,8 +1003,8 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str, not_sent=
     call handle(n, key, result, error) in this thread as each finishes (n
     counts from 1; error is None on success, result None on failure).
 
-    Ctrl-C cancels every call not yet started, so a stopped run spends
-    nothing more than what is already in flight, then exits with stop_note.
+    Ctrl+C cancels every call not yet started, so a stopped run spends
+    nothing more than what is already in flight, then raises Interrupted with stop_note.
     Calls already in flight cannot be recalled; their results are not
     handled.
 
@@ -1035,8 +1036,8 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str, not_sent=
         raise
     except KeyboardInterrupt:
         pool.shutdown(wait=False, cancel_futures=True)
-        sys.exit(f"\nStopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. "
-                 f"{stop_note}")
+        raise Interrupted(f"Stopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. "
+                          f"{stop_note}") from None
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
 
@@ -1075,16 +1076,25 @@ def maker(model: str) -> str | None:
     return None
 
 
-def confirm(question: str) -> None:
-    """Stop until the person presses Enter (or types y or yes, in any case, spaces around it ignored); exit on
-    anything else (the answers, for a person: docs/running_on_nasa_laptop.md, section 5).
+class Interrupted(KeyboardInterrupt):
+    """Ctrl+C, with a message saying what it cost. A KeyboardInterrupt, so the step ends `interrupted` (exit code
+    130: common/common_helpers/step.py), like a Ctrl+C anywhere else; every answer already received is in the cache."""
 
-    The gate between reading a run's summary and paying for it. Ctrl-C and
-    a closed input (a run with nothing attached to the keyboard) both stop,
-    so the expensive path is never taken by default."""
+
+def confirm(question: str, spent: str = "Nothing was spent.") -> None:
+    """Stop until the person presses Enter (or types y or yes, in any case, spaces around it ignored); exit on
+    anything else (the answers, for a person: docs/running_on_nasa_laptop.md, section 5). spent: what was paid
+    for before the question.
+
+    The gate between reading a run's summary and paying for it. Any other
+    answer and a closed input (a run with nothing attached to the keyboard)
+    stop the step (`stopped`); Ctrl+C interrupts it (`interrupted`), so the
+    expensive path is never taken by default."""
     try:
         answer = input(f"\n{question} ")
-    except (EOFError, KeyboardInterrupt):
-        sys.exit("\nCancelled. Nothing was spent.")
+    except EOFError:
+        sys.exit(f"\nCancelled. {spent}")
+    except KeyboardInterrupt:
+        raise Interrupted(f"Cancelled with Ctrl+C. {spent}") from None
     if answer.strip().lower() not in ("", "y", "yes"):
-        sys.exit("Cancelled. Nothing was spent.")
+        sys.exit(f"Cancelled. {spent}")

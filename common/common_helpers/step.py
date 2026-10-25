@@ -504,8 +504,8 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         run["status"] = "ran"            # the statuses and exit codes: docs/running_on_nasa_laptop.md, section 4
     except InputMissing as exc:
         run["status"], error = "failed", RunError(str(exc))
-    except KeyboardInterrupt:
-        run["status"], error = "interrupted", RunError("stopped with Ctrl+C", traceback.format_exc())
+    except KeyboardInterrupt as exc:     # Ctrl+C, anywhere: during model calls and at the question before paying too
+        run["status"], error = "interrupted", RunError(str(exc).strip() or "stopped with Ctrl+C", traceback.format_exc())
     except SystemExit as exc:
         # A helper that stops the run on purpose (e.g. the person declined the
         # paid calls) must still leave a report and a log.

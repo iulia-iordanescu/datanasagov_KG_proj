@@ -418,5 +418,59 @@ class Guards(unittest.TestCase):
         self.assertEqual(step._failed_calls()["entries"], 1)
 
 
+class CtrlC(unittest.TestCase):
+    """Ctrl+C ends a step `interrupted` (exit code 130), never `stopped` (2): during the model calls, at the question
+    before paying, and anywhere else (docs/running_on_nasa_laptop.md, section 4, *How a step ends*). Declining the
+    question, or a closed input, still ends it `stopped`."""
+
+    def test_during_the_calls(self):
+        def handle(n, key, result, error):
+            raise KeyboardInterrupt
+        with self.assertRaises(llm.Interrupted) as caught:
+            llm.run_parallel(lambda: "answer", {"a": (), "b": ()}, 1, handle, "Answers received are kept.")
+        self.assertIsInstance(caught.exception, KeyboardInterrupt)
+        self.assertNotIsInstance(caught.exception, SystemExit)
+        self.assertIn("Answers received are kept.", str(caught.exception))
+
+    def test_at_the_question(self):
+        import builtins
+        for typed, raised, words in ((KeyboardInterrupt, llm.Interrupted, "Cancelled with Ctrl+C. Nothing was spent."),
+                                     (EOFError, SystemExit, "Cancelled. Nothing was spent."),
+                                     ("n", SystemExit, "Cancelled. Nothing was spent.")):
+            effect = typed if isinstance(typed, type) else None
+            with self.subTest(typed=typed), mock.patch.object(builtins, "input", side_effect=effect,
+                                                              return_value=None if effect else typed):
+                with self.assertRaises(raised) as caught:
+                    llm.confirm("Go?")
+                said = caught.exception.code if isinstance(caught.exception, SystemExit) else str(caught.exception)
+                self.assertEqual(said.strip(), words)
+        with mock.patch.object(builtins, "input", return_value="n"), self.assertRaises(SystemExit) as caught:
+            llm.confirm("Go?", spent="Only the test call was paid for.")
+        self.assertEqual(caught.exception.code, "Cancelled. Only the test call was paid for.")
+
+    def test_run_step_status(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            for raised, code, status in ((llm.Interrupted("Cancelled with Ctrl+C. Nothing was spent."), 130, "interrupted"),
+                                         (KeyboardInterrupt(), 130, "interrupted"),
+                                         (SystemExit("Cancelled. Nothing was spent."), 2, "stopped")):
+                def main(inputs, settings, output, raised=raised):
+                    raise raised
+                with self.subTest(raised=repr(raised)), \
+                        mock.patch.object(step, "RESULTS_DIR", tmp / "results"), \
+                        mock.patch.object(step, "REPORTS_DIR", tmp / "reports"), \
+                        mock.patch.object(step, "LOGS_DIR", tmp / "logs"):
+                    with self.assertRaises(SystemExit) as caught:
+                        step.run_step("999_stand_in", {}, {}, main, argv=[])
+                    self.assertEqual(caught.exception.code, code)
+                    reports = sorted((tmp / "reports").glob("999_stand_in_*.md"))
+                    self.assertIn(status, reports[-1].read_text(encoding="utf-8"))
+                    for r in reports:
+                        r.unlink()
+        finally:
+            logging.shutdown()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()
