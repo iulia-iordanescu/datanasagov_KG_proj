@@ -54,7 +54,7 @@ from pathlib import Path
 from common.audit import log, ref_path
 from common.ground_truth import GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, read_pool
 from common.report import named
-from common.schema_io import ground_truth_source_problem, pattern_key, read_schema, schema_text
+from common.schema_io import ANY, ground_truth_source_problem, pattern_key, read_schema, schema_text
 from common.step import repo_path
 from common.stop import Stop
 from common.triples_io import component_class_key
@@ -197,6 +197,21 @@ def load_schema(inputs: dict) -> Schema:
     patterns = list(dict.fromkeys(spelled(p) for p in base["patterns"] + added_patterns))
     merged["patterns"] = patterns
     result.came_from["patterns"] = {p: "schema" if p in in_base else "additions" for p in patterns}
+    # The pins ("only:" lines, text shape only): the schema file's, then the additions file's, under the merged
+    # schema's spelling, so a pin under a left-out entry still applies to the entry kept; a predicate left out for
+    # not coming from tuning records takes its pins with it. Both files pinning one predicate: either's pairs fit.
+    pinned = {}
+    for source_schema, skip in ((base, set()), (extra, rejected)):
+        for predicate, pins in source_schema.get("pinned", {}).items():
+            if component_class_key(predicate) in skip:
+                continue
+            name = spelling["predicates"].get(component_class_key(predicate), predicate)
+            for s, o in pins:
+                pair = tuple(ANY if component_class_key(x) == ANY
+                             else spelling["entity_classes"].get(component_class_key(x), x) for x in (s, o))
+                if pair not in pinned.setdefault(name, []):
+                    pinned[name].append(pair)
+    merged["pinned"] = pinned
     result.content = merged
     result.text = schema_text(merged)
     result.schema_entries = SchemaEntries(merged)
@@ -248,14 +263,15 @@ def load_schema(inputs: dict) -> Schema:
                             f"no definition, so the model sees only the entity class or predicate itself: {named(undefined, 5, '; ')}. "
                             f"Add a one-line definition to each, in {schema_file} (schema file) or "
                             f"{additions_file} (additions file).")
-    unknown = sorted({x for s, p, o in patterns for x, kind in ((s, "entity_classes"), (p, "predicates"),
-                                                              (o, "entity_classes"))
-                      if x not in merged[kind]})
+    pin_patterns = [(s, p, o) for p, pins in pinned.items() for s, o in pins]
+    unknown = sorted({x for s, p, o in patterns + pin_patterns
+                      for x, kind in ((s, "entity_classes"), (p, "predicates"), (o, "entity_classes"))
+                      if x not in merged[kind] and not (kind == "entity_classes" and x == ANY)})
     if unknown:
-        result.notes.append(f"{len(unknown)} component class(es) used in patterns aren't in the schema: "
-                            f"{named([f'{n} (in a pattern; not in the schema)' for n in unknown], 5, '; ')}. "
+        result.notes.append(f"{len(unknown)} component class(es) used in patterns or \"only:\" lines aren't in the schema: "
+                            f"{named([f'{n} (in a pattern or an \"only:\" line; not in the schema)' for n in unknown], 5, '; ')}. "
                             f"An extracted triple using one is removed (component_class_not_in_schema) though "
-                            f"the pattern allows it. Fix the pattern (often a typo), or add the missing entity class "
+                            f"the pattern or \"only:\" line allows it. Fix the pattern or line (often a typo), or add the missing entity class "
                             f"or predicate, in {schema_file} or {additions_file}.")
     added = sum(v == "additions" for kind in KINDS for v in result.came_from[kind].values())
     log.info(f"  schema: {len(merged['entity_classes'])} entity classes, {len(merged['predicates'])} "

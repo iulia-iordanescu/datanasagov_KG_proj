@@ -72,6 +72,7 @@ def _schema_used(schema) -> dict:
             "patterns": [{"pattern": list(p), "from": came_from["patterns"][p],
                           **({"source": schema.sources["patterns"][p]} if p in schema.sources.get("patterns", {}) else {})}
                          for p in content["patterns"]],
+            "pinned": {p: [list(pair) for pair in pins] for p, pins in content.get("pinned", {}).items()},
             "left_out_additions": schema.left_out,
             "left_out_not_tuning": schema.not_tuning,
             "learned_from": schema.learned_from,

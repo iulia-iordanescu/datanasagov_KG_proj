@@ -43,6 +43,9 @@ SETTINGS = {
     "confirm_paid_calls": True,            # stop and ask before the first model call; false for unattended runs
 }
 
+#: The ground truth may have no files yet: extract_from all and ids don't need it (pick_records stops otherwise).
+MAY_BE_EMPTY = ("ground_truth",)
+
 extract = load_moves("060_extract")
 
 
@@ -57,4 +60,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("060_extract", INPUTS, SETTINGS, main)
+    run_step("060_extract", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY)

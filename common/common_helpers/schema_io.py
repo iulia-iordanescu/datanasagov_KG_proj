@@ -13,7 +13,10 @@ shapes:
      "patterns":       [{"pattern": ["Instrument", "ABOARD", "Spacecraft"]}, …]}
 
    Only "component_class" is required in each entry ("definition" is strongly
-   advised: the model reads it); "patterns" may be missing. Anything else
+   advised: the model reads it); "patterns" may be missing, and so may
+   "pinned" ({"ACQUIRED_BY_INSTRUMENT": [["Dataset", "Instrument"]]}: the
+   pins of the text shape's "only:" lines, as 060's schema_used.json writes
+   them). Anything else
    (040's support, maintainers, texts, examples, deferred, made) is ignored.
 
 2. Text, like the ground truth schema
@@ -48,7 +51,9 @@ shapes:
    class, predicate, and object class on one line (used by the additions
    file, to add a pattern to a predicate the schema already has, and by the
    annotation tool, to add a pattern to the ground truth schema with its
-   source). An
+   source). An indented line starting "only:" under a predicate pins it:
+   "only: Dataset -> Instrument; any -> Person" (a pinned predicate, docs/
+   terminology.md). An
    indented line starting "source:" under any entry (entity class,
    predicate or pattern) says where the idea for it came from (used by the
    additions file, and by the component classes and patterns the annotation
@@ -66,6 +71,7 @@ translates the current schema into the ground truth schema.
     schema["predicates"]      {"ABOARD": "is carried on", …}
     schema["patterns"]        [("Instrument", "ABOARD", "Spacecraft"), …]: every pattern, under a
                               predicate or in the PATTERNS section
+    schema["pinned"]          {"ACQUIRED_BY_INSTRUMENT": [("Dataset", "Instrument")], …}: the pinned predicates' pairs
     schema["pattern_entries"] the patterns of the PATTERNS section only (text shape only)
     schema["sources"]         {"entity_classes": {entity class: source}, "predicates": {…},
                               "patterns": {"Instrument ABOARD Mission": source}}  (text shape only)
@@ -198,6 +204,14 @@ def _read_json(path) -> dict:
         if not (isinstance(triple, list) and len(triple) == 3 and all(isinstance(x, str) for x in triple)):
             raise ValueError(f"{where}: patterns entry {i} must be [subject class, predicate, object class]")
         schema["patterns"].append(tuple(x.strip() for x in triple))
+    pinned = data.get("pinned") or {}
+    if not isinstance(pinned, dict):
+        raise ValueError(f"{where}: \"pinned\" must be an object {{predicate: [[subject class, object class], …]}}")
+    for predicate, pins in pinned.items():
+        if not (isinstance(pins, list) and pins and all(isinstance(p, list) and len(p) == 2
+                                                         and all(isinstance(x, str) for x in p) for p in pins)):
+            raise ValueError(f"{where}: pinned entry {predicate} must be a list of [subject class, object class]")
+        schema["pinned"][predicate.strip()] = [tuple(x.strip() for x in p) for p in pins]
     return schema
 
 

@@ -115,7 +115,9 @@ def _too_few(n: dict) -> str:
             f"numbers could easily have come out very differently. Don't draw conclusions from them yet.**")
 
 
-#: What each of 060's reasons for removing an item means (060_extract/060_extract.md, *How it works*).
+#: What each of 060's reasons for removing an item means (their list: docs/terminology.md, *extracted triple*; the
+#: checks behind them: 060_extract/060_extract.md, *How it works*). A removal for two reasons is written as both, joined
+#: by a space ("component_class_not_in_schema source_text").
 REMOVED_REASONS = {"source_text": "its source text is missing, or isn't in the record's text",
                    "component_class_not_in_schema": "an entity class or predicate the current schema doesn't have",
                    "duplicate": "the same classed triple twice in the record (one copy is kept)",
@@ -137,7 +139,7 @@ def _removed_lines(records: int, removed: list) -> list:
               "|---|---|---:|---:|"]
     for x in removed:
         means = " and ".join(REMOVED_REASONS.get(w, "a reason 070 doesn't know: not one of those in "
-                                                     "`060_extract/060_extract.md`, *How it works*") for w in x["reason"].split())
+                                                     "`docs/terminology.md`, *extracted triple*") for w in x["reason"].split())
         lines.append(f"| `{cell(x['reason'])}` | {cell(means)} | {x['removed']} | {x['records']} |")
     return lines + [f"| all | | {sum(x['removed'] for x in removed)} | |", ""]
 

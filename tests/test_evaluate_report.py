@@ -512,8 +512,8 @@ class RemovedBy060(unittest.TestCase):
         self.assertIn("| all | | 5 | |", text)
         self.assertIn("| Reason (as 060 wrote it) | What it means | Items removed | Records with any item removed for it |",
                       text)
-        self.assertIn("| `nonsense` | a reason 070 doesn't know: not one of those in `060_extract/060_extract.md`, *How it "
-                      "works* | 1 | 1 |", "\n".join(moves._removed_lines(1, [{"reason": "nonsense", "removed": 1, "records": 1}])))
+        self.assertIn("| `nonsense` | a reason 070 doesn't know: not one of those in `docs/terminology.md`, *extracted triple* "
+                      "| 1 | 1 |", "\n".join(moves._removed_lines(1, [{"reason": "nonsense", "removed": 1, "records": 1}])))
         self.assertIn("None: 060 removed nothing from these records.", "\n".join(moves._removed_lines(1, [])))
 
 

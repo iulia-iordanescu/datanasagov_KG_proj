@@ -50,10 +50,16 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     chosen = Chosen(records=load_records(inputs["records"]))
     chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in read_pool(inputs["splits"])}
     gt_files = input_files(Path(inputs["ground_truth"]))
-    gt = read_ground_truth(gt_files[0].parent)                  # run_step made sure there is one
+    ids = read_ids(settings["ids"])
+    if not gt_files and not ids and settings["extract_from"] == "ground_truth":
+        raise Stop(f"No ground truth files at {repo_path(inputs['ground_truth'])}, so 060 has no finished records to "
+                   f"extract from (extract_from is ground_truth). Annotate records first (`py 050_annotate/run.py`, "
+                   f"then `py helpers/annotate.py`), or set --extract_from all, or name the records with --ids, "
+                   f"then run `py 060_extract/run.py` again.")
+    # No ground truth files is fine for extract_from all and for ids: no record is then in the ground truth.
+    gt = read_ground_truth(gt_files[0].parent if gt_files else Path(inputs["ground_truth"]).parent)
     chosen.ground_truth = {r["id"] for r in gt.rows}
     chosen.notes += [f"Ground truth, {p}" for p in gt.problems]
-    ids = read_ids(settings["ids"])
     skipped = {"not in the catalog": [], "without text": [], "not finished in the ground truth": []}
 
     if ids:

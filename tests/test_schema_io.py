@@ -269,5 +269,75 @@ class ExtractionChecksPatternSources(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
+class ExtractionKeepsPins(unittest.TestCase):
+    """Step 060's merged schema keeps the "only:" lines of its schema file and of the additions file, in the merged
+    schema's spelling; a pinned predicate of the additions file left out for not coming from tuning records takes
+    its pins with it (060_extract/060_extract_helpers/schema.py, load_schema)."""
+
+    def load(self, schema_text, additions_text):
+        from support import use_step
+        use_step("060_extract")
+        import schema as extract_schema
+        from common.validate import check_against_schema
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / "hand.txt").write_text(schema_text, encoding="utf-8")
+        (tmp / "additions.txt").write_text(additions_text, encoding="utf-8")
+        pool = [{"id": f"r{i}", "position": i, "part": "held-out" if i == 8 else "tuning"} for i in range(10)]
+        (tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}), encoding="utf-8")
+        s = extract_schema.load_schema({"schema": tmp / "hand.txt", "additions": tmp / "additions.txt",
+                                        "splits": tmp / "splits.json"})
+        flags = lambda sc, p, oc: check_against_schema({"subject_class": sc, "predicate": p, "object_class": oc},
+                                                       s.schema_entries)
+        return s, flags
+
+    def test_schema_file_pins_kept(self):
+        s, flags = self.load(TEXT.replace("HAS_PART          has as a part\n",
+                                          "HAS_PART          has as a part\n                  only: Dataset -> any\n"), "")
+        self.assertEqual(s.content["pinned"], {"HAS_PART": [("Dataset", "any")]})
+        self.assertEqual(flags("Dataset", "HAS_PART", "Instrument"), [])
+        self.assertEqual(flags("Instrument", "HAS_PART", "Dataset"), ["pattern_not_pinned"])
+        self.assertIn("only: Dataset -> any", s.text)
+
+    def test_additions_pins_kept_and_respelled(self):
+        additions = ("PREDICATES\n----------\nhas_part          has as a part\n"
+                     "                  only: dataset -> spacecraft\n                  source: mentor\n"
+                     "ON_BOARD          is carried on\n                  only: Instrument -> Spacecraft\n"
+                     "                  source: mentor\n")
+        s, flags = self.load(TEXT, additions)
+        self.assertEqual(s.content["pinned"], {"HAS_PART": [("Dataset", "Spacecraft")],
+                                               "ON_BOARD": [("Instrument", "Spacecraft")]})
+        self.assertEqual(flags("Dataset", "ON_BOARD", "Spacecraft"), ["pattern_not_pinned"])
+        self.assertEqual(flags("Instrument", "ON_BOARD", "Spacecraft"), [])
+
+    def test_held_out_pin_left_out(self):
+        additions = ("PREDICATES\n----------\nON_BOARD          is carried on\n"
+                     "                  only: Instrument -> Spacecraft\n                  source: ground truth held-out #8\n")
+        s, _ = self.load(TEXT, additions)
+        self.assertEqual(s.content["pinned"], {})
+
+    def test_pin_naming_unknown_entity_class_noted(self):
+        additions = ("PREDICATES\n----------\nON_BOARD          is carried on\n"
+                     "                  only: Instrumnet -> any\n                  source: mentor\n")
+        s, _ = self.load(TEXT, additions)
+        noted = [n for n in s.notes if "only:\" lines aren't in the schema" in n]
+        self.assertEqual(len(noted), 1)
+        self.assertIn("Instrumnet", noted[0])
+        self.assertNotIn("any (", noted[0])
+
+    def test_json_pins_read(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / "s.json"
+        path.write_text(json.dumps({"entity_classes": [{"component_class": "Dataset"}],
+                                    "predicates": [{"component_class": "HAS_PART"}],
+                                    "pinned": {"HAS_PART": [["Dataset", "any"]]}}), encoding="utf-8")
+        self.assertEqual(schema_io.read_schema(path)["pinned"], {"HAS_PART": [("Dataset", "any")]})
+        path.write_text(json.dumps({"entity_classes": [], "predicates": [], "pinned": {"HAS_PART": [["Dataset"]]}}),
+                        encoding="utf-8")
+        with self.assertRaises(ValueError):
+            schema_io.read_schema(path)
+
+
 if __name__ == "__main__":
     unittest.main()

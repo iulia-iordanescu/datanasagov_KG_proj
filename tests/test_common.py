@@ -539,6 +539,41 @@ class SameModel(unittest.TestCase):
         self.assertEqual(len(same_model_notes(gt, {"b"}, "some-new-model")), 0)            # unknown maker: only the same name
 
 
+class ExtractWithoutGroundTruth(unittest.TestCase):
+    """060's choice of records when the ground truth has no files yet (060_extract_helpers/records.py, pick_records):
+    extract_from all and ids don't need it; extract_from ground_truth stops, saying what to do."""
+
+    def setUp(self):
+        from support import use_step
+        use_step("060_extract")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        (self.tmp / "records.jsonl").write_text(
+            "\n".join(json.dumps({"id": i, "title": f"title {i}", "notes": ""}) for i in ("a", "b")), encoding="utf-8")
+        (self.tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": [
+            {"id": "a", "position": 0, "part": "tuning"}]}}), encoding="utf-8")
+        self.inputs = {"records": self.tmp / "records.jsonl", "splits": self.tmp / "splits.json",
+                       "ground_truth": self.tmp / "ground_truth" / "batch_*.csv"}     # no such folder
+
+    def pick(self, extract_from, ids=""):
+        from records import pick_records                                       # 060_extract_helpers/records.py
+        return pick_records(self.inputs, {"extract_from": extract_from, "ids": ids, "max_chars": 8000,
+                                          "workers": 1, "model": "m"})
+
+    def test_all_and_ids(self):
+        chosen = self.pick("all")
+        self.assertEqual([i["id"] for i in chosen.items], ["a", "b"])
+        self.assertEqual(chosen.ground_truth, set())
+        self.assertEqual([i["id"] for i in self.pick("ground_truth", ids="b").items], ["b"])
+
+    def test_ground_truth_stops(self):
+        from common.stop import Stop
+        with self.assertRaises(Stop) as stop:
+            self.pick("ground_truth")
+        self.assertIn("No ground truth files at", str(stop.exception))
+        self.assertIn("--extract_from all", str(stop.exception))
+
+
 class AskSplit(unittest.TestCase):
 
     def test_refused_item_isolated(self):
