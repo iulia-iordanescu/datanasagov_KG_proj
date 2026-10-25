@@ -508,6 +508,18 @@ class RulesInStep(unittest.TestCase):
                     self.assertIn(guideline, guidelines)
 
 
+class QualifierQuotesRule9(unittest.TestCase):
+    """docs/terminology.md's *qualifier* quotes rule 9's words (a rule is cited by its words, not its number): the kinds
+    it quotes are exactly those of rule 9's bold sentence in annotations/guidelines.md, so the quote can't drift."""
+
+    def test_quote_matches_the_rule(self):
+        terms = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
+        guidelines = (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8")
+        quoted = re.search(r'a qualifier that is "([^"]+)" is taken out', terms).group(1)
+        rule = re.search(r"^9\. \*\*A qualifier that is (.+?) is a ground truth triple of its own", guidelines, re.M).group(1)
+        self.assertEqual(quoted, rule)
+
+
 class PromptsQuoteNoGroundTruth(unittest.TestCase):
     """The model's prompts use invented examples, never text from ground truth records: a prompt that quotes a ground
     truth record could hand the model an answer it is scored on. Every quoted phrase of 3 or more words in a prompt
