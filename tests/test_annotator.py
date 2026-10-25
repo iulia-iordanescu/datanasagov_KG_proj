@@ -766,6 +766,32 @@ class Z_ReviewerComments(unittest.TestCase):
         finally:
             shutil.rmtree(folder)
 
+    def test_expert_questions(self):
+        """The questions for experts, with what each answer may change, for the record's "Questions for experts"
+        line and the Reviewer comments view; a file not in its format is a problem, not a failure."""
+        path = TMP / "annotations" / "questions_for_experts.md"
+        self.assertEqual(get("/api/expert_questions")["questions"], [])               # no file: none
+        rid = "aaaaaaaa-0000-0000-0000-000000000001"
+        path.write_text("# Questions\n\n## Q1: Closed list?\n\n- status: open\n- priority: high\n"
+                        "- question kind: general\n- topic: layouts\n\n### The question\n\nIs it closed?\n\n"
+                        f"### Affects\n\n- record at pool position 0: {rid}\n"
+                        f"- classed triple of the record at pool position 0: \"A\" (Dataset) HAS_X \"b\" (Thing)\n\n"
+                        "### My current choice\n\nUndecided.\n", encoding="utf-8")
+        try:
+            q, = get("/api/expert_questions")["questions"]
+            self.assertEqual((q["id"], q["priority"], q["question_kind"]), ("Q1", "high", "general"))
+            self.assertEqual([r["id"] for r in q["affects"]["records"]], [rid])
+            self.assertEqual(q["affects"]["triples"][0]["object"], "b")
+            path.write_text("# Questions\n\n## Q1 no colon\n", encoding="utf-8")
+            v = get("/api/expert_questions")
+            self.assertEqual(v["questions"], [])
+            self.assertIn("isn't a question's heading", v["problem"])
+        finally:
+            path.unlink()
+        page = urllib.request.urlopen(url("/")).read().decode("utf-8")
+        for needed in ("/api/expert_questions", "expertQuestionsOn(rec.id)", 'kind === "question" ? questionHead(entry)'):
+            self.assertIn(needed, page)
+
     def test_page(self):
         page = urllib.request.urlopen(url("/")).read().decode("utf-8")
         for needed in ('id="reviewcomments"', "reviewerNotes(kind, v.component_class)",

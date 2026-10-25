@@ -1,7 +1,8 @@
 """
-helpers/review_page.py -- a read-only page of the ground truth schema and the
-translation table, for subject-matter experts to read and comment on, its
-publishing at one link, and the reader of the comments they send back.
+helpers/review_page.py -- a read-only page of the ground truth schema, the
+translation table, and my questions for subject-matter experts, for them to
+read and comment on, its publishing at one link, and the reader of the
+comments they send back.
 
     py helpers/review_page.py                  writes outputs/review/review_<date>_<commit>.html
     py helpers/review_page.py --publish        puts it on the branch gh-pages and pushes it (PAGES_URL)
@@ -11,11 +12,13 @@ publishing at one link, and the reader of the comments they send back.
 The page is one HTML file with everything inside it (styles, typefaces,
 script, data): it opens by double-click, from disk, in Chrome, Edge or
 Firefox, and makes no network request (its Content-Security-Policy forbids
-any). It shows annotations/ground_truth_schema.txt and
+any). It shows annotations/ground_truth_schema.txt,
 annotations/component_class_mapping.csv (read with
 common.review_comments, which reads them with common.schema_io and
-common.component_class_mapping), with the date it was made, the Git commit,
-and each file's fingerprint. It can't change anything: a reviewer's comments
+common.component_class_mapping) and annotations/questions_for_experts.md
+(read with common.expert_questions, which checks every quote of a question
+against its source, and refuses a held-out record), with the date it was
+made, the Git commit, and each file's fingerprint. It can't change anything: a reviewer's comments
 stay in their browser (localStorage) until they press "Email my comments to
 Iulia" (a mailto: link per email, its body in common.review_comments'
 EMAIL_FORMAT, split into numbered parts past 1,900 characters, at most 5) or
@@ -52,6 +55,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 
 from common.component_class_mapping import MAPPING_PATH, NONE                 # noqa: E402
+from common.expert_questions import (GUIDELINES_PATH, PRIORITIES, QUESTIONS_PATH, RECORDS_PATH,  # noqa: E402
+                                     SPLITS_PATH, check_questions, read_questions)
+from common.ground_truth import GROUND_TRUTH_DIR                               # noqa: E402
+from common.records_io import load_records                                     # noqa: E402
 from common.files import write_text                                            # noqa: E402
 from common.review_comments import (ALLOWED_SENDER_DOMAINS, COMMENT_COLUMNS, GENERAL, KINDS,  # noqa: E402,F401
                                     NOT_VERIFIED, REVIEWS_DIR, SCHEMA_PATH, entry_texts, mapping_entries, read_all,
@@ -68,15 +75,26 @@ PAGES_BRANCH = "gh-pages"
 PAGES_PATH = "review/index.html"
 PAGES_URL = "https://iulia-iordanescu.github.io/datanasagov_KG_proj/review/"
 #: What the page is made from: --publish stops while any of these has changes not yet committed.
-PAGE_SOURCES = ["annotations/ground_truth_schema.txt", "annotations/component_class_mapping.csv", "docs/terminology.md",
-                "helpers/review_page.py", "helpers/review_page.html", "helpers/annotator/page.html",
-                "helpers/annotator/fonts", "common/common_helpers/review_comments.py"]
+PAGE_SOURCES = ["annotations/ground_truth_schema.txt", "annotations/component_class_mapping.csv",
+                "annotations/questions_for_experts.md", "annotations/guidelines.md", "annotations/ground_truth",
+                "docs/terminology.md", "helpers/review_page.py", "helpers/review_page.html", "helpers/annotator/page.html",
+                "helpers/annotator/fonts", "common/common_helpers/review_comments.py",
+                "common/common_helpers/expert_questions.py"]
 #: The terms the page's Terms view shows, in this order, each as docs/terminology.md defines it (the first bold
 #: words of an entry's first column).
 GLOSSARY = ["schema", "schema entry", "entity class", "predicate", "kind", "component class", "pattern",
             "pinned predicate", "ground truth", "ground truth triple", "ground truth schema", "record", "classed triple",
             "subject instance", "object instance", "domain", "range", "current schema", "extracted triple",
-            "translation table", "row state", "row", "step", "fingerprint"]
+            "translation table", "row state", "row", "step", "fingerprint", "text", "fact", "source text",
+            "ground truth candidates pool", "tuning part", "annotation guidelines", "model", "knowledge graph",
+            "qualifier", "describes triple", "metadata field", "component instance", "induced schema", "pair",
+            "precision", "recall", "schema additions", "drafted triple"]
+#: Terms an entry of docs/terminology.md defines inside another's definition (in bold there), and that entry.
+ALIASES = {"pool position": "ground truth candidates pool", "tuning record": "tuning part",
+           "subject class": "subject instance", "object class": "object instance"}
+#: Terms the Questions view links only where a question links them (to docs/terminology.md): they are also
+#: everyday words ("a kind of", "a range of"), so finding them by their words alone would link the wrong uses.
+LINKED_ONLY_WHERE_MARKED = ["kind", "domain", "range", "row", "step", "text", "fact", "model", "pool", "pair"]
 
 
 # ------------------------------ the terms ------------------------------------
@@ -99,14 +117,19 @@ def _inline(md: str) -> str:
 
 
 def glossary(path: Path = TERMS_PATH, terms=GLOSSARY) -> list:
-    """[{"term", "term_html", "meaning_html"}]: each of `terms`, as docs/terminology.md defines it, in the order
-    asked. Stops (ValueError) if one isn't there, so the page never shows a definition retyped elsewhere."""
+    """[{"term", "term_html", "meaning_html", "aliases"}]: each of `terms`, as docs/terminology.md defines it, in
+    the order asked; aliases: the words its first column writes in bold (the term, and another name for it:
+    "pool"), and those of ALIASES that point to it, lowercased. Stops (ValueError) if one isn't there, so the page
+    never shows a definition retyped elsewhere."""
     found = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         m = re.match(r"^\| (\*\*.*?) \| (.*) \|$", line)
         if m:
             first = re.match(r"\*\*([^*]+)\*\*", m.group(1)).group(1).strip().lower()
-            found.setdefault(first, {"term": first, "term_html": _inline(m.group(1)), "meaning_html": _inline(m.group(2))})
+            aliases = _unique([first] + [a.strip().lower() for a in re.findall(r"\*\*([^*]+)\*\*", m.group(1))]
+                              + [a for a in ALIASES if ALIASES[a] == first])
+            found.setdefault(first, {"term": first, "term_html": _inline(m.group(1)), "meaning_html": _inline(m.group(2)),
+                                     "aliases": aliases})
     missing = [t for t in terms if t not in found]
     if missing:
         raise ValueError(f"docs/terminology.md has no entry for: {', '.join(missing)}. The page's Terms view shows "
@@ -148,12 +171,54 @@ def _script_json(data) -> str:
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
+def questions_data(questions_path: Path = QUESTIONS_PATH, records_path: Path = RECORDS_PATH,
+                   splits_path: Path = SPLITS_PATH, ground_truth_dir: Path = GROUND_TRUTH_DIR,
+                   schema_path: Path = SCHEMA_PATH, guidelines_path: Path = GUIDELINES_PATH, terms: list = (),
+                   mapping_path: Path = MAPPING_PATH) -> list:
+    """The questions, as the page shows them (common.expert_questions.read_questions). Stops (ValueError) on a
+    question not in the file's format, on a quote that isn't what its source says now, on a record that isn't a
+    tuning record, and on a link to docs/terminology.md whose words aren't a term of the Terms view."""
+    questions = read_questions(questions_path)
+    problems = check_questions(questions, records_path, splits_path, ground_truth_dir, schema_path, guidelines_path,
+                               questions_path, mapping_path)
+    aliases = {a: t["term"] for t in terms for a in t["aliases"]}
+    for q in questions:
+        for words in q["terms"]:
+            if _term_of(words, aliases) is None:
+                problems.append(f"{Path(questions_path).name} ({q['id']}): \"{words}\" links to docs/terminology.md, "
+                                f"but isn't a term of the page's Terms view: add the term to GLOSSARY in "
+                                f"helpers/review_page.py, or take the link out.")
+    if problems:
+        raise ValueError("the questions can't be shown as they are:\n- " + "\n- ".join(problems))
+    if any(q["affects"]["records"] for q in questions):                 # each record's title, for the page's list
+        records = load_records(records_path)
+        for q in questions:
+            for r in q["affects"]["records"]:
+                r["title"] = (records.get(r["id"]) or {}).get("title", "")
+    return questions
+
+
+def _term_of(words: str, aliases: dict):
+    """The Terms view's term that a link's words name, plurals folded ("tuning records" -> "tuning part")."""
+    w = " ".join(words.lower().split())
+    for form in (w, (w[:-2] if w.endswith("sses") else w), re.sub(r"ies$", "y", w), re.sub(r"es$", "", w), re.sub(r"s$", "", w)):
+        if form in aliases:
+            return aliases[form]
+    return None
+
+
 def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH, terms_path: Path = TERMS_PATH,
+              questions_path: Path = QUESTIONS_PATH, records_path: Path = RECORDS_PATH, splits_path: Path = SPLITS_PATH,
+              ground_truth_dir: Path = GROUND_TRUTH_DIR, guidelines_path: Path = GUIDELINES_PATH,
               when: dt.datetime | None = None) -> dict:
-    """Everything the page shows: its version, the ground truth schema, the translation table, the terms."""
+    """Everything the page shows: its version, the ground truth schema, the translation table, the questions, the
+    terms."""
     when = when or dt.datetime.now()
     commit = _git("rev-parse", "--short", "HEAD") or "unknown"
-    files = [schema_path, mapping_path]
+    terms = glossary(terms_path)
+    questions = questions_data(questions_path, records_path, splits_path, ground_truth_dir, schema_path,
+                               guidelines_path, terms, mapping_path)
+    files = [schema_path, mapping_path] + ([questions_path] if Path(questions_path).exists() else [])
     rel = [Path(p).resolve().relative_to(ROOT).as_posix() if Path(p).resolve().is_relative_to(ROOT) else Path(p).name
            for p in files]
     edited = bool(_git("status", "--porcelain", "--", *rel)) if commit != "unknown" else False
@@ -164,7 +229,8 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
                         "files": [{"path": r, "sha256": fingerprint(p)} for r, p in zip(rel, files)]},
             "schema": schema_entries(schema_path), "mapping": {"rows": mapping_entries(mapping_path, schema_path),
                                                                 "none": NONE},
-            "glossary": glossary(terms_path)}
+            "questions": questions, "priorities": list(PRIORITIES), "glossary": terms,
+            "linked_only_where_marked": LINKED_ONLY_WHERE_MARKED}
 
 
 def build(data: dict) -> str:
@@ -218,7 +284,8 @@ def publish(root: Path = ROOT, push: bool = True, check_clean: bool = True, **pa
     if data["version"]["edited"] or dirty:
         raise RuntimeError("these files the page is made from have changes not yet committed: "
                            + ", ".join(sorted({re.sub(r"^\s*\S+\s+", "", line) for line in dirty.splitlines()}) or
-                                       ["annotations/ground_truth_schema.txt or annotations/component_class_mapping.csv"])
+                                       ["annotations/ground_truth_schema.txt, annotations/component_class_mapping.csv "
+                                        "or annotations/questions_for_experts.md"])
                            + ". Commit them (or undo them), then publish again: the page at the link shows the "
                              "files as they are in one commit.")
     if push:                                     # another computer may have published since: start from its commit
@@ -263,17 +330,19 @@ def _sender(c: dict) -> str:
     return f"from {c['sender']}" if c["sender"] != NOT_VERIFIED else NOT_VERIFIED
 
 
-def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_DOMAINS) -> str:
+def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_DOMAINS, questions_fp: str = "") -> str:
     """The comments as markdown, grouped by kind and entry. read: common.review_comments.read_all()."""
     comments, files, problems = read["comments"], read["files"], read["problems"]
-    heads = {"general": "General comments", "entity class": "Entity classes (ground truth schema)",
+    heads = {"general": "General comments", "question": "Questions (annotations/questions_for_experts.md)",
+             "entity class": "Entity classes (ground truth schema)",
              "predicate": "Predicates (ground truth schema)", "translation row": "Translation table rows"}
     reviewers = sorted({c["reviewer"] or "(no name)" for c in comments}, key=str.lower)
     lines = ["# Review comments", "",
              f"Read {dt.date.today():%Y-%m-%d} from {len(files)} file(s): {', '.join(f.name for f in files) or 'none'}.",
              f"{len(comments)} comment(s) from {len(reviewers)} reviewer(s): {', '.join(reviewers) or 'none'}.",
              f"Compared with the files as they are now: `annotations/ground_truth_schema.txt` (sha256 {schema_fp}), "
-             f"`annotations/component_class_mapping.csv` (sha256 {mapping_fp}).", ""]
+             f"`annotations/component_class_mapping.csv` (sha256 {mapping_fp})"
+             + (f", `annotations/questions_for_experts.md` (sha256 {questions_fp})." if questions_fp else "."), ""]
     changed = sum(1 for c in comments if c["state"] == "changed")
     gone = sum(1 for c in comments if c["state"] == "gone")
     unverified = sum(1 for c in comments if c["sender"] == NOT_VERIFIED)
@@ -291,7 +360,10 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
             continue
         lines += [f"## {heads[kind]}", ""]
         for entry in _unique(c["entry"] for c in sorted(mine, key=lambda c: c["entry"].lower())):
-            if kind != "general":
+            if kind == "question":
+                title = next((c["now"] for c in mine if c["entry"] == entry and c["now"]), "").split(" | ")[0]
+                lines += [f"### {title or entry}", ""]
+            elif kind != "general":
                 lines += [f"### {entry}", ""]
             for c in sorted((c for c in mine if c["entry"] == entry), key=lambda c: c["timestamp"]):
                 lines.append(f"- **{c['reviewer'] or '(no name)'}**, {c['timestamp'][:10]} "
@@ -310,10 +382,12 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
 
 
 def read_and_summarize(paths, out_dir: Path = OUT_DIR, schema_path: Path = SCHEMA_PATH,
-                       mapping_path: Path = MAPPING_PATH, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
+                       mapping_path: Path = MAPPING_PATH, domains=ALLOWED_SENDER_DOMAINS,
+                       questions_path: Path = QUESTIONS_PATH) -> tuple:
     """(the summary's path, its text)."""
-    read = read_all(paths, schema_path, mapping_path, domains)
-    text = summary(read, fingerprint(schema_path), fingerprint(mapping_path), domains)
+    read = read_all(paths, schema_path, mapping_path, domains, questions_path)
+    text = summary(read, fingerprint(schema_path), fingerprint(mapping_path), domains,
+                   fingerprint(questions_path) if Path(questions_path).exists() else "")
     out = Path(out_dir) / f"comments_{dt.datetime.now():%Y-%m-%d_%H%M%S}.md"
     write_text(out, text)
     return out, text
@@ -321,9 +395,9 @@ def read_and_summarize(paths, out_dir: Path = OUT_DIR, schema_path: Path = SCHEM
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="py helpers/review_page.py",
-                                     description="Write a read-only review page of the ground truth schema and the "
-                                                 "translation table, publish it at its link, or read the comments "
-                                                 "reviewers sent back.")
+                                     description="Write a read-only review page of the ground truth schema, the "
+                                                 "translation table and my questions for experts, publish it at its "
+                                                 "link, or read the comments reviewers sent back.")
     parser.add_argument("--publish", action="store_true",
                         help=f"put the page on the branch {PAGES_BRANCH} and push it, for the link {PAGES_URL}")
     parser.add_argument("--read", nargs="*", metavar="FOLDER_OR_FILE",
@@ -333,14 +407,17 @@ def main() -> None:
     if args.publish:
         try:
             done = publish()
-        except RuntimeError as e:
+        except (RuntimeError, ValueError) as e:
             sys.exit(f"Not published: {e}")
         print(f"Published {done['version']} (branch {PAGES_BRANCH}, commit {done['commit']})." if done["changed"] else
               f"The page at the link is already this version ({done['version']}): nothing new to publish.")
         print(f"The link: {PAGES_URL} (GitHub takes a minute or two to show a new version).")
         return
     if args.read is None:
-        out = generate()
+        try:
+            out = generate()
+        except ValueError as e:
+            sys.exit(f"Not made: {e}")
         print(f"Wrote {out.relative_to(ROOT).as_posix()}: open it to check it, then publish it "
               f"(py helpers/review_page.py --publish) and send the link, or send this one file.")
         return

@@ -4,8 +4,11 @@ common/common_helpers/review_comments.py -- the comments subject-matter experts 
 Reviewer comments view, so the two never disagree.
 
 The entries a comment can be on, each with the one line the review page shows for it (schema_entries,
-mapping_entries, entry_texts): the entity classes and predicates of annotations/ground_truth_schema.txt, and the
-rows of the translation table, annotations/component_class_mapping.csv.
+mapping_entries, entry_texts): the entity classes and predicates of annotations/ground_truth_schema.txt, the
+rows of the translation table, annotations/component_class_mapping.csv, and the questions of
+annotations/questions_for_experts.md (common/common_helpers/expert_questions.py; a question's entry is its id, Q1,
+and its line its short title and the fingerprint of its words, so a comment on a question that changed since is
+marked changed).
 
 The files a reviewer's comments arrive in, all in annotations/reviews/ (kept on this computer only: .gitignore
 keeps everything there but its README out of Git, since reviewers' names and words are theirs, and the
@@ -39,6 +42,7 @@ import re
 from pathlib import Path
 
 from common.component_class_mapping import MAPPING_PATH, NONE, gtt_definition, gtt_definitions, is_stale_gtt, read_mapping
+from common.expert_questions import QUESTIONS_PATH, read_questions
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR
 
@@ -47,7 +51,7 @@ REVIEWS_DIR = ANNOTATIONS_DIR / "reviews"
 #: The columns of a reviewer's comment file, in order.
 COMMENT_COLUMNS = ["reviewer", "page_version", "git_commit", "kind", "entry", "entry_text_shown", "comment", "timestamp"]
 #: The kinds of comment, in the order the summary lists them.
-KINDS = ["general", "entity class", "predicate", "translation row"]
+KINDS = ["general", "question", "entity class", "predicate", "translation row"]
 GENERAL = "(general)"
 #: The email domains an .eml file's From address may have (or be a subdomain of: ndc.nasa.gov) to be read.
 ALLOWED_SENDER_DOMAINS = ("nasa.gov",)
@@ -157,11 +161,14 @@ def mapping_entries(path: Path = MAPPING_PATH, schema_path: Path = SCHEMA_PATH) 
     return rows
 
 
-def entry_texts(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH) -> dict:
-    """{(kind, entry): shown} for every entry the page would show now: what a comment is compared with."""
+def entry_texts(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH,
+                questions_path: Path = QUESTIONS_PATH) -> dict:
+    """{(kind, entry): shown} for every entry the page would show now: what a comment is compared with. Every
+    question counts, whatever its status. ValueError if the questions file isn't in its format."""
     s = schema_entries(schema_path)
     out = {(e["kind"], e["entry"]): e["shown"] for e in s["entity_classes"] + s["predicates"]}
     out.update({("translation row", r["entry"]): r["shown"] for r in mapping_entries(mapping_path, schema_path)})
+    out.update({("question", q["id"]): q["shown"] for q in read_questions(questions_path)})
     return out
 
 
@@ -419,12 +426,18 @@ def read_comments(files, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
 
 
 def read_all(paths=(REVIEWS_DIR,), schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH,
-             domains=ALLOWED_SENDER_DOMAINS) -> dict:
+             domains=ALLOWED_SENDER_DOMAINS, questions_path: Path = QUESTIONS_PATH) -> dict:
     """Everything a reader of the comments needs: {"files": [names], "problems": [...], "comments": [each with
-    state (comment_state) and now (the entry as the files have it now, "" if gone)]}, sorted by kind, entry, time."""
+    state (comment_state) and now (the entry as the files have it now, "" if gone)]}, sorted by kind, entry, time.
+    A questions file not in its format is a problem (named), and the comments on questions then read as gone."""
     files = comment_files([p for p in paths if Path(p).exists()])
     comments, problems = read_comments(files, domains)
-    now = entry_texts(schema_path, mapping_path)
+    try:
+        now = entry_texts(schema_path, mapping_path, questions_path)
+    except ValueError as e:
+        problems.append(f"The questions can't be read, so each comment on a question is marked as no longer in the "
+                        f"files: {e}")
+        now = entry_texts(schema_path, mapping_path, questions_path=Path("(none)"))
     for c in comments:
         c["state"] = comment_state(c, now)
         c["now"] = now.get((c["kind"], c["entry"]), "")

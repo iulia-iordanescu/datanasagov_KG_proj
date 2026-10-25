@@ -235,6 +235,24 @@ TITLE_AFTER = re.compile(r"\s*,?\s*(?:in\s+\*|[A-Z][A-Za-z]*[A-Z]\w*\b|\(?\[pape
 GLOSS_AFTER = re.compile(r"(?:'s|'|’s|’)?[\"”]?\s*\[[^\]\n]+\](?!\()")
 
 
+#: The parts of a question (annotations/questions_for_experts.md) that quote other files word for word: a record's
+#: text, definitions, rows of the translation table, rules, a pipeline method's words, and the Affects list.
+QUOTE_SECTIONS = re.compile(r"^### (Record at pool position \d+|Ground truth schema|Translation table|Annotation guidelines"
+                            r"|Pipeline method|Affects)\s*$")
+
+
+def quotes_blanked(text: str) -> str:
+    """The questions file with its quoting parts (QUOTE_SECTIONS) blanked out, line numbers kept."""
+    out, quoting = [], False
+    for line in text.split("\n"):
+        if line.startswith("#"):
+            quoting = bool(QUOTE_SECTIONS.match(line))
+            out.append(line)
+        else:
+            out.append(re.sub(r"[^\n]", " ", line) if quoting else line)
+    return "\n".join(out)
+
+
 def field_word_texts(rel: str, text: str) -> list:
     """[(first line, text)]: the parts of a file a person reads. A doc or prompt: all of it, with code and link
     targets blanked out in a doc (line numbers kept). Python: each comment (a run of comment lines joined) and each
@@ -242,6 +260,8 @@ def field_word_texts(rel: str, text: str) -> list:
     import io
     import tokenize
     blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))           # noqa: E731
+    if rel == "annotations/questions_for_experts.md":                  # its quotes are others' words, checked
+        text = quotes_blanked(text)                                    # against their sources by the review page
     if rel.endswith(".md"):
         text = re.sub(r"```.*?```", blank, text, flags=re.S)
         text = re.sub(r"`[^`\n]*`", blank, text)

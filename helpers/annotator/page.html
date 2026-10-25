@@ -838,6 +838,7 @@ function show(i) {
                     ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
+              expertQuestionsOn(rec.id),
               el("dt", { id: "gtdt", class: "grp", title: "Shown once All facts extracted is ticked; its describes triple not counted" },
                  "Ground truth triples"), el("dd", { id: "gtdd", class: "grp" }))),
           el("span", { id: "progress" }))),
@@ -2169,7 +2170,8 @@ async function openReviews() {
   status(`Reviewer comments, read from ${reviews.folder} (read-only)`);
   drawReviews();
 }
-const REVIEW_KINDS = [["general", "General comments"], ["entity class", "Entity classes (ground truth schema)"],
+const REVIEW_KINDS = [["general", "General comments"], ["question", "Questions for experts (annotations/questions_for_experts.md)"],
+                      ["entity class", "Entity classes (ground truth schema)"],
                       ["predicate", "Predicates (ground truth schema)"], ["translation row", "Rows of the translation table"]];
 function drawReviews() {
   const all = reviews.comments;
@@ -2213,7 +2215,8 @@ function drawReviews() {
       entries.map((entry) => {
         const list = mine.filter((c) => c.entry === entry), now = list[0].now;
         return el("div", { class: "mapbox reviewgroup" },
-          kind === "general" ? null : plainText("h4", {}, entry),
+          kind === "general" ? null : plainText("h4", {}, kind === "question" ? questionHead(entry) : entry),
+          kind === "question" ? questionAffects(entry) : null,
           kind === "general" ? null : now ? plainText("div", { class: "mapdef", title: "The entry as the files have it now" }, `Now: ${now}`)
             : el("div", { class: "mapdef empty" }, "No longer in the files."),
           list.map(reviewerComment));
@@ -2224,6 +2227,39 @@ function drawReviews() {
 
 function currentView() {
   return reviews ? "reviews" : vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
+}
+
+// The questions for subject-matter experts (annotations/questions_for_experts.md, read by the server), each with
+// what its answer may change: on a record, the open questions whose answer may change it, with their classed triples.
+let EXPERT_Q = { questions: [], problem: "" };
+api("/api/expert_questions").then((q) => { EXPERT_Q = q; }).catch(() => {});
+function expertQuestionsOn(id) {
+  const mine = EXPERT_Q.questions.filter((q) => q.status === "open" && q.affects.records.some((r) => r.id === id));
+  if (!mine.length) return null;
+  return [el("dt", { class: "grp" }, "Questions for experts"), el("dd", { class: "grp" }, mine.map((q, i) => {
+    const pos = q.affects.records.find((r) => r.id === id).position;
+    const triples = q.affects.triples.filter((t) => t.position === pos)
+      .map((t) => `"${t.subject}" (${t.subject_class}) ${t.predicate} "${t.object}" (${t.object_class})`);
+    return [i ? ", " : "", el("span", { class: `pill ${q.priority === "high" ? "flag" : "todo"}`,
+      title: `${q.id}: ${q.title} (${q.priority} priority, annotations/questions_for_experts.md). ` +
+             (triples.length ? `Its answer may change this record's classed triples: ${triples.join("; ")}` : "Its answer may change this record.") },
+      q.id)];
+  }))];
+}
+
+// A question's id with its short title; and, under it, what its answer may change (its Affects), in one line.
+function questionHead(id) {
+  const q = EXPERT_Q.questions.find((x) => x.id === id);
+  return q ? `${id}: ${q.title} (${q.priority} priority, ${q.status})` : id;
+}
+function questionAffects(id) {
+  const q = EXPERT_Q.questions.find((x) => x.id === id);
+  if (!q) return null;
+  const a = q.affects;
+  return el("div", { class: "meta", title: "The question's Affects, in annotations/questions_for_experts.md" },
+    `Its answer may change: ${a.records.length} record(s) (pool positions ${a.records.map((r) => r.position).join(", ") || "none"}), ` +
+    `${a.triples.length} classed triple(s), ${a.rows.length} row(s) of the translation table, ${a.entries.length} ` +
+    `entr${a.entries.length === 1 ? "y" : "ies"} of the ground truth schema, ${a.rules.length} rule(s), ${a.methods.length} pipeline method(s).`);
 }
 
 // Each term's definition (docs/terminology.md, read by the server), for the tooltip of a link to a term.

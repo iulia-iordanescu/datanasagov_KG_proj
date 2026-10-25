@@ -45,10 +45,13 @@ entity class,Gadget,(none),no,no,A small device.,
 """
 
 
-def files(folder: Path, schema: str = SCHEMA, mapping: str = MAPPING) -> dict:
+def files(folder: Path, schema: str = SCHEMA, mapping: str = MAPPING, questions: str = "# Questions\n") -> dict:
+    """Stand-ins for the files the page shows; the questions file with no question unless one is given."""
     (folder / "ground_truth_schema.txt").write_text(schema, encoding="utf-8")
     (folder / "component_class_mapping.csv").write_text(mapping, encoding="utf-8")
-    return {"schema_path": folder / "ground_truth_schema.txt", "mapping_path": folder / "component_class_mapping.csv"}
+    (folder / "questions_for_experts.md").write_text(questions, encoding="utf-8")
+    return {"schema_path": folder / "ground_truth_schema.txt", "mapping_path": folder / "component_class_mapping.csv",
+            "questions_path": folder / "questions_for_experts.md"}
 
 
 def page_json(page: str) -> dict:
@@ -98,7 +101,8 @@ class Page(unittest.TestCase):
     def test_version(self):
         v = self.data["version"]
         self.assertEqual([f["sha256"] for f in v["files"]],
-                         [R.fingerprint(self.tmp / "ground_truth_schema.txt"), R.fingerprint(self.tmp / "component_class_mapping.csv")])
+                         [R.fingerprint(self.tmp / "ground_truth_schema.txt"), R.fingerprint(self.tmp / "component_class_mapping.csv"),
+                          R.fingerprint(self.tmp / "questions_for_experts.md")])
         self.assertEqual(v["id"], self.path.stem)
         self.assertTrue(v["commit"] and v["generated"])
         self.assertIn("A read-only copy: it can't change anything", self.page)
@@ -496,6 +500,302 @@ class Publish(unittest.TestCase):
             with self.assertRaises(RuntimeError) as stop:
                 R.publish(root=Path(t), push=False)
         self.assertIn("docs/terminology.md, helpers/review_page.py, new file.txt. Commit them", str(stop.exception))
+
+
+# ------------------------------ questions for experts --------------------------
+
+TUNING, HELD_OUT = "aaaaaaaa-0000-0000-0000-000000000001", "bbbbbbbb-0000-0000-0000-000000000002"
+Q_SCHEMA = SCHEMA.replace("PREDICATES", """Dataset           a set of observations
+SpatialRepresentation  how data are laid out over the ground
+
+PREDICATES""") + """HAS_SPATIAL_REPRESENTATION  lays out its data as
+                            Dataset -> SpatialRepresentation
+"""
+Q_MAPPING = MAPPING + "entity class,Layout,SpatialRepresentation,no,yes,How data are arranged.,how data are laid out over the ground\n"
+GUIDELINES = """# Annotation guidelines
+
+## Writing a classed triple
+
+1. **[Subject instance](x.md) and object instance: the record's own words, as written.** Don't paraphrase them.
+"""
+QUESTION = """# Questions
+
+Not read: the file's own introduction.
+
+## Q1: Should SpatialRepresentation be a closed list?
+
+- status: open
+- priority: high
+- question kind: schema entry
+- topic: the ground truth schema's SpatialRepresentation
+
+### The question
+
+Is a [record](../docs/terminology.md#1-records-and-their-text)'s layout a closed list? A table:
+
+| What collects the data | Spatial representations |
+|---|---|
+| a satellite | swath; gridded |
+
+### Affects
+
+- record at pool position 0: {tuning}
+- classed triple of the record at pool position 0: "Snow V1" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
+- ground truth schema entry: entity class SpatialRepresentation
+- translation table row: entity class Layout
+- rule: Writing a classed triple, rule 1
+
+### Record at pool position 0
+
+- record id: {tuning}
+- pool position: 0
+- title: Snow V1
+- notes: Each file holds 5 minutes of
+  swath data.
+
+  A second paragraph.
+- source text: 5 minutes of swath data
+- classed triple: "Snow V1" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
+
+### Ground truth schema
+
+- entity class SpatialRepresentation: how data are laid out over the ground
+
+### Translation table
+
+- entity class Layout -> SpatialRepresentation: How data are arranged.
+
+### Annotation guidelines
+
+- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
+
+### Options
+
+#### Option 1: Keep each record's own words
+
+Nothing changes.
+
+Consequences:
+- The words differ between records.
+
+#### Option 2: A closed list
+
+One value per layout.
+
+Consequences:
+- A new exception to rule 1.
+
+### My current choice
+
+Undecided.
+""".replace("{tuning}", TUNING)
+
+
+def question_world(folder: Path, questions: str = QUESTION) -> dict:
+    """The stand-in files a question is checked against: the schema, the translation table, the questions, 020's
+    records, 030's splits (one tuning record, one held-out), the ground truth, the guidelines."""
+    paths = files(folder, Q_SCHEMA, Q_MAPPING, questions)
+    (folder / "records.jsonl").write_text("\n".join(json.dumps(r) for r in [
+        {"id": TUNING, "title": "Snow V1", "notes": "Each file holds 5 minutes of swath data.\n\nA second paragraph."},
+        {"id": HELD_OUT, "title": "Ice V2", "notes": "Gridded ice."}]) + "\n", encoding="utf-8")
+    (folder / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": [
+        {"id": TUNING, "position": 0, "part": "tuning"}, {"id": HELD_OUT, "position": 1, "part": "held-out"}]}}),
+        encoding="utf-8")
+    (folder / "gt").mkdir(exist_ok=True)
+    (folder / "gt" / "batch_000.csv").write_text(
+        "id,subject,subject_class,predicate,object,object_class,source_text,all_facts_extracted\n"
+        f"{TUNING},Snow V1,Dataset,HAS_SPATIAL_REPRESENTATION,swath,SpatialRepresentation,5 minutes of swath data,1\n",
+        encoding="utf-8")
+    (folder / "guidelines.md").write_text(GUIDELINES, encoding="utf-8")
+    return {**paths, "records_path": folder / "records.jsonl", "splits_path": folder / "splits.json",
+            "ground_truth_dir": folder / "gt", "guidelines_path": folder / "guidelines.md"}
+
+
+def questions_of(paths: dict) -> list:
+    keep = ("questions_path", "records_path", "splits_path", "ground_truth_dir", "schema_path", "guidelines_path",
+            "mapping_path")
+    return R.questions_data(**{k: paths[k] for k in keep}, terms=R.glossary())
+
+
+class Questions(unittest.TestCase):
+    """annotations/questions_for_experts.md: read in its strict format, every quote checked against its source,
+    held-out records refused, Affects complete; on the page, its own view; comments on a question come back like
+    any other, marked when the question changed since."""
+
+    def test_read(self):
+        with tempfile.TemporaryDirectory() as t:
+            q, = questions_of(question_world(Path(t)))
+        self.assertEqual((q["id"], q["status"], q["priority"], q["question_kind"]), ("Q1", "open", "high", "schema entry"))
+        self.assertEqual(q["records"][0]["notes"], "Each file holds 5 minutes of swath data.\n\nA second paragraph.")
+        self.assertEqual(q["question"][1]["table"], [["What collects the data", "Spatial representations"],
+                                                     ["a satellite", "swath; gridded"]])
+        self.assertIn('<a class="term" data-term="record"', q["question"][0]["p"])
+        self.assertEqual([len(v) for v in q["affects"].values()], [1, 1, 1, 1, 1, 0])
+        self.assertEqual(q["affects"]["records"][0]["title"], "Snow V1")
+        self.assertEqual([o["consequences"] for o in q["options"]], [["The words differ between records."],
+                                                                     ["A new exception to rule 1."]])
+        self.assertRegex(q["shown"], r"^Q1: Should SpatialRepresentation be a closed list\? \| fingerprint [0-9a-f]{12}$")
+
+    def test_not_in_the_format_is_refused(self):
+        """Each breach is refused, naming the file's line and what is expected."""
+        cases = {"- status: open\n": ("- status: maybe\n", "line 7 (Q1): its status is \"maybe\""),
+                 "- priority: high\n": ("- priority: urgent\n", "its priority is \"urgent\""),
+                 "- question kind: schema entry\n": ("", "no \"- question kind: …\" line"),
+                 "### Affects\n": ("### Effects\n", "isn't one of a question's parts"),
+                 "### My current choice\n\nUndecided.\n": ("", "no \"### My current choice\" part"),
+                 "|---|---|\n": ("|---|\n", "a table is a header line"),
+                 "Consequences:\n- A new": ("- A new", "option 2 has no line \"Consequences:\""),
+                 "### Ground truth schema\n": (QUESTION.split("### Record at pool position 0\n")[1].split("### Ground")[0]
+                                              .join(["### Record at pool position 0\n", "### Ground truth schema\n"]),
+                                              "is there twice: a question shows one record")}
+        for old, (new, words) in cases.items():
+            with self.subTest(old=old), tempfile.TemporaryDirectory() as t:
+                self.assertIn(old, QUESTION)
+                with self.assertRaises(ValueError) as stop:
+                    questions_of(question_world(Path(t), QUESTION.replace(old, new, 1)))
+                self.assertIn(words, str(stop.exception))
+                self.assertIn("questions_for_experts.md, line", str(stop.exception))
+
+    def test_a_held_out_record_is_refused(self):
+        with tempfile.TemporaryDirectory() as t:
+            text = QUESTION.replace("- record at pool position 0: " + TUNING,
+                                    "- record at pool position 0: " + TUNING + "\n- record at pool position 1: " + HELD_OUT)
+            with self.assertRaises(ValueError) as stop:
+                questions_of(question_world(Path(t), text))
+        self.assertIn(f"record {HELD_OUT} (pool position 1) is a held-out record", str(stop.exception))
+
+    def test_quotes_and_affects_are_checked(self):
+        """A quote that isn't its source's words now, and an Affects that leaves out what an entry it names brings."""
+        cases = [("- title: Snow V1", "- title: Snow V2", "the title quoted isn't the record's title"),
+                 ("- source text: 5 minutes of swath data", "- source text: 6 minutes", "isn't in record"),
+                 ("- entity class SpatialRepresentation: how data are laid out over the ground",
+                  "- entity class SpatialRepresentation: how data lie", "is now \"how data are laid out over the ground\""),
+                 ("the record's own words, as written.\n\n### Options", "the record's words.\n\n### Options",
+                  "aren't the words of rule 1"),
+                 ("- translation table row: entity class Layout\n", "",
+                  "row entity class Layout (current or past schema) translates to SpatialRepresentation"),
+                 ("- classed triple of the record at pool position 0: \"Snow V1\" (Dataset) HAS_SPATIAL_REPRESENTATION "
+                  "\"swath\" (SpatialRepresentation)\n", "", "which \"Affects\" doesn't name: add it"),
+                 ("## Q1: Should", "## Q1: Should [rows](../docs/terminology.md#8) and", None)]
+        for old, new, words in cases:
+            with self.subTest(old=old[:40]), tempfile.TemporaryDirectory() as t:
+                self.assertIn(old, QUESTION)
+                text = QUESTION.replace(old, new, 1)
+                if words is None:                                              # a link in a heading: plain words
+                    self.assertEqual(len(questions_of(question_world(Path(t), text))), 1)
+                    continue
+                with self.assertRaises(ValueError) as stop:
+                    questions_of(question_world(Path(t), text))
+                self.assertIn(words, str(stop.exception))
+
+    def test_a_link_to_a_term_not_shown(self):
+        with tempfile.TemporaryDirectory() as t:
+            text = QUESTION.replace("Is a [record]", "Is a [stand-in catalog](../docs/terminology.md#8-the-pipeline) [record]")
+            with self.assertRaises(ValueError) as stop:
+                questions_of(question_world(Path(t), text))
+        self.assertIn("isn't a term of the page's Terms view", str(stop.exception))
+
+    def test_the_real_file(self):
+        """The real questions file, read and checked against the real sources (when 020 and 030 have run here)."""
+        if not (R.RECORDS_PATH.exists() and R.SPLITS_PATH.exists()):
+            self.skipTest("020's records.jsonl or 030's splits.json isn't on this computer")
+        qs = R.questions_data(terms=R.glossary())
+        self.assertTrue(qs)
+        self.assertEqual([q["id"] for q in qs], [f"Q{i}" for i in range(1, len(qs) + 1)])
+        self.assertTrue(all(len(q["records"]) <= 1 for q in qs))
+
+    def test_comments_on_a_question(self):
+        """A comment on a question, read back: unchanged, then changed once the question's words change (its status
+        doesn't count); gone when the question is."""
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            paths = files(t, Q_SCHEMA, Q_MAPPING, QUESTION)
+            shown = R.entry_texts(**paths)[("question", "Q1")]
+            reviews = t / "reviews"
+            reviews.mkdir()
+            Comments.write(None, reviews, "a.csv", [Comments.row(None, "question", "Q1", shown, "A closed list.")])
+            read = lambda: {c["entry"]: c["state"] for c in R.read_all([reviews], **paths)["comments"]}  # noqa: E731
+            self.assertEqual(read(), {"Q1": "unchanged"})
+            paths["questions_path"].write_text(QUESTION.replace("- status: open", "- status: withdrawn")
+                                               .replace("- priority: high", "- priority: low"), encoding="utf-8")
+            self.assertEqual(read(), {"Q1": "unchanged"})
+            paths["questions_path"].write_text(QUESTION.replace("Undecided.", "A closed list."), encoding="utf-8")
+            self.assertEqual(read(), {"Q1": "changed"})
+            _, text = R.read_and_summarize([reviews], out_dir=t / "out", **paths)
+            self.assertIn("## Questions (annotations/questions_for_experts.md)", text)
+            self.assertIn("### Q1: Should SpatialRepresentation be a closed list?", text)
+            paths["questions_path"].write_text("# Questions\n", encoding="utf-8")
+            self.assertEqual(read(), {"Q1": "gone"})
+            paths["questions_path"].write_text("# Questions\n\n## Q1 no colon\n", encoding="utf-8")
+            got = R.read_all([reviews], **paths)
+            self.assertEqual([c["state"] for c in got["comments"]], ["gone"])
+            self.assertIn("The questions can't be read", got["problems"][-1])
+
+
+@unittest.skipUnless(CHROME, "no Chrome or Edge on this computer to run the page's script")
+class QuestionsView(unittest.TestCase):
+    """The Questions view, in headless Chrome: its tab; a question whole, its terms linked once each to the Terms
+    view; the filters; one at a time; a comment on it sent by email and read back with --read."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        second = QUESTION.split("## Q1: ")[1].replace("Should SpatialRepresentation be a closed list?", "A second one",
+                                                      1).replace("- priority: high", "- priority: low")
+        third = second.replace("A second one", "An answered one", 1).replace("- status: open", "- status: answered") \
+            .rstrip("\n") + "\n\n### The answer\n\nYes.\n"
+        cls.paths = question_world(cls.tmp, QUESTION + "\n## Q2: " + second + "\n## Q3: " + third)
+        cls.page = R.build(R.page_data(**cls.paths))
+        script = ("const out = {}; try { show('questions'); const v = () => document.getElementById('view');"
+                  "out.text = v().textContent; out.cards = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
+                  "out.groups = [...v().querySelectorAll('.groupname')].map((e) => e.textContent);"
+                  "const card = v().querySelector('#q-Q1');"
+                  "out.terms = [...card.querySelectorAll('a.term')].map((a) => a.dataset.term);"
+                  "out.marked = [...card.querySelectorAll('mark')].map((m) => m.textContent);"
+                  "out.affects = card.querySelector('details.affects summary').textContent;"
+                  "out.tab = document.getElementById('tab-questions').getAttribute('aria-current');"
+                  "state.questions.closed = true; redraw(); out.withClosed = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
+                  "state.questions.priority = 'low'; redraw(); out.low = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
+                  "state.questions.priority = 'all'; oneAtATime = true; redraw(); out.one = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
+                  "listStep.go(1); out.next = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent); oneAtATime = false; redraw();"
+                  "document.querySelector('#q-Q1 a.term').click(); out.afterClick = view; out.here = document.querySelector('.terms tr.here').id;"
+                  "setComment(BY_ID['question|Q1'], 'A closed list, please.'); reviewer = 'Jane Smith';"
+                  "out.bodies = emailParts('2026-10-25T12:00:00-04:00').parts.map((p) => decodeURIComponent(p.url.split('body=')[1]));"
+                  "out.csv = commentsCsv(); } catch (e) { out.error = String(e) + ' ' + e.stack; }"
+                  "document.body.setAttribute('data-out', JSON.stringify(out));")
+        cls.out = json.loads(run_page(cls.page, script, cls.tmp))
+        assert "error" not in cls.out, cls.out["error"]
+
+    def test_the_view(self):
+        self.assertEqual(self.out["tab"], "page")
+        self.assertEqual(self.out["cards"], ["Q1", "Q2"])                     # the answered one hidden at first
+        self.assertEqual(self.out["groups"], ["High priority (1)", "Low priority (1)"])
+        self.assertEqual(self.out["withClosed"], ["Q1", "Q2", "Q3"])
+        self.assertEqual(self.out["low"], ["Q2", "Q3"])
+        self.assertEqual((self.out["one"], self.out["next"]), (["Q1"], ["Q2"]))
+        for words in ("The question", "An example: the record at pool position 0", "Each file holds 5 minutes of",
+                      "My current choice", "Option 2: A closed list", "Consequences:", "Show answered and withdrawn"):
+            self.assertIn(words, self.out["text"])
+        self.assertIn("1 record, 1 classed triple, 1 row of the translation table", self.out["affects"])
+
+    def test_terms_linked_once(self):
+        terms = self.out["terms"]
+        self.assertEqual(len(terms), len(set(terms)))
+        for t in ("record", "ground truth schema", "ground truth candidates pool", "tuning part", "source text"):
+            self.assertIn(t, terms)
+        self.assertEqual((self.out["afterClick"], self.out["here"]), ("terms", "term-" + terms[0].replace(" ", "-")))
+        self.assertIn("5 minutes of swath data", self.out["marked"])
+
+    def test_comment_round_trip(self):
+        """Emailed and downloaded, and read back with --read, as the same comment on Q1, unchanged."""
+        folder = Path(tempfile.mkdtemp(dir=self.tmp))
+        for i, b in enumerate(self.out["bodies"]):
+            (folder / f"p{i}.txt").write_text(b, encoding="utf-8")
+        (folder / "comments_Jane_Smith.csv").write_text(self.out["csv"], encoding="utf-8")
+        for f in (folder / "p0.txt", folder / "comments_Jane_Smith.csv"):
+            read = R.read_all([f], **{k: self.paths[k] for k in ("schema_path", "mapping_path", "questions_path")})
+            self.assertEqual([(c["kind"], c["entry"], c["comment"], c["state"]) for c in read["comments"]],
+                             [("question", "Q1", "A closed list, please.", "unchanged")], f.name)
 
 
 if __name__ == "__main__":

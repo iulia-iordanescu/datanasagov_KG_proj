@@ -65,6 +65,38 @@
   .terms td { line-height: 1.5; }
   .notes p { margin: 0 0 4px; }
   .gone li { margin: 6px 0; }
+  /* the Questions view: one calm card per question, its parts in plain sections, quotes set apart */
+  .question .qhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .question .qid { font-weight: 700; color: var(--navy); }
+  .question .qtitle { font-size: 17px; font-weight: 600; flex: 0 1 auto; }
+  .question .pill { margin-left: 0; }
+  .question h4 { color: var(--navy); font-size: 14.5px; margin: 16px 0 6px; }
+  .question p, .question li { max-width: 80ch; line-height: 1.6; }
+  .question ul { padding-left: 22px; margin: 6px 0; }
+  .question .prose table { margin: 6px 0 10px; max-width: 80ch; }
+  .question .rec { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 8px 0; background: var(--paper); }
+  .question .rec .rechead { font-weight: 600; }
+  .question .field { margin: 6px 0; }
+  .question .field > .label { display: block; font-size: 12.5px; font-weight: 600; color: var(--label); }
+  .question .quote { margin: 2px 0 0; padding: 4px 10px; border-left: 3px solid var(--line); background: var(--panel);
+                     line-height: 1.6; overflow-wrap: anywhere; }
+  .question .quote p { margin: 0 0 6px; }
+  .question .quote p:last-child { margin-bottom: 0; }
+  .question mark { background: var(--soft); color: inherit; padding: 0 1px; border-radius: 2px; }
+  .question .triple { font-size: 14px; margin: 3px 0; overflow-wrap: anywhere; }
+  .question .triple .inst { font-weight: 600; }
+  .question .triple .cls, .question .triple .pred { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
+  .question .option { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; margin: 8px 0; }
+  .question .option .otitle { font-weight: 600; margin: 4px 0; }
+  .question .choice { border-left: 4px solid var(--sky); padding: 2px 12px; background: var(--sky-bg); border-radius: 0 6px 6px 0; }
+  a.term, a.term:visited { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+  a.term:hover { color: var(--navy); text-decoration-style: solid; }
+  .groupname { color: var(--navy); font-size: 16px; margin: 14px 0 4px; }
+  .question details.affects { margin: 10px 0; padding: 6px 12px; border: 1px dashed var(--line); border-radius: 8px; }
+  .question details.affects summary { cursor: pointer; font-weight: 600; color: var(--navy); }
+  .question details.affects ul { margin: 4px 0; }
+  .question details.affects li { margin: 4px 0; }
+  .terms tr.here td { background: var(--sky-bg) !important; }
 </style>
 </head>
 <body>
@@ -73,6 +105,7 @@
     <h1><button id="homebutton" title="How to read this page">Schema review</button></h1>
     <nav class="tabs" aria-label="Views">
       <button class="tab" id="tab-home" data-label="How to read this">How to read this</button>
+      <button class="tab" id="tab-questions" data-label="Questions">Questions</button>
       <button class="tab" id="tab-schema" data-label="Ground truth schema">Ground truth schema</button>
       <button class="tab" id="tab-mapping" data-label="Translation table">Translation table</button>
       <button class="tab" id="tab-terms" data-label="Terms">Terms</button>
@@ -129,6 +162,7 @@ const ENTRIES = [];                          // every entry of this copy: {id, k
 for (const e of D.schema.entity_classes) ENTRIES.push({ ...e, id: `${e.kind}|${e.entry}` });
 for (const e of D.schema.predicates) ENTRIES.push({ ...e, id: `${e.kind}|${e.entry}` });
 for (const r of D.mapping.rows) ENTRIES.push({ ...r, kind: "translation row", rowKind: r.kind, id: `translation row|${r.entry}` });
+for (const q of D.questions) ENTRIES.push({ ...q, kind: "question", entry: q.id, id: `question|${q.id}` });
 const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
 const GENERAL = { id: "general|(general)", kind: "general", entry: "(general)", shown: "" };
 
@@ -186,7 +220,7 @@ function commentBox(e, label) {
 }
 const csvCell = (v) => /[",\r\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
 const COLUMNS = ["reviewer", "page_version", "git_commit", "kind", "entry", "entry_text_shown", "comment", "timestamp"];
-const KIND_ORDER = ["general", "entity class", "predicate", "translation row"];
+const KIND_ORDER = ["general", "question", "entity class", "predicate", "translation row"];
 function commentsCsv() {
   const rows = written().sort((a, b) => (KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind)) ||
                                         a.entry.localeCompare(b.entry));
@@ -429,7 +463,8 @@ document.addEventListener("keydown", (e) => {
 
 // ---------------------------------------------------------------- filters shared by the two lists
 const state = { schema: { kind: "entity class", search: "", mine: false, changed: false, pinned: false },
-                mapping: { kind: "entity class", search: "", mine: false, changed: false, counterpart: "any" } };
+                mapping: { kind: "entity class", search: "", mine: false, changed: false, counterpart: "any" },
+                questions: { search: "", priority: "all", closed: false, mine: false, changed: false } };
 const has = (e) => !!(comments[e.id] && comments[e.id].text.trim());
 const changedPill = (e) => CHANGED.has(e.id)
   ? el("span", { class: "pill flag", title: `When you last looked (copy ${previous.version}), it read: ${arrows(previous.entries[e.id])}` },
@@ -564,12 +599,208 @@ function drawMapping() {
                    : el("p", { class: "empty mapempty" }, "Nothing matches the search and filters above."))];
 }
 
+// ---------------------------------------------------------------- questions
+// annotations/questions_for_experts.md, as helpers/review_page.py read and checked it: each question whole, its quotes
+// as the file has them (the page was made only if every quote agreed with its source). A term's first use in a
+// question links to its row in the Terms view: where the question links it (the file links it to
+// docs/terminology.md), or, for any other term the Terms view shows, where its words first appear (not inside a
+// quote: a record's words, a definition, a rule). The terms that are also everyday words link only where marked.
+const TERM_OF = {};
+for (const t of D.glossary) for (const a of t.aliases) if (!(a in TERM_OF)) TERM_OF[a] = t.term;
+const termSlug = (t) => "term-" + t.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+function termFor(words) {
+  const w = String(words).toLowerCase().replace(/\s+/g, " ").trim();
+  for (const f of [w, (w.endsWith("sses") ? w.slice(0, -2) : w), w.replace(/ies$/, "y"), w.replace(/es$/, ""), w.replace(/s$/, "")])
+    if (f in TERM_OF) return TERM_OF[f];
+  return null;
+}
+const AUTO = Object.keys(TERM_OF).filter((a) => !D.linked_only_where_marked.includes(a) &&
+  !D.linked_only_where_marked.includes(TERM_OF[a])).sort((a, b) => b.length - a.length);
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const AUTO_RX = AUTO.length ? new RegExp(`(?<![\\w-])(${AUTO.map((a) => esc(a).replace(/ /g, "\\s+") +
+  (a.endsWith("ss") ? "(?:es)?" : /y$/.test(a) ? "" : "(?:e?s)?")).join("|")})(?![\\w-])`, "gi") : null;
+function termLink(words, term) {
+  return el("a", { class: "term", href: "#terms", "data-term": term, title: `${term}: see the Terms view` }, words);
+}
+function linkTerms(root) {
+  const used = new Set();
+  const skip = (n) => n.closest && n.closest(".quote, code, textarea, label, .triple, .pill, .nolink");
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  const texts = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.nodeType === 1 && n.matches("a.term")) {
+      const t = termFor(n.dataset.term || n.textContent);
+      if (!t || used.has(t)) { n.replaceWith(...n.childNodes); continue; }    // a second link to one term: plain
+      used.add(t); n.dataset.term = t; n.title = `${t}: see the Terms view`;
+    } else if (n.nodeType === 3 && !(n.parentElement && (skip(n.parentElement) || n.parentElement.closest("a")))) texts.push(n);
+  }
+  if (!AUTO_RX) return;
+  for (const node of texts) {
+    const text = node.nodeValue; let last = 0; const out = []; let m;
+    AUTO_RX.lastIndex = 0;
+    while ((m = AUTO_RX.exec(text))) {
+      const t = termFor(m[1].replace(/\s+/g, " "));
+      if (!t || used.has(t)) continue;
+      used.add(t);
+      out.push(text.slice(last, m.index), termLink(m[1], t));
+      last = m.index + m[1].length;
+    }
+    if (out.length) { out.push(text.slice(last)); node.replaceWith(...out.filter((x) => x !== "")); }
+  }
+}
+document.addEventListener("click", (ev) => {
+  const a = ev.target.closest && ev.target.closest("a.term");
+  if (!a) return;
+  ev.preventDefault();
+  show("terms");
+  const row = $(termSlug(a.dataset.term));
+  if (row) { row.classList.add("here"); row.scrollIntoView({ block: "center" }); }
+});
+function prose(blocks) {
+  return el("div", { class: "prose" }, blocks.map((b) => {
+    if (b.p !== undefined) { const p = el("p"); p.innerHTML = b.p; return p; }   // written by helpers/review_page.py, escaped
+    if (b.ul) return el("ul", {}, b.ul.map((h) => { const li = el("li"); li.innerHTML = h; return li; }));
+    const [head, ...rows] = b.table;
+    const cell = (tag, h) => { const c = el(tag); c.innerHTML = h; return c; };
+    return el("table", { class: "schematable" }, el("thead", {}, el("tr", {}, head.map((h) => cell("th", h)))),
+              el("tbody", {}, rows.map((r) => el("tr", {}, r.map((h) => cell("td", h))))));
+  }));
+}
+// A quote with each source text marked where it first occurs (its words, any spaces between them).
+function quoted(text, marks) {
+  const paras = String(text).split(/\n\n/);
+  return el("div", { class: "quote" }, paras.map((para) => {
+    const spans = [];
+    for (const m of marks || []) {
+      const rx = new RegExp(m.split(/\s+/).filter(Boolean).map(esc).join("\\s+"));
+      const f = rx.exec(para);
+      if (f && !spans.some(([a, b]) => a < f.index + f[0].length && f.index < b)) spans.push([f.index, f.index + f[0].length]);
+    }
+    spans.sort((a, b) => a[0] - b[0]);
+    const out = []; let at = 0;
+    for (const [a, b] of spans) { out.push(para.slice(at, a), el("mark", { title: "a source text this question is about" }, para.slice(a, b))); at = b; }
+    out.push(para.slice(at));
+    return el("p", {}, out.filter((x) => x !== ""));
+  }));
+}
+function field(label, ...content) { return el("div", { class: "field" }, el("span", { class: "label" }, label), content); }
+function tripleLine(t) {
+  return el("div", { class: "triple" }, el("span", { class: "inst" }, `“${t.subject}”`), " ", el("span", { class: "cls" }, `(${t.subject_class})`),
+    " ", el("span", { class: "pred" }, t.predicate), " ", el("span", { class: "inst" }, `“${t.object}”`), " ",
+    el("span", { class: "cls" }, `(${t.object_class})`));
+}
+const PRIORITY = { high: ["flag", "High priority"], medium: ["todo", "Medium priority"], low: ["todo", "Low priority"] };
+const STATUS = { open: ["todo", "Open"], answered: ["ok", "Answered"], withdrawn: ["todo", "Withdrawn"] };
+// What a question is about (its question kind, common/common_helpers/expert_questions.py QUESTION_KINDS), in words.
+const QUESTION_KIND = { "records and triples": "records and their classed triples",
+  "schema entry": "an entity class or predicate of the ground truth schema", "rule": "a rule of the annotation guidelines",
+  "translation table rows": "rows of the translation table", "pipeline method": "a method of the pipeline",
+  "general": "an idea, in general" };
+// Everything the answer may change (the question's Affects), compact and folded: the reader opens it if they wish.
+function affectsBox(q) {
+  const a = q.affects, n = (x, one, many) => `${x.length} ${x.length === 1 ? one : many}`;
+  const parts = [a.records.length ? n(a.records, "record", "records") : null,
+    a.triples.length ? n(a.triples, "classed triple", "classed triples") : null,
+    a.rows.length ? n(a.rows, "row of the translation table", "rows of the translation table") : null,
+    a.entries.length ? n(a.entries, "entry of the ground truth schema", "entries of the ground truth schema") : null,
+    a.rules.length ? n(a.rules, "rule", "rules") : null,
+    a.methods.length ? n(a.methods, "pipeline method", "pipeline methods") : null].filter(Boolean);
+  const byPos = {};
+  for (const t of a.triples) (byPos[t.position] = byPos[t.position] || []).push(t);
+  return el("details", { class: "affects" },
+    el("summary", {}, `What the answer may change: ${parts.join(", ")}`),
+    a.records.length ? field("Records (all tuning records)", el("ul", {}, a.records.map((r) => el("li", {},
+      `Pool position ${r.position}: “${r.title}”`, el("span", { class: "meta nolink" }, ` (id ${r.id})`),
+      byPos[r.position] ? el("div", {}, byPos[r.position].map((t) => [tripleLine(t),
+        t.draft ? el("span", { class: "meta" }, "my draft: this record isn't in the ground truth yet") : null])) : null)))) : null,
+    a.rows.length ? field("Rows of the translation table (current or past schema)", el("ul", {}, a.rows.map((r) => el("li", {}, `${r.kind} ${r.crt}`)))) : null,
+    a.entries.length ? field("Entries of the ground truth schema", el("ul", {}, a.entries.map((e) => el("li", {}, `${e.kind} ${e.entry}`)))) : null,
+    a.rules.length ? field("Rules of the annotation guidelines", el("ul", {}, a.rules.map((r) => el("li", {}, `${r.section}, rule ${r.rule}`)))) : null,
+    a.methods.length ? field("Pipeline methods", el("ul", {}, a.methods.map((m) => el("li", {}, el("code", {}, m.path), `: ${m.what}`)))) : null);
+}
+function questionBox(q) {
+  const [pk, pl] = PRIORITY[q.priority], [sk, sl] = STATUS[q.status];
+  const card = el("section", { class: "mapbox question" + (has(q) ? " commented" : ""), id: `q-${q.entry}` },
+    el("div", { class: "qhead" }, el("span", { class: "qid nolink" }, q.entry), el("span", { class: "qtitle" }, q.title),
+       el("span", { class: `pill ${pk}` }, pl), el("span", { class: `pill ${sk}` }, sl), changedPill(q)),
+    el("div", { class: "meta" }, `About: ${q.topic} (a question about ${QUESTION_KIND[q.question_kind]})`),
+    el("h4", {}, "The question"), prose(q.question),
+    q.context.length ? [el("h4", {}, "Context"), prose(q.context)] : null,
+    affectsBox(q),
+    q.records.map((r) => el("div", { class: "rec" },
+      el("div", { class: "rechead" }, `An example: the record at pool position ${r["pool position"]}, a tuning record`),
+      el("div", { class: "meta nolink" }, `Its id in the catalog: ${r["record id"]}`),
+      field("Title", quoted(r.title, r.source_texts.map((s) => s.text))),
+      field("Notes", quoted(r.notes, r.source_texts.map((s) => s.text))),
+      field(r.source_texts.length > 1 ? "Source texts (marked above)" : "Source text (marked above)",
+            r.source_texts.map((s) => quoted(s.text))),
+      r.in_ground_truth
+        ? (r.triples.length ? field(r.triples.length > 1 ? "Its classed triples in the ground truth (entity classes and predicates of the ground truth schema)"
+                                                          : "Its classed triple in the ground truth (entity classes and predicate of the ground truth schema)",
+                                    r.triples.map(tripleLine)) : null)
+        : field("Not in the ground truth yet", el("p", {}, r.not_yet.replace(/^not yet:?\s*/, "")),
+                r.triples.length ? [el("div", { class: "meta" }, "The classed triples I have written for it so far:"), r.triples.map(tripleLine)] : null))),
+    q.schema.length ? [el("h4", {}, "The ground truth schema's definitions"),
+      q.schema.map((e) => field(`${e.kind} ${e.entry} (ground truth schema)`, quoted(e.definition)))] : null,
+    q.rows.length ? [el("h4", {}, "Rows of the translation table"),
+      q.rows.map((r) => field(`${r.kind} ${r.crt} (current or past schema) → ${r.gtt === D.mapping.none ? `${D.mapping.none}: nothing in the ground truth schema` : `${r.gtt} (ground truth schema)`}` +
+                              (r.swap ? ", subject and object swapped" : "") + "; the row's definition of " + r.crt + ":", quoted(r.definition)))] : null,
+    q.rules.length ? [el("h4", {}, "The annotation guidelines' rules"),
+      q.rules.map((r) => field(`${r.section}, rule ${r.rule}`, quoted(r.words)))] : null,
+    q.methods.length ? [el("h4", {}, "The pipeline's methods"),
+      q.methods.map((m) => field(m.path, quoted(m.words)))] : null,
+    q.options.length ? [el("h4", {}, "The options I see"), q.options.map((o) => el("div", { class: "option" },
+      el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose(o.body),
+      el("div", { class: "label meta" }, "Consequences:"), prose([{ ul: o.consequences }])))] : null,
+    el("h4", {}, "My current choice"), el("div", { class: "choice" }, prose(q.choice)),
+    q.answer.length ? [el("h4", {}, "The answer"), prose(q.answer)] : null,
+    commentBox(q, `Your answer or comment on ${q.entry}`));
+  linkTerms(card);
+  return card;
+}
+const PRIORITIES = D.priorities;
+function drawQuestions() {
+  const st = state.questions;
+  const all = ENTRIES.filter((e) => e.kind === "question")
+    .sort((a, b) => (PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority)) || (a.number - b.number));
+  const live = all.filter((q) => st.closed || q.status === "open");
+  const shown = live.filter((q) => (st.priority === "all" || q.priority === st.priority) && (!st.mine || has(q))
+    && (!st.changed || CHANGED.has(q.id) || NEW.has(q.id)) && matches(st.search, q.search));
+  const count = (p) => live.filter((q) => q.priority === p).length;
+  const closedN = all.filter((q) => q.status !== "open").length;
+  const { at, bar } = itemsOneAtATime("questions", shown.map((q) => q.id), "Question");
+  const select = el("select", { "aria-label": "Questions by priority", onchange: (ev) => { st.priority = ev.target.value; redraw(); } },
+    [["all", `Every priority (${live.length})`], ...PRIORITIES.map((p) => [p, `${PRIORITY[p][1]} (${count(p)})`])]
+      .map(([v, t]) => el("option", { value: v, selected: st.priority === v }, t)));
+  const groups = at === null ? PRIORITIES.map((p) => [p, shown.filter((q) => q.priority === p)]).filter(([, l]) => l.length) : null;
+  const intro = el("section", { class: "card" }, el("h2", {}, "Questions"),
+    el("p", { class: "meta" }, "What I am not sure about and would like an expert's answer to, most urgent first. Each question is " +
+      "written out whole: one record as its example, quoted in full, with the passages concerned marked, and its classed triples; " +
+      "the definitions and rules it touches, quoted; what the answer may change (every record and classed triple, folded); " +
+      "the options I see, each with its consequences; and my current choice. " +
+      "Write your answer in the box under a question; it is sent with your other comments."),
+    el("p", { class: "meta" }, PRIORITIES.map((p, i) => `${i ? " · " : ""}${PRIORITY[p][1]}: ${count(p)}`).join("") +
+      (closedN && !st.closed ? ` · ${closedN} answered or withdrawn, not shown` : "")));
+  linkTerms(intro);
+  return [intro,
+    el("section", { class: "card mapcard" },
+      el("div", { class: "mapfilters" },
+        searchBox(st, "Search the questions, their records and options"), select,
+        check(st, "closed", `Show answered and withdrawn questions too (${closedN})`),
+        check(st, "mine", "Only those I commented on"),
+        previous ? check(st, "changed", "Only those changed or new since I last looked") : null),
+      bar,
+      !shown.length ? el("p", { class: "empty mapempty" }, all.length ? "Nothing matches the search and filters above." : "No questions yet.")
+        : at !== null ? questionBox(shown[at])
+        : groups.map(([p, list]) => [el("h3", { class: "groupname" }, `${PRIORITY[p][1]} (${list.length})`), list.map(questionBox)]))];
+}
+
 // ---------------------------------------------------------------- terms
 function drawTerms() {
   const rows = D.glossary.map((t) => {
     const term = el("td", { class: "term" }); term.innerHTML = arrowsHtml(t.term_html);      // written by helpers/review_page.py,
     const meaning = el("td", {}); meaning.innerHTML = arrowsHtml(t.meaning_html);           // from docs/terminology.md, escaped
-    return el("tr", {}, term, meaning);
+    return el("tr", { id: termSlug(t.term) }, term, meaning);
   });
   return [el("section", { class: "card" }, el("h2", {}, "Terms"),
     el("p", { class: "meta" }, `The words this page uses, as my project's list of terms (docs/terminology.md) defines them at commit ${V.commit}.`),
@@ -584,6 +815,7 @@ function drawHome() {
   const picker = el("input", { type: "file", accept: ".csv,text/csv", hidden: true,
                                onchange: (ev) => { if (ev.target.files[0]) loadFile(ev.target.files[0]); ev.target.value = ""; } });
   const gone = written().filter((c) => c.kind !== "general" && !BY_ID[`${c.kind}|${c.entry}`]);
+  const nOpen = D.questions.filter((q) => q.status === "open").length;
   const nSchema = D.schema.entity_classes.length + " entity classes and " + D.schema.predicates.length + " predicates";
   return [el("section", { class: "card home" },
     el("h2", {}, "How to read this page"),
@@ -591,7 +823,12 @@ function drawHome() {
       "a model reads each record's text and writes down the facts it states, each as a classed triple, e.g. “MODIS” (Instrument) " +
       "ABOARD “Aqua” (Spacecraft). To measure how well it does, I check a sample of records by hand and write down every fact " +
       "their texts state: the ground truth. This page shows two files that decide what those facts may say, as they were when " +
-      "the page was made (the line above says when), so that you can tell me where they are wrong, unclear, or missing something."),
+      "the page was made (the line above says when), so that you can tell me where they are wrong, unclear, or missing something, " +
+      "and the questions I would like an expert's answer to."),
+    el("h3", {}, "Questions"),
+    el("p", {}, `${nOpen} question${nOpen === 1 ? "" : "s"} I would like an expert's answer to, most urgent first, each written out ` +
+      "whole, so it can be read on its own: one record as its example, quoted, the definitions and rules it touches, the options " +
+      "I see, and my current choice. Your answer goes in the box under each one."),
     el("h3", {}, "Ground truth schema"),
     el("p", {}, `The ${nSchema} the ground truth may use, each with a one-line definition. An entity class is a kind of thing a ` +
       "subject instance or object instance can be (Instrument); a predicate is a kind of relationship (ABOARD). Under a predicate " +
@@ -641,7 +878,7 @@ function drawHome() {
 
 // ---------------------------------------------------------------- views
 let view = "home";
-const VIEWS = { home: drawHome, schema: drawSchema, mapping: drawMapping, terms: drawTerms };
+const VIEWS = { home: drawHome, questions: drawQuestions, schema: drawSchema, mapping: drawMapping, terms: drawTerms };
 function redraw() {
   for (const v of Object.keys(VIEWS)) {
     $(`tab-${v}`).classList.toggle("current", v === view);

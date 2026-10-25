@@ -128,6 +128,7 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key, verdict_of
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.review_comments import NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR, read_all as read_reviewer_comments
+from common.expert_questions import QUESTIONS_PATH, read_questions
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
@@ -736,6 +737,19 @@ def reviewer_comments_view() -> dict:
             "problems": read["problems"], "comments": read["comments"], "not_verified": NOT_VERIFIED}
 
 
+def expert_questions_view() -> dict:
+    """The questions for subject-matter experts (annotations/questions_for_experts.md, read by
+    common/common_helpers/expert_questions.read_questions), each with what its answer may change (its Affects), so
+    the tool can show, on a record, the questions about it. Read-only; a file not in its format is a problem."""
+    try:
+        questions = read_questions(QUESTIONS_PATH)
+    except ValueError as e:
+        return {"file": f"annotations/{QUESTIONS_PATH.name}", "questions": [], "problem": str(e)}
+    keep = ("id", "title", "status", "priority", "question_kind", "topic", "affects")
+    return {"file": f"annotations/{QUESTIONS_PATH.name}", "questions": [{k: q[k] for k in keep} for q in questions],
+            "problem": ""}
+
+
 # --------------------------------------------------------------------------
 # schema additions
 # --------------------------------------------------------------------------
@@ -1197,6 +1211,8 @@ def make_handler(data: Data):
                     self._json(vocab_view(data))
                 elif url.path == "/api/reviewer_comments":
                     self._json(reviewer_comments_view())
+                elif url.path == "/api/expert_questions":
+                    self._json(expert_questions_view())
                 elif url.path == "/api/raw_record":
                     rid = q.get("id", [""])[0]
                     raw = saved_copy(data.records[rid], HARVEST) if rid in data.records else None
