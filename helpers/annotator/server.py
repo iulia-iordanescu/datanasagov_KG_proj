@@ -186,6 +186,9 @@ MESSAGES = {
                             "selection\"; if the text states the fact without naming it there, nothing to do.",
     "subject_equals_object": "The subject instance and the object instance are the same: a fact relates two different "
                              "things, so one of them is probably wrong. Correct it.",
+    "dataset_subject_not_title": "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
+                                 "record's dataset, use the title (rule 13); if it is another dataset, such as an "
+                                 "input, keep it.",
     "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the ground truth schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
                                    "If it's new, add it to the ground truth schema with the button below, "
@@ -298,14 +301,14 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     every = errors + flags
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
-    return [{"code": c, "type": kind, "message": _message(c, row, every), "add": _offer(c, row, every)}
+    return [{"code": c, "type": kind, "message": _message(c, row, every, title), "add": _offer(c, row, every)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
 
 
-def _message(code: str, row: dict, every: list) -> str:
+def _message(code: str, row: dict, every: list, title: str = "") -> str:
     """The check's message, filled in; a "not in the source text" flag says so when the instance is still in the
     record's text (its "not in the text" flag absent)."""
-    message = MESSAGES[code].format(**{k: row.get(k) or "(none)" for k in COLUMNS})
+    message = MESSAGES[code].format(title=title, **{k: row.get(k) or "(none)" for k in COLUMNS})
     if code.endswith("_not_in_source") and code.replace("_source", "_text") not in every:
         message += ELSEWHERE_IN_TEXT.format(slot=code.split("_")[0])
     return message

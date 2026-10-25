@@ -161,7 +161,7 @@ Four [stages](../docs/terminology.md#8-the-pipeline), in `060_extract/run.py`'s 
    | Something that isn't a classed triple at all | **removed**, reason `malformed` | Nothing to keep. |
    | A pattern the schema doesn't list (known component classes, new combination) | **kept**, [flag](../docs/terminology.md#2-triples) `pattern_not_in_schema` | The schema's patterns are what was seen, not all that's allowed. |
    | A [pinned predicate](../docs/terminology.md#3-schemas) with a [subject class](../docs/terminology.md#2-triples) and [object class](../docs/terminology.md#2-triples) its `only:` line doesn't list | **kept**, flag `pattern_not_pinned` | Worth a look: the pin says what the predicate may join. |
-   | Any other flag (a reworded subject or [object instance](../docs/terminology.md#2-triples), subject instance equal to object instance, the same [subject instance](../docs/terminology.md#2-triples), predicate, and object instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
+   | Any other flag (a reworded subject or [object instance](../docs/terminology.md#2-triples), subject instance equal to object instance, a Dataset subject instance that isn't the record's title (`dataset_subject_not_title`), the same [subject instance](../docs/terminology.md#2-triples), predicate, and object instance with other entity classes) | **kept**, flagged | Often fine; worth a look. |
    | The describes triple | **always kept** | Every record extracted has one. If the model named no entity class for it, or one the schema doesn't have, its entity class is `X`, flagged `describes_undecided`. |
 
 The flag names are listed in `050_annotate/050_annotate.md` (*Checks on each row*).

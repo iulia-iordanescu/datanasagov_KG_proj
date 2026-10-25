@@ -22,6 +22,13 @@ changes the triple instance; the caller decides what to do with it.
                             rarely names it ("This dataset contains …")
     object_not_in_source    the object is not in its own source text
     subject_equals_object   the subject and the object are the same
+    dataset_subject_not_title
+                            the subject class is Dataset, but the subject is
+                            not the record's title: it may be this record's
+                            own dataset worded differently (rule 13), or
+                            another dataset (an input), which is fine. Not
+                            raised on the describes triple, nor without a
+                            title or a subject entity class (040 has none)
 
 "In" and "the same" are as defined in common/common_helpers/text_match.py. Checks run
 against the record's WHOLE text, so a triple instance from one piece of a
@@ -39,10 +46,11 @@ same checks and names.
 from __future__ import annotations
 
 from common.text_match import Text, norm_text
+from common.triples_io import component_class_key, is_describes
 
 ERRORS = ("no_source_text", "source_not_in_text")
 FLAGS = ("subject_not_in_text", "object_not_in_text", "subject_not_in_source",
-         "object_not_in_source", "subject_equals_object")
+         "object_not_in_source", "subject_equals_object", "dataset_subject_not_title")
 
 
 def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
@@ -66,6 +74,8 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
             flags.append("object_not_in_source")
     if norm_text(instance.get("subject")) == norm_text(instance.get("object")):
         flags.append("subject_equals_object")
+    if title.strip() and component_class_key(instance.get("subject_class")) == "dataset"             and not is_describes(instance) and norm_text(instance.get("subject")) != norm_text(title):
+        flags.append("dataset_subject_not_title")
     return errors, flags
 
 

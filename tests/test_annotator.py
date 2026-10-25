@@ -119,6 +119,13 @@ class A_Paths(unittest.TestCase):
             "describes_subject_not_id", "empty", "not_connected"}
         self.assertEqual(codes, set(server.MESSAGES))
 
+    def test_dataset_subject_message(self):
+        row = {"id": "r1", "subject": "radiance data", "subject_class": "Dataset", "predicate": "USES",
+               "object": "pixels", "object_class": "Dataset", "source_text": "radiance data"}
+        message = server._message("dataset_subject_not_title", row, [], "MODIS Snow")
+        self.assertIn("(MODIS Snow)", message)
+        self.assertIn("another dataset", message)
+
     def test_fonts(self):
         """The page's typefaces come from the tool itself (no network needed), and only its own .woff2 files."""
         r = urllib.request.urlopen(url("/fonts/LibreFranklin.woff2"))

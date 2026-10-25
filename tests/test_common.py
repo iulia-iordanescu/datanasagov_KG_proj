@@ -345,6 +345,24 @@ class Checks(unittest.TestCase):
         self.assertEqual(flags, ["object_not_in_text", "object_not_in_source"])      # the title may be the subject
         self.assertIn("subject_equals_object", validate.check_triple_instance({**ok, "object": "the modis"}, text)[1])
 
+    def test_dataset_subject_not_title(self):
+        title = "MODIS Snow Cover Daily"
+        text = text_match.Text(f"title: {title}\n\nnotes: The radiance data and the {title} are used.")
+        row = {"subject": title, "subject_class": "Dataset", "predicate": "USES", "object": "radiance data",
+               "object_class": "Dataset", "source_text": "The radiance data"}
+        flag = "dataset_subject_not_title"
+        flags = lambda r: validate.check_triple_instance(r, text, title)[1]
+        self.assertNotIn(flag, flags(row))
+        self.assertNotIn(flag, flags({**row, "subject": "  modis SNOW   cover daily "}))
+        self.assertIn(flag, flags({**row, "subject": "MODIS snow product"}))
+        self.assertIn(flag, flags({**row, "subject": "radiance data", "object": "MODIS Snow Cover Daily"}))
+        self.assertNotIn(flag, flags({**row, "subject": "radiance data", "subject_class": "Instrument"}))
+        describes = {"id": "r1", "subject": "r1", "subject_class": "CatalogEntry", "predicate": "describes",
+                     "object": title, "object_class": "Dataset", "source_text": title}
+        self.assertNotIn(flag, flags(describes))
+        self.assertNotIn(flag, validate.check_triple_instance({**row, "subject": "radiance data"}, text)[1])   # no title
+        self.assertIn(flag, validate.FLAGS)
+
     def test_schema_flags(self):
         entries = validate.SchemaEntries({"entity_classes": {"Instrument": "", "Spacecraft": ""}, "predicates": {"ABOARD": ""},
                                           "patterns": [("Instrument", "ABOARD", "Spacecraft")]})
