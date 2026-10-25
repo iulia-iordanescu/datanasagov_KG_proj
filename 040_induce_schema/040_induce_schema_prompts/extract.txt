@@ -1,8 +1,8 @@
 Extract the facts this record states, as subject / predicate / object
 triples.
 
-COMPLETENESS FIRST. Extract every fact the record states. Leaving a fact
-out is the worst outcome.
+COMPLETENESS FIRST. Extract every fact the record states, unless a rule
+below leaves it out. Leaving out any other fact is the worst outcome.
 
 NAMING. No vocabulary is given: the predicate is a short verb phrase in
 your own words ("is aboard", "was collected by"), and describes_class is a

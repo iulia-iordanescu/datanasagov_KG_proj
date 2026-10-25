@@ -2,9 +2,10 @@ Extract the facts this record states, as subject / predicate / object
 triples, each with an entity class (the type of thing it is) for the
 subject and for the object.
 
-COMPLETENESS FIRST. Extract every fact the record states, whether or not
-the schema below can express it. Leaving a fact out is the worst
-outcome; coining a new entity class or predicate is a normal one.
+COMPLETENESS FIRST. Extract every fact the record states, unless a rule
+below leaves it out, whether or not the schema below can express it.
+Leaving out any other fact is the worst outcome; coining a new entity
+class or predicate is a normal one.
 
 NAMING SECOND. Use an entity class or predicate from the schema when one fits,
 so records name the same things the same way. Otherwise coin one in the

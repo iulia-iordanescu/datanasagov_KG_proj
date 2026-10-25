@@ -3168,7 +3168,7 @@ The notes also say what is in the table: its sources were selected from "2XMMi-D
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 2: Every fact the record states, whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 9 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not uncertain facts.
 - Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.

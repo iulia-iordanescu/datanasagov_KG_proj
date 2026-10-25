@@ -13,6 +13,10 @@
   "might", "possibly", "is expected to"). Don't rewrite either into a fact it
   doesn't state. A value given as approximate is stated: "approximately 350 m"
   is the object.
+- No triple for a fact without a specific thing: a triple needs a subject
+  and an object the record names. "Kestrel records data at several
+  wavelengths" gives no triple, since "several wavelengths" names no
+  wavelength.
 - A number with a unit: the object is the number and its unit, as written
   ("350 m"); the predicate says what the number measures.
 - A qualifier that is a temporal resolution, an area the data cover, a
