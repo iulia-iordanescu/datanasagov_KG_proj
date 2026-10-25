@@ -69,7 +69,7 @@ Each step ends by printing where its [report](terminology.md#8-the-pipeline) is 
 
 ### Settings several steps share
 
-Each step's settings are in its guide (*Settings*) and its [control panel](terminology.md#8-the-pipeline) (`run.py`). Give one on the command line as `--<setting> <value>`, e.g. `--records_per_batch 5` (`--records-per-batch 5` works too). A value the step can't use stops it, before any paid call, saying so.
+Each step's settings are in its guide (*Settings*) and its [control panel](terminology.md#8-the-pipeline) (`run.py`). Give one on the command line as `--<setting> <value>`, e.g. `--records_per_batch 5` (`--records-per-batch 5` works too). A value the step can't use stops it, before any [paid call](terminology.md#8-the-pipeline), saying so.
 
 | Setting | Steps | Values |
 |---|---|---|
