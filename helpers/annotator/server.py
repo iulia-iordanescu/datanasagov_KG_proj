@@ -20,6 +20,7 @@ What it reads
     annotations/partial_pair_reviews.csv                                     your verdicts on them
     annotations/schema_additions.txt                                         the schema additions
     annotations/reviews/                                                     reviewers' comments (shown, never changed)
+    annotations/left_out.md                                                  what the ground truth leaves out on purpose (shown, never changed)
     annotations/README.md                                                    each view's How to use this view
     annotations/guidelines.md, docs/terminology.md, any other .md of the repository   what the Help menus open
     helpers/annotator/fonts/*.woff2                                          the page's typefaces
@@ -129,6 +130,7 @@ from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.review_comments import NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR, read_all as read_reviewer_comments
 from common.expert_questions import QUESTIONS_PATH, read_questions
+from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
@@ -155,7 +157,8 @@ HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "partial": "### Reviewing partial pairs",
                  "additions": "### Adding to the schema additions",
                  "vocab": "### The ground truth schema",
-                 "reviews": "### Reading reviewers' comments"}
+                 "reviews": "### Reading reviewers' comments",
+                 "leftout": "### Reading what the ground truth leaves out"}
 #: Sections shown after a view's own: the whole tool's two lists, with Ground truth's (the view used most).
 HELP_ALSO = {"batch": ("### What the tool can do", "### What the tool can't do")}
 EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
@@ -753,6 +756,24 @@ def expert_questions_view() -> dict:
             "problem": ""}
 
 
+def left_out_view() -> dict:
+    """What the ground truth leaves out on purpose (annotations/left_out.md, read by
+    common/common_helpers/left_out.read_left_out), one section per record, for the record view's folded section and
+    the Left out view. Read-only; a file not in its format is a problem (the line is named), shown instead of items."""
+    file = f"annotations/{LEFT_OUT_PATH.name}"
+    try:
+        sections = read_left_out(LEFT_OUT_PATH)
+    except (ValueError, OSError) as e:
+        return {"file": file, "sections": [], "rules": [], "problem": str(e)}
+    for sec in sections:
+        for it in sec["items"]:
+            it["rule_ref"] = rule_ref(it)
+    rules = sorted({it["rule_ref"] for sec in sections for it in sec["items"]} - {NO_RULE})
+    if any(it["rule_ref"] == NO_RULE for sec in sections for it in sec["items"]):
+        rules.append(NO_RULE)
+    return {"file": file, "sections": sections, "rules": rules, "no_rule": NO_RULE, "problem": ""}
+
+
 # --------------------------------------------------------------------------
 # schema additions
 # --------------------------------------------------------------------------
@@ -1216,6 +1237,8 @@ def make_handler(data: Data):
                     self._json(reviewer_comments_view())
                 elif url.path == "/api/expert_questions":
                     self._json(expert_questions_view())
+                elif url.path == "/api/left_out":
+                    self._json(left_out_view())
                 elif url.path == "/api/raw_record":
                     rid = q.get("id", [""])[0]
                     raw = saved_copy(data.records[rid], HARVEST) if rid in data.records else None

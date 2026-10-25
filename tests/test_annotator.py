@@ -8,6 +8,7 @@ import shutil
 import sys
 import threading
 import unittest
+from pathlib import Path
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -807,6 +808,102 @@ class Z_ReviewerComments(unittest.TestCase):
             self.assertIn(needed, page)
         self.assertIn("reviews", server.HELP_SECTIONS)
         self.assertTrue(get("/api/help?view=reviews")["intro"])
+
+
+class Y_LeftOut(unittest.TestCase):
+    """What the ground truth leaves out on purpose (annotations/left_out.md), read by ONE reader
+    (common/common_helpers/left_out.py) for the record's folded section and the Left out view; read-only."""
+
+    GOOD = "\n".join([
+        '# Left out on purpose', '', 'Introduction, not read.', '',
+        '## "Title A" (pool position 0, id r0)', '',
+        '2 items, 1 that may matter. A note.', '',
+        '- **Left out:** "great" (notes)',
+        '  - **Rule:** What counts as a fact, rule 5: "Leave out words such as great."',
+        '  - Written without it.',
+        '- **Left out:** "1149" (title)',
+        '  - **Rule:** What counts as a fact, rule 1: "never write down what a code stands for"',
+        '  - **May matter because:** it may identify the dataset.',
+        '  - **Question:** Q6 (b), and Q24.', '',
+        '## "Title B" (pool position 1, id r1)', '',
+        '1 item, none that may matter.', '',
+        '- **Left out:** "x"',
+        '  - **Rule:** none to quote. I decided so.', ''])
+
+    def read(self, text):
+        from common.left_out import read_left_out
+        path = TMP / "left_out_test.md"
+        path.write_text(text, encoding="utf-8")
+        try:
+            return read_left_out(path)
+        finally:
+            path.unlink()
+
+    def test_reader(self):
+        from common.left_out import NO_RULE, rule_ref
+        a, b = self.read(self.GOOD)
+        self.assertEqual((a["title"], a["position"], a["id"], len(a["items"])), ("Title A", 0, "r0", 2))
+        first, second = a["items"]
+        self.assertEqual((first["words"], first["notes"], first["may_matter"]),
+                         ('"great" (notes)', ["Written without it."], ""))
+        self.assertEqual((rule_ref(first), rule_ref(b["items"][0])), ("What counts as a fact, rule 5", NO_RULE))
+        self.assertEqual((second["may_matter"], second["questions"]), ("it may identify the dataset.", ["Q6", "Q24"]))
+
+    def test_malformed_names_the_line(self):
+        """(a change to the good file, a fragment of the line the message must name, what it must say)"""
+        cases = [(('- **Left out:** "1149"', '- Left out: "1149"'), 'Left out: "1149"', "must start with"),
+                 (("(pool position 1, id r1)", "(position 1)"), "(position 1)", "a heading must be"),
+                 (("2 items, 1 that", "3 items, 1 that"), '## "Title A"', "says 3 item(s) but lists 2"),
+                 (("1 that may matter", "2 that may matter"), '## "Title A"', "says 2 that may matter but 1"),
+                 (("  - **Rule:** What counts as a fact, rule 1", "  - Rule: x"), '"1149" (title)', "needs a"),
+                 (("  - Written without it.", "  - **Rule:** twice"), "**Rule:** twice", "two"),
+                 (("  - Written", "   - Written"), "   - Written", "indented line must start"),
+                 (("id r1)", "id r0)"), "id r0)\n\n1 item", "two sections"),
+                 (("2 items, 1 that may matter. A note.", "A note."), "## \"Title A\"", "how many items")]
+        for (old, new), fragment, what in cases:
+            text = self.GOOD.replace(old, new)
+            self.assertNotEqual(text, self.GOOD, old)
+            n = text[:text.index(fragment)].count("\n") + 1
+            with self.assertRaises(ValueError) as caught:
+                self.read(text)
+            self.assertIn(f"line {n}:", str(caught.exception), old)
+            self.assertIn(what, str(caught.exception), old)
+
+    def test_the_real_file_is_in_its_format(self):
+        from common.left_out import LEFT_OUT_PATH, read_left_out
+        real = Path(__file__).resolve().parents[1] / "annotations" / LEFT_OUT_PATH.name
+        self.assertTrue(read_left_out(real))
+
+    def test_view(self):
+        path = TMP / "annotations" / "left_out.md"
+        try:
+            path.write_text(self.GOOD, encoding="utf-8")
+            v = get("/api/left_out")
+            self.assertEqual(v["problem"], "")
+            self.assertEqual([len(s["items"]) for s in v["sections"]], [2, 1])
+            self.assertEqual(v["rules"], ["What counts as a fact, rule 1", "What counts as a fact, rule 5", v["no_rule"]])
+            self.assertEqual(v["sections"][0]["items"][1]["questions"], ["Q6", "Q24"])
+            before = path.read_bytes()
+            path.write_text(self.GOOD.replace("2 items", "3 items"), encoding="utf-8")
+            v = get("/api/left_out")
+            self.assertEqual(v["sections"], [])
+            self.assertIn("left_out.md, line 5", v["problem"])
+            path.write_bytes(before)
+        finally:
+            if path.exists():
+                path.unlink()
+        self.assertTrue(get("/api/left_out")["problem"])                                 # no file: said, not a failure
+
+    def test_page(self):
+        """The folded section after the triples, titled with the item count and absent at 0; the view and its filters."""
+        page = urllib.request.urlopen(url("/")).read().decode("utf-8")
+        for needed in ('id="leftout"', "leftOutSection(rec)", "`Left out on purpose (${sec.items.length})`",
+                       "if (!sec || !sec.items.length) return null;", "Only items that may matter", "Every rule",
+                       "Search what is left out", 'itemsOneAtATime("leftout"', "/api/left_out"):
+            self.assertIn(needed, page)
+        self.assertLess(page.index("leftOutSection(rec));"), page.index('$("record").replaceChildren(head,'))
+        self.assertIn("leftout", server.HELP_SECTIONS)
+        self.assertTrue(get("/api/help?view=leftout")["intro"])
 
 
 if __name__ == "__main__":

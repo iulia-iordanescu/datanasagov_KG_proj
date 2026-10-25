@@ -265,6 +265,15 @@
   .reviewnote { margin-top: 4px; }
   .reviewnote .who { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
   .reviewnote .reviewtext { font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: break-word; }
+  /* what the ground truth leaves out on purpose (annotations/left_out.md): under a record's triples, and the Left out view */
+  details.leftout { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+  details.leftout > summary { cursor: pointer; color: var(--navy); font-weight: 600; font-size: 14px; }
+  .leftitem { margin-top: 8px; padding: 6px 10px; border-left: 3px solid var(--line); border-radius: 6px; background: var(--tint);
+              font-size: 13.5px; line-height: 1.45; overflow-wrap: break-word; }
+  .leftitem .leftmatter, .leftitem .leftnote, .leftitem .leftq, .leftitem .leftrule { margin-top: 3px; }
+  .leftitem .leftmatter .pill { margin-left: 0; }
+  .leftitem .leftq .pill { margin-left: 0; margin-right: 4px; }
+  .leftprob { color: var(--flag); }
   .reviewgroup .mapdef { margin-top: 2px; }
   .reviewgroup h4 { margin: 0; font-size: 14.5px; }
   .mapbox .example { margin-top: 6px; padding: 3px 8px; font-family: inherit; font-size: 13px; background: var(--tint);
@@ -487,6 +496,7 @@
       <button class="tab" id="partial" data-label="Partial pairs" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
       <button class="tab" id="additions" data-label="Schema additions" title="annotations/schema_additions.txt: schema entries a person adds to the current schema">Schema additions</button>
       <button class="tab" id="reviewcomments" data-label="Reviewer comments" title="annotations/reviews/: the comments reviewers sent back from the review page (read-only)">Reviewer comments</button>
+      <button class="tab" id="leftout" data-label="Left out" title="annotations/left_out.md: what the ground truth leaves out on purpose (read-only)">Left out</button>
     </nav>
     <span id="status"></span>
   </div>
@@ -657,6 +667,7 @@ async function loadBatches() {
   if (wanted.has("a")) { await openAdditions(); return; }
   if (wanted.has("v")) { await openVocab(); return; }
   if (wanted.has("c")) { await openReviews(); return; }
+  if (wanted.has("l")) { await openLeftOut(); return; }
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0), +(wanted.get("t") || 0));
@@ -666,9 +677,10 @@ async function loadBatches() {
 }
 async function openBatch(n, at, step = 0) {
   await flush();
-  mapping = null; partial = null; additions = null; vocab = null; reviews = null;
+  mapping = null; partial = null; additions = null; vocab = null; reviews = null; leftOutView = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
+  await loadLeftOut();
   tripleAt = step;                         // a newly opened batch: the row the address names, else the record's first
   status(`Editing annotations/ground_truth/${batch.file}`, "saved");
   current = Math.min(at || 0, Math.max(batch.records.length - 1, 0));   // so show() keeps tripleAt
@@ -681,6 +693,7 @@ $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
 $("reviewcomments").addEventListener("click", () => openReviews().catch(fail));
+$("leftout").addEventListener("click", () => openLeftOut().catch(fail));
 // The tools a view needs, shown inside it: the Guidelines and the ground truth schema in Ground truth; the ground
 // truth schema also in the translation table, whose rows choose among its entries.
 const GAPCOUNT = el("span", { class: "count", hidden: true });
@@ -734,7 +747,7 @@ document.addEventListener("click", (e) => {        // the menu closes on a choic
 // The view you're on: its tab in the top band.
 function chrome(view) {
   for (const [id, v] of [["tab-batch", "batch"], ["mapping", "mapping"], ["partial", "partial"], ["additions", "additions"],
-                         ["reviewcomments", "reviews"]])
+                         ["reviewcomments", "reviews"], ["leftout", "leftout"]])
     $(id).classList.toggle("current", view === v);
 }
 $("homebutton").addEventListener("click", () => showHome().catch(fail));
@@ -890,7 +903,8 @@ function show(i) {
          atDescribes ? describesRow(rec, at, false) : tripleRow(rec, at, false)]
       : [describes >= 0 ? describesRow(rec, describes) : null, all.map((j) => tripleRow(rec, j))],
     oneAtATime && !atDescribes ? null : none,
-    el("div", { class: "bar" }, add, switcher));
+    el("div", { class: "bar" }, add, switcher),
+    leftOutSection(rec));
 
   $("record").replaceChildren(head, el("div", { class: "workgrid" }, el("div", { class: "textcol" }, text, classes), rows));
   document.querySelectorAll("#record textarea.grow").forEach(grow);
@@ -1292,7 +1306,7 @@ let gaps = { component_classes: [], file: "" };
 // the top left.
 async function showHome() {
   await flush();
-  batch = null; mapping = null; partial = null; additions = null; vocab = null; reviews = null;
+  batch = null; mapping = null; partial = null; additions = null; vocab = null; reviews = null; leftOutView = null;
   $("batch").value = "";
   setHash("");
   $("intro").hidden = true;
@@ -1327,7 +1341,9 @@ async function showHome() {
           "where it was found.",
           () => openAdditions()),
       box("Reviewer comments", "What subject-matter experts wrote on the review page about the ground truth schema and " +
-          "the translation table, by entry, each marked if the entry changed since. Read-only.", openReviews)),
+          "the translation table, by entry, each marked if the entry changed since. Read-only.", openReviews),
+      box("Left out", "The statements of the records' texts that the ground truth deliberately leaves out, each with the " +
+          "rule that excluded it and, if it may matter, why. Read-only.", openLeftOut)),
     el("section", { id: "nextup", class: "nextup" }, el("h3", {}, "What to do next"),
        el("p", { class: "meta" }, "Working it out from the files…")),
     el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch. " +
@@ -1405,7 +1421,7 @@ const toCheck = (r) => r.stale || r.stale_gtt || r.missing_target || (r.checked 
 
 async function openMapping() {
   await flush();
-  batch = null; partial = null; additions = null; vocab = null; reviews = null;
+  batch = null; partial = null; additions = null; vocab = null; reviews = null; leftOutView = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("mapping");
   $("batch").value = "";
@@ -1730,7 +1746,7 @@ const pairOpen = new Set();                    // pairs whose note is open
 
 async function openPartial() {
   await flush();
-  batch = null; mapping = null; additions = null; vocab = null; reviews = null;
+  batch = null; mapping = null; additions = null; vocab = null; reviews = null; leftOutView = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("partial");
   $("batch").value = "";
@@ -1863,7 +1879,7 @@ let additions = null, editing = null;
 
 async function openAdditions(prefill) {
   await flush();
-  batch = null; mapping = null; partial = null; vocab = null; reviews = null;
+  batch = null; mapping = null; partial = null; vocab = null; reviews = null; leftOutView = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("additions");
   $("batch").value = "";
@@ -2005,7 +2021,7 @@ let vocab = null, vocabPlan = null;
 
 async function openVocab() {
   await flush();
-  batch = null; mapping = null; partial = null; additions = null; reviews = null;
+  batch = null; mapping = null; partial = null; additions = null; reviews = null; leftOutView = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("vocab");
   $("batch").value = "";
@@ -2157,7 +2173,7 @@ function reviewerNotes(kind, entry) {
 let reviews = null, reviewWho = "", reviewState = "any", reviewKind = "any";
 async function openReviews() {
   await flush();
-  batch = null; mapping = null; partial = null; additions = null; vocab = null;
+  batch = null; mapping = null; partial = null; additions = null; vocab = null; leftOutView = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("reviews");
   $("batch").value = "";
@@ -2225,8 +2241,126 @@ function drawReviews() {
   $("record").replaceChildren(...cards);
 }
 
+// ---------------------------------------------------------------- left out on purpose (read-only)
+// What the ground truth leaves out on purpose (annotations/left_out.md, read by the server with
+// common/common_helpers/left_out.py): under each record's triples, a folded section, and all of it in the Left out
+// view. Nothing here changes the file.
+let LEFT_OUT = null;                     // {sections, rules, no_rule, file, problem, byId: {record id: section}}
+async function loadLeftOut() {
+  try {
+    const r = await api("/api/left_out");
+    r.byId = {};
+    for (const sec of r.sections) r.byId[sec.id] = sec;
+    LEFT_OUT = r;
+  } catch (_) { LEFT_OUT = null; }          // the views work without it
+}
+// An item: the exact words, the rule quoted, why it may matter, a note, and the questions for experts it is asked in.
+function leftOutItem(it) {
+  return el("div", { class: "leftitem" },
+    el("div", { class: "leftwords" }, plainText("strong", {}, "Left out: "), document.createTextNode(it.words)),
+    el("div", { class: "leftrule" }, plainText("span", { class: "meta" }, "Rule: "), document.createTextNode(it.rule)),
+    it.may_matter ? el("div", { class: "leftmatter" }, el("span", { class: "pill flag" }, "may matter"),
+                      document.createTextNode(" " + it.may_matter)) : null,
+    it.notes.map((n) => el("div", { class: "leftnote" }, n)),
+    it.question ? el("div", { class: "leftq" }, plainText("span", { class: "meta" }, "Question for the experts: "),
+      document.createTextNode(it.question + " "), [...new Set(it.questions)].map(questionChip)) : null);
+}
+// A question's id with its short title: a click opens it in Reviewer comments when reviewers commented on it; else the
+// title and status show on hover (the questions' own text is in annotations/questions_for_experts.md).
+function questionChip(id) {
+  const q = EXPERT_Q.questions.find((x) => x.id === id);
+  const label = q ? `${id}: ${q.title}` : id;
+  const commented = REVIEWER && REVIEWER.byKey[`question|${id}`];
+  const tip = q ? `${label} (${q.priority} priority, ${q.status}; annotations/questions_for_experts.md)` +
+                  (commented ? ". Click to read the reviewers' comments on it." : "")
+                : `${id} isn't in annotations/questions_for_experts.md`;
+  return commented
+    ? el("button", { class: "pill todo jump", title: tip, onclick: () => openReviews().catch(fail) }, label)
+    : el("span", { class: "pill todo", title: tip }, label);
+}
+// Under a record's triples: folded, titled with the item count; nothing when the record has none.
+function leftOutSection(rec) {
+  if (!LEFT_OUT) return null;
+  if (LEFT_OUT.problem)
+    return el("p", { class: "meta leftprob" }, "⚑ Left out on purpose can't be shown: " + LEFT_OUT.problem);
+  const sec = LEFT_OUT.byId[rec.id];
+  if (!sec || !sec.items.length) return null;
+  return el("details", { class: "leftout", title: `${LEFT_OUT.file}, read-only: what this record's ground truth leaves out on purpose` },
+    el("summary", {}, `Left out on purpose (${sec.items.length})`),
+    sec.intro ? el("p", { class: "meta" }, sec.intro) : null,
+    sec.items.map(leftOutItem));
+}
+
+let leftOutView = null, leftMatter = false, leftRule = "", leftSearch = "";
+async function openLeftOut() {
+  await flush();
+  batch = null; mapping = null; partial = null; additions = null; vocab = null; reviews = null;
+  document.body.classList.remove("norecords");   // other views use the left column
+  chrome("leftout");
+  $("batch").value = "";
+  status("Opening…");
+  await loadLeftOut();
+  await loadReviewerComments();
+  if (!LEFT_OUT) throw new Error("what the ground truth leaves out couldn't be read: is the tool still running?");
+  leftOutView = LEFT_OUT;
+  setHash("l");
+  showIntro();
+  status(`Left out on purpose, read from ${LEFT_OUT.file} (read-only)`);
+  drawLeftOut();
+}
+function drawLeftOut() {
+  const v = leftOutView, secs = v.sections;
+  const total = secs.reduce((n, s) => n + s.items.length, 0), matter = secs.reduce((n, s) => n + s.items.filter((i) => i.may_matter).length, 0);
+  $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+    el("div", { class: "panelhead" }, el("h3", {}, "Left out"), toolsMenu()),
+    el("p", { class: "meta" }, `${total} item(s) in ${secs.length} record(s), ${matter} that may matter, read from ${v.file}.`),
+    el("p", { class: "meta" }, "Read-only: the file is written by hand when a record is annotated, and an item is " +
+      "deleted when an expert's answer brings its statement back as a ground truth triple.")));
+  const cards = [];
+  if (v.problem) {
+    cards.push(el("section", { class: "card" }, el("ul", { class: "problems" }, el("li", { class: "flag" }, "⚑ " + v.problem))));
+    $("record").replaceChildren(...cards);
+    return;
+  }
+  if (!total) {
+    cards.push(el("section", { class: "card" }, el("p", { class: "empty" }, `${v.file} lists nothing yet.`)));
+    $("record").replaceChildren(...cards);
+    return;
+  }
+  const words = leftSearch.trim().toLowerCase();
+  const matches = (sec, it) => (!leftMatter || it.may_matter) && (!leftRule || it.rule_ref === leftRule) &&
+    (!words || [sec.title, it.words, it.rule, it.may_matter, it.question, ...it.notes].join("\n").toLowerCase().includes(words));
+  const search = el("input", { type: "search", class: "mapsearch", value: leftSearch,
+    placeholder: "Search the words, rules, notes and questions", "aria-label": "Search what is left out",
+    oninput: (e) => { leftSearch = e.target.value; drawLeftOut(); const f = document.querySelector(".mapsearch");
+                      if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } } });
+  const ruleSelect = el("label", { class: "meta" }, "Rule ",
+    el("select", { "aria-label": "By rule", onchange: (e) => { leftRule = e.target.value; drawLeftOut(); } },
+      [["", "Every rule"], ...v.rules.map((r) => [r, r])].map(([val, text]) =>
+        el("option", { value: val, selected: val === leftRule }, text))));
+  const matterBox = el("label", { class: "meta" },
+    el("input", { type: "checkbox", checked: leftMatter, onchange: (e) => { leftMatter = e.target.checked; drawLeftOut(); } }),
+    " Only items that may matter");
+  cards.push(el("section", { class: "card mapcard" }, el("div", { class: "mapfilters" }, search, matterBox, ruleSelect)));
+  const shown = [];                                  // [section, item], in the file's order
+  for (const sec of secs) for (const it of sec.items) if (matches(sec, it)) shown.push([sec, it]);
+  const { at, bar } = itemsOneAtATime("leftout", shown.map(([s, i]) => `${s.id}|${i.line}`), "Item", drawLeftOut);
+  const picked = at === null ? shown : [shown[at]];
+  if (!shown.length) cards.push(el("section", { class: "card" }, el("p", { class: "empty" }, "No item matches the filters above.")));
+  else cards.push(bar);
+  for (const sec of secs) {
+    const mine = picked.filter(([s]) => s === sec);
+    if (!mine.length) continue;
+    cards.push(el("section", { class: "card" },
+      plainText("h3", {}, sec.title),
+      el("div", { class: "meta" }, `Pool position ${sec.position}; ${mine.length} of ${sec.items.length} item(s) shown`),
+      mine.map(([, it]) => leftOutItem(it))));
+  }
+  $("record").replaceChildren(...cards);
+}
+
 function currentView() {
-  return reviews ? "reviews" : vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
+  return leftOutView ? "leftout" : reviews ? "reviews" : vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
 }
 
 // The questions for subject-matter experts (annotations/questions_for_experts.md, read by the server), each with
