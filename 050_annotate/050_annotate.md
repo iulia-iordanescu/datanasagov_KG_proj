@@ -123,7 +123,7 @@ Run against the [record](../docs/terminology.md#1-records-and-their-text)'s **wh
 | `id_not_in_records` | error (*stage 4*) | The row's id isn't a record of the catalog (a typo, or a record since removed). |
 | `incomplete` | error (*stage 4*) | [Subject instance](../docs/terminology.md#2-triples), predicate, or [object instance](../docs/terminology.md#2-triples) is empty, but not all three. A row with all three empty is a record annotated as stating no facts: fine. |
 | `empty` | error (*tool*) | Subject instance, predicate, or object instance is empty, on a row of the page. How it relates to `incomplete`: the same check on the page, where a row with all three empty is one not filled in yet (never saved: a save leaves blank rows out, and writes one only for a record with no other row), so it is `empty` too; in a ground truth file, that row means "states no facts", so `incomplete` leaves it out. A row is never both. |
-| `subject_not_in_text`, `object_not_in_text` | [flag](../docs/terminology.md#2-triples) | Not found in the text: often reworded ("the instrument" for "MODIS"); fine if on purpose. |
+| `subject_not_in_text`, `object_not_in_text` | [flag](../docs/terminology.md#2-triples) | Not found in the text. Found means: its words, [evened out](../docs/terminology.md#2-triples), are in the text as whole words in that order (punctuation inside counting as a space), or, for an instance that is wholly a quantity, the same quantity however written. So not found has these causes, all of them: reworded ("the instrument" for "MODIS"); an acronym expanded or shortened; words in another order or form (a plural, another spelling); a piece of a word ("Aqua" inside "Aquarius") or of a number ("5 minutes" inside "25 minutes"); words joined from separate places (rule 12 of the [annotation guidelines](../docs/terminology.md#4-ground-truth-and-samples) copies a list's shared words onto each item, and rule 13 gives one thing one wording within a record, so such an instance is rightly flagged); or words that aren't in the record at all. Fine if on purpose. |
 | `subject_not_in_source`, `object_not_in_source` | flag | Not in the row's own source text. Not raised for a subject instance that is the record's title. |
 | `subject_equals_object` | flag | Subject instance and [object](../docs/terminology.md#2-triples) instance are the same. |
 | `subject_class_not_in_schema`, `object_class_not_in_schema`, `describes_class_not_in_schema` | flag | A coined entity class: a new one, or a typo. |
@@ -133,7 +133,7 @@ Run against the [record](../docs/terminology.md#1-records-and-their-text)'s **wh
 | `conflicting_classes` | flag | The same subject instance, predicate, and object instance appear in another row with a different subject class or object class; both rows are flagged. |
 | `not_connected` | flag (*tool*) | No chain of ground truth triples links this one to the catalog entry (the describes triple and the title) (`annotations/guidelines.md`, *Finishing a record*). |
 
-"In the text" means found once [evened out](../docs/terminology.md#2-triples). Entity classes and predicates are compared with the schema's by [loose match](../docs/terminology.md#3-schemas), so `has version` is `HAS_VERSION`.
+"In the text" means found once evened out. Entity classes and predicates are compared with the schema's by [loose match](../docs/terminology.md#3-schemas), so `has version` is `HAS_VERSION`.
 
 ## Prompts
 
