@@ -2,8 +2,9 @@
 Prompts tables match its run.py and its prompts folder; every file path
 named in the docs and code exists; docs/terminology.md defines each term once;
 "class" never stands alone (docs/terminology.md: say entity class, subject
-class, object class, or component class); and the model's prompts quote no
-ground truth record."""
+class, object class, or component class); every paper named by its authors
+has its title or a link; and the model's prompts quote no ground truth
+record."""
 import ast
 import re
 import subprocess
@@ -518,6 +519,60 @@ class QualifierQuotesRule9(unittest.TestCase):
         quoted = re.search(r'a qualifier that is "([^"]+)" is taken out', terms).group(1)
         rule = re.search(r"^9\. \*\*A qualifier that is (.+?) is a ground truth triple of its own", guidelines, re.M).group(1)
         self.assertEqual(quoted, rule)
+
+
+#: A paper named by its authors: "Taillé et al." (any year, or none), or two or more surnames joined by & or "and"
+#: and followed by a year ("Zhang & Soh 2024", "Guest, Bunce & Johnson (2006)").
+CITE_NAME = r"[A-Z][\w'’-]*[a-zà-ÿ][\w'’-]*"
+CITE_MENTION = re.compile(rf"\b({CITE_NAME}) et al\.|\b({CITE_NAME})(?:, {CITE_NAME})*,? (?:&|and) {CITE_NAME},? \(?(?:1[89]|20)\d\d\b")
+#: The same authors anywhere in a full citation (year or not), so a later short mention of them is allowed.
+CITE_AUTHORS = re.compile(rf"\b({CITE_NAME})(?:, {CITE_NAME})*,? (?:&|and) {CITE_NAME}\b|\b({CITE_NAME}) et al\.")
+#: What makes a citation full: a link to the paper, a quoted title, an italic title, an arXiv number, a DOI, or a
+#: numbered reference ([5]).
+CITE_FULL = re.compile(r"\]\((?:https?:|[^)\s]*\.pdf\b)|\"[^\"\n]{8,}\"|“[^”\n]{8,}”|(?<![*\w])\*[^*\n]{6,}\*(?!\*)"
+                       r"|arXiv|doi:|\[\d+(?:,\s*\d+)*\]|https?://")
+#: Sentence ends, not after "et al", "e.g", "i.e", "vs", "ch", "pp", "ed", "eds", "no".
+CITE_SENTENCE = re.compile(r"(?<!\bal)(?<!\be\.g)(?<!\bi\.e)(?<!\bvs)(?<!\bch)(?<!\bpp)(?<!\bed)(?<!\beds)(?<!\bno)"
+                           r"[.;]\s+(?=[A-Z*\"“(\[])")
+
+
+def citations_without_source() -> list:
+    """["file:line: mention: the line"]: each paper named by its authors with no title or link in its sentence, when
+    the same doc gives no full citation of those authors elsewhere either."""
+    found = []
+    for rel in tracked(".md"):
+        if rel.startswith(FIELD_WORDS_SKIP):
+            continue
+        text = re.sub(r"```.*?```", lambda m: re.sub(r"[^\n]", " ", m.group(0)), (ROOT / rel).read_text(encoding="utf-8"),
+                      flags=re.S)
+        # a numbered reference ("[12] P. Koehn, ...") is one citation: its publisher ("Chapman & Hall, 1993") is no mention
+        sentences = [(n, s) for n, line in enumerate(text.split("\n"), 1)
+                     for s in ([line] if re.match(r"\[\d+\] ", line) else CITE_SENTENCE.split(line))]
+        cited = {(a.group(1) or a.group(2)).lower() for _, s in sentences if CITE_FULL.search(s)
+                 for a in CITE_AUTHORS.finditer(s)}
+        for n, s in sentences:
+            if CITE_FULL.search(s):
+                continue
+            found += [f"{rel}:{n}: {m.group(0)}: {s.strip()[:120]}" for m in CITE_MENTION.finditer(s)
+                      if (m.group(1) or m.group(2)).lower() not in cited]
+    return found
+
+
+class Citations(unittest.TestCase):
+    """Every paper the docs name by its authors has its title or a link in the same sentence, or the same doc gives
+    its full citation elsewhere (a repeated mention may then be short), so every borrowed idea can be found."""
+
+    def test_every_author_mention_has_a_source(self):
+        found = citations_without_source()
+        self.assertFalse(found, "\n" + "\n".join(f"{f} (give the title or a link, as the metric pages do)" for f in found))
+
+    def test_the_check_sees_short_mentions(self):
+        """A near miss: the same mention, alone, is caught; with a title, or after a full citation, it isn't."""
+        short = "Agreement was measured (Hripcsak & Rothschild 2005)."
+        self.assertTrue(list(CITE_MENTION.finditer(short)))
+        self.assertFalse(CITE_FULL.search(short))
+        self.assertTrue(CITE_FULL.search('Hripcsak & Rothschild (2005), "Agreement, the F-Measure, and Reliability"'))
+        self.assertEqual(CITE_SENTENCE.split("Taillé et al. (2020) say so. Then"), ["Taillé et al. (2020) say so", "Then"])
 
 
 class PromptsQuoteNoGroundTruth(unittest.TestCase):

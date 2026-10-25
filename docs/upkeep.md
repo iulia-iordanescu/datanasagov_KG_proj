@@ -68,6 +68,10 @@ Step 070 stops, before evaluating, while something it needs from a person is mis
 
 - **Look at the [held-out part](terminology.md#7-evaluating-extraction-step-070) only at the end** (`py 070_evaluate/run.py --evaluate_held_out true`). Each look is logged in `annotations/held_out_looks.csv`: commit it after each look.
 
+## When an item of the improvements list is done
+
+- **Move its *From:* credit first, then delete it** from [`improvements.md`](improvements.md): the credit goes where the item is now done (the step guide, metric page, or code that does it), so the idea's source is still named after the item is gone. The commit says which item it was.
+
 ## After every session
 
 - **Commit every changed file in `annotations/` to Git, and push**, so the work is safe and reaches the other computer (`git pull` there before working).
