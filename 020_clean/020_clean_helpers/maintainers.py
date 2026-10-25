@@ -24,7 +24,7 @@ This matters beyond looks: 030 orders each maintainer's records apart and
 spellings would count as two smaller ones, and 080 would make two nodes for
 one person.
 
-Adapted from to_be_reshaped/build_inputs.py (group_key, group_display,
+Adapted from archive/to_be_reshaped/build_inputs.py (group_key, group_display,
 join_groups). That version dropped the single words "ph" and "d" wherever
 they appeared, to remove "Ph. D", so a middle initial D was ignored too
 ("John D. Smith" matched "John Smith"), and it ignored Jr. and Sr. The

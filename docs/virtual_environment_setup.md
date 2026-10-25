@@ -153,7 +153,7 @@ py helpers/audit.py <record id>
 
 Each step's guide (`<step>/<step>.md`, e.g. `010_harvest/010_harvest.md`) says how to run it. `docs/running_on_nasa_laptop.md` gives the order to run them in.
 
-**Scripts in `to_be_reshaped/`** are the earlier scripts, kept for reference while the pipeline steps replace them. They aren't run.
+**Scripts in `archive/to_be_reshaped/`** are the earlier scripts, kept for reference while the pipeline steps replace them. They aren't run.
 
 ## Day-to-day use
 

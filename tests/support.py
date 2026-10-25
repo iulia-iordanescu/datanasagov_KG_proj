@@ -17,6 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+#: Folders no test sweeps: old material kept for reference (never run, never imported), and local-only notes.
+EXCLUDED_DIRS = ("archive/", "DONOTTRACK/")
+
 #: The folders a temporary copy needs to run every step and the annotation tool.
 CODE = ["common", "helpers", "010_harvest", "020_clean", "030_split", "040_induce_schema",
         "050_annotate", "060_extract", "070_evaluate"]

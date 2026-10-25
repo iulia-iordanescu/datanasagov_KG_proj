@@ -2,7 +2,7 @@
 common/common_helpers/triples_io.py -- the one place a triple is defined, cleaned and
 keyed, and the describes triple is made.
 
-Adapted from to_be_reshaped/triple_io.py; the describes triple (at the end)
+Adapted from archive/to_be_reshaped/triple_io.py; the describes triple (at the end)
 was added. Used by common/common_helpers/extraction.py (050 and 060: clean_triple,
 triple_key, component_class_key, describes_triple), common/common_helpers/validate.py,
 common/common_helpers/ground_truth.py, the annotation tool, 040 (component_class_key), 050 and 060

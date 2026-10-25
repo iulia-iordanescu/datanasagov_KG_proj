@@ -33,7 +33,7 @@ long text is checked against all of it.
 Shared by every step that takes triple instances from texts (040, 050 and
 060) and by the annotation tool. The checks against a schema and
 of the describes triple are at the end of this file; 040 has no schema to check
-against. Adapted from check_row in to_be_reshaped/validate_triples.py: the
+against. Adapted from check_row in archive/to_be_reshaped/validate_triples.py: the
 same checks and names.
 """
 from __future__ import annotations

@@ -110,7 +110,7 @@ Standard library only. Pure functions, no global state: deterministic and
 thread-safe. Measured on the data.nasa.gov catalog (2026-09-27): about
 65,000 titles and 10,000 descriptions a second.
 
-Adapted for 020_clean from to_be_reshaped/note_cleaning.py, with the
+Adapted for 020_clean from archive/to_be_reshaped/note_cleaning.py, with the
 self-test checking each change:
   * a link whose text is its own address is written once (the renderer and
     the verifier both changed);

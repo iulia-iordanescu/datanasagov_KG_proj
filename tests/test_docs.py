@@ -10,13 +10,13 @@ import re
 import subprocess
 import unittest
 
-from support import ROOT
+from support import EXCLUDED_DIRS, ROOT
 
 STEPS = ["010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract", "070_evaluate"]
-#: Files whose text isn't the project's to sweep: old code, and the person-made
-#: files of annotations/ (except its README).
-SKIP = ("to_be_reshaped/", "annotations/")
-KEEP = ("annotations/README.md",)
+#: Files whose text isn't the project's to sweep: the archive, and the person-made
+#: files of annotations/ (except the READMEs of both).
+SKIP = (*EXCLUDED_DIRS, "annotations/")
+KEEP = ("annotations/README.md", "archive/README.md")
 
 
 def tracked(*suffixes) -> list:
@@ -229,8 +229,8 @@ FIELD_WORD = re.compile(r"(?<![\w`-])(?:%s)(?![\w`-])" % "|".join(w for w, _ in 
 #: (a function's or the command line's) and span(s) (an HTML tag; a regular expression match's span()).
 FIELD_WORDS_ALLOWED_PHRASES = re.compile(r"HTML\s+entit(?:y|ies)|word\s+boundar(?:y|ies)|code\s+spans?", re.I)
 FIELD_WORDS_ALLOWED_IN_CODE = re.compile(r"arguments?|spans?", re.I)
-#: Files not swept: this file (it lists the words), and old notes kept as they were written.
-FIELD_WORDS_SKIP = ("tests/test_docs.py", "annotations/archive/", "to_be_reshaped/", "DONOTTRACK/")
+#: Files not swept: this file (it lists the words), and the archive's old notes and code (kept as they were written) and local notes.
+FIELD_WORDS_SKIP = ("tests/test_docs.py", *EXCLUDED_DIRS)
 TITLE_AFTER = re.compile(r"\s*,?\s*(?:in\s+\*|[A-Z][A-Za-z]*[A-Z]\w*\b|\(?\[paper\]\(|arXiv|doi:)")
 GLOSS_AFTER = re.compile(r"(?:'s|'|’s|’)?[\"”]?\s*\[[^\]\n]+\](?!\()")
 
@@ -278,7 +278,8 @@ def field_words_found() -> list:
     files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
     files += [p.relative_to(ROOT).as_posix() for p in (ROOT / "tests").glob("*.py")]
     return [f for rel in sorted(set(files))
-            if rel.endswith((".md", ".txt", ".py", ".html")) and not rel.startswith(FIELD_WORDS_SKIP) and (ROOT / rel).exists()
+            if rel.endswith((".md", ".txt", ".py", ".html")) and (not rel.startswith(FIELD_WORDS_SKIP) or rel in KEEP)
+            and (ROOT / rel).exists()
             for f in field_words_in(rel, (ROOT / rel).read_text(encoding="utf-8-sig"))]
 
 
@@ -541,7 +542,7 @@ def citations_without_source() -> list:
     the same doc gives no full citation of those authors elsewhere either."""
     found = []
     for rel in tracked(".md"):
-        if rel.startswith(FIELD_WORDS_SKIP):
+        if rel.startswith(FIELD_WORDS_SKIP) and rel not in KEEP:
             continue
         text = re.sub(r"```.*?```", lambda m: re.sub(r"[^\n]", " ", m.group(0)), (ROOT / rel).read_text(encoding="utf-8"),
                       flags=re.S)
@@ -584,7 +585,8 @@ class PromptsQuoteNoGroundTruth(unittest.TestCase):
 
     def test_no_quote_from_ground_truth(self):
         import csv
-        prompts = sorted(p for p in ROOT.glob("*/*_prompts/*.txt") if not p.is_relative_to(ROOT / "to_be_reshaped"))
+        prompts = sorted(p for p in ROOT.glob("*/*_prompts/*.txt")
+                         if not p.relative_to(ROOT).as_posix().startswith(EXCLUDED_DIRS))
         truth = sorted((ROOT / "annotations" / "ground_truth").glob("*.csv"))
         self.assertTrue(prompts, "no prompt files found under */*_prompts/")
         self.assertTrue(truth, "no ground truth files found in annotations/ground_truth/")
@@ -610,7 +612,8 @@ class PromptsQuoteNoGroundTruth(unittest.TestCase):
         """Unquoted copying too: no run of 5 consecutive words of a prompt file (case, spacing, and punctuation
         ignored) occurs in a ground truth subject, object, or source_text."""
         import csv
-        prompts = sorted(p for p in ROOT.glob("*/*_prompts/*.txt") if not p.is_relative_to(ROOT / "to_be_reshaped"))
+        prompts = sorted(p for p in ROOT.glob("*/*_prompts/*.txt")
+                         if not p.relative_to(ROOT).as_posix().startswith(EXCLUDED_DIRS))
         truth = sorted((ROOT / "annotations" / "ground_truth").glob("*.csv"))
         self.assertTrue(prompts, "no prompt files found under */*_prompts/")
         self.assertTrue(truth, "no ground truth files found in annotations/ground_truth/")

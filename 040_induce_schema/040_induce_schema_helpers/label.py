@@ -29,7 +29,7 @@ Each batch's answer is cached under a key that includes the labels in use
 before it, so a rerun reuses every batch whose component instances and
 preceding labels are unchanged.
 
-Adapted from conceptualize() in to_be_reshaped/best_induce_schema.py, whose
+Adapted from conceptualize() in archive/to_be_reshaped/best_induce_schema.py, whose
 batches couldn't see each other's labels; a later stage then had to repair
 the drift, in alphabetical groups where synonyms like `Instrument` and
 `Sensor` rarely met.

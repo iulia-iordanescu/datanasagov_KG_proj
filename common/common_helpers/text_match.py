@@ -45,8 +45,8 @@ Shared by every step that checks triple instances against texts (040, 050,
 060), by 070's matching and by common/common_helpers/triples_io.py, so "the same" means
 one thing everywhere.
 
-Adapted from norm_text in to_be_reshaped/triple_io.py and _flat/_in in
-to_be_reshaped/validate_triples.py, which evened out four quotes and two
+Adapted from norm_text in archive/to_be_reshaped/triple_io.py and _flat/_in in
+archive/to_be_reshaped/validate_triples.py, which evened out four quotes and two
 dashes (this evens out every common quote and dash) and evened out a whole
 record's text again for every check (this does it once per record). Quote
 marks are now ignored rather than evened out: the old code couldn't find

@@ -35,7 +35,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `docs/improvements.md` | The [improvements list](docs/terminology.md#8-the-pipeline): changes to make to the pipeline itself, each with why and where the idea came from | — |
 | `docs/virtual_environment_setup.md` | Setting up a computer to run the pipeline: Python 3.14, its own environment (`.myvenv`), the packages, your service key in `.env`, and VS Code | — |
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
-| `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the [ground truth candidates pool](docs/terminology.md#4-ground-truth-and-samples) (`ground_truth_candidates.csv`, `.json`), the ground truth schema, the schema additions, the translation table (`component_class_mapping.csv`) and the log of [held-out looks](docs/terminology.md#7-evaluating-extraction-step-070) (both added to by 070), your [verdicts](docs/terminology.md#7-evaluating-extraction-step-070) on 070's [partial pairs](070_evaluate/metrics/pairs.md), and the notes and the [classed triples](docs/terminology.md#2-triples) a model drafted before the pipeline existed, which they started from (`archive/`) | [`annotations/README.md`](annotations/README.md), which lists every file there |
+| `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the [ground truth candidates pool](docs/terminology.md#4-ground-truth-and-samples) (`ground_truth_candidates.csv`, `.json`), the ground truth schema, the schema additions, the translation table (`component_class_mapping.csv`) and the log of [held-out looks](docs/terminology.md#7-evaluating-extraction-step-070) (both added to by 070), your [verdicts](docs/terminology.md#7-evaluating-extraction-step-070) on 070's [partial pairs](070_evaluate/metrics/pairs.md) | [`annotations/README.md`](annotations/README.md), which lists every file there |
 | `requirements.txt` | The Python packages the pipeline needs, installed with `pip install -r requirements.txt` | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md) |
 
 **What runs make (only on your computer, never in Git)**
@@ -53,7 +53,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 
 | File or folder | What it is |
 |---|---|
-| `to_be_reshaped/` | The scripts from before the pipeline, kept as reference while their work moves into the steps. Never run. |
+| `archive/` | Old material kept for reference, never run and never imported: the scripts from before the pipeline (`archive/to_be_reshaped/`), kept as reference while their work moves into the steps, and the notes and the [classed triples](docs/terminology.md#2-triples) a model drafted before the pipeline existed, which the ground truth and its schema started from (`archive/annotations/`). Each folder's origin: [`archive/README.md`](archive/README.md). |
 | `docs/pipeline_in_pictures.md` | The pipeline at a glance, in six diagrams: the steps, what each reads, the annotation loop, inside evaluation, tracing an output, the folders. Kept current with the code; the details are in the steps' guides (`<step>/<step>.md`). |
 | `docs/v0_schema.txt` | An early version of the schema. Nothing reads it. |
 | `.vscode/settings.json` | A VS Code setting: its file list hides Python's `__pycache__/` folders (compiled copies Python makes by itself). Nothing is deleted. |
@@ -61,7 +61,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 
 ## Pipeline overview
 
-Phase 1 (done) was built by the scripts `to_be_reshaped/nasa_harvest.py` and `to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered [steps](docs/terminology.md#8-the-pipeline), run in order, each from the [control panel](docs/terminology.md#8-the-pipeline) in its folder, run from the repository folder (`py 010_harvest/run.py`, …), or all in order with `py run_pipeline.py`. Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a [report](docs/terminology.md#8-the-pipeline) and a [log](docs/terminology.md#8-the-pipeline). Details of each step are in its guide, `<step>/<step>.md`.
+Phase 1 (done) was built by the scripts `archive/to_be_reshaped/nasa_harvest.py` and `archive/to_be_reshaped/nasa_census.py`. Phase 2 is a pipeline of 8 numbered [steps](docs/terminology.md#8-the-pipeline), run in order, each from the [control panel](docs/terminology.md#8-the-pipeline) in its folder, run from the repository folder (`py 010_harvest/run.py`, …), or all in order with `py run_pipeline.py`. Each step reads what earlier steps wrote in `outputs/intermediate_results/` (or files kept in `annotations/`), writes its own output there, and leaves a [report](docs/terminology.md#8-the-pipeline) and a [log](docs/terminology.md#8-the-pipeline). Details of each step are in its guide, `<step>/<step>.md`.
 
 | Step | What it does | Reads | Writes | Status |
 |---|---|---|---|---|
@@ -99,7 +99,7 @@ There are two phases to the building of this [knowledge graph](docs/terminology.
 
 ## Phase 1: how the census decided the design
 
-A data census (`to_be_reshaped/nasa_census.py`) is what decided this design. This script counted, for every [field](docs/terminology.md#1-records-and-their-text), how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the [knowledge graph](docs/terminology.md#8-the-pipeline):
+A data census (`archive/to_be_reshaped/nasa_census.py`) is what decided this design. This script counted, for every [field](docs/terminology.md#1-records-and-their-text), how often it is filled and how many distinct values it holds. Those counts decided whether and what each field becomes in the [knowledge graph](docs/terminology.md#8-the-pipeline):
 
 - If many [records](docs/terminology.md#1-records-and-their-text) share a field's values and those values are worth traversing through, the values become [nodes](docs/terminology.md#8-the-pipeline). If a field fails that test but its values still answer some question by filtering or identifying (license, title, dates), the values become properties.
 - If a field's values answer no question anyone would ask the graph (`creator_user_id`, `isopen`), the field is ignored.

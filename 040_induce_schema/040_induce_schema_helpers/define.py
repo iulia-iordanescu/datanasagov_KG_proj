@@ -15,7 +15,7 @@ done once, over all labels at a time) and chooses nothing: the examples are
 picked by code (stage 5): the component instances that most often got each
 entity class, the triple instances that most often state each predicate. Stage 7 checks what the model sent back.
 
-Adapted from assemble() in to_be_reshaped/best_induce_schema.py, which also
+Adapted from assemble() in archive/to_be_reshaped/best_induce_schema.py, which also
 merged near-duplicates here, a second merge in batches of 40 where synonyms
 could miss each other, and asked the model to pick examples.
 """

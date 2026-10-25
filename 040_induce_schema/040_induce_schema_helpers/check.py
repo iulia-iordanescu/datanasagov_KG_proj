@@ -22,7 +22,7 @@ What the model wrote is only the definitions. Checked here:
 Every schema entry keeps its evidence (support, the texts, the maintainers)
 and its origin: the records whose texts it was found in.
 
-Adapted from verify_against_evidence() in to_be_reshaped/best_induce_schema.py.
+Adapted from verify_against_evidence() in archive/to_be_reshaped/best_induce_schema.py.
 Stage 6 no longer merges or picks examples, so the checks that repaired
 those (support bounds of merged entries, invented examples, restored
 entries) are no longer needed: the schema can't contain anything the

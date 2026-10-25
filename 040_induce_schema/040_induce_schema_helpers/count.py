@@ -34,7 +34,7 @@ Each quantity is counted independently: a component instance left
 unlabeled costs its own schema entry and every pattern through it, not its
 neighbors' entries.
 
-Adapted from consolidate() in to_be_reshaped/best_induce_schema.py.
+Adapted from consolidate() in archive/to_be_reshaped/best_induce_schema.py.
 """
 from __future__ import annotations
 

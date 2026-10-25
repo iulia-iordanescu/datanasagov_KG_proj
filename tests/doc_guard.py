@@ -17,7 +17,8 @@ removes duplicate links, never a link's last copy.
     py tests/doc_guard.py check      # every changed doc against the ledger
     py tests/doc_guard.py clear      # after a commit: start a new ledger
 
-A doc is any tracked *.md file outside to_be_reshaped/. Standard library only.
+A doc is any tracked *.md file outside archive/ (old material kept for reference), and archive/README.md.
+Standard library only.
 """
 from __future__ import annotations
 
@@ -29,6 +30,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / ".git" / "doc_guard_ledger.json"
+#: Folders whose docs are never checked: old material kept as it was written (their own README is checked).
+EXCLUDED_DIRS = ("archive/",)
+KEPT = ("archive/README.md",)
 LINK = re.compile(r"\[([^\[\]\n]*)\]\(([^)\n]*)\)")
 
 
@@ -154,7 +158,7 @@ def _docs_changed() -> list:
                          text=True, encoding="utf-8").stdout.split()
     new = subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "--", "*.md"], cwd=ROOT,
                          capture_output=True, text=True, encoding="utf-8").stdout.split()
-    return [f for f in out + new if not f.startswith("to_be_reshaped/")]
+    return [f for f in out + new if not f.startswith(EXCLUDED_DIRS) or f in KEPT]
 
 
 def _at_head(rel: str) -> str:
@@ -225,7 +229,7 @@ def history() -> list:
     found, seen = [], set()
     for c in git("log", "--format=%H", "--reverse", "--", "*.md").split():
         for rel in git("diff-tree", "--no-commit-id", "--name-only", "-r", c, "--", "*.md").split():
-            if rel.startswith("to_be_reshaped/") or not (ROOT / rel).exists():
+            if (rel.startswith(EXCLUDED_DIRS) and rel not in KEPT) or not (ROOT / rel).exists():
                 continue
             before, after = git("show", f"{c}^:{rel}"), git("show", f"{c}:{rel}")
             if not before or not after:

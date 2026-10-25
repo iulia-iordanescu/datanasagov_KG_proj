@@ -26,7 +26,7 @@ Nothing is cut off: every character of the fields is in some piece. Shared by
 every step that sends records to a model (040, 050, and 060), so a
 long record is read the same way everywhere.
 
-Adapted from chunk_text in to_be_reshaped/inputs_io.py, which re-parsed the
+Adapted from chunk_text in archive/to_be_reshaped/inputs_io.py, which re-parsed the
 field names out of one string and cut the text into pieces without saying which
 part a piece was.
 """
