@@ -23,7 +23,7 @@ The ground truth is the answer key extraction (step 060) is evaluated against (s
 
 ## Writing a classed triple
 
-1. **[Subject instance](../docs/terminology.md#2-triples) and [object instance](../docs/terminology.md#2-triples): the record's own words, as written.** Don't paraphrase them, and don't expand an acronym the record leaves unexpanded. Three exceptions: rule 9 takes some qualifiers out of an instance, rule 12 copies a list's shared words onto each item, and rule 13 uses one wording for a thing everywhere in the record.
+1. **[Subject instance](../docs/terminology.md#2-triples) and [object instance](../docs/terminology.md#2-triples): the record's own words, as written.** Don't paraphrase them, and don't expand an acronym the record leaves unexpanded. Three exceptions: rule 9 takes some [qualifiers](../docs/terminology.md#2-triples) out of an instance, rule 12 copies a list's shared words onto each item, and rule 13 uses one wording for a thing everywhere in the record.
 2. **The subject instance is what the sentence is about**, which isn't always the title. Where the record states a fact about what its title names, use the title as the subject instance.
 3. **The predicate reads from subject to object**, as the [ground truth schema](../docs/terminology.md#3-schemas) defines it (`annotations/ground_truth_schema.txt`, section PREDICATES: "Each entry below reads subject -> object"). "Dataset ACQUIRED_BY_INSTRUMENT Instrument" means the dataset was collected by the instrument, not the other way round.
 4. **[Entity classes](../docs/terminology.md#3-schemas) and predicates: the ground truth schema's**, when one fits, so records name the same things the same way. When none fits, coin one: see *Coining an entity class or predicate*, below.
