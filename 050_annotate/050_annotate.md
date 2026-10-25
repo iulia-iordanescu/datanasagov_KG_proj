@@ -133,6 +133,8 @@ Run against the [record](../docs/terminology.md#1-records-and-their-text)'s **wh
 | `conflicting_classes` | flag | The same subject instance, predicate, and object instance appear in another row with a different subject class or object class; both rows are flagged. |
 | `not_connected` | flag (*tool*) | No chain of ground truth triples links this one to the catalog entry (the describes triple and the title) (`annotations/guidelines.md`, *Finishing a record*). |
 
+How the checks relate: a row gets those of the first case that applies, in this order. Stage 4 (the ground truth's files): an id not in the catalog gets `id_not_in_records` alone; a row with all three empty gets none (a record stating no facts); a row with some empty, `incomplete` alone; the describes triple, its `describes_…` checks; any other row, every other check that applies. The tool: the describes triple, its `describes_…` checks; a row with any of the three empty, `empty` alone; any other row, every other check that applies. Among those, `no_source_text` and `source_not_in_text` exclude each other (the second needs a source text), and so do the `…_not_in_source` flags, which never come with `no_source_text`; any other two can come together.
+
 "In the text" means found once evened out. Entity classes and predicates are compared with the schema's by [loose match](../docs/terminology.md#3-schemas), so `has version` is `HAS_VERSION`.
 
 ## Prompts

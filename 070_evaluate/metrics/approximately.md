@@ -26,7 +26,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
   - A narrow range: another sample of the same size would give nearly the same value. A wide one: it could give quite a different value.
   - More evaluated records give a narrower range.
   - Two values whose ranges overlap a lot may differ only by chance.
-- **Assumptions.** No distribution for the metric (e.g. not a normal one), but the following. The report checks each, in its section *The margin of error's assumptions, checked*, and warns when one doesn't hold.
+- **Assumptions.** No distribution for the metric (e.g. not a normal one), but the following. The report checks each, in its section *The margin of error's assumptions, checked* (there only when the part has margins of error, from 20 evaluated records on), and warns when one doesn't hold.
 
   | Assumption | Why it matters | How the report checks it |
   |---|---|---|
