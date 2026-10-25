@@ -54,8 +54,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
   - **May matter because:** "Polar" may name the grid used (a fact about which grid), or the area the data cover (the poles); I wrote neither.
   - **Question:** Q1 (c), and Q11 for the area.
 - **Left out:** "collaboratively" (notes, "developed collaboratively between")
-  - **Rule:** none that I can quote. I wrote both developers as ground truth triples (DEVELOPED_BY_PARTY), and no predicate of the ground truth schema says "jointly". This is a gap in the ground truth that rule 2 of *What counts as a fact* ("Every fact the record states") would count against me; I have not decided it.
-  - **May matter because:** it says the two developed the mission together, not each one part.
+  - **Rule:** none to quote. The two developers are already ground truth triples (DEVELOPED_BY_PARTY: NASA and CONAE), and a query returns both; "collaboratively" adds only that they worked together, which no predicate of the ground truth schema expresses. Not worth a new predicate now. I decided this on 2026-10-25.
 - **Left out:** "space agency" (notes, "Argentina's space agency")
   - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; "Argentina's" is its own ground truth triple (BASED_IN). I decided this on 2026-10-25.
   - **Question:** Q8 (roles).
