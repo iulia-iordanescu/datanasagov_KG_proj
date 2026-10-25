@@ -75,7 +75,7 @@ def compute_metrics(evaluated, settings) -> dict:
 
 def _with_margin(n: dict) -> str:
     if n is None or n.get("value") is None:
-        return "–"
+        return readings.NO_VALUE
     if n.get("low") is None:
         return readings.pct(n["value"])
     return f"{readings.pct(n['value'])} ({readings.pct(n['low'])}–{readings.pct(n['high'])})"
@@ -157,7 +157,7 @@ def _reach_cell(r: dict) -> str:
 PER_COMPONENT_CLASS_NUMBERS = (("precision", "Precision"), ("recall", "Recall"), ("f1", "F1"),
                                ("strict_precision", "Precision"), ("strict_recall", "Recall"), ("strict_f1", "F1"),
                                ("strict_recall_within_reach", "Recall within reach"))
-NONE_WITHIN_STRICT_REACH = "no value: 0 ground truth triples within strict reach to divide by"
+NONE_WITHIN_STRICT_REACH = "no value (0 to divide by: no ground truth triple within strict reach)"
 #: The column counting occurrences whose element has multiplicity above 1 in its record's multiset of translated
 #: extracted triples (070_evaluate/metrics/pairs.md, Example, *A multiset of translated extracted triples*).
 MULTIPLIED = "Occurrences with multiplicity > 1"
@@ -219,7 +219,7 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
     return lines
 
 
-NO_VALUE = "no value"
+NO_VALUE = readings.NO_VALUE
 POOLED = "`070_evaluate/metrics.md`, *Pooled, not averaged*"
 ID_SHOWN, TITLE_SHOWN = 8, 50                 # characters of a record's id and title in the report's table per record
 
@@ -249,7 +249,7 @@ def _per_record_lines(rows: list) -> list:
              "extraction does worst on. The part's numbers above add up all its records' counts before dividing "
              f"(pooled), and are never an average of these (why: {POOLED}). No margin of error: it needs at least "
              f"{stats.MIN_RECORDS} records (`070_evaluate/metrics/approximately.md`), and each row is one record. "
-             f"*{NO_VALUE}*: the formula would divide by 0 (e.g. precision of a record with no occurrences). Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
+             f"*{NO_VALUE}*: e.g. precision of a record with no occurrences. Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
              "exact pair (each against its precision) plus its ground truth triples with no exact pair (each against "
              "its recall), most first, then by pool position. " + MULTIPLIED_NOTE + " Each record's pairs: "
              f"`{PER_RECORD_NAME}`.", ""]
@@ -417,7 +417,7 @@ def _per_record(records: list, hidden: int) -> str:
              "truth triples left ground truth only (each counts against recall). Occurrences are shown translated "
              "into the ground truth schema. Terms: docs/terminology.md, section *Evaluating extraction*; "
              "pairs: 070_evaluate/metrics/pairs.md. Above each record's pairs, its own numbers, by the same formulas "
-             f"as the report's (*{NO_VALUE}*: the formula would divide by 0; *counted against it (exact)*: its "
+             f"as the report's (*{NO_VALUE}*: the formula's denominator is 0; *counted against it (exact)*: its "
              f"occurrences with no exact pair plus its ground truth triples with no exact pair), and its reading (the "
              f"rules: {readings.RULES}). The report's numbers add up all the records' counts before dividing "
              f"(pooled), and are never an average of these (why: {POOLED}).", ""]
@@ -503,7 +503,7 @@ def _mismatch_lines(mismatches: list) -> list:
              "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
              "likely wrong: check that row (`py helpers/annotate.py`, view *Translation table*). Seen once, it may just be "
              "extraction choosing the wrong component class.", "",
-             "How to read a row of the table below, e.g. *entity class | Body | Spacecraft | CelestialBody | 9*: "
+             "How to read a row of the table below, e.g. *entity class, subject | Body | Spacecraft | CelestialBody | 9*: "
              "these component class "
              "mismatches, counted together, happened 9 times:", "",
              "- **entity class, subject:** extraction used `Body` (current schema) as the subject class of an "
@@ -634,6 +634,20 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                         f"record(s): {named(waiting)}. So the partial level may count pairs that aren't the same fact "
                         f"(e.g. MODIS vs MODIS Terra). Review them (`py helpers/annotate.py`, view *Partial pairs*), "
                         f"{AGAIN}")
+    if evaluated.review_problems:
+        warnings.append(f"{len(evaluated.review_problems)} row(s) of annotations/partial_pair_reviews.csv have a "
+                        f"verdict that is neither \"same fact\" nor \"not the same fact\" (case aside), so they are "
+                        f"ignored: {named(evaluated.review_problems, 5, '; ')}. Fix each verdict in that file, or delete "
+                        f"the row and review the pair again (`py helpers/annotate.py`, view *Partial pairs*), {AGAIN}")
+    not_applying = [(r["id"], k) for r in tuning for k in r["compared"]["partial_review"]["not_applying"]]
+    if not_applying:
+        warnings.append(f"{len(not_applying)} verdict(s) of annotations/partial_pair_reviews.csv, on tuning records "
+                        f"evaluated now, no longer match a partial pair (a ground truth triple, an extracted triple, or "
+                        f"a row of the translation table changed since), so they apply to nothing: "
+                        + named([f"record {rid}: {k[1]} {k[2]} {k[3]} / {k[4]} {k[5]} {k[6]}" for rid, k in not_applying],
+                                5, "; ")
+                        + ". Nothing to do if that change was meant: any pair it made is counted as not reviewed. "
+                          "To tidy the file, delete those rows.")
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
         warnings.append(f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times where extraction "

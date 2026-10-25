@@ -28,6 +28,11 @@ the current schema (the one step 060 used) means.
                              component_class_in_gtt when the row was written or
                              last checked (empty for (none))
 
+The three columns of fixed values (kind, swap_subject_and_object, checked) are read ignoring case and spaces at
+either end, here (read_mapping), so step 070, the annotation tool and the status read them alike; any other
+value (value_problems) stops step 070, naming the line. swap_subject_and_object is "no" for an entity class.
+The values, for a person: docs/terminology.md, *translation table*.
+
 A row is only as good as the meanings it was checked against: a later schema
 may give the same component class another meaning, and the ground truth schema
 may give the component class it translates to another one. So a
@@ -64,6 +69,8 @@ COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_i
 KINDS = {"entity class": "entity_classes", "predicate": "predicates"}   # {kind: the schema's key}
 NONE = "(none)"
 CHECKED = ("yes", "same component class")                                          # what 070 accepts as checked
+#: Every value each column of fixed values may hold (read_mapping lowercases them first).
+VALUES = {"kind": tuple(KINDS), "swap_subject_and_object": ("yes", "no"), "checked": ("no",) + CHECKED}
 
 
 def crt_definitions(schema_used: dict) -> dict:
@@ -129,5 +136,25 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
         rows = []
         for r in reader:
             if (r.get("component_class_from_past_or_crt_schema") or "").strip():
-                rows.append({**{c: (r.get(c) or "").strip() for c in COLUMNS}, "_line": reader.line_num})
+                row = {c: (r.get(c) or "").strip() for c in COLUMNS}
+                row.update({c: " ".join(row[c].lower().split()) for c in VALUES})
+                rows.append({**row, "_line": reader.line_num})
         return rows
+
+
+def value_problems(rows: list) -> list:
+    """Each row whose column of fixed values holds a value outside VALUES (or "yes" in swap_subject_and_object for an
+    entity class), as "line N (component class): column 'value'", in the file's order."""
+    out = []
+    for r in rows:
+        bad = [c for c, allowed in VALUES.items() if r[c] not in allowed]
+        if r["kind"] == "entity class" and r["swap_subject_and_object"] == "yes":
+            bad.append("swap_subject_and_object")
+        out += [f"line {r['_line']} ({r['component_class_from_past_or_crt_schema']}): {c} '{r[c]}'" for c in bad]
+    return out
+
+
+def values_text() -> str:
+    """The allowed values, for messages."""
+    return ("kind: entity class or predicate; swap_subject_and_object: yes or no (no for an entity class); checked: "
+            "no, yes, or same component class")

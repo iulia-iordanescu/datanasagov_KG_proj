@@ -115,8 +115,8 @@ class PerComponentClass(unittest.TestCase):
             "object class": {"Instrument": (True, 0, 1, 0.0, None), "Spacecraft": (True, 2, 2, 1.0, 0.5)}})
         text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, tables))
         self.assertIn("| ACQUIRED_BY_INSTRUMENT | out of reach; 0 of 1 ground truth triple within strict reach | 0% | 0 "
-                      "| 0 | 1 | 1 | 0 | – | 0% | 0% | – | 0% | 0% | no value: 0 ground truth triples within strict reach to divide "
-                      "by | 0 |", text)
+                      "| 0 | 1 | 1 | 0 | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by: no ground truth triple within strict reach) "
+                      "| 0 |", text)
         self.assertIn("| Instrument | within reach; 0 of 1 ground truth triple within strict reach | 0% |", text)
 
     def test_counts_agree_with_the_totals(self):
@@ -171,8 +171,8 @@ class PerComponentClass(unittest.TestCase):
                       "67% | 100% | 80% | 33% | 50% | 40% | 50% | 2 | 67% | 100% | 80% | 33% | 50% | 40% | 50% |", text)
         self.assertIn("| Dataset | within reach; 1 of 1 ground truth triple within strict reach | 100% | 3 | 0 | 1 | 4 | 0 | "
                       "0% | 0% | 0% | 0% | 0% | 0% | 0% | 1 | 33% | 100% | 50% | 33% | 100% | 50% | 100% |", text)
-        self.assertIn(f"| Gadget{NONE} | none: translates to (none), so not in the ground truth schema | – | 1 | 0 | 0 | 1 | 0 | 0% | – | 0% | 0% | – | "
-                      f"0% | {moves.NONE_WITHIN_STRICT_REACH} | 0 | 0% | – | 0% | 0% | – | 0% | "
+        self.assertIn(f"| Gadget{NONE} | none: translates to (none), so not in the ground truth schema | no value (0 to divide by) | 1 | 0 | 0 | 1 | 0 | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | "
+                      f"0% | {moves.NONE_WITHIN_STRICT_REACH} | 0 | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | 0% | "
                       f"{moves.NONE_WITHIN_STRICT_REACH} |", text)
         n["margins"] = True
         self.assertIn("about 1 in 20 of their margins of error misses the true value by chance (each is a 95% range)", "\n".join(moves._per_component_class_lines(n, self.tables)))
@@ -215,13 +215,13 @@ class PerRecord(unittest.TestCase):
         self.assertEqual((row["exact"]["precision"], row["exact"]["recall"], row["recall_upper_bound"],
                           row["exact"]["recall_within_reach"]), (0.0, None, None, None))
         text = "\n".join(moves._per_record_lines([row]))
-        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 0 | 1 | no value | no value | 0 | 0 | 0% | no value | 0% |", text)
+        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 0 | 1 | no value (0 to divide by) | no value (0 to divide by) | 0 | 0 | 0% | no value (0 to divide by) | 0% |", text)
 
     def test_report_table(self):
         text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
         self.assertIn("are never an average of these (why: `070_evaluate/metrics.md`, *Pooled, not averaged*)", text)
         self.assertIn("No margin of error: it needs at least 20 records (`070_evaluate/metrics/approximately.md`), and "
-                      "each row is one record. *no value*: the formula would divide by 0", text)
+                      "each row is one record. *no value (0 to divide by)*: e.g. precision of a record with no occurrences", text)
         self.assertIn("| Pool position | Record id (first 8 characters) | Title (first 50 characters) | Occurrences | "
                       "Occurrences with multiplicity > 1 | Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
                       "bound | Pairs (exact) | Strict pairs (exact) | Precision (exact) | Recall (exact) | F1 (exact) | "

@@ -378,6 +378,26 @@ class TranslationTable(unittest.TestCase):
 
     def test_real_file_reads(self):
         component_class_mapping.read_mapping()
+        self.assertEqual(component_class_mapping.value_problems(component_class_mapping.read_mapping()), [])
+
+    def test_fixed_values(self):
+        """kind, swap_subject_and_object and checked are read ignoring case and spaces at either end; any other value
+        (or "yes" to swap an entity class) is a problem, naming its line."""
+        cols = component_class_mapping.COLUMNS
+        path = self.tmp / "m.csv"
+        write_csv(path, cols, [
+            dict(zip(cols, ["Entity Class", "Satellite", "Spacecraft", " No", "YES", "", ""])),
+            dict(zip(cols, ["predicate", "CARRIES", "ABOARD", "Yes", "Same  Component class", "", ""])),
+            dict(zip(cols, ["predicate", "HOSTS", "ABOARD", "y", "checked", "", ""])),
+            dict(zip(cols, ["entity class", "Probe", "Spacecraft", "yes", "no", "", ""])),
+            dict(zip(cols, ["sort", "Rover", "(none)", "", "", "", ""]))])
+        rows = component_class_mapping.read_mapping(path)
+        self.assertEqual([(r["kind"], r["swap_subject_and_object"], r["checked"]) for r in rows[:2]],
+                         [("entity class", "no", "yes"), ("predicate", "yes", "same component class")])
+        self.assertEqual(component_class_mapping.value_problems(rows), [
+            "line 4 (HOSTS): swap_subject_and_object 'y'", "line 4 (HOSTS): checked 'checked'",
+            "line 5 (Probe): swap_subject_and_object 'yes'",
+            "line 6 (Rover): kind 'sort'", "line 6 (Rover): swap_subject_and_object ''", "line 6 (Rover): checked ''"])
 
 
 class AskCached(unittest.TestCase):

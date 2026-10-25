@@ -346,13 +346,40 @@ class Pairing(unittest.TestCase):
         g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         e = [triple("MODIS Terra", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         unreviewed = self.pairs(g, e)
-        self.assertEqual(unreviewed["partial_review"], {"rejected": 0, "unreviewed": 1})
+        self.assertEqual(unreviewed["partial_review"], {"rejected": 0, "unreviewed": 1, "applied": 0, "not_applying": []})
         key = pair_key("r1", g[0], unreviewed["translated"][0])
         same = self.pairs(g, e, reviews={key: SAME})
         self.assertEqual((len(same["pairs"]), same["partial_review"]["unreviewed"]), (1, 0))
         rejected = self.pairs(g, e, reviews={key: NOT_SAME})
         self.assertEqual(rejected["pairs"], [])
-        self.assertEqual(rejected["partial_review"], {"rejected": 1, "unreviewed": 0})
+        self.assertEqual(rejected["partial_review"], {"rejected": 1, "unreviewed": 0, "applied": 1, "not_applying": []})
+        # a verdict on a pair that no longer pairs (the extracted triple changed): it applies to nothing, and is listed
+        other = self.pairs(g, [triple("MODIS Aqua", "Instrument", "ABOARD", "Aqua", "Spacecraft")], reviews={key: NOT_SAME})
+        self.assertEqual(len(other["pairs"]), 1)
+        self.assertEqual(other["partial_review"]["not_applying"], [key])
+        # a verdict on another record is not this record's
+        self.assertEqual(self.pairs(g, e, reviews={("r2",) + key[1:]: SAME})["partial_review"]["not_applying"], [])
+
+    def test_verdicts_read_case_aside(self):
+        """Verdicts are read ignoring case and spacing; any other verdict is ignored and listed (review_problems)."""
+        import csv
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from common.partial_reviews import COLUMNS, read_reviews, review_problems
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / "reviews.csv"
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(COLUMNS)
+            w.writerow(["r1", "MODIS", "ABOARD", "Aqua", "MODIS Terra", "ABOARD", "Aqua", " Same  Fact "])
+            w.writerow(["r1", "CERES", "ABOARD", "Aqua", "CERES FM", "ABOARD", "Aqua", "NOT THE SAME FACT"])
+            w.writerow(["r2", "AIRS", "ABOARD", "Aqua", "AIRS x", "ABOARD", "Aqua", "same"])
+            w.writerow(["r3", "AMSR", "ABOARD", "Aqua", "AMSR-E", "ABOARD", "Aqua", ""])
+        self.assertEqual(sorted(read_reviews(path).values()), [NOT_SAME, SAME])
+        self.assertEqual(review_problems(path), ["line 4 (r2): 'same'", "line 5 (r3): ''"])
+        self.assertEqual(review_problems(tmp / "missing.csv"), [])
 
     def test_review_does_not_block_exact(self):
         g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
@@ -497,6 +524,34 @@ class RecallWithinReach(unittest.TestCase):
         self.assertAlmostEqual(n["exact"]["strict_recall_within_reach"], 1 / 3)
 
 
+class ProposedRows(unittest.TestCase):
+    """component_classes._propose: a component class the model's answer leaves out gets a (none) row, and a note
+    names it; one it translates to something the ground truth schema lacks is noted too."""
+
+    def test_left_out_and_strays(self):
+        from unittest import mock
+        import component_classes
+        reply = {"mapping": [{"kind": "entity class", "schema": "Satellite", "ground_truth": "Spacecraft"},
+                             {"kind": "predicate", "schema": "CARRIES", "ground_truth": "TOTES", "reversed": True}]}
+        calls = type("Calls", (), {"cache_dir": None, "paid": type("Paid", (), {"made": 0})()})()
+        cache = type("Cache", (), {"reused": 0})()
+        gtt = {"entity class": {"Spacecraft": "a craft"}, "predicate": {"ABOARD": "is on"}}
+        schema_used = {"entity_classes": [{"component_class": "Satellite"}, {"component_class": "Probe"}],
+                       "predicates": [{"component_class": "CARRIES"}]}
+        with mock.patch.object(component_classes, "Cache", return_value=cache), \
+                mock.patch.object(component_classes, "ask_cached", return_value=reply):
+            rows, notes, _, _ = component_classes._propose(
+                [("entity class", "Satellite"), ("entity class", "Probe"), ("predicate", "CARRIES")], gtt, schema_used,
+                calls, gtt)
+        self.assertEqual([(r["component_class_from_past_or_crt_schema"], r["component_class_in_gtt"], r["checked"])
+                          for r in rows], [("Satellite", "Spacecraft", "no"), ("Probe", "(none)", "no"),
+                                           ("CARRIES", "(none)", "no")])
+        self.assertEqual(len(notes), 2, notes)
+        self.assertIn("CARRIES (current schema) --> TOTES (not in the ground truth schema)", notes[0])
+        self.assertIn("The model's answer left out 1 component class(es) it was asked about", notes[1])
+        self.assertIn("Probe (entity class, current schema)", notes[1])
+
+
 class Mismatches(unittest.TestCase):
 
     def test_entity_class_and_predicate(self):
@@ -512,7 +567,7 @@ class Mismatches(unittest.TestCase):
         pairing.compare_record(rec, t)
         found = pairing.component_class_mismatches([rec])
         self.assertEqual(found, [
-            {"kind": "entity class", "crt_component_class": "Satellite", "translated_to": "Instrument",
+            {"kind": "entity class, object", "crt_component_class": "Satellite", "translated_to": "Instrument",
              "gtt_component_class": "Spacecraft", "swapped": False, "count": 1},
             {"kind": "predicate", "crt_component_class": "CARRIES", "translated_to": "ACQUIRED_BY_INSTRUMENT",
              "gtt_component_class": "ABOARD", "swapped": False, "count": 1},
@@ -523,7 +578,7 @@ class Mismatches(unittest.TestCase):
         rec = record(G, E)
         pairing.compare_record(rec, translation())
         kinds = {m["kind"] for m in pairing.component_class_mismatches([rec])}
-        self.assertEqual(kinds, {"entity class"})                # only E2's and E4's entity classes
+        self.assertTrue(kinds and kinds <= {"entity class, subject", "entity class, object"}, kinds)  # only E2's and E4's entity classes
 
 
 class Formulas(unittest.TestCase):
@@ -853,8 +908,8 @@ class SymmetricPredicates(unittest.TestCase):
         # entity classes that agree as written do not once swapped: not strict
         c = self.compare(g, [triple("Worldview imagery", "WebTool", self.AKA, "Worldview", "Dataset")])
         self.assertEqual((c["counts"]["exact_pairs"], c["counts"]["exact_strict_pairs"]), (1, 0))
-        self.assertEqual(sorted((m["crt_component_class"], m["gtt_component_class"]) for m in pairing.component_class_mismatches([{"gt": g, "compared": c}])),
-                         [("Dataset", "WebTool"), ("WebTool", "Dataset")])
+        self.assertEqual(sorted((m["kind"], m["crt_component_class"], m["gtt_component_class"]) for m in pairing.component_class_mismatches([{"gt": g, "compared": c}])),
+                         [("entity class, object", "WebTool", "Dataset"), ("entity class, subject", "Dataset", "WebTool")])
 
     def test_non_symmetric_predicate_swapped_does_not_pair(self):
         for p in PREDICATES:

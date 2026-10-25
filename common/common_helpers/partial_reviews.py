@@ -11,7 +11,9 @@ in "MODIS Terra"), so a person can review each one:
     record_id,ground_truth_subject,ground_truth_predicate,ground_truth_object,
     translated_subject,translated_predicate,translated_object,verdict
 
-    verdict   "same fact" or "not the same fact"
+    verdict   "same fact" or "not the same fact" (read ignoring case and spacing, as
+              the translation table's fixed values are; any other verdict is
+              ignored, and step 070 warns about it: review_problems)
 
 The extracted triple is written as translated into the ground truth
 schema (as compared_triples.csv shows it), so a verdict stops applying if the
@@ -52,11 +54,28 @@ def row_key(row: dict) -> tuple:
                     {s: row.get(f"translated_{s}") for s in SLOTS})
 
 
+def verdict_of(row: dict) -> str:
+    """A row's verdict, case and spacing aside."""
+    return " ".join((row.get("verdict") or "").lower().split())
+
+
+def _rows(path: Path) -> list:
+    """The file's rows, each with "_line" (its line in the file; the header is line 1)."""
+    if not Path(path).exists():
+        return []
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        reader = csv.DictReader(fh)
+        return [{**r, "_line": reader.line_num} for r in reader]
+
+
 def read_reviews(path: Path = REVIEWS_PATH) -> dict:
     """{pair_key: verdict}, the last row winning if a pair was reviewed twice.
-    A missing file means no reviews; a row with another verdict is ignored."""
-    if not Path(path).exists():
-        return {}
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        return {row_key(r): r["verdict"].strip() for r in csv.DictReader(fh)
-                if (r.get("verdict") or "").strip() in (SAME, NOT_SAME)}
+    A missing file means no reviews; a row with another verdict is ignored
+    (review_problems lists it)."""
+    return {row_key(r): verdict_of(r) for r in _rows(path) if verdict_of(r) in (SAME, NOT_SAME)}
+
+
+def review_problems(path: Path = REVIEWS_PATH) -> list:
+    """Each row whose verdict is neither SAME nor NOT_SAME (case and spacing aside), as "line N (record id): 'verdict'"."""
+    return [f"line {r['_line']} ({(r.get('record_id') or '').strip() or 'no record id'}): '{(r.get('verdict') or '').strip()}'"
+            for r in _rows(path) if verdict_of(r) not in (SAME, NOT_SAME)]

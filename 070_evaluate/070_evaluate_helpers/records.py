@@ -39,7 +39,7 @@ from common.audit import ref_path
 from common.files import read_csv
 from common.ground_truth import coined_uses, fair_prefix, read_ground_truth, read_pool, twin_kinds, with_coined
 from common.llm import confirm, numbered, show_warnings
-from common.partial_reviews import read_reviews
+from common.partial_reviews import read_reviews, review_problems
 from common.records_io import load_records
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -61,6 +61,7 @@ class Evaluated:
     schema_used: dict = field(default_factory=dict)  # 060's schema_used.json
     unfinished: int = 0                            # ground truth records not finished yet
     reviews: dict = field(default_factory=dict)    # a person's verdicts on partial pairs (common/common_helpers/partial_reviews.py)
+    review_problems: list = field(default_factory=list)  # rows of that file whose verdict is neither of the two
     extraction_made: dict = field(default_factory=dict)  # 060's run: run id, model, settings (from its details file)
     catalog_records: int = 0                       # records in 020's records.jsonl: the whole catalog
     learned_from: dict = field(default_factory=dict)  # the records the current schema was learned from (060's schema_used.json)
@@ -238,4 +239,5 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         if settings["confirm_paid_calls"]:
             confirm("Press Enter to evaluate anyway, or anything else to cancel.")
     evaluated.reviews = read_reviews(Path(inputs["partial_reviews"]))
+    evaluated.review_problems = review_problems(Path(inputs["partial_reviews"]))
     return evaluated

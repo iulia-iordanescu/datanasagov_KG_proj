@@ -450,6 +450,34 @@ class Pipeline(unittest.TestCase):
         self.assertIn("Nothing recorded differs.", report)
         self.assertIn("| exact: precision | 100.0% | 100.0% | +0.0 points | – | the same |", report)
 
+    def test_t10a_values_a_person_writes(self):
+        """The translation table's fixed values are read case aside, and any other value stops 070, naming its line;
+        a mistyped verdict of the partial pair reviews only warns; an edited header of held_out_looks.csv stops a
+        look."""
+        table = self.repo / "own_table.csv"
+        reviews = self.annotations / "partial_pair_reviews.csv"
+        looks = self.annotations / "held_out_looks.csv"
+        saved = {p: p.read_bytes() for p in (table, reviews, looks)}
+        args = [*NO_CONFIRM, "--component_class_mapping", str(table)]
+        try:
+            rows = read_csv(table)
+            write_csv(table, [{**rows[0], "checked": "Checked"}] + rows[1:], list(rows[0]))
+            out, _ = self.run_step("070_evaluate", *args, expect=2)
+            self.assertIn("value(s) outside those its columns take", out)
+            self.assertIn(f"line 2 ({rows[0]['component_class_from_past_or_crt_schema']}): checked 'checked'", out)
+            write_csv(table, [{**rows[0], "checked": " YES ", "kind": rows[0]["kind"].upper()}] + rows[1:], list(rows[0]))
+            with open(reviews, "a", encoding="utf-8", newline="") as fh:
+                fh.write("r9,MODIS,ABOARD,Aqua,MODIS Terra,ABOARD,Aqua,maybe\n")
+            out, _ = self.run_step("070_evaluate", *args)
+            self.assertIn("have a verdict that is neither \"same fact\" nor \"not the same fact\"", out)
+            self.assertIn("(r9): 'maybe'", out)
+            looks.write_text("date,run\n", encoding="utf-8")
+            out, _ = self.run_step("070_evaluate", *args, "--evaluate_held_out", "true", expect=2)
+            self.assertIn("held_out_looks.csv has the columns date,run, not the ones 070 writes", out)
+        finally:
+            for p, b in saved.items():
+                p.write_bytes(b)
+
     def test_t10b_evaluate_refuses_a_repeat(self):
         """A classed triple twice in a record stops evaluation; the same subject
         instance, predicate, and object instance with different entity classes

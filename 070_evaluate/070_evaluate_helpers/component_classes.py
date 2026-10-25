@@ -46,7 +46,7 @@ from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
 from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions, is_stale,
-                                            is_stale_gtt, read_mapping, repeats)
+                                            is_stale_gtt, read_mapping, repeats, value_problems, values_text)
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -117,8 +117,10 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
                 answers[(item["kind"], component_class_key(item["schema"]))] = item
     made = calls.paid.made - before
     by_key = {k: {component_class_key(n): n for n in v} for k, v in gtt.items()}
-    rows, strays = [], []
+    rows, strays, left_out = [], [], []
     for kind, name in missing:
+        if (kind, component_class_key(name)) not in answers:
+            left_out.append(f"{name} ({kind}, current schema)")
         item = answers.get((kind, component_class_key(name)), {})
         mine = item.get("ground_truth") if isinstance(item.get("ground_truth"), str) else None
         gtt_name = by_key[kind].get(component_class_key(mine)) if mine else None
@@ -133,6 +135,11 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
              f"their rows say (none) instead: {named(strays, 5, '; ')}. When you check those rows, choose a component "
              f"class of the ground truth schema if one means the same, else keep (none)."] \
         if strays else []
+    if left_out:
+        notes.append(f"The model's answer left out {len(left_out)} component class(es) it was asked about, so their "
+                     f"rows say (none), proposed like the others (checked = no): {named(left_out, 5, '; ')}. When you "
+                     f"check those rows, choose a component class of the ground truth schema if one means the same, "
+                     f"else keep (none).")
     return rows, notes, made, cache.reused
 
 
@@ -155,12 +162,12 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          + f". Keep one row per component class: delete the repeated ones ({TABLE}, shows a *Delete "
                            f"this row* button on each repeated row), {AGAIN}")
     have = {(r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])): r for r in rows}
-    bad_kind = [r for r in rows if r["kind"] not in KINDS]
-    if bad_kind:
-        raise Stop(f"{ref_path(path)}: kind must be 'entity class' or 'predicate', but {len(bad_kind)} row(s) say "
-                   f"something else, so 070 can't tell what they translate: "
-                   f"{named([f'''{r['component_class_from_past_or_crt_schema']} (a past or the current schema; line {r['_line']}, kind '{r['kind']}')''' for r in bad_kind], 5, '; ')}. "
-                   f"Fix the kind column of each row in {ref_path(path)}, {AGAIN}")
+    bad = value_problems(rows)
+    if bad:
+        raise Stop(f"{ref_path(path)} has {len(bad)} value(s) outside those its columns take, so 070 can't tell what "
+                   f"those rows translate, or whether they are checked: {named(bad, 5, '; ')} (each component class "
+                   f"is of a past or the current schema). The values (case aside): {values_text()}. Fix each in "
+                   f"{ref_path(path)} (the annotation tool writes only these), {AGAIN}")
 
     needed = [("entity class", e["component_class"]) for e in evaluated.schema_used["entity_classes"]] + \
              [("predicate", e["component_class"]) for e in evaluated.schema_used["predicates"]]

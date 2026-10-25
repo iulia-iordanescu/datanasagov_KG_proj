@@ -285,11 +285,18 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         said = translation.entity.get(component_class_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
     rejected = sum(1 for gi in range(len(gt)) for ei in range(len(ex))
                    if not allowed(gi, ei) and _ways(gt[gi], ex[ei], "partial"))
+    # the verdicts that apply to this record: those filed under a ground truth triple and an occurrence that pair
+    # at the partial level (the rest no longer apply: a triple or a translation changed since the review)
+    candidates = {pair_key(record["id"], gt[gi], ex[ei]) for gi in range(len(gt)) for ei in range(len(ex))
+                  if _ways(gt[gi], ex[ei], "partial")}
+    applied = sorted(k for k in reviews if k[0] == record["id"].strip() and k in candidates)
+    stale_reviews = sorted(k for k in reviews if k[0] == record["id"].strip() and k not in candidates)
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
         "translated": ex, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
-        "partial_review": {"rejected": rejected, "unreviewed": unreviewed},
+        "partial_review": {"rejected": rejected, "unreviewed": unreviewed, "applied": len(applied),
+                           "not_applying": stale_reviews},
         "describes": {"truth": truth, "said": said,
                       "right": bool(truth and said and component_class_key(truth) == component_class_key(said))},
     }
@@ -368,7 +375,9 @@ def as_paired(compared: dict, gi: int, ei: int) -> dict:
 def component_class_mismatches(records: list) -> list:
     """Traces of wrong or missing translations in compared records (see the
     module docstring): [{"kind", "crt_component_class", "translated_to", "gtt_component_class",
-    "count", "swapped"}], most frequent first. translated_to is the
+    "count", "swapped"}], most frequent first. kind is one of three: "entity class, subject" (a pair's subject
+    classes differ), "entity class, object" (its object classes differ), "predicate" (an extracted only occurrence
+    and a ground truth only triple with the same subject and object instances, other predicates). translated_to is the
     current schema's component class after translation (marked NO_TRANSLATION if its
     row says (none)); swapped: predicate mismatches where subject and object are
     the other way round."""
@@ -385,7 +394,7 @@ def component_class_mismatches(records: list) -> list:
             t = as_paired(c, gi, ei)
             for slot in ("subject_class", "object_class"):
                 if component_class_key(gt[gi][slot]) != component_class_key(t[slot]):
-                    add("entity class", t["crt"][slot], t[slot], gt[gi][slot])
+                    add(f"entity class, {slot.split('_')[0]}", t["crt"][slot], t[slot], gt[gi][slot])
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         for gi, g in enumerate(gt):

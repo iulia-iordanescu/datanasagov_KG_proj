@@ -18,14 +18,19 @@ import re
 import stats
 
 
+#: How every number of the report, per_record.md and the readings is written when its formula would divide by 0: one
+#: spelling everywhere (a reason that varies follows it, after a colon, inside the brackets).
+NO_VALUE = "no value (0 to divide by)"
+
+
 def pct(x) -> str:
-    """A proportion as a whole percentage: "50%", or "–" for none."""
-    return "–" if x is None else f"{100 * x:.0f}%"
+    """A proportion as a whole percentage: "50%", or NO_VALUE for none."""
+    return NO_VALUE if x is None else f"{100 * x:.0f}%"
 
 
 def _of(k: int, n: int) -> str:
     """k, with its proportion of n: "4 (50%)" (the sentence names n)."""
-    return f"{k} ({pct(k / n) if n else '–'})"
+    return f"{k} ({pct(k / n) if n else NO_VALUE})"
 
 
 def _sure(n: dict, metric: dict, what: str) -> str:
@@ -111,8 +116,8 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"truth schema), {_of(ex['pairs'], E)} are correct at the exact level, and {_of(pa['pairs'], E)} at "
             f"the partial level.",
             f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
-            f"{pct(ex['precision']['value']) if E else '–'} of those edges would be correct at the exact "
-            f"level ({pct(pa['precision']['value']) if E else '–'} at the partial level): an estimate, since "
+            f"{pct(ex['precision']['value']) if E else NO_VALUE} of those edges would be correct at the exact "
+            f"level ({pct(pa['precision']['value']) if E else NO_VALUE} at the partial level): an estimate, since "
             f"precision is measured on the evaluated records only.",
             f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], E)} of the occurrences form a partial pair: "
             f"correct only at the partial level, where a subject instance or object instance may be inside the "
@@ -132,7 +137,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"- Read as a chance: a ground truth triple has a {pct(ex['recall']['value'])} chance of being found "
             f"as an exact pair ({pct(pa['recall']['value'])} counting partial pairs).",
             f"- A knowledge graph built from the extracted triples would lack {G - ex['pairs']} of the {G} "
-            f"facts ({pct((G - ex['pairs']) / G) if G else '–'}) these records state, per the ground truth ({G - pa['pairs']} counting partial pairs as found).",
+            f"facts ({pct((G - ex['pairs']) / G) if G else NO_VALUE}) these records state, per the ground truth ({G - pa['pairs']} counting partial pairs as found).",
             _sure(n, ex["recall"], "exact recall"),
             "- Assumes the ground truth lists every fact these records state: a fact missing from it is not "
             "counted at all.", ""]
@@ -282,7 +287,7 @@ def _they(k: int) -> str:
 
 
 def _no_value(x) -> str:
-    return "no value (0 to divide by)" if x is None else pct(x)
+    return pct(x)
 
 
 def _gap(kind: str) -> str:
