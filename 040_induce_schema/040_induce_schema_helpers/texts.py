@@ -52,8 +52,9 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
             record = records.get(row["id"])
             if record is None:
                 raise Stop(f"Induction candidate {row['id']} is not in 020's records ({repo_path(inputs['records'])}): "
-                           f"{repo_path(inputs['splits'])} and the records are out of step (020 was likely run again "
-                           f"after 030 wrote its file), so 040 can't pick its texts. Delete {repo_path(inputs['splits'])}, "
+                           f"{repo_path(inputs['splits'])} and the records are out of step (for example, 020 was run again "
+                           f"on another harvest after 030 wrote its file; every cause: docs/running_on_nasa_laptop.md, "
+                           f"section 7), so 040 can't pick its texts. Delete {repo_path(inputs['splits'])}, "
                            f"run `py 030_split/run.py`, then run `py 040_induce_schema/run.py` again.")
             texts.items.append({"id": row["id"], "maintainer": m, "record": record,   # record: for the prompt's field names
                                 "title": " ".join((record.get("title") or "").split()),   # as a component instance
