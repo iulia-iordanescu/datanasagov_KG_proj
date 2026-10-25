@@ -22,8 +22,11 @@ Only an answer of the shape the stage reads is stored: each stage passes its sha
 that isn't JSON (llm.call_llm_json). An answer stored before, of the wrong shape (by an older version
 of the code, or an edited file), is ignored and asked again, and the run's warnings name the file.
 
+A file that can't be read (not JSON, or not readable) is treated as empty, so its answers are asked again: it is
+first copied aside, as <stage>.unreadable.json (then -2, -3, ...), and the run warns, naming both files.
+
 The cache holds paid work: deleting it (or all of outputs/) means paying for
-those calls again.
+those calls again. What a saved answer depends on, for a person: docs/running_on_nasa_laptop.md, section 5.
 """
 from __future__ import annotations
 
@@ -55,10 +58,30 @@ class Cache:
         if self.path.exists():
             try:
                 self.answers = json.loads(self.path.read_text(encoding="utf-8"))
-            except (ValueError, OSError):
-                self.answers = {}                 # unreadable: ask again
+            except (ValueError, OSError) as e:
+                self.answers = {}                 # unreadable: ask again, but keep a copy and say so
+                self._unreadable(e)
         self.reused = 0
         self.wrong_shape = []                     # what was wrong with each stored answer ignored for its shape
+
+    def _unreadable(self, error) -> None:
+        """The file can't be read: copy it aside (never lost: it may hold paid answers), and warn."""
+        import shutil
+        from common.step import repo_path
+        aside, n = self.path.with_name(f"{self.stage}.unreadable.json"), 2
+        while aside.exists():
+            aside, n = self.path.with_name(f"{self.stage}.unreadable-{n}.json"), n + 1
+        try:
+            shutil.copy2(self.path, aside)
+            kept = f"a copy of it is kept as {repo_path(aside)}"
+        except OSError as e:
+            kept = f"it couldn't be copied aside either ({e}): copy it yourself before this run writes over it"
+        note = (f"{repo_path(self.path)} couldn't be read ({error}), so its saved answers are treated as none: the "
+                f"model is asked them again (paid for again), and the file is written over with the new answers; "
+                f"{kept}. Usually a file cut short (a full disk) or edited by hand. If the old answers matter, stop "
+                f"the run (Ctrl+C), repair that copy, and put it back as {self.path.name}.")
+        llm.RUN_WARNINGS.append(note)
+        llm.log.warning(note)
 
     def get(self, k: str, check=None):
         """The answer stored under k, or None (a cut-off marker is no answer: see cut_off). With check (the stage's

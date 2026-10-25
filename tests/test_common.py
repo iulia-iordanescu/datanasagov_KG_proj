@@ -497,6 +497,29 @@ class AskCached(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
+    def test_unreadable_file_kept_aside(self):
+        """A cache file that isn't JSON is treated as empty, but first copied aside (a second one gets its own
+        name), and the run warns, naming both; a readable one raises no warning."""
+        from common import cache as cache_module, llm
+        tmp = Path(tempfile.mkdtemp())
+        saved = list(llm.RUN_WARNINGS)
+        try:
+            (tmp / "stage.json").write_text('{"cut sho', encoding="utf-8")
+            self.assertEqual(cache_module.Cache(tmp, "stage").answers, {})
+            self.assertEqual((tmp / "stage.unreadable.json").read_text(encoding="utf-8"), '{"cut sho')
+            note = llm.RUN_WARNINGS[-1]
+            self.assertIn("stage.json couldn't be read", note)
+            self.assertIn("stage.unreadable.json", note)
+            cache_module.Cache(tmp, "stage")
+            self.assertTrue((tmp / "stage.unreadable-2.json").exists())
+            n = len(llm.RUN_WARNINGS)
+            (tmp / "stage.json").write_text('{"k": 1}', encoding="utf-8")
+            self.assertEqual(cache_module.Cache(tmp, "stage").answers, {"k": 1})
+            self.assertEqual(len(llm.RUN_WARNINGS), n)
+        finally:
+            llm.RUN_WARNINGS[:] = saved
+            shutil.rmtree(tmp)
+
     def shape_run(self, tmp, texts):
         """ask_cached with the shape check needs(labels=dict), the model's answers (text, as the service sends
         them) in turn: (cache, calls, the prompts sent, the failed calls given to outcome)."""
