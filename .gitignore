@@ -228,3 +228,7 @@ docs/pipeline_implementation_prompt.md
 
 # Research notes and plans kept locally only
 DONOTTRACK/
+
+# Reviewers' comments (their names, words and emails) stay on this computer: the repository is public
+annotations/reviews/*
+!annotations/reviews/README.md
