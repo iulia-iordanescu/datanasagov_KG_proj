@@ -24,7 +24,7 @@ import readings
 import component_classes as component_classes_stage
 import records as records_stage
 import stats
-from common import audit, llm
+from common import audit, llm, text_match
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, per_text_table, this_report
@@ -357,7 +357,8 @@ def _translation_fingerprint(translation) -> str:
 def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     """What made this run's numbers, for py helpers/compare_runs.py to show what differs between runs: 060's run
     (code version, settings, prompts, and the schema files it read, by fingerprint) and this run (code version, the
-    translation, and the model that proposed it)."""
+    translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), and the
+    model that proposed the translation)."""
     extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
                   "git_commit": inputs_manifest.get("git_commit"), "settings": inputs_manifest.get("settings", {}),
                   "prompts": {p["file"]: p["sha256"] for p in inputs_manifest.get("prompts", [])},
@@ -365,7 +366,8 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
                   "inputs": {i.get("name"): i.get("sha256") for i in inputs_manifest.get("inputs", [])
                              if i.get("name") in ("schema", "additions")}}
     return {"extraction (060)": extraction,
-            "evaluation (070)": {"git_commit": git_commit(), "translation_sha256": _translation_fingerprint(translation),
+            "evaluation (070)": {"git_commit": git_commit(), "matching_version": text_match.MATCHING_VERSION,
+                                 "translation_sha256": _translation_fingerprint(translation),
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
 
 

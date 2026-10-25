@@ -1016,5 +1016,50 @@ class SymmetricPredicates(unittest.TestCase):
         self.assertIn("  - ground truth: ", text)
 
 
+class QuantitiesPair(unittest.TestCase):
+    """metrics/pairs.md, Example, *A quantity, however written*: quantities pair as quantities (text_match)."""
+
+    def t(self):
+        return translation(entity=ENTITY + ["SpatialResolution"], predicates=PREDICATES + ["HAS_SPATIAL_RESOLUTION"])
+
+    def level(self, gt_object, ex_object):
+        g = [triple("MODIS Snow Cover", "Dataset", "HAS_SPATIAL_RESOLUTION", gt_object, "SpatialResolution")]
+        e = [triple("MODIS Snow Cover", "Dataset", "HAS_SPATIAL_RESOLUTION", ex_object, "SpatialResolution")]
+        pairs = pairing.compare_record(record(g, e), self.t())["compared"]["pairs"]
+        return pairs[0][2] if pairs else None
+
+    def test_exact(self):
+        for g, e in [("1 kilometer (km)", "1 km"), ("1 kilometer (km)", "1km"), ("4.63 km", "4630 m"),
+                     ("8 days", "8 day"), ("500m", "500 meters")]:
+            with self.subTest(g=g, e=e):
+                self.assertEqual(self.level(g, e), "exact")
+
+    def test_partial(self):
+        for g, e in [("1 kilometer (km) pixel", "1 km"), ("weekly (8 day)", "8 days"), ("1 km pixel", "1000 m pixel")]:
+            with self.subTest(g=g, e=e):
+                self.assertEqual(self.level(g, e), "partial")
+
+    def test_near_misses_never_pair(self):
+        for g, e in [("1 km", "10 km"), ("1 km", "1 km²"), ("1 km", "1 square kilometer"),
+                     ("1 km", "1 kilometer per second"), ("1 km", "1 m"), ("500 m", "500 nm"),
+                     ("5 minutes", "5 seconds"), ("1 kilometer (km) pixel", "10 km"), ("1 km pixel", "1 m pixel"),
+                     ("10 to 2.15 hPa", "215 Pa"), ("1 km x 1 km", "1000 m")]:
+            with self.subTest(g=g, e=e):
+                self.assertIsNone(self.level(g, e))
+
+    def test_what_paired_before_still_pairs(self):
+        for g, e, level in [("500m", "500 m", "exact"), ("3.95 micron channel", "3.95 micron", "partial"),
+                            ("10 to 2.15 hPa", "2.15 hPa", "partial"),   # a range: as words, as before
+                            ("10 to 2.15 hPa", "2.15 hPa range", None), ("2002", "2002", "exact")]:
+            with self.subTest(g=g, e=e):
+                self.assertEqual(self.level(g, e), level)
+
+    def test_one_element_of_the_multiset(self):
+        a = triple("MODIS Snow Cover", "Dataset", "HAS_SPATIAL_RESOLUTION", "1 kilometer (km)", "SpatialResolution")
+        b = dict(a, object="1000 m")
+        self.assertEqual(pairing.multiset_element(a), pairing.multiset_element(b))
+        self.assertNotEqual(pairing.multiset_element(a), pairing.multiset_element(dict(a, object="10 km")))
+
+
 if __name__ == "__main__":
     unittest.main()

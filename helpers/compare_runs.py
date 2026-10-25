@@ -156,7 +156,9 @@ def report(runs: list, ids: list, left: dict) -> str:
     lines += ["", "## What differs between the runs", "",
               "Every part of each run's recipe that isn't the same in every run: 060's run (its code version, settings, "
               "prompts by fingerprint, and the schema files it read, by fingerprint) and 070's run (its code version, "
-              "and the translation, by fingerprint). A difference in numbers comes from one of these.", ""]
+              "its matching version (what counts as the same subject instance or object instance; `(not recorded)` "
+              "for a run before 2026-10-24, which compared words only), and the translation, by fingerprint). A "
+              "difference in numbers comes from one of these.", ""]
     if diffs:
         lines += ["| Part of the recipe | " + " | ".join(names) + " |", "|---|" + "---|" * len(names)]
         lines += [f"| {k} | " + " | ".join(f"`{v}`" for v in vals) + " |" for k, vals in diffs]

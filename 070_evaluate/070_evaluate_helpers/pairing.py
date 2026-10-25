@@ -12,15 +12,20 @@ of pairs (in math, a maximum matching: a pair may be swapped to free a
 partner for another triple), not just each triple's first possible partner,
 and among the largest sets, one with the most strict pairs:
 
-  1. exact   subject and object equal once evened out (common/common_helpers/text_match.py
-             norm_text: case, spacing, quote marks, dashes, edge punctuation,
+  1. exact   subject and object the same once evened out (common/common_helpers/text_match.py
+             instance_key: case, spacing, quote marks, dashes, edge punctuation,
              a leading "the/a/an", and the space between a number and its
-             unit ignored, so "500m" is "500 m"), predicate the same
+             unit ignored, so "500m" is "500 m"; and a quantity compared as a
+             quantity, so "1 kilometer (km)" is "1 km" and "4.63 km" is
+             "4630 m"), predicate the same
   2. partial among the triples still unpaired: the same, except that the
              subject (or object) may be CONTAINED in the other one as whole
              words, the extracted one in the ground truth one or the
              ground truth one in the extracted one: "MODIS" in "Moderate
-             Resolution Imaging Spectroradiometer (MODIS)". It can be fooled ("MODIS" in "MODIS
+             Resolution Imaging Spectroradiometer (MODIS)". A quantity counts
+             as one word when each side has exactly one number, with a unit
+             (text_match.quantity_words), so "1 km" is in "1 kilometer (km)
+             pixel". It can be fooled ("MODIS" in "MODIS
              Terra"), so a person can review partial pairs (annotation tool,
              Partial pairs; common/common_helpers/partial_reviews.py): two triples marked "not
              the same fact" are never paired.
@@ -61,7 +66,7 @@ import re
 
 from common.audit import log
 from common.partial_reviews import NOT_SAME, pair_key
-from common.text_match import norm_text
+from common.text_match import instance_key, norm_text, quantity_words
 from common.triples_io import UNDECIDED, component_class_key
 
 LEVELS = ("exact", "partial")
@@ -76,13 +81,25 @@ def _words(s) -> list:
     return re.findall(r"\w+", norm_text(s))
 
 
-def _contains(a, b) -> bool:
-    """Whether one subject (or object) instance holds the other as a run of whole words."""
-    wa, wb = _words(a), _words(b)
+def _holds(wa: list, wb: list) -> bool:
     if not wa or not wb:
         return False
     short, long_ = (wa, wb) if len(wa) <= len(wb) else (wb, wa)
     return any(long_[i:i + len(short)] == short for i in range(len(long_) - len(short) + 1))
+
+
+def _contains(a, b) -> bool:
+    """Whether one subject (or object) instance holds the other as a run of whole words; or, when each has exactly
+    one number, with a unit, as a run of whole words with that quantity as one word (text_match.quantity_words)."""
+    if _holds(_words(a), _words(b)):
+        return True
+    qa, qb = quantity_words(a), quantity_words(b)
+    return bool(qa and qb) and _holds(qa, qb)
+
+
+def same_instance(a, b) -> bool:
+    """Whether two subject (or object) instances are the same once evened out (text_match.instance_key)."""
+    return instance_key(a) == instance_key(b)
 
 
 NO_TRANSLATION = " (current schema; translates to (none))"
@@ -113,8 +130,8 @@ def multiset_element(t: dict) -> tuple:
     of the same element when they read the same (subject instances and object instances evened out, as for an
     exact pair; component classes by loose match), as translated (070_evaluate/metrics/pairs.md, Example, *A
     multiset of translated extracted triples*)."""
-    return (norm_text(t["subject"]), component_class_key(t["subject_class"]), component_class_key(t["predicate"]),
-            norm_text(t["object"]), component_class_key(t["object_class"]))
+    return (instance_key(t["subject"]), component_class_key(t["subject_class"]), component_class_key(t["predicate"]),
+            instance_key(t["object"]), component_class_key(t["object_class"]))
 
 
 def _can_pair(g: dict, t: dict, level: str) -> bool:
@@ -122,7 +139,7 @@ def _can_pair(g: dict, t: dict, level: str) -> bool:
     if component_class_key(g["predicate"]) != component_class_key(t["predicate"]):
         return False
     if level == "exact":
-        return norm_text(g["subject"]) == norm_text(t["subject"]) and norm_text(g["object"]) == norm_text(t["object"])
+        return same_instance(g["subject"], t["subject"]) and same_instance(g["object"], t["object"])
     return _contains(g["subject"], t["subject"]) and _contains(g["object"], t["object"])
 
 
@@ -403,10 +420,8 @@ def component_class_mismatches(records: list) -> list:
             for ei, t in enumerate(ex):
                 if ei in paired_e:
                     continue
-                same = norm_text(g["subject"]) == norm_text(t["subject"]) and \
-                    norm_text(g["object"]) == norm_text(t["object"])
-                swapped = norm_text(g["subject"]) == norm_text(t["object"]) and \
-                    norm_text(g["object"]) == norm_text(t["subject"])
+                same = same_instance(g["subject"], t["subject"]) and same_instance(g["object"], t["object"])
+                swapped = same_instance(g["subject"], t["object"]) and same_instance(g["object"], t["subject"])
                 if same or swapped:
                     add("predicate", t["crt"]["predicate"], t["predicate"], g["predicate"], swapped and not same)
                     break                             # one mismatch per ground truth triple

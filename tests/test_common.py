@@ -170,6 +170,62 @@ class UnitsListed(unittest.TestCase):
         self.assertEqual(tuple(re.findall(r"`([^`]+)`", listed)), text_match.UNITS)
 
 
+class Quantities(unittest.TestCase):
+    """text_match: an instance that is wholly a quantity is the same as another of the same quantity, however
+    written; anything else is compared as words, as before."""
+
+    def test_same_quantity(self):
+        key = text_match.instance_key
+        for a, b in [("1km", "1 kilometer (km)"), ("1 km", "1 kilometer (km)"), ("1 km", "1 Kilometre"),
+                     ("4.63 km", "4630 m"), ("4,630 m", "4.63 km"), ("8 day", "8 days"), ("500 meters", "500m"),
+                     ("5 min", "5 minutes"), ("1.5 µm", "1500 nm"), ("3.95micron", "3.95 μm"), ("0.1 km", "100 m"),
+                     ("36 km/h", "10 m/s"), ("10 meters per second", "10 m s-1"), ("1013 hPa", "1013 mbar"),
+                     ("300 K", "300 kelvin"), ("25°C", "25 degrees Celsius"), ("The 1 km.", "1 km")]:
+            with self.subTest(a=a, b=b):
+                self.assertEqual(key(a), key(b))
+
+    def test_near_misses_differ(self):
+        key = text_match.instance_key
+        for a, b in [("1 km", "10 km"), ("1 km", "1 km²"), ("1 km", "1 km2"), ("1 km", "1 square kilometer"),
+                     ("1 km", "1 kilometer per second"), ("1 km", "1 m"), ("500 m", "500 nm"), ("500 m", "500 mm"),
+                     ("5 minutes", "5 seconds"), ("5 ms", "5 m"), ("300 K", "300 °C"), ("273.15 K", "0 °C"),
+                     ("1 kilometer (m)", "1 km"), ("8day", "8 days")]:
+            with self.subTest(a=a, b=b):
+                self.assertNotEqual(key(a), key(b))
+
+    def test_not_quantities_left_as_words(self):
+        for s in ["2002", "10 to 2.15 hPa", "50%", "50 percent", "1 km x 1 km", "MOD021KM", "Level 3", "8day",
+                  "1 kilometer per second", "1 km/s", "1 square kilometer", "1 kilometer (m)", "Version 2.5"]:
+            with self.subTest(s=s):
+                self.assertIsNone(text_match.quantity(s))
+                self.assertEqual(text_match.instance_key(s), text_match.norm_text(s))
+        self.assertIsNone(text_match.quantity_words("bands 1 and 2 at 250 m"))     # three numbers
+        self.assertIsNone(text_match.quantity_words("the 2002 product"))           # a number, no unit
+
+    def test_quantity_inside_a_longer_instance(self):
+        words = text_match.quantity_words
+        self.assertEqual(words("1 kilometer (km) pixel"), ["1000 m", "pixel"])
+        self.assertEqual(words("weekly (8 day)"), ["weekly", "691200 s"])
+        self.assertEqual(words("1 km"), words("1km"))
+
+    def test_found_in_a_text(self):
+        t = text_match.Text("Gridded at 1 kilometer (km) and 4.63 km; sampled every 8 days at 10 to 20 hPa.")
+        for needle in ["1 km", "1000 m", "4630 m", "8 day", "20 hPa", "1 kilometer (km)"]:
+            self.assertTrue(t.contains(needle), needle)
+        for needle in ["10 km", "1 m", "4.63 m", "8 hours", "10 km/h", "1 km pixel", "2 km"]:
+            self.assertFalse(t.contains(needle), needle)
+        self.assertFalse(text_match.Text("an area of 1 square kilometer").contains("1 km"))
+        self.assertFalse(text_match.Text("moving at 1 kilometer per second").contains("1 km"))
+
+    def test_units_built_from_the_one_table(self):
+        self.assertEqual(text_match.UNITS, tuple(sp for row in text_match.QUANTITY_UNITS for sp in row[3]))
+        spellings = [sp for row in text_match.QUANTITY_UNITS for sp in row[3] + row[4]]
+        self.assertEqual(len(spellings), len(set(spellings)))                     # each spelling is one unit
+        dimensions = {row[1] for row in text_match.QUANTITY_UNITS}
+        for d in dimensions:                                                      # each has one base unit
+            self.assertEqual(sum(1 for row in text_match.QUANTITY_UNITS if row[1] == d and row[2] == 1), 1, d)
+
+
 class FinishedMarks(unittest.TestCase):
     """all_facts_extracted is 0 or 1; any other value is a problem of the ground truth, and the record isn't
     finished (ground_truth.read_ground_truth)."""
@@ -229,8 +285,9 @@ class Checks(unittest.TestCase):
                             "near Comet67P (MOD04_L2), CO2-based, starting at 12.5 km.")
         for needle in ["Aqua satellite", "Aqua satellites", "Aquarius", "67P", "Comet", "L2", "CO2", "12.5 km", "25 minutes"]:
             self.assertTrue(t.contains(needle), needle)
-        for needle in ["Aquar", "5 minutes", "500 m", "START", "2.5 km", "sat", "MOD0", "500 meters per"]:
+        for needle in ["Aquar", "5 minutes", "500 me", "START", "2.5 km", "sat", "MOD0", "500 meters per"]:
             self.assertFalse(t.contains(needle), needle)
+        self.assertTrue(t.contains("500 m"))          # not as words ("meter" isn't cut), but as the same quantity
         self.assertTrue(text_match.Text("See Aquarius. Aqua too.").contains("Aqua"))     # a later whole-word match
 
     def test_number_and_unit(self):
