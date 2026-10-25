@@ -54,7 +54,7 @@ Checked on 2026-10-25: "SIN Grid" is the MODIS sinusoidal grid, and "Global 1km 
 ### Annotation guidelines
 
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an acronym the record leaves unexpanded. Three exceptions: rule 9 takes some qualifiers out of an instance, rule 12 copies a list's shared words onto each item, and rule 13 uses one wording for a thing everywhere in the record.
-- Writing a classed triple, rule 6: Each fact once, even if the record states it twice or in other words. Keep the wording that says the most: Suppose: the notes say "gridded" and the title says "Polar-Gridded". Then: one ground truth triple, with "Polar-Gridded".
+- Writing a classed triple, rule 6: Each fact once, even if the record states it twice or in other words. Rule 13 says which wording to keep. Suppose: the notes say "gridded" and the title says "Polar-Gridded". Then: one ground truth triple, with "Polar-Gridded", by rule 13.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
 - Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item, when each item alone is a complete object.
@@ -3168,7 +3168,7 @@ The notes also say what is in the table: its sources were selected from "2XMMi-D
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 9 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not uncertain facts.
 - Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.

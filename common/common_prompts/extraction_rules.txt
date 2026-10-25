@@ -7,7 +7,9 @@
   always the title.
 - source_text: the shortest passage copied EXACTLY from the record that
   states the fact.
-- One fact per triple. Leave out opinion words such as "great".
+- One fact per triple. Leave out opinion words such as "great". "The data
+  were collected by Kestrel aboard Halden" gives two triples: the record's
+  dataset collected by Kestrel, and the record's dataset from Halden.
 - No triple for a fact the record states as NOT so ("data are not available
   before 1994"), and none for one it states only as possible ("may include",
   "might", "possibly", "is expected to"). Don't rewrite either into a fact it
@@ -17,6 +19,11 @@
   and an object the record names. "Kestrel records data at several
   wavelengths" gives no triple, since "several wavelengths" names no
   wavelength.
+- Leave out words that are true only as of when the record was written
+  ("latest", "current", "now", "then available", and words like them), and
+  keep the rest of the fact: "the newest release, R4" gives the record's
+  dataset's version "R4", without "newest", which stops being true once
+  another release comes out.
 - A number with a unit: the object is the number and its unit, as written
   ("350 m"); the predicate says what the number measures.
 - A qualifier that is a temporal resolution, an area the data cover, a
@@ -113,8 +120,9 @@
   corrected, then composited using the Tern algorithm" gives no
   produced-using-algorithm triple for "corrected", and gives
   produced-using-algorithm "the Tern algorithm" for the step that names it.
-- Each fact once, even if the record states it twice or in other words.
-  Keep the wording that says the most: "Ocean-Masked" over "masked".
+- Each fact once, even if the record states it twice or in other words. The
+  rule on one wording says which wording to keep: "Ocean-Masked" over
+  "masked".
 - Only facts the record states. Never use outside knowledge, and never write
   what an unexplained code or acronym stands for (seeing that two wordings
   name the same thing is allowed: see the rule on one wording). The title

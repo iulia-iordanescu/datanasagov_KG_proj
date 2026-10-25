@@ -236,7 +236,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 - **Left out:** "They do not find evidence of the break in the SF, at variance with the case of lower luminosity AGNs." (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
 - **Left out:** "then available" and "latest" (notes, "the version of the Serendipitous Source Catalog then available" and "the latest incremental update")
-  - **Rule:** none to quote: they say what was so when the study was made, not a lasting fact.
+  - **Rule:** What counts as a fact, rule 10: "Leave out "latest", "current", "now", "then available", and words like them." They say what was so when the study was made, not a lasting fact.
 - **Left out:** "all datasets were publicly available by 2009 October 31" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." It is about the observations the catalog was made from, which the record doesn't name, so there is no subject for a triple.
   - **May matter because:** it dates the data the catalog holds.

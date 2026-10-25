@@ -496,6 +496,7 @@ class RulesInStep(unittest.TestCase):
         ("One fact per triple. Leave out opinion words", "One fact per"),
         ("states as NOT so", "Not negated facts"),
         ("No triple for a fact without a specific thing", "Not a fact without a specific thing"),
+        ("true only as of when the record was written", "Not words that are true only as of when the record was written"),
         ("A number with a unit", "A number with a unit"),
         ("A qualifier that is a temporal resolution, an area the data cover, a processing level",
          "A qualifier that is a temporal resolution, an area the data cover, a processing level"),
