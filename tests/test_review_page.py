@@ -191,7 +191,7 @@ CHROME = next((p for p in (shutil.which("chrome"), shutil.which("google-chrome")
                            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
                            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
                if p and Path(p).exists()), None)
-ADDRESS = "iulia.m.iordanescu+kgreview@gmail.com"
+ADDRESS = "+".join(["iulia.m.iordanescu", "kgreview"]) + "@" + "gmail.com"           # never written whole: see the guide
 
 
 def page_comments(now: dict) -> dict:

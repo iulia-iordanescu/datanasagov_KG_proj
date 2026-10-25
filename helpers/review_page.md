@@ -79,14 +79,14 @@ A line that starts with none of the `[field]` names continues the line before it
 
 **Length.** A `mailto:` link carries the email in the link itself, and links that are too long fail to open: Windows passes on at most 2,083 characters (`INTERNET_MAX_URL_LENGTH`, the limit of Internet Explorer and of Windows' own handling of links, through which Outlook and other email programs on Windows get them). The page keeps each link to 1,900 characters (my margin), counting the address, the subject, and the body as the link encodes it (a space takes 3 characters, an accented letter 6). Comments that don't fit in one email are split into numbered emails, `part 1 of N` in the subject and in the body, cut at line ends (or inside a long comment, at a space); the page then shows one button per part, each marked ✓ once pressed, and `--read` puts the parts of one sending back together, in order, from any files. A missing part is named in the summary, and the comment it cut is left out. More than 5 emails is too many to ask of a reviewer: the page then asks them to press Download my comments and attach the file instead, with a button that opens a short email to me to attach it to.
 
-**The address** is `iulia.m.iordanescu+kgreview@gmail.com`: my Gmail address with `+kgreview`, which Gmail delivers to the same inbox and which lets me filter these emails, or block only that address if it is ever spammed. The page doesn't contain it as text: its script puts it together from pieces only when a button is pressed, so programs that collect addresses from web pages don't find it there. This guide, which is public with the repository, does contain it, for the filters below.
+**The address** is my Gmail address with `+kgreview` before the `@`, which Gmail delivers to the same inbox and which lets me filter these emails, or block only that address if it is ever spammed. It is written in full nowhere in the repository or on the page: the page's script holds it in split parts and puts them together only when a button is pressed, so programs that collect addresses from web pages and repositories don't find it.
 
 **Who sent it.** `--read` reads an `.eml` file only if its From address is of `nasa.gov` or a subdomain of it (e.g. `ndc.nasa.gov`; not `notnasa.gov`, not `nasa.gov.evil.com`), and lists every other one it skipped, with its sender. The domains are one setting, `ALLOWED_SENDER_DOMAINS` in `common/common_helpers/review_comments.py`. A `.txt` file of pasted text, or a CSV file, has no sender to check: its comments are read, marked *sender not verified* in the summary and in the annotation tool. A From address can be forged, so this is a filter, not proof: a forged comment would still only reach me, and I read every comment before acting on it.
 
-**My Gmail filters** (Gmail: Settings → *Filters and Blocked Addresses* → *Create a new filter*, the words below in *Has the words*):
+**My Gmail filters** (in each, `<my address>` stands for my Gmail address with `+kgreview` before the `@`; Gmail: Settings → *Filters and Blocked Addresses* → *Create a new filter*, the words below in *Has the words*):
 
-1. `to:(iulia.m.iordanescu+kgreview@gmail.com) from:(nasa.gov)` → **Apply the label** *KG reviews* and **Never send it to Spam**.
-2. `to:(iulia.m.iordanescu+kgreview@gmail.com) -from:(nasa.gov)` → **Skip the Inbox (Archive it)**, or **Delete it**.
+1. `to:(<my address>) from:(nasa.gov)` → **Apply the label** *KG reviews* and **Never send it to Spam**.
+2. `to:(<my address>) -from:(nasa.gov)` → **Skip the Inbox (Archive it)**, or **Delete it**.
 
 Gmail's `from:(nasa.gov)` matches any sender whose address contains those words (`notnasa.gov` too), so the filters sort; `--read`'s own check above is the stricter one.
 
