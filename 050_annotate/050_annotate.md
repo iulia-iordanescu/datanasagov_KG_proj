@@ -122,7 +122,7 @@ Run against the [record](../docs/terminology.md#1-records-and-their-text)'s **wh
 | `describes_subject_not_id` | error | The describes triple's [subject](../docs/terminology.md#2-triples) instance isn't the record's id. |
 | `id_not_in_records` | error (*stage 4*) | The row's id isn't a record of the catalog (a typo, or a record since removed). |
 | `incomplete` | error (*stage 4*) | [Subject instance](../docs/terminology.md#2-triples), predicate, or [object instance](../docs/terminology.md#2-triples) is empty, but not all three. A row with all three empty is a record annotated as stating no facts: fine. |
-| `empty` | error (*tool*) | Subject instance, predicate, or object instance is empty. |
+| `empty` | error (*tool*) | Subject instance, predicate, or object instance is empty, on a row of the page. How it relates to `incomplete`: the same check on the page, where a row with all three empty is one not filled in yet (never saved: a save leaves blank rows out, and writes one only for a record with no other row), so it is `empty` too; in a ground truth file, that row means "states no facts", so `incomplete` leaves it out. A row is never both. |
 | `subject_not_in_text`, `object_not_in_text` | [flag](../docs/terminology.md#2-triples) | Not found in the text: often reworded ("the instrument" for "MODIS"); fine if on purpose. |
 | `subject_not_in_source`, `object_not_in_source` | flag | Not in the row's own source text. Not raised for a subject instance that is the record's title. |
 | `subject_equals_object` | flag | Subject instance and [object](../docs/terminology.md#2-triples) instance are the same. |
