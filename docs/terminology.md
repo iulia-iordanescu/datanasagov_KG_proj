@@ -23,6 +23,7 @@ The words this project uses, and exactly what each one means. It is expected to 
 | **batch file** | One page of a harvest as step 010 saved it (`outputs/intermediate_results/010_harvest/batch_<start>.json`): up to 1,000 records, exactly as the API returned them. Not to be confused with a drafted batch, or with a file of the ground truth (`annotations/ground_truth/batch_<NNN>.csv`). |
 | **request block** | The top of a batch file: the API request that returned its records, when, and with what status. Every record's origin starts there. |
 | **record** | The metadata of one catalog entry. The catalog we work with is typically data.nasa.gov. |
+| **the record's dataset** | The thing the record describes: the object of its [describes triple](#2-triples). Every other dataset the record names is **another dataset**. |
 | **metadata field** | A record's key, e.g. `title`, `notes`, `maintainer`. Also called: *field*, *metadata field name*, *field name*. |
 | **text field** | A metadata field whose value goes into a record's text: `title`, `notes`, and any named in step 020's setting `extra_text_fields`. |
 | **populated content of a metadata field** | The value associated with a record's key. |

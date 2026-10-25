@@ -776,8 +776,9 @@ I write these facts with different predicates of the ground truth schema: HAS_TI
 ### Annotation guidelines
 
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset.
-- Writing a classed triple, rule 11: Leave out a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there. Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available". Then: the dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (rule 13: it says more than the title's "8 Day"); the daily and monthly products are other datasets, so they get none.
+- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
+- Writing a classed triple, rule 11: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (rule 13: it says more than the title's "8 Day"); the daily and monthly products are variants of the record's dataset, so they get none.
 
 ### Options
 
@@ -1111,6 +1112,7 @@ Rule 14 now says that a word saying only that something was done to the data ("c
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
+- classed triple of the record at pool position 6: "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
@@ -1686,8 +1688,8 @@ The example below is the one whose input, "radiance data", has the most facts of
 ### Annotation guidelines
 
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset.
-- Writing a classed triple, rule 11: Leave out a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there.
+- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 14: A processing step: output_i = method_i(input_i).
 
 ### Options
@@ -2464,12 +2466,12 @@ I am annotating a record of a MODIS aerosol product, and three passages of its [
 
 - (a) "Near Real Time (NRT)": is it a latency (how soon after the observation the data are made available), a separate processing stream (a different product from the standard one), or a version? Each would be a different predicate, and the ground truth schema has none for a latency. Until you answer, I write no classed triple for it.
 - (b) "(MCD19A2N)": I have written it as an identifier of the dataset, with a predicate I coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" names its product "MOD11A1 Version 6", and the one users are encouraged to use instead "MOD11A1 Version 6.1": one short name for two versions. I wrote "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier). Is a short name that two versions share an identifier of each of them, or of the product across its versions? The same record gives its input's DOI as a link address, which I wrote as written: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier).
-- (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a [fact](../docs/terminology.md#2-triples) about this dataset, to write, or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
+- (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a [fact](../docs/terminology.md#2-triples) to write, as I now do (it says how the two datasets are connected), or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
 - (d) The same question of what counts as an identifier, in another record: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "Details of the map and data reduction are described in LAWRENCEETAL2013". I wrote LAWRENCEETAL2013 as a Document, "a written publication, or a set of them, named in words or by a reference key": "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document). Is a Planetary Data System reference key such as LAWRENCEETAL2013 the publication itself (a Document named by its key, as now), or an identifier of the publication, an Identifier of its own?
 
 ### Context
 
-Below are the facts I have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. I have written no fact for "Near Real Time (NRT)" until (a) is answered, and none yet for (c).
+Below are the facts I have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. I have written no fact for "Near Real Time (NRT)" until (a) is answered. For (c), I have written "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), and left out what MCD19A1N holds (rule 11, quoted below).
 
 What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.earthdata.nasa.gov/data/projects/lance) says: "Near real-time (NRT) refers to data available 1 to 3 hours after an observation by an instrument aboard a space-based platform"; the Terra, Aqua and Aura measurements "are processed into higher-level "standard" products within 8 to 40 hours of observation"; and "If latency is not a primary concern, users are encouraged to use standard science products, which are created using the best available ancillary, calibration, and ephemeris information". MODAPS lists MCD19A2N among its Collection 6.1 NRT products, as a product of its own, with its own DOI, 10.5067/MODIS/MCD19A2N.NRT.061 (https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html), apart from the standard product MCD19A2. So my reading of the sources: NRT here names a processing stream, a separate product, whose defining property is how soon it is made available. The record itself states no number of hours, and the annotation guidelines write only what the record states, so a latency value from these sources can't go into its ground truth. The catalog also has another record, titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT", whose notes begin with the same words as this record's.
 
@@ -2522,8 +2524,8 @@ What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.ear
 
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written.
-- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset.
-- Writing a classed triple, rule 11: Leave out a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there.
+- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 14: A processing step: output_i = method_i(input_i).
 
 ### Options
@@ -2542,7 +2544,7 @@ A new predicate for a latency (the dataset has the latency "Near Real Time (NRT)
 
 ### My current reading
 
-Undecided. For (a), I lean towards reading NRT as a processing stream, a product of its own (the sources above), with no latency value, since the record states none. For (b), I lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), I lean towards leaving out "MCD19A1N" COMPUTED_FROM this dataset, by rule 11 ("Leave out a fact about another dataset"): its subject is the other product, so the fact is about that product. For (d), I keep LAWRENCEETAL2013 a Document, as the definition of Document names it. I would still like to know whether MCD19A1N is computed from this product, and whether "the atmospheric properties and view geometry" are what this dataset holds.
+Undecided. For (a), I lean towards reading NRT as a processing stream, a product of its own (the sources above), with no latency value, since the record states none. For (b), I lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), I write "MCD19A1N" COMPUTED_FROM this dataset, by rule 11 ("In every case, include the fact of how the two datasets are connected"), and leave out what MCD19A1N holds, since it is made from this dataset. For (d), I keep LAWRENCEETAL2013 a Document, as the definition of Document names it. I would still like to know whether MCD19A1N is computed from this product, and whether "the atmospheric properties and view geometry" are what this dataset holds.
 
 ### My notes
 
@@ -2551,7 +2553,7 @@ The example is the record at pool position 6, in the ground truth now: the tripl
 Pending facts, for the record at pool position 6:
 
 - pending fact: its fact 11, "Near Real Time (NRT)", left without a fact for now; added if the answer to (a) says what it is (a latency, a processing stream or a version), with the predicate that answer calls for.
-- pending fact: its fact 12, "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), left out by rule 11 of *Writing a classed triple* ("General facts: include them, unless they're about another dataset"); added if the answer to (c) says it is a fact about this dataset.
+- its fact 12, "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset): no longer pending, a ground truth triple now (decided 2026-10-25), by rule 11 of *Writing a classed triple* ("In every case, include the fact of how the two datasets are connected"); deleted if the answer to (c) says it is a fact about the other dataset only. What MCD19A1N holds stays left out (`annotations/left_out.md`).
 - "atmospheric properties" and "view geometry": written as its fact 13, two HAS_MEASUREMENTS_OF triples (approved 2026-10-25); their doubts are Q3 (g).
 
 ### Consequences
@@ -2576,6 +2578,7 @@ Pending facts, for the record at pool position 6:
 
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier)
+- classed triple of the record at pool position 6: "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset)
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD02HKM.061" (Identifier)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD021KM.061" (Identifier)
@@ -2794,7 +2797,7 @@ The spatial resolutions I have written so far: "500m" (the record "MODIS/Aqua Sn
 
 ### Annotation guidelines
 
-- Writing a classed triple, rule 11: Leave out a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
 
 ### Options
@@ -2960,7 +2963,7 @@ How the groups of datasets could be written, if they are, depends on how the gro
 
 ### Annotation guidelines
 
-- Writing a classed triple, rule 11: Leave out a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 
 ### Options
 

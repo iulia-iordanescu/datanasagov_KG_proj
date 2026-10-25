@@ -64,15 +64,15 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 The dense record: its notes describe a whole family of products (several time steps, two resolutions, day and night, two kinds of temperature) and the title names the one this record is. 12 items, 7 that may matter. The product family as a whole is asked in Q24.
 
 - **Left out:** "Day" (notes, "Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products")
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
   - **May matter because:** it says daytime products exist.
   - **Question:** Q24.
 - **Left out:** "daily", "monthly" and "annual" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
   - **May matter because:** they describe the product family: which time steps of this product exist.
   - **Question:** Q24.
 - **Left out:** "9.26 km" (notes, "available at both 4.63 and 9.26 km spatial resolution")
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." Only "4.63 km" is this dataset's.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
   - **May matter because:** it is the other resolution of the product family.
   - **Question:** Q24; whether the title's "4km" is the 4.63 km: Q22.
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
@@ -100,7 +100,7 @@ The dense record: its notes describe a whole family of products (several time st
 - **Left out:** "satellite" (notes, "the Aqua satellite")
   - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class already says it's a satellite"
 - **Left out:** "which can be found at https://doi.org/10.5067/MODAM-8D4N4" (notes), the DOI of the previous v2014.1 datasets
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
   - **May matter because:** it is where the superseded release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 
@@ -129,10 +129,10 @@ The dense record: its notes describe a whole family of products (several time st
   - **Rule:** none yet: pending an expert. It would be a BINNED_INTO triple with a Grid, as in the record at pool position 4.
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
-- **Left out:** "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product" (notes), that the product MCD19A1N is computed from this dataset
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The subject would be the other product. I decided this on 2026-10-25.
-  - **May matter because:** it says which product this dataset feeds and what that product holds (a surface reflectance).
-  - **Question:** Q20 (c); the pending fact is listed there.
+- **Left out:** "MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), what the product MCD19A1N holds
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 11: "In every case, include the fact of how the two datasets are connected."). I decided this on 2026-10-25.
+  - **May matter because:** it says what the product this dataset feeds holds (a surface reflectance).
+  - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
   - **Rule:** none to quote: the ground truth schema's Purpose is "an aim something is meant to achieve", and the record says "used to calculate", not that the dataset is meant for it. I decided this on 2026-10-25.
   - **May matter because:** it is what the dataset is for.
@@ -159,7 +159,7 @@ The dense record: its notes describe a whole family of products (several time st
 - **Left out:** "(LST&E)" (notes, "Land Surface Temperature and Emissivity (LST&E)")
   - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item, when each item alone is a complete object." The abbreviation names the pair, so it belongs to neither item after the split.
 - **Left out:** "https://doi.org/10.5067/MODIS/MOD11A1.061" (notes, the address in "[MOD11A1 Version 6.1](https://doi.org/10.5067/MODIS/MOD11A1.061)"), the DOI of Version 6.1
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
   - **May matter because:** it is where the newer release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 - **Left out:** "Above 30 degrees latitude, some pixels may have multiple observations where the criteria for clear-sky are met." (notes)
@@ -176,7 +176,7 @@ The dense record: its notes describe a whole family of products (several time st
 - **Left out:** "Known Issues" (notes, the heading)
   - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts" (a heading, like a field name).
 - **Left out:** the other products in "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (notes)
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
   - **May matter because:** the date and its cause hold for the whole family of these products.
   - **Question:** Q24.
 - **Left out:** "known issues" as what the page is about (notes, "For complete information about known issues please refer to")
@@ -222,7 +222,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says why the study was made.
   - **Question:** Q26.
 - **Left out:** "and Swift (the latter is not included in this table, notice)" (notes), the study's second sample
-  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 11: "That dataset has its own record, and its facts go there.").
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
   - **May matter because:** the study's findings are about both samples.
   - **Question:** Q26 (c).
 - **Left out:** "serendipitously selected" (notes)
@@ -292,11 +292,11 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says how the sources of the table were matched with the quasar catalog.
   - **Question:** Q26.
 - **Left out:** "2XMMi-DR3" VERSION_OF "Serendipitous Source Catalog" (notes, "the version of the Serendipitous Source Catalog then available, namely 2XMMi-DR3")
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The subject is the catalog, not the table.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The subject is the catalog, not the table.
 - **Left out:** "2XMMi-DR3" UPDATE_OF "second version of the catalogue" (notes, "2XMMi-DR3, the latest incremental update of the second version of the catalogue")
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The subject is the catalog, not the table.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The subject is the catalog, not the table.
 - **Left out:** "2XMMi-DR3" HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (notes, "The total area of the catalog fields is ~ 814 deg^2")
-  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
   - **Rule:** none to quote: "XMM-Newton sample" names the sources the table holds, not the table.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" PROVIDED_BY_PARTY "NASA HEASARC" (notes, "This is a service provided by NASA HEASARC")
