@@ -24,18 +24,29 @@
   and the time of day "nighttime"; "the U.K. Coastal Survey Bureau (CSB)"
   gives "Coastal Survey Bureau (CSB)", and the triple that CSB is based in
   the U.K.; "the surface albedo of Halden-4" gives "surface albedo", and the
-  dataset's target "Halden-4". A qualifier stays in the subject or object,
-  as written, if it is any other kind ("glacier surface albedo" stays
-  whole), or if taking it out would give a triple that isn't true: "an
+  dataset's target "Halden-4". A word naming a kind of ground or water
+  ("land", "ocean", "sea", "ice") stays in the subject or object if "the
+  [rest] of the [word]" is true, and is an area the data cover if it is
+  false: "Ocean Cloud Fraction" gives "Cloud Fraction" and the area the data
+  cover "Ocean", since "the cloud fraction of the ocean" is false (the
+  clouds are in the air); "Ice Surface Temperature" stays whole, since "the
+  temperature of the ice surface" is true. A qualifier stays in the subject
+  or object, as written, if it is any other kind ("glacier surface albedo"
+  stays whole), or if taking it out would give a triple that isn't true: "an
   afternoon orbit" stays whole, since the orbit doesn't come from
   observations made in the afternoon.
 - A name with its abbreviation in parentheses is one subject or object, as
   written: "Tier-3 (T3)", with no also-known-as triple. Write an
   also-known-as triple only when the record gives the other name in words of
-  its own ("X, or Y"); the other triples then use one of the two names, as the
-  rule on one wording says. When the record says "Release 27, also called
-  Build 2.7", give the dataset's version "Release 27", and "Release 27" also
-  known as "Build 2.7".
+  its own ("X, or Y"); the other triples then use one of the two names, as
+  the rule on one wording says. When the record says "Release 27, also
+  called Build 2.7", give the dataset's version "Release 27", and "Release
+  27" also known as "Build 2.7". Write an also-known-as triple only for
+  another name that stays true whatever happens later: "Edition 4 is the
+  newest edition" gives none, since Edition 4 would no longer be the newest
+  once another is released; "E1 is the first edition" gives "E1" also known
+  as "first edition", since E1 stays the first edition whatever is released
+  later.
 - A table of values inside the record (rows of measurements, one per object):
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.
@@ -73,17 +84,22 @@
   means very low frequency); but never add a fact the record doesn't state,
   and write only a wording the record itself uses for that thing, after any
   qualifiers are taken out.
-- A processing step: output_i = method_i(input_i). For each processing step i
-  the record describes, find its output_i, method_i, and input_i, and write
-  at most two triples: output_i computed-from input_i, and output_i
+- A processing step: output_i = method_i(input_i). For each processing step
+  i the record describes, find its output_i, method_i, and input_i, and
+  write at most two triples: output_i computed-from input_i, and output_i
   produced-using-algorithm method_i. Write each only if the record names
   both of its parts. Steps chain: one step's output can be the next step's
   input. When a record says a dataset holds "ice cover detected using the
-  IWI and a cloud mask" and "the IWI is derived from reflectance data":
-  step 1 is IWI = method_1(reflectance data), with method_1 not named,
-  which gives "IWI" computed-from "reflectance data"; step 2 is the
-  dataset = cloud mask(IWI), which gives the dataset computed-from "IWI"
-  and the dataset produced-using-algorithm "a cloud mask".
+  IWI and a cloud mask" and "the IWI is derived from reflectance data": step
+  1 is IWI = method_1(reflectance data), with method_1 not named, which
+  gives "IWI" computed-from "reflectance data"; step 2 is the dataset =
+  cloud mask(IWI), which gives the dataset computed-from "IWI" and the
+  dataset produced-using-algorithm "a cloud mask". A word saying only that
+  something was done to the data ("corrected", "calibrated", "detrended")
+  names no method: "the reflectances were corrected, then composited using
+  the Tern algorithm" gives no produced-using-algorithm triple for
+  "corrected", and gives produced-using-algorithm "the Tern algorithm" for
+  the step that names it.
 - Each fact once, even if the record states it twice or in other words.
   Keep the wording that says the most: "Ocean-Masked" over "masked".
 - Only facts the record states. Never use outside knowledge, and never write

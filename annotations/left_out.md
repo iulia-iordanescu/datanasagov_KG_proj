@@ -304,7 +304,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 ## "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13, id ab33f184-95f4-4f33-8f3d-c4a09ec525d3)
 
-11 items, 8 that may matter.
+10 items, 7 that may matter.
 
 - **Left out:** "MTP020" (title, "ESC3-MTP020")
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
@@ -324,10 +324,6 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Question:** Q2 (b).
 - **Left out:** "Lien" (notes, "Lien corrected dataset after September 2019 PSA/PDS external peer review")
   - **Rule:** none to quote: my ground truth triple REVISED_AFTER "September 2019 PSA/PDS external peer review" says the dataset was corrected after the review; "Lien" names what was corrected, the issues the review raised.
-- **Left out:** "first version" as another name of "V1.0" (notes, "This version V1.0 is the first version of this dataset")
-  - **Rule:** none to quote: ALSO_KNOWN_AS means "is the same thing under another name", and "first version" describes V1.0 (it has no earlier release) rather than names it (decision of 2026-10-25).
-  - **May matter because:** it says the dataset has no earlier release.
-  - **Question:** Q19 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "solar stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
   - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." "solar stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.

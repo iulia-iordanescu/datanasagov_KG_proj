@@ -1072,12 +1072,9 @@ Option 1 until you answer, because the record's own words are "derived from", wh
 
 Four of the tuning records I have annotated up to pool position 6 describe a processing step, at pool positions 2, 4, 5 and 6, and so do those at pool positions 7, 9, 12 and 13 (decided 2026-10-25, for me to confirm; (e) is about pool position 13's) (the one at pool position 6 is in the ground truth now); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
 
-Pending facts, for the record at pool position 13 (ab33f184, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer to (e) says such corrections count as methods:
+Pending facts, for the record at pool position 13 (ab33f184, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer to (e) says such corrections should be kept: the four statements "solar stray-light corrected", "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)", each with a predicate to decide.
 
-- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm)
-- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (Algorithm)
-- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "radiometric calibrated" (Algorithm)
-- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (Algorithm)
+Rule 14 now says that a word saying only that something was done to the data ("corrected", "calibrated", "detrended") names no method. If the answer to (e) says such words should be kept, they would be a triple of another predicate, not PRODUCED_USING_ALGORITHM.
 
 ### Consequences
 
@@ -1590,7 +1587,7 @@ Undecided. For "Land", I lean towards option 3: it says which part of the Earth 
 
 ### My notes
 
-Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (pool position 1), "global" (pool positions 2 and 4), and "Land" (pool position 6, the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1).
+Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (pool position 1), "global" (pool positions 2 and 4), and "Land" (pool position 6, the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1). Rule 9 now records my reading of a word naming a kind of ground or water: it is an area the data cover when "the [rest] of the [word]" is false ("the aerosol optical depth of the land" is false, because the aerosols are in the air), so "Land" stays taken out in the example; if the answers say otherwise, rule 9, the model's copy of the rules, and the ground truth triples under Affects change with them.
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. The current schema's SpatialCoverage and HAS_SPATIAL_COVERAGE translate into SpatialExtent and HAS_SPATIAL_COVERAGE, so the answer also decides what an extracted triple with them is compared with.
 
@@ -2375,7 +2372,7 @@ A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes th
 - (b) If they are not the same, what is "R2019.0": a reprocessing, a release of the processing software, or something else?
 - (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". I wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
 - (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. I read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and I wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
-- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". I wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version). I left out "first version" (the dataset has no earlier release), since it describes V1.0 rather than names it (decided 2026-10-25, for me to confirm). Is leaving it out right, or is "the first version" a fact of another kind (the dataset has no earlier version)?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". I wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version). I also wrote "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version), since V1.0 stays the first version whatever is released later (decided 2026-10-25). Is that right, or is "the first version" a fact of another kind (the dataset has no earlier version)?
 
 ### Context
 
@@ -2402,6 +2399,7 @@ Rule 13 of the annotation guidelines writes one thing with one wording in a reco
 ### Annotation guidelines
 
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
+- Writing a classed triple, rule 10: Write ALSO_KNOWN_AS only for another name that stays true whatever happens later.
 - Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two names that say the same, use the one the record uses most often (on a tie, the one it gives first)
 
 ### Options
@@ -2420,7 +2418,7 @@ Option 1, because the record calls both the release that replaces v2014.1, and n
 
 ### My notes
 
-The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record at pool position 7 (decided 2026-10-25, for me to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`).
+The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record at pool position 7 (decided 2026-10-25, for me to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`). (e) is about the record at pool position 13: I first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 ("Write ALSO_KNOWN_AS only for another name that stays true whatever happens later"). If the answer says otherwise, that ground truth triple is deleted or changed.
 
 ### Consequences
 
@@ -2447,6 +2445,7 @@ The example is the record at pool position 4; (c) is about the record at pool po
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_VERSION "Version 6" (Version)
 - classed triple of the record at pool position 7: "Version 6.1" (Version) SUPERSEDES "Version 6" (Version)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version)
+- classed triple of the record at pool position 13: "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version)
 - translation table row: predicate SUPERSEDES
 - ground truth schema entry: predicate SUPERSEDES
 - rule: Writing a classed triple, rule 10

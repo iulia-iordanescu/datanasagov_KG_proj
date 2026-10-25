@@ -92,4 +92,5 @@ ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RD
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,OSIRIS Narrow Angle Camera,Instrument,ABOARD,ROSETTA-ORBITER,Spacecraft,the OSIRIS Narrow Angle Camera on the Rosetta spacecraft,1,
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_TIME_SPAN,2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000,Time,covering the period from 2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000,1,gemini-2.5-pro
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_VERSION,V1.0,Version,V1.0,1,
+ab33f184-95f4-4f33-8f3d-c4a09ec525d3,V1.0,Version,ALSO_KNOWN_AS,first version,Version,This version V1.0 is the first version of this dataset,1,
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,REVISED_AFTER,September 2019 PSA/PDS external peer review,Task,Lien corrected dataset after September 2019 PSA/PDS external peer review,1,
