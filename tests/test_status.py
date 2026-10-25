@@ -66,7 +66,7 @@ class Status(unittest.TestCase):
     # ---- the steps
     def test_nothing_run_yet(self):
         st = self.status()
-        self.assertEqual([s["state"] for s in st["steps"]], ["not run"] * 7)
+        self.assertEqual([s["state"] for s in st["steps"]], ["no run recorded"] * 7)
         steps = self.texts(st, "Steps")
         self.assertEqual(len(steps), 1)                                   # only the first step not run: the rest wait
         self.assertIn("Step 010_harvest hasn't run on this computer yet", steps[0])

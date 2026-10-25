@@ -157,13 +157,13 @@ def _changed_inputs(step: str, manifest: dict) -> list:
 
 
 def steps_status() -> list:
-    """One entry per step: {"step", "state" ("ran", "out of date", "not run"), "run_id", "finished",
+    """One entry per step: {"step", "state" ("ran", "out of date", "no run recorded"), "run_id", "finished",
     "changed": [input names]}."""
     out = []
     for step in PIPELINE_STEPS:
         m = _manifest(step)
         if m is None:
-            out.append({"step": step, "state": "not run", "run_id": None, "finished": None, "changed": []})
+            out.append({"step": step, "state": "no run recorded", "run_id": None, "finished": None, "changed": []})
             continue
         changed = [] if step == "050_annotate" else _changed_inputs(step, m)
         out.append({"step": step, "state": "out of date" if changed else "ran", "run_id": m.get("run_id"),
@@ -176,7 +176,7 @@ def _step_items(steps: list, gt) -> list:
     finished = any(r["finished"] for r in gt.records.values())
     for s in steps:
         step, number = s["step"], s["step"][:3]
-        if s["state"] == "not run":
+        if s["state"] == "no run recorded":
             # Only the next step to run is named (the ones after it need its output first); a later step that
             # did run (its outputs copied from another computer, say) is still checked below.
             if named_next or (step in ("060_extract", "070_evaluate") and not finished)                     or (step == "050_annotate" and batch_waiting(gt=gt)):
@@ -211,7 +211,7 @@ def _setup_items(steps: list) -> list:
         env = dict(os.environ)
     from common import llm
     missing = [k for k in SERVICE_KEYS.get(llm.SERVICE, ()) if not (env.get(k) or "").strip()]
-    paying_ahead = any(s["state"] == "not run" for s in steps if s["step"][:3] in ("040", "050", "060", "070"))
+    paying_ahead = any(s["state"] == "no run recorded" for s in steps if s["step"][:3] in ("040", "050", "060", "070"))
     if missing and paying_ahead:
         return [_item("Setup", TO_DO, f"{' and '.join(missing)} {'is' if len(missing) == 1 else 'are'}n't in .env, "
                       f"so the steps that call the model (040, 050, 060, and 070, through {llm.SERVICE}, the default "
@@ -401,7 +401,7 @@ def status_text(st: dict) -> str:
         state = {"ran": f"ran {s['finished']} ({s['run_id']})",
                  "out of date": f"OUT OF DATE: ran {s['finished']} ({s['run_id']}); since then changed: "
                                 f"{', '.join(s['changed'])}",
-                 "not run": "not run on this computer"}[s["state"]]
+                 "no run recorded": "no run recorded on this computer (no run that ended ran)"}[s["state"]]
         lines.append(f"  {s['step']:<19} {state}")
     for level, title in ((TO_DO, "To do"), (LOOK, "Worth a look")):
         mine = [i for i in st["items"] if i["level"] == level]
