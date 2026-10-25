@@ -22,7 +22,7 @@ Algorithm         a method applied to data to compute a result, e.g. a series of
                   source: ground truth tuning #2
 Identifier        a code that names one thing permanently, e.g. a DOI
                   source: ground truth tuning #2
-SpatialRepresentation  how data are laid out over the ground: along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
+SpatialRepresentation  how data are laid out over the ground; for a satellite, this is typically either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
                        source: ground truth tuning #2
 Country           a nation, e.g. U.S.; Argentina
                   source: ground truth tuning #3
