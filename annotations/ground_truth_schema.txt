@@ -58,8 +58,6 @@ TemporalResolution  the amount of time between one value of the data and the nex
                     source: ground truth tuning #2, #3, #4
 Issue             a problem that affects how data are made or used, e.g. significant loss of data retrieval
                   source: ground truth tuning #7
-Finding           a result a study reports, e.g. a strong anti-correlation of the variability with X-ray luminosity
-                  source: ground truth tuning #12
 
 PREDICATES
 ----------
@@ -194,31 +192,17 @@ ENDED_ON             came to an end on
                      source: ground truth tuning #9
 HAS_DURATION         covers this much time, from its first value to its last
                      source: ground truth tuning #9
-HAS_REDSHIFT_RANGE   the redshifts of the objects it holds lie in this range
+HAS_REDSHIFT_RANGE   its redshifts lie in this range
                      source: ground truth tuning #12
-HAS_LUMINOSITY_RANGE  the luminosities of the objects it holds lie in this range
+HAS_LUMINOSITY_RANGE  its luminosities lie in this range
                       source: ground truth tuning #12
-USED_METHOD          applied this Algorithm in their work
+HAS_SKY_AREA         covers this much of the sky
                      source: ground truth tuning #12
-REPORTED             found and reported this result
+HAS_NUMBER_OF        has this many
                      source: ground truth tuning #12
-VERSION_OF           is one version of
+CREATED_ON           was made on this date
                      source: ground truth tuning #12
-UPDATE_OF            is an update of this earlier release
-                     source: ground truth tuning #12
-HAS_TOTAL_FIELD_AREA  the fields it observed add up to this much area, overlaps counted each time
-                      source: ground truth tuning #12
-HAS_AREA_COVERED     covers this much area, each part counted once
-                     source: ground truth tuning #12
-HAS_NUMBER_OF        holds this many of what the object names, e.g. 412 quasars
-                     source: ground truth tuning #12
-HAS_MATCHING_DISTANCE  its objects were matched with those of another catalog within this distance
-                       source: ground truth tuning #12
-CREATED_ON           was made on
-                     source: ground truth tuning #12
-AVAILABLE_AT         can be got from this address
-                     source: ground truth tuning #12
-PROVIDED_BY_PARTY    is made available as a service by this Person, Team, or Organization
+AVAILABLE_AT         can be got from this WebPage
                      source: ground truth tuning #12
 REVISED_AFTER        was corrected after this review
                      source: ground truth tuning #13

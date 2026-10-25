@@ -215,7 +215,7 @@ The dense record: its notes describe a whole family of products (several time st
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 
-The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26. 15 items, 7 that may matter.
+The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 28 items, 15 that may matter.
 
 - **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
   - **Rule:** none to quote: it is background about earlier studies in general, naming no study, dataset or other specific thing for a triple.
@@ -225,11 +225,8 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 11: "That dataset has its own record, and its facts go there.").
   - **May matter because:** the study's findings are about both samples.
   - **Question:** Q26 (c).
-- **Left out:** "X-ray" and "in the 0.5 - 4.5 keV band" (notes, "X-ray luminosities, in the 0.5 - 4.5 keV band, between ~ 10^43 erg/s and ~ 10^46 erg/s")
-  - **Rule:** none to quote: my ground truth triple HAS_LUMINOSITY_RANGE "between ~ 10^43 erg/s and ~ 10^46 erg/s" holds the range only; no predicate of the ground truth schema holds the band the luminosities are given in.
-  - **May matter because:** a luminosity means little without its band.
 - **Left out:** "serendipitously selected" (notes)
-  - **Rule:** none to quote: the selection is my ground truth triple COMPUTED_FROM "2XMMi-DR3", a version of the Serendipitous Source Catalog.
+  - **Rule:** none to quote: the selection is my ground truth triple COMPUTED_FROM "2XMMi-DR3".
 - **Left out:** "which operates in the time domain" (notes, about the structure function)
   - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class" (it says what kind of method it is).
 - **Left out:** "The SF is also more appropriate than fractional variability and excess variance, because these parameters are biased by the duration of the monitoring time interval in the rest-frame, and therefore by cosmological time dilation." (notes)
@@ -239,25 +236,71 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 - **Left out:** "They do not find evidence of the break in the SF, at variance with the case of lower luminosity AGNs." (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
 - **Left out:** "then available" and "latest" (notes, "the version of the Serendipitous Source Catalog then available" and "the latest incremental update")
-  - **Rule:** none to quote: they say what was so when the study was made, not a lasting fact; my ground truth triples are VERSION_OF and UPDATE_OF.
+  - **Rule:** none to quote: they say what was so when the study was made, not a lasting fact.
 - **Left out:** "all datasets were publicly available by 2009 October 31" (notes)
   - **Rule:** none to quote: it is about the observations the catalog was made from, which the record doesn't name, so there is no subject for a triple.
   - **May matter because:** it dates the data the catalog holds.
 - **Left out:** "but not all public observations are included in this catalog" (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
 - **Left out:** "taking account of the substantial overlaps between observations" (notes)
-  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." My two ground truth triples of the area (HAS_TOTAL_FIELD_AREA "~ 814 deg^2", HAS_AREA_COVERED "~ 504 deg^2") already differ by the overlaps.
+  - **Rule:** none to quote: it only explains why the total area of the catalog's fields ("~ 814 deg^2", left out below) is larger than my ground truth triple HAS_SKY_AREA "~ 504 deg^2".
 - **Left out:** "therefore a significant number of sources (41,979) have more than one record within the catalog" (notes)
   - **Rule:** none to quote: HAS_NUMBER_OF holds a number of things, and "sources with more than one record" isn't a thing the record names; "significant" is a judgement (What counts as a fact, rule 5: "Leave out words such as "great".").
   - **May matter because:** it says how many sources the catalog has detected more than once.
 - **Left out:** "corresponding to the uncertainty in the X-ray positions" (notes)
-  - **Rule:** none to quote: it is why the distance was chosen; it gives the uncertainty no value of its own (my ground truth triple has HAS_MATCHING_DISTANCE "1.5 arcseconds").
+  - **Rule:** none to quote: it is why the distance was chosen; it gives the uncertainty no value of its own (the matching distance itself is left out, below).
   - **May matter because:** it says how precise the X-ray positions are.
 - **Left out:** "cross-correlated" as a method (notes, "The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog")
   - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
   - **Question:** Q7.
 - **Left out:** "This is a service" (notes, "This is a service provided by NASA HEASARC")
-  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who provides it is my ground truth triple PROVIDED_BY_PARTY "NASA HEASARC".
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who made the table is my ground truth triple DEVELOPED_BY_PARTY "NASA HEASARC".
+- **Left out:** "the authors" HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (notes, "In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
+  - **May matter because:** it says what the study set out to find.
+  - **Question:** Q26.
+- **Left out:** "the authors" USED_METHOD "structure function (SF)" (notes, "They used the structure function (SF)")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
+  - **May matter because:** it says how the study's results were obtained.
+  - **Question:** Q26.
+- **Left out:** "structure function (SF)" HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (notes, "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26). It is also what a method "allows for", asked in Q9 (d).
+  - **May matter because:** it says why the method was used.
+  - **Question:** Q26.
+- **Left out:** "the authors" REPORTED "statistically consistent results for the two samples" (Finding) (notes, "The authors find statistically consistent results for the two samples")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
+  - **May matter because:** it is a result of the study the table comes from.
+  - **Question:** Q26.
+- **Left out:** "the authors" REPORTED "SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1" (Finding) (notes, "with the SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
+  - **May matter because:** it is a result of the study the table comes from.
+  - **Question:** Q26.
+- **Left out:** "the authors" REPORTED "strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF" (Finding) (notes, "They confirm a strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
+  - **May matter because:** it is a result of the study the table comes from.
+  - **Question:** Q26.
+- **Left out:** "the authors" REPORTED "evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift" (Finding) (notes, "They also find evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
+  - **May matter because:** it is a result of the study the table comes from.
+  - **Question:** Q26.
+- **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" DEVELOPED_BY_PARTY "the authors" (notes, "The authors used a maximum distance of 1.5 arcseconds")
+  - **Rule:** none to quote: whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26). The table's developer is the HEASARC ("This table was created by the HEASARC"); the authors made the selection described in the study.
+  - **May matter because:** it says who selected the table's sources.
+  - **Question:** Q26.
+- **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" HAS_MATCHING_DISTANCE "1.5 arcseconds" (notes, "The authors used a maximum distance of 1.5 arcseconds")
+  - **Rule:** none to quote: the maximum distance is a detail of the study's method, so it goes with the method (decision of 2026-10-25, with the study's method, Q26).
+  - **May matter because:** it says how the sources of the table were matched with the quasar catalog.
+  - **Question:** Q26.
+- **Left out:** "2XMMi-DR3" VERSION_OF "Serendipitous Source Catalog" (notes, "the version of the Serendipitous Source Catalog then available, namely 2XMMi-DR3")
+  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The subject is the catalog, not the table.
+- **Left out:** "2XMMi-DR3" UPDATE_OF "second version of the catalogue" (notes, "2XMMi-DR3, the latest incremental update of the second version of the catalogue")
+  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The subject is the catalog, not the table.
+- **Left out:** "2XMMi-DR3" HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (notes, "The total area of the catalog fields is ~ 814 deg^2")
+  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
+- **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
+  - **Rule:** none to quote: "XMM-Newton sample" names the sources the table holds, not the table.
+- **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" PROVIDED_BY_PARTY "NASA HEASARC" (notes, "This is a service provided by NASA HEASARC")
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who provides the service adds nothing beyond my ground truth triple DEVELOPED_BY_PARTY "NASA HEASARC".
 
 ## "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13, id ab33f184-95f4-4f33-8f3d-c4a09ec525d3)
 
