@@ -2,7 +2,7 @@
 
 What to write in the [ground truth](../docs/terminology.md#4-ground-truth-and-samples), and how, so that anyone annotating a record writes the same [classed triples](../docs/terminology.md#2-triples). For how to use the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) (`py helpers/annotate.py`), see [README.md](README.md), *Annotating ground truth: the annotation tool*. Terms: [docs/terminology.md](../docs/terminology.md).
 
-The ground truth is the answer key extraction (step 060) is evaluated against (step 070). So every rule below is also a rule the model follows when it drafts (step 050) and extracts (step 060): the shared rules in `common/common_prompts/extraction_rules.txt`. So you and the model follow the same rules. If they differed, step 070 would count the model wrong even where it followed its own rules correctly.
+The ground truth is the answer key extraction (step 060) is evaluated against (step 070). So every rule below is also a rule the model follows when it drafts (step 050) and extracts (step 060), and when it extracts the [triple instances](../docs/terminology.md#2-triples) the schema is learned from (step 040): the shared rules in `common/common_prompts/extraction_rules.txt`. So you and the model follow the same rules. If they differed, step 070 would count the model wrong even where it followed its own rules correctly.
 
 ## Before you start
 

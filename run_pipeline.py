@@ -17,8 +17,8 @@ How it runs:
   on purpose (e.g. you declined the paid calls, or step 070 added rows to the
   translation table for you to check), or is interrupted (Ctrl+C). Later
   steps need what that step would have written.
-- Human gates, never failures:
-    050 drafts the next drafted batch only when none is waiting for you: a drafted
+- Human gates, never failures, and run_pipeline's own (a step run alone, `py <step>/run.py`, has none):
+    050 runs (drafting the next drafted batch) only when none is waiting for you: a drafted
         batch not opened yet in the annotation tool, or a ground truth file
         with a record not finished. Otherwise it is "kept" (nothing drafted).
     060 and 070 are "skipped" until the ground truth has a finished record:
