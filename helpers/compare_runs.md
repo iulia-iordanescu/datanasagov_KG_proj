@@ -22,9 +22,14 @@ Change one thing at a time, so a difference has one cause.
 ## What the report says
 
 - **The runs**, A, B, C, …, with 070's run id. A is the baseline; each other run is compared with it.
-- **What differs between the runs:** every part of each run's recipe that isn't the same in every run. From 060's run: its code version, settings (service and model among them), prompts by fingerprint, and the schema files it read, by fingerprint. From 070's run: its code version, its matching version (what counts as the same subject instance or object instance; `(not recorded)` for a run before 2026-10-24, which compared quantities as words), settings (service and model among them), and the translation (the translations it used), by fingerprint. A difference in the numbers comes from one of these, or from the partial-pair verdicts (`annotations/partial_pair_reviews.csv`), which the recipe doesn't hold yet: review no partial pairs between the runs you compare.
+- **What differs between the runs:** every part of each run's recipe that isn't the same in every run. From 060's run: its code version, settings (service and model among them), prompts by fingerprint, and the schema files it read, by fingerprint. From 070's run: its code version, its matching version (what counts as the same subject instance or object instance; `(not recorded)` for a run before 2026-10-24, which compared quantities as words), the service and model it asked, and the translation (the translations it used), by fingerprint. A difference in the numbers comes from one of these, or from what the recipe doesn't record, all of it (the report lists the same, from `UNRECORDED` in `helpers/compare_runs.py`):
+  - **The records' text:** 020's `records.jsonl` (the text the model read) isn't in the recipe; a new harvest between the runs changes it unseen.
+  - **Code not committed:** the code version is the Git commit; a change not committed when a run was made is invisible.
+  - **070's model call settings:** of 070's settings, only the service and the model are recorded (not its thinking cap); its translation is recorded by fingerprint, so a different translation shows anyway.
+  - **The partial-pair verdicts** (`annotations/partial_pair_reviews.csv`): review no partial pairs between the runs you compare.
+  - **The model's own variation:** the same recipe can answer differently on another run (temperature 0 makes that rare, not impossible), and a cached answer is reused, so two runs of one recipe usually agree.
 - **The records compared:** the tuning records evaluated in every run, with the same ground truth in every run. A record whose ground truth changed between the runs (you corrected it in between) is left out and named, since a difference there could come from your correction rather than the recipe. Held-out records are never compared.
-- **One table per run compared with the baseline:** for each number (precision, recall, F1, and the others 070 gives a margin of error), the baseline's value, the other run's, the difference in points, the 95% range of the difference, and a verdict, one of six: *<run> higher* or *<run> lower* (the whole range is above, or below, 0), *can't tell apart* (the range holds 0), *the same* (no difference, and a range of 0 or none), *no range (too few records)*, or *not comparable (a number is missing)* (one run has no value for it).
+- **One table per run compared with the baseline:** for each number (precision, recall, F1, and the others 070 gives a margin of error), the baseline's value, the other run's, the difference in points, the 95% range of the difference, and a verdict, one of six, the first that applies in this order: *not comparable (a number is missing)* (one run has no value for it); *the same* (no difference, and a range of 0 or none); *no range (too few records)*; *<run> higher* or *<run> lower* (the whole range is above, or below, 0); *can't tell apart* (the range holds 0).
 
 ## How the range is computed
 
@@ -36,6 +41,8 @@ Each run of step 070 keeps its tuning records' counts and its recipe in `outputs
 
 ## What it can't see
 
+The report ends with the same list (`LIMITS` in `helpers/compare_runs.py`):
+
 - **Many comparisons:** about 1 in 20 ranges misses by chance, so among many rows, one *higher* or *lower* alone is not a finding; a change that shows on several related numbers is.
-- **Only these records:** the range covers which records happened to be evaluated, not mistakes in the ground truth, nor a model answering differently on another run of the same recipe (temperature 0 makes that rare, not impossible).
+- **Only these records:** the range covers which records happened to be evaluated, not mistakes in the ground truth, nor a model answering differently on another run of the same recipe.
 - **Tuning records only:** compare and choose on the tuning part; evaluate the recipe you report once on the held-out part, at the end (`py 070_evaluate/run.py --evaluate_held_out true`).

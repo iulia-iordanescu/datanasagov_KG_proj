@@ -880,6 +880,22 @@ class CompareRuns(unittest.TestCase):
                      "| exact: precision | 50.0% |", "B higher", "## How to read a row", "Left out, ground truth changed"):
             self.assertIn(part, text)
 
+    def test_one_text_for_the_report_and_the_guide(self):
+        """What the recipe doesn't record, and what the comparison can't see: the report's lists are
+        helpers/compare_runs.md's, word for word; the verdicts are tried in the guide's order."""
+        from support import ROOT
+        cr = self.cr
+        guide = (ROOT / "helpers" / "compare_runs.md").read_text(encoding="utf-8")
+        for line in cr.UNRECORDED + cr.LIMITS:
+            self.assertIn(line, guide)
+        a = self.kept("A", lambda i: 2, "m")
+        text = cr.report([a, self.kept("B", lambda i: 3, "m")], cr.common_records([a, a])[0], {})
+        for line in cr.UNRECORDED + cr.LIMITS:
+            self.assertIn(line, text)
+        self.assertEqual(cr.verdict({"diff": None, "low": None, "high": None}, "B"), cr.VERDICTS[0])
+        self.assertEqual(cr.verdict({"diff": 0, "low": None, "high": None}, "B"), "the same")   # before "no range"
+        self.assertEqual(cr.verdict({"diff": 0.1, "low": None, "high": None}, "B"), "no range (too few records)")
+
     def test_noise_cant_tell_apart(self):
         cr = self.cr
         a = self.kept("A", lambda i: 2 + (i % 3 == 0), "m")

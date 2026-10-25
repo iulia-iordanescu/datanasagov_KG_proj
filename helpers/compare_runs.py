@@ -34,6 +34,32 @@ from common.step import REPORTS_DIR, RESULTS_DIR, repo_path                    #
 EVALUATIONS = RESULTS_DIR / "070_evaluate" / EVALUATIONS_DIR
 LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+#: What a difference in the numbers can come from that the recipe doesn't record (so "What differs" can't show it),
+#: and what the comparison can't see: one text, the report's and helpers/compare_runs.md's (a test keeps them equal).
+UNRECORDED = [
+    "- **The records' text:** 020's `records.jsonl` (the text the model read) isn't in the recipe; a new harvest "
+    "between the runs changes it unseen.",
+    "- **Code not committed:** the code version is the Git commit; a change not committed when a run was made is "
+    "invisible.",
+    "- **070's model call settings:** of 070's settings, only the service and the model are recorded (not its "
+    "thinking cap); its translation is recorded by fingerprint, so a different translation shows anyway.",
+    "- **The partial-pair verdicts** (`annotations/partial_pair_reviews.csv`): review no partial pairs between the "
+    "runs you compare.",
+    "- **The model's own variation:** the same recipe can answer differently on another run (temperature 0 makes "
+    "that rare, not impossible), and a cached answer is reused, so two runs of one recipe usually agree.",
+]
+LIMITS = [
+    "- **Many comparisons:** about 1 in 20 ranges misses by chance, so among many rows, one *higher* or *lower* "
+    "alone is not a finding; a change that shows on several related numbers is.",
+    "- **Only these records:** the range covers which records happened to be evaluated, not mistakes in the ground "
+    "truth, nor a model answering differently on another run of the same recipe.",
+    "- **Tuning records only:** compare and choose on the tuning part; evaluate the recipe you report once on the "
+    "held-out part, at the end (`py 070_evaluate/run.py --evaluate_held_out true`).",
+]
+#: The verdicts, in the order they are tried: the first that applies is the row's.
+VERDICTS = ("not comparable (a number is missing)", "the same", "no range (too few records)", "<run> higher",
+            "<run> lower", "can't tell apart")
+
 
 # ------------------------------ reading -------------------------------------
 
@@ -121,6 +147,7 @@ def paired(base: list, other: list) -> list:
 
 
 def verdict(row: dict, name: str) -> str:
+    """The row's verdict: the first of VERDICTS that applies, in that order."""
     if row["diff"] is None:
         return "not comparable (a number is missing)"
     if row["diff"] == 0 and row["low"] in (0, None) and row["high"] in (0, None):
@@ -157,8 +184,9 @@ def report(runs: list, ids: list, left: dict) -> str:
               "Every part of each run's recipe that isn't the same in every run: 060's run (its code version, settings, "
               "prompts by fingerprint, and the schema files it read, by fingerprint) and 070's run (its code version, "
               "its matching version (what counts as the same subject instance or object instance; `(not recorded)` "
-              "for a run before 2026-10-24, which compared words only), and the translation, by fingerprint). A "
-              "difference in numbers comes from one of these.", ""]
+              "for a run before 2026-10-24, which compared words only), the translation, by fingerprint, and the "
+              "service and model it asked). A difference in numbers comes from one of these, or from what the "
+              "recipe doesn't record:", ""] + UNRECORDED + [""]
     if diffs:
         lines += ["| Part of the recipe | " + " | ".join(names) + " |", "|---|" + "---|" * len(names)]
         lines += [f"| {k} | " + " | ".join(f"`{v}`" for v in vals) + " |" for k, vals in diffs]
@@ -198,13 +226,7 @@ def report(runs: list, ids: list, left: dict) -> str:
                     f"above 0 means {n} is higher by more than chance; all below 0, lower; a range that includes 0, "
                     f"the two runs can't be told apart on these records.",
                   "",
-                  "## What this can't see", "",
-                  "- **Many comparisons:** about 1 in 20 ranges misses by chance, so among many rows one \"higher\" "
-                  "or \"lower\" alone is not a finding; a change that shows on several related numbers is.",
-                  "- **Only these records:** the range covers which records happened to be evaluated, not mistakes "
-                  "in the ground truth, nor the model answering differently on another run of the same version.",
-                  "- **Tuning records only:** the version finally reported is evaluated once on the held-out part "
-                  "(`py 070_evaluate/run.py --evaluate_held_out true`)."]
+                  "## What this can't see", ""] + LIMITS
     return "\n".join(lines) + "\n"
 
 
