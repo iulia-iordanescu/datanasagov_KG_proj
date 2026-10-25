@@ -220,3 +220,5 @@ AVAILABLE_AT         can be got from this address
                      source: ground truth tuning #12
 PROVIDED_BY_PARTY    is made available as a service by this Person, Team, or Organization
                      source: ground truth tuning #12
+REVISED_AFTER        was corrected after this review
+                     source: ground truth tuning #13

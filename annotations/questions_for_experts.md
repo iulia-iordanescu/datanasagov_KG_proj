@@ -138,7 +138,7 @@ The record at pool position 7 also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESEN
 Many records name where their data came from with one word that can mean a mission or the spacecraft that flew it: "DAWN", "Aqua", "Terra", "Rosetta", "Aquarius". The ground truth schema has an entity class for each, Mission ("a named spaceflight effort") and Spacecraft ("a craft that operates in space"), and a predicate for each, FROM_MISSION and FROM_SPACECRAFT. When a record writes only such a word, I have to choose one of the two, and the [fact](../docs/terminology.md#2-triples) I write down depends on that choice. To decide, I need to know:
 
 - (a) When a record says only "DAWN", "Aqua" or "Terra", without the word "mission" or "satellite" next to it, would someone in your field read it as the spacecraft, as the mission, or as both at once?
-- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? My reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there I wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission).
+- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? My reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there I wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission). The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" starts with "ROSETTA-ORBITER", and its notes say "acquired by the OSIRIS Narrow Angle Camera on the Rosetta spacecraft"; I read the two as one spacecraft and wrote "ROSETTA-ORBITER", the wording that says more (rule 13): "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft) and "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft). Is the orbiter the same as "the Rosetta spacecraft" there?
 - (c) "Aquarius/Satélite de Aplicaciones Científicas (SAC-D) mission" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"): my reading, not checked against a source, is that Aquarius was an instrument carried on the SAC-D spacecraft, and Aquarius/SAC-D the mission. Is that right, and if so, should the record's "Aquarius L-band radiometer" be the only Instrument here, with no Spacecraft named?
 - (d) Is there a rule that holds for this whole catalog, e.g. "a word that is only a mission's word is a Mission; a word written before an instrument (MODIS/Aqua) is a Spacecraft"?
 
@@ -243,6 +243,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
@@ -268,6 +269,8 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -300,6 +303,7 @@ The ground truth schema separates two things a dataset can hold. A PhysicalQuant
 - (f) "Aerosol Optical Depth" (in the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") is what the record's product holds, computed by MAIAC ("Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product"). I wrote it as a PhysicalQuantity, a property of the atmosphere that other methods could measure too, and MAIAC as the method. Is that right, or is it a Variable, since one algorithm computed it?
 - (g) The same record says "The MCD19A2N product provides the atmospheric properties and view geometry", and I wrote "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity) and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity). Is "atmospheric properties" specific enough to be a fact, or too vague to write down? And is "view geometry" (the angles between the sun, the satellite and the ground) a PhysicalQuantity, something measured, or supporting information the files hold, which would need another entity class or predicate? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" lists more of the same kind: "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments, observation times, view zenith angles, and clear-sky coverages". I wrote them the same way, each a PhysicalQuantity the dataset HAS_MEASUREMENTS_OF ("quality control assessments", "observation times", "view zenith angles", "clear-sky coverages"); quality control assessments and observation times stretch "a property that can be measured" further still. Should these be written as something the files hold, rather than as measurements?
 - (h) The same record goes on: "along with bands 31 and 32 emissivities from land cover types". I wrote "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity), and the same for band 32, reading "from" as: each pixel's emissivity is estimated from its type of land cover (my reading, not checked against a source). Is that reading right? If so, are emissivities estimated that way Variables rather than PhysicalQuantities, and what kind of thing is "land cover types": a PhysicalQuantity, an input dataset, or something else?
+- (i) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" holds "image data in W/m^2/sr/nm", which I wrote as "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "image data in W/m^2/sr/nm" (PhysicalQuantity), keeping the unit in the instance. Image data are not a property; my reading, not checked against a source, is that the unit is that of a spectral radiance, which the record doesn't name. What should be written: the images as the layout of the data, the unit as a fact of its own, or something else?
 
 ### Context
 
@@ -425,6 +429,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
@@ -466,6 +471,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "Ensemble X-Ray Variability" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "image data in W/m^2/sr/nm" (PhysicalQuantity)
 - translation table row: entity class PhysicalQuantity
 - translation table row: predicate MEASURES
 - translation table row: predicate PROVIDES
@@ -630,6 +636,7 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -676,6 +683,10 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 3" (MissionPhase)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -828,6 +839,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -839,6 +851,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "January, 2007 up to March, 2011" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) HAS_TIME_SPAN "between 2000 February 3 and 2008 October 08" (Time)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TIME_SPAN "2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000" (Time)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -863,7 +876,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 The ground truth schema's ProcessingLevel is "how far data have been processed from what the Instrument recorded, e.g. Level 2". The records write it in many ways ("Level-2 (L2)", "Level-3", "Level 3", "L2", "L2G", and perhaps "1/2/3"), and so far the ground truth keeps each record's own words. I would like to know:
 
 - (a) The example below has "L2G" in its title and "gridded Level 2 product" in its notes. Is L2G "Level 2, gridded": a processing level (Level 2) plus a layout on a grid, which the ground truth writes as two [facts](../docs/terminology.md#2-triples)? Or is L2G a processing level of its own?
-- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". I read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above? The record "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" has "ALICE 2" in its title, and its notes say "This data set contains CODMAC level 2 data", which I wrote as "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel). Its title also has "67P/CAL", which the record doesn't explain, so I wrote nothing for "CAL": what does it stand for (my reading, not checked against a source: calibration)?
+- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". I read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above? The record "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" has "ALICE 2" in its title, and its notes say "This data set contains CODMAC level 2 data", which I wrote as "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel). Its title also has "67P/CAL", which the record doesn't explain, so I wrote nothing for "CAL": what does it stand for (my reading, not checked against a source: calibration)? The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" has three more such codes in its title: "MTP020" (after "ESC3", which its notes write as "the COMET ESCORT 3 mission phase"), "RDR" and "INFLDSTR"; for the last, the notes have "in-field stray-light corrected". I wrote nothing for "MTP020" and "RDR". What do they stand for?
 - (c) Which list of processing levels should the ground truth follow? The one I know of is NASA Earthdata's *Data Processing Levels* (Level 0, Level 1A, 1B, 1C, Level 2, 2A, 2B, Level 3, 3A, Level 4; https://www.earthdata.nasa.gov/learn/earth-observation-data-basics/data-processing-levels). Does it hold for the whole catalog, or do records of other parts of NASA, e.g. the Planetary Data System, use other levels? If there are two lists, how do they line up?
 
 ### Context
@@ -952,6 +965,7 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_PROCESSING_LEVEL "Level-2 (L2)" (ProcessingLevel)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_PROCESSING_LEVEL "Level-3" (ProcessingLevel)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
@@ -962,6 +976,7 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 4" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
 - translation table row: predicate HAS_PROCESSING_LEVEL
 - ground truth schema entry: entity class ProcessingLevel
@@ -988,6 +1003,7 @@ Rule 14 of the annotation guidelines (quoted below) writes each processing step 
 - (b) If a channel is not an input: how would you say it? Is "uses the 11 micron channel" or "is measured in the 11 micron channel" a relationship of its own, apart from "is computed from"?
 - (c) Is there a general way to tell an input from a method, that would settle the case above and others like it? For example, the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its index "is derived from radiance data", which I wrote as an input, and the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" names its product a "Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product", which I write as made using MAIAC, a method.
 - (d) I split "the long wave IR 11 and 12 micron wavelength channels" into "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel" (rule 12, quoted below). Would someone in your field write each channel that way?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says its data set "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data". Each word names a step and what it corrects, though only as a participle. I wrote each as a method: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm), and the same for "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)". Elsewhere, where a record has only a verb ("binned", "detrended", "convert", "cross-correlated"), I wrote no method. Is a participle that names what was corrected or calibrated a method, and should it be written in the record's words ("radiometric calibrated") or as the name of the step ("radiometric calibration")?
 
 ### Context
 
@@ -1051,7 +1067,7 @@ Option 1 until you answer, because the record's own words are "derived from", wh
 
 ### My notes
 
-Four of the tuning records I have annotated so far describe a processing step, at pool positions 2, 4, 5 and 6 (the one at pool position 6 is in the ground truth now); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
+Four of the tuning records I have annotated up to pool position 6 describe a processing step, at pool positions 2, 4, 5 and 6, and so do those at pool positions 7, 9, 12 and 13 (decided 2026-10-25, for me to confirm; (e) is about pool position 13's) (the one at pool position 6 is in the ground truth now); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
 
 ### Consequences
 
@@ -1086,6 +1102,7 @@ Four of the tuning records I have annotated so far describe a processing step, a
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
@@ -1094,6 +1111,10 @@ Four of the tuning records I have annotated so far describe a processing step, a
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "2XMMi-DR3" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "table1.dat" (Dataset)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (Algorithm)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "radiometric calibrated" (Algorithm)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (Algorithm)
 - translation table row: predicate DERIVED_FROM
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
@@ -2360,6 +2381,7 @@ A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes th
 - (b) If they are not the same, what is "R2019.0": a reprocessing, a release of the processing software, or something else?
 - (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". I wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
 - (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. I read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and I wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". I wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version) and "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version), so that a search can tell it has no earlier release. Is that a fair way to write it, or is "the first version" a fact of another kind (the dataset has no earlier version)?
 
 ### Context
 
@@ -2425,9 +2447,13 @@ The example is the record at pool position 4; (c) is about the record at pool po
 - classed triple of the record at pool position 4: "V2019.0" (Version) SUPERSEDES "v2014.1" (Version)
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version)
 - classed triple of the record at pool position 2: "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_VERSION "Version 6" (Version)
 - classed triple of the record at pool position 7: "Version 6.1" (Version) SUPERSEDES "Version 6" (Version)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version)
+- classed triple of the record at pool position 13: "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version)
 - translation table row: predicate SUPERSEDES
 - ground truth schema entry: predicate SUPERSEDES
 - rule: Writing a classed triple, rule 10
@@ -2653,6 +2679,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
@@ -2718,6 +2745,10 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "Ensemble X-Ray Variability" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "image data in W/m^2/sr/nm" (PhysicalQuantity)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation

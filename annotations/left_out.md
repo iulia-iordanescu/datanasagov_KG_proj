@@ -258,3 +258,26 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Question:** Q7.
 - **Left out:** "This is a service" (notes, "This is a service provided by NASA HEASARC")
   - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who provides it is my ground truth triple PROVIDED_BY_PARTY "NASA HEASARC".
+
+## "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13, id ab33f184-95f4-4f33-8f3d-c4a09ec525d3)
+
+6 items, 3 that may matter.
+
+- **Left out:** "MTP020" (title, "ESC3-MTP020")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **May matter because:** my reading, not checked against a source: it may name a planning period within the phase COMET ESCORT 3, which would tell this dataset from its siblings.
+  - **Question:** Q6 (b).
+- **Left out:** "RDR" (title, "RDR-INFLDSTR")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **May matter because:** another record explains it as "Level 3 (RDR)"; this one doesn't, and its level is "CODMAC level 4".
+  - **Question:** Q6 (b).
+- **Left out:** "prime" (notes, "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)")
+  - **Rule:** none to quote: HAS_TARGET says the dataset is about the comet; "prime" adds that it is the main target, so other bodies may be in the images.
+  - **May matter because:** a search for other bodies in these images would need it.
+- **Left out:** "comet" (notes, "comet 67P/Churyumov-Gerasimenko 1 (1969 R1)")
+  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+- **Left out:** "spacecraft" and "mission phase" (notes, "the Rosetta spacecraft" and "the COMET ESCORT 3 mission phase")
+  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"; "the Rosetta spacecraft" is written as "ROSETTA-ORBITER", the wording that says more (rule 13).
+  - **Question:** Q2 (b).
+- **Left out:** "Lien" (notes, "Lien corrected dataset after September 2019 PSA/PDS external peer review")
+  - **Rule:** none to quote: my ground truth triple REVISED_AFTER "September 2019 PSA/PDS external peer review" says the dataset was corrected after the review; "Lien" names what was corrected, the issues the review raised.
