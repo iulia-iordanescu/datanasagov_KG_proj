@@ -212,3 +212,49 @@ The dense record: its notes describe a whole family of products (several time st
 - **Left out:** "mission phase" (notes, "comet escort 1 mission phase")
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
   - My ground truth triple has the phase "comet escort 1", its target "67P/Churyumov-Gerasimenko" a triple of its own (rule 9).
+
+## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
+
+The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26. 15 items, 7 that may matter.
+
+- **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
+  - **Rule:** none to quote: it is background about earlier studies in general, naming no study, dataset or other specific thing for a triple.
+  - **May matter because:** it says why the study was made.
+  - **Question:** Q26.
+- **Left out:** "and Swift (the latter is not included in this table, notice)" (notes), the study's second sample
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 11: "That dataset has its own record, and its facts go there.").
+  - **May matter because:** the study's findings are about both samples.
+  - **Question:** Q26 (c).
+- **Left out:** "X-ray" and "in the 0.5 - 4.5 keV band" (notes, "X-ray luminosities, in the 0.5 - 4.5 keV band, between ~ 10^43 erg/s and ~ 10^46 erg/s")
+  - **Rule:** none to quote: my ground truth triple HAS_LUMINOSITY_RANGE "between ~ 10^43 erg/s and ~ 10^46 erg/s" holds the range only; no predicate of the ground truth schema holds the band the luminosities are given in.
+  - **May matter because:** a luminosity means little without its band.
+- **Left out:** "serendipitously selected" (notes)
+  - **Rule:** none to quote: the selection is my ground truth triple COMPUTED_FROM "2XMMi-DR3", a version of the Serendipitous Source Catalog.
+- **Left out:** "which operates in the time domain" (notes, about the structure function)
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class" (it says what kind of method it is).
+- **Left out:** "The SF is also more appropriate than fractional variability and excess variance, because these parameters are biased by the duration of the monitoring time interval in the rest-frame, and therefore by cosmological time dilation." (notes)
+  - **Rule:** What counts as a fact, rule 5: "Leave out words such as "great"." ("more appropriate" is the authors' judgement); the biases are about two measures the dataset doesn't use.
+  - **May matter because:** it says why the method was chosen.
+  - **Question:** Q26.
+- **Left out:** "They do not find evidence of the break in the SF, at variance with the case of lower luminosity AGNs." (notes)
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
+- **Left out:** "then available" and "latest" (notes, "the version of the Serendipitous Source Catalog then available" and "the latest incremental update")
+  - **Rule:** none to quote: they say what was so when the study was made, not a lasting fact; my ground truth triples are VERSION_OF and UPDATE_OF.
+- **Left out:** "all datasets were publicly available by 2009 October 31" (notes)
+  - **Rule:** none to quote: it is about the observations the catalog was made from, which the record doesn't name, so there is no subject for a triple.
+  - **May matter because:** it dates the data the catalog holds.
+- **Left out:** "but not all public observations are included in this catalog" (notes)
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
+- **Left out:** "taking account of the substantial overlaps between observations" (notes)
+  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." My two ground truth triples of the area (HAS_TOTAL_FIELD_AREA "~ 814 deg^2", HAS_AREA_COVERED "~ 504 deg^2") already differ by the overlaps.
+- **Left out:** "therefore a significant number of sources (41,979) have more than one record within the catalog" (notes)
+  - **Rule:** none to quote: HAS_NUMBER_OF holds a number of things, and "sources with more than one record" isn't a thing the record names; "significant" is a judgement (What counts as a fact, rule 5: "Leave out words such as "great".").
+  - **May matter because:** it says how many sources the catalog has detected more than once.
+- **Left out:** "corresponding to the uncertainty in the X-ray positions" (notes)
+  - **Rule:** none to quote: it is why the distance was chosen; it gives the uncertainty no value of its own (my ground truth triple has HAS_MATCHING_DISTANCE "1.5 arcseconds").
+  - **May matter because:** it says how precise the X-ray positions are.
+- **Left out:** "cross-correlated" as a method (notes, "The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog")
+  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
+  - **Question:** Q7.
+- **Left out:** "This is a service" (notes, "This is a service provided by NASA HEASARC")
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who provides it is my ground truth triple PROVIDED_BY_PARTY "NASA HEASARC".

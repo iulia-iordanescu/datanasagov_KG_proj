@@ -242,6 +242,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
@@ -265,6 +266,8 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -421,6 +424,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
@@ -459,6 +463,9 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MEASUREMENTS_OF "dust fluences at each of twelve mass thresholds" (PhysicalQuantity)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "Ensemble X-Ray Variability" (PhysicalQuantity)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
 - translation table row: entity class PhysicalQuantity
 - translation table row: predicate MEASURES
 - translation table row: predicate PROVIDES
@@ -622,6 +629,7 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -666,6 +674,8 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_MISSION_PHASE "comet escort 1" (MissionPhase)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -817,6 +827,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -827,6 +838,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "January, 2007 up to March, 2011" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) HAS_TIME_SPAN "between 2000 February 3 and 2008 October 08" (Time)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -1073,11 +1085,15 @@ Four of the tuning records I have annotated so far describe a processing step, a
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "2XMMi-DR3" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "table1.dat" (Dataset)
 - translation table row: predicate DERIVED_FROM
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
@@ -1180,7 +1196,7 @@ Option 1, for now: it follows the records' own words (JPL "is" the archive), eve
 
 ### My notes
 
-The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record at pool position 4, and the program of (c) is the record at pool position 0's. The facts about a country are the record at pool position 3's: rule 9 makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
+The record at pool position 12 adds "the authors" (Team) and "NASA HEASARC" (Organization), written so in both of its triples, by rule 13, though the record also writes "the HEASARC" (decided 2026-10-25, for me to confirm). The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record at pool position 4, and the program of (c) is the record at pool position 0's. The facts about a country are the record at pool position 3's: rule 9 makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
 
 The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names; a row that names (none): a classed triple that uses it always counts as extracted only. I would choose option 4 with the answers to (d) to (f) telling me what to coin, once a tuning record states a fact about a place.
 
@@ -1214,6 +1230,7 @@ The model extracts classed triples with the current schema. Before they are comp
 - record at pool position 0: 3122be4c-b9d0-4cc9-b6d3-9b96c6e743da
 - record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PROVIDES_ACCESS_TO_DOCUMENT "NASA developed standards" (Document)
 - classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PROVIDES_ACCESS_TO_DOCUMENT "NASA developed handbooks" (Document)
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) SPONSORED_BY_PARTY "NASA Technical Standards Program" (Organization)
@@ -1229,6 +1246,15 @@ The model extracts classed triples with the current schema. Before they are comp
 - classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) RESPONSIBLE_FOR "sea surface temperature algorithm development" (Task)
 - classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) RESPONSIBLE_FOR "error statistics" (Task)
 - classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) RESPONSIBLE_FOR "quality flagging" (Task)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "NASA HEASARC" (Organization)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PROVIDED_BY_PARTY "NASA HEASARC" (Organization)
+- classed triple of the record at pool position 12: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose)
+- classed triple of the record at pool position 12: "the authors" (Team) USED_METHOD "structure function (SF)" (Algorithm)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "statistically consistent results for the two samples" (Finding)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1" (Finding)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF" (Finding)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift" (Finding)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "the authors" (Team)
 - translation table row: entity class Program
 - translation table row: entity class Location
 - translation table row: entity class Organization
@@ -1258,6 +1284,7 @@ The ground truth schema has an entity class Purpose ("an aim something is meant 
 - (a) The example below says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". I wrote this as the purpose of Aqua, the spacecraft, because that is what the sentence is about. Would you say it is the spacecraft's purpose, or its mission's (a satellite mission usually has the science goals)? The record names no mission for Aqua, so I can't write the mission without adding what the record doesn't state.
 - (b) In that phrase, "Earth" is the body studied. The annotation guidelines take a target body out of an instance as a [fact](../docs/terminology.md#2-triples) of its own (rule 9). I kept the phrase whole, since "study the global dynamics of the atmosphere, land and oceans" without "Earth" no longer says whose atmosphere. Is keeping it whole right, or should "Earth" also be its own fact (Aqua is about the Earth)?
 - (c) The [model](../docs/terminology.md#8-the-pipeline) that reads the records has predicates for what something is "used to study" and for its "objective", and the translation table translates both to HAS_PURPOSE. Is "used to study ocean salinity" a purpose, in your field, or a different relationship (what a mission or instrument studies), better kept apart?
+- (d) The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says "In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples", and that the structure function the authors used "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived". I wrote both as purposes: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose), and "structure function (SF)" (Algorithm) HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (Purpose). Is what a method "allows for" its purpose? (Whose aim the study's is, the authors' or the table's, I ask with the study's findings, in Q26.)
 
 ### Context
 
@@ -1316,7 +1343,7 @@ Option 1, for now: it writes what each sentence says, about what it is about. I 
 
 ### My notes
 
-All the HAS_PURPOSE classed triples of the records annotated so far are listed under Affects: a web tool's purpose (pool position 0), the purposes of a series of screens applied to data (pool position 2), and those of Aqua and of an algorithm (pool position 4, the example). The predicates of (c) are the current schema's USED_TO_STUDY and HAS_OBJECTIVE.
+All the HAS_PURPOSE classed triples of the records annotated so far are listed under Affects (the record at pool position 12's two, of (d), decided 2026-10-25, for me to confirm): a web tool's purpose (pool position 0), the purposes of a series of screens applied to data (pool position 2), and those of Aqua and of an algorithm (pool position 4, the example). The predicates of (c) are the current schema's USED_TO_STUDY and HAS_OBJECTIVE.
 
 ### Consequences
 
@@ -1340,11 +1367,14 @@ All the HAS_PURPOSE classed triples of the records annotated so far are listed u
 - record at pool position 0: 3122be4c-b9d0-4cc9-b6d3-9b96c6e743da
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly and conveniently" (Purpose)
 - classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
 - classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose)
 - classed triple of the record at pool position 4: "modified nonlinear SST algorithm" (Algorithm) HAS_PURPOSE "provide continuity of SST derived from heritage and current NASA sensors" (Purpose)
+- classed triple of the record at pool position 12: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose)
+- classed triple of the record at pool position 12: "structure function (SF)" (Algorithm) HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (Purpose)
 - translation table row: predicate USED_TO_STUDY
 - translation table row: predicate HAS_OBJECTIVE
 - ground truth schema entry: entity class Purpose
@@ -1599,13 +1629,13 @@ The ground truth schema's Dataset is "a set of observations, measurements, or sa
 - (a) The example below says the index it uses "is derived from radiance data acquired by" MODIS, followed by two DOIs, MYD02HKM and MYD021KM. I wrote one Dataset, "radiance data", with both DOIs. Are these one dataset or two (my reading: two products, at two resolutions)? If two, how should two inputs with the same words be told apart, when the record names them only by their DOIs?
 - (b) The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" says "the L2 pixels are binned" into a grid. I wrote "pixels" as a Dataset, at processing level "L2". Is a set of Level 2 pixels a dataset, or just the Level 2 data, unnamed?
 - (c) The record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says the counts "were detrended using the GRaND epithermal neutron map". I wrote that map as a Dataset, collected by GRaND. No record of the catalog has "epithermal" in its title (I searched the catalog's titles), so I can't tell whether the map is a dataset of its own; the catalog has other GRaND maps of Vesta (for example, "DAWN GRAND MAP VESTA NEUTRON ABSORPTION V1.0"). The annotation guidelines leave out facts about another dataset (rule 11). Is it right to keep the map as an input, with what collected it?
-- (d) For someone using this catalog, is an astronomical source catalog (a list of objects, each with its measured properties) a dataset in the same sense as a set of measurements of the Earth's surface?
+- (d) For someone using this catalog, is an astronomical source catalog (a list of objects, each with its measured properties) a dataset in the same sense as a set of measurements of the Earth's surface? The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" is a table of 412 quasars selected from the source catalog "2XMMi-DR3" and matched with "the DR7 edition of the SDSS Quasar Catalog", "based on CDS Catalog J/A+A/536/A84 [...] file table1.dat". I wrote the table, the two catalogs, "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets, and "active galactic nuclei (AGN)", the kind of object the table is about, as its target: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_TARGET "active galactic nuclei (AGN)" (CelestialBody), although a CelestialBody is "a natural object in space" and AGN are a kind of object. Are these right?
 - (e) Is a database or archive that holds many datasets the same sort of thing as one of the datasets it holds, or should the two be kept apart (e.g. so that a search for datasets doesn't return archives)?
 - (f) Is a "data product" (e.g. "Level-3 products", "the SST4 product") always a dataset, or sometimes one variable inside a dataset? The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says "This data set contains Level 2/3 (EDR/RDR) data", and later "The RDR data convert the EDR (raw) sensor data": I wrote "RDR data" and "EDR (raw) sensor data" as two Datasets, each PART_OF the record's dataset, and "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset). Are the parts of a dataset datasets themselves, or should they be written another way?
 
 ### Context
 
-The example below is the one whose input, "radiance data", has the most facts of its own (four, two of them DOIs). COMPUTED_FROM joins what was made to what it was made from. None of the records I have read so far names an astronomical source catalog or a database. The translation table says that the model's Dataset, DataProduct, Catalog and Database all mean the ground truth schema's Dataset.
+The example below is the one whose input, "radiance data", has the most facts of its own (four, two of them DOIs). COMPUTED_FROM joins what was made to what it was made from. Of the records I have read so far, only the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" names astronomical source catalogs (question (d)); none names a database. The translation table says that the model's Dataset, DataProduct, Catalog and Database all mean the ground truth schema's Dataset.
 
 ### Example record
 
@@ -1670,7 +1700,7 @@ Option 1, for now: it writes what each record states, and every collection of da
 
 ### My notes
 
-The example is the record at pool position 2. The other two inputs are "the L2 pixels" of the record at pool position 4 and "the GRaND epithermal neutron map" of the record at pool position 5; every ground truth triple about each of the three inputs is listed under Affects. None of the tuning records so far names an astronomical source catalog or a database. The search of (c) was over the titles of 020's records.jsonl.
+The example is the record at pool position 2. The other two inputs are "the L2 pixels" of the record at pool position 4 and "the GRaND epithermal neutron map" of the record at pool position 5; every ground truth triple about each of the three inputs is listed under Affects. The record at pool position 12 names three source catalogs and a file of one (decided 2026-10-25, for me to confirm); none of the tuning records so far names a database. The search of (c) was over the titles of 020's records.jsonl.
 
 Decided on 2026-10-25, for me to confirm: the record at pool position 7 has an input of its own, "MOD11_L2" (its swath product, with its DOI), and the record at pool position 9 has two parts, "RDR data" and "EDR (raw) sensor data"; their classed triples are listed under Affects.
 
@@ -1707,6 +1737,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD02HKM.061" (Identifier)
@@ -1723,6 +1754,13 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 - classed triple of the record at pool position 9: "RDR data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "2XMMi-DR3" (Dataset)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) VERSION_OF "Serendipitous Source Catalog" (Dataset)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) UPDATE_OF "second version of the catalogue" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "table1.dat" (Dataset)
+- classed triple of the record at pool position 12: "table1.dat" (Dataset) PART_OF "CDS Catalog J/A+A/536/A84" (Dataset)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_TARGET "active galactic nuclei (AGN)" (CelestialBody)
 - translation table row: entity class Dataset
 - translation table row: entity class DataProduct
 - translation table row: entity class Catalog
@@ -2614,6 +2652,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
@@ -2674,6 +2713,11 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
 - classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "Ensemble X-Ray Variability" (PhysicalQuantity)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -3045,12 +3089,125 @@ The example is the record at pool position 5, the only tuning record annotated s
 
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 5: "GRaND plus Z boron loaded sensor" (Instrument) PART_OF "GRaND" (Instrument)
 - classed triple of the record at pool position 9: "encounter data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
+- classed triple of the record at pool position 12: "table1.dat" (Dataset) PART_OF "CDS Catalog J/A+A/536/A84" (Dataset)
 - ground truth schema entry: predicate PART_OF
 - translation table row: predicate PART_OF
 - translation table row: predicate CONTAINS
 - pipeline method: docs/improvements.md: An entity class hierarchy for the schemas
 - pipeline method: docs/improvements.md: Judgements are Equivalent, Narrower, Broader, or Unrelated
+
+## Q26: Should a study's aim, method and findings, as a record tells them, be facts of the knowledge graph?
+
+- status: open
+- priority: medium
+- question kind: records and triples
+- topic: records that tell the study a table comes from; the coined Finding, REPORTED and USED_METHOD
+
+### The question
+
+Some records of the catalog describe a table from an astronomical study, and most of their notes tell the study itself: what the authors aimed to find, the method they used, and what they found. The example below is one. I wrote all of it down, with "the authors" as the subject (a Team, the ground truth schema's entity class for "a group of people without a name of its own"), and three entries I coined: the predicates USED_METHOD and REPORTED, and the entity class Finding. I would like to know:
+
+- (a) For someone searching this catalog, are a study's findings (for example "a strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF") worth having in the knowledge graph, or only what the table holds and where it comes from?
+- (b) If they are: is "the authors" the right subject, or the table itself (whose title names what the study is about), or the publication the table comes from (which the record names only by its catalog's key, "CDS Catalog J/A+A/536/A84")?
+- (c) Some findings are about both samples of the study, one of which is not in this table ("the latter is not included in this table"), and one is hedged ("evidence in support of"). Should those be written too, and as what?
+
+### Context
+
+The notes also say what is in the table: its sources were selected from "2XMMi-DR3", "cross-correlated with the DR7 edition of the SDSS Quasar Catalog", "resulting in 412 quasars that were observed by XMM-Newton from 2 to 25 epochs each for a total of 1376 observations". Those I wrote as facts of the table, whatever the answer here. One finding is negated ("They do not find evidence of the break in the SF"), and I wrote no fact for it, since the annotation guidelines leave out negated facts. I also left out the background the notes start with (how the X-ray variability of AGN "has been most often investigated"), and that the structure function "is also more appropriate than fractional variability and excess variance": the first names no study or thing of its own, and the second is a judgement.
+
+### Example record
+
+- record id: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- pool position: 12
+- title: Ensemble X-Ray Variability of AGN in 2XMMi-DR3
+- notes: The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift. In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples extracted from the catalogs of XMM-Newton and Swift (the latter is not included in this table, notice), with redshift between ~ 0.2 and ~ 4.5, and X-ray luminosities, in the 0.5 - 4.5 keV band, between ~ 10^43 erg/s and ~ 10^46 erg/s. They used the structure function (SF), which operates in the time domain, and allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived. The SF is also more appropriate than fractional variability and excess variance, because these parameters are biased by the duration of the monitoring time interval in the rest-frame, and therefore by cosmological time dilation. The authors find statistically consistent results for the two samples, with the SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1. They do not find evidence of the break in the SF, at variance with the case of lower luminosity AGNs. They confirm a strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF. They also find evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift. For XMM, the authors used the version of the Serendipitous Source Catalog then available, namely 2XMMi-DR3, the latest incremental update of the second version of the catalogue, with observations made between 2000 February 3 and 2008 October 08; all datasets were publicly available by 2009 October 31, but not all public observations are included in this catalog. The total area of the catalog fields is ~ 814 deg^2, but taking account of the substantial overlaps between observations, the net sky area covered independently is ~ 504 deg^2. The 2XMMi-DR3 catalogue contains 353,191 detections (above the processing likelihood threshold of 6), related to 262,902 unique X-ray sources, therefore a significant number of sources (41,979) have more than one record within the catalog. The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog (Schneider et al. 2010, AJ, 139, 2360) to obtain redshifts and spectral classifications for the sources. The authors used a maximum distance of 1.5 arcseconds, corresponding to the uncertainty in the X-ray positions, resulting in 412 quasars that were observed by XMM-Newton from 2 to 25 epochs each for a total of 1376 observations. The authors refer to these sources as the XMM-Newton sample. This table was created by the HEASARC in April 2012 based on CDS Catalog J/A+A/536/A84 [https://cdsarc.cds.unistra.fr/ftp/cats/J/A+A/536/A84] file table1.dat. This is a service provided by NASA HEASARC .
+- source text: In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples
+- source text: They used the structure function (SF)
+- source text: The authors find statistically consistent results for the two samples
+- source text: The authors find statistically consistent results for the two samples, with the SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1
+- source text: They confirm a strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF
+- source text: They also find evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift
+- classed triple: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose)
+- classed triple: "the authors" (Team) USED_METHOD "structure function (SF)" (Algorithm)
+- classed triple: "the authors" (Team) REPORTED "statistically consistent results for the two samples" (Finding)
+- classed triple: "the authors" (Team) REPORTED "SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1" (Finding)
+- classed triple: "the authors" (Team) REPORTED "strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF" (Finding)
+- classed triple: "the authors" (Team) REPORTED "evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift" (Finding)
+
+### Ground truth schema
+
+- entity class Team: a group of people without a name of its own, e.g. Peter Minnett and his team
+- entity class Finding: a result a study reports, e.g. a strong anti-correlation of the variability with X-ray luminosity
+- entity class Purpose: an aim something is meant to achieve
+- entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
+- predicate REPORTED: found and reported this result
+- predicate USED_METHOD: applied this Algorithm in their work
+- predicate HAS_PURPOSE: is meant to achieve
+
+### Annotation guidelines
+
+- What counts as a fact, rule 2: Every fact the record states, whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 6: Not negated facts.
+- What counts as a fact, rule 7: Not uncertain facts.
+- Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.
+
+### Options
+
+#### Option 1: Keep them, with the authors as their subject
+
+The study's aim, method and findings stay facts, each with "the authors" as its subject, as now.
+
+#### Option 2: Keep them, with the table as their subject
+
+The same facts, with the table's title as their subject: the table HAS_PURPOSE the study's aim, and the findings are the table's.
+
+#### Option 3: Leave the study out
+
+Only what the table holds, how it was made and where it comes from are facts; the study's aim, method and findings are left out.
+
+### My current reading
+
+Option 1 for now, because the annotation guidelines ask for every fact the record states, and these sentences are about what the authors did and found. If your answer to (a) is that findings don't belong in the knowledge graph, option 3.
+
+### My notes
+
+The example is the record at pool position 12, the only tuning record annotated so far that tells a study (decided 2026-10-25, for me to confirm). The authors are joined to the table by "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "the authors" (Team), since the record says what they selected and how. Its other doubts: the source catalogs as datasets, and AGN as a target (Q12 (d)); the authors' aim and the method's "allows for" as purposes (Q9 (d)). What was left out, with its rule, is in `annotations/left_out.md`.
+
+### Consequences
+
+#### Option 1: Keep them, with the authors as their subject
+
+- Nothing changes in the ground truth; the three coined entries stay.
+- The [model](../docs/terminology.md#8-the-pipeline) must write a study's findings the same way, or step 070 counts them as missed.
+
+#### Option 2: Keep them, with the table as their subject
+
+- The subject of the classed triples listed under Affects changes from "the authors" to the table's title, and "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "the authors" (Team) may go.
+
+#### Option 3: Leave the study out
+
+- The classed triples with REPORTED and USED_METHOD, and the authors' HAS_PURPOSE, are deleted, and the coined entries with them.
+- The annotation guidelines get a rule that leaves a study's findings out, and so does the model's copy of the rules (`common/common_prompts/extraction_rules.txt`).
+
+### Affects
+
+- record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- classed triple of the record at pool position 12: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose)
+- classed triple of the record at pool position 12: "the authors" (Team) USED_METHOD "structure function (SF)" (Algorithm)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "statistically consistent results for the two samples" (Finding)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "SF described by a power law of the time lag tau, approximately as SF ~ tau^0.1" (Finding)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF" (Finding)
+- classed triple of the record at pool position 12: "the authors" (Team) REPORTED "evidence in support of a weak, intrinsic, average increase of X-ray variability with redshift" (Finding)
+- classed triple of the record at pool position 12: "structure function (SF)" (Algorithm) HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (Purpose)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "the authors" (Team)
+- ground truth schema entry: entity class Finding
+- ground truth schema entry: predicate REPORTED
+- ground truth schema entry: predicate USED_METHOD
+- rule: What counts as a fact, rule 2
+- rule: Writing a classed triple, rule 2
+- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
