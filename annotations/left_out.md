@@ -200,3 +200,15 @@ The dense record: its notes describe a whole family of products (several time st
   - **Question:** Q7.
 - **Left out:** "entire" (notes, "from the entire comet encounter")
   - **Rule:** none to quote: HAS_MISSION_PHASE "encounter" says the RDR data come from the encounter; "entire" adds only that none of it is left out.
+
+## "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (pool position 10, id 3bceffb4-f01e-433c-af79-42b9d9427231)
+
+2 items, 1 that may matter.
+
+- **Left out:** "CAL" (title, "67P/CAL")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **May matter because:** my reading, not checked against a source: it may mark calibration data; if so, it says what kind of data the dataset holds.
+  - **Question:** Q6 (b).
+- **Left out:** "mission phase" (notes, "comet escort 1 mission phase")
+  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - My ground truth triple has the phase "comet escort 1", its target "67P/Churyumov-Gerasimenko" a triple of its own (rule 9).

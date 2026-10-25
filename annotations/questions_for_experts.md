@@ -241,6 +241,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
@@ -262,6 +263,8 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -618,6 +621,7 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -657,6 +661,11 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_MISSION_PHASE "comet escort 1" (MissionPhase)
+- classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -807,6 +816,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -816,6 +826,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "January, 2007 up to March, 2011" (Time)
+- classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -840,7 +851,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 The ground truth schema's ProcessingLevel is "how far data have been processed from what the Instrument recorded, e.g. Level 2". The records write it in many ways ("Level-2 (L2)", "Level-3", "Level 3", "L2", "L2G", and perhaps "1/2/3"), and so far the ground truth keeps each record's own words. I would like to know:
 
 - (a) The example below has "L2G" in its title and "gridded Level 2 product" in its notes. Is L2G "Level 2, gridded": a processing level (Level 2) plus a layout on a grid, which the ground truth writes as two [facts](../docs/terminology.md#2-triples)? Or is L2G a processing level of its own?
-- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". I read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above?
+- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". I read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above? The record "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" has "ALICE 2" in its title, and its notes say "This data set contains CODMAC level 2 data", which I wrote as "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel). Its title also has "67P/CAL", which the record doesn't explain, so I wrote nothing for "CAL": what does it stand for (my reading, not checked against a source: calibration)?
 - (c) Which list of processing levels should the ground truth follow? The one I know of is NASA Earthdata's *Data Processing Levels* (Level 0, Level 1A, 1B, 1C, Level 2, 2A, 2B, Level 3, 3A, Level 4; https://www.earthdata.nasa.gov/learn/earth-observation-data-basics/data-processing-levels). Does it hold for the whole catalog, or do records of other parts of NASA, e.g. the Planetary Data System, use other levels? If there are two lists, how do they line up?
 
 ### Context
@@ -928,6 +939,7 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_PROCESSING_LEVEL "Level-2 (L2)" (ProcessingLevel)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_PROCESSING_LEVEL "Level-3" (ProcessingLevel)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
@@ -937,6 +949,7 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
 - translation table row: predicate HAS_PROCESSING_LEVEL
 - ground truth schema entry: entity class ProcessingLevel
@@ -2600,6 +2613,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
@@ -2657,6 +2671,9 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MEASUREMENTS_OF "dust fluences at each of twelve mass thresholds" (PhysicalQuantity)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
+- classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation

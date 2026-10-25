@@ -49,15 +49,15 @@ dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,EDR (raw) sensor data,Dataset,PART_OF,STARD
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,COMPUTED_FROM,EDR (raw) sensor data,Dataset,The RDR data convert the EDR (raw) sensor data,1,gemini-2.5-pro
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,HAS_MISSION_PHASE,encounter,MissionPhase,"The RDR data convert the EDR (raw) sensor data, from the entire comet encounter",1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,HAS_MEASUREMENTS_OF,dust fluences at each of twelve mass thresholds,PhysicalQuantity,"The RDR data convert the EDR (raw) sensor data, from the entire comet encounter, to dust fluences at each of twelve mass thresholds",1,
-3bceffb4-f01e-433c-af79-42b9d9427231,3bceffb4-f01e-433c-af79-42b9d9427231,CatalogEntry,DESCRIBES,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,(record structure),0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_PROCESSING_LEVEL,CODMAC level 2,ProcessingLevel,This data set contains CODMAC level 2 data,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,ALICE UV Spectrometer,Instrument,acquired by the Rosetta Orbiter ALICE UV Spectrometer,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_MISSION_PHASE,comet escort 1 mission phase,MissionPhase,during the 67P/Churyumov-Gerasimenko comet escort 1 mission phase,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_TARGET,67P/Churyumov-Gerasimenko,CelestialBody,67P/Churyumov-Gerasimenko comet escort 1 mission phase,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,comet escort 1 mission phase,MissionPhase,HAS_TIME_SPAN,2014-11-19 and 2015-03-10,Time,which took place between 2014-11-19 and 2015-03-10,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_VERSION,V1.0,Version,V1.0,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ALICE UV Spectrometer,Instrument,ABOARD,Rosetta Orbiter,Spacecraft,Rosetta Orbiter ALICE UV Spectrometer,0,gemini-2.5-pro
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,FROM_SPACECRAFT,Rosetta Orbiter,Spacecraft,ROSETTA-ORBITER,0,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,3bceffb4-f01e-433c-af79-42b9d9427231,CatalogEntry,DESCRIBES,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,(record structure),1,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,FROM_SPACECRAFT,Rosetta Orbiter,Spacecraft,ROSETTA-ORBITER,1,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_TARGET,67P/Churyumov-Gerasimenko,CelestialBody,67P/Churyumov-Gerasimenko comet escort 1 mission phase,1,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,ALICE UV Spectrometer,Instrument,acquired by the Rosetta Orbiter ALICE UV Spectrometer,1,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,ALICE UV Spectrometer,Instrument,ABOARD,Rosetta Orbiter,Spacecraft,Rosetta Orbiter ALICE UV Spectrometer,1,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_PROCESSING_LEVEL,CODMAC level 2,ProcessingLevel,This data set contains CODMAC level 2 data,1,gemini-2.5-pro
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_MISSION_PHASE,comet escort 1,MissionPhase,during the 67P/Churyumov-Gerasimenko comet escort 1 mission phase,1,
+3bceffb4-f01e-433c-af79-42b9d9427231,comet escort 1,MissionPhase,HAS_TIME_SPAN,between 2014-11-19 and 2015-03-10,Time,"comet escort 1 mission phase, which took place between 2014-11-19 and 2015-03-10",1,
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_VERSION,V1.0,Version,V1.0,1,gemini-2.5-pro
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,bb1fe4b0-6543-42e3-9386-acbab0b37ad4,CatalogEntry,DESCRIBES,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,(record structure),0,gemini-2.5-pro
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,HAS_MEASUREMENTS_OF,X-ray variability of active galactic nuclei (AGN),PhysicalQuantity,Ensemble X-Ray Variability of AGN,0,gemini-2.5-pro
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,COMPUTED_FROM,2XMMi-DR3,Dataset,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,0,gemini-2.5-pro
