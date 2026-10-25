@@ -34,8 +34,9 @@ inputs a person makes (annotations/), only those that change the step's
 result count (COUNTED_PERSON_INPUTS): the additions for 060, and for 070
 everything it reads there. Step 050 is never out of date: each run drafts a
 new drafted batch, and the drafted batches waiting are their own items. For 060, the
-ground truth counts as finished records not extracted yet, not as a changed
-file (annotating an unfinished record changes the file, not 060's work).
+ground truth doesn't count (annotating changes the file, not 060's work); step 070's
+warnings list the finished records 060's last run didn't extract. Prompts, code,
+settings and the model are never inputs here: a change to them isn't detected.
 """
 from __future__ import annotations
 
