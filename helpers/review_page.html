@@ -15,10 +15,32 @@
 <style>
   /* this page's own additions, in the same palette */
   main.single { display: block; max-width: 1100px; margin: 0 auto; padding: 16px; }
-  #version { margin: 0; padding: 10px 24px; border-bottom: 1px solid var(--line); background: var(--sky-bg); color: var(--ink);
-             font-size: 13.5px; line-height: 1.5; }
+  /* the version line: one short, calm line; the commit, page version and fingerprints open under "details" */
+  #version { margin: 0; padding: 7px 24px; border-bottom: 1px solid var(--line); background: var(--sky-bg); color: var(--label);
+             font-size: 13px; line-height: 1.5; }
+  #version summary { list-style: none; cursor: pointer; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+  #version summary::-webkit-details-marker { display: none; }
+  #version summary .more { color: var(--navy); font-weight: 600; font-size: 12.5px; }
+  #version summary .more::after { content: " ▾"; }
+  #version details[open] summary .more::after { content: " ▴"; }
+  #version summary:hover .more { text-decoration: underline; text-underline-offset: 3px; }
+  #version .full { margin: 6px 0 2px; max-width: 110ch; color: var(--ink); }
   #version strong { color: var(--navy); }
   #version .files { color: var(--label); overflow-wrap: anywhere; }
+  /* the view bar: room around each tab, the current one plainly filled, wrapping cleanly on narrow screens */
+  header .topbar { padding: 12px 24px; row-gap: 10px; }
+  header nav.tabs { flex: 0 1 auto; flex-wrap: wrap; gap: 6px; }
+  header nav.tabs button.tab { background: transparent; border: 1px solid var(--bar-soft); color: var(--bar-ink);
+                               padding: 7px 18px; font-weight: 500; }
+  header nav.tabs button.tab:hover { background: var(--bar-soft); border-color: var(--bar-soft); }
+  header nav.tabs button.tab.current, header nav.tabs button.tab.current:hover {
+    background: var(--bar-ink); border-color: var(--bar-ink); color: #1f3a5f; font-weight: 600; }
+  header #status { flex-wrap: wrap; row-gap: 8px; }
+  @media (max-width: 900px) {
+    header .topbar { padding: 10px 16px; }
+    header h1 { margin-right: 8px; padding-right: 0; border-right: 0; }
+    #version { padding: 7px 16px; }
+  }
   header #status { gap: 10px; }
   header #status button.primary { background: var(--bar-ink); color: #1f3a5f; border-color: var(--bar-ink); }
   header #status .counter { white-space: nowrap; }
@@ -58,7 +80,7 @@
     <span id="status"></span>
   </div>
 </header>
-<p id="version"></p>
+<div id="version"></div>
 <main class="single"><div id="view"></div></main>
 <script type="application/json" id="data">{{DATA}}</script>
 <script>
@@ -66,6 +88,10 @@
 const D = JSON.parse(document.getElementById("data").textContent);
 const V = D.version;
 const $ = (id) => document.getElementById(id);
+// An arrow as the page shows it: "->" or "-->" in the files becomes "→" on the screen only; the data, the comments'
+// entry texts, the emails and the downloads keep the files' own characters, so --read compares like with like.
+const arrows = (text) => String(text).replace(/--?>/g, "→");
+const arrowsHtml = (html) => String(html).replace(/--?&gt;/g, "→");
 function el(tag, attrs, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -155,7 +181,7 @@ function commentBox(e, label) {
   requestAnimationFrame(grow);
   box.append(el("label", {}, label, ta));
   if (c && c.text && e.kind !== "general" && c.shown !== e.shown)
-    box.append(el("p", { class: "hint" }, `You wrote this on the copy ${c.version}, when the entry read: ${c.shown}`));
+    box.append(el("p", { class: "hint" }, `You wrote this on the copy ${c.version}, when the entry read: ${arrows(c.shown)}`));
   return box;
 }
 const csvCell = (v) => /[",\r\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
@@ -336,15 +362,23 @@ function drawStatus(typing) {
     el("button", { onclick: download, title: "Save your comments as a small CSV file, to attach to an email" },
        "Download my comments")].filter(Boolean));
 }
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+                "November", "December"];
 function drawVersion() {
   const made = V.generated.replace("T", " ").slice(0, 16);
-  $("version").replaceChildren(...[
+  const [y, m, d] = V.date.split("-").map(Number);
+  const since = previous && CHANGED.size + NEW.size ? ` · ${CHANGED.size} changed, ${NEW.size} new since you last looked` : "";
+  const full = el("p", { class: "full" }, ...[
     el("strong", {}, "A read-only copy: it can't change anything. "),
     `Made ${made} from Git commit ${V.commit}` +
       (V.edited ? ", with changes to these two files not yet committed" : "") + `; page version ${V.id}. `,
     el("span", { class: "files" }, "Fingerprints (sha256): ",
        V.files.map((f, i) => [i ? "; " : "", el("code", {}, f.path), ` ${f.sha256}`])),
     previous ? el("span", {}, `. Since the copy you opened before (${previous.version}): ${CHANGED.size} entr${CHANGED.size === 1 ? "y" : "ies"} changed, ${NEW.size} new.`) : null].filter(Boolean));
+  $("version").replaceChildren(el("details", {},
+    el("summary", { title: "When this copy was made, from which Git commit, and the files' fingerprints" },
+       el("span", {}, `Read-only · updated ${d} ${MONTHS[m - 1]} ${y}${since}`), el("span", { class: "more" }, "details")),
+    full));
 }
 
 // ---------------------------------------------------------------- one at a time or all at once
@@ -398,7 +432,7 @@ const state = { schema: { kind: "entity class", search: "", mine: false, changed
                 mapping: { kind: "entity class", search: "", mine: false, changed: false, counterpart: "any" } };
 const has = (e) => !!(comments[e.id] && comments[e.id].text.trim());
 const changedPill = (e) => CHANGED.has(e.id)
-  ? el("span", { class: "pill flag", title: `When you last looked (copy ${previous.version}), it read: ${previous.entries[e.id]}` },
+  ? el("span", { class: "pill flag", title: `When you last looked (copy ${previous.version}), it read: ${arrows(previous.entries[e.id])}` },
        "⚑ changed since you last looked")
   : NEW.has(e.id) ? el("span", { class: "pill flag" }, "⚑ new since you last looked") : null;
 function kindTabs(st, counts) {
@@ -417,7 +451,7 @@ function check(st, key, label, title) {
   return el("label", { class: "meta", title: title || null },
     el("input", { type: "checkbox", checked: st[key], onchange: (ev) => { st[key] = ev.target.checked; redraw(); } }), " " + label);
 }
-const matches = (q, ...texts) => !q.trim() || texts.some((t) => (t || "").toLowerCase().includes(q.trim().toLowerCase()));
+const matches = (q, ...texts) => !q.trim() || texts.some((t) => arrows(t || "").toLowerCase().includes(arrows(q.trim()).toLowerCase()));
 
 // ---------------------------------------------------------------- the ground truth schema
 function schemaBox(e) {
@@ -426,14 +460,14 @@ function schemaBox(e) {
     el("div", { class: "entryhead" },
       el("div", { class: "mapname", title: `${e.entry} (ground truth schema ${what})` }, e.entry),
       el("span", { class: "kind" }, what), changedPill(e)),
-    el("div", { class: "mapdef" + (e.definition ? "" : " empty") }, e.definition || "No definition yet."),
+    el("div", { class: "mapdef" + (e.definition ? "" : " empty") }, e.definition ? arrows(e.definition) : "No definition yet."),
     e.kind === "predicate" ? el("div", { class: "patline" }, "Patterns listed: ",
-      e.patterns.length ? e.patterns.map(([s, o], i) => [i ? "; " : "", el("span", { class: "pat" }, `${s} -> ${o}`)])
+      e.patterns.length ? e.patterns.map(([s, o], i) => [i ? "; " : "", el("span", { class: "pat" }, `${s} → ${o}`)])
                         : el("span", { class: "empty" }, "none in the file")) : null,
     e.pins && e.pins.length ? el("div", { class: "patline" },
       el("span", { class: "pill todo", title: `Pinned: ${e.entry} may join only these entity classes ("any": any entity class)` },
-         "only: " + e.pins.map(([s, o]) => `${s} -> ${o}`).join("; "))) : null,
-    e.source ? el("div", { class: "meta" }, `source: ${e.source}`) : null,
+         "only: " + e.pins.map(([s, o]) => `${s} → ${o}`).join("; "))) : null,
+    e.source ? el("div", { class: "meta" }, `source: ${arrows(e.source)}`) : null,
     commentBox(e, `Your comment on ${e.entry} (ground truth schema ${what})`));
 }
 function drawSchema() {
@@ -446,11 +480,11 @@ function drawSchema() {
     && matches(st.search, e.entry, e.definition, e.source, (e.patterns || []).map((p) => p.join(" -> ")).join(" ")));
   const { at, bar } = itemsOneAtATime("schema", shown.map((e) => e.id), st.kind === "predicate" ? "Predicate" : "Entity class");
   const notes = D.schema.notes.length ? el("section", { class: "card notes" }, el("h3", {}, "Notes in the file"),
-    el("p", { class: "meta" }, D.schema.notes.join(" "))) : null;
+    el("p", { class: "meta" }, arrows(D.schema.notes.join(" ")))) : null;
   return [
     el("section", { class: "card" }, el("h2", {}, "Ground truth schema"),
       el("p", { class: "meta" }, "annotations/ground_truth_schema.txt: the entity classes and predicates the ground truth may use, " +
-        "each with its definition; under a predicate, its patterns (subject class -> object class) and any “only:” line that pins it.")),
+        "each with its definition; under a predicate, its patterns (subject class → object class) and any “only:” line that pins it.")),
     notes,
     el("section", { class: "card mapcard" }, kindTabs(st, counts),
       el("div", { class: "mapfilters" },
@@ -533,8 +567,8 @@ function drawMapping() {
 // ---------------------------------------------------------------- terms
 function drawTerms() {
   const rows = D.glossary.map((t) => {
-    const term = el("td", { class: "term" }); term.innerHTML = t.term_html;      // written by helpers/review_page.py,
-    const meaning = el("td", {}); meaning.innerHTML = t.meaning_html;           // from docs/terminology.md, escaped
+    const term = el("td", { class: "term" }); term.innerHTML = arrowsHtml(t.term_html);      // written by helpers/review_page.py,
+    const meaning = el("td", {}); meaning.innerHTML = arrowsHtml(t.meaning_html);           // from docs/terminology.md, escaped
     return el("tr", {}, term, meaning);
   });
   return [el("section", { class: "card" }, el("h2", {}, "Terms"),
@@ -561,7 +595,7 @@ function drawHome() {
     el("h3", {}, "Ground truth schema"),
     el("p", {}, `The ${nSchema} the ground truth may use, each with a one-line definition. An entity class is a kind of thing a ` +
       "subject instance or object instance can be (Instrument); a predicate is a kind of relationship (ABOARD). Under a predicate " +
-      "are its patterns, the pairs of entity classes it has joined, read subject -> object: Instrument -> Spacecraft under ABOARD " +
+      "are its patterns, the pairs of entity classes it has joined, read subject → object: Instrument → Spacecraft under ABOARD " +
       "says that an instrument is carried on a spacecraft. The ground truth itself may use more patterns than the file lists. " +
       "A line “only: …” pins a predicate: it may join only those entity classes (“any”: any entity class). A line " +
       "“source: …” says where the idea for an entry came from: “ground truth tuning #2” means from the record at position 2 of " +
@@ -602,14 +636,17 @@ function drawHome() {
     gone.length ? el("div", { class: "gone" }, el("h3", {}, "Your comments on entries no longer on this page"),
       el("p", { class: "meta" }, "They are still in your download, with the entry as it read when you wrote them."),
       el("ul", {}, gone.map((c) => el("li", {}, el("strong", {}, `${c.kind} ${c.entry}`), `: ${c.text}`,
-                                          el("div", { class: "meta" }, `It read: ${c.shown}`))))) : null)];
+                                          el("div", { class: "meta" }, `It read: ${arrows(c.shown)}`))))) : null)];
 }
 
 // ---------------------------------------------------------------- views
 let view = "home";
 const VIEWS = { home: drawHome, schema: drawSchema, mapping: drawMapping, terms: drawTerms };
 function redraw() {
-  for (const v of Object.keys(VIEWS)) $(`tab-${v}`).classList.toggle("current", v === view);
+  for (const v of Object.keys(VIEWS)) {
+    $(`tab-${v}`).classList.toggle("current", v === view);
+    if (v === view) $(`tab-${v}`).setAttribute("aria-current", "page"); else $(`tab-${v}`).removeAttribute("aria-current");
+  }
   $("view").replaceChildren(...VIEWS[view]().flat(Infinity).filter(Boolean));
   drawStatus();
 }

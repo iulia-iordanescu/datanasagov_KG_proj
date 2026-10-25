@@ -33,13 +33,13 @@ Why a branch of its own: the branch holds those two files and nothing else, ever
 
 ## What the page shows
 
-- **The line under the title bar**: that it is a read-only copy that can't change anything, when it was made, the Git commit, the page version (the file's name), and each file's fingerprint (SHA-256, first 12 characters).
+- **The line under the title bar**: one short line, *Read-only · updated* and the day the page was made (and, for a reviewer who opened an older copy before, how many entries changed or are new since). Its **details** opens the full version: that it is a read-only copy that can't change anything, when it was made, the Git commit, the page version (the file's name), and each file's fingerprint (SHA-256, first 12 characters).
 - **How to read this**: what the two files are and what to look for, in plain words, with the reviewer's name field, a box for general comments, and the buttons to send, save and load comments.
 - **Ground truth schema**: the [entity classes](../docs/terminology.md#3-schemas) and predicates, in the file's order, each with its definition; under a predicate, its [patterns](../docs/terminology.md#3-schemas) as the file lists them (the ground truth itself may use more) and its `only:` line, if it is a [pinned predicate](../docs/terminology.md#3-schemas); the `source:` line of each entry that has one; and the file's lines of explanation, under *Notes in the file*. Tabs for entity classes and predicates, a search box, and filters (only pinned predicates; only those commented on; only those changed since the reviewer last looked).
 - **Translation table**: one box per [row](../docs/terminology.md#8-the-pipeline), as in the annotation tool: the [component class](../docs/terminology.md#3-schemas) of the [current schema](../docs/terminology.md#6-extracting-with-a-schema-step-060) (or a past schema) → the one of the ground truth schema it translates to, both definitions as the row stores them, a made-up example for a predicate (`A CARRIES B → B ABOARD A`), and whether the row is checked. A ⚑ marks a row whose ground truth schema definition changed since it was checked (stale, see [row state](../docs/terminology.md#7-evaluating-extraction-step-070)). The same tabs, search and filters, plus the annotation tool's choice of rows by what they translate to.
 - **Terms**: the terms the page uses, copied from `docs/terminology.md` when the page is made (the list is `GLOSSARY` in `helpers/review_page.py`; a term missing from terminology.md stops the page from being made, so no definition is ever written twice).
 
-Both lists can be shown all at once or one at a time (the ↑ and ↓ keys go through them).
+Both lists can be shown all at once or one at a time (the ↑ and ↓ keys go through them). Wherever the files write an arrow as `->` (a pattern, an `only:` line, the notes), the page shows →; only the screen changes: the files, the data inside the page, and the comments' texts and emails keep `->`.
 
 ## How comments come back
 

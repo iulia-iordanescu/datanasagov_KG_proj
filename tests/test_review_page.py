@@ -370,6 +370,58 @@ class Email(unittest.TestCase):
         self.assertIn(f"; {R.NOT_VERIFIED}): Too vague", text)
 
 
+@unittest.skipUnless(CHROME, "no Chrome or Edge on this computer to run the page's script")
+class Display(unittest.TestCase):
+    """What the page shows, in headless Chrome: one short version line whose details hold the full version text; the
+    current view's tab marked; arrows shown as → while the data, a comment's entry text and its email keep "->"."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp())
+        cls.paths = files(cls.tmp)
+        cls.page = R.build(R.page_data(**cls.paths))
+        script = ("const out = {}; const v = document.getElementById('version');"
+                  "out.summary = v.querySelector('summary').textContent; out.full = v.querySelector('details .full').textContent;"
+                  "out.open = v.querySelector('details').open;"
+                  "state.schema.kind = 'predicate'; show('schema'); out.schema = document.getElementById('view').textContent;"
+                  "out.current = [...document.querySelectorAll('nav.tabs .tab[aria-current=page]')].map((t) => t.id);"
+                  "state.schema.search = 'Instrument -> Spacecraft'; redraw(); out.found = document.querySelectorAll('.mapbox').length;"
+                  "show('home'); out.home = document.getElementById('view').textContent;"
+                  "show('terms'); out.terms = document.getElementById('view').textContent;"
+                  "setComment(BY_ID['predicate|ABOARD'], 'Fine.'); reviewer = 'Jane Smith';"
+                  "out.body = decodeURIComponent(emailParts('2026-10-24T12:00:00-04:00').parts[0].url.split('body=')[1]);"
+                  "document.body.setAttribute('data-out', JSON.stringify(out));")
+        cls.out = json.loads(run_page(cls.page, script, cls.tmp))
+
+    def test_version_line(self):
+        v = R.page_data(**self.paths)["version"]
+        y, m, d = map(int, v["date"].split("-"))
+        month = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+                 "November", "December"][m - 1]
+        self.assertEqual(self.out["summary"], f"Read-only · updated {d} {month} {y}details")
+        self.assertFalse(self.out["open"])
+        for words in ("A read-only copy: it can't change anything.", f"from Git commit {v['commit']}",
+                      f"page version {v['id']}", "Fingerprints (sha256)", v["files"][0]["sha256"], v["files"][1]["sha256"]):
+            self.assertIn(words, self.out["full"])
+
+    def test_current_tab(self):
+        self.assertEqual(self.out["current"], ["tab-schema"])
+
+    def test_arrows_shown(self):
+        for view in ("schema", "home", "terms"):
+            self.assertNotIn("->", self.out[view], view)
+        self.assertIn("Instrument → Spacecraft", self.out["schema"])
+        self.assertIn("only: any → Spacecraft", self.out["schema"])
+        self.assertIn("reads subject → object", self.out["schema"])                 # the file's notes
+        self.assertIn("only: Dataset → Instrument", self.out["terms"])            # docs/terminology.md's pinned predicate
+        self.assertEqual(self.out["found"], 1)                                    # a search typed with "->" still finds it
+
+    def test_data_and_email_keep_the_files_arrows(self):
+        self.assertEqual(page_json(self.page)["schema"]["notes"], ["Each entry below reads subject -> object."])
+        self.assertIn("[entry_text_shown] ABOARD: is carried on | patterns: Instrument -> Spacecraft | only: any -> Spacecraft",
+                      self.out["body"])
+
+
 class Senders(unittest.TestCase):
 
     def test_allowed_domains(self):
