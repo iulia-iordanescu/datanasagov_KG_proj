@@ -499,10 +499,15 @@ def _mismatch_lines(mismatches: list) -> list:
     """The report's list of component class mismatches (pairing.component_class_mismatches)."""
     lines = ["### Component class mismatches", "",
              "Counted over the tuning records only: held-out records never say what to change.", "",
-             "A component class mismatch: extraction stated the fact, but a component class didn't line up with the ground truth's, which may mean a translation error. A row of the "
-             "table below seen often means a row of the translation table (`annotations/component_class_mapping.csv`) is "
-             "likely wrong: check that row (`py helpers/annotate.py`, view *Translation table*). Seen once, it may just be "
-             "extraction choosing the wrong component class.", "",
+             "A component class mismatch: after translation, a component class doesn't line up with the ground "
+             "truth's, where extraction stated the fact (the two entity class kinds: a pair) or may have stated it "
+             "(the predicate kind: no pair, but the same subject instance and object instance). Among the causes: a "
+             "row of the translation table (`annotations/component_class_mapping.csv`) that translates wrong, to "
+             "(none) when a component class fits, or with the wrong swap_subject_and_object; or a habit, not a row: "
+             "extraction choosing that component class where the ground truth has another, or the ground truth "
+             "doing so. A row of the table below seen often: check the translation table's row first (`py "
+             "helpers/annotate.py`, view *Translation table*); if it is right, the habit is the cause. Seen once, it "
+             "may just be extraction choosing the wrong component class.", "",
              "How to read a row of the table below, e.g. *entity class, subject | Body | Spacecraft | CelestialBody | 9*: "
              "these component class "
              "mismatches, counted together, happened 9 times:", "",
@@ -511,16 +516,20 @@ def _mismatch_lines(mismatches: list) -> list:
              "occurrence (a pair, exact or partial) had `CelestialBody` (ground truth schema) as its subject class;",
              "- **entity class, object:** extraction used a component class of the current schema as the object "
              "class of an extracted triple, translated to one component class of the ground truth "
-             "schema, while the ground truth triple paired with its occurrence had another as its object class. "
-             "One pair can count twice: once for the subject classes, once for the object classes;",
+             "schema, while the ground truth triple paired with its occurrence had another as its object class;",
              "- **predicate:** an extracted only occurrence and a ground truth only triple had the same subject instance and "
              "object instance, but extraction's predicate (current schema), once translated, wasn't the ground truth's "
              "predicate (ground truth schema). With subject and object the other way round, the "
              "swap_subject_and_object of that predicate's row in the translation table may be wrong.", "",
+             "How the kinds relate: one pair can count under both entity class kinds, once for its subject classes and "
+             "once for its object classes. A predicate mismatch is counted once per ground truth only triple, with the "
+             "first extracted only occurrence that has its subject instance and object instance, so one occurrence "
+             "can count against several ground truth triples; an occurrence that matches both ways round (its subject "
+             "instance and object instance are the same) counts as the same way round, not swapped.", "",
              "Component classes are compared after translation. All 9 share one cause: the translation table's row "
              "`Body` (current schema) --> `Spacecraft` (ground truth schema). Had that row said `Body` --> `CelestialBody` (ground truth "
-             "schema), none of the 9 would have happened. So that row of the translation table is the "
-             "likely mistake, and the one to check.", ""]
+             "schema), none of the 9 would have happened. So that row of the translation table is the first thing "
+             "to check; if it is right, the 9 come from a habit of extraction or of the ground truth.", ""]
     if not mismatches:
         return lines + ["None.", ""]
     lines += ["| Kind | Component class in the current schema | Translated to (ground truth schema) | What the ground truth "
@@ -535,6 +544,31 @@ def _mismatch_lines(mismatches: list) -> list:
     if len(mismatches) > SHOW:
         lines.append(f"| … {len(mismatches) - SHOW} more, in `{METRICS_NAME}` | | | | | |")
     return lines + [""]
+
+
+def mismatch_warning(frequent: list) -> str:
+    """The warning about component class mismatches seen pairing.MISMATCH_WARN or more times, split by kind."""
+    def shown(c):
+        return (f"{c['kind']} {c['crt_component_class']} (current schema) --> "
+                + ("(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION)
+                   else f"{c['translated_to']} (ground truth schema)")
+                + f", where the ground truth triple says {c['gtt_component_class']} (ground truth schema)"
+                + (", subject and object the other way round" if c["swapped"] else "") + f", {c['count']} times")
+    entity = [shown(c) for c in frequent if c["kind"] != "predicate"]
+    predicate = [shown(c) for c in frequent if c["kind"] == "predicate"]
+    return (f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times: "
+            + "; ".join(x for x in (
+                f"{len(entity)} of an entity class, where extraction stated the fact (a pair) but an "
+                f"entity class differed: {named(entity, 5, '; ')}" if entity else "",
+                f"{len(predicate)} of a predicate, where extraction may have stated the fact (no pair, but "
+                f"the same subject instance and object instance) with another predicate: "
+                f"{named(predicate, 5, '; ')}" if predicate else "") if x)
+            + f". Among the causes: a row of annotations/component_class_mapping.csv that translates "
+              f"wrong, to (none) when a component class fits, or with the wrong swap_subject_and_object; "
+              f"or a habit, not a row: extraction choosing that component class where the ground truth "
+              f"has another, or the ground truth doing so. Check those rows ({TABLE}), keep a row that is "
+              f"right (the habit is then the cause), {AGAIN} Details: {this_report()}, section *Results*, "
+              f"subsection *Component class mismatches*.")
 
 
 def results(evaluated, translation, metrics, calls, settings, output) -> Results:
@@ -650,17 +684,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                           "To tidy the file, delete those rows.")
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
-        warnings.append(f"{len(frequent)} component class mismatch(es) seen {pairing.MISMATCH_WARN} or more times where extraction "
-                        f"stated the fact but a component class differed: "
-                        + named([f"{c['kind']} {c['crt_component_class']} (current schema) --> "
-                                 + ("(none)" if c["translated_to"].endswith(pairing.NO_TRANSLATION)
-                                    else f"{c['translated_to']} (ground truth schema)")
-                                 + f", where the ground truth triple says {c['gtt_component_class']} (ground truth "
-                                   f"schema), {c['count']} times" for c in frequent], 5, "; ")
-                        + f". A row of annotations/component_class_mapping.csv may translate wrong, to (none) when a "
-                          f"component class fits, or with the wrong swap_subject_and_object, which leaves stated facts "
-                          f"ground truth only. Check those rows ({TABLE}), keep a row that is right, {AGAIN} Details: {this_report()}, section *Results*, subsection "
-                          f"*Component class mismatches*.")
+        warnings.append(mismatch_warning(frequent))
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks['count']} time(s) so far, each logged in "
                         f"annotations/held_out_looks.csv. {readings.since_previous(looks)} A change made after a look "

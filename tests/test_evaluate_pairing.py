@@ -618,6 +618,32 @@ class Mismatches(unittest.TestCase):
             {"kind": "predicate", "crt_component_class": "HOSTS", "translated_to": "ACQUIRED_BY_INSTRUMENT",
              "gtt_component_class": "ABOARD", "swapped": True, "count": 1}])
 
+    def test_one_occurrence_against_several(self):
+        """A predicate mismatch is counted once per ground truth only triple, with the first extracted only occurrence
+        that has its subject instance and object instance: one occurrence can count against two."""
+        t = translation(extra_predicates={"CARRIES": ("ACQUIRED_BY_INSTRUMENT", False)})
+        gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("MODIS", "Instrument", "ORBITS", "Aqua", "Spacecraft")]
+        rec = record(gt, [triple("MODIS", "Instrument", "CARRIES", "Aqua", "Spacecraft")])
+        pairing.compare_record(rec, t)
+        found = pairing.component_class_mismatches([rec])
+        self.assertEqual(sorted((m["gtt_component_class"], m["count"]) for m in found), [("ABOARD", 1), ("ORBITS", 1)])
+
+    def test_warning_split_by_kind(self):
+        import moves
+        frequent = [{"kind": "entity class, object", "crt_component_class": "Satellite", "translated_to": "Instrument",
+                     "gtt_component_class": "Spacecraft", "swapped": False, "count": 3},
+                    {"kind": "predicate", "crt_component_class": "HOSTS", "translated_to": "ACQUIRED_BY_INSTRUMENT",
+                     "gtt_component_class": "ABOARD", "swapped": True, "count": 2}]
+        said = moves.mismatch_warning(frequent)
+        self.assertIn("1 of an entity class, where extraction stated the fact (a pair)", said)
+        self.assertIn("1 of a predicate, where extraction may have stated the fact", said)
+        self.assertIn("HOSTS (current schema) --> ACQUIRED_BY_INSTRUMENT (ground truth schema), where the ground truth "
+                      "triple says ABOARD (ground truth schema), subject and object the other way round, 2 times", said)
+        self.assertIn("or a habit, not a row", said)
+        self.assertNotIn("of a predicate", moves.mismatch_warning(frequent[:1]))
+        self.assertNotIn("of an entity class", moves.mismatch_warning(frequent[1:]))
+
     def test_none_when_all_agree(self):
         rec = record(G, E)
         pairing.compare_record(rec, translation())
