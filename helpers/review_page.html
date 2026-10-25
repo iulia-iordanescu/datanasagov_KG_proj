@@ -182,6 +182,98 @@ function download() {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   status(`Saved ${written().length} comment(s) to your Downloads folder. Email me that file.`);
 }
+
+// ---------------------------------------------------------------- email
+// "Email my comments to Iulia" opens the reviewer's email program with a new email, its body the comments in the
+// plain-text format helpers/review_page.py --read reads back (common/common_helpers/review_comments.py,
+// EMAIL_FORMAT): one "[field] value" line each, so lines an email client wraps, quotes or merges are put back.
+// The address is put together only when the button is pressed, so it isn't in the page for address harvesters.
+const to = () => ["iulia", "m", "iordanescu"].join(".") + "+kgreview" + String.fromCharCode(64) + ["gmail", "com"].join(".");
+// The longest mailto: address made: 1,900 characters, under the 2,083 that Windows passes on to an email program
+// (INTERNET_MAX_URL_LENGTH); more comments are split into parts, each its own email, up to MAX_EMAILS of them.
+const MAILTO_MAX = 1900, MAX_EMAILS = 5;
+const HEADER = "REVIEW COMMENTS (format 1): please send this email as it is";
+function emailLines() {
+  const rows = written().sort((a, b) => (KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind)) ||
+                                        a.entry.localeCompare(b.entry));
+  const one = (s) => String(s || "").replace(/\s+/g, " ").trim();
+  return rows.flatMap((c) => ["=== comment ===", `[kind] ${c.kind}`, `[entry] ${one(c.entry)}`,
+    `[page_version] ${one(c.version)}`, `[git_commit] ${one(c.commit)}`, `[timestamp] ${one(c.at)}`,
+    `[entry_text_shown] ${one(c.shown)}`,
+    ...c.text.trim().split(/\r?\n/).map((l) => `[comment] ${l.replace(/\s+$/, "")}`), ""]);
+}
+// {parts: [{subject, url}], needed}: the emails to send; needed > MAX_EMAILS: too many, and parts is empty.
+function emailParts(sent) {
+  const name = reviewer.trim();
+  const subject = (k, n) => `Review comments — ${name} — ${V.id}` + (n > 1 ? ` — part ${k} of ${n}` : "");
+  const body = (k, n, lines) => [HEADER, `[reviewer] ${name}`, `[page_version] ${V.id}`, `[git_commit] ${V.commit}`,
+    `[sent] ${sent}`, `[part] ${k} of ${n}`, `=== start of part ${k} of ${n} ===`, "", ...lines,
+    `=== end of part ${k} of ${n} ===`, ""].join("\r\n");
+  const link = (k, n, lines) => `mailto:${to()}?subject=${encodeURIComponent(subject(k, n))}` +
+                               `&body=${encodeURIComponent(body(k, n, lines))}`;
+  const fits = (lines) => link(99, 99, lines).length <= MAILTO_MAX;
+  const chunks = []; let cur = [];
+  const pending = emailLines();
+  while (pending.length) {
+    const line = pending.shift();
+    if (fits([...cur, line])) { cur.push(line); continue; }
+    if (cur.some((l) => l)) { chunks.push(cur); cur = []; pending.unshift(line); continue; }
+    // one line too long for an email by itself: as much as fits, cut at a space; the rest starts the next part
+    let cut = line.length - 1;
+    while (cut > 0 && !fits([line.slice(0, cut)])) cut = Math.floor(cut * 0.9);
+    const space = line.lastIndexOf(" ", cut);
+    if (cut < 20) return { parts: [], needed: MAX_EMAILS + 1 };       // the name alone fills an email
+    const at = space > cut / 2 ? space : cut;
+    chunks.push([line.slice(0, at)]);
+    pending.unshift(line.slice(at).replace(/^ /, ""));
+  }
+  if (cur.length) chunks.push(cur);
+  const n = chunks.length;
+  return n > MAX_EMAILS ? { parts: [], needed: n }
+    : { parts: chunks.map((lines, i) => ({ subject: subject(i + 1, n), url: link(i + 1, n, lines) })), needed: n };
+}
+let emailing = null;                         // {parts, opened: Set, needed}: the emails to send, shown in How to read this
+function openMail(url) { const a = el("a", { href: url }); document.body.append(a); a.click(); a.remove(); }
+function email() {
+  if (!reviewer.trim()) {
+    show("home");
+    status("Type your name first, then press Email my comments again.");
+    const f = $("reviewer"); if (f) f.focus();
+    return;
+  }
+  if (!written().length) { status("No comments written yet: write one in the box under any entry first."); return; }
+  const got = emailParts(localIso());
+  emailing = { ...got, opened: new Set() };
+  if (got.parts.length === 1) {
+    emailing.opened.add(0);
+    openMail(got.parts[0].url);
+  }
+  show("home");
+  const box = $("emailing"); if (box) box.scrollIntoView({ block: "center" });
+}
+function drawEmailing() {
+  if (!emailing) return null;
+  const { parts, opened, needed } = emailing;
+  if (!parts.length) return el("div", { id: "emailing", class: "card todo" },
+    el("p", {}, `Your comments are too long to email from this page: they would take more than ${MAX_EMAILS} emails. Press Download my ` +
+      "comments instead, then attach the file it saves to an email to me."),
+    el("div", { class: "actions" },
+      el("button", { class: "primary", onclick: download }, "Download my comments"),
+      el("button", { onclick: () => openMail(`mailto:${to()}?subject=${encodeURIComponent(`Review comments — ${reviewer.trim()} — ${V.id}`)}` +
+                                             `&body=${encodeURIComponent("My comment file is attached.\r\n")}`) },
+         "Write the email to attach it to")));
+  const one = parts.length === 1;
+  return el("div", { id: "emailing", class: "card" },
+    el("p", {}, one
+      ? "Your email program should now show a new email to me with your comments in it: press Send there. If nothing " +
+        "opened (no email program is set up in this browser), press Download my comments instead, and attach the file it saves to an email to me."
+      : `Your comments take ${parts.length} emails. Press each button below in turn, and send each email it opens ` +
+        "(nothing in them needs changing)."),
+    el("div", { class: "actions" }, parts.map((p, i) => el("button", {
+      class: opened.has(i) ? "" : "primary", title: p.subject,
+      onclick: () => { opened.add(i); openMail(p.url); redraw(); } },
+      one ? "Open the email again" : `${opened.has(i) ? "✓ " : ""}Email part ${i + 1} of ${parts.length}`))));
+}
 // A comment file downloaded from any copy of this page (another browser, another computer), read back in: each of
 // its comments is kept unless this browser holds a newer one for the same entry.
 function parseCsv(text) {
@@ -239,7 +331,9 @@ function drawStatus(typing) {
     el("span", { class: "counter", title: "Comments you have written (on this computer, in this browser)" },
        `${n} comment${n === 1 ? "" : "s"} written, ${where}`),
     message ? el("span", {}, message) : null,
-    el("button", { class: "primary", onclick: download, title: "Save your comments as a small CSV file, to email back" },
+    el("button", { class: "primary", onclick: email, title: "Open a new email to Iulia in your email program, with your comments in it" },
+       "Email my comments to Iulia"),
+    el("button", { onclick: download, title: "Save your comments as a small CSV file, to attach to an email" },
        "Download my comments")].filter(Boolean));
 }
 function drawVersion() {
@@ -486,19 +580,23 @@ function drawHome() {
     el("h3", {}, "Your comments"),
     el("p", {}, "Write in the box under any entry, and anything else under General comments below. Every comment is kept in this " +
       "browser as you type, on this computer only, so you can stop and come back; the top of the page says how many you have written. " +
-      "When you're done, type your name, press Download my comments, and email me the small file it saves (a CSV file). " +
-      "Your name and comments will be kept with my project's files, in its Git repository, so that each change can be traced " +
-      "to its reason."),
-    el("p", {}, "This page is a copy: it can't change the files, and it sends nothing anywhere. If I send you a newer copy, open it in " +
-      "the same browser: your comments carry over, and entries that changed since the copy you opened before are marked " +
+      "When you're done, type your name and press Email my comments to Iulia: your email program opens a new email to me " +
+      "with your comments in it, for you to send (a long set of comments takes a few emails, numbered). If that doesn't " +
+      "work, press Download my comments, and attach the small file it saves (a CSV file) to an email to me. " +
+      "Your name and comments reach only me: I keep them on my computer, not in my project's public repository."),
+    el("p", {}, "This page is a copy: it can't change the files, and it sends nothing anywhere by itself (an email goes only when you " +
+      "press Send in your email program). When I update it, the same link shows the newer copy (or I send you a newer file): " +
+      "open it in the same browser, and your comments carry over, and entries that changed since the copy you opened before are marked " +
       "“changed since you last looked”. In another browser or on another computer, read your comments back in from the file " +
       "you downloaded (Load my comments from a file, below)."),
     el("div", { class: "namefield" }, el("label", { for: "reviewer", class: "name" }, "Your name"), nameField),
     commentBox(GENERAL, "General comments"),
     el("div", { class: "actions" },
-      el("button", { class: "primary", onclick: download }, "Download my comments"),
+      el("button", { class: "primary", onclick: email }, "Email my comments to Iulia"),
+      el("button", { onclick: download }, "Download my comments"),
       el("button", { onclick: () => picker.click(), title: "Read back a file of comments this page saved before" },
          "Load my comments from a file"), picker),
+    drawEmailing(),
     !storageWorks ? el("p", { class: "problems" }, el("span", { class: "pill flag" },
       "⚑ This browser doesn't let the page keep your comments: download them before you close it.")) : null,
     gone.length ? el("div", { class: "gone" }, el("h3", {}, "Your comments on entries no longer on this page"),
