@@ -71,6 +71,15 @@ class Check:
 
 # --------------------------------------------------------------------------
 
+#: What to do after a new harvest. 030 keeps an existing splits.json (warning that its draw differs), and 040 stops
+#: on an induction candidate no longer in the records, so the split must be deleted to be drawn again.
+AFTER_NEW_HARVEST = ("delete `outputs/intermediate_results/030_split/splits.json` (030 writes it once and then keeps "
+                     "it, so otherwise the old split stays, and 040 may stop on an induction candidate no longer in "
+                     "the records), then "
+                     "`py run_pipeline.py --from 020`; 030 then draws again and drops the pool records no longer "
+                     "in the catalog.")
+
+
 def saved_harvest(folder: Path) -> Harvest | None:
     """The batch files on disk as a Harvest, if they are a COMPLETE harvest: they hold at least as many records as
     the catalog reported when the first page was fetched. None otherwise (no files, a trial, an interrupted run)."""
@@ -261,10 +270,13 @@ def results(harvest: Harvest, check: Check) -> Results:
     if check.without_request:
         shown = named(check.without_request)
         n = len(check.without_request)
+        again = ("This harvest is complete, so a plain rerun keeps it as it is: to fetch them again, run "
+                 "`py 010_harvest/run.py --new_harvest true`, which fetches the whole harvest again (its batch files "
+                 "are moved aside, never deleted)." if harvest.kept else
+                 "Run `py 010_harvest/run.py` again: a batch file without one is never kept, so they are fetched again.")
         warnings.append(f"{n} batch file{'s have' if n != 1 else ' has'} no request block, so the "
                         f"request that returned their records is not recorded, and `py helpers/audit.py` "
-                        f"can't trace them back to it: {shown}. Run `py 010_harvest/run.py` again to "
-                        f"fetch them again.")
+                        f"can't trace them back to it: {shown}. {again}")
 
     if check.first_saved == check.last_saved:
         harvest_date = str(check.first_saved)
@@ -279,12 +291,11 @@ def results(harvest: Harvest, check: Check) -> Results:
                      f"the ground truth) is built on these files. To replace them on purpose: "
                      f"`py 010_harvest/run.py --new_harvest true`; they are then moved to "
                      f"`{_shown(harvest.folder)}/replaced_<date>/`, never deleted, and every later step must be "
-                     f"run again (030 drops pool records no longer in the catalog). Details: "
-                     f"010_harvest/010_harvest.md, section *How to run*.", ""]
+                     f"run again: {AFTER_NEW_HARVEST} Details: 010_harvest/010_harvest.md, section *How to run*.", ""]
     elif harvest.set_aside:
         kept_note = [f"**The saved harvest was replaced** (`--new_harvest true`): its batch files were moved to "
                      f"`{_shown(harvest.folder)}/{harvest.set_aside}/`, not deleted. Every later step must be run "
-                     f"again on the new harvest: `py run_pipeline.py --from 020`.", ""]
+                     f"again on the new harvest: {AFTER_NEW_HARVEST}", ""]
     details = "\n".join(kept_note + [
         "### What this run worked on", "",
         "| | |", "|---|---|",

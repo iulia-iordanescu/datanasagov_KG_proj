@@ -81,8 +81,33 @@ class Harvest(unittest.TestCase):
         self.assertEqual({p.name: p.read_bytes() for p in (self.out / h.set_aside).glob("batch_*.json")}, before)
         self.assertEqual((h.reported, h.new, c.records), (12, 2, 12))
         self.assertIn(h.set_aside, moves.results(h, c).details)
+        self.assertIn("delete `outputs/intermediate_results/030_split/splits.json`", moves.results(h, c).details)
         self.harvest(new_harvest=True)                      # a second replacement: its own folder
         self.assertEqual(len(list(self.out.glob("replaced_*"))), 2)
+
+    def test_no_request_block_in_a_kept_harvest(self):
+        """A complete harvest is kept even when a batch file lost its request block, so the warning's advice is
+        --new_harvest true (a plain rerun would keep it again); in a harvest that isn't complete, such a file is
+        fetched again."""
+        self.harvest()
+        path = self.out / "batch_00010.json"
+        b = json.loads(path.read_text(encoding="utf-8"))
+        b.pop("request")
+        path.write_text(json.dumps(b), encoding="utf-8")
+        h, c = self.harvest()
+        self.assertTrue(h.kept)
+        self.assertEqual(c.without_request, ["batch_00010.json"])
+        said = [w for w in moves.results(h, c).warnings if "no request block" in w]
+        self.assertEqual(len(said), 1)
+        self.assertIn("--new_harvest true", said[0])
+        self.assertIn("splits.json", moves.results(h, c).details)          # after a new harvest: delete it
+        shutil.rmtree(self.out)
+        self.out.mkdir()
+        self.harvest(max_records=20)                                       # a trial: not complete
+        path.write_text(json.dumps(b), encoding="utf-8")
+        h, c = self.harvest(max_records=20)
+        self.assertFalse(h.kept)
+        self.assertEqual(c.without_request, [])                            # fetched again
 
     def test_rerun_of_a_trial_keeps_pages(self):
         self.harvest(max_records=20)
