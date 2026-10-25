@@ -255,6 +255,13 @@ TOO_FEW = 2
 SCHEMA = "the current schema (by default step 040's induced schema plus the schema additions)"
 TABLE = "the translation table (`annotations/component_class_mapping.csv`)"
 PAIRS_DEF = "`070_evaluate/metrics/pairs.md`, Definition"
+#: Where every cause is listed: the counts never rule all the others out, so a line names the likeliest among them.
+RECALL_CAUSES = "`070_evaluate/metrics/recall.md`, *When a ground truth triple counts as not found*"
+PRECISION_CAUSES = "`070_evaluate/metrics/precision.md`, *When an occurrence counts as not correct*"
+#: The causes of a ground truth triple within reach with no pair that the counts can't tell from extraction's own.
+NOT_RULED_OUT = ("step 060 removed the extracted triple for a check, a row of the translation table translates its "
+                 "predicate to the wrong one or with the wrong swap_subject_and_object, a near-repeat in the ground "
+                 "truth, a \"not the same fact\" verdict, or its occurrence taken by a wrong pair")
 MULTISET = "`070_evaluate/metrics/pairs.md`, Example, *A multiset of translated extracted triples*"
 
 #: Per table: the entity class in which a pair that counts for the row can differ (so it isn't strict), and the
@@ -361,8 +368,10 @@ def component_class_reading(r: dict, table: str) -> str:
                f"or object instance too differently to pair even at the partial level ({PAIRS_DEF})")
         causes.append(f"{_n(G - Pp, 'ground truth triple')} {_has(G - Pp)} no pair that counts for it (each against its "
                       f"recall): "
-                      + (f"{'all ' if G - Pp > 1 else ''}within strict reach, so {did}" if k == G else
-                         f"either some are out of strict reach (above), or {did}; the counts don't tell which"))
+                      + (f"{'all ' if G - Pp > 1 else ''}within strict reach; among the causes, {did}, or "
+                         f"{NOT_RULED_OUT}; the counts don't tell which (every cause: {RECALL_CAUSES})" if k == G else
+                         f"either some are out of strict reach (above), or, among the other causes, {did}, or "
+                         f"{NOT_RULED_OUT}; the counts don't tell which (every cause: {RECALL_CAUSES})"))
     if O - Pp:
         causes.append(f"{_n(O - Pp, 'occurrence')} {_has(O - Pp)} no pair that counts for it (each against its "
                       f"precision): step 060's "
@@ -370,8 +379,9 @@ def component_class_reading(r: dict, table: str) -> str:
                       f"stated one the ground truth has with {_OTHER[table]} or in words too different to pair even at "
                       f"the partial level, restated a fact already in a pair, or repeated an occurrence (multiplicity "
                       f"> 1); or a row of the translation table translates its predicate or an entity class to the "
-                      f"wrong component class of the ground truth schema; the counts don't tell which (each "
-                      f"occurrence, with its pair if any: `per_record.md`)")
+                      f"wrong component class of the ground truth schema, or with the wrong swap_subject_and_object; "
+                      f"among others, the counts don't tell which (each occurrence, with its pair if any: "
+                      f"`per_record.md`; every cause: {PRECISION_CAUSES})")
     if Pp - Pe:
         causes.append(_partial(Pp - Pe))
     return _end(_causes(said, causes, "Nothing counts against it at the partial level: every occurrence and ground "
@@ -418,16 +428,18 @@ def record_reading(r: dict) -> str:
     missing, unpaired = W - Pe, O - Pe       # every exact pair's ground truth triple is within reach
     if missing > unpaired:
         causes.append(f"{missing} of its ground truth triples within reach {_has(missing)} no exact pair, but only "
-                      f"{unpaired} of its occurrences {'lacks' if unpaired == 1 else 'lack'} one, so at least {missing - unpaired} of the record's facts within reach "
-                      f"have no occurrence left that could state them: step 060's extraction left out at least "
-                      f"{missing - unpaired}")
+                      f"{unpaired} of its occurrences {'lacks' if unpaired == 1 else 'lack'} one, so at least "
+                      f"{missing - unpaired} of the record's facts within reach have no occurrence left that could "
+                      f"pair with them: among the causes, step 060's extraction left them out, or {NOT_RULED_OUT}; "
+                      f"the counts don't tell which (every cause: {RECALL_CAUSES})")
     elif unpaired > missing:
         causes.append(f"{unpaired} of its occurrences {_has(unpaired)} no exact pair, but only {missing} of its ground "
                       f"truth triples within reach {'lacks' if missing == 1 else 'lack'} one, so at least {unpaired - missing} of its occurrences state no "
                       f"fact among those ground truth triples: step 060's extraction stated facts the ground truth "
                       f"doesn't have (wrong, or right but not annotated), stated with a predicate within reach a fact "
                       f"the ground truth has with one out of reach, restated a fact already in an exact pair, or repeated "
-                      f"an occurrence (multiplicity > 1); the counts don't tell which")
+                      f"an occurrence (multiplicity > 1), among others; the counts don't tell which (every cause: "
+                      f"{PRECISION_CAUSES})")
     elif missing:
         causes.append(f"{missing} of its ground truth triples within reach and {missing} of its occurrences have no "
                       f"exact pair: the counts don't tell whether step 060's extraction left facts out, stated them "
@@ -441,6 +453,8 @@ def row_readings(lines: list) -> list:
     """The numbered list below a table: one reading per row shown, in the table's order."""
     return ["Reading each row: one line per row above, in the same order. Each line gives the counts it rests on "
             "and, for each thing that counts against the row, the step that can cause it (step 040's schema, the "
-            "translation table, step 060's extraction, or the ground truth), naming one only where the counts rule out the others. "
+            "translation table, step 060's extraction, or the ground truth), among those the counts leave possible "
+            "(the counts never rule out every other: each full list is in `070_evaluate/metrics/recall.md` and "
+            "`precision.md`). "
             f"Every cause a line can name, the rule (numbers and conditions) that names it, and the threshold for "
             f"too few: {RULES}.", ""] + [f"{i}. {line}" for i, line in enumerate(lines, 1)] + [""]

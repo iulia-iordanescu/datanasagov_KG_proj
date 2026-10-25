@@ -287,8 +287,15 @@ class RowReadings(unittest.TestCase):
                 "stated one the ground truth has with {} or in words too different to pair even at the partial level, "
                 "restated a fact already in a pair, or repeated an occurrence (multiplicity > 1); or a row of the "
                 "translation table translates its predicate or an entity class to the wrong component class of the "
-                "ground truth schema; the counts don't tell which (each occurrence, with its pair if any: "
-                "`per_record.md`).")
+                "ground truth schema, or with the wrong swap_subject_and_object; among others, the counts don't tell "
+                "which (each occurrence, with its pair if any: `per_record.md`; every cause: "
+                "`070_evaluate/metrics/precision.md`, *When an occurrence counts as not correct*).")
+    #: What the counts never rule out for a ground truth triple with no pair (causes (e) and (h)).
+    NOT_RULED_OUT = ("step 060 removed the extracted triple for a check, a row of the translation table translates its "
+                     "predicate to the wrong one or with the wrong swap_subject_and_object, a near-repeat in the "
+                     "ground truth, a \"not the same fact\" verdict, or its occurrence taken by a wrong pair; the "
+                     "counts don't tell which (every cause: `070_evaluate/metrics/recall.md`, *When a ground truth "
+                     "triple counts as not found*)")
 
     def setUp(self):
         self.r = dict(compared(), position=3, title="T")
@@ -327,10 +334,10 @@ class RowReadings(unittest.TestCase):
                          "Instrument (subject class, ground truth schema): 2 occurrences and 2 ground truth triples (2 "
                          "within strict reach); 1 pair that counts for it at the partial level (1 exact, 0 partial), 1 "
                          "of them strict. 1 ground truth triple has no pair that counts for it (each against its "
-                         "recall): within strict reach, so step 060's extraction left the fact out, gave it another "
-                         "predicate or another subject class, or wrote a subject instance or object instance too "
-                         "differently to pair even at the partial level (`070_evaluate/metrics/pairs.md`, Definition). "
-                         "1 occurrence has no pair that counts for it (each against its precision): "
+                         "recall): within strict reach; among the causes, step 060's extraction left the fact out, "
+                         "gave it another predicate or another subject class, or wrote a subject instance or object "
+                         "instance too differently to pair even at the partial level (`070_evaluate/metrics/pairs.md`, "
+                         "Definition), or " + self.NOT_RULED_OUT + ". 1 occurrence has no pair that counts for it (each against its precision): "
                          + self.UNPAIRED.format("another predicate or another subject class") + self.END)
         # 1 occurrence + 1 ground truth triple in a strict partial pair: nothing counts against it at the partial
         # level, so not too few; the pair is partial, not exact (cause (g))
@@ -351,9 +358,10 @@ class RowReadings(unittest.TestCase):
                          "ABOARD (predicate, ground truth schema): 1 occurrence and 2 ground truth triples (2 within "
                          "strict reach); 1 pair that counts for it at the partial level (1 exact, 0 partial), 1 of them "
                          "strict. 1 ground truth triple has no pair that counts for it (each against its recall): "
-                         "within strict reach, so step 060's extraction left the fact out, gave it another predicate, "
-                         "or wrote a subject instance or object instance too differently to pair even at the partial "
-                         "level (`070_evaluate/metrics/pairs.md`, Definition)." + self.END)
+                         "within strict reach; among the causes, step 060's extraction left the fact out, gave it "
+                         "another predicate, or wrote a subject instance or object instance too differently to pair "
+                         "even at the partial level (`070_evaluate/metrics/pairs.md`, Definition), or "
+                         + self.NOT_RULED_OUT + "." + self.END)
         self.assertEqual(readings.component_class_reading(self.row(2, 2, 2, 2, 2, 2), "predicate"),
                          "ABOARD (predicate, ground truth schema): 2 occurrences and 2 ground truth triples (2 within "
                          "strict reach); 2 pairs that count for it at the partial level (2 exact, 0 partial), 2 of them "
@@ -372,8 +380,9 @@ class RowReadings(unittest.TestCase):
                       "out of strict reach (above), step 060's extraction gave a wrong subject class, or a row of the "
                       "translation table translates one to the wrong one; the counts don't tell which. 1 ground truth "
                       "triple has no pair that counts for it (each against its recall): either some are out of strict "
-                      "reach (above), or step 060's extraction left the fact out, gave it another predicate or another "
-                      "object class, or wrote", line)
+                      "reach (above), or, among the other causes, step 060's extraction left the fact out, gave it "
+                      "another predicate or another object class, or wrote", line)
+        self.assertIn(self.NOT_RULED_OUT, line)
 
     def test_too_few(self):
         """At most TOO_FEW triples with something against it: no cause. One more triple, or nothing against it: read."""
@@ -419,14 +428,16 @@ class RowReadings(unittest.TestCase):
                          "so at least 2 of its occurrences state no fact among those ground truth triples: step 060's "
                          "extraction stated facts the ground truth doesn't have (wrong, or right but not annotated), "
                          "stated with a predicate within reach a fact the ground truth has with one out of reach, "
-                         "restated a fact already in an exact pair, or repeated an occurrence (multiplicity > 1); the "
-                         "counts don't tell which." + self.END)
+                         "restated a fact already in an exact pair, or repeated an occurrence (multiplicity > 1), among "
+                         "others; the counts don't tell which (every cause: `070_evaluate/metrics/precision.md`, *When "
+                         "an occurrence counts as not correct*)." + self.END)
         self.assertEqual(readings.record_reading(self.rec(10, 40, 40, 40, 6, 6)),           # the guide's example
                          "Record hypothet (pool position 9): 10 occurrences and 40 ground truth triples (40 within "
                          "reach, 40 within strict reach); 6 exact pairs, 6 of them strict; exact recall 15%, exact "
                          "precision 60%. 34 of its ground truth triples within reach have no exact pair, but only 4 of "
                          "its occurrences lack one, so at least 30 of the record's facts within reach have no "
-                         "occurrence left that could state them: step 060's extraction left out at least 30." + self.END)
+                         "occurrence left that could pair with them: among the causes, step 060's extraction left them "
+                         "out, or " + self.NOT_RULED_OUT + "." + self.END)
         self.assertEqual(readings.record_reading(self.rec(3, 4, 3, 2, 1, 0)),
                          "Record hypothet (pool position 9): 3 occurrences and 4 ground truth triples (3 within reach, "
                          "2 within strict reach); 1 exact pair, 0 of them strict; exact recall 25%, exact precision 33%. "
@@ -455,8 +466,9 @@ class RowReadings(unittest.TestCase):
     def test_below_each_table(self):
         intro = ("Reading each row: one line per row above, in the same order. Each line gives the counts it rests on "
                  "and, for each thing that counts against the row, the step that can cause it (step 040's schema, the "
-                 "translation table, step 060's extraction, or the ground truth), naming one only where the counts "
-                 "rule out the others. Every cause a line can name, the rule (numbers and conditions) that names it, "
+                 "translation table, step 060's extraction, or the ground truth), among those the counts leave "
+                 "possible (the counts never rule out every other: each full list is in "
+                 "`070_evaluate/metrics/recall.md` and `precision.md`). Every cause a line can name, the rule (numbers and conditions) that names it, "
                  "and the threshold for too few: `070_evaluate/070_evaluate.md`, *Reading each row*.")
         text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, self.tables))
         self.assertEqual(text.count(intro), 3)
