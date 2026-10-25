@@ -257,6 +257,16 @@
   .maphead .maparrow svg { width: 22px; height: 22px; }
   .mapdef { font-size: 13px; line-height: 1.45; color: var(--label); margin-top: 4px; overflow-wrap: break-word; }
   .mapdef.empty { color: var(--muted); font-style: italic; }
+  /* reviewers' comments (annotations/reviews/): under an entry, and the Reviewer comments view */
+  .reviewnotes { margin-top: 8px; padding: 6px 10px; border-left: 3px solid var(--sky); background: var(--sky-bg);
+                 border-radius: 6px; }
+  .reviewnotes .reviewhead { font-size: 12px; font-weight: 600; color: var(--navy); text-transform: uppercase;
+                             letter-spacing: 0.04em; }
+  .reviewnote { margin-top: 4px; }
+  .reviewnote .who { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .reviewnote .reviewtext { font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: break-word; }
+  .reviewgroup .mapdef { margin-top: 2px; }
+  .reviewgroup h4 { margin: 0; font-size: 14.5px; }
   .mapbox .example { margin-top: 6px; padding: 3px 8px; font-family: inherit; font-size: 13px; background: var(--tint);
                     overflow-wrap: break-word; }
   .mapflags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding-top: 6px;
@@ -476,6 +486,7 @@
       <button class="tab" id="mapping" data-label="Translation table" title="annotations/component_class_mapping.csv: after step 070 has run">Translation table</button>
       <button class="tab" id="partial" data-label="Partial pairs" title="annotations/partial_pair_reviews.csv: after step 070 has run">Partial pairs</button>
       <button class="tab" id="additions" data-label="Schema additions" title="annotations/schema_additions.txt: schema entries a person adds to the current schema">Schema additions</button>
+      <button class="tab" id="reviewcomments" data-label="Reviewer comments" title="annotations/reviews/: the comments reviewers sent back from the review page (read-only)">Reviewer comments</button>
     </nav>
     <span id="status"></span>
   </div>
@@ -645,6 +656,7 @@ async function loadBatches() {
   if (wanted.has("p")) { await openPartial(); return; }
   if (wanted.has("a")) { await openAdditions(); return; }
   if (wanted.has("v")) { await openVocab(); return; }
+  if (wanted.has("c")) { await openReviews(); return; }
   if (wanted.has("b") && [...pick.options].some(o => o.value === wanted.get("b"))) {
     pick.value = wanted.get("b");
     await openBatch(+wanted.get("b"), +(wanted.get("r") || 0), +(wanted.get("t") || 0));
@@ -654,7 +666,7 @@ async function loadBatches() {
 }
 async function openBatch(n, at, step = 0) {
   await flush();
-  mapping = null; partial = null; additions = null; vocab = null;
+  mapping = null; partial = null; additions = null; vocab = null; reviews = null;
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
   tripleAt = step;                         // a newly opened batch: the row the address names, else the record's first
@@ -668,6 +680,7 @@ $("batch").addEventListener("change", (e) => { if (e.target.value !== "") openBa
 $("mapping").addEventListener("click", () => openMapping().catch(fail));
 $("partial").addEventListener("click", () => openPartial().catch(fail));
 $("additions").addEventListener("click", () => openAdditions().catch(fail));
+$("reviewcomments").addEventListener("click", () => openReviews().catch(fail));
 // The tools a view needs, shown inside it: the Guidelines and the ground truth schema in Ground truth; the ground
 // truth schema also in the translation table, whose rows choose among its entries.
 const GAPCOUNT = el("span", { class: "count", hidden: true });
@@ -720,7 +733,8 @@ document.addEventListener("click", (e) => {        // the menu closes on a choic
 });
 // The view you're on: its tab in the top band.
 function chrome(view) {
-  for (const [id, v] of [["tab-batch", "batch"], ["mapping", "mapping"], ["partial", "partial"], ["additions", "additions"]])
+  for (const [id, v] of [["tab-batch", "batch"], ["mapping", "mapping"], ["partial", "partial"], ["additions", "additions"],
+                         ["reviewcomments", "reviews"]])
     $(id).classList.toggle("current", view === v);
 }
 $("homebutton").addEventListener("click", () => showHome().catch(fail));
@@ -1277,7 +1291,7 @@ let gaps = { component_classes: [], file: "" };
 // the top left.
 async function showHome() {
   await flush();
-  batch = null; mapping = null; partial = null; additions = null; vocab = null;
+  batch = null; mapping = null; partial = null; additions = null; vocab = null; reviews = null;
   $("batch").value = "";
   setHash("");
   $("intro").hidden = true;
@@ -1310,7 +1324,9 @@ async function showHome() {
           "that nearly match) whether the two state the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates, and patterns a person adds to the current schema, each with " +
           "where it was found.",
-          () => openAdditions())),
+          () => openAdditions()),
+      box("Reviewer comments", "What subject-matter experts wrote on the review page about the ground truth schema and " +
+          "the translation table, by entry, each marked if the entry changed since. Read-only.", openReviews)),
     el("section", { id: "nextup", class: "nextup" }, el("h3", {}, "What to do next"),
        el("p", { class: "meta" }, "Working it out from the files…")),
     el("p", {}, "Every change is saved to annotations/ as you type; commit that folder to Git when you finish a batch. " +
@@ -1388,12 +1404,13 @@ const toCheck = (r) => r.stale || r.stale_gtt || (r.checked !== "yes" && r.check
 
 async function openMapping() {
   await flush();
-  batch = null; partial = null; additions = null; vocab = null;
+  batch = null; partial = null; additions = null; vocab = null; reviews = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("mapping");
   $("batch").value = "";
   status("Opening…");
   mapping = await api("/api/mapping");
+  await loadReviewerComments();
   // A stale row (checked against another definition of its component class in the current schema, or
   // of the component class it translates to in the ground truth schema) is shown, and
   // counts, as unchecked until ticked again; ticking stores both definitions as they are now.
@@ -1663,7 +1680,8 @@ function mappingRow(r, i) {
       notes.map(([k, label, full]) => el("button", { class: `pill ${k} jump`, title: full, "aria-expanded": open ? "true" : "false",
                                                      onclick: toggle }, (k === "error" ? "✖ " : "⚑ ") + label)),
       r.repeated ? el("button", { class: "mapdelete", onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
-    open && notes.length ? el("ul", { class: "problems" }, notes.map(([k, , full]) => el("li", { class: k }, full))) : null);
+    open && notes.length ? el("ul", { class: "problems" }, notes.map(([k, , full]) => el("li", { class: k }, full))) : null,
+    reviewerNotes("translation row", rowReviewEntry(r)));
 }
 
 async function deleteMappingRow(r) {
@@ -1707,7 +1725,7 @@ const pairOpen = new Set();                    // pairs whose note is open
 
 async function openPartial() {
   await flush();
-  batch = null; mapping = null; additions = null; vocab = null;
+  batch = null; mapping = null; additions = null; vocab = null; reviews = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("partial");
   $("batch").value = "";
@@ -1840,7 +1858,7 @@ let additions = null, editing = null;
 
 async function openAdditions(prefill) {
   await flush();
-  batch = null; mapping = null; partial = null; vocab = null;
+  batch = null; mapping = null; partial = null; vocab = null; reviews = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("additions");
   $("batch").value = "";
@@ -1982,13 +2000,14 @@ let vocab = null, vocabPlan = null;
 
 async function openVocab() {
   await flush();
-  batch = null; mapping = null; partial = null; additions = null;
+  batch = null; mapping = null; partial = null; additions = null; reviews = null;
   document.body.classList.remove("norecords");   // other views use the left column
   chrome("vocab");
   $("batch").value = "";
   status("Opening…");
   vocab = await api("/api/vocab");
   vocabPlan = null;
+  await loadReviewerComments();
   setHash("v");
   showIntro();
   status(`Ground truth schema (definitions in ${vocab.file})`, "saved");
@@ -2060,7 +2079,8 @@ function vocabEntry(kind, v) {
                    vocab = await api("/api/vocab"); status(`Added ${v.component_class} to the ground truth schema`, "saved"); drawVocab();
              } catch (e) { fail(e); } } }, "Add to the ground truth schema")),
     el("div", { class: "bar" }, rename, " ",
-       el("button", { onclick: () => planVocab(kind, v.component_class, rename) }, "Rename or merge…")));
+       el("button", { onclick: () => planVocab(kind, v.component_class, rename) }, "Rename or merge…")),
+    reviewerNotes(kind, v.component_class));
 }
 
 function drawVocab() {
@@ -2081,8 +2101,125 @@ function drawVocab() {
   $("record").replaceChildren(...cards);
 }
 
+// ---------------------------------------------------------------- reviewers' comments (read-only)
+// The comments reviewers sent back from the review page (helpers/review_page.md), read by the server from
+// annotations/reviews/ as py helpers/review_page.py --read reads them: under each entry of the Ground truth schema
+// and Translation table views, and all of them in the Reviewer comments view. Nothing here changes them.
+let REVIEWER = null;                       // {comments, problems, files, folder, not_verified, byKey: {kind|entry: [comment]}}
+async function loadReviewerComments() {
+  try {
+    const r = await api("/api/reviewer_comments");
+    r.byKey = {};
+    for (const c of r.comments) (r.byKey[`${c.kind}|${c.entry}`] = r.byKey[`${c.kind}|${c.entry}`] || []).push(c);
+    REVIEWER = r;
+  } catch (_) { REVIEWER = null; }          // the views work without them
+}
+// A row's entry as the review page names it: "<kind> <component class>", plus " (line N)" for a second row of one.
+function rowReviewEntry(r) {
+  let entry = `${r.kind} ${r.component_class_from_past_or_crt_schema}`;
+  const first = mapping.rows.find((o) => o.kind === r.kind &&
+    o.component_class_from_past_or_crt_schema === r.component_class_from_past_or_crt_schema);
+  if (first && first !== r) entry += ` (line ${r._line})`;
+  return entry;
+}
+const REVIEW_STATES = { changed: "changed since", gone: "no longer in the files", unchanged: "unchanged", general: "general" };
+function reviewerComment(c) {
+  const page = `the review page ${c.page_version || "(no version)"}`;
+  return el("div", { class: "reviewnote" },
+    el("div", { class: "who" },
+      plainText("strong", {}, c.reviewer || "(no name)"),
+      el("span", { class: "meta" }, c.timestamp.slice(0, 10)),
+      c.state === "changed" ? el("span", { class: "pill flag",
+        title: `The entry changed since ${page}, which this comment was written on. It read then: ${c.entry_text_shown}` },
+        "⚑ entry changed since") : null,
+      c.state === "gone" ? el("span", { class: "pill flag",
+        title: `No longer in the files. On ${page} it read: ${c.entry_text_shown}` }, "⚑ entry no longer in the files") : null,
+      c.sender === REVIEWER.not_verified
+        ? el("span", { class: "pill todo", title: `From ${c.file}: a pasted email or a comment file has no sender to check` },
+             REVIEWER.not_verified)
+        : el("span", { class: "meta", title: `From ${c.file}` }, `from ${c.sender}`)),
+    plainText("div", { class: "reviewtext" }, c.comment));
+}
+// Under an entry: its reviewers' comments, compact; nothing if it has none.
+function reviewerNotes(kind, entry) {
+  const list = REVIEWER && REVIEWER.byKey[`${kind}|${entry}`];
+  if (!list || !list.length) return null;
+  return el("div", { class: "reviewnotes" },
+    el("div", { class: "reviewhead", title: `From ${REVIEWER.folder}: read-only` }, `Reviewer comments (${list.length})`),
+    list.map(reviewerComment));
+}
+
+let reviews = null, reviewWho = "", reviewState = "any", reviewKind = "any";
+async function openReviews() {
+  await flush();
+  batch = null; mapping = null; partial = null; additions = null; vocab = null;
+  document.body.classList.remove("norecords");   // other views use the left column
+  chrome("reviews");
+  $("batch").value = "";
+  status("Opening…");
+  await loadReviewerComments();
+  if (!REVIEWER) throw new Error("the reviewers' comments couldn't be read: is the tool still running?");
+  reviews = REVIEWER;
+  setHash("c");
+  showIntro();
+  status(`Reviewer comments, read from ${reviews.folder} (read-only)`);
+  drawReviews();
+}
+const REVIEW_KINDS = [["general", "General comments"], ["entity class", "Entity classes (ground truth schema)"],
+                      ["predicate", "Predicates (ground truth schema)"], ["translation row", "Rows of the translation table"]];
+function drawReviews() {
+  const all = reviews.comments;
+  const who = [...new Set(all.map((c) => c.reviewer || "(no name)"))].sort((a, b) => a.localeCompare(b));
+  const changed = all.filter((c) => c.state === "changed").length, gone = all.filter((c) => c.state === "gone").length;
+  $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
+    el("div", { class: "panelhead" }, el("h3", {}, "Reviewer comments"), toolsMenu()),
+    el("p", { class: "meta" }, `${all.length} comment(s) from ${who.length} reviewer(s), read from ${reviews.files.length} ` +
+      `file(s) in ${reviews.folder}; ${changed} on an entry changed since the page it was written on, ${gone} on one no ` +
+      "longer in the files."),
+    el("p", { class: "meta" }, "Read-only: to act on a comment, change the ground truth schema or the translation table " +
+      "in their own views. The same comments, as one summary: py helpers/review_page.py --read.")));
+  const cards = [];
+  if (reviews.problems.length)
+    cards.push(el("section", { class: "card" }, el("ul", { class: "problems" },
+      reviews.problems.map((p) => el("li", { class: "flag" }, "⚑ " + p)))));
+  if (!all.length) {
+    cards.push(el("section", { class: "card" }, el("p", { class: "empty" }, reviews.files.length
+      ? `None of the ${reviews.files.length} file(s) in ${reviews.folder} holds a comment that could be read (see above).`
+      : `No reviewer comments yet. Put the comment files and emails reviewers send you (.csv, .eml or .txt) in ` +
+        `${reviews.folder}, then open Reviewer comments again (how they come back: helpers/review_page.md).`)));
+    $("record").replaceChildren(...cards);
+    return;
+  }
+  const select = (label, value, options, set) => el("label", { class: "meta" }, label + " ",
+    el("select", { "aria-label": label, onchange: (e) => { set(e.target.value); drawReviews(); } },
+      options.map(([v, text]) => el("option", { value: v, selected: v === value }, text))));
+  cards.push(el("section", { class: "card mapcard" }, el("div", { class: "mapfilters" },
+    select("Reviewer", reviewWho, [["", "All reviewers"], ...who.map((w) => [w, w])], (v) => { reviewWho = v; }),
+    select("Entry", reviewState, [["any", "Changed or not"], ["changed", "Only entries changed since"],
+      ["unchanged", "Only entries unchanged"], ["gone", "Only entries no longer in the files"]], (v) => { reviewState = v; }),
+    select("Kind", reviewKind, [["any", "Every kind"], ...REVIEW_KINDS], (v) => { reviewKind = v; }))));
+  const shown = all.filter((c) => (!reviewWho || (c.reviewer || "(no name)") === reviewWho) &&
+    (reviewKind === "any" || c.kind === reviewKind) && (reviewState === "any" || c.state === reviewState));
+  if (!shown.length) cards.push(el("section", { class: "card" }, el("p", { class: "empty" }, "No comments match the filters above.")));
+  for (const [kind, title] of REVIEW_KINDS) {
+    const mine = shown.filter((c) => c.kind === kind);
+    if (!mine.length) continue;
+    const entries = [...new Set(mine.map((c) => c.entry))];
+    cards.push(el("section", { class: "card" }, el("h3", {}, title),
+      entries.map((entry) => {
+        const list = mine.filter((c) => c.entry === entry), now = list[0].now;
+        return el("div", { class: "mapbox reviewgroup" },
+          kind === "general" ? null : plainText("h4", {}, entry),
+          kind === "general" ? null : now ? plainText("div", { class: "mapdef", title: "The entry as the files have it now" }, `Now: ${now}`)
+            : el("div", { class: "mapdef empty" }, "No longer in the files."),
+          list.map(reviewerComment));
+      })));
+  }
+  $("record").replaceChildren(...cards);
+}
+
 function currentView() {
-  return vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
+  return reviews ? "reviews" : vocab ? "vocab" : additions ? "additions" : partial ? "partial" : mapping ? "mapping" : "batch";
 }
 
 // Each term's definition (docs/terminology.md, read by the server), for the tooltip of a link to a term.

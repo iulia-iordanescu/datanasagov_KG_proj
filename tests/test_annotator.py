@@ -690,5 +690,52 @@ class G_Vocabulary(unittest.TestCase):
                                                                "definition": "  "})["error"])
 
 
+class Z_ReviewerComments(unittest.TestCase):
+    """The Reviewer comments view's data, and the comments under each entry: annotations/reviews/ read as
+    py helpers/review_page.py --read reads it (common/common_helpers/review_comments.py), read-only."""
+
+    def test_view(self):
+        from common import review_comments as RC
+        folder = TMP / "annotations" / "reviews"
+        shutil.rmtree(folder, ignore_errors=True)
+        v = get("/api/reviewer_comments")
+        self.assertEqual((v["comments"], v["files"], v["folder"]), ([], [], "annotations/reviews/"))
+        folder.mkdir()
+        try:
+            now = RC.entry_texts(TMP / "annotations" / "ground_truth_schema.txt",
+                                 TMP / "annotations" / "component_class_mapping.csv")
+            row = {"reviewer": "Jane Smith", "page_version": "review_2026-10-24_abc1234", "git_commit": "abc1234",
+                   "timestamp": "2026-10-24T10:00:00-04:00"}
+            with open(folder / "comments_Jane_Smith_2026-10-24.csv", "w", encoding="utf-8-sig", newline="") as fh:
+                w = csv.DictWriter(fh, RC.COMMENT_COLUMNS)
+                w.writeheader()
+                w.writerow({**row, "kind": "entity class", "entry": "Instrument", "comment": "Fine.",
+                            "entry_text_shown": now[("entity class", "Instrument")]})
+                w.writerow({**row, "kind": "entity class", "entry": "Spacecraft", "comment": "Too vague.",
+                            "entry_text_shown": "Spacecraft: old words"})
+                w.writerow({**row, "kind": "predicate", "entry": "HAS_WIDGET", "comment": "Drop it.",
+                            "entry_text_shown": "HAS_WIDGET: has a widget"})
+            (folder / "spam.eml").write_bytes(b"From: someone@notnasa.gov\r\nSubject: hi\r\n\r\nREVIEW COMMENTS (format 1)\r\n")
+            before = sorted(p.name for p in folder.iterdir())
+            v = get("/api/reviewer_comments")
+            states = {c["entry"]: (c["state"], c["sender"]) for c in v["comments"]}
+            self.assertEqual(states, {"Instrument": ("unchanged", v["not_verified"]),
+                                      "Spacecraft": ("changed", v["not_verified"]),
+                                      "HAS_WIDGET": ("gone", v["not_verified"])})
+            self.assertEqual(v["files"], ["comments_Jane_Smith_2026-10-24.csv", "spam.eml"])
+            self.assertIn("spam.eml: sent from someone@notnasa.gov", v["problems"][0])
+            self.assertEqual(sorted(p.name for p in folder.iterdir()), before)             # read-only
+        finally:
+            shutil.rmtree(folder)
+
+    def test_page(self):
+        page = urllib.request.urlopen(url("/")).read().decode("utf-8")
+        for needed in ('id="reviewcomments"', "reviewerNotes(kind, v.component_class)",
+                       'reviewerNotes("translation row", rowReviewEntry(r))', "/api/reviewer_comments"):
+            self.assertIn(needed, page)
+        self.assertIn("reviews", server.HELP_SECTIONS)
+        self.assertTrue(get("/api/help?view=reviews")["intro"])
+
+
 if __name__ == "__main__":
     unittest.main()

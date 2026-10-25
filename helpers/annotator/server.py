@@ -19,6 +19,7 @@ What it reads
     outputs/intermediate_results/070_evaluate/compared_triples.csv                    evaluation's partial pairs
     annotations/partial_pair_reviews.csv                                     your verdicts on them
     annotations/schema_additions.txt                                         the schema additions
+    annotations/reviews/                                                     reviewers' comments (shown, never changed)
     annotations/README.md                                                    each view's How to use this view
     annotations/guidelines.md, docs/terminology.md, any other .md of the repository   what the Help menus open
     helpers/annotator/fonts/*.woff2                                          the page's typefaces
@@ -125,6 +126,7 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
                                  gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key, verdict_of
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
+from common.review_comments import NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR, read_all as read_reviewer_comments
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import project_status
@@ -150,7 +152,8 @@ HELP_SECTIONS = {"batch": "## Annotating ground truth: the annotation tool",
                  "mapping": "### Checking the translation table",
                  "partial": "### Reviewing partial pairs",
                  "additions": "### Adding to the schema additions",
-                 "vocab": "### The ground truth schema"}
+                 "vocab": "### The ground truth schema",
+                 "reviews": "### Reading reviewers' comments"}
 #: Sections shown after a view's own: the whole tool's two lists, with Ground truth's (the view used most).
 HELP_ALSO = {"batch": ("### What the tool can do", "### What the tool can't do")}
 EXTRACTION_DETAILS = RESULTS_DIR / "060_extract" / "extracted_triples_details.json"
@@ -698,6 +701,19 @@ def help_text(view: str) -> dict:
 
 
 # --------------------------------------------------------------------------
+# reviewers' comments
+# --------------------------------------------------------------------------
+
+def reviewer_comments_view() -> dict:
+    """The comments subject-matter experts sent back from the review page (helpers/review_page.md), read from
+    annotations/reviews/ the same way py helpers/review_page.py --read reads them
+    (common/common_helpers/review_comments.read_all): each with its state against the files now. Read-only."""
+    read = read_reviewer_comments([REVIEWER_COMMENTS_DIR], GROUND_TRUTH_SCHEMA, MAPPING_PATH)
+    return {"folder": f"annotations/{REVIEWER_COMMENTS_DIR.name}/", "files": [f.name for f in read["files"]],
+            "problems": read["problems"], "comments": read["comments"], "not_verified": NOT_VERIFIED}
+
+
+# --------------------------------------------------------------------------
 # schema additions
 # --------------------------------------------------------------------------
 
@@ -1150,6 +1166,8 @@ def make_handler(data: Data):
                     self._json(additions_view(data))
                 elif url.path == "/api/vocab":
                     self._json(vocab_view(data))
+                elif url.path == "/api/reviewer_comments":
+                    self._json(reviewer_comments_view())
                 elif url.path == "/api/raw_record":
                     rid = q.get("id", [""])[0]
                     raw = saved_copy(data.records[rid], HARVEST) if rid in data.records else None
