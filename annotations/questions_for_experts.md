@@ -1006,7 +1006,7 @@ Rule 14 of the annotation guidelines (quoted below) writes each processing step 
 - (b) If a channel is not an input: how would you say it? Is "uses the 11 micron channel" or "is measured in the 11 micron channel" a relationship of its own, apart from "is computed from"?
 - (c) Is there a general way to tell an input from a method, that would settle the case above and others like it? For example, the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its index "is derived from radiance data", which I wrote as an input, and the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" names its product a "Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product", which I write as made using MAIAC, a method.
 - (d) I split "the long wave IR 11 and 12 micron wavelength channels" into "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel" (rule 12, quoted below). Would someone in your field write each channel that way?
-- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says its data set "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data". Each word names a step and what it corrects, though only as a participle. I wrote each as a method: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm), and the same for "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)". Elsewhere, where a record has only a verb ("binned", "detrended", "convert", "cross-correlated"), I wrote no method. Is a participle that names what was corrected or calibrated a method, and should it be written in the record's words ("radiometric calibrated") or as the name of the step ("radiometric calibration")?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says its data set "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data". Each word names a step and what it corrects, though only as a participle. I left each out for now (decided 2026-10-25, for me to confirm); they would be methods: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm), and the same for "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)". Elsewhere, where a record has only a verb ("binned", "detrended", "convert", "cross-correlated"), I wrote no method. Is a participle that names what was corrected or calibrated a method, and should it be written in the record's words ("radiometric calibrated") or as the name of the step ("radiometric calibration")?
 
 ### Context
 
@@ -1072,6 +1072,13 @@ Option 1 until you answer, because the record's own words are "derived from", wh
 
 Four of the tuning records I have annotated up to pool position 6 describe a processing step, at pool positions 2, 4, 5 and 6, and so do those at pool positions 7, 9, 12 and 13 (decided 2026-10-25, for me to confirm; (e) is about pool position 13's) (the one at pool position 6 is in the ground truth now); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
 
+Pending facts, for the record at pool position 13 (ab33f184, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer to (e) says such corrections count as methods:
+
+- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm)
+- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (Algorithm)
+- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "radiometric calibrated" (Algorithm)
+- pending fact: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (Algorithm)
+
 ### Consequences
 
 #### Option 1: Keep the inputs as they are
@@ -1114,10 +1121,6 @@ Four of the tuning records I have annotated up to pool position 6 describe a pro
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "2XMMi-DR3" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "table1.dat" (Dataset)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (Algorithm)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "radiometric calibrated" (Algorithm)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (Algorithm)
 - translation table row: predicate DERIVED_FROM
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
@@ -2372,7 +2375,7 @@ A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes th
 - (b) If they are not the same, what is "R2019.0": a reprocessing, a release of the processing software, or something else?
 - (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". I wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
 - (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. I read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and I wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
-- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". I wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version) and "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version), so that a search can tell it has no earlier release. Is that a fair way to write it, or is "the first version" a fact of another kind (the dataset has no earlier version)?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". I wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version). I left out "first version" (the dataset has no earlier release), since it describes V1.0 rather than names it (decided 2026-10-25, for me to confirm). Is leaving it out right, or is "the first version" a fact of another kind (the dataset has no earlier version)?
 
 ### Context
 
@@ -2444,7 +2447,6 @@ The example is the record at pool position 4; (c) is about the record at pool po
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_VERSION "Version 6" (Version)
 - classed triple of the record at pool position 7: "Version 6.1" (Version) SUPERSEDES "Version 6" (Version)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version)
-- classed triple of the record at pool position 13: "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version)
 - translation table row: predicate SUPERSEDES
 - ground truth schema entry: predicate SUPERSEDES
 - rule: Writing a classed triple, rule 10
