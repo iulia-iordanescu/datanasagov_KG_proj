@@ -30,8 +30,9 @@ What build_rows does with a record's replies (one per text piece):
   1. the describes triple first (common/common_helpers/triples_io.py), with the first describes
      class a reply named ("X" if none did);
   2. every item of every reply's "triples", cleaned by triples_io.clean_triple;
-     one that can't be a triple instance (a missing subject, predicate or
-     object, a list where text belongs, …) is removed as "malformed";
+     a reply without a "triples" list, and an item that isn't a JSON object or
+     whose subject, predicate, or object is missing, empty, true/false, null, a
+     list, or an object (a number is read as text), is removed as "malformed";
   3. every row checked (common/common_helpers/validate.py) against the record's WHOLE
      text: errors (no_source_text, source_not_in_text, describes_*) and
      flags (reworded subject or object instances, component classes not in
