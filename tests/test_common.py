@@ -159,6 +159,25 @@ class GroundTruthFiles(unittest.TestCase):
         self.assertIn("pool position 1", ground_truth.fair_words(gap, {"p1": 1}))
 
 
+class FinishedMarks(unittest.TestCase):
+    """all_facts_extracted is 0 or 1; any other value is a problem of the ground truth, and the record isn't
+    finished (ground_truth.read_ground_truth)."""
+
+    def test_other_values(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        rows = [dict(zip(ground_truth.COLUMNS, row(rid, f"MODIS {k}", "I", "ABOARD", "Aqua", "S", "x", mark)))
+                for k, (rid, mark) in enumerate((("a", "yes"), ("a", "yes"), ("b", "1"), ("c", "1"), ("c", "0"), ("d", " 1 ")))]
+        write_csv(tmp / "batch_000.csv", ground_truth.COLUMNS, rows)
+        gt = ground_truth.read_ground_truth(tmp)
+        self.assertEqual(len(gt.problems), 2, gt.problems)
+        self.assertIn("record a (batch_000.csv): all_facts_extracted is 'yes' on 2 row(s), which is neither 0 nor 1",
+                      gt.problems[0])
+        self.assertIn("record c (batch_000.csv): all_facts_extracted is 0 on some rows, 1 on others", gt.problems[1])
+        self.assertEqual({r: v["finished"] for r, v in gt.records.items()},
+                         {"a": False, "b": True, "c": False, "d": True})      # spaces around a value are ignored
+
+
 class Checks(unittest.TestCase):
 
     def test_text_match(self):

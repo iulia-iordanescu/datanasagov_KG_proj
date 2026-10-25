@@ -96,6 +96,8 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 
 ## Checks and warnings
 
+Messages several steps share are in [`docs/running_on_nasa_laptop.md`, section 7, *Shared warnings and stops*](../docs/running_on_nasa_laptop.md#shared-warnings-and-stops); below are this step's own.
+
 **Shown before paying:** none, since this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](../docs/terminology.md#8-the-pipeline).
 
 **In the [report](../docs/terminology.md#8-the-pipeline)**, under *Warnings*:

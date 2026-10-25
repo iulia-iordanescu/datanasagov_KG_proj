@@ -149,6 +149,10 @@ The tool's home page opens in your browser: in **[Ground truth](terminology.md#4
 
 ## 7. If something goes wrong
 
+### Shared warnings and stops
+
+Each step's guide, under *Checks and warnings*, lists that step's own messages. This table lists the ones several steps share, and how the laptop or a service can fail. The ones starting *Ground truth,* are the [ground truth](terminology.md#4-ground-truth-and-samples)'s own problems: every step that reads it (040, 050, 060, 070) shows them, before paying (or, in 070, before evaluating), and in its report's warnings.
+
 | What you see | What it means | What to do |
 |---|---|---|
 | *The setting model is empty, so no model can be called* (040, 050, 060, or 070 stops) | The `model` setting is empty. | Give a model's name (`py helpers/models.py` lists them). |
@@ -168,7 +172,23 @@ The tool's home page opens in your browser: in **[Ground truth](terminology.md#4
 | *… the model gave no usable answer (finish_reason …)* | The model answered nothing usable, e.g. its service's content filter withheld the answer (`content_filter`). Asking again gets the same. | Look at the record's text; if it happens often with one model, try another (`--model`). |
 | *Model call … failed (HTTP 429 …); trying again in N s* | The service's rate limit. The step waits as long as the service asks (plus up to 2 s), up to 3 times. | Nothing, unless it fails in the end: then lower the step's `workers` and run it again. |
 | *The model's answer to a batch of N was refused (…); asking for each half separately* | 040's labeling or defining hit an item the service won't answer about (e.g. its content filter). The step asks again in halves to find it, and goes on. | Nothing; the report then lists the item(s) refused (`040_induce_schema/040_induce_schema.md`, *Checks and warnings*). |
-| *missing input files* | An earlier [step](terminology.md#8-the-pipeline) hasn't run yet. | Run the steps in order (section 4). |
+| *missing input files, so the step can't run:*, then one line per missing file: *<input>: <path> (run `py <step>/run.py` first, or give another file with --<input>)*, or, for a file kept in Git, *<input>: <path> (give the file with --<input>)* | An earlier [step](terminology.md#8-the-pipeline) hasn't run yet, or a file kept in Git isn't there. | Run the steps in order (section 4), or give the file with `--<input>`. |
+| *Input `<input>` (<path>) has no readable manifest, so the run that produced it is not recorded* (in the report's warnings) | The input's folder has no `_manifest.json` (or one that can't be read), so which run made it isn't known. | Nothing, if you know where it came from; otherwise run the step that makes it again, which writes a new one. |
+| *The setting <setting> must be at least N, but is M, so the step can't run* | A setting below its minimum; each step's guide lists its own minimums. | Give `--<setting>` N or more. |
+| *… --<setting>…: expected true or false, got '…'* (the step doesn't start) | A true/false setting given another value (section 4, *Settings several steps share*). | Give one of the values listed there. |
+| *The setting ids names the file …, which doesn't exist* (050, 060) | `ids` looks like a path (section 4, *Settings several steps share*), but there's no such file. | Give the file's path from the repository folder, or the ids themselves. |
+| *…/records.jsonl line N: id … appears twice, so the step can't tell which record is right* (any step that reads 020's records) | 020 writes each record once: the file was edited, or isn't 020's output. | Run `py 020_clean/run.py` again, then the step. |
+| *N answer(s) saved in …/cache/….json were JSON of the wrong shape …, so they were ignored and the model was asked again* (in the report's warnings) | A saved answer that a step can't use, e.g. from an older version of the step: it is never kept as an answer. | Nothing: the new answers replace them. |
+| *The model's reply isn't a JSON object (…); asking once more* / *The model's reply is a JSON object of the wrong shape (…); asking once more* (in the log) | An answer the step can't read; it asks once more, saying what was wrong. | Nothing. |
+| *… the model's answer isn't a valid JSON object / a JSON object of the shape asked for, N times (…)* | Every try gave such an answer, so that call failed; each answer is in the run's log, on a DEBUG line starting "unusable answer". | Run the step again; if it keeps happening with one model, try another (`--model`). |
+| *LiteLLM's reply has no answer in it: …* / *API status N: …* (Ask Sage) | The service answered, but with no model answer in it (or, Ask Sage, with an error status). | Run the step again; if it persists, the service's message says why. |
+| *The previous run's output files couldn't be kept in previous_runs/ (…)* / *Tidying previous_runs/ after the run failed (…)* (in the log) | Keeping the earlier version of the output files failed, e.g. a full disk; the run goes on. | The message says: copy the output folder aside if those files matter, and check the disk has space; tidying needs nothing. |
+| *Ground truth, record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
+| *Ground truth, record … (batch_…): all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
+| *Ground truth, record … (batch_…): all_facts_extracted is '…' on N row(s), which is neither 0 nor 1* | A hand edit: the column takes only `0` (not finished) and `1` (finished), so the record counts as not finished. | Tick (or untick) *All facts extracted* on the record in the [annotation tool](terminology.md#4-ground-truth-and-samples): saving sets every row to 1 or 0. |
+| *Ground truth, record … (batch_…): lines … and … are the same classed triple.*, then each line | [The same classed triple twice](terminology.md#4-ground-truth-and-samples) in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as ground truth only. Step 070 stops until one is deleted. | Delete one of the two rows. |
+| *Ground truth, record … (batch_…): lines … and … state the same subject instance, predicate, and object instance, with different entity classes.*, then each line | Likely one fact given two [entity classes](terminology.md#3-schemas) by mistake. | If they state one fact, delete the line with the wrong entity classes. |
+| *Ground truth, batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 | *running scripts is disabled* | PowerShell's script policy. | Part 3 of `docs/virtual_environment_setup.md`. |
 
 ## 8. Tracing where something came from

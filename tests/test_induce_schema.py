@@ -191,6 +191,22 @@ class Counting(unittest.TestCase):
 
 class Checking(unittest.TestCase):
 
+    def test_ground_truth_problems_reach_the_warnings(self):
+        """The ground truth's own problems (here a file missing columns), read when comparing with the ground truth
+        schema, are kept for the report's warnings, and left out of the comparison written to the evidence file."""
+        from common.step import load_moves
+        from support import ROOT
+        moves = load_moves("040_induce_schema")
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / "batch_000.csv").write_text("id,subject\nr1,MODIS\n", encoding="utf-8")
+        schema = check.Schema()
+        comparison = moves.compare_with_ground_truth_schema(
+            {"ground_truth_schema": ROOT / "annotations" / "ground_truth_schema.txt",
+             "ground_truth": tmp / "batch_*.csv"}, schema)
+        self.assertEqual(len(comparison["ground_truth_problems"]), 1)
+        self.assertIn("lacks the column(s)", comparison["ground_truth_problems"][0])
+
     def test_check_schema(self):
         e = lambda name, support, maint=("m1", "m2"): {"component_class": name, "support": support,   # noqa: E731
                                                         "texts": [f"t{i}" for i in range(support)],

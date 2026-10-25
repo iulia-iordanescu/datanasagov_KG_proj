@@ -147,6 +147,8 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 
 ## Checks and warnings
 
+Messages several steps share are in [`docs/running_on_nasa_laptop.md`, section 7, *Shared warnings and stops*](../docs/running_on_nasa_laptop.md#shared-warnings-and-stops); below are this step's own.
+
 **Shown before paying**, above the confirmation question (and also in the [report](../docs/terminology.md#8-the-pipeline)'s warnings):
 
 | Message | Meaning | What to do |
@@ -156,11 +158,6 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | *You listed N records that can be drafted, but records_per_batch is M* | Only the first M are drafted now. | Raise `records_per_batch`, or run again for the rest. |
 | *start_position (N) is ignored, because the setting ids names the records* | The two [settings](../docs/terminology.md#8-the-pipeline) can't both apply. | Nothing to do if you meant the ids; to draft from a [pool position](../docs/terminology.md#4-ground-truth-and-samples) instead, leave `ids` empty. |
 | *With this drafted batch, the ground truth is no longer the first records of the pool* | Hand-picked records or a jump ahead leave pool records behind. | Nothing, if on purpose. But 070 evaluates only the [fair sample](../docs/terminology.md#4-ground-truth-and-samples) (the pool's first records, with none skipped), so records after the gap are not evaluated until the records before them are finished too. |
-| *Ground truth, record … is in batch_… and batch_…: annotated twice* | A record is annotated twice. It's left out of the ground truth until fixed. | Keep it in one file. |
-| *Ground truth, record … (batch_…): all_facts_extracted is 0 on some rows, 1 on others* | Mixed, so the record doesn't count as finished. | Set it the same on every row (the tool's box does). |
-| *Ground truth, record … (batch_…): lines … and … are the same classed triple.*, then each line | [The same classed triple twice](../docs/terminology.md#4-ground-truth-and-samples) in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as ground truth only. Step 070 refuses to run until one is deleted. | Delete one of the two rows. |
-| *Ground truth, record … (batch_…): lines … and … state the same subject instance, predicate, and object instance, with different entity classes.*, then each line | Likely one fact given two [entity classes](../docs/terminology.md#3-schemas) by mistake. | If they state one fact, delete the line with the wrong entity classes. |
-| *Ground truth, batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
 
 **In the report**, under *Warnings*:
 
@@ -168,7 +165,7 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 |---|---|---|
 | *N record(s) failed: a model call for one of their text pieces failed, so each is left out of the batch whole* | A [model call](../docs/terminology.md#8-the-pipeline) for a [text piece](../docs/terminology.md#1-records-and-their-text) of those records failed (after the model client's own retries), so each is left out whole, never half drafted. The report gives each record's id and why. | Run the step again: only the failed pieces are asked again, and every answer already paid for is reused. The next run drafts them first. An answer cut off at the length limit isn't asked again with the same settings: first change the setting the warning names (`docs/running_on_nasa_laptop.md`, section 7). Each failed call is described in `outputs/logs/<run id>_failed_calls.jsonl`. |
 | *No record was drafted, so no drafted batch was written.* | Every call failed. | Check the connection; run again. |
-| *N component class(es) used in the ground truth aren't in the ground truth schema, so the model saw them without a definition* | Entity classes or predicates you [coined](../docs/terminology.md#3-schemas) while annotating (or typos). The model was shown them to reuse, but with no definition to go on. | Add each one you mean to keep, with a one-line definition, to the [ground truth schema](../docs/terminology.md#3-schemas) (the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s buttons do it); fix any typo in the ground truth. |
+| *N component class(es) used in the ground truth aren't in the ground truth schema, so the model saw them without a definition* | [Entity classes](../docs/terminology.md#3-schemas) or predicates you [coined](../docs/terminology.md#3-schemas) while annotating (or typos). The model was shown them to reuse, but with no definition to go on. | Add each one you mean to keep, with a one-line definition, to the [ground truth schema](../docs/terminology.md#3-schemas) (the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples)'s buttons do it); fix any typo in the ground truth. |
 | *N ground truth triple(s) or [describes triple](../docs/terminology.md#2-triples)(s) have an error to fix* | [Errors](../docs/terminology.md#2-triples) of stage 4 (*Checks on each row*), listed under *Your ground truth* with file and line. | Fix them with the tool or any editor. |
 | *N of M rows of the drafted batch have no origin, so they can't be traced to the input they came from* | Should never happen: a code change dropped the field that records where each item came from. | Fix the code before using the output. |
 
@@ -177,10 +174,8 @@ Each prompt is a plain text file: open it to read exactly what the [model](../do
 | Message | Meaning | What to do |
 |---|---|---|
 | *Nothing to draft: none of the records chosen can be drafted …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
-| *ids names the file …, which doesn't exist* | A typo in the file name. | Fix the file name. |
 | *missing input files, so the step can't run:*, then one line per missing file, e.g. *records: … (run `py 020_clean/run.py` first, or give another file with --records)*, or *ground_truth_schema: … (give the file with --ground_truth_schema)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 | *… must be at least N* | A setting is out of range: `records_per_batch` or `workers` under 1, `start_position` under 0, or `max_chars` under 1,000. | Fix the setting. |
-| *The setting model is empty …*, *The setting service is …*, *The setting thinking is …*, *Test call to … failed*, *Test call to … was cut off …*, *The test call's one-line answer used N tokens thinking …*, *Step NNN stopped early: …*, *… isn't set, so no model can be called*, *Cancelled. Nothing was spent.*, *Stopped with Ctrl+C. …* | The stops (and the [test call](../docs/terminology.md#8-the-pipeline)'s warning) every step that calls the model shares. | `docs/running_on_nasa_laptop.md`, section 7, says what each means and what to do. |
 
 ## Audit trail
 

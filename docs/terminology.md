@@ -67,7 +67,7 @@ notes: The MODIS instrument aboard Aqua …
 | Term | Meaning |
 |---|---|
 | **schema** | A description of the entity classes, the predicates, and the patterns: which entity classes each predicate has been seen between. |
-| **schema entry** | An entity class, a predicate, or a pattern. |
+| **schema entry** | An entity class, a predicate, or a pattern. An output file that lists schema entries of more than one kind gives each its kind as `entry_type`: `entity class`, `predicate`, or `pattern`. |
 | **entity class** | A type of thing a subject instance or object instance can be, e.g. `Instrument`, `Spacecraft`: a schema entry. The entity class of a classed triple's subject instance is its subject class; of its object instance, its object class. Through its patterns, an entity class can be a subject class, an object class, or both. |
 | **predicate** | A word with two senses, told apart by context: **(1)** the component in the middle slot of a triple instance or a classed triple; **(2)** a schema entry: a type of relationship, e.g. `ABOARD`, the component class of predicate instances. |
 | **kind** | Of a component class: whether it is an entity class or a predicate (e.g. the translation table's `kind` column). |
@@ -126,7 +126,7 @@ The words *domain* and *range* were standardized in RDF Schema, another type of 
 | **canonicalization** | Making several labels that mean the same thing one component class, so the schema has one entity class or one predicate per meaning. Step 040 does it in two ways, for entity class labels and predicate labels alike: a merge of synonymous labels (stage 4) and a spelling fold of labels that are a loose match (stage 5); both are defined in section 3, under **merge** and **loose match**. The field's own name for it: e.g. EDC (Zhang & Soh, 2024, [paper](https://arxiv.org/abs/2404.03868)) calls its third phase canonicalization: it replaces each predicate instance it extracted with the most similar predicate of a schema, judged by their definitions. |
 | **support** | How many different texts a schema entry was found in. A text stating it twice counts once. |
 | **evidence** (of a schema entry) | What step 040 keeps to show why a schema entry is in the schema: its support, the maintainers and texts it was found in, and, for an entity class, examples (in `the_schema.json`). `induction_evidence.json` keeps everything the run saw and decided, from each text's triple instances to every label and merge. |
-| **deferred** | A schema entry that was found but isn't in the schema, with the reason: support below `min_support`, judged too vague, or a pattern through a schema entry that isn't in the schema. |
+| **deferred** | A schema entry that step 040 found but didn't put in the schema, with the reason, one of three, as `the_schema.json` writes it: `support N < min_support M` (its support is below `min_support`), `too vague: …` (the model judged it too vague to define, and said why), or `X is not in the schema` (a pattern through an entity class or predicate X that isn't in the schema; the first such one is named). |
 
 ---
 

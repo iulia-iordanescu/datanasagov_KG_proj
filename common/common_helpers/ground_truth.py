@@ -16,12 +16,14 @@ Every file has the columns
     all_facts_extracted
 
 one row per classed triple, grouped by record (id). A file may also have the
-column drafted_by: the model that drafted the row (step 050), empty for a row
-a person wrote; batch_000.csv, annotated before the pipeline, has no such
-column. Any other column (e.g. the `flags` column of a drafted batch) is
+column drafted_by: the model that drafted the row (step 050 writes it; the
+annotation tool keeps it, and leaves it empty on a row a person adds);
+batch_000.csv, annotated before the pipeline, has it too (the model on the rows
+a model drafted, empty on the rest). A file without the column reads as
+written by a person. Any other column (e.g. the `flags` column of a drafted batch) is
 ignored, so a corrected drafted batch can be saved as it is. all_facts_extracted is 1 on every row of a record the
 person has finished (every fact of its text is there), 0 while it is in
-progress. A row with an id but an empty subject, predicate, and object says
+progress (FINISHED_MARKS; any other value is a problem, and the record isn't finished). A row with an id but an empty subject, predicate, and object says
 "this record was annotated and states no facts".
 
     from common.ground_truth import read_ground_truth
@@ -165,8 +167,11 @@ def draft_name(n: int) -> str:
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class",
            "source_text", "all_facts_extracted"]
 #: The model that drafted a row (050's drafted batches; the annotation tool keeps it); empty when a person wrote it.
-#: Optional: a file without it (batch_000.csv) reads as written by a person.
+#: Optional: a file without it reads as written by a person.
 DRAFTED_BY = "drafted_by"
+#: The two values of the column all_facts_extracted ("0": not finished, "1": finished), the only ones the annotation
+#: tool writes; any other value is a problem of the ground truth (read_ground_truth), and the record isn't finished.
+FINISHED_MARKS = ("0", "1")
 #: Every column a ground truth file may have, in this order.
 FILE_COLUMNS = COLUMNS + [DRAFTED_BY]
 
@@ -217,7 +222,14 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
                                f"rows from all files but one (by hand: the annotation tool can't remove a record).")
             continue
         marks = {r["all_facts_extracted"] for r in rows}
-        if len(marks) > 1:
+        other = sorted(marks - set(FINISHED_MARKS))
+        if other:
+            gt.problems.append(f"record {rid} ({in_files[rid][0]}): all_facts_extracted is "
+                               f"{', '.join(repr(m) for m in other)} on {sum(r['all_facts_extracted'] in other for r in rows)} "
+                               f"row(s), which is neither 0 nor 1, so the record counts as not finished. In the "
+                               f"annotation tool (`py helpers/annotate.py`), tick All facts extracted on the record if "
+                               f"every fact is there (untick it again if not): saving sets every row to 1 or 0.")
+        elif len(marks) > 1:
             gt.problems.append(f"record {rid} ({in_files[rid][0]}): all_facts_extracted is "
                                f"{' on some rows, '.join(sorted(marks))} on others, so the record counts as not "
                                f"finished. In the annotation tool (`py helpers/annotate.py`), tick All facts extracted on "

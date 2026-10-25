@@ -315,6 +315,7 @@ class ExtractionKeepsPins(unittest.TestCase):
                      "                  only: Instrument -> Spacecraft\n                  source: ground truth held-out #8\n")
         s, _ = self.load(TEXT, additions)
         self.assertEqual(s.content["pinned"], {})
+        self.assertEqual([x["entry_type"] for x in s.not_tuning], ["predicate"])    # as every output file writes it
 
     def test_pin_naming_unknown_entity_class_noted(self):
         additions = ("PREDICATES\n----------\nON_BOARD          is carried on\n"

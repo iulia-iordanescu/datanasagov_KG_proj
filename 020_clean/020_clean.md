@@ -67,7 +67,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the [report](../docs/termino
 
 | Setting | Default | What it does | When to change it |
 |---|---|---|---|
-| `extra_text_fields` | empty | Free-text [fields](../docs/terminology.md#1-records-and-their-text) of the raw [record](../docs/terminology.md#1-records-and-their-text) to clean and save besides `title` and `notes`, separated by spaces. `title` and `notes` are always cleaned and saved; naming them here changes nothing. A name 020 already uses for a field of its own (e.g. `maintainer`, `tags`) stops the [step](../docs/terminology.md#8-the-pipeline), since it would overwrite that field. | To bring in another [text field](../docs/terminology.md#1-records-and-their-text), e.g. `author`. |
+| `extra_text_fields` | empty | Free-text [fields](../docs/terminology.md#1-records-and-their-text) of the raw [record](../docs/terminology.md#1-records-and-their-text) to clean and save besides `title` and `notes`, separated by spaces. `title` and `notes` are always cleaned and saved; naming them here changes nothing. A name 020 already uses for a field of its own stops the [step](../docs/terminology.md#8-the-pipeline), since it would overwrite that field: `id`, `name`, `maintainer`, `maintainer_as_harvested`, `organization`, `tags`, `formats`, `license`, `url`, `metadata_created`, `metadata_modified`, `_cleaning`, `_origin`. | To bring in another [text field](../docs/terminology.md#1-records-and-their-text), e.g. `author`. |
 | `join_maintainers` | true | Join spellings of one [maintainer](../docs/terminology.md#1-records-and-their-text) into one name. | Set to `false` to keep each spelling as harvested (a missing or blank one still becomes `undefined`), e.g. to check the joins. |
 
 ## How to run
@@ -116,6 +116,8 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 
 ## Checks and warnings
 
+Messages several steps share are in [`docs/running_on_nasa_laptop.md`, section 7, *Shared warnings and stops*](../docs/running_on_nasa_laptop.md#shared-warnings-and-stops); below are this step's own.
+
 **Shown before paying:** none, since this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](../docs/terminology.md#8-the-pipeline).
 
 **In the [report](../docs/terminology.md#8-the-pipeline)**, under *Warnings*:
@@ -132,7 +134,7 @@ None: this [step](../docs/terminology.md#8-the-pipeline) makes no [model calls](
 | Message | Meaning | What to do |
 |---|---|---|
 | *… is in the old batch format* | 010's files were saved by an older version, without a [request block](../docs/terminology.md#1-records-and-their-text). | Rerun `py 010_harvest/run.py`, which downloads them again. |
-| *extra_text_fields names …, which 020 already writes as a field of its own* | An extra text [field](../docs/terminology.md#1-records-and-their-text) was given the name of a field 020 already writes, e.g. `maintainer`. | Remove that name from `extra_text_fields`. |
+| *extra_text_fields names …, which 020 already writes as a field of its own* | An extra text [field](../docs/terminology.md#1-records-and-their-text) was given the name of a field 020 already writes (they are listed under *Settings*, `extra_text_fields`). | Remove that name from `extra_text_fields`. |
 | *AssertionError: N failure(s)* | A self-test failed: the cleaning library's (in `clean_text`) or the joining rules' (in `join_maintainers`). The report (`outputs/reports/020_clean_<date>_<time>.md`), section *Timeline*, shows which [move](../docs/terminology.md#8-the-pipeline) failed. | Don't use the output. Read the listed failures; usually a changed Python version, or an edit to `note_cleaning.py` or `maintainers.py`. |
 | *missing input files, so the step can't run: … (run `py 010_harvest/run.py` first, or give another file with --batches)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
 

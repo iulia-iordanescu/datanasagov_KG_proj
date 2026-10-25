@@ -61,6 +61,8 @@ from common.triples_io import component_class_key
 from common.validate import SchemaEntries
 
 KINDS = ("entity_classes", "predicates")
+#: entry_type, as every output file writes it (docs/terminology.md, *schema entry*).
+ENTRY_TYPE = {"entity_classes": "entity class", "predicates": "predicate", "patterns": "pattern"}
 
 
 @dataclass
@@ -151,7 +153,7 @@ def load_schema(inputs: dict) -> Schema:
         for name, definition in extra[kind].items():
             why = ground_truth_source_problem(extra["sources"][kind].get(name, ""), parts)
             if why:
-                result.not_tuning.append({"entry_type": kind, "schema_entry": name,
+                result.not_tuning.append({"entry_type": ENTRY_TYPE[kind], "schema_entry": name,
                                           "source": extra["sources"][kind][name], "why": why})
                 continue
             if component_class_key(name) in have:
@@ -174,7 +176,7 @@ def load_schema(inputs: dict) -> Schema:
     # The additions' patterns: those under a predicate share its source, so they
     # are left out with it; a pattern of the PATTERNS section has its own.
     result.sources["patterns"] = {}
-    rejected = {component_class_key(x["schema_entry"]) for x in result.not_tuning if x["entry_type"] == "predicates"}
+    rejected = {component_class_key(x["schema_entry"]) for x in result.not_tuning if x["entry_type"] == "predicate"}
     standalone = {tuple(q) for q in extra.get("pattern_entries", [])}
     added_patterns = []
     for q in extra["patterns"]:
@@ -185,7 +187,7 @@ def load_schema(inputs: dict) -> Schema:
         source = extra["sources"].get("patterns", {}).get(pattern_key(q), "")
         why = ground_truth_source_problem(source, parts)
         if why:
-            result.not_tuning.append({"entry_type": "patterns", "schema_entry": pattern_key(q), "source": source,
+            result.not_tuning.append({"entry_type": "pattern", "schema_entry": pattern_key(q), "source": source,
                                       "why": why})
             continue
         added_patterns.append(q)

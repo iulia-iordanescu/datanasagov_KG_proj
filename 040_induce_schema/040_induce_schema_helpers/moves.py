@@ -81,8 +81,12 @@ def check_schema(counts, definitions, settings):
 def compare_with_ground_truth_schema(inputs, schema) -> dict:
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
     # its patterns: the file's, and every one the ground truth uses (common/common_helpers/ground_truth.with_coined)
-    hand = {**hand, "patterns": with_coined(hand, read_ground_truth(Path(inputs["ground_truth"]).parent))["patterns"]}
+    gt = read_ground_truth(Path(inputs["ground_truth"]).parent)
+    hand = {**hand, "patterns": with_coined(hand, gt)["patterns"]}
     comparison = compare.compare(hand, schema)
+    # the ground truth's own problems (a record annotated twice, a file missing a column, ...), shown as warnings
+    # like every other step that reads it; results() takes them out before writing the evidence file
+    comparison["ground_truth_problems"] = list(gt.problems)
     comparison["ground_truth_schema"] = ref_path(inputs["ground_truth_schema"])
     c = comparison["entity_classes"]
     log.info(f"  beside the ground truth schema: {len(c['both'])} entity classes in both, "
@@ -93,6 +97,7 @@ def compare_with_ground_truth_schema(inputs, schema) -> dict:
 # --------------------------------------------------------------------------
 
 def results(texts, triples, labels, counts, definitions, schema, comparison, calls, settings, output) -> Results:
+    ground_truth_problems = comparison.pop("ground_truth_problems", [])
     made = {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings,
             "texts": len(texts.items), "maintainers": [m["maintainer"] for m in texts.maintainers]}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
@@ -123,6 +128,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
     warnings = list(calls.paid.notes)          # shown before paying too, if the run paid
+    warnings += [f"Ground truth, {p}" for p in ground_truth_problems]
     evidence_shown = repo_path(evidence_path)
     if triples.failed_note:
         warnings.append(triples.failed_note)

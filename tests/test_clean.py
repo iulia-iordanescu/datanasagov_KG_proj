@@ -17,6 +17,17 @@ import moves                                      # noqa: E402
 import note_cleaning                              # noqa: E402
 
 
+class ReservedNames(unittest.TestCase):
+
+    def test_guide_lists_every_reserved_name(self):
+        """020's guide (Settings, extra_text_fields) names every field an extra text field can't take, and no other."""
+        from support import ROOT
+        guide = (ROOT / "020_clean" / "020_clean.md").read_text(encoding="utf-8")
+        row = next(l for l in guide.splitlines() if l.startswith("| `extra_text_fields` |"))
+        listed = row.split("would overwrite that field:", 1)[1].split(". |", 1)[0]
+        self.assertEqual(re.findall(r"`([^`]+)`", listed), list(moves.STRUCTURED_FIELDS))
+
+
 class Maintainers(unittest.TestCase):
 
     def test_selftest(self):
