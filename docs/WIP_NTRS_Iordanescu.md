@@ -138,7 +138,7 @@ Counts are summed over all evaluated records of a part before dividing (micro-av
 - Recall upper bound: the proportion of ground truth triples whose predicate some checked row of the translation table translates to, which is the most recall the current schema allows, as the recall of an early stage bounds a whole pipeline's: "candidates that are not generated at all can never be recovered by downstream processes" [17]. Recall divided by it, recall within reach, measures extraction on what the schema can express. A low upper bound points at the schema; a high upper bound with low recall within reach points at extraction.
 - Describes accuracy: how often extraction names a record's describes class correctly, next to what always naming the most common describes class would score.
 
-Each is reported at the exact and partial levels, with and without the strict requirement, per part and per stratum.
+Each is reported at the exact and partial levels, with and without the strict requirement, per part and per stratum. Precision, recall, and F1 are also reported per predicate, per subject class, and per object class [19], each row with its margin of error.
 
 ### 6.3 Margin of error
 
@@ -193,7 +193,6 @@ The next step is the first end-to-end run: drafting and correcting ground truth 
 - a setting that bypasses the answer cache, so one setup can be run several times and its noise measured before any difference is called an effect;
 - experiments on step 040's sample and minimum support, and on leaving patterns out of the extraction prompt;
 - about 10 records annotated from scratch, to measure how far drafting steers annotation, and a second annotator on a sample, to measure agreement [18];
-- precision and recall per predicate and per entity class [19];
 - for step 080, keeping each extracted triple apart from the graph built from it, so the graph can be rebuilt without asking a model again [19]; linking names to reference lists such as NASA's list of missions; and a set of questions the graph should answer;
 - describing the catalog records with DCAT 3, the W3C vocabulary for data catalogs [20], once it is worked out what that would change.
 
