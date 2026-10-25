@@ -537,15 +537,7 @@ Is a [record](../docs/terminology.md#1-records-and-their-text)'s layout a closed
 |---|---|
 | a satellite | swath; gridded |
 
-### Affects
-
-- record at pool position 0: {tuning}
-- classed triple of the record at pool position 0: "Snow V1" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
-- ground truth schema entry: entity class SpatialRepresentation
-- translation table row: entity class Layout
-- rule: Writing a classed triple, rule 1
-
-### Record at pool position 0
+### Example record
 
 - record id: {tuning}
 - pool position: 0
@@ -573,21 +565,37 @@ Is a [record](../docs/terminology.md#1-records-and-their-text)'s layout a closed
 
 #### Option 1: Keep each record's own words
 
-Nothing changes.
-
-Consequences:
-- The words differ between records.
+Each record keeps its words.
 
 #### Option 2: A closed list
 
 One value per layout.
 
-Consequences:
-- A new exception to rule 1.
-
-### My current choice
+### My current reading
 
 Undecided.
+
+### My notes
+
+The example is the record at pool position 0.
+
+### Consequences
+
+#### Option 1: Keep each record's own words
+
+- The words differ between records.
+
+#### Option 2: A closed list
+
+- A new exception to rule 1.
+
+### Affects
+
+- record at pool position 0: {tuning}
+- classed triple of the record at pool position 0: "Snow V1" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
+- ground truth schema entry: entity class SpatialRepresentation
+- translation table row: entity class Layout
+- rule: Writing a classed triple, rule 1
 """.replace("{tuning}", TUNING)
 
 
@@ -642,12 +650,18 @@ class Questions(unittest.TestCase):
                  "- priority: high\n": ("- priority: urgent\n", "its priority is \"urgent\""),
                  "- question kind: schema entry\n": ("", "no \"- question kind: …\" line"),
                  "### Affects\n": ("### Effects\n", "isn't one of a question's parts"),
-                 "### My current choice\n\nUndecided.\n": ("", "no \"### My current choice\" part"),
+                 "### My current reading\n\nUndecided.\n": ("", "no \"### My current reading\" part"),
                  "|---|---|\n": ("|---|\n", "a table is a header line"),
-                 "Consequences:\n- A new": ("- A new", "option 2 has no line \"Consequences:\""),
-                 "### Ground truth schema\n": (QUESTION.split("### Record at pool position 0\n")[1].split("### Ground")[0]
-                                              .join(["### Record at pool position 0\n", "### Ground truth schema\n"]),
-                                              "is there twice: a question shows one record")}
+                 "One value per layout.\n": ("One value per layout.\n\nConsequences:\n- More work.\n",
+                                              "option 2: its consequences go under \"### Consequences\""),
+                 "#### Option 2: A closed list\n\n- A new": ("#### Option 2: A list\n\n- A new",
+                                                            "the same numbers and titles"),
+                 "### Consequences\n": ("### Effects of each\n", "isn't one of a question's parts"),
+                 "### Ground truth schema\n": (QUESTION.split("### Example record\n")[1].split("### Ground")[0]
+                                              .join(["### Example record\n", "### Ground truth schema\n"]),
+                                              "is there twice: a question shows one record"),
+                 "Is a [record]": ("At pool position 0, is a [record]", "\"pool position\" is in what the expert reads"),
+                 "Undecided.\n": (f"Undecided, as for {TUNING}.\n", f"\"{TUNING}\" is in what the expert reads")}
         for old, (new, words) in cases.items():
             with self.subTest(old=old), tempfile.TemporaryDirectory() as t:
                 self.assertIn(old, QUESTION)
@@ -658,8 +672,8 @@ class Questions(unittest.TestCase):
 
     def test_a_held_out_record_is_refused(self):
         with tempfile.TemporaryDirectory() as t:
-            text = QUESTION.replace("- record at pool position 0: " + TUNING,
-                                    "- record at pool position 0: " + TUNING + "\n- record at pool position 1: " + HELD_OUT)
+            text = QUESTION.replace("- record at pool position 0: " + TUNING + "\n",
+                                    "- record at pool position 0: " + TUNING + "\n- record at pool position 1: " + HELD_OUT + "\n")
             with self.assertRaises(ValueError) as stop:
                 questions_of(question_world(Path(t), text))
         self.assertIn(f"record {HELD_OUT} (pool position 1) is a held-out record", str(stop.exception))
@@ -676,7 +690,12 @@ class Questions(unittest.TestCase):
                   "row entity class Layout (current or past schema) translates to SpatialRepresentation"),
                  ("- classed triple of the record at pool position 0: \"Snow V1\" (Dataset) HAS_SPATIAL_REPRESENTATION "
                   "\"swath\" (SpatialRepresentation)\n", "", "which \"Affects\" doesn't name: add it"),
-                 ("## Q1: Should", "## Q1: Should [rows](../docs/terminology.md#8) and", None)]
+                 ("## Q1: Should", "## Q1: Should [rows](../docs/terminology.md#8) and", None),
+                 ("One value per layout.", 'One value per layout, as the record "Snow V1" has.', None),
+                 ("One value per layout.", 'One value per layout, as the record "Snow V2" has.',
+                  '"Snow V2" follows the word "record", but isn\'t the title of a record "Affects" names'),
+                 ("One value per layout.", 'One value per layout, as the records "Snow V1" and "Ice V2" have.',
+                  '"Ice V2" follows the word "record"')]
         for old, new, words in cases:
             with self.subTest(old=old[:40]), tempfile.TemporaryDirectory() as t:
                 self.assertIn(old, QUESTION)
@@ -703,6 +722,18 @@ class Questions(unittest.TestCase):
         self.assertTrue(qs)
         self.assertEqual([q["id"] for q in qs], [f"Q{i}" for i in range(1, len(qs) + 1)])
         self.assertTrue(all(len(q["records"]) <= 1 for q in qs))
+
+    def test_the_expert_never_reads_a_pool_position(self):
+        """What the expert reads of each question of the real file (its title, its parts for the expert, its
+        example's title and notes, the quotes) says no "pool position" and no record id: records are named by title."""
+        for q in R.read_questions(R.QUESTIONS_PATH):
+            seen = [q["title"]] + [html.unescape(str(q[k])) for k in ("question", "context", "reading", "answer")]
+            seen += [str(o["body"]) + o["title"] for o in q["options"]]
+            seen += [r["title"] + r["notes"] + str(r["triples"]) for r in q["records"]]
+            seen += [x["definition"] for x in q["schema"] + q["rows"]] + [r["words"] for r in q["rules"]]
+            for text in seen:
+                self.assertNotIn("pool position", text.lower(), q["id"])
+                self.assertNotRegex(text, r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}", q["id"])
 
     def test_comments_on_a_question(self):
         """A comment on a question, read back: unchanged, then changed once the question's words change (its status
@@ -743,7 +774,7 @@ class QuestionsView(unittest.TestCase):
         second = QUESTION.split("## Q1: ")[1].replace("Should SpatialRepresentation be a closed list?", "A second one",
                                                       1).replace("- priority: high", "- priority: low")
         third = second.replace("A second one", "An answered one", 1).replace("- status: open", "- status: answered") \
-            .rstrip("\n") + "\n\n### The answer\n\nYes.\n"
+            .replace("### My notes\n", "### The answer\n\nYes.\n\n### My notes\n")
         cls.paths = question_world(cls.tmp, QUESTION + "\n## Q2: " + second + "\n## Q3: " + third)
         cls.page = R.build(R.page_data(**cls.paths))
         script = ("const out = {}; try { show('questions'); const v = () => document.getElementById('view');"
@@ -752,7 +783,10 @@ class QuestionsView(unittest.TestCase):
                   "const card = v().querySelector('#q-Q1');"
                   "out.terms = [...card.querySelectorAll('a.term')].map((a) => a.dataset.term);"
                   "out.marked = [...card.querySelectorAll('mark')].map((m) => m.textContent);"
-                  "out.affects = card.querySelector('details.affects summary').textContent;"
+                  "out.affects = [...card.querySelectorAll('details.forus h5')].map((h) => h.textContent).join(' | ');"
+                  "out.forus = card.querySelector('details.forus summary').textContent; out.forusOpen = card.querySelector('details.forus').open;"
+                  "out.last = card.lastElementChild.tagName + '.' + card.lastElementChild.className;"
+                  "const top = card.cloneNode(true); top.querySelector('details.forus').remove(); out.top = top.textContent;"
                   "out.tab = document.getElementById('tab-questions').getAttribute('aria-current');"
                   "state.questions.closed = true; redraw(); out.withClosed = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
                   "state.questions.priority = 'low'; redraw(); out.low = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
@@ -773,15 +807,22 @@ class QuestionsView(unittest.TestCase):
         self.assertEqual(self.out["withClosed"], ["Q1", "Q2", "Q3"])
         self.assertEqual(self.out["low"], ["Q2", "Q3"])
         self.assertEqual((self.out["one"], self.out["next"]), (["Q1"], ["Q2"]))
-        for words in ("The question", "An example: the record at pool position 0", "Each file holds 5 minutes of",
-                      "My current choice", "Option 2: A closed list", "Consequences:", "Show answered and withdrawn"):
-            self.assertIn(words, self.out["text"])
+        for words in ("An example", "Each file holds 5 minutes of", "My current reading", "Option 2: A closed list",
+                      "The choices I see"):
+            self.assertIn(words, self.out["top"])
+        for words in ("pool position", TUNING, "A new exception to rule 1", "The example is the record at pool position 0",
+                      "What each option would change", "My notes"):
+            self.assertNotIn(words, self.out["top"])                         # the expert's part: none of my bookkeeping
+            self.assertIn(words, self.out["text"])                           # all of it at the bottom, folded
+        self.assertEqual((self.out["forus"], self.out["forusOpen"], self.out["last"]),
+                         ("The answer to this question impacts: my bookkeeping, not needed to answer", False,
+                          "DETAILS.forus"))
         self.assertIn("1 record, 1 classed triple, 1 row of the translation table", self.out["affects"])
 
     def test_terms_linked_once(self):
         terms = self.out["terms"]
         self.assertEqual(len(terms), len(set(terms)))
-        for t in ("record", "ground truth schema", "ground truth candidates pool", "tuning part", "source text"):
+        for t in ("record", "ground truth schema", "ground truth candidates pool", "tuning part", "classed triple"):
             self.assertIn(t, terms)
         self.assertEqual((self.out["afterClick"], self.out["here"]), ("terms", "term-" + terms[0].replace(" ", "-")))
         self.assertIn("5 minutes of swath data", self.out["marked"])

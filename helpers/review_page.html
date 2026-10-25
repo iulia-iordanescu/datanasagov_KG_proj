@@ -65,37 +65,41 @@
   .terms td { line-height: 1.5; }
   .notes p { margin: 0 0 4px; }
   .gone li { margin: 6px 0; }
-  /* the Questions view: one calm card per question, its parts in plain sections, quotes set apart */
-  .question .qhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-  .question .qid { font-weight: 700; color: var(--navy); }
-  .question .qtitle { font-size: 17px; font-weight: 600; flex: 0 1 auto; }
-  .question .pill { margin-left: 0; }
-  .question h4 { color: var(--navy); font-size: 14.5px; margin: 16px 0 6px; }
-  .question p, .question li { max-width: 80ch; line-height: 1.6; }
+  /* the Questions view: one calm card per question. At the top, what the expert needs to answer, in plain sections
+     with room between them; at the bottom, folded and quiet, my bookkeeping (not needed to answer). */
+  .mapbox.question { padding: 18px 24px 14px; margin-bottom: 18px; }
+  .question h3.qheading { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 0 0 2px; color: var(--ink); }
+  .question h3.qheading .qid { color: var(--navy); font-weight: 700; margin-right: 6px; }
+  .question .qmeta { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .question h4 { color: var(--navy); font-size: 14.5px; font-weight: 600; margin: 22px 0 6px; }
+  .question p, .question li { max-width: 78ch; line-height: 1.65; }
   .question ul { padding-left: 22px; margin: 6px 0; }
-  .question .prose table { margin: 6px 0 10px; max-width: 80ch; }
-  .question .rec { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 8px 0; background: var(--paper); }
-  .question .rec .rechead { font-weight: 600; }
-  .question .field { margin: 6px 0; }
-  .question .field > .label { display: block; font-size: 12.5px; font-weight: 600; color: var(--label); }
-  .question .quote { margin: 2px 0 0; padding: 4px 10px; border-left: 3px solid var(--line); background: var(--panel);
-                     line-height: 1.6; overflow-wrap: anywhere; }
+  .question li { margin: 3px 0; }
+  .question .prose table { margin: 8px 0 12px; max-width: 78ch; }
+  .question .field { margin: 10px 0; }
+  .question .field > .label { display: block; font-size: 13px; font-weight: 600; color: var(--label); margin-bottom: 2px; }
+  .question .quote { margin: 2px 0 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--line);
+                     line-height: 1.65; overflow-wrap: anywhere; max-width: 78ch; }
   .question .quote p { margin: 0 0 6px; }
   .question .quote p:last-child { margin-bottom: 0; }
-  .question mark { background: var(--soft); color: inherit; padding: 0 1px; border-radius: 2px; }
-  .question .triple { font-size: 14px; margin: 3px 0; overflow-wrap: anywhere; }
+  .question mark { background: var(--soft); color: inherit; padding: 0 2px; border-radius: 2px; }
+  .question .triple { font-size: 14px; margin: 4px 0; overflow-wrap: anywhere; }
   .question .triple .inst { font-weight: 600; }
   .question .triple .cls, .question .triple .pred { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
-  .question .option { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; margin: 8px 0; }
-  .question .option .otitle { font-weight: 600; margin: 4px 0; }
-  .question .choice { border-left: 4px solid var(--sky); padding: 2px 12px; background: var(--sky-bg); border-radius: 0 6px 6px 0; }
+  .question .triple .cls { color: var(--muted); }
+  .question .option { margin: 12px 0; }
+  .question .option .otitle { font-weight: 600; margin: 0 0 2px; }
+  .question .option .prose p { margin: 2px 0 6px; }
+  .question .commentbox { margin-top: 20px; padding-top: 12px; }
+  .question details.forus { margin: 16px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--label); font-size: 13.5px; }
+  .question details.forus summary { cursor: pointer; font-weight: 600; color: var(--label); }
+  .question details.forus summary .meta { font-weight: 400; }
+  .question details.forus h5 { font-size: 13px; color: var(--label); margin: 14px 0 4px; }
+  .question details.forus p, .question details.forus li { line-height: 1.55; }
+  .question details.forus ul { margin: 4px 0; }
   a.term, a.term:visited { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
   a.term:hover { color: var(--navy); text-decoration-style: solid; }
   .groupname { color: var(--navy); font-size: 16px; margin: 14px 0 4px; }
-  .question details.affects { margin: 10px 0; padding: 6px 12px; border: 1px dashed var(--line); border-radius: 8px; }
-  .question details.affects summary { cursor: pointer; font-weight: 600; color: var(--navy); }
-  .question details.affects ul { margin: 4px 0; }
-  .question details.affects li { margin: 4px 0; }
   .terms tr.here td { background: var(--sky-bg) !important; }
 </style>
 </head>
@@ -696,8 +700,10 @@ const QUESTION_KIND = { "records and triples": "records and their classed triple
   "schema entry": "an entity class or predicate of the ground truth schema", "rule": "a rule of the annotation guidelines",
   "translation table rows": "rows of the translation table", "pipeline method": "a method of the pipeline",
   "general": "an idea, in general" };
-// Everything the answer may change (the question's Affects), compact and folded: the reader opens it if they wish.
-function affectsBox(q) {
+// The bottom of a question, folded and quiet: my bookkeeping, not needed to answer. What it is about, my notes, what
+// each option would change, everything the answer may change (its Affects: records by pool position, title and id,
+// classed triples, rows, entries, rules, pipeline methods), the pipeline's words it quotes, and the example's ids.
+function impactsBox(q) {
   const a = q.affects, n = (x, one, many) => `${x.length} ${x.length === 1 ? one : many}`;
   const parts = [a.records.length ? n(a.records, "record", "records") : null,
     a.triples.length ? n(a.triples, "classed triple", "classed triples") : null,
@@ -707,8 +713,14 @@ function affectsBox(q) {
     a.methods.length ? n(a.methods, "pipeline method", "pipeline methods") : null].filter(Boolean);
   const byPos = {};
   for (const t of a.triples) (byPos[t.position] = byPos[t.position] || []).push(t);
-  return el("details", { class: "affects" },
-    el("summary", {}, `What the answer may change: ${parts.join(", ")}`),
+  const ex = q.records[0];
+  return el("details", { class: "forus" },
+    el("summary", {}, "The answer to this question impacts:", el("span", { class: "meta" }, " my bookkeeping, not needed to answer")),
+    el("p", {}, `${q.entry} is about ${q.topic} (a question about ${QUESTION_KIND[q.question_kind]}).`),
+    q.notes.length ? [el("h5", {}, "My notes"), prose(q.notes)] : null,
+    q.options.length ? [el("h5", {}, "What each option would change"), q.options.map((o) => el("div", {},
+      el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose([{ ul: o.consequences }])))] : null,
+    el("h5", {}, `Everything the answer may change: ${parts.join(", ")}`),
     a.records.length ? field("Records (all tuning records)", el("ul", {}, a.records.map((r) => el("li", {},
       `Pool position ${r.position}: “${r.title}”`, el("span", { class: "meta nolink" }, ` (id ${r.id})`),
       byPos[r.position] ? el("div", {}, byPos[r.position].map((t) => [tripleLine(t),
@@ -716,45 +728,34 @@ function affectsBox(q) {
     a.rows.length ? field("Rows of the translation table (current or past schema)", el("ul", {}, a.rows.map((r) => el("li", {}, `${r.kind} ${r.crt}`)))) : null,
     a.entries.length ? field("Entries of the ground truth schema", el("ul", {}, a.entries.map((e) => el("li", {}, `${e.kind} ${e.entry}`)))) : null,
     a.rules.length ? field("Rules of the annotation guidelines", el("ul", {}, a.rules.map((r) => el("li", {}, `${r.section}, rule ${r.rule}`)))) : null,
-    a.methods.length ? field("Pipeline methods", el("ul", {}, a.methods.map((m) => el("li", {}, el("code", {}, m.path), `: ${m.what}`)))) : null);
+    a.methods.length ? field("Pipeline methods", el("ul", {}, a.methods.map((m) => el("li", {}, el("code", {}, m.path), `: ${m.what}`)))) : null,
+    q.methods.length ? [el("h5", {}, "The pipeline's words, quoted"), q.methods.map((m) => field(m.path, quoted(m.words)))] : null,
+    ex ? el("p", { class: "nolink" }, `The example is the record at pool position ${ex["pool position"]} (id ${ex["record id"]}), a tuning record.`) : null);
 }
 function questionBox(q) {
-  const [pk, pl] = PRIORITY[q.priority], [sk, sl] = STATUS[q.status];
+  const [, pl] = PRIORITY[q.priority], [, sl] = STATUS[q.status];
+  const marks = (r) => r.source_texts.map((s) => s.text);
   const card = el("section", { class: "mapbox question" + (has(q) ? " commented" : ""), id: `q-${q.entry}` },
-    el("div", { class: "qhead" }, el("span", { class: "qid nolink" }, q.entry), el("span", { class: "qtitle" }, q.title),
-       el("span", { class: `pill ${pk}` }, pl), el("span", { class: `pill ${sk}` }, sl), changedPill(q)),
-    el("div", { class: "meta" }, `About: ${q.topic} (a question about ${QUESTION_KIND[q.question_kind]})`),
-    el("h4", {}, "The question"), prose(q.question),
-    q.context.length ? [el("h4", {}, "Context"), prose(q.context)] : null,
-    affectsBox(q),
-    q.records.map((r) => el("div", { class: "rec" },
-      el("div", { class: "rechead" }, `An example: the record at pool position ${r["pool position"]}, a tuning record`),
-      el("div", { class: "meta nolink" }, `Its id in the catalog: ${r["record id"]}`),
-      field("Title", quoted(r.title, r.source_texts.map((s) => s.text))),
-      field("Notes", quoted(r.notes, r.source_texts.map((s) => s.text))),
-      field(r.source_texts.length > 1 ? "Source texts (marked above)" : "Source text (marked above)",
-            r.source_texts.map((s) => quoted(s.text))),
-      r.in_ground_truth
-        ? (r.triples.length ? field(r.triples.length > 1 ? "Its classed triples in the ground truth (entity classes and predicates of the ground truth schema)"
-                                                          : "Its classed triple in the ground truth (entity classes and predicate of the ground truth schema)",
-                                    r.triples.map(tripleLine)) : null)
-        : field("Not in the ground truth yet", el("p", {}, r.not_yet.replace(/^not yet:?\s*/, "")),
-                r.triples.length ? [el("div", { class: "meta" }, "The classed triples I have written for it so far:"), r.triples.map(tripleLine)] : null))),
-    q.schema.length ? [el("h4", {}, "The ground truth schema's definitions"),
-      q.schema.map((e) => field(`${e.kind} ${e.entry} (ground truth schema)`, quoted(e.definition)))] : null,
-    q.rows.length ? [el("h4", {}, "Rows of the translation table"),
-      q.rows.map((r) => field(`${r.kind} ${r.crt} (current or past schema) → ${r.gtt === D.mapping.none ? `${D.mapping.none}: nothing in the ground truth schema` : `${r.gtt} (ground truth schema)`}` +
-                              (r.swap ? ", subject and object swapped" : "") + "; the row's definition of " + r.crt + ":", quoted(r.definition)))] : null,
-    q.rules.length ? [el("h4", {}, "The annotation guidelines' rules"),
-      q.rules.map((r) => field(`${r.section}, rule ${r.rule}`, quoted(r.words)))] : null,
-    q.methods.length ? [el("h4", {}, "The pipeline's methods"),
-      q.methods.map((m) => field(m.path, quoted(m.words)))] : null,
-    q.options.length ? [el("h4", {}, "The options I see"), q.options.map((o) => el("div", { class: "option" },
-      el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose(o.body),
-      el("div", { class: "label meta" }, "Consequences:"), prose([{ ul: o.consequences }])))] : null,
-    el("h4", {}, "My current choice"), el("div", { class: "choice" }, prose(q.choice)),
+    el("h3", { class: "qheading" }, el("span", { class: "qid nolink" }, q.entry), q.title),
+    el("div", { class: "qmeta nolink" }, pl + (q.status === "open" ? "" : ` · ${sl}`), changedPill(q)),
+    prose(q.question),
+    q.context.length ? prose(q.context) : null,
+    q.records.map((r) => [el("h4", {}, "An example"),
+      field("Its title", quoted(r.title, marks(r))),
+      field("Its notes (the words this question is about are highlighted)", quoted(r.notes, marks(r))),
+      r.triples.length ? field(r.in_ground_truth ? "The facts I wrote down from these words" : "The facts I have written down from these words so far (a draft, not checked yet)",
+                               r.triples.map(tripleLine)) : null]),
+    q.schema.length || q.rows.length || q.rules.length ? [el("h4", {}, "The definitions and rules this is judged by"),
+      q.schema.map((e) => field(`${e.kind} ${e.entry} (ground truth schema)`, quoted(e.definition))),
+      q.rows.map((r) => field(`Translation table: ${r.kind} ${r.crt} (current or past schema) → ${r.gtt === D.mapping.none ? `${D.mapping.none}: nothing in the ground truth schema` : `${r.gtt} (ground truth schema)`}` +
+                              (r.swap ? ", subject and object swapped" : "") + "; the row's definition of " + r.crt + ":", quoted(r.definition))),
+      q.rules.map((r) => field(`Annotation guidelines, ${r.section}, rule ${r.rule}`, quoted(r.words)))] : null,
+    q.options.length ? [el("h4", {}, "The choices I see (pick one, or tell me another)"), q.options.map((o) => el("div", { class: "option" },
+      el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose(o.body)))] : null,
+    el("h4", {}, "My current reading"), prose(q.reading),
     q.answer.length ? [el("h4", {}, "The answer"), prose(q.answer)] : null,
-    commentBox(q, `Your answer or comment on ${q.entry}`));
+    commentBox(q, `Your answer or comment on ${q.entry}`),
+    impactsBox(q));
   linkTerms(card);
   return card;
 }
@@ -774,11 +775,11 @@ function drawQuestions() {
       .map(([v, t]) => el("option", { value: v, selected: st.priority === v }, t)));
   const groups = at === null ? PRIORITIES.map((p) => [p, shown.filter((q) => q.priority === p)]).filter(([, l]) => l.length) : null;
   const intro = el("section", { class: "card" }, el("h2", {}, "Questions"),
-    el("p", { class: "meta" }, "What I am not sure about and would like an expert's answer to, most urgent first. Each question is " +
-      "written out whole: one record as its example, quoted in full, with the passages concerned marked, and its classed triples; " +
-      "the definitions and rules it touches, quoted; what the answer may change (every record and classed triple, folded); " +
-      "the options I see, each with its consequences; and my current choice. " +
-      "Write your answer in the box under a question; it is sent with your other comments."),
+    el("p", { class: "meta" }, "What I am not sure about and would like an expert's answer to, most urgent first. Each question " +
+      "shows what you need to answer it: the question, one record as an example (its title and notes, the words concerned " +
+      "highlighted), the definitions and rules it is judged by, the choices I see, and my current reading. " +
+      "Write your answer in the box under a question; it is sent with your other comments. Under the box, folded, is my own " +
+      "bookkeeping (what the answer would change in my files); you don't need it to answer."),
     el("p", { class: "meta" }, PRIORITIES.map((p, i) => `${i ? " · " : ""}${PRIORITY[p][1]}: ${count(p)}`).join("") +
       (closedN && !st.closed ? ` · ${closedN} answered or withdrawn, not shown` : "")));
   linkTerms(intro);
@@ -827,8 +828,8 @@ function drawHome() {
       "and the questions I would like an expert's answer to."),
     el("h3", {}, "Questions"),
     el("p", {}, `${nOpen} question${nOpen === 1 ? "" : "s"} I would like an expert's answer to, most urgent first, each written out ` +
-      "whole, so it can be read on its own: one record as its example, quoted, the definitions and rules it touches, the options " +
-      "I see, and my current choice. Your answer goes in the box under each one."),
+      "whole, so it can be read on its own: one record as its example, quoted, the definitions and rules it is judged by, the " +
+      "choices I see, and my current reading. Your answer goes in the box under each one."),
     el("h3", {}, "Ground truth schema"),
     el("p", {}, `The ${nSchema} the ground truth may use, each with a one-line definition. An entity class is a kind of thing a ` +
       "subject instance or object instance can be (Instrument); a predicate is a kind of relationship (ABOARD). Under a predicate " +

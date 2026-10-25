@@ -16,16 +16,10 @@ The file's format (the whole of it: helpers/review_page.md, *The questions file*
     - question kind: records and triples | schema entry | rule | translation table rows | pipeline method | general
                                           (what the question is about: QUESTION_KINDS)
     - topic: <a few words>
+      For the expert (EXPERT_SECTIONS: what they need to answer, shown at the top):
     ### The question                      (required) prose
     ### Context                           (optional) prose
-    ### Affects                           (required) fields, one per thing the answer may change (AFFECTS):
-                                          record at pool position <n>: <record id>
-                                          classed triple of the record at pool position <n>: "S" (SubjectClass) P "O" (ObjectClass)
-                                          translation table row: <entity class|predicate> <component class, current or past schema>
-                                          ground truth schema entry: <entity class|predicate> <component class>
-                                          rule: <section of the guidelines>, rule <n>
-                                          pipeline method: <path in the repository>: <what of it>
-    ### Record at pool position <n>       (at most one: the clearest example for the decision; every other
+    ### Example record                    (at most one: the clearest example for the decision; every other
                                           record goes in Affects) fields: record id, pool position, title, notes,
                                           in the ground truth (only "not yet …"), source text (1 or more),
                                           classed triple (any number): "S" (SubjectClass) PREDICATE "O" (ObjectClass)
@@ -34,15 +28,29 @@ The file's format (the whole of it: helpers/review_page.md, *The questions file*
                                           past schema> -> <component class of the ground truth schema, or (none)>
                                           [(swap subject and object)]: <the row's definition, current or past schema>
     ### Annotation guidelines             (optional) fields: <section>, rule <n>: <the rule's words, quoted>
-    ### Pipeline method                   (optional) fields: <path in the repository>: <words quoted from that file>
-    ### Options                           (optional) "#### Option <k>: <title>", prose, then a line "Consequences:"
-                                          and one "- " item per consequence
-    ### My current choice                 (required) prose
+    ### Options                           (optional) "#### Option <k>: <title>", then prose: the choice, in plain words
+    ### My current reading                (required) prose
     ### The answer                        (required when answered, and only then) prose
+      For me (shown folded, at the bottom, under "The answer to this question impacts:"):
+    ### My notes                          (optional) prose: what I have annotated, what the ground truth does meanwhile
+    ### Consequences                      (required with Options, and only then) "#### Option <k>: <the same title>",
+                                          then one "- " item per consequence
+    ### Affects                           (required) fields, one per thing the answer may change (AFFECTS):
+                                          record at pool position <n>: <record id>
+                                          classed triple of the record at pool position <n>: "S" (SubjectClass) P "O" (ObjectClass)
+                                          translation table row: <entity class|predicate> <component class, current or past schema>
+                                          ground truth schema entry: <entity class|predicate> <component class>
+                                          rule: <section of the guidelines>, rule <n>
+                                          pipeline method: <path in the repository>: <what of it>
+    ### Pipeline method                   (optional) fields: <path in the repository>: <words quoted from that file>
 
 in that order. A field is a line "- <label>: <value>"; a line indented by two spaces continues it (a blank line
 between two such lines is a paragraph break). Prose is paragraphs, and "- " lists, with `code`, **bold**, *italic*
 and [words](link); a link to docs/terminology.md names a term the page links to its Terms view.
+
+What the expert reads (the title, the expert's parts, the example's title and notes, the quotes) never says "pool
+position" or a record id: another record is named by its title, in quotes, after the word "record" ('the record
+"<title>"'), and check_questions checks that each title so named is one of a record Affects names.
 
 check_questions compares every quote with its source as it is now: the record's title and notes
 (020's records.jsonl, spaces aside), its pool position and part (030's splits.json: a held-out record is refused,
@@ -50,7 +58,8 @@ since the page may show only tuning records), each source text (in the record's 
 triple (one of the record's ground truth triples, with that source text, unless the record says "in the ground
 truth: not yet"), each definition (annotations/ground_truth_schema.txt), each row of the translation table
 (annotations/component_class_mapping.csv: its target, its swap, its definition), each rule's words
-(annotations/guidelines.md), and each pipeline method's words (in the file named). It checks that "Affects" names
+(annotations/guidelines.md), each pipeline method's words (in the file named), and each record named by its
+title in what the expert reads (the title of a record Affects names). It checks that "Affects" names
 only things that exist (tuning records at their pool positions; ground truth triples; rows; entries; rules; paths),
 and that it is complete: a ground truth schema entry it names brings every ground truth triple that uses it and
 every row of the translation table that translates to it, and a classed triple brings its record.
@@ -83,10 +92,16 @@ QUESTION_KINDS = ("records and triples", "schema entry", "rule", "translation ta
 #: The fields of "### Affects": what an answer may change.
 AFFECTS = ("record at pool position", "classed triple of the record at pool position", "translation table row",
            "ground truth schema entry", "rule", "pipeline method")
-#: The subsections of a question, in the order they must come: (heading, how many: "1", "?" or "*").
-SECTIONS = [("The question", "1"), ("Context", "?"), ("Affects", "1"), ("Record at pool position", "?"),
-            ("Ground truth schema", "?"), ("Translation table", "?"), ("Annotation guidelines", "?"),
-            ("Pipeline method", "?"), ("Options", "?"), ("My current choice", "1"), ("The answer", "?")]
+#: The subsections of a question, in the order they must come: (heading, how many: "1" or "?"). The first ones
+#: (EXPERT_SECTIONS) are what the expert needs to answer; the rest are my bookkeeping, which the page folds away.
+SECTIONS = [("The question", "1"), ("Context", "?"), ("Example record", "?"), ("Ground truth schema", "?"),
+            ("Translation table", "?"), ("Annotation guidelines", "?"), ("Options", "?"), ("My current reading", "1"),
+            ("The answer", "?"), ("My notes", "?"), ("Consequences", "?"), ("Affects", "1"), ("Pipeline method", "?")]
+EXPERT_SECTIONS = tuple(name for name, _ in SECTIONS[:SECTIONS.index(("My notes", "?"))])
+#: What the expert reads never names a record this way: by its pool position, or by its id.
+NOT_FOR_THE_EXPERT = re.compile(r"pool\s+positions?|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
+#: A record named by its title in what the expert reads: 'the record "<title>"' (or 'records "<a>" and "<b>"').
+NAMED_RECORDS = re.compile(r'\brecords?\s+((?:"[^"\n]+"(?:,\s+(?:and\s+|or\s+)?|\s+(?:and|or)\s+)?)+)')
 RECORD_FIELDS = ("record id", "pool position", "title", "notes", "in the ground truth", "source text", "classed triple")
 TRIPLE = re.compile(r'^"(.+)" \((\w+)\) ([A-Z][A-Z0-9_]*) "(.+)" \((\w+)\)$')
 FORMAT = "the format: helpers/review_page.md, *The questions file*"
@@ -261,7 +276,7 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
     names = [s for s, _ in SECTIONS]
 
     def kind(h):
-        return "Record at pool position" if h.startswith("Record at pool position") else h
+        return h
     order = 0
     for s in subs:
         k = kind(s["heading"])
@@ -273,7 +288,7 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
         if [kind(o["heading"]) for o in subs[:subs.index(s)]].count(k):
             raise err(s["line"], f'"### {s["heading"]}" is there twice' + (
                 ': a question shows one record, the clearest example for its decision, and lists every other '
-                'record and classed triple it affects under "### Affects"' if k == "Record at pool position" else ""))
+                'record and classed triple it affects under "### Affects"' if k == "Example record" else ""))
         order = names.index(k)
     have = [kind(s["heading"]) for s in subs]
     for name, many in SECTIONS:
@@ -282,28 +297,28 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
     if (status == "answered") != ("The answer" in have):
         raise err(at[0] - 1, 'an answered question has a "### The answer" part, and only an answered one'
                              + (f' (its status is "{status}")' if status != "answered" else ""))
+    if ("Options" in have) != ("Consequences" in have):
+        raise err(at[0] - 1, 'a question with "### Options" has "### Consequences" (what each option changes, for me), '
+                             'and only one with options')
     terms = []
     q = {"id": qid, "number": int(qid[1:]), "title": title, "status": status, "priority": priority,
          "question_kind": qkind, "topic": head["topic"][0], "line": at[0] - 1, "records": [], "schema": [], "rows": [],
-         "rules": [], "methods": [], "options": [], "context": [], "answer": [],
+         "rules": [], "methods": [], "options": [], "context": [], "answer": [], "notes": [],
          "affects": {"records": [], "triples": [], "rows": [], "entries": [], "rules": [], "methods": []}}
     for s in subs:
         k = kind(s["heading"])
-        if k in ("The question", "Context", "My current choice", "The answer"):
+        if k in ("The question", "Context", "My current reading", "The answer", "My notes"):
             try:
                 blocks = _prose(s["lines"], terms)
             except ValueError as e:
                 raise err(s["line"], f'in "### {s["heading"]}", {e}') from None
             if not blocks:
                 raise err(s["line"], f'"### {s["heading"]}" is empty')
-            q[{"The question": "question", "Context": "context", "My current choice": "choice",
-               "The answer": "answer"}[k]] = blocks
-        elif k == "Record at pool position":
-            m = re.fullmatch(r"Record at pool position (\d+)", s["heading"])
-            if not m:
-                raise err(s["line"], f'"### {s["heading"]}": a record\'s part is "### Record at pool position <n>"')
+            q[{"The question": "question", "Context": "context", "My current reading": "reading",
+               "The answer": "answer", "My notes": "notes"}[k]] = blocks
+        elif k == "Example record":
             got = _fields(s["lines"], s["at"], err, RECORD_FIELDS)
-            rec = {"line": s["line"], "heading_position": int(m.group(1)), "source_texts": [], "triples": [],
+            rec = {"line": s["line"], "source_texts": [], "triples": [],
                    "in_ground_truth": True, "not_yet": ""}
             for label, value, n in got:
                 if label in ("record id", "pool position", "title", "notes", "in the ground truth") and label in rec:
@@ -336,9 +351,6 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
             for need in ("record id", "pool position", "title", "notes"):
                 if need not in rec:
                     raise err(s["line"], f'this record has no "- {need}: …" field')
-            if rec["pool position"] != rec["heading_position"]:
-                raise err(s["line"], f'the heading says pool position {rec["heading_position"]}, the field '
-                                     f'{rec["pool position"]}')
             if not rec["source_texts"]:
                 raise err(s["line"], 'a record has at least one "- source text: …": the passage the question is about')
             q["records"].append(rec)
@@ -366,6 +378,8 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
                 q["rules"].append({"section": m.group(1).strip(), "rule": int(m.group(2)), "words": value, "line": n})
         elif k == "Options":
             q["options"] = _options(s, err, terms)
+        elif k == "Consequences":
+            _consequences(q, s, err, terms)
         elif k == "Affects":
             _affects(q, _fields(s["lines"], s["at"], err), err)
             if not any(q["affects"].values()):
@@ -374,12 +388,13 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
             for label, value, n in _fields(s["lines"], s["at"], err):
                 q["methods"].append({"path": label, "words": value, "line": n})
     q["terms"] = terms
+    _for_the_expert(q, subs, title, err)
     answer_at = next((x["line"] for x in subs if x["heading"] == "The answer"), at[-1] + 1 if at else 0)
     body = [l for l, n in zip(lines, at) if n < answer_at and not re.match(r"^- (status|priority): ", l)]
     q["fingerprint"] = _fingerprint([f"## {qid}: {title}"] + body)
     q["shown"] = f"{qid}: {title} | fingerprint {q['fingerprint']}"
     q["search"] = squeeze(" ".join([qid, title, q["topic"], _text(q["question"]), _text(q["context"]),
-                                    _text(q["choice"]), _text(q["answer"])]
+                                    _text(q["reading"]), _text(q["answer"])]
                                    + [f"{r['title']} {r['notes']} {r['record id']}" for r in q["records"]]
                                    + [f"{e['entry']} {e['definition']}" for e in q["schema"]]
                                    + [f"{r['crt']} {r['gtt']} {r['definition']}" for r in q["rows"]]
@@ -431,7 +446,8 @@ def _affects(q: dict, fields: list, err) -> None:
                          f'schema entry, rule, pipeline method')
 
 
-def _options(s: dict, err, terms: list) -> list:
+def _numbered(s: dict, err, what: str) -> list:
+    """[{number, title, lines: [(line, n)], line}]: the "#### Option <k>: <title>" parts of a subsection."""
     opts, cur = [], None
     for line, n in zip(s["lines"], s["at"]):
         if line.startswith("#### "):
@@ -444,27 +460,59 @@ def _options(s: dict, err, terms: list) -> list:
             opts.append(cur)
         elif cur is None:
             if line.strip():
-                raise err(n, 'under "### Options", each option starts with "#### Option <k>: <short title>"')
+                raise err(n, f'under "### {what}", each option starts with "#### Option <k>: <short title>"')
         else:
             cur["lines"].append((line, n))
+    return opts
+
+
+def _options(s: dict, err, terms: list) -> list:
+    opts = _numbered(s, err, "Options")
     if len(opts) < 2:
         raise err(s["line"], '"### Options" has fewer than two options ("#### Option <k>: …")')
     out = []
     for o in opts:
-        split = next((i for i, (l, _) in enumerate(o["lines"]) if l.strip() == "Consequences:"), None)
-        if split is None:
-            raise err(o["line"], f'option {o["number"]} has no line "Consequences:" followed by one "- " item per '
-                                 f"consequence")
-        body = _prose([l for l, _ in o["lines"][:split]], terms)
-        rest = [l for l, _ in o["lines"][split + 1:]]
-        cons = _prose(rest, terms)
+        said = next((n for l, n in o["lines"] if l.strip() == "Consequences:"), None)
+        if said is not None:
+            raise err(said, f'option {o["number"]}: its consequences go under "### Consequences", for me, not here '
+                            f'(the expert reads the options as plain choices)')
+        body = _prose([l for l, _ in o["lines"]], terms)
         if not body:
-            raise err(o["line"], f"option {o['number']} says nothing before its consequences: what the option is")
-        if len(cons) != 1 or "ul" not in cons[0]:
-            raise err(o["line"], f'option {o["number"]}: after "Consequences:" comes one "- " item per consequence, '
-                                 f"and nothing else")
-        out.append({"number": o["number"], "title": o["title"], "body": body, "consequences": cons[0]["ul"]})
+            raise err(o["line"], f"option {o['number']} says nothing: what the option is, in plain words")
+        out.append({"number": o["number"], "title": o["title"], "body": body, "consequences": [], "line": o["line"]})
     return out
+
+
+def _consequences(q: dict, s: dict, err, terms: list) -> None:
+    """Each option's consequences, from "### Consequences": the same options, in the same order, with the same titles."""
+    opts = _numbered(s, err, "Consequences")
+    if [(o["number"], o["title"]) for o in opts] != [(o["number"], o["title"]) for o in q["options"]]:
+        raise err(s["line"], '"### Consequences" has one "#### Option <k>: <title>" per option of "### Options", '
+                             'the same numbers and titles, in the same order')
+    for o, option in zip(opts, q["options"]):
+        cons = _prose([l for l, _ in o["lines"]], terms)
+        if len(cons) != 1 or "ul" not in cons[0]:
+            raise err(o["line"], f'option {o["number"]}\'s consequences are one "- " item each, and nothing else')
+        option["consequences"] = cons[0]["ul"]
+
+
+def _for_the_expert(q: dict, subs: list, title: str, err) -> None:
+    """What the expert reads never says "pool position" or a record id (NOT_FOR_THE_EXPERT); q["named_records"]:
+    each record it names by its title, with the line, for check_questions."""
+    q["named_records"] = []
+    texts = [(q["line"], title)]
+    for s in subs:
+        if s["heading"] in EXPERT_SECTIONS:
+            texts += [(n, l) for l, n in zip(s["lines"], s["at"])
+                      if not (s["heading"] == "Example record" and re.match(r"^- (record id|pool position): ", l))]
+    for n, line in texts:
+        m = NOT_FOR_THE_EXPERT.search(line)
+        if m:
+            raise err(n, f'"{m.group(0)}" is in what the expert reads: name a record by its title, in quotes '
+                         f'(the record "<title>"), and write a triple out; pool positions and ids go under "### My '
+                         f'notes" or "### Affects"')
+        for names in NAMED_RECORDS.finditer(line):
+            q["named_records"] += [{"title": t, "line": n} for t in re.findall(r'"([^"\n]+)"', names.group(1))]
 
 
 def read_questions(path: Path = QUESTIONS_PATH) -> list:
@@ -524,7 +572,7 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
                     mapping_path: Path = MAPPING_PATH) -> list:
     """["…"]: every quote of the questions that isn't what its source says now, and every record that isn't a
     tuning record; empty when all agree."""
-    problems, pool, gt = [], {}, None
+    problems, pool, gt, records = [], {}, None, None
     where = lambda q, n: f"{_rel(questions_path)}, line {n} ({q['id']})"           # noqa: E731
     if any(q["records"] for q in questions):
         missing = [p for p in (records_path, splits_path) if not Path(p).exists()]
@@ -628,6 +676,15 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
                 problems.append(f"{where(q, meth['line'])}: these words aren't in {meth['path']} as it is now: "
                                 f"quote them exactly.")
         problems += _check_affects(q, where, pool, gt, schema, mapping, rules, ground_truth_dir)
+        if q["named_records"]:
+            if records is None:
+                records = load_records(records_path) if Path(records_path).exists() else {}
+            titles = {squeeze((records.get(r["id"]) or {}).get("title")) for r in q["affects"]["records"]}
+            for r in q["named_records"]:
+                if squeeze(r["title"]) not in titles:
+                    problems.append(f"{where(q, r['line'])}: \"{r['title']}\" follows the word \"record\", but isn't "
+                                    f"the title of a record \"Affects\" names (020's records.jsonl, spaces aside): quote "
+                                    f"the title exactly, and name the record in \"Affects\".")
         for rule in q["rules"]:
             now = rules.get((rule["section"], rule["rule"]))
             if now is None:
