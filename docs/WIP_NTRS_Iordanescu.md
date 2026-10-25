@@ -34,7 +34,7 @@ The WebNLG+ 2020 shared task [4] had a text-to-RDF track that scored extracted t
 
 A reference set drafted by a model and corrected by a person brings its own problems. In controlled experiments, automatic pre-annotation improved annotation speed and quality but also introduced biases that annotators should be warned about [7]. Annotators shown a model's suggestions tend to keep them, which raises the measured performance of models evaluated on those labels [8]. And the errors of different language models are correlated, even across providers [9], so an extraction model may miss the same facts as the drafting model.
 
-When the schema is induced rather than given, a ground truth triple can be missed for three different reasons: the current schema has no entity class or predicate that can express it, extraction misses or misstates it, or a row of the translation table translates it wrongly. With a schema given in advance, as in [1] and [4], only the second can happen. The recall upper bound and recall within reach (section 6.2) separate the first reason from the second, and checking the translation table limits the third. I did not find this separation in the evaluations cited above.
+When the schema is induced rather than given, a ground truth triple can be missed for three different reasons: the current schema has no entity class or predicate that can express it, extraction misses or misstates it, or a row of the translation table translates it wrongly. With a schema given in advance, as in [1] and [4], only the second can happen. The recall upper bound and recall within reach (section 6.2) separate the first reason from the second, and checking the translation table limits the third. None of the evaluations cited above splits the misses into these three causes.
 
 ### 2.4 Statistics for small evaluation sets
 
@@ -73,7 +73,7 @@ Step 010 requests pages sorted by creation time, so that records added or edited
 
 If the records that judge extraction had also shaped the schema, the schema's metrics would flatter it. Step 030 therefore keeps two disjoint lists.
 
-The ground truth candidates pool (the pool) holds 1,000 records drawn once, on 2026-09-21, from the 36,323 records of the catalog then. The draw was stratified by maintainer with proportional allocation (seed 1000), with 19 strata: 18 large maintainers on their own, and one stratum combining the 404 maintainers too small to earn two places. The pool's rows were then shuffled, so the first k records are a fair sample of the catalog for any k, and annotation can stop anywhere without biasing the sample. Of the 1,000, 999 remain in the 2026-10-01 harvest.
+The ground truth candidates pool (the pool) holds 1,000 records drawn once, on 2026-09-21, from the 36,323 records of the catalog then. The draw was stratified by maintainer with proportional allocation [14] (seed 1000), with 19 strata: 18 large maintainers on their own, and one stratum combining the 404 maintainers too small to earn two places. The pool's rows were then shuffled, so the first k records are a fair sample of the catalog for any k, and annotation can stop anywhere without biasing the sample. Of the 1,000, 999 remain in the 2026-10-01 harvest.
 
 The induction candidates are every other record with text, 35,407 records across 422 maintainers, each maintainer's records in a fixed random order. Since both orders are fixed, taking more records later keeps those already taken, and model answers already paid for stay valid.
 
@@ -83,7 +83,7 @@ Step 030 also fixes, before any evaluation, which pool records are tuning and wh
 
 Step 040 learns the schema from the first 15 induction candidates of each of the 10 largest maintainers, 150 texts in all, in seven stages. The model lists every fact each text states as a triple instance (subject, predicate, object), with no schema given, each with its source text, the shortest passage that states it; it also names the describes class, the entity class of the thing the record's title names, such as Dataset. Code discards any triple instance whose source text is not in the record's text. The model then labels each subject and object instance with an entity class and each predicate instance with a predicate, in batches of 80 that are each shown the labels chosen so far; merges labels that mean the same thing, seeing every label at once; and writes a one-sentence definition of each entity class and predicate, or says it is too vague. Code counts each schema entry's support, the number of distinct texts it was found in, and the maintainers those texts came from, and builds the schema from the counts: an entry enters if its support reaches a minimum (currently 1) and it was not judged too vague. Every entry left out is kept with its reason.
 
-The report also gives a saturation curve: the expected number of schema entries after k of the 150 texts, averaged exactly over every order in which the texts could have been read. It is the sample-based species accumulation curve of ecology [14], with a text as a sample and a schema entry as a species.
+The report also gives a saturation curve: the expected number of schema entries after k of the 150 texts, averaged exactly over every order in which the texts could have been read. It is the sample-based species accumulation curve of ecology [15], with a text as a sample and a schema entry as a species.
 
 ### 4.4 Annotation (050)
 
@@ -129,13 +129,13 @@ For each record, each translated extracted triple is then paired with at most on
 
 ### 6.2 Metrics
 
-Counts are summed over all evaluated records of a part before dividing (micro-averaging [15]). Each record's describes triple is compared only on its describes class.
+Counts are summed over all evaluated records of a part before dividing (micro-averaging [16]). Each record's describes triple is compared only on its describes class.
 
 - Precision: the proportion of translated extracted triples that are in a pair.
 - Recall: the proportion of ground truth triples that are in a pair.
 - F1: the harmonic mean of precision and recall.
 - Entity-class accuracy: the proportion of pairs that are strict, overall and by slot.
-- Recall upper bound: the proportion of ground truth triples whose predicate some checked row of the translation table translates to, which is the most recall the current schema allows. Recall divided by it, recall within reach, measures extraction on what the schema can express. A low upper bound points at the schema; a high upper bound with low recall within reach points at extraction.
+- Recall upper bound: the proportion of ground truth triples whose predicate some checked row of the translation table translates to, which is the most recall the current schema allows, as the recall of an early stage bounds a whole pipeline's: "candidates that are not generated at all can never be recovered by downstream processes" [17]. Recall divided by it, recall within reach, measures extraction on what the schema can express. A low upper bound points at the schema; a high upper bound with low recall within reach points at extraction.
 - Describes accuracy: how often extraction names a record's describes class correctly, next to what always naming the most common describes class would score.
 
 Each is reported at the exact and partial levels, with and without the strict requirement, per part and per stratum.
@@ -192,10 +192,10 @@ The next step is the first end-to-end run: drafting and correcting ground truth 
 
 - a setting that bypasses the answer cache, so one setup can be run several times and its noise measured before any difference is called an effect;
 - experiments on step 040's sample and minimum support, and on leaving patterns out of the extraction prompt;
-- about 10 records annotated from scratch, to measure how far drafting steers annotation, and a second annotator on a sample, to measure agreement [16];
-- precision and recall per predicate and per entity class [17];
-- for step 080, keeping each extracted triple apart from the graph built from it, so the graph can be rebuilt without asking a model again [17]; linking names to reference lists such as NASA's list of missions; and a set of questions the graph should answer;
-- describing the catalog records with DCAT 3, the W3C vocabulary for data catalogs [18], once it is worked out what that would change.
+- about 10 records annotated from scratch, to measure how far drafting steers annotation, and a second annotator on a sample, to measure agreement [18];
+- precision and recall per predicate and per entity class [19];
+- for step 080, keeping each extracted triple apart from the graph built from it, so the graph can be rebuilt without asking a model again [19]; linking names to reference lists such as NASA's list of missions; and a set of questions the graph should answer;
+- describing the catalog records with DCAT 3, the W3C vocabulary for data catalogs [20], once it is worked out what that would change.
 
 The held-out part will be evaluated once, at the end, with the pipeline frozen, and that is the number this project will report.
 
@@ -231,12 +231,16 @@ I thank my mentors, Jennifer Wei and Phillip Michael, for their guidance through
 
 [13] T. Hastie, R. Tibshirani, and J. Friedman, *The Elements of Statistical Learning*, 2nd ed., section 7.2. Springer, 2009.
 
-[14] N. J. Gotelli and R. K. Colwell, "Estimating species richness," in A. E. Magurran and B. J. McGill (eds.), *Biological Diversity: Frontiers in Measurement and Assessment*, ch. 4. Oxford University Press, 2011.
+[14] W. G. Cochran, *Sampling Techniques*, 3rd ed., ch. 5. John Wiley & Sons, 1977.
 
-[15] C. D. Manning, P. Raghavan, and H. Schütze, *Introduction to Information Retrieval*, sections 8.3 and 13.6. Cambridge University Press, 2008. https://nlp.stanford.edu/IR-book/
+[15] N. J. Gotelli and R. K. Colwell, "Estimating species richness," in A. E. Magurran and B. J. McGill (eds.), *Biological Diversity: Frontiers in Measurement and Assessment*, ch. 4. Oxford University Press, 2011.
 
-[16] G. Hripcsak and A. S. Rothschild, "Agreement, the F-Measure, and Reliability in Information Retrieval," *Journal of the American Medical Informatics Association*, 12(3):296–298, 2005. doi:10.1197/jamia.M1733
+[16] C. D. Manning, P. Raghavan, and H. Schütze, *Introduction to Information Retrieval*, sections 8.3 and 13.6. Cambridge University Press, 2008. https://nlp.stanford.edu/IR-book/
 
-[17] A. Negro, G. Futia, V. Kůs, and F. Montagna, *Knowledge Graphs and LLMs in Action*. Manning, 2026.
+[17] G. Pink, J. Nothman, and J. R. Curran, "Analysing recall loss in named entity slot filling," in *Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing (EMNLP)*, pp. 820–830, 2014. https://aclanthology.org/D14-1089/
 
-[18] R. Albertoni, D. Browning, S. Cox, A. Gonzalez Beltran, A. Perego, and P. Winstanley (eds.), "Data Catalog Vocabulary (DCAT) - Version 3," W3C Recommendation, 22 August 2024. https://www.w3.org/TR/2024/REC-vocab-dcat-3-20240822/
+[18] G. Hripcsak and A. S. Rothschild, "Agreement, the F-Measure, and Reliability in Information Retrieval," *Journal of the American Medical Informatics Association*, 12(3):296–298, 2005. doi:10.1197/jamia.M1733
+
+[19] A. Negro, G. Futia, V. Kůs, and F. Montagna, *Knowledge Graphs and LLMs in Action*. Manning, 2026.
+
+[20] R. Albertoni, D. Browning, S. Cox, A. Gonzalez Beltran, A. Perego, and P. Winstanley (eds.), "Data Catalog Vocabulary (DCAT) - Version 3," W3C Recommendation, 22 August 2024. https://www.w3.org/TR/2024/REC-vocab-dcat-3-20240822/
