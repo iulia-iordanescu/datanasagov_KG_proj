@@ -76,11 +76,11 @@ Undecided, leaning towards option 2, a closed list, if the answers to (a) and (d
 
 ### My notes
 
-I have annotated the records at [pool positions](../docs/terminology.md#4-ground-truth-and-samples) 0 to 5, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and I am annotating the one at pool position 6 (not in the ground truth yet). Of these seven, five state a spatial representation: pool position 2 ("5 minutes of swath data": "swath"), 3 ("Polar-Gridded"), 4 ("spatially gridded (L3)": "spatially gridded"), 5 ("These data are maps": "map") and 6 ("gridded Level 2 product": "gridded"). The example is the one at pool position 3; all five, with their classed triples, are listed under Affects.
+I have annotated the records at [pool positions](../docs/terminology.md#4-ground-truth-and-samples) 0 to 5, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and I have now also annotated the one at pool position 6. Of these seven, five state a spatial representation: pool position 2 ("5 minutes of swath data": "swath"), 3 ("Polar-Gridded"), 4 ("spatially gridded (L3)": "spatially gridded"), 5 ("These data are maps": "map") and 6 ("gridded Level 2 product": "gridded"). The example is the one at pool position 3; all five, with their classed triples, are listed under Affects.
 
 Until the questions are answered, the ground truth keeps each record's own words: the record at pool position 4 keeps "spatially gridded" as written (rule 1, and rule 9: "A qualifier stays in the instance, as written, if it is any other kind"). The record at pool position 3 states no area, so its ground truth has none.
 
-Pending facts, for the record at pool position 6 (4c64f3ed, not in the ground truth yet):
+Pending facts, for the record at pool position 6 (4c64f3ed, in the ground truth now without them):
 
 - pending fact: its fact 14, "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) BINNED_INTO "SIN Grid" or "Global 1km SIN Grid" (Grid), left out for now; added if the answer to (c) says a record's grid is a fact of its own (and which wording).
 
@@ -195,7 +195,7 @@ Option 1, as the ground truth does now, because it follows the record's own word
 
 ### My notes
 
-Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far, six name a mission or a spacecraft, at pool positions 1 to 6 (the one at pool position 6 is not in the ground truth yet: I am annotating it); all their classed triples that the answer may change are listed under Affects. The example is the record at pool position 1; the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" is at pool position 5.
+Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far, six name a mission or a spacecraft, at pool positions 1 to 6 (the one at pool position 6 is in the ground truth now); all their classed triples that the answer may change are listed under Affects. The example is the record at pool position 1; the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" is at pool position 5.
 
 ### Consequences
 
@@ -357,7 +357,7 @@ Option 1, because the two definitions already separate what is measured from the
 
 ### My notes
 
-Six of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far hold a PhysicalQuantity or a Variable, at pool positions 1 to 6 (the one at pool position 6 is not in the ground truth yet: I am annotating it); their classed triples that say what the dataset holds, and what a value was computed from, are listed under Affects. The example is the record at pool position 4. The others named: pool position 1 (the "Global Gravity" sentence), 2 (the NDSI), 3 (the salinity retrievals), 5 (the count rates), 6 (the aerosol optical depth, the atmospheric properties and the view geometry).
+Six of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far hold a PhysicalQuantity or a Variable, at pool positions 1 to 6 (the one at pool position 6 is in the ground truth now); their classed triples that say what the dataset holds, and what a value was computed from, are listed under Affects. The example is the record at pool position 4. The others named: pool position 1 (the "Global Gravity" sentence), 2 (the NDSI), 3 (the salinity retrievals), 5 (the count rates), 6 (the aerosol optical depth, the atmospheric properties and the view geometry).
 
 Approved on 2026-10-25, for the record at pool position 6 (fact 13): HAS_MEASUREMENTS_OF "atmospheric properties" and HAS_MEASUREMENTS_OF "view geometry", source text "The MCD19A2N product provides the atmospheric properties and view geometry"; sub-question (g) asks the two doubts about them.
 
@@ -541,7 +541,7 @@ Options 2 to 4 are about the predicates, options 5 and 6 about the entity classe
 
 ### My notes
 
-Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), at pool positions 1, 3 and 4, have ground truth that states several of these relationships; every classed triple the answer may change is listed under Affects. The example is the record at pool position 4. None of the records annotated so far (pool positions 0 to 5, and 6, which I am annotating now) names an aircraft, a balloon, a space station or a field campaign, so no ground truth triple shows them yet.
+Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), at pool positions 1, 3 and 4, have ground truth that states several of these relationships; every classed triple the answer may change is listed under Affects. The example is the record at pool position 4. None of the records annotated so far (pool positions 0 to 6) names an aircraft, a balloon, a space station or a field campaign, so no ground truth triple shows them yet.
 
 ### Consequences
 
@@ -726,7 +726,7 @@ Option 1 for now, because the definition of TemporalResolution covers the record
 
 ### My notes
 
-Five of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far state a time of these sorts, at pool positions 1, 2, 3, 4 and 6 (the one at pool position 6 is not in the ground truth yet: I am annotating it); every classed triple the answer may change is listed under Affects. The example is the record at pool position 2; the "8 Day" one is at pool position 4, the period one at pool position 1.
+Five of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far state a time of these sorts, at pool positions 1, 2, 3, 4 and 6 (the one at pool position 6 is in the ground truth now); every classed triple the answer may change is listed under Affects. The example is the record at pool position 2; the "8 Day" one is at pool position 4, the period one at pool position 1.
 
 Option 4 comes when I improve the step that learns the schema (040): splitting a broad predicate by its object's entity class is on my list of improvements.
 
@@ -807,7 +807,6 @@ The knowledge graph will be built from the records' metadata fields and the extr
 - pool position: 6
 - title: MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid
 - notes: The Moderate Resolution Imaging Spectroradiometer (MODIS) Near Real Time (NRT) Combined Terra and Aqua Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N) produced daily at 1 kilometer (km) pixel resolutions. The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product.
-- in the ground truth: not yet: I am annotating this record now, so its classed triples below are my drafts, approved so far, not yet in annotations/ground_truth/
 - source text: L2G
 - source text: gridded Level 2 product
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
@@ -851,7 +850,7 @@ Option 1 for now, because it writes only the record's own words. I would move to
 
 ### My notes
 
-Five of the tuning records I have annotated so far write a processing level, or a code that may be one, at pool positions 1, 2, 3, 4 and 6 (the one at pool position 6 is not in the ground truth yet: I am annotating it); every classed triple the answer may change is listed under Affects. The example is the record at pool position 6.
+Five of the tuning records I have annotated so far write a processing level, or a code that may be one, at pool positions 1, 2, 3, 4 and 6 (the one at pool position 6 is in the ground truth now); every classed triple the answer may change is listed under Affects. The example is the record at pool position 6.
 
 ### Consequences
 
@@ -974,7 +973,7 @@ Option 1 until you answer, because the record's own words are "derived from", wh
 
 ### My notes
 
-Four of the tuning records I have annotated so far describe a processing step, at pool positions 2, 4, 5 and 6 (the one at pool position 6 is not in the ground truth yet: I am annotating it); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
+Four of the tuning records I have annotated so far describe a processing step, at pool positions 2, 4, 5 and 6 (the one at pool position 6 is in the ground truth now); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
 
 ### Consequences
 
@@ -1428,7 +1427,6 @@ The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1
 - pool position: 6
 - title: MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid
 - notes: The Moderate Resolution Imaging Spectroradiometer (MODIS) Near Real Time (NRT) Combined Terra and Aqua Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N) produced daily at 1 kilometer (km) pixel resolutions. The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product.
-- in the ground truth: not yet: I am annotating this record now, so its classed triples below are my drafts, approved so far, not yet in annotations/ground_truth/
 - source text: Land Aerosol Optical Depth
 - source text: Global 1km SIN Grid
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Land" (SpatialExtent)
@@ -1473,7 +1471,7 @@ Undecided. For "Land", I lean towards option 3: it says which part of the Earth 
 
 ### My notes
 
-Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (pool position 1), "global" (pool positions 2 and 4), and my draft "Land" (pool position 6, the example, which I am annotating now). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1).
+Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (pool position 1), "global" (pool positions 2 and 4), and "Land" (pool position 6, the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1).
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. The current schema's SpatialCoverage and HAS_SPATIAL_COVERAGE translate into SpatialExtent and HAS_SPATIAL_COVERAGE, so the answer also decides what an extracted triple with them is compared with.
 
@@ -1487,7 +1485,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 #### Option 2: Only regions of a body are areas
 
-- The draft triples of the record at pool position 6 become one: HAS_MEASUREMENTS_OF "Land Aerosol Optical Depth", with no HAS_SPATIAL_COVERAGE.
+- The ground truth triples of the record at pool position 6 become one: HAS_MEASUREMENTS_OF "Land Aerosol Optical Depth", with no HAS_SPATIAL_COVERAGE.
 - The record at pool position 1 loses HAS_SPATIAL_COVERAGE "Global", and its HAS_MEASUREMENTS_OF "Gravity" becomes "Global Gravity", if the answer to (a) says so.
 - A search for land-only data has to look inside the quantities' words.
 
@@ -2321,7 +2319,7 @@ I am annotating a record of a MODIS aerosol product, and three passages of its [
 
 ### Context
 
-Below are the facts I have written for this record so far, a draft not checked yet; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. I have written no fact for "Near Real Time (NRT)" until (a) is answered, and none yet for (c).
+Below are the facts I have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. I have written no fact for "Near Real Time (NRT)" until (a) is answered, and none yet for (c).
 
 What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.earthdata.nasa.gov/data/projects/lance) says: "Near real-time (NRT) refers to data available 1 to 3 hours after an observation by an instrument aboard a space-based platform"; the Terra, Aqua and Aura measurements "are processed into higher-level "standard" products within 8 to 40 hours of observation"; and "If latency is not a primary concern, users are encouraged to use standard science products, which are created using the best available ancillary, calibration, and ephemeris information". MODAPS lists MCD19A2N among its Collection 6.1 NRT products, as a product of its own, with its own DOI, 10.5067/MODIS/MCD19A2N.NRT.061 (https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html), apart from the standard product MCD19A2. So my reading of the sources: NRT here names a processing stream, a separate product, whose defining property is how soon it is made available. The record itself states no number of hours, and the annotation guidelines write only what the record states, so a latency value from these sources can't go into its ground truth. The catalog also has another record, titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT", whose notes begin with the same words as this record's.
 
@@ -2331,12 +2329,16 @@ What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.ear
 - pool position: 6
 - title: MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid
 - notes: The Moderate Resolution Imaging Spectroradiometer (MODIS) Near Real Time (NRT) Combined Terra and Aqua Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N) produced daily at 1 kilometer (km) pixel resolutions. The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product.
-- in the ground truth: not yet: I am annotating this record now, so its classed triples below are my drafts, approved so far, not yet in annotations/ground_truth/
 - source text: Near Real Time (NRT)
-- source text: Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N)
-- source text: produced daily at 1 kilometer (km) pixel resolutions
-- source text: Multi-Angle Implementation of Atmospheric Correction (MAIAC)
-- source text: The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product
+- source text: The Moderate Resolution Imaging Spectroradiometer (MODIS)
+- source text: Combined Terra and Aqua
+- source text: Land Aerosol Optical Depth
+- source text: produced daily
+- source text: gridded Level 2 product
+- source text: at 1 kilometer (km) pixel resolutions
+- source text: Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth
+- source text: gridded Level 2 product (MCD19A2N)
+- source text: The MCD19A2N product provides the atmospheric properties and view geometry
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
@@ -2348,6 +2350,8 @@ What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.ear
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution)
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier)
+- classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity)
+- classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity)
 
 ### Ground truth schema
 
@@ -2392,7 +2396,7 @@ Undecided. For (a), I lean towards reading NRT as a processing stream, a product
 
 ### My notes
 
-The example is the record at pool position 6, not in the ground truth yet: its classed triples are my drafts, and the one with HAS_IDENTIFIER is its fact 10, written so for now. "Near Real Time (NRT)" has no classed triple until (a) is answered. The record titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT" is not in my ground truth candidates pool. (d) is about the record at pool position 5, only named in the question; its classed triple is listed under Affects. Until an expert answers (d), its ground truth keeps LAWRENCEETAL2013 a Document.
+The example is the record at pool position 6, in the ground truth now: the triple with HAS_IDENTIFIER is written so for now. "Near Real Time (NRT)" has no classed triple until (a) is answered. The record titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT" is not in my ground truth candidates pool. (d) is about the record at pool position 5, only named in the question; its classed triple is listed under Affects. Until an expert answers (d), its ground truth keeps LAWRENCEETAL2013 a Document.
 
 Pending facts, for the record at pool position 6:
 
@@ -2514,6 +2518,8 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "Aerosol Optical Depth" (PhysicalQuantity)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
@@ -2582,7 +2588,7 @@ The title of the example below says "4km", and its notes say the products "are a
 
 ### Context
 
-The spatial resolutions I have written so far: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the example below), and, in a draft, "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
+The spatial resolutions I have written so far: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the example below), and "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
 
 ### Example record
 
@@ -2620,7 +2626,7 @@ Option 1, because rule 13 takes the more precise wording and the record's own wo
 
 ### My notes
 
-The example is the record at pool position 4. The ground truth triples with HAS_SPATIAL_RESOLUTION so far are listed under Affects: "500m" (pool position 2), "4.63 km" (pool position 4), and my draft "1 kilometer (km)" (pool position 6, which I am annotating now).
+The example is the record at pool position 4. The ground truth triples with HAS_SPATIAL_RESOLUTION so far are listed under Affects: "500m" (pool position 2), "4.63 km" (pool position 4), and "1 kilometer (km)" (pool position 6).
 
 ### Consequences
 

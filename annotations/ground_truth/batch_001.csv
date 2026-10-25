@@ -1,16 +1,15 @@
 id,subject,subject_class,predicate,object,object_class,source_text,all_facts_extracted,drafted_by
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,4c64f3ed-39b4-4f95-95a0-022898ba47a4,CatalogEntry,DESCRIBES,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,(record structure),0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,ACQUIRED_BY_INSTRUMENT,Moderate Resolution Imaging Spectroradiometer (MODIS),Instrument,The Moderate Resolution Imaging Spectroradiometer (MODIS),0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,FROM_SPACECRAFT,Terra,Spacecraft,Terra+Aqua,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,FROM_SPACECRAFT,Aqua,Spacecraft,Terra+Aqua,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_MEASUREMENTS_OF,Land Aerosol Optical Depth,PhysicalQuantity,Land Aerosol Optical Depth,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_TEMPORAL_RESOLUTION,Daily,TemporalResolution,Daily,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_PROCESSING_LEVEL,L2G,ProcessingLevel,L2G,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_SPATIAL_COVERAGE,Global,SpatialExtent,Global,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_SPATIAL_RESOLUTION,1 kilometer (km),SpatialResolution,1 kilometer (km) pixel resolutions,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,BINNED_INTO,SIN Grid,Grid,SIN Grid,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,PRODUCED_USING_ALGORITHM,Multi-Angle Implementation of Atmospheric Correction (MAIAC),Algorithm,Multi-Angle Implementation of Atmospheric Correction (MAIAC),0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gridded Level 2 product,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_MEASUREMENTS_OF,atmospheric properties,PhysicalQuantity,provides the atmospheric properties and view geometry,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_MEASUREMENTS_OF,view geometry,PhysicalQuantity,provides the atmospheric properties and view geometry,0,gemini-2.5-pro
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_PURPOSE,"calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product",Purpose,"used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product",0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,4c64f3ed-39b4-4f95-95a0-022898ba47a4,CatalogEntry,DESCRIBES,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,(record structure),1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,ACQUIRED_BY_INSTRUMENT,Moderate Resolution Imaging Spectroradiometer (MODIS),Instrument,The Moderate Resolution Imaging Spectroradiometer (MODIS),1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,FROM_SPACECRAFT,Terra,Spacecraft,Combined Terra and Aqua,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,FROM_SPACECRAFT,Aqua,Spacecraft,Combined Terra and Aqua,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_MEASUREMENTS_OF,Aerosol Optical Depth,PhysicalQuantity,Land Aerosol Optical Depth,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_COVERAGE,Land,SpatialExtent,Land Aerosol Optical Depth,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,produced daily,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_PROCESSING_LEVEL,Level 2,ProcessingLevel,gridded Level 2 product,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gridded Level 2 product,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_RESOLUTION,1 kilometer (km),SpatialResolution,at 1 kilometer (km) pixel resolutions,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,PRODUCED_USING_ALGORITHM,Multi-Angle Implementation of Atmospheric Correction (MAIAC),Algorithm,Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_IDENTIFIER,MCD19A2N,Identifier,gridded Level 2 product (MCD19A2N),1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_MEASUREMENTS_OF,atmospheric properties,PhysicalQuantity,The MCD19A2N product provides the atmospheric properties and view geometry,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_MEASUREMENTS_OF,view geometry,PhysicalQuantity,The MCD19A2N product provides the atmospheric properties and view geometry,1,

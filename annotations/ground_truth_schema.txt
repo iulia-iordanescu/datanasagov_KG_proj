@@ -178,3 +178,5 @@ PART_OF              is one part of
                      source: ground truth tuning #5
 RELATED_TO           is related to
                      source: ground truth tuning #5
+HAS_IDENTIFIER       has this Identifier
+                     source: ground truth tuning #6
