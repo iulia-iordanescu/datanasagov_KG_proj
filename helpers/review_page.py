@@ -217,7 +217,7 @@ def publish(root: Path = ROOT, push: bool = True, check_clean: bool = True, **pa
     dirty = _git("status", "--porcelain", "--", *PAGE_SOURCES) if check_clean else ""
     if data["version"]["edited"] or dirty:
         raise RuntimeError("these files the page is made from have changes not yet committed: "
-                           + ", ".join(sorted({line[3:] for line in dirty.splitlines()}) or
+                           + ", ".join(sorted({re.sub(r"^\s*\S+\s+", "", line) for line in dirty.splitlines()}) or
                                        ["annotations/ground_truth_schema.txt or annotations/component_class_mapping.csv"])
                            + ". Commit them (or undo them), then publish again: the page at the link shows the "
                              "files as they are in one commit.")

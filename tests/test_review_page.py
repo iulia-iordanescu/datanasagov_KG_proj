@@ -488,6 +488,15 @@ class Publish(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "changes not yet committed"):
                 R.publish(root=Path(t), push=False)
 
+    def test_uncommitted_changes_named_whole(self):
+        """Each file is named whole, the first one too (git's status lines start with a space git's output loses)."""
+        with tempfile.TemporaryDirectory() as t, \
+                mock.patch.object(R, "page_data", return_value={"version": {"edited": False}}), \
+                mock.patch.object(R, "_git", return_value="M docs/terminology.md\n M helpers/review_page.py\n?? new file.txt"):
+            with self.assertRaises(RuntimeError) as stop:
+                R.publish(root=Path(t), push=False)
+        self.assertIn("docs/terminology.md, helpers/review_page.py, new file.txt. Commit them", str(stop.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
