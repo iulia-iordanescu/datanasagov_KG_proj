@@ -1,0 +1,16 @@
+id,subject,subject_class,predicate,object,object_class,source_text,all_facts_extracted,drafted_by
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,4c64f3ed-39b4-4f95-95a0-022898ba47a4,CatalogEntry,DESCRIBES,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,(record structure),0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,ACQUIRED_BY_INSTRUMENT,Moderate Resolution Imaging Spectroradiometer (MODIS),Instrument,The Moderate Resolution Imaging Spectroradiometer (MODIS),0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,FROM_SPACECRAFT,Terra,Spacecraft,Terra+Aqua,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,FROM_SPACECRAFT,Aqua,Spacecraft,Terra+Aqua,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_MEASUREMENTS_OF,Land Aerosol Optical Depth,PhysicalQuantity,Land Aerosol Optical Depth,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_TEMPORAL_RESOLUTION,Daily,TemporalResolution,Daily,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_PROCESSING_LEVEL,L2G,ProcessingLevel,L2G,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_SPATIAL_COVERAGE,Global,SpatialExtent,Global,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_SPATIAL_RESOLUTION,1 kilometer (km),SpatialResolution,1 kilometer (km) pixel resolutions,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,BINNED_INTO,SIN Grid,Grid,SIN Grid,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,PRODUCED_USING_ALGORITHM,Multi-Angle Implementation of Atmospheric Correction (MAIAC),Algorithm,Multi-Angle Implementation of Atmospheric Correction (MAIAC),0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gridded Level 2 product,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_MEASUREMENTS_OF,atmospheric properties,PhysicalQuantity,provides the atmospheric properties and view geometry,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_MEASUREMENTS_OF,view geometry,PhysicalQuantity,provides the atmospheric properties and view geometry,0,gemini-2.5-pro
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MCD19A2N,Dataset,HAS_PURPOSE,"calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product",Purpose,"used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product",0,gemini-2.5-pro
