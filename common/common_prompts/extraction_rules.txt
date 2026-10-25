@@ -24,8 +24,9 @@
   keep the rest of the fact: "the newest release, R4" gives the record's
   dataset's version "R4", without "newest", which stops being true once
   another release comes out.
-- A number with a unit: the object is the number and its unit, as written
-  ("350 m"); the predicate says what the number measures.
+- A number with a unit: the object is the number and its unit, as written;
+  what the number measures goes in the predicate: "Kestrel has a swath width
+  of 350 m" gives Kestrel's swath width "350 m".
 - A qualifier that is a temporal resolution, an area the data cover, a
   processing level, a spatial resolution, a country, a time of day, or a
   target body is a triple of its own, and is taken out of the subject or
