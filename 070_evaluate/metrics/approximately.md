@@ -57,7 +57,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 ## Tuning on the evaluated records
 
-**Meaning.** Changes made after looking at the [tuning part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s numbers (to the [schema](../../docs/terminology.md#3-schemas), the [schema additions](../../docs/terminology.md#3-schemas), or the prompts) fit those [records](../../docs/terminology.md#1-records-and-their-text), so the tuning part's numbers come out higher than the whole catalog's would.
+**Meaning.** Changes made after looking at the [tuning part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s numbers (whatever was changed: the [schema](../../docs/terminology.md#3-schemas), the [schema additions](../../docs/terminology.md#3-schemas), the prompts, the [translation table](../../docs/terminology.md#7-evaluating-extraction-step-070)'s rows, fixes to the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) of tuning [records](../../docs/terminology.md#1-records-and-their-text), the partial-pair verdicts, a setting, or the choice of model) fit those records, so the tuning part's numbers come out higher than the whole catalog's would.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.** The [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070): its numbers are shown only with the [setting](../../docs/terminology.md#8-the-pipeline) `evaluate_held_out`, meant for the end, and each look is logged in `annotations/held_out_looks.csv`.
 
