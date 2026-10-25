@@ -96,6 +96,8 @@ HAS_TIME_SPAN        covers this period
 HAS_VERSION          carries this Version
                      Dataset -> Version
                      only: any -> Version
+HAS_RELEASE          has this Dataset as one of its releases; a release label is a Version (HAS_VERSION)
+                     source: ground truth tuning #12
 PROVIDES_ACCESS_TO_DOCUMENT  makes this Document available
                      Organization -> Document
                      only: any -> Document

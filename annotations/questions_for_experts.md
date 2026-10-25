@@ -1728,7 +1728,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 - Nothing changes in the ground truth triples or the rows above.
 - Two inputs named by the same words ("radiance data") become one node of the knowledge graph, with both DOIs.
-- Facts about an input that has its own record (the epithermal map's instrument) are written in this record too, against rule 11's "Leave out a fact about another dataset".
+- Facts about an input that has its own record (the epithermal map's instrument) are written in this record too, as rule 11 now allows ("Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
 - An archive and the datasets inside it carry the same entity class, so the knowledge graph can't tell them apart by their entity class.
 
 #### Option 2: One input per DOI

@@ -215,7 +215,7 @@ The dense record: its notes describe a whole family of products (several time st
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 
-The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 28 items, 15 that may matter.
+The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 26 items, 15 that may matter.
 
 - **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
   - **Rule:** none to quote: it is background about earlier studies in general, naming no study, dataset or other specific thing for a triple.
@@ -291,10 +291,6 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** none to quote: the maximum distance is a detail of the study's method, so it goes with the method (decision of 2026-10-25, with the study's method, Q26).
   - **May matter because:** it says how the sources of the table were matched with the quasar catalog.
   - **Question:** Q26.
-- **Left out:** "2XMMi-DR3" VERSION_OF "Serendipitous Source Catalog" (notes, "the version of the Serendipitous Source Catalog then available, namely 2XMMi-DR3")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The subject is the catalog, not the table.
-- **Left out:** "2XMMi-DR3" UPDATE_OF "second version of the catalogue" (notes, "2XMMi-DR3, the latest incremental update of the second version of the catalogue")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The subject is the catalog, not the table.
 - **Left out:** "2XMMi-DR3" HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (notes, "The total area of the catalog fields is ~ 814 deg^2")
   - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
