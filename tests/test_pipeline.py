@@ -418,7 +418,12 @@ class Pipeline(unittest.TestCase):
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}
         twins = metrics["parts"]["tuning"]["twins"]
         self.assertTrue(first and first <= {x["id"] for x in twins["records"] if x["kind"] == "whole text"})
-        self.assertEqual(twins["without"]["records"], 8 - len(twins["records"]))
+        # the numbers without twins: None once every evaluated record is a twin (the ground truth schema's source lines
+        # name more pool positions as ground truth grows)
+        if len(twins["records"]) < 8:
+            self.assertEqual(twins["without"]["records"], 8 - len(twins["records"]))
+        else:
+            self.assertIsNone(twins["without"])
         self.assertIn("#### Twins", report)
 
     def test_t10_held_out_look_logged(self):

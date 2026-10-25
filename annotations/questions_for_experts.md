@@ -17,7 +17,7 @@ How a dataset's data are laid out over the ground is, so far, written in each [r
 
 - (a) Is the spatial representation, for the records of this catalog, a closed set of values? Beyond swath and gridded, which layouts occur? The CF conventions name the layouts of data that are not on a grid, their discrete sampling geometries: a single point, a time series at one place, a trajectory (e.g. an aircraft's or a ship's track), a vertical profile, a time series of profiles, and a trajectory of profiles (Eaton, Gregory, Drach, Taylor, Hankin, et al., *NetCDF Climate and Forecast (CF) Metadata Conventions*, version 1.13, 17 December 2025, chapter 9, *Discrete Sampling Geometries*, Table 9.1; https://cfconventions.org/, doi:10.5281/zenodo.17801666). Which of these occur in this catalog, and are there others?
 - (b) Is a Planetary Data System "map" product gridded? For example, the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "These data are maps of fast neutron residual count rates".
-- (c) Is "Polar-Gridded" (in the example below) gridded, on a polar grid? That is, would it be the value gridded, plus a separate fact about which grid? The same for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", whose title ends in "Global 1km SIN Grid", the MODIS sinusoidal grid (checked, see below): should a record's grid be a fact of its own, written with the predicate BINNED_INTO and a Grid, as the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" already has: "pixels" (Dataset) BINNED_INTO "integerized sinusoidal area grid (ISEAG)" (Grid)? And does a polar grid say anything about the area the data cover: do "Polar-Gridded" data cover only the polar regions, or the whole Earth, laid out on a grid drawn around a pole? The example states no area, so I wrote none for it.
+- (c) Is "Polar-Gridded" (in the example below) gridded, on a polar grid? That is, would it be the value gridded, plus a separate fact about which grid? The same for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", whose title ends in "Global 1km SIN Grid", the MODIS sinusoidal grid (checked, see below): should a record's grid be a fact of its own, written with the predicate BINNED_INTO and a Grid, as the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" already has: "pixels" (Dataset) BINNED_INTO "integerized sinusoidal area grid (ISEAG)" (Grid)? And does a polar grid say anything about the area the data cover: do "Polar-Gridded" data cover only the polar regions, or the whole Earth, laid out on a grid drawn around a pole? The example states no area, so I wrote none for it. The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" ends in the same "Global 1km SIN Grid", and its notes add "with 1 kilometer (km) spatial resolution in a 1,200 by 1,200 km grid". My reading, not checked against a source: "1,200 by 1,200 km" is the size of one tile of that grid. Is it, and should that size be a fact of its own, about the grid, or about how much ground each of the dataset's files covers?
 - (d) What kinds of thing collect the data of this catalog, and for each kind, which spatial representations occur? My guess is below: please complete or correct it.
 
 | What collects the data | Spatial representations I expect |
@@ -84,6 +84,13 @@ Pending facts, for the record at pool position 6 (4c64f3ed, in the ground truth 
 
 - pending fact: its fact 14, "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) BINNED_INTO "SIN Grid" or "Global 1km SIN Grid" (Grid), left out for now; added if the answer to (c) says a record's grid is a fact of its own (and which wording).
 
+Pending facts, for the record at pool position 7 (d5477563, in the ground truth now without them; decided 2026-10-25, for me to confirm):
+
+- pending fact: its fact 9, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) BINNED_INTO "SIN Grid" or "Global 1km SIN Grid" (Grid), left out for now, as for the record at pool position 6.
+- pending fact: the grid's size, from "in a 1,200 by 1,200 km grid": "1,200 by 1,200 km" (Value), on the grid or on the dataset, with a predicate to coin; added with the grid if the answer to (c) says so.
+
+The record at pool position 7 also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation), from "swath product": the layout of the input it is computed from, in the record's own word.
+
 ### Consequences
 
 #### Option 1: Keep each record's own words
@@ -106,11 +113,13 @@ Pending facts, for the record at pool position 6 (4c64f3ed, in the ground truth 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_REPRESENTATION "Polar-Gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_REPRESENTATION "spatially gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "map" (SpatialRepresentation)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
+- classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
 - ground truth schema entry: entity class SpatialRepresentation
 - ground truth schema entry: predicate HAS_SPATIAL_REPRESENTATION
 - rule: Writing a classed triple, rule 1
@@ -230,6 +239,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
@@ -247,6 +257,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -277,7 +288,8 @@ The ground truth schema separates two things a dataset can hold. A PhysicalQuant
 - (d) "Sea Surface Salinity (SSS) retrievals" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005") is written down as "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_MEASUREMENTS_OF "Sea Surface Salinity (SSS)" (PhysicalQuantity). Should every quantity a record calls a "retrieval" be a Variable instead, since an algorithm computed it?
 - (e) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "It is a Global Gravity measurement at the comet 67P", and I wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity) and "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent). Is "Gravity" the quantity measured (the comet's gravity field)? Or is "Global Gravity" the name of a kind of radio science measurement, as a whole, beside "Occultation" and "Solar Conjunction", which other records of the catalog name in the same sentence? If these are kinds of measurement: what is measured in each, in plain words (for example, my reading, not checked against a source: an occultation measures the atmosphere the radio signal passes through)?
 - (f) "Aerosol Optical Depth" (in the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") is what the record's product holds, computed by MAIAC ("Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product"). I wrote it as a PhysicalQuantity, a property of the atmosphere that other methods could measure too, and MAIAC as the method. Is that right, or is it a Variable, since one algorithm computed it?
-- (g) The same record says "The MCD19A2N product provides the atmospheric properties and view geometry", and I wrote "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity) and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity). Is "atmospheric properties" specific enough to be a fact, or too vague to write down? And is "view geometry" (the angles between the sun, the satellite and the ground) a PhysicalQuantity, something measured, or supporting information the files hold, which would need another entity class or predicate?
+- (g) The same record says "The MCD19A2N product provides the atmospheric properties and view geometry", and I wrote "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity) and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity). Is "atmospheric properties" specific enough to be a fact, or too vague to write down? And is "view geometry" (the angles between the sun, the satellite and the ground) a PhysicalQuantity, something measured, or supporting information the files hold, which would need another entity class or predicate? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" lists more of the same kind: "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments, observation times, view zenith angles, and clear-sky coverages". I wrote them the same way, each a PhysicalQuantity the dataset HAS_MEASUREMENTS_OF ("quality control assessments", "observation times", "view zenith angles", "clear-sky coverages"); quality control assessments and observation times stretch "a property that can be measured" further still. Should these be written as something the files hold, rather than as measurements?
+- (h) The same record goes on: "along with bands 31 and 32 emissivities from land cover types". I wrote "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity), and the same for band 32, reading "from" as: each pixel's emissivity is estimated from its type of land cover (my reading, not checked against a source). Is that reading right? If so, are emissivities estimated that way Variables rather than PhysicalQuantities, and what kind of thing is "land cover types": a PhysicalQuantity, an input dataset, or something else?
 
 ### Context
 
@@ -361,6 +373,8 @@ Six of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-
 
 Approved on 2026-10-25, for the record at pool position 6 (fact 13): HAS_MEASUREMENTS_OF "atmospheric properties" and HAS_MEASUREMENTS_OF "view geometry", source text "The MCD19A2N product provides the atmospheric properties and view geometry"; sub-question (g) asks the two doubts about them.
 
+Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its four supporting layers, each HAS_MEASUREMENTS_OF a PhysicalQuantity, as for the record at pool position 6 (sub-question (g)); its two band emissivities, each HAS_MEASUREMENTS_OF a PhysicalQuantity and COMPUTED_FROM "land cover types" (sub-question (h)).
+
 ### Consequences
 
 #### Option 1: Keep the line as the definitions draw it
@@ -398,6 +412,7 @@ Approved on 2026-10-25, for the record at pool position 6 (fact 13): HAS_MEASURE
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
@@ -425,6 +440,16 @@ Approved on 2026-10-25, for the record at pool position 6 (fact 13): HAS_MEASURE
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "Land Surface Temperature" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "Land Surface Emissivity" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "quality control assessments" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "observation times" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "view zenith angles" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "clear-sky coverages" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "band 31 emissivity" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "band 32 emissivity" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - translation table row: entity class PhysicalQuantity
 - translation table row: predicate MEASURES
 - translation table row: predicate PROVIDES
@@ -585,6 +610,7 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -614,6 +640,8 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -761,6 +789,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -768,6 +797,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly" (TemporalResolution)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -878,12 +908,14 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_PROCESSING_LEVEL "Level-2 (L2)" (ProcessingLevel)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_PROCESSING_LEVEL "Level-3" (ProcessingLevel)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
 - classed triple of the record at pool position 4: "pixels" (Dataset) HAS_PROCESSING_LEVEL "L2" (ProcessingLevel)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
 - translation table row: predicate HAS_PROCESSING_LEVEL
 - ground truth schema entry: entity class ProcessingLevel
@@ -1005,7 +1037,11 @@ Four of the tuning records I have annotated so far describe a processing step, a
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "nominal fast neutron count rates" (Variable)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "GRaND epithermal neutron map" (Dataset)
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
+- classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - translation table row: predicate DERIVED_FROM
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
@@ -1781,6 +1817,8 @@ The ground truth schema's Phenomenon is "something that happens in nature and ca
 
 The records I have read so far have one Phenomenon, "sun glint", in the example below. It fits both definitions; the question is about records still to come.
 
+The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" has an effect caused by spaceflight: "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued on November 16, 2022, due to significant loss of data retrieval following the Constellation Exit Maneuvers". Since Phenomenon is "something that happens in nature", I wrote it as an Issue, an entity class I coined: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) PRODUCTION_DISCONTINUED_DUE_TO "significant loss of data retrieval following the Constellation Exit Maneuvers" (Issue). If Phenomenon is widened (option 2), it may become a Phenomenon instead.
+
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with mine, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same.
 
 ### Example record
@@ -1796,6 +1834,8 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 - entity class Phenomenon: something that happens in nature and can be observed, e.g. sun glint
 - predicate LIMITED_BY: its use is restricted by
+- entity class Issue: a problem that affects how data are made or used, e.g. significant loss of data retrieval
+- predicate PRODUCTION_DISCONTINUED_DUE_TO: stopped being produced because of
 
 ### Translation table
 
@@ -1827,6 +1867,8 @@ Option 1 for now: the only Phenomenon so far fits both definitions. Your answer 
 
 The example is the record at pool position 4, the only tuning record annotated so far with a Phenomenon; since "sun glint" fits both definitions, the row translates it rightly, which is why this question's priority is low. A classed triple that uses a row naming (none) can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. Option 3's entity class would be one I coin once a tuning record needs one.
 
+The record at pool position 7 has the induced effect named in the context, written as an Issue (coined 2026-10-25, for me to confirm); its two classed triples with it are listed under Affects.
+
 ### Consequences
 
 #### Option 1: Keep the row
@@ -1848,6 +1890,9 @@ The example is the record at pool position 4, the only tuning record annotated s
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - classed triple of the record at pool position 4: "SST4" (Variable) LIMITED_BY "sun glint" (Phenomenon)
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) PRODUCTION_DISCONTINUED_DUE_TO "significant loss of data retrieval following the Constellation Exit Maneuvers" (Issue)
+- classed triple of the record at pool position 7: "significant loss of data retrieval following the Constellation Exit Maneuvers" (Issue) DOCUMENTED_AT "https://landweb.modaps.eosdis.nasa.gov/displayissue?id=98" (WebPage)
 - translation table row: entity class PhysicalPhenomenon
 - ground truth schema entry: entity class Phenomenon
 
@@ -2230,6 +2275,7 @@ A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes th
 - (a) Are "R2019.0" and "V2019.0" the same release of the data? My reading, not checked against a source: "R" may stand for a reprocessing, and the reprocessing of 2019 made version 2019.0.
 - (b) If they are not the same, what is "R2019.0": a reprocessing, a release of the processing software, or something else?
 - (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". I wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
+- (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. I read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and I wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
 
 ### Context
 
@@ -2274,7 +2320,7 @@ Option 1, because the record calls both the release that replaces v2014.1, and n
 
 ### My notes
 
-The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1".
+The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record at pool position 7 (decided 2026-10-25, for me to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`).
 
 ### Consequences
 
@@ -2294,8 +2340,10 @@ The example is the record at pool position 4; (c) is about the record at pool po
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VERSION "V2019.0" (Version)
 - classed triple of the record at pool position 4: "V2019.0" (Version) SUPERSEDES "v2014.1" (Version)
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version)
 - classed triple of the record at pool position 2: "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version)
+- classed triple of the record at pool position 7: "Version 6.1" (Version) SUPERSEDES "Version 6" (Version)
 - translation table row: predicate SUPERSEDES
 - ground truth schema entry: predicate SUPERSEDES
 - rule: Writing a classed triple, rule 10
@@ -2313,7 +2361,7 @@ The example is the record at pool position 4; (c) is about the record at pool po
 I am annotating a record of a MODIS aerosol product, and three passages of its [text](../docs/terminology.md#1-records-and-their-text) I am not sure how to write as classed triples; one of them raises a question about another record too:
 
 - (a) "Near Real Time (NRT)": is it a latency (how soon after the observation the data are made available), a separate processing stream (a different product from the standard one), or a version? Each would be a different predicate, and the ground truth schema has none for a latency. Until you answer, I write no classed triple for it.
-- (b) "(MCD19A2N)": I have written it as an identifier of the dataset, with a predicate I coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two?
+- (b) "(MCD19A2N)": I have written it as an identifier of the dataset, with a predicate I coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" names its product "MOD11A1 Version 6", and the one users are encouraged to use instead "MOD11A1 Version 6.1": one short name for two versions. I wrote "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier). Is a short name that two versions share an identifier of each of them, or of the product across its versions? The same record gives its input's DOI as a link address, which I wrote as written: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier).
 - (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a [fact](../docs/terminology.md#2-triples) about this dataset, to write, or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
 - (d) The same question of what counts as an identifier, in another record: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "Details of the map and data reduction are described in LAWRENCEETAL2013". I wrote LAWRENCEETAL2013 as a Document, "a written publication, or a set of them, named in words or by a reference key": "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document). Is a Planetary Data System reference key such as LAWRENCEETAL2013 the publication itself (a Document named by its key, as now), or an identifier of the publication, an Identifier of its own?
 
@@ -2430,7 +2478,10 @@ Pending facts, for the record at pool position 6:
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD02HKM.061" (Identifier)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD021KM.061" (Identifier)
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier)
+- classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier)
 - ground truth schema entry: entity class Identifier
 - ground truth schema entry: predicate HAS_DOI
 - translation table row: entity class DOI
@@ -2514,6 +2565,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
@@ -2554,6 +2606,18 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) RELATED_TO "average atomic mass" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "Land Surface Temperature" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "Land Surface Emissivity" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "quality control assessments" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "observation times" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "view zenith angles" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "clear-sky coverages" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "band 31 emissivity" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "band 32 emissivity" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -2645,9 +2709,11 @@ The example is the record at pool position 4. The ground truth triples with HAS_
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_RESOLUTION "500m" (SpatialResolution)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution)
 - ground truth schema entry: entity class SpatialResolution
 - ground truth schema entry: predicate HAS_SPATIAL_RESOLUTION
 - translation table row: entity class SpatialResolution

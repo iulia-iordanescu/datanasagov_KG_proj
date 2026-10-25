@@ -56,6 +56,8 @@ SpatialResolution  the amount of ground each value of the data covers, e.g. 500 
                    source: ground truth tuning #2, #4
 TemporalResolution  the amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
                     source: ground truth tuning #2, #3, #4
+Issue             a problem that affects how data are made or used, e.g. significant loss of data retrieval
+                  source: ground truth tuning #7
 
 PREDICATES
 ----------
@@ -180,3 +182,9 @@ RELATED_TO           is related to
                      source: ground truth tuning #5
 HAS_IDENTIFIER       has this Identifier
                      source: ground truth tuning #6
+DECOMMISSIONED_ON    was taken out of service on
+                     source: ground truth tuning #7
+PRODUCTION_DISCONTINUED_ON  stopped being produced on
+                            source: ground truth tuning #7
+PRODUCTION_DISCONTINUED_DUE_TO  stopped being produced because of
+                                source: ground truth tuning #7

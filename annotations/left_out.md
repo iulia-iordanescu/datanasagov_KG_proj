@@ -137,3 +137,52 @@ The dense record: its notes describe a whole family of products (several time st
   - **Rule:** none to quote: the ground truth schema's Purpose is "an aim something is meant to achieve", and the record says "used to calculate", not that the dataset is meant for it. I decided this on 2026-10-25.
   - **May matter because:** it is what the dataset is for.
   - **Question:** Q9 ("used to").
+
+## "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (pool position 7, id d5477563-0415-4e65-ab7c-d4bc9ed809e5)
+
+15 items, 8 that may matter.
+
+- **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
+  - **Rule:** Writing a classed triple, rule 9: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid (checked for the record at pool position 6), so "Global" belongs to the grid's name, not to an area.
+  - **May matter because:** the grid tiles the whole globe.
+  - **Question:** Q1 (c), Q11.
+- **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
+  - **Rule:** none yet: pending an expert, as for the record at pool position 6.
+  - **May matter because:** the MODIS sinusoidal grid is the layout of the data.
+  - **Question:** Q1 (c); the pending fact is listed there.
+- **Left out:** "in a 1,200 by 1,200 km grid" (notes)
+  - **Rule:** none yet: pending an expert. It is a fact about the grid the data are laid on (its size), the same decision as "SIN Grid".
+  - **May matter because:** my reading, not checked against a source: it is the size of one tile of the MODIS sinusoidal grid, which may be how much ground each file covers.
+  - **Question:** Q1 (c); the pending fact is listed there.
+- **Left out:** "per-pixel" (notes, "provides daily per-pixel Land Surface Temperature")
+  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." The ground truth triple HAS_SPATIAL_RESOLUTION "1 kilometer (km)" already says how much ground each value covers.
+- **Left out:** "(LST&E)" (notes, "Land Surface Temperature and Emissivity (LST&E)")
+  - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item, when each item alone is a complete object." The abbreviation names the pair, so it belongs to neither item after the split.
+- **Left out:** "https://doi.org/10.5067/MODIS/MOD11A1.061" (notes, the address in "[MOD11A1 Version 6.1](https://doi.org/10.5067/MODIS/MOD11A1.061)"), the DOI of Version 6.1
+  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
+  - **May matter because:** it is where the newer release is.
+  - **Question:** Q19, and Q24 (the releases of a product family).
+- **Left out:** "Above 30 degrees latitude, some pixels may have multiple observations where the criteria for clear-sky are met." (notes)
+  - **Rule:** What counts as a fact, rule 7: "the record doesn't state that it does. The same for "might", "possibly", "is expected to""
+  - **May matter because:** it says where several observations go into one value.
+- **Left out:** "When this occurs, the pixel value is a result of the average of all qualifying observations." (notes), the averaging as a method
+  - **Rule:** What counts as a fact, rule 7: "the record doesn't state that it does. The same for "might", "possibly", "is expected to"". The averaging happens only "When this occurs", that is, where pixels "may have multiple observations", so I wrote no PRODUCED_USING_ALGORITHM "average".
+  - **May matter because:** it is how a value is made from several observations.
+  - **Question:** Q7.
+- **Left out:** "surface temperature bands" as a thing of its own (notes, "the daytime and nighttime surface temperature bands")
+  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." "surface temperature" is the "Land Surface Temperature" already written (rule 13: the wording that says more); "bands" is a type word (rule 13: "Leave out a type word that only describes the thing,"). "daytime" and "nighttime" are ground truth triples of their own (OBSERVED_AT_TIME_OF_DAY, rule 9).
+- **Left out:** "associated" (notes, "associated quality control assessments")
+  - **Rule:** none to quote: it says only that the assessments go with the temperature bands.
+- **Left out:** "Known Issues" (notes, the heading)
+  - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts" (a heading, like a field name).
+- **Left out:** the other products in "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (notes)
+  - **Rule:** Writing a classed triple, rule 11: "a fact about another dataset, even a closely related one, such as the same data at another time step or resolution. That dataset has its own record, and its facts go there." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
+  - **May matter because:** the date and its cause hold for the whole family of these products.
+  - **Question:** Q24.
+- **Left out:** "known issues" as what the page is about (notes, "For complete information about known issues please refer to")
+  - **Rule:** none to quote: DOCUMENTED_AT ("more details about it are written at") says only that the page has more about the dataset.
+  - **May matter because:** a search for a dataset's known issues would need it.
+- **Left out:** "website" (notes, "MODIS/VIIRS Land Quality Assessment website")
+  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+- **Left out:** "product" (notes, "[MOD11_L2](https://doi.org/10.5067/MODIS/MOD11_L2.006) swath product")
+  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"; "swath" is a ground truth triple of its own (HAS_SPATIAL_REPRESENTATION, as "gridded" for the record at pool position 6).
