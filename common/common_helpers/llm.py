@@ -1076,8 +1076,8 @@ def maker(model: str) -> str | None:
 
 
 def confirm(question: str) -> None:
-    """Stop until the person presses Enter (or types y); exit on anything
-    else.
+    """Stop until the person presses Enter (or types y or yes, in any case, spaces around it ignored); exit on
+    anything else (the answers, for a person: docs/running_on_nasa_laptop.md, section 5).
 
     The gate between reading a run's summary and paying for it. Ctrl-C and
     a closed input (a run with nothing attached to the keyboard) both stop,

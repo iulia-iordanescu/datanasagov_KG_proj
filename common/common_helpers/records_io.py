@@ -106,7 +106,9 @@ def read_ids(value: str) -> list:
     """The ids setting: ids separated by commas or spaces, or the path of a
     text file with one id per line (a CSV whose first column is the id works
     too; a header line "id", blank lines, and lines starting with # are
-    skipped). An id listed twice counts once."""
+    skipped). An id listed twice counts once. A value ending in .txt or .csv, or
+    holding a / or \\, is a path. Written once for a person in
+    docs/running_on_nasa_laptop.md, *Settings several steps share*."""
     value = value.strip()
     if not value:
         return []

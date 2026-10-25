@@ -244,7 +244,7 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
         typos = check_rows(gt, records)
         if typos:
             items.append(_item("Ground truth", TO_DO, f"{len(typos)} ground truth triple(s) or describes triple(s) have an error "
-                               f"to fix (an id not in the catalog, a source text not in the record's text, …): "
+                               f"to fix (each kind: 050_annotate/050_annotate.md, Checks on each row): "
                                f"{named([t['where'] for t in typos], 3)}. The annotation tool marks each with ✖.",
                                "while-annotating", "annotations/ground_truth/"))
     gaps = ground_truth_schema_gaps(schema, gt)

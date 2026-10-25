@@ -121,6 +121,15 @@ class Status(unittest.TestCase):
         self.assertIn("Gadgetry (entity class, coined in the ground truth)", coined[0])
         self.assertIn("(1 do)", coined[0])
 
+    def test_rows_with_an_error_point_to_the_checks(self):
+        self.output("020_clean", "records.jsonl", json.dumps({"id": "r1", "title": "MODIS", "notes": "MODIS aboard Aqua"}))
+        self.ground_truth(0, [["r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "0"],
+                              ["zz", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "0"]])
+        errors = [t for t in self.texts(self.status(), "Ground truth") if "have an error to fix" in t]
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("1 ground truth triple(s) or describes triple(s) have an error to fix (each kind: "
+                      "050_annotate/050_annotate.md, Checks on each row): batch_000.csv line 3", errors[0])
+
     # ---- the schema additions, the translation table, the partial pairs
     def test_addition_without_a_source(self):
         additions = self.tmp / "annotations" / "schema_additions.txt"

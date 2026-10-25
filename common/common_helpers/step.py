@@ -135,6 +135,7 @@ def load_moves(step_name: str):
 # --------------------------------------------------------------------------
 
 def _parse_bool(text: str) -> bool:
+    """A true/false setting's value, in any case (docs/running_on_nasa_laptop.md, *Settings several steps share*)."""
     t = text.strip().lower()
     if t in ("1", "true", "yes", "on"):
         return True

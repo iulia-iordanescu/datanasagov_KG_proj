@@ -574,6 +574,71 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
         self.assertIn("--extract_from all", str(stop.exception))
 
 
+class Confirm(unittest.TestCase):
+    """The question before paying (llm.confirm): Enter, y, or yes (any case, spaces ignored) go ahead; anything
+    else, Ctrl+C, or a closed input stop, as docs/running_on_nasa_laptop.md, section 5, says."""
+
+    def answer(self, typed):
+        import builtins
+        from unittest import mock
+        from common.llm import confirm
+        effect = typed if isinstance(typed, type) else None
+        with mock.patch.object(builtins, "input", side_effect=effect, return_value=None if effect else typed):
+            try:
+                confirm("Go?")
+                return "went ahead"
+            except SystemExit as e:
+                return str(e).strip()
+
+    def test_go_ahead(self):
+        for typed in ("", "  ", "y", "Y", "yes", " YES ", "Yes"):
+            self.assertEqual(self.answer(typed), "went ahead", typed)
+
+    def test_stop(self):
+        for typed in ("n", "no", "ye", "yess", "ok", "1", EOFError, KeyboardInterrupt):
+            self.assertEqual(self.answer(typed), "Cancelled. Nothing was spent.", typed)
+
+
+class TrueFalseSetting(unittest.TestCase):
+    """A true/false setting's values (step._parse_bool), as docs/running_on_nasa_laptop.md, *Settings several steps
+    share*, lists them."""
+
+    def test_values(self):
+        import argparse
+        from common.step import _parse_bool
+        for text in ("true", "TRUE", " Yes ", "on", "1"):
+            self.assertIs(_parse_bool(text), True, text)
+        for text in ("false", "No", "OFF", "0"):
+            self.assertIs(_parse_bool(text), False, text)
+        for text in ("tru", "y", "n", "2", ""):
+            with self.assertRaises(argparse.ArgumentTypeError, msg=text):
+                _parse_bool(text)
+
+
+class IdsSetting(unittest.TestCase):
+    """The ids setting (records_io.read_ids), as docs/running_on_nasa_laptop.md, *Settings several steps share*,
+    says: ids separated by commas or spaces, or a file's path; an id listed twice counts once."""
+
+    def test_listed(self):
+        from common.records_io import read_ids
+        self.assertEqual(read_ids(" a1, b2  c3,,a1 "), ["a1", "b2", "c3"])
+        self.assertEqual(read_ids(""), [])
+
+    def test_file(self):
+        from common.records_io import read_ids
+        from common.stop import Stop
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / "ids.csv"
+        path.write_text("ID,title\n# a comment\n\n\"a1\",Aqua\nb2\na1,again\n", encoding="utf-8")
+        self.assertEqual(read_ids(str(path)), ["a1", "b2"])
+        with self.assertRaises(Stop) as stop:
+            read_ids(str(tmp / "missing.txt"))
+        self.assertIn("names the file", str(stop.exception))
+        with self.assertRaises(Stop):
+            read_ids("folder/list")                                      # a "/" makes it a path, whatever its ending
+
+
 class AskSplit(unittest.TestCase):
 
     def test_refused_item_isolated(self):
