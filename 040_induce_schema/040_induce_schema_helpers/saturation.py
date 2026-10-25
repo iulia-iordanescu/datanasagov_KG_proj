@@ -19,7 +19,11 @@ richness", in Magurran & McGill (eds), Biological Diversity, ch. 4): a text is a
 counted by incidence; here an entry counts only once it reaches min_support texts. As there, it speaks only for
 what the sample was drawn from (here: 040's maintainers, 15 texts each by default), and it is descriptive: it
 gives no verdict. It uses the labels 040 assigned with every text in view, so it is slightly optimistic: a
-smaller sample might have labeled a few component instances differently.
+smaller sample might have labeled a few component instances differently. The same idea, saturation, decides how
+many interviews are enough in qualitative research (Guest, Bunce & Johnson 2006, "How Many Interviews Are Enough?
+An Experiment with Data Saturation and Variability", Field Methods 18(1), https://doi.org/10.1177/1525822X05279903),
+and GrOIL tracks how its ontology grows as documents are added (Mridul, Talukder & Seneviratne 2026, "GrOIL:
+Graph-Grounded Domain Ontology Induction with Constrained LLM Mediation", arXiv:2608.22135v1, section 4.6).
 
 THE BREADTH TABLE. For each entry that reached min_support, how many maintainers' texts it was found in: 1, 2,
 or 3 or more. Entries found in one maintainer only are used by that maintainer only; many of them suggest

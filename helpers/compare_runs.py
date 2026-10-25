@@ -3,8 +3,10 @@ compare_runs · Is one version of the pipeline better than another?
 
 Compares step 070's evaluations of two or more runs on the same tuning
 records: for each number (precision, recall, F1, ...), the difference from
-the first run (the baseline), with a 95% range from a paired bootstrap. Free:
-no model calls. Writes a report and prints where it is.
+the first run (the baseline), with a 95% range from a paired bootstrap
+(Koehn 2004, "Statistical Significance Tests for Machine Translation
+Evaluation", EMNLP, https://aclanthology.org/W04-3250/). Free: no model
+calls. Writes a report and prints where it is.
 
     py helpers/compare_runs.py                          list the evaluations kept so far
     py helpers/compare_runs.py <run id> <run id> ...    compare them; the first is the baseline

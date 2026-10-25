@@ -28,7 +28,7 @@ What to do, and when, is in [`docs/upkeep.md`](../docs/upkeep.md), one page for 
 | Input | Default | Contents |
 |---|---|---|
 | `records` | `020_clean/records.jsonl` | 020's cleaned [records](../docs/terminology.md#1-records-and-their-text). |
-| `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | The [ground truth candidates pool](../docs/terminology.md#4-ground-truth-and-samples), one row per record in [pool](../docs/terminology.md#4-ground-truth-and-samples) order: `id`, `maintainer`, and how it was drawn (`stratum`, `stratum_size`, `drawn_from_stratum`). `ground_truth_candidates.json` beside it describes the draw (seed 1000, 36,323 records, stratified by [maintainer](../docs/terminology.md#1-records-and-their-text)); 030 doesn't read it. |
+| `candidates` | `./annotations/ground_truth_candidates.csv` (in Git) | The [ground truth candidates pool](../docs/terminology.md#4-ground-truth-and-samples), one row per record in [pool](../docs/terminology.md#4-ground-truth-and-samples) order: `id`, `maintainer`, and how it was drawn (`stratum`, `stratum_size`, `drawn_from_stratum`). `ground_truth_candidates.json` beside it describes the draw (seed 1000, 36,323 records, stratified by [maintainer](../docs/terminology.md#1-records-and-their-text) with proportional allocation, whose source is in [`070_evaluate/metrics/approximately.md`, *Sources*](../070_evaluate/metrics/approximately.md#sources)); 030 doesn't read it. |
 
 ## Outputs
 

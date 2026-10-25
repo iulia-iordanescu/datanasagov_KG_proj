@@ -86,9 +86,9 @@ Worked example: [Recall: example](#example). Sources: [Recall: sources](#sources
 
 ## Sources
 
-The standard definition of recall, micro-averaged like [precision](precision.md): Manning, Raghavan & Schütze (2008), sections 8.3 and 13.6. The WebNLG+ 2020 challenge reports recall macro-averaged (Castro Ferreira et al., 2020, Table 10), so our numbers aren't directly comparable with its published ones.
+The standard definition of recall, micro-averaged like [precision](precision.md): Manning, Raghavan & Schütze, *Introduction to Information Retrieval* (2008), sections 8.3 and 13.6. The WebNLG+ 2020 challenge reports recall macro-averaged (Castro Ferreira et al., "The 2020 Bilingual, Bi-Directional WebNLG+ Shared Task: Overview and Evaluation Results (WebNLG+ 2020)", 2020, [paper](https://aclanthology.org/2020.webnlg-1.7/), Table 10), so our numbers aren't directly comparable with its published ones.
 
 Why recall is likely overstated (*Assumes and can't see*):
 
-- People correcting a model's suggestions tend to keep them: Schroeder, Roy & Kabbara, "Just Put a Human in the Loop? Investigating LLM-Assisted Annotation for Subjective Tasks", Findings of ACL 2025 ([paper](https://aclanthology.org/2025.findings-acl.1323/)): annotators "strongly took the LLM suggestions", and evaluating LLMs on those labels made their reported performance "significantly increase". Their tasks were subjective; ours is not, so the size of the effect may differ.
+- People correcting a model's suggestions tend to keep them: Schroeder, Roy & Kabbara, "Just Put a Human in the Loop? Investigating LLM-Assisted Annotation for Subjective Tasks", Findings of ACL 2025 ([paper](https://aclanthology.org/2025.findings-acl.1323/)): annotators "strongly took the LLM suggestions", and when those labels were used to evaluate LLMs, "reported model performance significantly increases". Their tasks were subjective; ours is not, so the size of the effect may differ.
 - Models tend to make the same mistakes: Kim, Garg, Peng & Garg, "Correlated Errors in Large Language Models", ICML 2025 ([paper](https://arxiv.org/abs/2506.07962)): across more than 350 models, when two models both err they agree 60% of the time, and larger, more accurate models have highly correlated errors even across providers.
