@@ -159,6 +159,177 @@ class GroundTruthFiles(unittest.TestCase):
         self.assertIn("pool position 1", ground_truth.fair_words(gap, {"p1": 1}))
 
 
+class FairSampleByPart(unittest.TestCase):
+    """The fair sample is the longest unbroken run from the start of EACH part of the pool (tuning, held-out) in
+    pool order, not of the whole pool: common.ground_truth.pool_parts / fair_prefix, 070's pick_records and
+    _first_gap, and 050's choice of records (setting part)."""
+
+    #: pool position -> part: r0 r1 r3 r5 r6 are tuning, r2 r4 r7 held-out
+    PARTS = ["tuning", "tuning", "held-out", "tuning", "held-out", "tuning", "tuning", "held-out"]
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.ids = [f"r{i}" for i in range(len(self.PARTS))]
+        pool = [{"id": i, "position": n, "part": p} for n, (i, p) in enumerate(zip(self.ids, self.PARTS))]
+        (self.tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}), encoding="utf-8")
+        (self.tmp / "records.jsonl").write_text(
+            "\n".join(json.dumps({"id": i, "title": f"title {i}", "notes": f"notes of {i}"}) for i in self.ids), encoding="utf-8")
+        (self.tmp / "ground_truth").mkdir()
+        self.pool = pool
+
+    def parts(self):
+        return ground_truth.pool_parts(self.pool)
+
+    def write_ground_truth(self, finished=(), unfinished=()):
+        rows = [dict(zip(ground_truth.COLUMNS, [i, "", "", "", "", "", "", mark]))
+                for ids, mark in ((finished, "1"), (unfinished, "0")) for i in ids]
+        if rows:
+            write_csv(self.tmp / "ground_truth" / "batch_000.csv", ground_truth.COLUMNS, rows)
+
+    # --- the pure functions
+
+    def test_pool_parts_keeps_pool_order(self):
+        self.assertEqual(self.parts(), {"tuning": ["r0", "r1", "r3", "r5", "r6"], "held-out": ["r2", "r4", "r7"]})
+
+    def test_prefix_of_one_part_ignores_the_other(self):
+        parts = self.parts()
+        taken = {"r0", "r1", "r3", "r5"}                   # held-out r2 not taken: it used to cut off r3, r5
+        self.assertEqual(ground_truth.fair_prefix(parts["tuning"], taken), ["r0", "r1", "r3", "r5"])
+        self.assertEqual(ground_truth.fair_prefix(parts["held-out"], taken), [])
+        self.assertEqual(ground_truth.fair_prefix(self.ids, taken), ["r0", "r1"])      # the whole-pool run: not the rule any more
+
+    def test_gap_in_tuning_stops_tuning_only(self):
+        parts = self.parts()
+        taken = {"r0", "r3", "r2", "r4"}                   # r1 (tuning) missing
+        self.assertEqual(ground_truth.fair_prefix(parts["tuning"], taken), ["r0"])
+        self.assertEqual(ground_truth.fair_prefix(parts["held-out"], taken), ["r2", "r4"])
+
+    def test_fair_words_names_the_part(self):
+        fair = ground_truth.fair_sample(self.parts()["tuning"], {"r0", "r3"})
+        words = ground_truth.fair_words(fair, {"r1": 1}, part="tuning")
+        self.assertIn("the tuning part of the pool", words)
+        self.assertIn("pool position 1", words)
+        ok = ground_truth.fair_sample(self.parts()["held-out"], {"r2", "r4"})
+        self.assertIn("first 2 records of the held-out part of the pool", ground_truth.fair_words(ok, {}, part="held-out"))
+
+    # --- step 070
+
+    def evaluated(self, finished, unfinished=(), extracted=None):
+        import importlib.util
+        import sys
+        spec = importlib.util.spec_from_file_location("records_070", ROOT / "070_evaluate" / "070_evaluate_helpers" / "records.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["records_070"] = module
+        spec.loader.exec_module(module)
+        self.write_ground_truth(finished, unfinished)
+        extracted = list(finished) if extracted is None else extracted
+        (self.tmp / "details.json").write_text(json.dumps({"made": {}, "records": [
+            {"id": i, "status": "extracted"} for i in extracted]}), encoding="utf-8")
+        write_csv(self.tmp / "extracted.csv", ["id"], [])
+        write_csv(self.tmp / "removed.csv", ["id", "reason"], [])
+        write_csv(self.tmp / "candidates.csv", ["id", "stratum"], [{"id": i, "stratum": "s"} for i in self.ids])
+        (self.tmp / "schema_used.json").write_text(json.dumps({"learned_from": {"known": True, "ids": []}}), encoding="utf-8")
+        (self.tmp / "reviews.csv").write_text(",".join(partial_reviews.COLUMNS) + "\n", encoding="utf-8")
+        inputs = {"ground_truth": self.tmp / "ground_truth" / "batch_*.csv", "ground_truth_schema": ROOT / "annotations" / "ground_truth_schema.txt",
+                  "splits": self.tmp / "splits.json", "candidates": self.tmp / "candidates.csv",
+                  "extracted_triples_details": self.tmp / "details.json", "extracted_triples": self.tmp / "extracted.csv",
+                  "extracted_triples_removed": self.tmp / "removed.csv", "schema_used": self.tmp / "schema_used.json",
+                  "records": self.tmp / "records.jsonl", "partial_reviews": self.tmp / "reviews.csv"}
+        return module.pick_records(inputs, {"confirm_paid_calls": False})
+
+    def test_070_tuning_continues_past_an_unfinished_held_out_record(self):
+        ev = self.evaluated(finished=["r0", "r1", "r3", "r5"], unfinished=["r2"])
+        self.assertEqual([r["id"] for r in ev.records], ["r0", "r1", "r3", "r5"])
+        self.assertEqual({r["part"] for r in ev.records}, {"tuning"})
+        self.assertEqual(ev.left_out, {})
+
+    def test_070_held_out_run_is_independent(self):
+        ev = self.evaluated(finished=["r2", "r4", "r0"], unfinished=["r1"])          # tuning r1 unfinished: tuning stops at r0
+        self.assertEqual([r["id"] for r in ev.records], ["r0", "r2", "r4"])
+
+    def test_070_gap_in_tuning_stops_tuning_only(self):
+        ev = self.evaluated(finished=["r0", "r3", "r2", "r4"], unfinished=["r1"])
+        self.assertEqual([r["id"] for r in ev.records], ["r0", "r2", "r4"])
+        left = next(v for k, v in ev.left_out.items() if k.startswith("outside the fair sample"))
+        self.assertEqual(left, ["r3"])
+        note = next(n for n in ev.notes if "left out because they aren't in the fair sample" in n)
+        self.assertIn("The first tuning record missing from the fair sample of the tuning part is pool position #1 (`r1`)", note)
+        self.assertIn("not finished in the ground truth", note)
+        self.assertNotIn("held-out record missing", note)                              # the held-out part has no gap
+
+    def test_070_near_misses(self):
+        # a held-out record finished but not extracted stops the held-out run, not the tuning one
+        ev = self.evaluated(finished=["r0", "r1", "r2", "r3"], extracted=["r0", "r1", "r3", "r4"])
+        self.assertEqual([r["id"] for r in ev.records], ["r0", "r1", "r3"])
+        self.assertEqual(ev.left_out["finished, but not extracted by 060's last run"], ["r2"])
+        # nothing evaluable: the message names the first gap of each part
+        from common.stop import Stop
+        with self.assertRaises(Stop) as stop:
+            self.evaluated(finished=["r5"])                                           # r0 (tuning) and r2 (held-out) missing
+        text = str(stop.exception)
+        self.assertIn("The first tuning record missing", text)
+        self.assertIn("The first held-out record missing", text)
+        self.assertIn("not in the ground truth yet", text)
+        self.assertIn("set --part tuning", text)
+
+    # --- step 050
+
+    def chosen(self, per=3, part="tuning", start=0, finished=(), waiting=(), ids=""):
+        import importlib.util
+        import sys
+        spec = importlib.util.spec_from_file_location("records_050", ROOT / "050_annotate" / "050_annotate_helpers" / "records.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["records_050"] = module
+        spec.loader.exec_module(module)
+        self.write_ground_truth(finished)
+        out = self.tmp / "out"
+        out.mkdir(exist_ok=True)
+        if waiting:
+            write_csv(out / "drafted_triples_batch1.csv", ["id"], [{"id": i} for i in waiting])
+        inputs = {"records": self.tmp / "records.jsonl", "splits": self.tmp / "splits.json",
+                  "ground_truth_schema": ROOT / "annotations" / "ground_truth_schema.txt",
+                  "ground_truth": self.tmp / "ground_truth" / "batch_*.csv"}
+        return module.pick_records(inputs, {"records_per_batch": per, "start_position": start, "part": part, "ids": ids,
+                                            "max_chars": 8000}, out)
+
+    def test_050_picks_tuning_positions_skipping_held_out(self):
+        c = self.chosen(per=4)
+        self.assertEqual([i["id"] for i in c.items], ["r0", "r1", "r3", "r5"])
+        self.assertEqual([i["position"] for i in c.items], [0, 1, 3, 5])
+        self.assertTrue(any("pool positions 0, 1, 3, 5" in n and "setting part: tuning" in n for n in c.notes))
+        self.assertTrue(all(f["fair"] for f in c.fair.values()))                      # held-out untouched: still fair
+
+    def test_050_skips_done_and_waiting_in_the_part(self):
+        c = self.chosen(per=2, finished=["r0"], waiting=["r1"])
+        self.assertEqual([i["id"] for i in c.items], ["r3", "r5"])
+
+    def test_050_held_out_and_both(self):
+        self.assertEqual([i["id"] for i in self.chosen(per=5, part="held-out").items], ["r2", "r4", "r7"])
+        self.assertEqual([i["id"] for i in self.chosen(per=5, part="both").items], ["r0", "r1", "r2", "r3", "r4"])
+        short = self.chosen(per=5, part="held-out")
+        self.assertTrue(any("only 3 are left in the held-out pool" in n and "--part both" in n for n in short.notes))
+
+    def test_050_drafting_one_part_keeps_the_other_fair_and_names_the_gap_part(self):
+        c = self.chosen(per=1, part="tuning", ids="r3")                              # hand-picked: tuning r0, r1 skipped
+        self.assertFalse(c.fair["tuning"]["fair"])
+        self.assertTrue(c.fair["held-out"]["fair"])
+        note = next(n for n in c.notes if "no longer the first records" in n)
+        self.assertIn("the tuning part of the pool", note)
+        self.assertNotIn("held-out part", note)
+
+    def test_050_refuses_an_unknown_part(self):
+        from common.stop import Stop
+        for bad in ("tunning", "", "Both"):
+            with self.assertRaises(Stop):
+                self.chosen(part=bad)
+
+    def test_050_ids_ignore_part_with_a_note(self):
+        c = self.chosen(part="held-out", ids="r0")
+        self.assertEqual([i["id"] for i in c.items], ["r0"])
+        self.assertTrue(any("part (held-out) is ignored" in n for n in c.notes))
+
+
 class UnitsListed(unittest.TestCase):
 
     def test_terminology_lists_every_unit(self):

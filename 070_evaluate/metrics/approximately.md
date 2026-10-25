@@ -4,7 +4,7 @@ Part of [Evaluation metrics](../metrics.md), which explains the notation and lis
 
 Every metric is computed on the evaluated [records](../../docs/terminology.md#1-records-and-their-text) only (the [fair sample](../../docs/terminology.md#4-ground-truth-and-samples) of finished, extracted records). Reading it for the whole catalog assumes two things:
 
-- the evaluated records are a random sample of the catalog (only the fair sample is evaluated);
+- the evaluated records are a random sample of the catalog (only the fair sample is evaluated: for each part, the first records of the part in pool order, with none of the part skipped; the pool's order restricted to one part is still random, so each part is a random sample on its own);
 - the pipeline wasn't adjusted to these records (true of the [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070) until it is looked at).
 
 Even then, every metric is approximate for the whole catalog, for the five reasons below. Each has the same parts: its meaning, and how the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it. A metric with reasons of its own lists them in its own section, under *Assumes and can't see*. Sources for all five: [Why "approximately": sources](#sources).
@@ -30,10 +30,10 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
   | Assumption | Why it matters | How the report checks it |
   |---|---|---|
-  | The evaluated records are a random sample of the catalog | The redraws stand in for other samples of the catalog. | Only the [fair sample](../../docs/terminology.md#4-ground-truth-and-samples) is evaluated (by design). |
+  | The evaluated records are a random sample of the catalog | The redraws stand in for other samples of the catalog. | Only the [fair sample](../../docs/terminology.md#4-ground-truth-and-samples) is evaluated, for each part separately (by design): a part's order is the shuffled pool's order restricted to it, so its first records are random. |
   | Whole records vary, independently of each other | A record's extracted triples come from one [text](../../docs/terminology.md#1-records-and-their-text) and one [model call](../../docs/terminology.md#8-the-pipeline), so they succeed or fail together; redrawing single classed triples would make the range too narrow. | Records are redrawn whole (by design). |
   | Enough records | With very few, the range is itself unreliable, usually too narrow. | No range below 20 evaluated records (a rule of thumb; no source found gives a number). |
-  | The redraws vary as other samples would | The evaluated records are the first records of the [pool](../../docs/terminology.md#4-ground-truth-and-samples), which was shuffled when it was drawn, so how many of them come from each stratum is itself random. Redrawing from all evaluated records together lets it vary the same way. Redrawing within each stratum would hold it fixed, and a stratum with only 1 or 2 evaluated records would then add little or no spread, so the range would come out too narrow. | Records are redrawn from all strata together (by design). |
+  | The redraws vary as other samples would | The evaluated records of a part are the first records of that part of the [pool](../../docs/terminology.md#4-ground-truth-and-samples), which was shuffled when it was drawn (a record's part depends on its position only, not on its stratum), so how many of them come from each stratum is itself random. Redrawing from all evaluated records together lets it vary the same way. Redrawing within each stratum would hold it fixed, and a stratum with only 1 or 2 evaluated records would then add little or no spread, so the range would come out too narrow. | Records are redrawn from all strata together (by design). |
   | The range isn't at 0% or 100% | There, a percentile range is too narrow. | Lists the metrics whose range reaches 0% or 100%. |
   | No one record dominates | A record with most of the classed triples sways every redraw it's in. | Gives the largest record's proportion of the occurrences and of the [ground truth triples](../../docs/terminology.md#4-ground-truth-and-samples), for reading (no established threshold). |
   | A small proportion of the catalog is evaluated | Redrawing with repeats treats the catalog as endless; for a large proportion, the range comes out somewhat too wide. | Gives the proportion of the catalog evaluated; holds below 5%. |
@@ -41,7 +41,7 @@ Even then, every metric is approximate for the whole catalog, for the five reaso
 
 ## The sample's mix of strata
 
-**Meaning.** The [pool](../../docs/terminology.md#4-ground-truth-and-samples) was drawn stratified by [maintainer](../../docs/terminology.md#1-records-and-their-text), and only its first [finished records](../../docs/terminology.md#4-ground-truth-and-samples) are evaluated. If their mix of strata differs from the catalog's, the value leans toward the over-represented maintainers.
+**Meaning.** The [pool](../../docs/terminology.md#4-ground-truth-and-samples) was drawn stratified by [maintainer](../../docs/terminology.md#1-records-and-their-text), and only the first [finished records](../../docs/terminology.md#4-ground-truth-and-samples) of each part are evaluated. If their mix of strata differs from the catalog's, the value leans toward the over-represented maintainers.
 
 **How the [report](../../docs/terminology.md#8-the-pipeline) checks or limits it.**
 - The pool matches the catalog's mix of strata: it was drawn with proportional allocation (`annotations/ground_truth_candidates.json`).

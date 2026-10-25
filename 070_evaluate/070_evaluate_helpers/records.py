@@ -13,10 +13,13 @@ ahead (unless confirm_paid_calls is false).
 
 A record is evaluated when a person has finished it in the ground truth
 (all_facts_extracted = 1 on every row) AND step 060's last run extracted from it.
-Of those, only the FAIR SAMPLE is evaluated: the longest run of the pool's first
-records that are all evaluated. The pool is shuffled, so that run is a fair
-sample of the catalog, which the margins of error require (see stats.py). A
-record after a gap (an unfinished or unextracted record before it) or not in
+Of those, only the FAIR SAMPLE is evaluated: for EACH PART of the pool (tuning,
+held-out) separately, the longest run of that part's first records (in pool
+order) that are all evaluated. The pool is shuffled, so its order restricted to
+one part is still random, and that run is a fair sample of the part (and the two
+runs together of the catalog), which the margins of error require (see stats.py).
+An unfinished record of one part never holds back the other part. A record after
+a gap in its own part (an unfinished or unextracted record before it) or not in
 the pool at all (hand-picked) is left out and listed, with what to do.
 
 For each evaluated record: its pool position, its part (tuning or held-out,
@@ -37,7 +40,7 @@ from types import SimpleNamespace
 
 from common.audit import ref_path
 from common.files import read_csv
-from common.ground_truth import coined_uses, fair_prefix, read_ground_truth, read_pool, twin_kinds, with_coined
+from common.ground_truth import coined_uses, fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds, with_coined
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import load_records
@@ -130,18 +133,20 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
         r["twin"] = kind[r["id"]]
 
 
-def _first_gap(pool: list, positions: dict, taken: set, finished: set, in_ground_truth) -> str:
-    """The first pool record not taken, why, and what brings it in (for messages); "" if none."""
-    gap = next((rid for rid in pool if rid not in taken), None)
+def _first_gap(order: list, part: str, positions: dict, taken: set, finished: set, in_ground_truth) -> str:
+    """The first record of one part (`order`: that part's ids in pool order) that is not taken, why, and what brings
+    it in (for messages); "" if none."""
+    gap = next((rid for rid in order if rid not in taken), None)
     if gap is None:
         return ""
     where = f"pool position #{positions[gap]} (`{gap}`)"
+    head = f"The first {part} record missing from the fair sample of the {part} part is {where}"
     if gap in finished:
-        return f"The first pool record missing from the fair sample is {where}: finished, but not extracted by 060's last run. Run `py 060_extract/run.py`"
+        return f"{head}: finished, but not extracted by 060's last run. Run `py 060_extract/run.py`"
     if gap in in_ground_truth:
-        return f"The first pool record missing from the fair sample is {where}: not finished in the ground truth. Finish it in `py helpers/annotate.py` (tick *All facts extracted*), run `py 060_extract/run.py`"
-    return (f"The first pool record missing from the fair sample is {where}: not in the ground truth yet. Draft it with "
-            f"`py 050_annotate/run.py`, correct and finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
+        return f"{head}: not finished in the ground truth. Finish it in `py helpers/annotate.py` (tick *All facts extracted*), run `py 060_extract/run.py`"
+    return (f"{head}: not in the ground truth yet. Draft it with "
+            f"`py 050_annotate/run.py` (set --part {part}), correct and finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
 
 
 def pick_records(inputs: dict, settings: dict) -> Evaluated:
@@ -185,14 +190,22 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     evaluated.unfinished = len(gt.records) - len(finished)
     not_extracted = sorted(finished - extracted_ids)
     taken = finished & extracted_ids
-    fair = set(fair_prefix(evaluated.pool, taken))
+    parts = pool_parts(pool_rows)                  # each part is a fair sample on its own: its own run from its own first record
+    fair = {rid for order in parts.values() for rid in fair_prefix(order, taken)}
     outside = sorted(taken - fair)
     evaluated.left_out = {k: v for k, v in {
         "finished, but not extracted by 060's last run": not_extracted,
-        "outside the fair sample (after an unfinished or unextracted pool record, or not in the pool)": outside,
+        "outside the fair sample (after an unfinished or unextracted record of their own part of the pool, or not in the pool)": outside,
     }.items() if v}
     positions = {r["id"]: r["position"] for r in pool_rows}
-    gap = _first_gap(evaluated.pool, positions, taken, finished, gt.records)
+    part_of = {r["id"]: r["part"] for r in pool_rows}
+
+    def gaps_of(only=None) -> str:      # the first gap of each part (of those with a record in `only`, if given), as sentences
+        found = [_first_gap(order, name, positions, taken, finished, gt.records) for name, order in parts.items()
+                 if only is None or any(part_of.get(rid) == name for rid in only)]
+        return "; ".join(g for g in found if g)
+
+    gap = gaps_of()
     if not_extracted:
         evaluated.notes.append(f"{len(not_extracted)} finished ground truth record(s) weren't extracted by 060's "
                             f"last run, so this run leaves them out: {named(not_extracted)}. To evaluate them, run "
@@ -200,9 +213,9 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     if outside:
         not_in_pool = [rid for rid in outside if rid not in positions]
         evaluated.notes.append(f"{len(outside)} record(s) are left out because they aren't in the fair sample (the "
-                            f"pool's first records, with none skipped), so this run doesn't evaluate them: "
+                            f"first records of their own part of the pool, with none skipped), so this run doesn't evaluate them: "
                             f"{named(outside)}."
-                            + (f" {gap}, then run `py 070_evaluate/run.py` again." if len(not_in_pool) < len(outside) else "")
+                            + (f" {gaps_of(outside)}, then run `py 070_evaluate/run.py` again." if len(not_in_pool) < len(outside) else "")
                             + (f" {len(not_in_pool)} of them aren't in the pool at all (hand-picked): {named(not_in_pool)}. "
                                f"Nothing to do for those: only pool records can form a fair sample." if not_in_pool else ""))
 

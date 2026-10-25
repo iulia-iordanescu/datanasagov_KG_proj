@@ -32,7 +32,8 @@ progress (FINISHED_MARKS; any other value is a problem, and the record isn't fin
     gt.records     {record id: {"file", "rows", "finished"}}
     gt.problems    ["…"]: what a person must fix (see below)
     gt.repeats     [{"message", "copies"}]: the problems that stop 070 (a classed triple twice in a record)
-    fair_sample, fair_prefix  whether ids are the pool's first records (below)
+    fair_sample, fair_prefix  whether ids are the first records of a pool order (below)
+    pool_parts(pool_rows)     the pool's ids in order, split into its parts: {"tuning": […], "held-out": […]}
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
     with_coined(ground_truth_schema, gt)  the ground truth schema's component classes
                               plus those coined in the ground truth (not in it yet)
@@ -438,11 +439,26 @@ def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict
 # fair sample of the catalog, for any N. Results about the whole catalog may
 # only be drawn from such a sample. pool is the pool's ids in order
 # (030's splits.json); taken is a set of ids.
+#
+# The same holds for each PART of the pool (tuning, held-out) taken alone: the
+# pool's order restricted to one part is still a random order, so its first N
+# records are a fair sample of that part, and an unfinished record of one part
+# never holds back the other. pool_parts() gives each part's ids in pool order;
+# fair_sample / fair_prefix are then applied to one part's list.
 
 def read_pool(splits_path) -> list:
     """The ground truth candidates pool, in pool order, from 030's
     splits.json: [{"id", "position", "part" ("tuning" or "held-out"), …}]."""
     return json.loads(Path(splits_path).read_text(encoding="utf-8"))["ground_truth_candidates"]["records"]
+
+
+PARTS = ("tuning", "held-out")
+
+
+def pool_parts(pool_rows: list) -> dict:
+    """The pool's ids in pool order, split by part: {"tuning": [ids], "held-out": [ids]}.
+    pool_rows are read_pool()'s rows (each with an "id" and a "part")."""
+    return {part: [r["id"] for r in pool_rows if r["part"] == part] for part in PARTS}
 
 
 def fair_sample(pool: list, taken: set) -> dict:
@@ -459,8 +475,8 @@ def fair_sample(pool: list, taken: set) -> dict:
 
 
 def fair_prefix(pool: list, taken: set) -> list:
-    """The longest run of the pool's first records that are all taken: the
-    part of `taken` that is a fair sample."""
+    """The longest run of the first records of `pool` (the whole pool's ids, or one part's from pool_parts())
+    that are all taken: the part of `taken` that is a fair sample of it."""
     out = []
     for rid in pool:
         if rid not in taken:
@@ -469,13 +485,14 @@ def fair_prefix(pool: list, taken: set) -> list:
     return out
 
 
-def fair_words(fair: dict, positions: dict, what: str = "The ground truth and the drafted batches") -> str:
-    """fair_sample()'s answer in words."""
+def fair_words(fair: dict, positions: dict, what: str = "The ground truth and the drafted batches", part: str = "") -> str:
+    """fair_sample()'s answer in words (for one part of the pool when `part` is given)."""
+    of = f"the {part} part of the pool" if part else "the pool"
     if fair["fair"]:
-        return f"{what} are the first {fair['first_n']} records of the pool: a fair sample."
+        return f"{what} are the first {fair['first_n']} records of {of}: a fair sample."
     parts = []
     if fair["skipped_in_pool"]:
-        parts.append(f"{fair['skipped_in_pool']} pool record(s) before the last one taken are not taken "
+        parts.append(f"{fair['skipped_in_pool']} record(s) of {of} before the last one taken are not taken "
                      f"(the first at pool position {positions.get(fair['first_skipped'])})")
     if fair["outside_pool"]:
         parts.append(f"{fair['outside_pool']} record(s) taken are not in the pool")
