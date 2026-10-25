@@ -109,8 +109,19 @@ class Guards(unittest.TestCase):
         self.assertEqual(llm.cache_identity(), "litellm:gemini-2.5-pro")
 
     def test_unknown_thinking_level(self):
-        with self.assertRaisesRegex(ValueError, "low, medium, high, model_default"):
+        from common.stop import Stop
+        with self.assertRaisesRegex(Stop, "low, medium, high, model_default"):
             self.calls(thinking="none")
+
+    def test_unusable_settings_stop(self):
+        """A setting paid_calls can't use stops the step (Stop: `stopped`), never fails it: an unknown service, an
+        empty model, an unknown thinking level."""
+        from common.stop import Stop
+        for settings, words in (({"service": "nowhere"}, "isn't a service the pipeline can reach"),
+                                ({"model": " "}, "The setting model is empty"),
+                                ({"thinking": "max"}, "isn't a level the pipeline knows")):
+            with self.subTest(settings=settings), self.assertRaisesRegex(Stop, words):
+                self.calls(**settings)
 
     # ---------------------------------------------------------------- the test call
 

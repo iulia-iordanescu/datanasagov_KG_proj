@@ -51,19 +51,21 @@ Problems, each listed, none silently resolved:
     class and object class (as triples_io.component_class_key does). Only
     one copy can be paired, so 070 would count the other as ground truth only. Also in
     gt.repeats: 070 refuses to run while there is one;
+  - a record with an all_facts_extracted value other than 0 and 1 (FINISHED_MARKS) on some row (reported
+    instead of the disagreement above);
   - the same subject instance, predicate, and object instance twice in a
-    record, with different entity classes: likely one fact given two entity
-    classes by mistake;
-A problem about lines of a file shows each of them on a line of its own
-(the message has several lines).
+    record, with different entity classes: one fact given two entity
+    classes by mistake, or two facts that differ only in them;
   - a file missing one of the columns above.
-050, 060, and 070 list them in their report's warnings (and before paying);
-070 also shows them before it evaluates and asks whether to go ahead; the
+A problem about lines of a file shows each of them on a line of its own
+(the message has several lines). For a person, all six: docs/running_on_nasa_laptop.md, section 7.
+040, 050, 060, and 070 list them in their report's warnings; 050 and 060 also before paying, and 070 before
+it evaluates, asking whether to go ahead (040 reads the ground truth only after its model calls); the
 annotation tool shows them on its page.
 
-Shared by the steps that read ground truth (050, to know which records are
-done and to check the files; 060, which records are finished; 070, to evaluate
-against it) and by the annotation tool (helpers/annotate.py), which writes the
+Shared by the steps that read ground truth (040, to compare its schema and report
+the problems; 050, to know which records are done and to check the files; 060,
+which records are finished; 070, to evaluate against it) and by the annotation tool (helpers/annotate.py), which writes the
 files.
 """
 from __future__ import annotations

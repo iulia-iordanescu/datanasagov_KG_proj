@@ -163,10 +163,4 @@ Their columns:
 
 ### What the pipeline checks
 
-Every [step](../docs/terminology.md#8-the-pipeline) that reads `ground_truth/` (050, 060, and 070, through `common/common_helpers/ground_truth.py`) lists these in its [report](../docs/terminology.md#8-the-pipeline)'s warnings, and the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) shows them on its page; step 070 also shows them before it evaluates and asks whether to go ahead; none is ever silently fixed:
-
-- a [record](../docs/terminology.md#1-records-and-their-text) in two files (annotated twice): keep it in one file;
-- [the same classed triple twice](../docs/terminology.md#4-ground-truth-and-samples) in one record: delete one of the two rows (step 070 refuses to run until you do);
-- the same [subject instance](../docs/terminology.md#2-triples), predicate, and [object instance](../docs/terminology.md#2-triples) twice in one record, with other [entity classes](../docs/terminology.md#3-schemas): if they state one fact, keep the row with the right entity classes;
-- a record whose rows disagree on `all_facts_extracted`: set it the same on every row;
-- a file missing one of the columns above.
+Every [step](../docs/terminology.md#8-the-pipeline) that reads `ground_truth/` (040, 050, 060, and 070, through `common/common_helpers/ground_truth.py`) lists the [ground truth](../docs/terminology.md#4-ground-truth-and-samples)'s own problems in its [report](../docs/terminology.md#8-the-pipeline)'s warnings, and the [annotation tool](../docs/terminology.md#4-ground-truth-and-samples) shows them on its page; none is ever silently fixed. All six, each with what it means and what to do, and which steps show them before paying: [`docs/running_on_nasa_laptop.md`](../docs/running_on_nasa_laptop.md), section 7, the rows starting *Ground truth,*. Of them, only [the same classed triple twice](../docs/terminology.md#4-ground-truth-and-samples) in one record stops a step (070, until you delete one of the two rows).

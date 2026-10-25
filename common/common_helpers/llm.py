@@ -65,6 +65,7 @@ import requests
 from dotenv import load_dotenv
 
 from common.audit import log
+from common.stop import Stop
 
 #: The model the calls use: the default of every step's `model` setting,
 #: which paid_calls() puts here for the run. `py helpers/models.py` lists the models
@@ -972,22 +973,23 @@ class Calls:
 def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     """The Calls of one run: uses the model the setting `model` names, through the service the setting `service`
     names, with the thinking cap the setting `thinking` gives; asks before paying (setting confirm_paid_calls),
-    showing notes first; answers kept in cache/ inside the step's output folder."""
+    showing notes first; answers kept in cache/ inside the step's output folder. A setting it can't use stops the
+    step (Stop: `stopped`, a problem the person can fix)."""
     global MODEL, SERVICE, THINKING
     service = str(settings.get("service") or SERVICE).strip().lower()
     if service not in SERVICES:
-        raise ValueError(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
-                         f"model can be called. Give one of {', '.join(SERVICES)} with --service <name>, then run "
-                         f"`py {Path(output).name}/run.py` again.")
+        raise Stop(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
+                   f"model can be called. Give one of {', '.join(SERVICES)} with --service <name>, then run "
+                   f"`py {Path(output).name}/run.py` again.")
     name = str(settings.get("model") or "").strip()
     if not name:
-        raise ValueError(f"The setting model is empty, so no model can be called. Give one with --model <name> "
-                         f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
+        raise Stop(f"The setting model is empty, so no model can be called. Give one with --model <name> "
+                   f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
     thinking = str(settings.get("thinking") or THINKING).strip().lower()
     if thinking not in THINKING_LEVELS:
-        raise ValueError(f"The setting thinking is {thinking!r}, which isn't a level the pipeline knows, so no model "
-                         f"can be called. Give one of {', '.join(THINKING_LEVELS)} with --thinking <level>, then run "
-                         f"`py {Path(output).name}/run.py` again.")
+        raise Stop(f"The setting thinking is {thinking!r}, which isn't a level the pipeline knows, so no model "
+                   f"can be called. Give one of {', '.join(THINKING_LEVELS)} with --thinking <level>, then run "
+                   f"`py {Path(output).name}/run.py` again.")
     MODEL, SERVICE, THINKING = name, service, thinking
     SERVED.clear()
     for k in REQUESTS:

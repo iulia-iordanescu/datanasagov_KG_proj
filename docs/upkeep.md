@@ -48,7 +48,7 @@ The terms: [`terminology.md`](terminology.md).
 
 ## When step 070 stops
 
-Step 070 stops, before evaluating, while something it needs from a person is missing. Do each, then run it again.
+Step 070 stops, before evaluating, while something it needs from a person is missing. Every way it can stop, in the order it checks them, each with what to do: [`070_evaluate.md`](../070_evaluate/070_evaluate.md), *Checks and warnings*, *The step stops*. The ones a person meets most, below; do each, then run it again.
 
 - **An [entity class](terminology.md#3-schemas) or predicate a [finished record](terminology.md#4-ground-truth-and-samples) coined** isn't in the [ground truth schema](terminology.md#3-schemas): add it (*While annotating*), or fix the typo.
 - **Rows of the [translation table](terminology.md#7-evaluating-extraction-step-070) to check:** step 070 adds a row for each [component class](terminology.md#3-schemas) of the [current schema](terminology.md#6-extracting-with-a-schema-step-060) that has none (the model proposes each, one [paid call](terminology.md#8-the-pipeline) per 100), then stops. Check each in the tool (*Translation table*), which shows both definitions and an example [extracted triple](terminology.md#6-extracting-with-a-schema-step-060). A wrong translation silently turns right extracted triples into wrong ones, or the reverse.
