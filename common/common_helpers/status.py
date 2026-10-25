@@ -47,8 +47,8 @@ import subprocess
 from pathlib import Path
 
 from common import audit
-from common.component_class_mapping import CHECKED, MAPPING_PATH, NONE, crt_definitions, gtt_definitions, is_stale, \
-    is_stale_gtt, read_mapping, repeats
+from common.component_class_mapping import CHECKED, MAPPING_PATH, crt_definitions, gtt_definitions, is_missing_target, \
+    is_stale, is_stale_gtt, read_mapping, repeats
 from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, KIND_KEYS, NUMBERED, PATTERN,
                                  check_rows, ground_truth_schema_gaps, read_ground_truth, read_pool, with_coined)
 from common.partial_reviews import REVIEWS_PATH, read_reviews, row_key
@@ -301,8 +301,7 @@ def _translation_items(schema: dict, gt) -> list:
     if not SCHEMA_USED.exists() or not MAPPING_PATH.exists():
         return []
     crt = crt_definitions(json.loads(SCHEMA_USED.read_text(encoding="utf-8")))
-    vocab = with_coined(schema, gt)
-    gtt_now = gtt_definitions({"entity_classes": vocab["entity_classes"], "predicates": vocab["predicates"]})
+    gtt_now = gtt_definitions(schema)                 # the file's own, as step 070 reads it: never a coined one
     table = read_mapping(MAPPING_PATH)
     current = [r for r in table if component_class_key(r["component_class_from_past_or_crt_schema"])
                in crt.get(r["kind"], {})]
@@ -316,18 +315,17 @@ def _translation_items(schema: dict, gt) -> list:
                            f"stops for you to check them.", "when-step-070-stops", source))
     unchecked = [r for r in current if r["checked"].lower() not in CHECKED]
     stale = [r for r in current if r["checked"].lower() in CHECKED and (is_stale(r, crt) or is_stale_gtt(r, gtt_now))]
-    gtt_keys = {kind: set(gtt_now.get(kind, {})) for kind in KIND_KEYS}
-    unknown = [r for r in current if r["checked"].lower() in CHECKED and r["component_class_in_gtt"] != NONE
-               and component_class_key(r["component_class_in_gtt"]) not in gtt_keys.get(r["kind"], set())]
+    unknown = [r for r in current if r["checked"].lower() in CHECKED and is_missing_target(r, gtt_now)]
     repeated = repeats(table)
     for rows, what in ((unchecked, "still to check"),
                        (stale, "stale (a definition changed since the row was checked): check them again"),
-                       (unknown, "translating to an entity class or predicate that isn't in the ground truth schema "
-                                 "any more: choose the right one")):
+                       (unknown, "with a missing target (translating to an entity class or predicate the ground "
+                                 "truth schema doesn't have): choose the right one, or add it to the ground truth "
+                                 "schema")):
         if rows:
             items.append(_item("Translation table", TO_DO, f"{len(rows)} row(s) of the translation table {what}: "
                                f"{named([r['component_class_from_past_or_crt_schema'] + ' (current schema)' for r in rows], 4)}. "
-                               f"Step 070 stops until they're checked ({where}).", "when-step-070-stops",
+                               f"Step 070 stops on them until then ({where}).", "when-step-070-stops",
                                repo_path(MAPPING_PATH)))
     if repeated:
         items.append(_item("Translation table", TO_DO, f"{len(repeated)} component class(es) have more than one row "

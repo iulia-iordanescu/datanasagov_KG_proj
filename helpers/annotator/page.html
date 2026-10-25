@@ -1400,7 +1400,7 @@ const aOrAn = (what) => what === "entity class" ? "an" : "a";               // a
 // A row "of the current schema": its component class is in the current schema
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
-const toCheck = (r) => r.stale || r.stale_gtt || (r.checked !== "yes" && r.checked !== "same component class");
+const toCheck = (r) => r.stale || r.stale_gtt || r.missing_target || (r.checked !== "yes" && r.checked !== "same component class");
 
 async function openMapping() {
   await flush();
@@ -1622,6 +1622,10 @@ function mappingRow(r, i) {
     `⚑ ${andList([crtName, ...sharing])} (current schema ${whats}) ${sharing.length === 1 ? "both" : "all"} translate to ` +
     `${gttLabel}, so step 070 can't tell them apart: extraction loses nothing by mixing them up. Nothing to do if the ` +
     `ground truth doesn't distinguish them; if it should, use separate ground truth schema ${whats} for them in the ground truth.`]);
+  if (r.missing_target) notes.push(["error", `${gttName}: not in the ground truth schema (missing target)`,
+    `✖ This row translates ${crtLabel} to ${gttName}, which the ground truth schema doesn't have (a missing target), ` +
+    `so step 070 stops on it. Pick a ground truth schema ${what} in this box's dropdown, or ${mapping.none}; or, if ` +
+    `${gttName} is right, add it to the ground truth schema first.`]);
   if (r.repeated) {
     const lines = (mapping.repeats.find(x => x.kind === r.kind && x.lines.includes(r._line)) || { lines: [r._line] }).lines;
     notes.push(["error", `${crtName} has ${lines.length} rows (lines ${lines.join(", ")}): keep one`,
@@ -1650,8 +1654,8 @@ function mappingRow(r, i) {
         : "Not shown: step 060's schema_used.json wasn't found."),
       el("div", {}),
       none ? definition(null, `${mapping.none}: nothing in the ground truth schema means ${crtName}.`)
-        : chosen ? definition(chosen.definition, `${gttName} was coined while annotating and has no definition yet: ` +
-                                                 `add one in the ground truth schema.`)
+        : chosen ? definition(chosen.definition, `${gttName} has no definition in the ground truth schema yet: ` +
+                                                 `add one there.`)
         : definition(null, `${gttName} isn't in the ground truth schema: pick another ground truth schema ${what} in the dropdown.`)),
     exampleLine(r),
     // one line of flags, at the bottom

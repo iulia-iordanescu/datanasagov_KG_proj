@@ -45,8 +45,9 @@ from pathlib import Path
 from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
-from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions, is_stale,
-                                            is_stale_gtt, read_mapping, repeats, value_problems, values_text)
+from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions,
+                                            is_missing_target, is_stale, is_stale_gtt, read_mapping, repeats,
+                                            value_problems, values_text)
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -205,17 +206,18 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                             f"things: {TABLE}); {AGAIN} ")
                          + " ".join(notes))
 
-    unchecked, stale, stale_gtt, unknown = [], [], [], []
+    # each row of the current schema under the first of these that applies, in this order (a row may be several)
+    unchecked, stale, unknown, stale_gtt = [], [], [], []
     for kind, name in needed:
         r = have[(kind, component_class_key(name))]
         if r["checked"].lower() not in CHECKED:
             unchecked.append(_row(name, r))
         elif is_stale(r, now):
             stale.append(_row(name, r))
+        elif is_missing_target(r, gtt_now):
+            unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth schema)")
         elif is_stale_gtt(r, gtt_now):
             stale_gtt.append(_row(name, r))
-        elif r["component_class_in_gtt"] != NONE and component_class_key(r["component_class_in_gtt"]) not in gtt_key[kind]:
-            unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth schema)")
     if unchecked:
         raise Stop(f"{len(unchecked)} row(s) of {ref_path(path)} still need checking, so 070 can't evaluate (it "
                          f"translates only through checked rows): {named(unchecked, 5, '; ')}. Check them: {TABLE} (or "
@@ -226,17 +228,21 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"the component class differently, so they may no longer be right, and 070 can't evaluate "
                          f"with them: {named(stale, 5, '; ')}. Check them again: {TABLE}, shows both definitions; "
                          f"{AGAIN}")
+    if unknown:
+        raise Stop(f"{len(unknown)} checked row(s) of {ref_path(path)} have a missing target: they translate to a "
+                         f"component class that the ground truth schema ({ref_path(inputs['ground_truth_schema'])}) "
+                         f"doesn't have, so 070 can't translate with them: {named(unknown, 5, '; ')}. Its causes "
+                         f"(docs/terminology.md, *row state*): a typo in the table, a component class renamed or "
+                         f"deleted by hand in the ground truth schema, a coined one chosen in the table, or "
+                         f"--ground_truth_schema pointing to another file. In each, choose a component class of the "
+                         f"ground truth schema, or (none) (column component_class_in_gtt; {TABLE}), or add the "
+                         f"missing one to the ground truth schema; {AGAIN}")
     if stale_gtt:
         raise Stop(f"{len(stale_gtt)} checked row(s) of {ref_path(path)} were checked when the ground truth schema "
                          f"({ref_path(inputs['ground_truth_schema'])}) defined the component class they translate "
                          f"to differently, or before it had a definition, so they may no longer be "
                          f"right, and 070 can't evaluate with them: {named(stale_gtt, 5, '; ')}. Check them again: "
                          f"{TABLE}, shows the old and new definitions; {AGAIN}")
-    if unknown:
-        raise Stop(f"{len(unknown)} checked row(s) of {ref_path(path)} translate to a component class that isn't in the "
-                         f"ground truth schema (a typo, or one since renamed), so 070 can't translate with them: "
-                         f"{named(unknown, 5, '; ')}. In each, choose a component class of the ground truth schema, "
-                         f"or (none) (column component_class_in_gtt; {TABLE}), {AGAIN}")
 
     translation.reachable = {"entity class": set(), "predicate": set()}
     for kind, name in needed:

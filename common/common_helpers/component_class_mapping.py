@@ -43,6 +43,11 @@ ground truth schema's definition now), spacing aside. Step
 tool shows the old and new definitions. Checking it again stores both
 definitions as they are then.
 
+A row whose component_class_in_gtt (not (none)) is no longer, or never was, in the
+ground truth schema file has a MISSING TARGET (is_missing_target): there is no
+definition to compare, so it is never stale_gtt; step 070 stops on it, and the
+annotation tool marks it. The full list of its causes: docs/terminology.md, *row state*.
+
 One component class, one row: two rows with the same kind and the same
 component_class_from_past_or_crt_schema (compared like every component class,
 ignoring case and punctuation) would leave it open which translation counts.
@@ -105,11 +110,19 @@ def gtt_definition(row: dict, gtt: dict) -> str:
     return gtt.get(row["kind"], {}).get(component_class_key(row["component_class_in_gtt"]), "")
 
 
+def is_missing_target(row: dict, gtt: dict) -> bool:
+    """True if the row translates to a component class (not (none)) that the ground truth schema (gtt:
+    gtt_definitions' result) doesn't have: a missing target."""
+    return row["component_class_in_gtt"] != NONE and \
+        component_class_key(row["component_class_in_gtt"]) not in gtt.get(row["kind"], {})
+
+
 def is_stale_gtt(row: dict, gtt: dict) -> bool:
     """True if the row's stored definition_in_gtt differs from the ground truth
     schema's definition now of the component class the row translates to
-    (spacing aside)."""
-    return not _same(row["definition_in_gtt"], gtt_definition(row, gtt))
+    (spacing aside). Never for a missing target (is_missing_target): it has no
+    definition now to compare with."""
+    return not is_missing_target(row, gtt) and not _same(row["definition_in_gtt"], gtt_definition(row, gtt))
 
 
 def repeats(rows: list) -> list:

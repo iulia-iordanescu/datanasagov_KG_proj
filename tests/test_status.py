@@ -153,7 +153,8 @@ class Status(unittest.TestCase):
         mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Probe,Gizmoid,,yes,a craft sent to explore,\n",
                            encoding="utf-8")                              # checked, but Gizmoid was never in it
         texts = self.texts(self.status(), "Translation table")
-        self.assertTrue(any("isn't in the ground truth schema any more: choose the right one: Probe (current schema)"
+        self.assertTrue(any("with a missing target (translating to an entity class or predicate the ground truth schema "
+                            "doesn't have): choose the right one, or add it to the ground truth schema: Probe (current schema)"
                             in t for t in texts), texts)
 
     def test_partial_pairs_waiting_tuning_only(self):

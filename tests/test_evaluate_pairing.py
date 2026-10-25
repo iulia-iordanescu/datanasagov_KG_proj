@@ -552,6 +552,50 @@ class ProposedRows(unittest.TestCase):
         self.assertIn("Probe (entity class, current schema)", notes[1])
 
 
+class RowStates(unittest.TestCase):
+    """component_classes.translate_component_classes stops on a row of the current schema by the first state that
+    applies: unchecked, stale, missing target, stale_gtt. A missing target is named as one, never as stale_gtt
+    (its old definition can't be compared with anything)."""
+
+    def stop_for(self, rows, gts_text="ENTITY CLASSES\n--------------\nSpacecraft        a vehicle in space\n"):
+        import shutil
+        import tempfile
+        from pathlib import Path
+        import component_classes
+        from common.files import write_csv
+        from common.stop import Stop
+        from common import component_class_mapping as m
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            write_csv(tmp / "map.csv", m.COLUMNS, [dict(zip(m.COLUMNS, r)) for r in rows])
+            (tmp / "gts.txt").write_text(gts_text, encoding="utf-8")
+            evaluated = type("E", (), {"schema_used": {"entity_classes": [{"component_class": r[1], "definition": "d"}
+                                                                          for r in rows], "predicates": []}})()
+            with self.assertRaises(Stop) as stop:
+                component_classes.translate_component_classes(
+                    {"component_class_mapping": str(tmp / "map.csv"), "ground_truth_schema": str(tmp / "gts.txt")},
+                    evaluated, None)
+            return str(stop.exception)
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_missing_target_before_stale_gtt(self):
+        said = self.stop_for([["entity class", "Satellite", "Rocket", "no", "yes", "d", "an old meaning"]])
+        self.assertIn("have a missing target", said)
+        self.assertIn("Satellite (current schema) --> Rocket (not in the ground truth schema)", said)
+        self.assertNotIn("defined the component class they translate to differently", said)
+
+    def test_stale_gtt_still_found(self):
+        said = self.stop_for([["entity class", "Satellite", "Spacecraft", "no", "yes", "d", "an old meaning"]])
+        self.assertIn("defined the component class they translate to differently", said)
+
+    def test_unchecked_and_stale_first(self):
+        self.assertIn("still need checking",
+                      self.stop_for([["entity class", "Satellite", "Rocket", "no", "no", "d", ""]]))
+        self.assertIn("defined the component class differently",
+                      self.stop_for([["entity class", "Satellite", "Rocket", "no", "yes", "other", ""]]))
+
+
 class Mismatches(unittest.TestCase):
 
     def test_entity_class_and_predicate(self):

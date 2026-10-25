@@ -123,7 +123,8 @@ from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_CO
                                  pattern_of,
                                  read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
-                                 gtt_definition, gtt_definitions, is_stale, is_stale_gtt, read_mapping, repeats)
+                                 gtt_definition, gtt_definitions, is_missing_target, is_stale, is_stale_gtt,
+                                 read_mapping, repeats)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key, verdict_of
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.review_comments import NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR, read_all as read_reviewer_comments
@@ -527,9 +528,16 @@ def save_batch(data: Data, n: int, records: list) -> list:
 # --------------------------------------------------------------------------
 
 def _gtt(data: Data) -> dict:
-    """The ground truth schema by kind: {kind: {component class: definition}}."""
-    vocab = with_coined(data.hand, read_ground_truth())
-    return {"entity class": vocab["entity_classes"], "predicate": vocab["predicates"]}
+    """The ground truth schema by kind: {kind: {component class: definition}}: the file's own, as step 070 reads
+    it, so a coined component class (used in the ground truth, not in the file yet) is never a translation's target."""
+    return {"entity class": dict(data.hand["entity_classes"]), "predicate": dict(data.hand["predicates"])}
+
+
+def _coined(data: Data) -> dict:
+    """{kind: {component_class_key(coined component class)}}: the ones the ground truth uses that the file lacks."""
+    coined = with_coined(data.hand, read_ground_truth())["coined"]
+    return {"entity class": {component_class_key(n) for n in coined["entity_classes"]},
+            "predicate": {component_class_key(n) for n in coined["predicates"]}}
 
 
 def _gtt_definitions(gtt: dict) -> dict:
@@ -549,9 +557,11 @@ def _crt() -> dict | None:
 def mapping_view(data: Data) -> dict:
     """The table as the page shows it: every row, with the current schema's
     definition, whether the row is stale (checked against another definition
-    in the current schema: "stale"; in the ground truth schema: "stale_gtt"),
-    an example triple for a predicate (the first one extraction
-    kept with it), and the ground truth schema to choose from."""
+    in the current schema: "stale", only for a row of the current schema; in the
+    ground truth schema: "stale_gtt"), whether its target is missing
+    ("missing_target": not (none), and not in the ground truth schema file), an
+    example triple for a predicate (the first one extraction kept with it), and
+    the ground truth schema to choose from (the file's own component classes)."""
     if not MAPPING_PATH.exists():
         return {"found": False, "rows": [], "gtt": {}}
     crt = _crt()
@@ -576,8 +586,11 @@ def mapping_view(data: Data) -> dict:
              "same_component_class_in_gtt": same_name.get(r["kind"], {}).get(component_class_key(r["component_class_from_past_or_crt_schema"])),
              "suggested_gtt": suggested.get((r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"]))),
              "in_crt": crt is not None and component_class_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {}), "crt_definition": (crt or {}).get(r["kind"], {}).get(component_class_key(r["component_class_from_past_or_crt_schema"])),
-             "stale": bool(crt) and r["checked"] in CHECKED and is_stale(r, crt),
+             "stale": bool(crt) and r["checked"] in CHECKED
+                      and component_class_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {})
+                      and is_stale(r, crt),
              "stale_gtt": r["checked"] in CHECKED and is_stale_gtt(r, gtt_now),
+             "missing_target": is_missing_target(r, gtt_now),
              "example": examples.get(component_class_key(r["component_class_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
             for r in table]
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
@@ -605,13 +618,23 @@ def save_mapping(data: Data, sent: list) -> None:
     vocab = _gtt(data)
     gtt_now = _gtt_definitions(vocab)
     gtt = {kind: {component_class_key(n): n for n in names} for kind, names in vocab.items()}
+    coined = None
     for row, s in zip(rows, sent):
         name = str(s.get("component_class_in_gtt") or "").strip()
-        if name != NONE:
-            if component_class_key(name) not in gtt.get(row["kind"], {}):
-                raise ValueError(f"\"{name}\" isn't {'an' if row['kind'] == 'entity class' else 'a'} {row['kind']} "
-                                 f"of the ground truth schema, so nothing can translate to it. Pick one from "
-                                 f"the list, or {NONE}.")
+        if name != NONE and component_class_key(name) not in gtt.get(row["kind"], {}):
+            if name == row["component_class_in_gtt"]:
+                pass                                   # a missing target left as it is: kept, and still marked
+            else:
+                coined = _coined(data) if coined is None else coined
+                a = 'an' if row['kind'] == 'entity class' else 'a'
+                raise ValueError(
+                    f"\"{name}\" isn't {a} {row['kind']} of the ground truth schema "
+                    f"(annotations/{GROUND_TRUTH_SCHEMA.name})"
+                    + (", only coined (used in the ground truth): add it to the ground truth schema first (view "
+                       "Ground truth schema), then pick it here" if component_class_key(name) in coined[row["kind"]]
+                       else ", so nothing can translate to it. Pick one from the list, or " + NONE)
+                    + ". Nothing was saved.")
+        elif name != NONE:
             name = gtt[row["kind"]][component_class_key(name)]
         row["component_class_in_gtt"] = name
         swap = row["kind"] == "predicate" and s.get("swap_subject_and_object") == "yes"
@@ -1003,11 +1026,17 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
         table = read_mapping(MAPPING_PATH)
         hit = [r for r in table if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == k]
         if hit:
-            new_hand = gtt_definitions(with_coined(read_schema_bytes(hand_bytes), gt))
+            new_hand = gtt_definitions(read_schema_bytes(hand_bytes))      # the file's own, as step 070 reads it
             for r in hit:
                 r["component_class_in_gtt"] = target
             stale = [r["component_class_from_past_or_crt_schema"] for r in hit
                      if r["checked"] in CHECKED and is_stale_gtt(r, new_hand)]
+            gone = [r["component_class_from_past_or_crt_schema"] for r in hit if is_missing_target(r, new_hand)]
+            if gone:
+                notes.append(f"{len(gone)} row(s) of the translation table will then have a missing target, since "
+                             f"{target} is coined, not in the ground truth schema: {', '.join(gone)} (current or past "
+                             f"schema). Add {target} to the ground truth schema, or pick another component class "
+                             f"for them: press Translation table at the top of this page.")
             files[MAPPING_PATH] = _csv_bytes(MAPPING_COLUMNS, table)
             changes.append({"file": f"annotations/{MAPPING_PATH.name}",
                             "what": f"{len(hit)} row(s) translating to {old} now translate to {target}"})

@@ -460,6 +460,44 @@ class D_Mapping(unittest.TestCase):
         self.assertEqual([(r["component_class_in_gtt"], r["checked"]) for r in self.read()],
                          [("Spacecraft", "same component class"), ("Spacecraft", "no")])
 
+    def test_missing_target_and_coined(self):
+        """The dropdown offers only the ground truth schema file's component classes, as step 070 reads it: never a
+        coined one (Comet: used in the ground truth, not in the file), and saving one is refused with what to do. A
+        row whose target is missing is marked (never stale_gtt), and saving it unchanged keeps it. A row of a past
+        schema only is never stale."""
+        batch = TMP / "annotations" / "ground_truth" / "batch_000.csv"
+        saved = batch.read_bytes()
+        self.addCleanup(batch.write_bytes, saved)
+        rows = gt_rows()
+        rows[-1]["object_class"] = "Comet"
+        with open(batch, "w", encoding="utf-8", newline="") as fh:
+            w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
+            w.writeheader()
+            w.writerows(rows)
+        cols = component_class_mapping.COLUMNS
+        with open(self.path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(cols)
+            w.writerows([["entity class", "Satellite", "Rocket", "no", "yes", "an orbiting craft", "a stored meaning"],
+                         ["entity class", "OldThing", "Spacecraft", "no", "yes", "gone now", "a vehicle in space"]])
+        v = get("/api/mapping")
+        self.assertNotIn("Comet", [x["component_class"] for x in v["gtt"]["entity class"]])
+        self.assertIn("Spacecraft", [x["component_class"] for x in v["gtt"]["entity class"]])
+        self.assertEqual([(r["missing_target"], r["stale"], r["stale_gtt"]) for r in v["rows"]],
+                         [(True, False, False), (False, False, False)])
+        same = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite",
+                 "component_class_in_gtt": "Rocket", "checked": "yes", "keep_definition": True}]
+        self.assertEqual(post("/api/mapping/save", {"rows": same}), {"saved": True})
+        self.assertEqual(self.read()[0]["component_class_in_gtt"], "Rocket")
+        before = self.path.read_bytes()
+        coined = [dict(same[0], component_class_in_gtt="Comet")]
+        said = post("/api/mapping/save", {"rows": coined})["error"]
+        self.assertIn("only coined", said)
+        self.assertIn("add it to the ground truth schema first", said)
+        other = [dict(same[0], component_class_in_gtt="Moon")]
+        self.assertIn("Pick one from the list", post("/api/mapping/save", {"rows": other})["error"])
+        self.assertEqual(self.path.read_bytes(), before)
+
     def test_delete_repeat(self):
         self.assertEqual(post("/api/mapping/delete", {"line": 5, "kind": "entity class", "component_class": "craft"}),
                          {"deleted": True})

@@ -412,10 +412,21 @@ class TranslationTable(unittest.TestCase):
                  (row("entity class", "Spacecraft", "a craft"), True),                    # redefined
                  (row("entity class", "Probe", ""), False),                               # coined, still undefined
                  (row("predicate", "ABOARD", ""), True),                                  # given its first definition
-                 (row("entity class", "(none)", ""), False)]                              # nothing to compare
+                 (row("entity class", "(none)", ""), False),                              # nothing to compare
+                 (row("entity class", "Rocket", "a craft"), False)]                       # a missing target instead
         for r, stale in cases:
             with self.subTest(r=r):
                 self.assertEqual(component_class_mapping.is_stale_gtt(r, gtt), stale)
+
+    def test_missing_target(self):
+        """A row translating to a component class the ground truth schema doesn't have (not (none)) has a missing
+        target; a spelling the loose match finds, and (none), don't."""
+        gtt = component_class_mapping.gtt_definitions({"entity_classes": {"Spacecraft": "a craft"}, "predicates": {}})
+        for kind, name, missing in (("entity class", "Rocket", True), ("entity class", "space-craft", False),
+                                    ("entity class", "(none)", False), ("predicate", "Spacecraft", True)):
+            with self.subTest(name=name, kind=kind):
+                r = {"kind": kind, "component_class_in_gtt": name, "definition_in_gtt": ""}
+                self.assertEqual(component_class_mapping.is_missing_target(r, gtt), missing)
 
     def test_read_stale_repeats(self):
         cols = component_class_mapping.COLUMNS
