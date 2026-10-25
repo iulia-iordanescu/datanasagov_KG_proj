@@ -1,3 +1,3 @@
 # Reviews
 
-The comment files subject-matter experts sent back from the review page, one CSV file per download, kept as they arrived. How the page is made and sent, and how these files are read: [helpers/review_page.md](../../helpers/review_page.md).
+What subject-matter experts sent back from the review page, kept as it arrived: their comment files (`comments_<reviewer>_<YYYY-MM-DD>.csv`), their emails saved whole (`.eml`), and emails' text pasted into `.txt` files. These hold reviewers' names, words and email addresses, and the repository is public: `.gitignore` keeps everything here out of Git except this README, so the files stay on my computer only. How the page is made and published, and how these files are read (`py helpers/review_page.py --read`, and the annotation tool's Reviewer comments view): [helpers/review_page.md](../../helpers/review_page.md).
