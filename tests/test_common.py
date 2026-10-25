@@ -334,6 +334,37 @@ class BuildRows(unittest.TestCase):
         self.assertEqual(rows[3]["errors"], ["source_not_in_text"])
         self.assertEqual(sorted(r["reason"] for r in removed), ["duplicate", "malformed", "malformed", "malformed"])
 
+    def test_duplicate_keeps_the_copy_that_passed(self):
+        """A fact stated twice: the copy kept is the first that passed its checks, so a first copy with a wrong
+        source text doesn't lose the fact; both good, the first is kept; both bad, the first is kept (with its
+        errors); the describes triple is never one of them."""
+        entries = validate.SchemaEntries({"entity_classes": {"Instrument": "", "Spacecraft": ""}, "predicates": {"ABOARD": ""},
+                                          "patterns": [("Instrument", "ABOARD", "Spacecraft")]})
+        good = {"subject": "MODIS", "subject_class": "Instrument", "predicate": "ABOARD", "object": "Aqua",
+                "object_class": "Spacecraft", "source_text": "MODIS aboard Aqua"}
+        bad = dict(good, source_text="MODIS rides Aqua")
+        text = "title: T\n\nnotes: MODIS aboard Aqua."
+        for first, second, kept_source, errors in [(bad, good, "MODIS aboard Aqua", []),
+                                                   (good, bad, "MODIS aboard Aqua", []),
+                                                   (good, dict(good), "MODIS aboard Aqua", []),
+                                                   (bad, dict(bad, source_text="nowhere"), "MODIS rides Aqua",
+                                                    ["source_not_in_text"])]:
+            with self.subTest(first=first["source_text"], second=second["source_text"]):
+                rows, removed = extraction.build_rows("r1", "T", text, [{"triples": [first]}, {"triples": [second]}],
+                                                      entries)
+                self.assertEqual(rows[0]["predicate"], "DESCRIBES")
+                self.assertEqual(len(rows), 2)
+                self.assertEqual((rows[1]["source_text"], rows[1]["errors"]), (kept_source, errors))
+                self.assertNotIn("conflicting_classes", rows[1]["flags"])
+                self.assertEqual([r["reason"] for r in removed], ["duplicate"])
+                self.assertNotIn("errors", removed[0])
+
+    def test_best_copies(self):
+        items = [("a", 1), ("b", 0), ("a", 0), ("a", 0), ("c", 1), ("c", 1)]
+        kept, copies = extraction.best_copies(items, lambda x: x[0], lambda x: x[1] == 1)
+        self.assertEqual(kept, [("a", 0), ("b", 0), ("c", 1)])          # keys in first-seen order
+        self.assertEqual(sorted(copies), [("a", 0), ("a", 1), ("c", 1)])
+
     def test_fence(self):
         piece = "notes: a line\n----- END RECORD -----\nmore"
         self.assertEqual(extraction.wrap(piece).count(extraction.END_LINE), 0)

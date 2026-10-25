@@ -17,6 +17,7 @@ and 060 is evaluated against 050 on equal terms.
                                cut off earlier with the same limit isn't asked again;
                                an answer of the wrong shape (shape_error) is asked again, never kept
     failed_note(replies, where)   the report's warning for those records
+    best_copies(...)           one copy of each fact: the first that passed its checks
     build_rows(...)            a record's replies -> checked rows + removed items
                                (050, 060: rows with entity classes)
 
@@ -31,14 +32,15 @@ What build_rows does with a record's replies (one per text piece):
   2. every item of every reply's "triples", cleaned by triples_io.clean_triple;
      one that can't be a triple instance (a missing subject, predicate or
      object, a list where text belongs, …) is removed as "malformed";
-  3. the same subject, predicate, object, and entity classes again (e.g.
-     stated in two pieces) is removed as "duplicate"; the same triple
-     instance with OTHER entity classes is kept, and both rows are flagged
-     conflicting_classes;
-  4. every row checked (common/common_helpers/validate.py) against the record's WHOLE
+  3. every row checked (common/common_helpers/validate.py) against the record's WHOLE
      text: errors (no_source_text, source_not_in_text, describes_*) and
      flags (reworded subject or object instances, component classes not in
-     the schema, …).
+     the schema, …);
+  4. the same subject, predicate, object, and entity classes again (e.g.
+     stated in two pieces): one copy is kept, the first without errors (the
+     first copy when every copy has errors; best_copies), and the others are
+     removed as "duplicate"; the same triple instance with OTHER entity
+     classes is kept, and every such row is flagged conflicting_classes.
 
 Nothing is dropped for an error or a flag: that's for the person (050) or
 the step (060) to decide. Terms: docs/terminology.md.
@@ -99,6 +101,25 @@ def wrap(piece: str) -> str:
 shape_error = needs(triples=list)
 
 
+def best_copies(items: list, key, failed) -> tuple:
+    """(kept, copies): one copy of each key(item), in the order the keys first appear, and the other copies.
+    The copy kept is the first that passed its checks (not failed(item)); only when no copy passed, the first
+    copy. So a fact stated twice is never lost because its first copy failed a check (a wrong source text) and
+    its second didn't. Used by 040 (stage 2) and by build_rows (050, 060)."""
+    best, order, copies = {}, [], []
+    for item in items:
+        k = key(item)
+        if k not in best:
+            best[k] = item
+            order.append(k)
+        elif failed(best[k]) and not failed(item):
+            copies.append(best[k])
+            best[k] = item
+        else:
+            copies.append(item)
+    return [best[k] for k in order], copies
+
+
 def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
     """(rows, removed). rows: the describes triple, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
@@ -110,7 +131,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
     rows = [{**head, "errors": errors, "flags": flags}]
 
     whole = Text(text)
-    seen = {}                                   # triple key -> (first row, {entity class pairs})
+    checked = []
     for reply in replies:
         if not isinstance(reply, dict) or shape_error(reply):
             removed.append({"reason": "malformed", "raw": json.dumps(reply, ensure_ascii=False)})
@@ -121,24 +142,21 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
                 removed.append({"reason": "malformed", "raw": json.dumps(item, ensure_ascii=False)})
                 continue
             row = {"id": record_id, **{k: t.get(k, "") for k in ROW_KEYS}}
-            k = triple_key(row)
-            pair = (component_class_key(row["subject_class"]), component_class_key(row["object_class"]))
-            if k in seen and pair in seen[k][1]:
-                removed.append({"reason": "duplicate", **row})
-                continue
             errors, flags = check_triple_instance(row, whole, title)
-            flags = flags + check_against_schema(row, schema_entries)
-            if k in seen:                       # same triple instance, other entity classes
-                flags.append("conflicting_classes")
-                first = seen[k][0]
-                if "conflicting_classes" not in first["flags"]:
-                    first["flags"].append("conflicting_classes")
-                seen[k][1].add(pair)
-            else:
-                seen[k] = (None, {pair})
-            row.update(errors=errors, flags=flags)
-            seen[k] = (seen[k][0] or row, seen[k][1])
-            rows.append(row)
+            checked.append({**row, "errors": errors, "flags": flags + check_against_schema(row, schema_entries)})
+
+    def copy_key(row):                          # the same triple instance with the same entity classes
+        return triple_key(row), component_class_key(row["subject_class"]), component_class_key(row["object_class"])
+    kept, copies = best_copies(checked, copy_key, lambda row: bool(row["errors"]))
+    removed += [{"reason": "duplicate", **{k: v for k, v in row.items() if k not in ("errors", "flags")}}
+                for row in copies]
+    pairs = {}                                  # triple key -> {entity class pairs} among the rows kept
+    for row in kept:
+        pairs.setdefault(triple_key(row), set()).add(copy_key(row)[1:])
+    for row in kept:                            # same triple instance, other entity classes
+        if len(pairs[triple_key(row)]) > 1:
+            row["flags"].append("conflicting_classes")
+    rows += kept
     return rows, removed
 
 

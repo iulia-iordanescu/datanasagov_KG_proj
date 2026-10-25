@@ -95,23 +95,24 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
         if t["id"] not in replies.of:              # a call failed: left out whole, asked again next run
             continue
         whole = Text(t["text"])                    # checked against the whole record, every piece
-        verified, unverified, seen, describes = [], [], set(), ""
+        checked, describes = [], ""
         for reply in replies.of[t["id"]]:
             instances, bad, named = _from_reply(reply)
             result.malformed += bad
             describes = describes or named
             for instance in instances:
-                spo = tuple(instance[k] for k in SLOTS)
-                if spo in seen:                    # stated by two pieces of one text: counts once
-                    continue
-                seen.add(spo)
                 errs, flgs = check_triple_instance(instance, whole, t["title"])
-                flags.update(flgs)
-                if errs:
-                    errors.update(errs)
-                    unverified.append({**instance, "errors": errs})
-                else:
-                    verified.append(instance)
+                checked.append((instance, errs, flgs))
+        # stated by two pieces of one text: counts once, the first copy that passed the checks kept
+        kept, _ = extraction.best_copies(checked, lambda c: tuple(c[0][k] for k in SLOTS), lambda c: bool(c[1]))
+        verified, unverified = [], []
+        for instance, errs, flgs in kept:
+            flags.update(flgs)
+            if errs:
+                errors.update(errs)
+                unverified.append({**instance, "errors": errs})
+            else:
+                verified.append(instance)
         result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "title": t["title"],
                              "describes_class": describes, "triple_instances": verified,
                              "unverified": unverified})

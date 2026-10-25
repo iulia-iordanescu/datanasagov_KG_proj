@@ -51,6 +51,32 @@ class Scripted:
         shutil.rmtree(self.tmp)
 
 
+class Extracting(unittest.TestCase):
+
+    def test_duplicate_keeps_the_copy_that_passed(self):
+        """Stage 2: a triple instance stated by two pieces counts once, and the copy kept is the first that passed
+        its checks: a first copy with a wrong source text doesn't make the fact unverified."""
+        import extract
+        from common import extraction
+        good = {"subject": "MODIS", "predicate": "is aboard", "object": "Aqua", "source_text": "MODIS aboard Aqua"}
+        bad = dict(good, source_text="MODIS rides Aqua")
+        item = {"id": "r", "maintainer": "m", "title": "T", "text": "title: T\n\nnotes: MODIS aboard Aqua.",
+                "record": {}, "pieces": ["p1", "p2"]}
+        for first, second, verified, unverified in [(bad, good, 1, 0), (good, bad, 1, 0), (good, good, 1, 0),
+                                                    (bad, bad, 0, 1)]:
+            with self.subTest(first=first["source_text"], second=second["source_text"]):
+                replies = extraction.Replies(of={"r": [{"triples": [first]}, {"triples": [second]}]})
+                saved = extraction.ask_model
+                extraction.ask_model = lambda *a, **k: replies
+                try:
+                    out = extract.extract_triple_instances(SimpleNamespace(items=[item]), None, {"workers": 1})
+                finally:
+                    extraction.ask_model = saved
+                t = out.texts[0]
+                self.assertEqual((len(t["triple_instances"]), len(t["unverified"])), (verified, unverified))
+                self.assertEqual(sum(out.errors.values()), unverified)
+
+
 class Labeling(unittest.TestCase):
 
     def test_match(self):
