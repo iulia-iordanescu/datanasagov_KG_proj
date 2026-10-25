@@ -109,6 +109,19 @@ class Harvest(unittest.TestCase):
         self.assertFalse(h.kept)
         self.assertEqual(c.without_request, [])                            # fetched again
 
+    def test_ids_counted_as_020_reads_them(self):
+        """A blank id counts as no id, and an id with spaces around it as that id (020 drops the first, and keeps
+        one copy of the second), so 010's counts and warnings agree with what 020 does."""
+        h, c = self.harvest()
+        path = self.out / "batch_00010.json"
+        b = json.loads(path.read_text(encoding="utf-8"))
+        b["records"][0]["id"] = "  "
+        b["records"][1]["id"] = " " + b["records"][2]["id"] + " "
+        path.write_text(json.dumps(b), encoding="utf-8")
+        again = moves.check_complete(h)
+        self.assertEqual(again.missing_ids, c.missing_ids + 1)
+        self.assertEqual(again.duplicate_ids, c.duplicate_ids + 1)
+
     def test_rerun_of_a_trial_keeps_pages(self):
         self.harvest(max_records=20)
         self.cat.requests.clear()

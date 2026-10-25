@@ -124,9 +124,8 @@ def load_raw(inputs: dict, settings: dict) -> Catalog:
                           f"(name {dropped['name']!r}, title {dropped['title']!r})")
                 continue
             if rid in seen:
-                # A change to the catalog during the harvest can shift CKAN's
-                # pages (see 010), so a record can arrive twice. The first
-                # copy is kept.
+                # A record can arrive twice (the causes: 010's warning "N records appear
+                # twice"). The first copy is kept.
                 catalog.repeats.append(rid)
                 log.debug(f"{path.name}#{position}: id {rid} seen before; later copy dropped")
                 continue

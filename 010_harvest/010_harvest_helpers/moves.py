@@ -199,8 +199,8 @@ def check_complete(harvest: Harvest) -> Check:
         batch = batches.load_batch(path)
         for record in batch["records"]:
             records += 1
-            rid = record.get("id")
-            if rid is None:
+            rid = str(record.get("id") or "").strip()      # as 020 reads it: a blank id is no id
+            if not rid:
                 missing += 1
             else:
                 seen.add(rid)
