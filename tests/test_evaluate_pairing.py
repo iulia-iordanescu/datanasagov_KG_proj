@@ -359,6 +359,13 @@ class Pairing(unittest.TestCase):
         self.assertEqual(other["partial_review"]["not_applying"], [key])
         # a verdict on another record is not this record's
         self.assertEqual(self.pairs(g, e, reviews={("r2",) + key[1:]: SAME})["partial_review"]["not_applying"], [])
+        # a verdict on two triples that pair exactly still applies: "not the same fact" keeps them apart at the
+        # exact level too (as 070's guide says), "same fact" changes nothing; entity classes never count
+        e_same = [triple("MODIS", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
+        exact_key = pair_key("r1", g[0], self.pairs(g, e_same)["translated"][0])
+        self.assertEqual(exact_key, pair_key("r1", g[0], g[0]))
+        self.assertEqual(self.pairs(g, e_same, reviews={exact_key: NOT_SAME})["pairs"], [])
+        self.assertEqual(len(self.pairs(g, e_same, reviews={exact_key: SAME})["pairs"]), 1)
 
     def test_verdicts_read_case_aside(self):
         """Verdicts are read ignoring case and spacing; any other verdict is ignored and listed (review_problems)."""

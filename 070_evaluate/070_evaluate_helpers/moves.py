@@ -678,8 +678,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     not_applying = [(r["id"], k) for r in tuning for k in r["compared"]["partial_review"]["not_applying"]]
     if not_applying:
         warnings.append(f"{len(not_applying)} verdict(s) of annotations/partial_pair_reviews.csv, on tuning records "
-                        f"evaluated now, no longer match a partial pair (a ground truth triple, an extracted triple, or "
-                        f"a row of the translation table changed since), so they apply to nothing: "
+                        f"evaluated now, no longer match a partial pair (a ground truth triple, an extracted triple, a "
+                        f"row of the translation table, or the code that evens out or pairs changed since; every way: "
+                        f"070_evaluate/070_evaluate.md, *Checks and warnings*), so they apply to nothing: "
                         + named([f"record {rid}: {k[1]} {k[2]} {k[3]} / {k[4]} {k[5]} {k[6]}" for rid, k in not_applying],
                                 5, "; ")
                         + ". Nothing to do if that change was meant: any pair it made is counted as not reviewed. "
