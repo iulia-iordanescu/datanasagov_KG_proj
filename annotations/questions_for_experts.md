@@ -138,7 +138,7 @@ The record at pool position 7 also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESEN
 Many records name where their data came from with one word that can mean a mission or the spacecraft that flew it: "DAWN", "Aqua", "Terra", "Rosetta", "Aquarius". The ground truth schema has an entity class for each, Mission ("a named spaceflight effort") and Spacecraft ("a craft that operates in space"), and a predicate for each, FROM_MISSION and FROM_SPACECRAFT. When a record writes only such a word, I have to choose one of the two, and the [fact](../docs/terminology.md#2-triples) I write down depends on that choice. To decide, I need to know:
 
 - (a) When a record says only "DAWN", "Aqua" or "Terra", without the word "mission" or "satellite" next to it, would someone in your field read it as the spacecraft, as the mission, or as both at once?
-- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? My reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host.
+- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? My reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there I wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission).
 - (c) "Aquarius/Satélite de Aplicaciones Científicas (SAC-D) mission" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"): my reading, not checked against a source, is that Aquarius was an instrument carried on the SAC-D spacecraft, and Aquarius/SAC-D the mission. Is that right, and if so, should the record's "Aquarius L-band radiometer" be the only Instrument here, with no Spacecraft named?
 - (d) Is there a rule that holds for this whole catalog, e.g. "a word that is only a mission's word is a Mission; a word written before an instrument (MODIS/Aqua) is a Spacecraft"?
 
@@ -240,6 +240,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
@@ -258,6 +259,9 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
+- classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -413,6 +417,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
@@ -450,6 +455,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "band 32 emissivity" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MEASUREMENTS_OF "dust fluences at each of twelve mass thresholds" (PhysicalQuantity)
 - translation table row: entity class PhysicalQuantity
 - translation table row: predicate MEASURES
 - translation table row: predicate PROVIDES
@@ -611,6 +617,7 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -642,6 +649,14 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
+- classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_MISSION_PHASE "cruise" (MissionPhase)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_MISSION_PHASE "approach" (MissionPhase)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -683,6 +698,7 @@ The ground truth schema has three entity classes for time: Time, "a point or per
 - (e) Is "each file (granule) covers 5 minutes" the same kind of fact as "the observation series lasted 3 years"? Would someone searching this catalog want them kept apart?
 - (f) In this catalog, when a record says a dataset "covers" something, is it more often a period, an area, or a measured variable? Should "covers the Arctic" and "covers 2003 to 2010" ever share one predicate?
 - (g) The current schema's entity class Frequency puts two things together: "A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band", and the translation table translates it into TemporalResolution. In this catalog, are how often data are given (daily, weekly) and a radio frequency band (S-band, X-band, Ku-band) two different kinds of thing, which should never share an entity class? (My reading is that they are: one is a time between values, the other a part of the radio spectrum. Where a radio band belongs, I ask separately.)
+- (h) The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says its data run "from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011", and that its encounter data cover "a ~40 minute period". I wrote the period as "January, 2007 up to March, 2011" (Time), its two ends in the record's words with the phases taken out (they are facts of their own), and the 40 minutes with a predicate I coined, HAS_DURATION ("covers this much time, from its first value to its last"): "encounter data" (Dataset) HAS_DURATION "~40 minute period" (Value). Is how long a set of observations lasts a fact to keep apart from the period on the calendar, and from the time a file covers (question (e))?
 
 ### Context
 
@@ -790,6 +806,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -798,6 +815,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "January, 2007 up to March, 2011" (Time)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -822,7 +840,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 The ground truth schema's ProcessingLevel is "how far data have been processed from what the Instrument recorded, e.g. Level 2". The records write it in many ways ("Level-2 (L2)", "Level-3", "Level 3", "L2", "L2G", and perhaps "1/2/3"), and so far the ground truth keeps each record's own words. I would like to know:
 
 - (a) The example below has "L2G" in its title and "gridded Level 2 product" in its notes. Is L2G "Level 2, gridded": a processing level (Level 2) plus a layout on a grid, which the ground truth writes as two [facts](../docs/terminology.md#2-triples)? Or is L2G a processing level of its own?
-- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes.
+- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". I read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above?
 - (c) Which list of processing levels should the ground truth follow? The one I know of is NASA Earthdata's *Data Processing Levels* (Level 0, Level 1A, 1B, 1C, Level 2, 2A, 2B, Level 3, 3A, Level 4; https://www.earthdata.nasa.gov/learn/earth-observation-data-basics/data-processing-levels). Does it hold for the whole catalog, or do records of other parts of NASA, e.g. the Planetary Data System, use other levels? If there are two lists, how do they line up?
 
 ### Context
@@ -909,6 +927,7 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_PROCESSING_LEVEL "Level-2 (L2)" (ProcessingLevel)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_PROCESSING_LEVEL "Level-3" (ProcessingLevel)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
@@ -916,6 +935,8 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
 - translation table row: predicate HAS_PROCESSING_LEVEL
 - ground truth schema entry: entity class ProcessingLevel
@@ -1038,10 +1059,12 @@ Four of the tuning records I have annotated so far describe a processing step, a
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "GRaND epithermal neutron map" (Dataset)
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset)
 - translation table row: predicate DERIVED_FROM
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
@@ -1565,7 +1588,7 @@ The ground truth schema's Dataset is "a set of observations, measurements, or sa
 - (c) The record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says the counts "were detrended using the GRaND epithermal neutron map". I wrote that map as a Dataset, collected by GRaND. No record of the catalog has "epithermal" in its title (I searched the catalog's titles), so I can't tell whether the map is a dataset of its own; the catalog has other GRaND maps of Vesta (for example, "DAWN GRAND MAP VESTA NEUTRON ABSORPTION V1.0"). The annotation guidelines leave out facts about another dataset (rule 11). Is it right to keep the map as an input, with what collected it?
 - (d) For someone using this catalog, is an astronomical source catalog (a list of objects, each with its measured properties) a dataset in the same sense as a set of measurements of the Earth's surface?
 - (e) Is a database or archive that holds many datasets the same sort of thing as one of the datasets it holds, or should the two be kept apart (e.g. so that a search for datasets doesn't return archives)?
-- (f) Is a "data product" (e.g. "Level-3 products", "the SST4 product") always a dataset, or sometimes one variable inside a dataset?
+- (f) Is a "data product" (e.g. "Level-3 products", "the SST4 product") always a dataset, or sometimes one variable inside a dataset? The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says "This data set contains Level 2/3 (EDR/RDR) data", and later "The RDR data convert the EDR (raw) sensor data": I wrote "RDR data" and "EDR (raw) sensor data" as two Datasets, each PART_OF the record's dataset, and "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset). Are the parts of a dataset datasets themselves, or should they be written another way?
 
 ### Context
 
@@ -1636,6 +1659,8 @@ Option 1, for now: it writes what each record states, and every collection of da
 
 The example is the record at pool position 2. The other two inputs are "the L2 pixels" of the record at pool position 4 and "the GRaND epithermal neutron map" of the record at pool position 5; every ground truth triple about each of the three inputs is listed under Affects. None of the tuning records so far names an astronomical source catalog or a database. The search of (c) was over the titles of 020's records.jsonl.
 
+Decided on 2026-10-25, for me to confirm: the record at pool position 7 has an input of its own, "MOD11_L2" (its swath product, with its DOI), and the record at pool position 9 has two parts, "RDR data" and "EDR (raw) sensor data"; their classed triples are listed under Affects.
+
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only.
 
 ### Consequences
@@ -1667,6 +1692,8 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD02HKM.061" (Identifier)
@@ -1677,6 +1704,12 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 - classed triple of the record at pool position 4: "pixels" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "GRaND epithermal neutron map" (Dataset)
 - classed triple of the record at pool position 5: "GRaND epithermal neutron map" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND" (Instrument)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
+- classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier)
+- classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
+- classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset)
 - translation table row: entity class Dataset
 - translation table row: entity class DataProduct
 - translation table row: entity class Catalog
@@ -2566,6 +2599,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
@@ -2618,6 +2652,11 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "band 32 emissivity" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
+- classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MEASUREMENTS_OF "dust fluences at each of twelve mass thresholds" (PhysicalQuantity)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -2988,7 +3027,11 @@ The example is the record at pool position 5, the only tuning record annotated s
 ### Affects
 
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - classed triple of the record at pool position 5: "GRaND plus Z boron loaded sensor" (Instrument) PART_OF "GRaND" (Instrument)
+- classed triple of the record at pool position 9: "encounter data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
+- classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - ground truth schema entry: predicate PART_OF
 - translation table row: predicate PART_OF
 - translation table row: predicate CONTAINS

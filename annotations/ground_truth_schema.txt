@@ -188,3 +188,7 @@ PRODUCTION_DISCONTINUED_ON  stopped being produced on
                             source: ground truth tuning #7
 PRODUCTION_DISCONTINUED_DUE_TO  stopped being produced because of
                                 source: ground truth tuning #7
+ENDED_ON             came to an end on
+                     source: ground truth tuning #9
+HAS_DURATION         covers this much time, from its first value to its last
+                     source: ground truth tuning #9

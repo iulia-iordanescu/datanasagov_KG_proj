@@ -186,3 +186,17 @@ The dense record: its notes describe a whole family of products (several time st
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
 - **Left out:** "product" (notes, "[MOD11_L2](https://doi.org/10.5067/MODIS/MOD11_L2.006) swath product")
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"; "swath" is a ground truth triple of its own (HAS_SPATIAL_REPRESENTATION, as "gridded" for the record at pool position 6).
+
+## "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (pool position 9, id dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb)
+
+3 items, 1 that may matter.
+
+- **Left out:** "comet" (notes, "encounter with comet 9P/Tempel 1" and "the entire comet encounter")
+  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - My ground truth triple has the target "9P/Tempel 1", and the phase "encounter".
+- **Left out:** "convert" as a method (notes, "The RDR data convert the EDR (raw) sensor data")
+  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
+  - **May matter because:** it is how the RDR data are made from the raw data.
+  - **Question:** Q7.
+- **Left out:** "entire" (notes, "from the entire comet encounter")
+  - **Rule:** none to quote: HAS_MISSION_PHASE "encounter" says the RDR data come from the encounter; "entire" adds only that none of it is left out.
