@@ -46,7 +46,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 4 items, 3 that may matter.
 
 - **Left out:** "retrievals" (notes, "Sea Surface Salinity (SSS) retrievals")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." My reading: "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)".
+  - **Rule:** Writing a classed triple, rule 14: "Each step gives up to two ground truth triples, each written only if the record names both of its ends" My reading: "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)".
   - **May matter because:** it says the salinity values are computed from what the instrument measured, not measured directly.
   - **Question:** Q3 (what is measured, and what is computed).
 - **Left out:** "Polar" as a fact of its own (title, "Polar-Gridded")
@@ -86,7 +86,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **May matter because:** if the files hold both, the dataset has two variables, not one.
   - **Question:** Q18.
 - **Left out:** "binned" and "mapped" as methods (notes, "the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the dataset was made, step by step.
   - **Question:** Q7.
 - **Left out:** "NASA" (notes, "global NASA skin sea surface temperature (SST) products")
@@ -113,7 +113,7 @@ The dense record: its notes describe a whole family of products (several time st
 1 item, 1 that may matter.
 
 - **Left out:** "detrended" as a method (notes, "The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." The record says the rates "were detrended", only a verb; I wrote the two COMPUTED_FROM triples (the rates, the epithermal map) and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the rates "were detrended", only a verb; I wrote the two COMPUTED_FROM triples (the rates, the epithermal map) and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is the method that made the residual map.
   - **Question:** Q7 (settled for now, not asked), Q12 (c) for the map as an input.
 
@@ -202,7 +202,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
   - My ground truth triple has the target "9P/Tempel 1", and the phase "encounter".
 - **Left out:** "convert" as a method (notes, "The RDR data convert the EDR (raw) sensor data")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the RDR data are made from the raw data.
   - **Question:** Q7.
 - **Left out:** "entire" (notes, "from the entire comet encounter")
@@ -265,7 +265,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says how precise the X-ray positions are.
   - **Question:** Q26.
 - **Left out:** "cross-correlated" as a method (notes, "The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
   - **Question:** Q7.
 - **Left out:** "This is a service" (notes, "This is a service provided by NASA HEASARC")
   - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who made the table is my ground truth triple DEVELOPED_BY_PARTY "NASA HEASARC".
@@ -338,18 +338,18 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says what the correction was about.
   - **Question:** Q28 (c).
 - **Left out:** PRODUCED_USING_ALGORITHM "solar stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." "solar stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "solar stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." "in-field stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "in-field stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "radiometric calibrated" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." "radiometric calibrated" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "radiometric calibrated" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "Write each only if the record names both of its parts." "geometric distortion corrected (resampled)" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "geometric distortion corrected (resampled)" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).

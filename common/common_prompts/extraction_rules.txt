@@ -100,22 +100,23 @@
   stays whole. To see that two wordings name the same thing, use clues
   anywhere in the record and what you know about the words (e.g. what an
   abbreviation stands for: VLF is very low frequency).
-- A processing step: output_i = method_i(input_i). For each processing step
-  i the record describes, find its output_i, method_i, and input_i, and
-  write at most two triples: output_i computed-from input_i, and output_i
-  produced-using-algorithm method_i. Write each only if the record names
-  both of its parts. Steps chain: one step's output can be the next step's
-  input. When a record says a dataset holds "ice cover detected using the
-  IWI and a cloud mask" and "the IWI is derived from reflectance data": step
-  1 is IWI = method_1(reflectance data), with method_1 not named, which
-  gives "IWI" computed-from "reflectance data"; step 2 is the record's
-  dataset = cloud mask(IWI), which gives the record's dataset computed-from
-  "IWI" and the record's dataset produced-using-algorithm "a cloud mask". A
-  word saying only that something was done to the data ("corrected",
-  "calibrated", "detrended") names no method: "the reflectances were
-  corrected, then composited using the Tern algorithm" gives no
-  produced-using-algorithm triple for "corrected", and gives
-  produced-using-algorithm "the Tern algorithm" for the step that names it.
+- A processing step: output = method(input). For each processing step the
+  record describes, find what it made (the output), what it was made from
+  (the input), and how (the method). Each step gives up to two triples,
+  each written only if the record names both of its ends: output
+  computed-from input, and output produced-using-algorithm method. One
+  step's output can be the next step's input. A word that says only that
+  something was done ("corrected", "calibrated", "detrended") names no
+  method. When a record says its dataset holds "ice cover detected from the
+  IWI using a cloud mask" and that "the IWI is derived from reflectance
+  data": two steps. Step 1: IWI = ?(reflectance data); the method isn't
+  named, so only "IWI" computed-from "reflectance data". Step 2: the
+  record's dataset = a cloud mask(IWI), which gives the record's dataset
+  computed-from "IWI" and the record's dataset produced-using-algorithm "a
+  cloud mask". When a record says "The dataset's reflectances were
+  corrected, then composited using the Tern algorithm.": the record's
+  dataset produced-using-algorithm "the Tern algorithm"; "corrected" names
+  no method, so it gives no triple.
 - Each fact once, even if the record states it twice or in other words. The
   rule on one wording says which wording to keep: "Ocean-Masked" over
   "masked".

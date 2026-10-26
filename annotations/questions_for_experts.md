@@ -354,7 +354,7 @@ The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1
 - Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 14: A processing step: output_i = method_i(input_i). For each processing step i the record describes, find its output_i, method_i, and input_i, and write at most two ground truth triples: output_i COMPUTED_FROM input_i, and output_i PRODUCED_USING_ALGORITHM method_i. Write each only if the record names both of its parts.
+- Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Options
 
@@ -1053,7 +1053,7 @@ Settled, so not asked here: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDU
 
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
 - Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item, when each item alone is a complete object. Put one item alone after the predicate. Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: "long wave IR 11 micron wavelength channel" alone is a complete object, so two ground truth triples, each object with the words the items share copied onto it, in the singular, since each is now one item: "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
-- Writing a classed triple, rule 14: A processing step: output_i = method_i(input_i). For each processing step i the record describes, find its output_i, method_i, and input_i, and write at most two ground truth triples: output_i COMPUTED_FROM input_i, and output_i PRODUCED_USING_ALGORITHM method_i. Write each only if the record names both of its parts.
+- Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Options
 
@@ -1075,7 +1075,7 @@ Four of the tuning records I have annotated up to pool position 6 describe a pro
 
 Pending facts, for the record at pool position 13 (ab33f184, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer to (e) says such corrections should be kept: the four statements "solar stray-light corrected", "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)", each with a predicate to decide.
 
-Rule 14 now says that a word saying only that something was done to the data ("corrected", "calibrated", "detrended") names no method. If the answer to (e) says such words should be kept, they would be a triple of another predicate, not PRODUCED_USING_ALGORITHM.
+Rule 14 now says: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." If the answer to (e) says such words should be kept, they would be a triple of another predicate, not PRODUCED_USING_ALGORITHM.
 
 ### Consequences
 
@@ -1690,7 +1690,7 @@ The example below is the one whose input, "radiance data", has the most facts of
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
 - Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
-- Writing a classed triple, rule 14: A processing step: output_i = method_i(input_i).
+- Writing a classed triple, rule 14: A processing step: output = method(input).
 
 ### Options
 
@@ -2529,7 +2529,7 @@ What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.ear
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written.
 - Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
 - Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
-- Writing a classed triple, rule 14: A processing step: output_i = method_i(input_i).
+- Writing a classed triple, rule 14: A processing step: output = method(input).
 
 ### Options
 
