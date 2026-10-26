@@ -2433,7 +2433,7 @@ The example is the record at pool position 4; (c) is about the record at pool po
 
 #### Option 2: Two different things
 
-- "R2019.0" is linked to the dataset by no ground truth triple, since the record doesn't say how the two relate; the annotation tool flags such a triple as not connected to the catalog entry.
+- "R2019.0" is linked to the dataset by no ground truth triple, since the record doesn't say how the two relate; the annotation tool flags such a triple as not connected to the record's id.
 - Perhaps a new entity class, if "R2019.0" is neither a Version nor anything the ground truth schema has.
 
 ### Affects
@@ -2926,13 +2926,13 @@ The example is the record at pool position 4, the only tuning record annotated s
 - status: open
 - priority: medium
 - question kind: records and triples
-- topic: rule 11 of the annotation guidelines, and the facts about the other versions, time steps and resolutions of a product
+- topic: rule 11 of the annotation guidelines, and the facts about the other versions, temporal resolutions and spatial resolutions of a product
 
 ### The question
 
-The notes of a record often describe more than the one dataset the record is about: they describe the product family it belongs to. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km (4.63 km), nighttime product; its notes say that "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution", and begin "Day and night spatially gridded (L3) ... products". So the record also states which time steps (daily, monthly, annual), which resolution (9.26 km) and which time of day (day) the other products of the family have. Rule 11 of the annotation guidelines leaves these out, because each of those products is another dataset with a record of its own, where its facts go. The ground truth then says that this dataset is "weekly (8 day)" and "4.63 km", and nothing says that the others exist. I would like to know:
+The notes of a record often describe more than the one dataset the record is about: they describe the product family it belongs to. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km (4.63 km), nighttime product; its notes say that "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution", and begin "Day and night spatially gridded (L3) ... products". So the record also states which temporal resolutions (daily, monthly, annual), which spatial resolution (9.26 km) and which time of day (day) the other products of the family have. Rule 11 of the annotation guidelines leaves these out, because each of those products is another dataset with a record of its own, where its facts go. The ground truth then says that this dataset is "weekly (8 day)" and "4.63 km", and nothing says that the others exist. I would like to know:
 
-- (a) Is the information about the family worth keeping, in a knowledge graph of this catalog? Would someone ask "which time steps does this product come in?", or "is there a 9.26 km version of it?", and expect an answer from the record that describes only one of them?
+- (a) Is the information about the family worth keeping, in a knowledge graph of this catalog? Would someone ask "which temporal resolutions does this product come in?", or "is there a 9.26 km version of it?", and expect an answer from the record that describes only one of them?
 - (b) If it is, as what? As facts about each of the other products (each of them a dataset, but with no record of its own to hold its title), as facts about a family of products (a group of datasets sharing a name, with the family's own facts), or on the instrument that makes them?
 - (c) Where a family is named by one record only, as here, is a fact such as "there is also a daily product" about this dataset (it has siblings), or only about the family?
 
@@ -2972,15 +2972,15 @@ How the groups of datasets could be written, if they are, depends on how the gro
 
 #### Option 1: Leave them out, as now
 
-The family's other time steps, resolutions and times of day are not recorded, by rule 11. A search finds this dataset by its own time step and resolution only.
+The family's other temporal resolutions, spatial resolutions and times of day are not recorded, by rule 11. A search finds this dataset by its own temporal resolution and spatial resolution only.
 
 #### Option 2: A new entity class for a product family, with its own facts
 
-A family of products (for the example, the MODIS Aqua skin sea surface temperature products) is a thing of its own, with its time steps, resolutions and times of day as its facts, and the dataset of the record is one of its members.
+A family of products (for the example, the MODIS Aqua skin sea surface temperature products) is a thing of its own, with its temporal resolutions, spatial resolutions and times of day as its facts, and the dataset of the record is one of its members.
 
 #### Option 3: Record them on the instrument
 
-The facts are written about the instrument that makes the products, as general facts about it (rule 11 includes general facts about a dataset's instrument): the instrument "Moderate-resolution Imaging Spectroradiometer (MODIS)" with the time steps and resolutions of its skin sea surface temperature products.
+The facts are written about the instrument that makes the products, as general facts about it (rule 11 includes general facts about a dataset's instrument): the instrument "Moderate-resolution Imaging Spectroradiometer (MODIS)" with the temporal resolutions and spatial resolutions of its skin sea surface temperature products.
 
 #### Option 4: Another way
 
@@ -2988,7 +2988,7 @@ Please describe it.
 
 ### My current reading
 
-Option 1 for now, because rule 11 says so and the family facts need an entity class and predicates the ground truth schema does not have. But I think the information is worth keeping if an expert says people ask for it, and I would then lean towards option 2, since the facts are about the family, not about one instrument. I would like to know first whether a person looking for this product would expect to learn the other time steps and resolutions from this record.
+Option 1 for now, because rule 11 says so and the family facts need an entity class and predicates the ground truth schema does not have. But I think the information is worth keeping if an expert says people ask for it, and I would then lean towards option 2, since the facts are about the family, not about one instrument. I would like to know first whether a person looking for this product would expect to learn the other temporal resolutions and spatial resolutions from this record.
 
 ### My notes
 

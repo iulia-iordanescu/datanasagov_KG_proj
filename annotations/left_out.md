@@ -33,7 +33,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 
 ## "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (pool position 2, id 6cfafd07-40f1-46da-9d92-36c2bb319f0b)
 
-2 items, none that may matter. The record has no list of other time steps or resolutions of its product ("daily" is its own, in "provides daily snow cover"), so nothing of a product family is left out here.
+2 items, none that may matter. The record has no list of other temporal resolutions or spatial resolutions of its product ("daily" is its own, in "provides daily snow cover"), so nothing of a product family is left out here.
 
 - **Left out:** "satellite" (notes, "the Aqua satellite")
   - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
@@ -63,7 +63,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 
 ## "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (pool position 4, id 03a09af3-081e-4db6-9e3b-ea7c0e3138bd)
 
-The dense record: its notes describe a whole family of products (several time steps, two resolutions, day and night, two kinds of temperature) and the title names the one this record is. 12 items, 8 that may matter. The product family as a whole is asked in Q24.
+The dense record: its notes describe a whole family of products (several temporal resolutions, two spatial resolutions, day and night, two kinds of temperature) and the title names the one this record is. 12 items, 8 that may matter. The product family as a whole is asked in Q24.
 
 - **Left out:** "Day" (notes, "Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products")
   - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
@@ -71,7 +71,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **Question:** Q24.
 - **Left out:** "daily", "monthly" and "annual" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
   - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
-  - **May matter because:** they describe the product family: which time steps of this product exist.
+  - **May matter because:** they describe the product family: which temporal resolutions of this product exist.
   - **Question:** Q24.
 - **Left out:** "9.26 km" (notes, "available at both 4.63 and 9.26 km spatial resolution")
   - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
@@ -79,7 +79,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **Question:** Q24; whether the title's "4km" is the 4.63 km: Q22.
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
   - **Rule:** Writing a classed triple, rule 11, as for the list it belongs to.
-  - **May matter because:** it says the products are averages over their time step, so the 8 days are the time each value averages over.
+  - **May matter because:** it says the products are averages over their temporal resolution, so the 8 days are the time each value averages over.
   - **Question:** Q5 (b), and Q24.
 - **Left out:** "can be present" (notes, "Two SST products can be present in these files"), and with it the dataset's variable NSST
   - **Rule:** What counts as a fact, rule 7: "the record doesn't state that it does. The same for "might", "possibly", "is expected to"" (I read "can be present" as the same kind). My ground truth triple has the variable SST4 only, from the title's "SST MID-IR".

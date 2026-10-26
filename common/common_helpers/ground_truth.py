@@ -290,7 +290,7 @@ ROW_ERRORS = {
     "source_not_in_text": "its source text isn't in the record's text: in the annotation tool, select the passage and "
                           "press \"Use selection\" to copy it exactly",
     "describes_subject_not_id": "the describes triple's subject isn't the record's id: write the record's id there",
-    "describes_undecided": "the describes triple has no describes class (X): choose the entity class of what the title names",
+    "describes_undecided": "the describes triple has no describes class (X): choose its object class, the entity class of its object instance",
 }
 
 

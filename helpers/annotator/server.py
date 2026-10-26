@@ -83,7 +83,7 @@ truth schema's patterns are its file's plus every one the ground truth uses
 the first time it is used, for a look (a wrong entity class or direction),
 and never needs adding. One check is the tool's own (connection_problems): a
 ground truth triple that no chain of the record's ground truth triples links to
-the catalog entry is flagged (not_connected), so the fact that connects it is
+the record's id is flagged (not_connected), so the fact that connects it is
 looked for. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
@@ -214,7 +214,7 @@ MESSAGES = {
     "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
     "describes_undecided": "No describes class yet (the describes triple's object class is X or empty). Type or "
-                           "pick the entity class of the thing the title names.",
+                           "pick the describes triple's object class: the entity class of its object instance.",
     "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the ground truth schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
                                      "If it's new, add it to the ground truth schema with the button below, "
@@ -222,8 +222,8 @@ MESSAGES = {
     "describes_subject_not_id": "The describes triple's subject should be the record's id.",
     # the tool's own check (connection_problems), on a record's rows together: {piece} is filled with the component
     # instances this ground truth triple is connected to
-    "not_connected": "No chain of ground truth triples links this ground truth triple to the catalog entry (the "
-                     "describes triple and the title). Look for the fact that connects it, and add it only if the "
+    "not_connected": "No chain of ground truth triples links this ground truth triple to the record's id (through "
+                     "the describes triple). Look for the fact that connects it, and add it only if the "
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
 }
 
@@ -320,7 +320,7 @@ def _message(code: str, row: dict, every: list, title: str = "") -> str:
 def connection_problems(rid: str, rows: list) -> list:
     """For each of a record's rows, its not_connected flag (a list of one), or []. The rows form a graph: each
     ground truth triple joins its subject instance and its object instance (direction ignored; instances compared
-    as norm_text evens them out), the describes triple joining the record's id (the catalog entry) to its title. A
+    as norm_text evens them out), the describes triple joining the record's id to its title. A
     ground truth triple is connected when a chain of them links it to the record's id. Rows not filled in, or
     lacking a subject or an object, are skipped."""
     parent = {}

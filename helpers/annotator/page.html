@@ -1104,9 +1104,9 @@ function describesRow(rec, j, heading = true) {
                            onfocus: (e) => { setActive(j); showClasses("entity_classes", e.target); } },
              r.object_class === "X" ? "" : r.object_class),
           definitionLine("entity_classes", r.object_class === "X" ? "" : r.object_class)))),
-    el("p", { class: "hint" }, "No source text. This triple says what the catalog entry of this record describes: its " +
+    el("p", { class: "hint" }, "No source text. This triple says what the record's id describes: its " +
       "subject (the record's id) and object (the record's title) are copied from the record by code, and the " +
-      "object class (the describes class), the type of thing the title names, is proposed by the drafting model (step 050) and needs to be " +
+      "object class (the describes class), the entity class of its object instance, is proposed by the drafting model (step 050) and needs to be " +
       "checked by you here in this tool. Click the field under “Object class (the describes class)” to edit it."),
     problemList(r, j));
 }
