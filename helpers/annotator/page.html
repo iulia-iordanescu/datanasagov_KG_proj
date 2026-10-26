@@ -2136,7 +2136,7 @@ function drawVocab() {
 // The comments reviewers sent back from the review page (helpers/review_page.md), read by the server from
 // annotations/reviews/ as py helpers/review_page.py --read reads them: under each entry of the Ground truth schema
 // and Translation table views, and all of them in the Reviewer comments view. Nothing here changes them.
-let REVIEWER = null;                       // {comments, problems, files, folder, not_verified, byKey: {kind|entry: [comment]}}
+let REVIEWER = null;                       // {comments, problems, files, folder, not_verified, headings, states, byKey: {kind|entry: [comment]}}
 async function loadReviewerComments() {
   try {
     const r = await api("/api/reviewer_comments");
@@ -2153,17 +2153,16 @@ function rowReviewEntry(r) {
   if (first && first !== r) entry += ` (line ${r._line})`;
   return entry;
 }
-const REVIEW_STATES = { changed: "changed since", gone: "no longer in the files", unchanged: "unchanged", general: "general" };
 function reviewerComment(c) {
   const page = `the review page ${c.page_version || "(no version)"}`;
   return el("div", { class: "reviewnote" },
     el("div", { class: "who" },
       plainText("strong", {}, c.reviewer || "(no name)"),
       el("span", { class: "meta" }, c.timestamp.slice(0, 10)),
-      c.state === "changed" ? el("span", { class: "pill flag",
+      c.state === REVIEWER.states.CHANGED ? el("span", { class: "pill flag",
         title: `The entry changed since ${page}, which this comment was written on. It read then: ${c.entry_text_shown}` },
         "⚑ entry changed since") : null,
-      c.state === "gone" ? el("span", { class: "pill flag",
+      c.state === REVIEWER.states.GONE ? el("span", { class: "pill flag",
         title: `No longer in the files. On ${page} it read: ${c.entry_text_shown}` }, "⚑ entry no longer in the files") : null,
       c.sender === REVIEWER.not_verified
         ? el("span", { class: "pill todo", title: `From ${c.file}: a pasted email or a comment file has no sender to check` },
@@ -2196,13 +2195,11 @@ async function openReviews() {
   status(`Reviewer comments, read from ${reviews.folder} (read-only)`);
   drawReviews();
 }
-const REVIEW_KINDS = [["general", "General comments"], ["question", "Questions for experts (annotations/questions_for_experts.md)"],
-                      ["entity class", "Entity classes (ground truth schema)"],
-                      ["predicate", "Predicates (ground truth schema)"], ["translation row", "Rows of the translation table"]];
 function drawReviews() {
   const all = reviews.comments;
+  const S = reviews.states, REVIEW_KINDS = reviews.headings;     // from the server (common/common_helpers/review_comments.py)
   const who = [...new Set(all.map((c) => c.reviewer || "(no name)"))].sort((a, b) => a.localeCompare(b));
-  const changed = all.filter((c) => c.state === "changed").length, gone = all.filter((c) => c.state === "gone").length;
+  const changed = all.filter((c) => c.state === S.CHANGED).length, gone = all.filter((c) => c.state === S.GONE).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
     el("div", { class: "panelhead" }, el("h3", {}, "Reviewer comments"), toolsMenu()),
     el("p", { class: "meta" }, `${all.length} comment(s) from ${who.length} reviewer(s), read from ${reviews.files.length} ` +
@@ -2227,8 +2224,8 @@ function drawReviews() {
       options.map(([v, text]) => el("option", { value: v, selected: v === value }, text))));
   cards.push(el("section", { class: "card mapcard" }, el("div", { class: "mapfilters" },
     select("Reviewer", reviewWho, [["", "All reviewers"], ...who.map((w) => [w, w])], (v) => { reviewWho = v; }),
-    select("Entry", reviewState, [["any", "Changed or not"], ["changed", "Only entries changed since"],
-      ["unchanged", "Only entries unchanged"], ["gone", "Only entries no longer in the files"]], (v) => { reviewState = v; }),
+    select("Entry", reviewState, [["any", "Changed or not"], [S.CHANGED, "Only entries changed since"],
+      [S.UNCHANGED, "Only entries unchanged"], [S.GONE, "Only entries no longer in the files"]], (v) => { reviewState = v; }),
     select("Kind", reviewKind, [["any", "Every kind"], ...REVIEW_KINDS], (v) => { reviewKind = v; }))));
   const shown = all.filter((c) => (!reviewWho || (c.reviewer || "(no name)") === reviewWho) &&
     (reviewKind === "any" || c.kind === reviewKind) && (reviewState === "any" || c.state === reviewState));

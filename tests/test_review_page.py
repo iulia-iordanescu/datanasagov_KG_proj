@@ -136,6 +136,13 @@ class Page(unittest.TestCase):
 class Comments(unittest.TestCase):
     """A comment file as the page saves it, read back with --read."""
 
+    def test_states_as_the_guide_lists_them(self):
+        """helpers/review_page.md, *What --read reports*, the home of the comment states: its table lists the code's
+        states (review_comments.COMMENT_STATES), in their order."""
+        text = (ROOT / "helpers" / "review_page.md").read_text(encoding="utf-8")
+        section = text.split("### What --read reports", 1)[1].split("\n### ", 1)[0]
+        self.assertEqual(tuple(re.findall(r"^\| `([a-z]+)` \|", section, re.M)), RC.COMMENT_STATES)
+
     def write(self, folder: Path, name: str, rows: list) -> Path:
         path = folder / name
         with open(path, "w", encoding="utf-8-sig", newline="") as fh:
@@ -753,7 +760,7 @@ class Questions(unittest.TestCase):
             paths["questions_path"].write_text(QUESTION.replace("Undecided.", "A closed list."), encoding="utf-8")
             self.assertEqual(read(), {"Q1": "changed"})
             _, text = R.read_and_summarize([reviews], out_dir=t / "out", **paths)
-            self.assertIn("## Questions (annotations/questions_for_experts.md)", text)
+            self.assertIn("## Questions for experts (annotations/questions_for_experts.md)", text)
             self.assertIn("### Q1: Should SpatialRepresentation be a closed list?", text)
             paths["questions_path"].write_text("# Questions\n", encoding="utf-8")
             self.assertEqual(read(), {"Q1": "gone"})

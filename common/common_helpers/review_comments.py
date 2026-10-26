@@ -27,8 +27,8 @@ read, marked "sender not verified". A From address can be forged, so this is a f
 
 Each reviewer's latest comment on each entry is kept (one who sends twice sends the same comments twice; an
 edited comment replaces the older one), and each gets a state against the files as they are now
-(comment_state): "unchanged", "changed" (the entry reads differently from the page the comment was written
-on; spaces aside, since an email client may wrap a line), "gone" (no longer in the files), or "general".
+(comment_state, COMMENT_STATES). What each state means, the order they're decided in, and every problem a file
+can have: helpers/review_page.md, *What --read reports* (the home).
 """
 from __future__ import annotations
 
@@ -52,6 +52,17 @@ REVIEWS_DIR = ANNOTATIONS_DIR / "reviews"
 COMMENT_COLUMNS = ["reviewer", "page_version", "git_commit", "kind", "entry", "entry_text_shown", "comment", "timestamp"]
 #: The kinds of comment, in the order the summary lists them.
 KINDS = ["general", "question", "entity class", "predicate", "translation row"]
+#: Each kind's heading, in the summary of --read and in the annotation tool's Reviewer comments view.
+KIND_HEADINGS = {"general": "General comments",
+                 "question": "Questions for experts (annotations/questions_for_experts.md)",
+                 "entity class": "Entity classes (ground truth schema)",
+                 "predicate": "Predicates (ground truth schema)",
+                 "translation row": "Rows of the translation table"}
+#: A comment's state against the files now (comment_state), in the order they're decided: general (a general
+#: comment), gone (its entry is no longer in the files), changed (its entry reads differently from the page the
+#: comment was written on), unchanged.
+GENERAL_STATE, GONE, CHANGED, UNCHANGED = "general", "gone", "changed", "unchanged"
+COMMENT_STATES = (GENERAL_STATE, GONE, CHANGED, UNCHANGED)
 GENERAL = "(general)"
 #: The email domains an .eml file's From address may have (or be a subdomain of: ndc.nasa.gov) to be read.
 ALLOWED_SENDER_DOMAINS = ("nasa.gov",)
@@ -173,15 +184,16 @@ def entry_texts(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PA
 
 
 def comment_state(comment: dict, now: dict) -> str:
-    """"general", "gone", "changed" or "unchanged": the comment's entry, now (entry_texts()) against as the page
-    showed it. Spaces don't count: an email client may have wrapped the line at one, or at a hyphen."""
+    """One of COMMENT_STATES, the first that applies, in their order: the comment's entry, now (entry_texts())
+    against as the page showed it. Spaces don't count: an email client may have wrapped the line at one, or at a
+    hyphen."""
     if comment["kind"] == "general":
-        return "general"
+        return GENERAL_STATE
     key = (comment["kind"], comment["entry"])
     if key not in now:
-        return "gone"
+        return GONE
     squeeze = lambda s: re.sub(r"\s+", "", s or "")                                  # noqa: E731
-    return "unchanged" if squeeze(now[key]) == squeeze(comment["entry_text_shown"]) else "changed"
+    return UNCHANGED if squeeze(now[key]) == squeeze(comment["entry_text_shown"]) else CHANGED
 
 
 # ------------------------------ the files ------------------------------------

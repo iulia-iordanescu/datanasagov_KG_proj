@@ -137,7 +137,8 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
                                             read_mapping, repeats, row_states, sharing, stale_in)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key, verdict_of
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
-from common.review_comments import NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR, read_all as read_reviewer_comments
+from common.review_comments import (CHANGED, GONE, KIND_HEADINGS, NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR,
+                                    UNCHANGED, read_all as read_reviewer_comments)
 from common.expert_questions import QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
@@ -806,7 +807,11 @@ def reviewer_comments_view() -> dict:
     (common/common_helpers/review_comments.read_all): each with its state against the files now. Read-only."""
     read = read_reviewer_comments([REVIEWER_COMMENTS_DIR], GROUND_TRUTH_SCHEMA, MAPPING_PATH)
     return {"folder": f"annotations/{REVIEWER_COMMENTS_DIR.name}/", "files": [f.name for f in read["files"]],
-            "problems": read["problems"], "comments": read["comments"], "not_verified": NOT_VERIFIED}
+            "problems": read["problems"], "comments": read["comments"], "not_verified": NOT_VERIFIED,
+            # each kind and its heading, in order, and the states the page filters by
+            # (common/common_helpers/review_comments.py)
+            "headings": list(KIND_HEADINGS.items()),
+            "states": {"CHANGED": CHANGED, "UNCHANGED": UNCHANGED, "GONE": GONE}}
 
 
 def expert_questions_view() -> dict:

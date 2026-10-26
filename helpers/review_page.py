@@ -60,7 +60,8 @@ from common.expert_questions import (GUIDELINES_PATH, PRIORITIES, QUESTIONS_PATH
 from common.ground_truth import GROUND_TRUTH_DIR                               # noqa: E402
 from common.records_io import load_records                                     # noqa: E402
 from common.files import write_text                                            # noqa: E402
-from common.review_comments import (ALLOWED_SENDER_DOMAINS, COMMENT_COLUMNS, GENERAL, KINDS,  # noqa: E402,F401
+from common.review_comments import (ALLOWED_SENDER_DOMAINS, CHANGED, COMMENT_COLUMNS, GENERAL, GONE,  # noqa: E402,F401
+                                    KIND_HEADINGS, KINDS,
                                     NOT_VERIFIED, REVIEWS_DIR, SCHEMA_PATH, entry_texts, mapping_entries, read_all,
                                     schema_entries)
 from common.step import OUTPUTS_DIR                                            # noqa: E402
@@ -333,9 +334,6 @@ def _sender(c: dict) -> str:
 def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_DOMAINS, questions_fp: str = "") -> str:
     """The comments as markdown, grouped by kind and entry. read: common.review_comments.read_all()."""
     comments, files, problems = read["comments"], read["files"], read["problems"]
-    heads = {"general": "General comments", "question": "Questions (annotations/questions_for_experts.md)",
-             "entity class": "Entity classes (ground truth schema)",
-             "predicate": "Predicates (ground truth schema)", "translation row": "Translation table rows"}
     reviewers = sorted({c["reviewer"] or "(no name)" for c in comments}, key=str.lower)
     lines = ["# Review comments", "",
              f"Read {dt.date.today():%Y-%m-%d} from {len(files)} file(s): {', '.join(f.name for f in files) or 'none'}.",
@@ -343,8 +341,8 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
              f"Compared with the files as they are now: `annotations/ground_truth_schema.txt` (sha256 {schema_fp}), "
              f"`annotations/component_class_mapping.csv` (sha256 {mapping_fp})"
              + (f", `annotations/questions_for_experts.md` (sha256 {questions_fp})." if questions_fp else "."), ""]
-    changed = sum(1 for c in comments if c["state"] == "changed")
-    gone = sum(1 for c in comments if c["state"] == "gone")
+    changed = sum(1 for c in comments if c["state"] == CHANGED)
+    gone = sum(1 for c in comments if c["state"] == GONE)
     unverified = sum(1 for c in comments if c["sender"] == NOT_VERIFIED)
     lines += [f"⚑ {changed} comment(s) on an entry that changed since the page they were written on; "
               f"{gone} on an entry no longer in the files.",
@@ -358,7 +356,7 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
         mine = [c for c in comments if c["kind"] == kind]
         if not mine:
             continue
-        lines += [f"## {heads[kind]}", ""]
+        lines += [f"## {KIND_HEADINGS[kind]}", ""]
         for entry in _unique(c["entry"] for c in sorted(mine, key=lambda c: c["entry"].lower())):
             if kind == "question":
                 title = next((c["now"] for c in mine if c["entry"] == entry and c["now"]), "").split(" | ")[0]
@@ -368,9 +366,9 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
             for c in sorted((c for c in mine if c["entry"] == entry), key=lambda c: c["timestamp"]):
                 lines.append(f"- **{c['reviewer'] or '(no name)'}**, {c['timestamp'][:10]} "
                              f"(page {c['page_version']}; {_sender(c)}): {' '.join(c['comment'].split())}")
-                if c["state"] == "gone":
+                if c["state"] == GONE:
                     lines.append(f"  - ⚑ No longer in the files. As the page showed it: {c['entry_text_shown']}")
-                elif c["state"] == "changed":
+                elif c["state"] == CHANGED:
                     lines.append(f"  - ⚑ Changed since that page. Then: {c['entry_text_shown']}")
                     lines.append(f"  - Now: {c['now']}")
             lines.append("")

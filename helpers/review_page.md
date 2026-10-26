@@ -48,7 +48,32 @@ The questions and both lists can be shown all at once or one at a time (the ↑ 
 2. **Email my comments to Iulia** opens their email program with a new email to me, its body all their comments, for them to send (below). It needs an email program set up for `mailto:` links in their browser; without one, nothing opens, and the page tells them to use the next button instead.
 3. **Download my comments** is the backup: it saves a small CSV file (UTF-8), one row per comment, for them to attach to an email to me. Its name is the standard `comments_<reviewer>_<YYYY-MM-DD>.csv` (the reviewer's name with each character other than a letter, digit, `_` or `-` made `_`, and the day it was saved), e.g. `comments_Jane_Smith_2026-10-24.csv`. Its columns: `reviewer`, `page_version`, `git_commit`, `kind` (`general`, `question`, `entity class`, `predicate`, or `translation row`), `entry` (the component class, or for a row its kind and the current schema's component class, e.g. `predicate CARRIES`, plus ` (line N)` for a second row of the same one; for a question its id, e.g. `Q1`; `(general)` for a general comment), `entry_text_shown` (the entry as the page showed it when the comment was written, so the comment still makes sense after the entry changes; for a question, its id, short title and the fingerprint of its words, e.g. `Q1: Should SpatialRepresentation be a closed list? | fingerprint 9ce614305731`), `comment`, and `timestamp`.
 4. I save each email (Gmail: **⋮ → Download message**, which saves an `.eml` file), or paste its text into a `.txt` file, or save the attached CSV file (an `.eml` file with the CSV file attached is read whole, too), in `annotations/reviews/`, as it is.
-5. `py helpers/review_page.py --read` reads every `.csv`, `.eml` and `.txt` file there (or the files and folders named) and writes a summary to `outputs/review/comments_<date>_<time>.md`, also printed: grouped into general comments, questions (each under its id and short title), entity classes, predicates and rows of the translation table, then by entry, each comment with its reviewer, date, page version and sender. A comment whose entry has changed since the page it was written on is flagged ⚑, with the entry then and now (spaces don't count, since an email program may wrap a line); one whose entry is no longer in the files is flagged too. A question counts as changed when any of its words do, except its status and priority lines and its answer. One reviewer's comment on one entry counts once, the latest: a reviewer who sends twice sends the same comments twice. A file it can't read is skipped, and the summary says why. The annotation tool's **Reviewer comments** view shows the same comments, read by the same code ([annotations/README.md](../annotations/README.md), *Reading reviewers' comments*).
+5. `py helpers/review_page.py --read` reads every `.csv`, `.eml` and `.txt` file there (or the files and folders named) and writes a summary to `outputs/review/comments_<date>_<time>.md`, also printed: grouped into general comments, questions (each under its id and short title), entity classes, predicates and rows of the translation table, then by entry, each comment with its reviewer, date, page version and sender. Each comment's state, and every problem a file can have: *What --read reports*, below. One reviewer's comment on one entry counts once, the latest: a reviewer who sends twice sends the same comments twice. The annotation tool's **Reviewer comments** view shows the same comments, read by the same code ([annotations/README.md](../annotations/README.md), *Reading reviewers' comments*).
+
+### What --read reports
+
+**Each comment's state** against the files as they are now (`comment_state`, `COMMENT_STATES` in `common/common_helpers/review_comments.py`): exactly one of four, the first that applies, in this order.
+
+| State | When | In the summary |
+|---|---|---|
+| `general` | A general comment (kind `general`). | Under *General comments*, no flag. |
+| `gone` | Its entry (its kind and entry) is no longer in the files: an entity class or predicate no longer in `annotations/ground_truth_schema.txt`, a row no longer in the translation table, or a question no longer in `annotations/questions_for_experts.md`. A comment of a kind the page doesn't have is `gone` too (listed apart, under *Comments of an unknown kind*). | ⚑ *No longer in the files*, with the entry as the page showed it. |
+| `changed` | Its entry reads differently now from how the page showed it when the comment was written. Spaces don't count, since an email program may wrap a line. A question counts as changed when any of its words do, except its status and priority lines and its answer. | ⚑ *Changed since that page*, with the entry then and now. |
+| `unchanged` | Any other comment. | No flag. |
+
+**Every problem a file can have**, listed at the top of the summary (*Files skipped, and what is missing*) and of the annotation tool's Reviewer comments view:
+
+1. A `.csv` file, or a `.csv` file attached to an email, that lacks one of the columns above: skipped.
+2. An `.eml` file whose From address isn't of an allowed domain (*Who sent it*, below): skipped, its sender named.
+3. An `.eml` file from an allowed address with no review comments in it (no line `REVIEW COMMENTS (format 1)` in its text, and no `.csv` file attached that could be read): skipped. An email with no text and nothing attached is skipped without a problem.
+4. A `.txt` file with no line `REVIEW COMMENTS (format 1)`: skipped.
+5. A file that can't be read (the error is named): skipped.
+6. A sending with a part missing: the comments in that part aren't read.
+7. A part without its end line `=== end of part … ===` (cut short, or not copied whole): read, but a comment at its end may be incomplete.
+8. Incomplete comments: a comment cut by a missing or cut-short part, or without its `[kind]` or `[entry]` line: left out, and counted.
+9. The questions file not in its format: every comment on a question is then `gone`.
+
+How they relate: 1 to 5 are about one file. 2, 4 and 5 each exclude every other of 1 to 5 for that file; an `.eml` file can have 1 (once per `.csv` file attached that lacks a column) and 3 together. 6 to 8 are about one sending, its parts put back together from any files; a sending can have all three. 9 is about the questions file, at most once per reading. A comment with no words is dropped, without a problem.
 
 ### The email
 
