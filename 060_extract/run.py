@@ -36,6 +36,7 @@ SETTINGS = {
     "extract_from":       "ground_truth",  # ground_truth (the finished records 070 evaluates) or all
     "ids":                "",              # or exactly these records: ids separated by commas, or a file with one per line
     "max_chars":          8000,            # a longer text is split into text pieces, one call each
+    "list_things_first":  False,           # true: the model first finds every thing the record names, then states the facts about each
     "workers":            4,               # model calls made at the same time
     "service":            SERVICE,         # the service that reaches the model: asksage or litellm
     "model":              MODEL,           # the AI model to ask (py helpers/models.py lists them)

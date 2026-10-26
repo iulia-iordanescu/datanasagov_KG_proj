@@ -6,7 +6,7 @@ Use ONLY the entity classes and predicates of the schema, spelled exactly as
 written, describes_class included. Leave out any fact they cannot express;
 do not invent entity classes or predicates. If no entity class fits what the title
 names, leave describes_class empty.
-
+$list_things_first
 SCHEMA
 $schema
 

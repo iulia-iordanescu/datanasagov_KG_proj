@@ -944,6 +944,81 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
         self.assertIn("--extract_from all", str(stop.exception))
 
 
+class ListThingsFirst(unittest.TestCase):
+    """060's setting list_things_first (060_extract_helpers/extract.py, list_things_first): off by default, and then
+    the prompt is byte for byte the one 060 sent before the setting existed, so every answer cached for it is reused;
+    on, the instruction of list_things_first.txt is a paragraph of its own before the schema, inside the part sent for
+    prompt caching, and the prompt's fingerprint differs (a new model call)."""
+
+    #: sha256 of 060_extract/060_extract_prompts/extract.txt before $list_things_first was added (commit 2607128). If
+    #: extract.txt is edited on purpose, every 060 answer is asked again anyway: then put its new text's fingerprint
+    #: here, without the line $list_things_first.
+    BEFORE = "c0d6f01ac0fe0af9c9f52ec4568979a129761e41e82f72913bbb76fb834a67cf"
+    RECORD = {"id": "r1", "title": "Kestrel Lake Ice L2", "notes": "Made by the Tern algorithm."}
+
+    def setUp(self):
+        from support import use_step
+        use_step("060_extract")
+        import extract                                                         # 060_extract_helpers/extract.py
+        self.extract = extract
+
+    def run_py(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("run_060", ROOT / "060_extract" / "run.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def prompt(self, on: bool) -> str:
+        things = self.extract.list_things_first({"list_things_first": on})
+        return extraction.prompt(self.extract.PROMPT, "ENTITY CLASSES\nInstrument  a device", self.RECORD,
+                                 "title: Kestrel Lake Ice L2", list_things_first=things)
+
+    def test_off_is_the_prompt_before(self):
+        import hashlib
+        from string import Template
+        template = self.extract.PROMPT.template
+        self.assertEqual(template.count("$list_things_first\n"), 1)
+        before = template.replace("$list_things_first\n", "\n")               # the blank line it stands on
+        self.assertEqual(hashlib.sha256(before.encode("utf-8")).hexdigest(), self.BEFORE)
+        old = Template(before).substitute(schema="ENTITY CLASSES\nInstrument  a device",
+                                          rules=extraction.rules_for(self.RECORD), reply=extraction.reply(True),
+                                          text=extraction.wrap("title: Kestrel Lake Ice L2"))
+        self.assertEqual(self.prompt(False), old)                              # byte for byte
+        from common.cache import key
+        self.assertEqual(key(self.prompt(False)), key(old))                    # so the cached answer is found
+
+    def test_on_adds_the_instruction(self):
+        from common.cache import key
+        on, off = self.prompt(True), self.prompt(False)
+        paragraph = (ROOT / "060_extract" / "060_extract_prompts" / "list_things_first.txt").read_text(
+            encoding="utf-8").strip()
+        self.assertEqual(on.count(paragraph), 1)
+        self.assertIn("leave describes_class empty.\n\n" + paragraph + "\n\nSCHEMA\n", on)   # its own paragraph
+        self.assertLess(on.index(paragraph), on.index(extraction.BEGIN_LINE))   # in the part sent for prompt caching
+        self.assertEqual(on.replace(paragraph + "\n\n", ""), off)              # and nothing else differs
+        self.assertNotEqual(key(on), key(off))
+
+    def test_setting(self):
+        """Off by default; given on the command line as true or false (any form step._parse_bool reads), anything
+        else refused before the run starts."""
+        from common.step import _parse_command_line
+        run = self.run_py()
+        self.assertIs(run.SETTINGS["list_things_first"], False)
+        for given, wanted in (("true", True), ("Yes", True), ("on", True), ("false", False), ("0", False)):
+            _, chosen, changed = _parse_command_line("060_extract", run.INPUTS, run.SETTINGS,
+                                                     ["--list_things_first", given])
+            self.assertIs(chosen["list_things_first"], wanted, given)
+            self.assertEqual(changed, ["list_things_first"])
+        _, chosen, changed = _parse_command_line("060_extract", run.INPUTS, run.SETTINGS, [])
+        self.assertIs(chosen["list_things_first"], False)
+        import contextlib
+        import io
+        for given in ("maybe", "tru", ""):
+            with self.assertRaises(SystemExit, msg=given), contextlib.redirect_stderr(io.StringIO()):
+                _parse_command_line("060_extract", run.INPUTS, run.SETTINGS, ["--list_things_first", given])
+
+
 class Confirm(unittest.TestCase):
     """The question before paying (llm.confirm): Enter, y, or yes (any case, spaces ignored) go ahead; anything
     else, or a closed input stop (Ctrl+C interrupts), as docs/running_on_nasa_laptop.md, section 5, says."""
