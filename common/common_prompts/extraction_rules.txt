@@ -98,10 +98,8 @@
   name, capitalized: write "Hurricane Katrina", not "Katrina". Keep it too
   when the words without it aren't a name: "the Kestrel low gain sensor"
   stays whole. To see that two wordings name the same thing, use clues
-  anywhere in the record, and what you know about the words (e.g. that VLF
-  means very low frequency); but never add a fact the record doesn't state,
-  and write only a wording the record itself uses for that thing, after any
-  qualifiers are taken out.
+  anywhere in the record and what you know about the words (e.g. what an
+  abbreviation stands for: VLF is very low frequency).
 - A processing step: output_i = method_i(input_i). For each processing step
   i the record describes, find its output_i, method_i, and input_i, and
   write at most two triples: output_i computed-from input_i, and output_i
