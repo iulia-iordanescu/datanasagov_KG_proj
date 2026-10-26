@@ -105,6 +105,16 @@ def gt_rows():
         return list(csv.DictReader(fh))
 
 
+def checks_table_codes() -> set:
+    """The codes in the first column of 050's table *Checks on each row* (050_annotate/050_annotate.md)."""
+    import re
+    text = (Path(__file__).resolve().parents[1] / "050_annotate" / "050_annotate.md").read_text(encoding="utf-8")
+    section = text.split("### Checks on each row", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("| `")]
+    assert rows, "050_annotate.md: no table under *Checks on each row*"
+    return {code for line in rows for code in re.findall(r"`([a-z_]+)`", line.split("|")[1])}
+
+
 class A_Paths(unittest.TestCase):
 
     def test_never_the_real_repository(self):
@@ -119,6 +129,12 @@ class A_Paths(unittest.TestCase):
             "pattern_not_in_schema", "pattern_not_pinned", "describes_undecided", "describes_class_not_in_schema",
             "describes_subject_not_id", "empty", "not_connected"}
         self.assertEqual(codes, set(server.MESSAGES))
+
+    def test_050_checks_table_lists_every_check(self):
+        """050's guide, *Checks on each row*: its Check column names exactly the checks the code raises (the tool's,
+        stage 4's, and conflicting_classes, which 050 and 060 raise on rows together)."""
+        self.assertEqual(checks_table_codes(), set(server.MESSAGES) | set(ground_truth.ROW_ERRORS)
+                         | {"conflicting_classes"})
 
     def test_dataset_subject_message(self):
         row = {"id": "r1", "subject": "radiance data", "subject_class": "Dataset", "predicate": "USES",
