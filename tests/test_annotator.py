@@ -667,6 +667,8 @@ class G_Vocabulary(unittest.TestCase):
         for path in ("/api/vocab/plan", "/api/vocab/apply"):
             r = post(path, {"kind": "entity class", "old": "Satelite", "new": "Satellite", "record": "r3"})
             self.assertIn("renaming or merging Satelite is refused", r["error"])
+        r = post("/api/vocab/define", {"kind": "entity class", "component_class": "Satelite", "definition": "new", "record": "r3"})
+        self.assertIn("changing the definition of Satelite is refused", r["error"])
         self.assertEqual(self.snapshot(), before)
         self.assertNotIn("error", post("/api/vocab/plan", {"kind": "entity class", "old": "Satelite", "new": "Satellite",
                                                            "record": "r0"}))

@@ -105,8 +105,8 @@ records shaped its component classes.
 The ground truth schema is frozen for held-out records (annotations/guidelines.md,
 Before you start): in a held-out record, an entity class or predicate the ground truth
 schema lacks gets its own message (_frozen_message) and no button to add it; adding one
-that a held-out record uses is refused; and adding, renaming, or merging is refused
-while the record shown is held-out (refuse_if_held_out; the page sends the id of the
+that a held-out record uses is refused; and adding, renaming, merging, or changing a
+definition is refused while the record shown is held-out (refuse_if_held_out; the page sends the id of the
 record shown). Step 070 notes an entry whose "source:" line names a held-out record.
 """
 from __future__ import annotations
@@ -334,7 +334,8 @@ def _frozen_message(data: Data, code: str, row: dict) -> str:
 
 
 def refuse_if_held_out(data: Data, item: dict, what: str) -> None:
-    """Refuse a change to the ground truth schema (adding, renaming, merging) while the record shown is held-out."""
+    """Refuse a change to the ground truth schema (adding, renaming, merging, changing a definition) while the record
+    shown is held-out."""
     rid = str(item.get("record") or "")
     if data.parts.get(rid) == "held-out":
         raise ValueError(f"the record shown, {rid} (pool position {data.positions.get(rid, '?')}), is a held-out "
@@ -1203,6 +1204,7 @@ def define_vocab(data: Data, item: dict) -> dict:
     kind, name = item.get("kind"), str(item.get("component_class") or "").strip()
     if kind not in KIND_KEYS:
         raise ValueError("kind must be entity class or predicate")
+    refuse_if_held_out(data, item, f"changing the definition of {name}")
     with HAND_LOCK:
         content = redefine_in_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "")
         stale = []

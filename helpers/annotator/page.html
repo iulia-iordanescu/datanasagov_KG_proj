@@ -848,7 +848,7 @@ function show(i) {
               el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
               el("dt", {}, "Part"), el("dd", {}, rec.part
                 ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-                    ? "A held-out record: the ground truth schema is frozen while annotating it (no entity class or predicate added, renamed, or merged: annotations/guidelines.md, Before you start), and an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
+                    ? "A held-out record: the ground truth schema is frozen while annotating it (no entity class or predicate added, renamed, or merged, and no definition changed: annotations/guidelines.md, Before you start), and an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               expertQuestionsOn(rec.id),
@@ -2060,7 +2060,7 @@ async function applyVocab() {
 
 async function defineVocab(kind, name, input) {
   try {
-    const done = await api("/api/vocab/define", { kind, component_class: name, definition: input.value });
+    const done = await api("/api/vocab/define", { kind, component_class: name, definition: input.value, record: shownRecordId() });
     vocab = await api("/api/vocab");
     status(`Saved the definition of ${name} at ${new Date().toLocaleTimeString()}` +
            (done.stale.length ? `. ${done.stale.length} row(s) of the translation table now need checking again: ${done.stale.join(", ")}.` : "."),
