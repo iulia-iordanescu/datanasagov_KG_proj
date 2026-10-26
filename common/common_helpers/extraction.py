@@ -60,7 +60,7 @@ from common.prompt_files import fill, load
 from common.report import named
 from common.text_match import Text
 from common.triples_io import (clean_triple, describes_triple, component_class_key, triple_key)
-from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
+from common.validate import CONFLICTING_CLASSES, SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
 RULES = load(PROMPTS / "extraction_rules.txt")
@@ -157,7 +157,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
         pairs.setdefault(triple_key(row), set()).add(copy_key(row)[1:])
     for row in kept:                            # same triple instance, other entity classes
         if len(pairs[triple_key(row)]) > 1:
-            row["flags"].append("conflicting_classes")
+            row["flags"].append(CONFLICTING_CLASSES)
     rows += kept
     return rows, removed
 

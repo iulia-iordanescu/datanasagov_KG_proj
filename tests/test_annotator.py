@@ -123,18 +123,18 @@ class A_Paths(unittest.TestCase):
             self.assertTrue(path.resolve().is_relative_to(TMP.resolve()), path)
 
     def test_every_check_has_a_message(self):
+        """Every check the tool shows has a message: all of them but stage 4's own and those on rows together."""
         from common import validate
-        codes = set(validate.ERRORS) | set(validate.FLAGS) | {
-            "subject_class_not_in_schema", "object_class_not_in_schema", "predicate_not_in_schema",
-            "pattern_not_in_schema", "pattern_not_pinned", "describes_undecided", "describes_class_not_in_schema",
-            "describes_subject_not_id", "empty", "not_connected"}
-        self.assertEqual(codes, set(server.MESSAGES))
+        self.assertEqual(set(validate.ALL_CHECKS) - set(validate.GROUND_TRUTH_ERRORS) - set(validate.ROWS_FLAGS),
+                         set(server.MESSAGES))
+        self.assertEqual(len(validate.ALL_CHECKS), len(set(validate.ALL_CHECKS)))     # each code once
 
     def test_050_checks_table_lists_every_check(self):
-        """050's guide, *Checks on each row*: its Check column names exactly the checks the code raises (the tool's,
-        stage 4's, and conflicting_classes, which 050 and 060 raise on rows together)."""
-        self.assertEqual(checks_table_codes(), set(server.MESSAGES) | set(ground_truth.ROW_ERRORS)
-                         | {"conflicting_classes"})
+        """050's guide, *Checks on each row*, the home of the checks' meanings: its Check column names exactly the
+        check codes (common/common_helpers/validate.py, ALL_CHECKS)."""
+        from common import validate
+        self.assertEqual(checks_table_codes(), set(validate.ALL_CHECKS))
+        self.assertLessEqual(set(ground_truth.ROW_ERRORS), set(validate.ALL_CHECKS))
 
     def test_dataset_subject_message(self):
         row = {"id": "r1", "subject": "radiance data", "subject_class": "Dataset", "predicate": "USES",

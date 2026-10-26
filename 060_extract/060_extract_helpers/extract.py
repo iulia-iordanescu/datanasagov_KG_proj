@@ -61,19 +61,21 @@ from common import extraction
 from common.audit import log
 from common.prompt_files import load, text
 from common.triples_io import UNDECIDED, is_describes
+from common.validate import (DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_UNDECIDED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
+                             PREDICATE_NOT_IN_SCHEMA, SOURCE_NOT_IN_TEXT, SUBJECT_CLASS_NOT_IN_SCHEMA)
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "060_extract_prompts"   # 060_extract/060_extract_prompts/
 PROMPT = load(PROMPTS_DIR / "extract.txt")
 LIST_THINGS_FIRST = load(PROMPTS_DIR / "list_things_first.txt")
 
 #: Checks that remove a row, and the reason written for it.
-REMOVE = {"no_source_text": "source_text", "source_not_in_text": "source_text",
-          "subject_class_not_in_schema": "component_class_not_in_schema", "object_class_not_in_schema": "component_class_not_in_schema",
-          "predicate_not_in_schema": "component_class_not_in_schema"}
-SLOTS_OF = {"subject_class_not_in_schema": ("entity class", "subject_class"),
-            "object_class_not_in_schema": ("entity class", "object_class"),
-            "predicate_not_in_schema": ("predicate", "predicate"),
-            "describes_class_not_in_schema": ("entity class", "object_class")}
+REMOVE = {NO_SOURCE_TEXT: "source_text", SOURCE_NOT_IN_TEXT: "source_text",
+          SUBJECT_CLASS_NOT_IN_SCHEMA: "component_class_not_in_schema", OBJECT_CLASS_NOT_IN_SCHEMA: "component_class_not_in_schema",
+          PREDICATE_NOT_IN_SCHEMA: "component_class_not_in_schema"}
+SLOTS_OF = {SUBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "subject_class"),
+            OBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "object_class"),
+            PREDICATE_NOT_IN_SCHEMA: ("predicate", "predicate"),
+            DESCRIBES_CLASS_NOT_IN_SCHEMA: ("entity class", "object_class")}
 
 
 @dataclass
@@ -132,9 +134,9 @@ def sort_rows(chosen, schema, replies) -> Rows:
                     new_component_classes[(kind, row[column])].add(rid)
             if is_describes(row):
                 row = _in_schema_spelling(row, schema.schema_entries)
-                if row["errors"] or "describes_class_not_in_schema" in row["flags"]:
+                if row["errors"] or DESCRIBES_CLASS_NOT_IN_SCHEMA in row["flags"]:
                     row["object_class"] = UNDECIDED           # no entity class of the schema named
-                    row["flags"] = sorted(set(row["flags"]) | set(row["errors"]) | {"describes_undecided"})
+                    row["flags"] = sorted(set(row["flags"]) | set(row["errors"]) | {DESCRIBES_UNDECIDED})
                     row["errors"] = []
                 kept.append(row)
                 continue

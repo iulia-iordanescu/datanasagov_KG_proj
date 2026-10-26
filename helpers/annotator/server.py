@@ -144,7 +144,12 @@ from common.status import project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text, norm_text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
-from common.validate import SchemaEntries, check_against_schema, check_describes, check_triple_instance
+from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
+                             DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
+                             OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
+                             PREDICATE_NOT_IN_SCHEMA, SOURCE_NOT_IN_TEXT, SUBJECT_CLASS_NOT_IN_SCHEMA,
+                             SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE, SUBJECT_NOT_IN_TEXT, SchemaEntries,
+                             check_against_schema, check_describes, check_triple_instance)
 
 DRAFTS_DIR = RESULTS_DIR / "050_annotate"
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
@@ -176,60 +181,60 @@ PAGE = Path(__file__).with_name("page.html")
 #: The page's typefaces (Libre Franklin and JetBrains Mono, SIL Open Font License: the OFL-*.txt beside them).
 FONTS = Path(__file__).with_name("fonts")
 
-#: Each check (common/common_helpers/validate.py, the same checks step 050 runs), in plain
-#: words for the page; each {placeholder} is filled with the component class concerned.
+#: Each check's message for the page (the codes: common/common_helpers/validate.py; what each means:
+#: 050_annotate/050_annotate.md, *Checks on each row*); each {placeholder} is filled with the component class concerned.
 MESSAGES = {
-    "no_source_text": "No source text: without one, this ground truth triple can't be checked against the record's text. Select the "
+    NO_SOURCE_TEXT: "No source text: without one, this ground truth triple can't be checked against the record's text. Select the "
                       "passage in the record's text that states this fact, then press \"Use selection\".",
-    "source_not_in_text": "The source text isn't in the record's text: it may have been retyped or cut, so this "
+    SOURCE_NOT_IN_TEXT: "The source text isn't in the record's text: it may have been retyped or cut, so this "
                           "ground truth triple can't be checked. Select the passage in the record's text, then press \"Use selection\" to "
                           "copy it exactly.",
-    "subject_not_in_text": "The subject instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
+    SUBJECT_NOT_IN_TEXT: "The subject instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                            "reworded on purpose, nothing to do.",
-    "object_not_in_text": "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
+    OBJECT_NOT_IN_TEXT: "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                           "reworded on purpose, nothing to do.",
-    "subject_not_in_source": "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
+    SUBJECT_NOT_IN_SOURCE: "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
                              "passage, or too short. Select a passage that states the whole fact, then press \"Use "
                              "selection\"; if the text states the fact without naming it there, nothing to do.",
-    "object_not_in_source": "The object instance isn't in this ground truth triple's source text: the source text may be the wrong "
+    OBJECT_NOT_IN_SOURCE: "The object instance isn't in this ground truth triple's source text: the source text may be the wrong "
                             "passage, or too short. Select a passage that states the whole fact, then press \"Use "
                             "selection\"; if the text states the fact without naming it there, nothing to do.",
-    "subject_equals_object": "The subject instance and the object instance are the same: a fact relates two different "
+    SUBJECT_EQUALS_OBJECT: "The subject instance and the object instance are the same: a fact relates two different "
                              "things, so one of them is probably wrong. Correct it.",
-    "dataset_subject_not_title": "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
+    DATASET_SUBJECT_NOT_TITLE: "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
                                  "record's dataset, use the title (rule 13); if it is another dataset, such as an "
                                  "input, keep it.",
-    "subject_class_not_in_schema": "\"{subject_class}\" isn't an entity class of the ground truth schema: a new one, "
+    SUBJECT_CLASS_NOT_IN_SCHEMA: "\"{subject_class}\" isn't an entity class of the ground truth schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
                                    "If it's new, add it to the ground truth schema with the button below, "
                                    "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
-    "object_class_not_in_schema": "\"{object_class}\" isn't an entity class of the ground truth schema: a new one, "
+    OBJECT_CLASS_NOT_IN_SCHEMA: "\"{object_class}\" isn't an entity class of the ground truth schema: a new one, "
                                   "or a typo. Keep it only if none of the schema's fits. "
                                   "If it's new, add it to the ground truth schema with the button below, "
                                   "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
-    "predicate_not_in_schema": "\"{predicate}\" isn't a predicate of the ground truth schema: a new one, or a typo. "
+    PREDICATE_NOT_IN_SCHEMA: "\"{predicate}\" isn't a predicate of the ground truth schema: a new one, or a typo. "
                                "Keep it only if none of the schema's fits. "
                                "If it's new, add it to the ground truth schema with the button below, "
                                "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
-    "pattern_not_in_schema": "No other ground truth triple uses {predicate} between {subject_class} and "
+    PATTERN_NOT_IN_SCHEMA: "No other ground truth triple uses {predicate} between {subject_class} and "
                              "{object_class}: a pattern used for the first time, or a wrong entity class or "
                              "direction. If it's right, there's nothing to do: from now on it's one of the ground "
                              "truth schema's patterns.",
-    "pattern_not_pinned": "{predicate} is pinned in the ground truth schema (its \"only:\" line): it joins only "
+    PATTERN_NOT_PINNED: "{predicate} is pinned in the ground truth schema (its \"only:\" line): it joins only "
                           "the entity classes listed there, not {subject_class} and {object_class}. Use another "
                           "predicate, or fix the entity classes.",
-    "empty": "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
+    EMPTY: "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. "
              "Fill in the empty ones, or delete it.",
-    "describes_undecided": "No describes class yet (the describes triple's object class is X or empty). Type or "
+    DESCRIBES_UNDECIDED: "No describes class yet (the describes triple's object class is X or empty). Type or "
                            "pick the describes triple's object class: the entity class of its object instance.",
-    "describes_class_not_in_schema": "\"{object_class}\" isn't an entity class of the ground truth schema: a new "
+    DESCRIBES_CLASS_NOT_IN_SCHEMA: "\"{object_class}\" isn't an entity class of the ground truth schema: a new "
                                      "one, or a typo. Keep it only if none of the schema's fits. "
                                      "If it's new, add it to the ground truth schema with the button below, "
                                      "giving a one-line definition: until then, step 070 can't evaluate a finished record that uses it.",
-    "describes_subject_not_id": "The describes triple's subject should be the record's id.",
+    DESCRIBES_SUBJECT_NOT_ID: "The describes triple's subject should be the record's id.",
     # the tool's own check (connection_problems), on a record's rows together: {piece} is filled with the component
     # instances this ground truth triple is connected to
-    "not_connected": "No chain of ground truth triples links this ground truth triple to the record's id (through "
+    NOT_CONNECTED: "No chain of ground truth triples links this ground truth triple to the record's id (through "
                      "the describes triple). Look for the fact that connects it, and add it only if the "
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
 }
@@ -298,13 +303,13 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     if is_describes(row):
         errors, flags = check_describes(row, row["id"], data.schema_entries)
     elif not (row["subject"] and row["predicate"] and row["object"]):
-        errors, flags = ["empty"], []
+        errors, flags = [EMPTY], []
     else:
         text = data.text(row["id"])
         errors, flags = check_triple_instance(row, text, title) if text is not None else ([], [])
         flags = flags + check_against_schema(row, data.schema_entries)
         if uses is not None and uses[pattern_of(row)] > 1:
-            flags = [c for c in flags if c != "pattern_not_in_schema"]
+            flags = [c for c in flags if c != PATTERN_NOT_IN_SCHEMA]
     # an entity class or predicate the ground truth schema lacks must be added to it (or the typo fixed): step 070
     # stops on one in a finished record, so it's an error to fix, not a flag; a pattern used for the first time
     # stays a flag
@@ -348,9 +353,14 @@ def _message(code: str, row: dict, every: list, title: str = "") -> str:
     """The check's message, filled in; a "not in the source text" flag says so when the instance is still in the
     record's text (its "not in the text" flag absent)."""
     message = MESSAGES[code].format(title=title, **{k: row.get(k) or "(none)" for k in COLUMNS})
-    if code.endswith("_not_in_source") and code.replace("_source", "_text") not in every:
-        message += ELSEWHERE_IN_TEXT.format(slot=code.split("_")[0])
+    if code in NOT_IN_SOURCE and NOT_IN_SOURCE[code][0] not in every:
+        message += ELSEWHERE_IN_TEXT.format(slot=NOT_IN_SOURCE[code][1])
     return message
+
+
+#: Each "not in the source text" flag: its "not in the text" flag, and its slot.
+NOT_IN_SOURCE = {SUBJECT_NOT_IN_SOURCE: (SUBJECT_NOT_IN_TEXT, "subject"),
+                 OBJECT_NOT_IN_SOURCE: (OBJECT_NOT_IN_TEXT, "object")}
 
 
 def connection_problems(rid: str, rows: list) -> list:
@@ -379,16 +389,16 @@ def connection_problems(rid: str, rows: list) -> list:
             pieces[root(norm_text(x))].setdefault(norm_text(x), x)
     entry = root(norm_text(rid))
     return [[] if pair is None or root(norm_text(pair[0])) == entry else
-            [{"code": "not_connected", "type": "flag", "add": None, "message": MESSAGES["not_connected"].format(
+            [{"code": NOT_CONNECTED, "type": "flag", "add": None, "message": MESSAGES[NOT_CONNECTED].format(
                 piece=", ".join(f'"{x}"' for x in pieces[root(norm_text(pair[0]))].values()))}]
             for pair in ends]
 
 
 #: The flags a person resolves by adding a component class to the ground truth schema: (kind, the row's column holding it).
-ADDS = {"subject_class_not_in_schema": ("entity class", "subject_class"),
-        "object_class_not_in_schema": ("entity class", "object_class"),
-        "describes_class_not_in_schema": ("entity class", "object_class"),
-        "predicate_not_in_schema": ("predicate", "predicate")}
+ADDS = {SUBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "subject_class"),
+        OBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "object_class"),
+        DESCRIBES_CLASS_NOT_IN_SCHEMA: ("entity class", "object_class"),
+        PREDICATE_NOT_IN_SCHEMA: ("predicate", "predicate")}
 
 
 def _offer(code: str, row: dict, flags: list) -> dict | None:
@@ -440,7 +450,9 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
     vocab = with_coined(data.hand, gt)
     return {"n": n, "file": path.name, "records": records,
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
-            **definitions_view(data, gt), "patterns": patterns_view(data, gt)}
+            **definitions_view(data, gt), "patterns": patterns_view(data, gt),
+            # the problems of a row the page adds, not filled in yet (so the page doesn't retype the message)
+            "new_row_problems": [{"code": EMPTY, "type": "error", "add": None, "message": MESSAGES[EMPTY]}]}
 
 
 def definitions_view(data: Data, gt=None) -> dict:

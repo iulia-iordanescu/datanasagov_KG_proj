@@ -1185,7 +1185,7 @@ function setActive(j) {
 function addRow(rec) {
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
                   source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
-                  problems: [{ type: "error", code: "empty", message: "Subject, predicate, or object is empty: a ground truth triple states a fact only with all three. Fill in the empty ones, or delete it." }] });
+                  problems: batch.new_row_problems.map(p => ({ ...p })) });
   shownRow = rec.rows.length - 1;          // the new one (last, until it gets a source text)
   show(current);
   const inputs = document.querySelectorAll(`[data-row="${rec.rows.length - 1}"]`);

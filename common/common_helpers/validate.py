@@ -7,28 +7,11 @@ states it, copied word for word. What code can prove is an ERROR; what code
 can't decide is a FLAG (often a sign of a mistake, often fine). Neither
 changes the triple instance; the caller decides what to do with it.
 
-    ERRORS (the triple instance is unverified)
-    no_source_text          it has no source text
-    source_not_in_text      its source text is not in the record's text: it
-                            can't be verified, and may be invented
-
-    FLAGS (the triple instance is verified, but worth a look)
-    subject_not_in_text     the component instance in the subject (or
-    object_not_in_text      object) slot is not in the record's text; often
-                            reworded: "the instrument" for "MODIS"
-    subject_not_in_source   the subject is not in the triple instance's own
-                            source text; not raised when the subject is the
-                            record's title, since a fact about the title
-                            rarely names it ("This dataset contains …")
-    object_not_in_source    the object is not in its own source text
-    subject_equals_object   the subject and the object are the same
-    dataset_subject_not_title
-                            the subject class is Dataset, but the subject is
-                            not the record's title: it may be this record's
-                            own dataset worded differently (rule 13), or
-                            another dataset (an input), which is fine. Not
-                            raised on the describes triple, nor without a
-                            title or a subject entity class (040 has none)
+Every check's code is defined once, below (the constants and the groups
+ERRORS, FLAGS, SCHEMA_FLAGS, ..., ALL_CHECKS), and imported by every step,
+the annotation tool and the tests. What each check means, and how the checks
+relate, is written once, for people: 050_annotate/050_annotate.md, *Checks on
+each row* (a test keeps its Check column equal to ALL_CHECKS).
 
 "In" and "the same" are as defined in common/common_helpers/text_match.py. Checks run
 against the record's WHOLE text, so a triple instance from one piece of a
@@ -48,9 +31,58 @@ from __future__ import annotations
 from common.text_match import Text, norm_text
 from common.triples_io import component_class_key, is_describes
 
-ERRORS = ("no_source_text", "source_not_in_text")
-FLAGS = ("subject_not_in_text", "object_not_in_text", "subject_not_in_source",
-         "object_not_in_source", "subject_equals_object", "dataset_subject_not_title")
+# --------------------------------------------------------------------------
+# the check codes
+# --------------------------------------------------------------------------
+
+# check_triple_instance
+NO_SOURCE_TEXT = "no_source_text"
+SOURCE_NOT_IN_TEXT = "source_not_in_text"
+SUBJECT_NOT_IN_TEXT = "subject_not_in_text"
+OBJECT_NOT_IN_TEXT = "object_not_in_text"
+SUBJECT_NOT_IN_SOURCE = "subject_not_in_source"
+OBJECT_NOT_IN_SOURCE = "object_not_in_source"
+SUBJECT_EQUALS_OBJECT = "subject_equals_object"
+DATASET_SUBJECT_NOT_TITLE = "dataset_subject_not_title"
+# check_against_schema
+SUBJECT_CLASS_NOT_IN_SCHEMA = "subject_class_not_in_schema"
+OBJECT_CLASS_NOT_IN_SCHEMA = "object_class_not_in_schema"
+PREDICATE_NOT_IN_SCHEMA = "predicate_not_in_schema"
+PATTERN_NOT_IN_SCHEMA = "pattern_not_in_schema"
+PATTERN_NOT_PINNED = "pattern_not_pinned"
+# check_describes
+DESCRIBES_UNDECIDED = "describes_undecided"
+DESCRIBES_SUBJECT_NOT_ID = "describes_subject_not_id"
+DESCRIBES_CLASS_NOT_IN_SCHEMA = "describes_class_not_in_schema"
+# on rows together (common/common_helpers/extraction.py, 050 and 060)
+CONFLICTING_CLASSES = "conflicting_classes"
+# stage 4 of 050, on the ground truth's files (common/common_helpers/ground_truth.check_rows)
+ID_NOT_IN_RECORDS = "id_not_in_records"
+INCOMPLETE = "incomplete"
+# the annotation tool's own (helpers/annotator/server.py)
+EMPTY = "empty"
+NOT_CONNECTED = "not_connected"
+
+#: check_triple_instance's errors: the triple instance is unverified.
+ERRORS = (NO_SOURCE_TEXT, SOURCE_NOT_IN_TEXT)
+#: check_triple_instance's flags: the triple instance is verified, but worth a look.
+FLAGS = (SUBJECT_NOT_IN_TEXT, OBJECT_NOT_IN_TEXT, SUBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_SOURCE, SUBJECT_EQUALS_OBJECT,
+         DATASET_SUBJECT_NOT_TITLE)
+#: check_against_schema's flags.
+SCHEMA_FLAGS = (SUBJECT_CLASS_NOT_IN_SCHEMA, OBJECT_CLASS_NOT_IN_SCHEMA, PREDICATE_NOT_IN_SCHEMA, PATTERN_NOT_IN_SCHEMA,
+                PATTERN_NOT_PINNED)
+#: check_describes's errors, and its flag.
+DESCRIBES_ERRORS = (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED)
+DESCRIBES_FLAGS = (DESCRIBES_CLASS_NOT_IN_SCHEMA,)
+#: Flags raised on rows together, not on one row.
+ROWS_FLAGS = (CONFLICTING_CLASSES,)
+#: The errors only stage 4 of 050 raises (ground_truth.check_rows); its others are ERRORS and DESCRIBES_ERRORS.
+GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE)
+#: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED a flag.
+TOOL_CHECKS = (EMPTY, NOT_CONNECTED)
+#: Every check code, each once.
+ALL_CHECKS = (ERRORS + FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS + ROWS_FLAGS + GROUND_TRUTH_ERRORS
+              + TOOL_CHECKS)
 
 
 def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
@@ -58,24 +90,24 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
     errors, flags = [], []
     source = str(instance.get("source_text") or "")
     if not source.strip():
-        errors.append("no_source_text")
+        errors.append(NO_SOURCE_TEXT)
     elif not text.contains(source):
-        errors.append("source_not_in_text")
+        errors.append(SOURCE_NOT_IN_TEXT)
 
     for k in ("subject", "object"):
         if not text.contains(instance.get(k)):
-            flags.append(f"{k}_not_in_text")
+            flags.append(SUBJECT_NOT_IN_TEXT if k == "subject" else OBJECT_NOT_IN_TEXT)
     if source.strip():
         passage = Text(source)
         if not passage.contains(instance.get("subject")) \
                 and norm_text(instance.get("subject")) != norm_text(title):
-            flags.append("subject_not_in_source")
+            flags.append(SUBJECT_NOT_IN_SOURCE)
         if not passage.contains(instance.get("object")):
-            flags.append("object_not_in_source")
+            flags.append(OBJECT_NOT_IN_SOURCE)
     if norm_text(instance.get("subject")) == norm_text(instance.get("object")):
-        flags.append("subject_equals_object")
+        flags.append(SUBJECT_EQUALS_OBJECT)
     if title.strip() and component_class_key(instance.get("subject_class")) == "dataset"             and not is_describes(instance) and norm_text(instance.get("subject")) != norm_text(title):
-        flags.append("dataset_subject_not_title")
+        flags.append(DATASET_SUBJECT_NOT_TITLE)
     return errors, flags
 
 
@@ -83,20 +115,8 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
 # against a schema (050, 060, the annotation tool)
 # --------------------------------------------------------------------------
 #
-#     FLAGS (a component class the schema doesn't have: a new one, or a typo)
-#     subject_class_not_in_schema    the subject class isn't in it
-#     object_class_not_in_schema     the object class isn't in it
-#     predicate_not_in_schema        the predicate isn't in it
-#     pattern_not_in_schema          the predicate is in it, but never with
-#                                    these two entity classes
-#     pattern_not_pinned             the predicate is pinned (an "only:" line
-#                                    in the schema), and not to these two
-#                                    entity classes
-#
-#     ON THE DESCRIBES TRIPLE (common/common_helpers/triples_io.py)
-#     describes_undecided            ERROR: no describes class named
-#     describes_class_not_in_schema  FLAG: that entity class isn't in it
-#     describes_subject_not_id       ERROR: its subject isn't the record's id
+#     SCHEMA_FLAGS and the describes triple's checks (DESCRIBES_ERRORS, DESCRIBES_FLAGS; the describes triple:
+#     common/common_helpers/triples_io.py); their meanings: 050's guide (see the top of this file).
 #
 # Component classes are compared by loose match (triples_io.component_class_key: letters and digits only,
 # case ignored), so "physical quantity" is PhysicalQuantity and has_version
@@ -123,17 +143,17 @@ class SchemaEntries:
 def check_against_schema(instance: dict, schema_entries: SchemaEntries) -> list:
     """The schema flags (above) of one triple instance."""
     k = schema_entries.key
-    flags = [f"{slot}_not_in_schema" for slot in ("subject_class", "object_class")
+    flags = [code for slot, code in (("subject_class", SUBJECT_CLASS_NOT_IN_SCHEMA), ("object_class", OBJECT_CLASS_NOT_IN_SCHEMA))
              if k(instance.get(slot)) not in schema_entries.entity_classes]
     predicate = k(instance.get("predicate"))
     s, o = k(instance.get("subject_class")), k(instance.get("object_class"))
     if predicate not in schema_entries.predicates:
-        flags.append("predicate_not_in_schema")
+        flags.append(PREDICATE_NOT_IN_SCHEMA)
     elif predicate in schema_entries.pinned:       # a pinned predicate: its pins, not the patterns seen, decide
         if not any(ps in (s, "any") and po in (o, "any") for ps, po in schema_entries.pinned[predicate]):
-            flags.append("pattern_not_pinned")
+            flags.append(PATTERN_NOT_PINNED)
     elif (s, predicate, o) not in schema_entries.patterns:
-        flags.append("pattern_not_in_schema")
+        flags.append(PATTERN_NOT_IN_SCHEMA)
     return flags
 
 
@@ -142,10 +162,10 @@ def check_describes(row: dict, record_id: str, schema_entries: SchemaEntries | N
     from common.triples_io import UNDECIDED
     errors, flags = [], []
     if str(row.get("subject") or "").strip() != record_id:
-        errors.append("describes_subject_not_id")
+        errors.append(DESCRIBES_SUBJECT_NOT_ID)
     entity_class = str(row.get("object_class") or "").strip()
     if entity_class in ("", UNDECIDED):
-        errors.append("describes_undecided")
+        errors.append(DESCRIBES_UNDECIDED)
     elif schema_entries is not None and schema_entries.key(entity_class) not in schema_entries.entity_classes:
-        flags.append("describes_class_not_in_schema")
+        flags.append(DESCRIBES_CLASS_NOT_IN_SCHEMA)
     return errors, flags

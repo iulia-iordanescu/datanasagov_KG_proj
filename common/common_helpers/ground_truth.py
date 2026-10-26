@@ -81,6 +81,8 @@ from pathlib import Path
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
 from common.triples_io import component_class_key, is_describes, triple_key
+from common.validate import (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED, ID_NOT_IN_RECORDS, INCOMPLETE, NO_SOURCE_TEXT,
+                             SOURCE_NOT_IN_TEXT)
 
 GROUND_TRUTH_DIR = ANNOTATIONS_DIR / "ground_truth"
 PATTERN = "batch_*.csv"
@@ -278,19 +280,19 @@ def _shown(rows: list) -> str:
 # checking the rows against the records' texts (050, on every run)
 # --------------------------------------------------------------------------
 
-#: What check_rows reports: errors a person must fix, never
+#: What check_rows reports, in the report's words: errors a person must fix, never
 #: matters of judgment (a reworded subject or object instance is fine in
-#: ground truth).
+#: ground truth). The codes: common/common_helpers/validate.py.
 ROW_ERRORS = {
-    "id_not_in_records": "its id isn't a record of the catalog (a typo, or a record since removed): correct the id, "
+    ID_NOT_IN_RECORDS: "its id isn't a record of the catalog (a typo, or a record since removed): correct the id, "
                          "or delete the row",
-    "incomplete": "subject, predicate, or object is empty, but not all three: fill in the empty ones, or delete the row",
-    "no_source_text": "it has no source text: in the annotation tool, select the passage that states it and press "
+    INCOMPLETE: "subject, predicate, or object is empty, but not all three: fill in the empty ones, or delete the row",
+    NO_SOURCE_TEXT: "it has no source text: in the annotation tool, select the passage that states it and press "
                       "\"Use selection\"",
-    "source_not_in_text": "its source text isn't in the record's text: in the annotation tool, select the passage and "
+    SOURCE_NOT_IN_TEXT: "its source text isn't in the record's text: in the annotation tool, select the passage and "
                           "press \"Use selection\" to copy it exactly",
-    "describes_subject_not_id": "the describes triple's subject isn't the record's id: write the record's id there",
-    "describes_undecided": "the describes triple has no describes class (X): choose its object class, the entity class of its object instance",
+    DESCRIBES_SUBJECT_NOT_ID: "the describes triple's subject isn't the record's id: write the record's id there",
+    DESCRIBES_UNDECIDED: "the describes triple has no describes class (X): choose its object class, the entity class of its object instance",
 }
 
 
@@ -308,11 +310,11 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
         rid = row["id"]
         filled = [bool(row[k]) for k in ("subject", "predicate", "object")]
         if rid not in records:
-            errors = ["id_not_in_records"]
+            errors = [ID_NOT_IN_RECORDS]
         elif not any(filled):
             errors = []                            # "annotated, states no facts"
         elif not all(filled):
-            errors = ["incomplete"]
+            errors = [INCOMPLETE]
         elif is_describes(row):
             errors = check_describes(row, rid)[0]
         else:
