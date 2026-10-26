@@ -48,8 +48,8 @@ import subprocess
 from pathlib import Path
 
 from common import audit
-from common.component_class_mapping import CHECKED, MAPPING_PATH, crt_definitions, gtt_definitions, is_missing_target, \
-    is_stale, is_stale_gtt, read_mapping, repeats
+from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, STALE, crt_definitions, gtt_definitions, \
+    is_checked, read_mapping, repeats, row_states
 from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, KIND_KEYS, NUMBERED, PATTERN,
                                  check_rows, ground_truth_schema_gaps, read_ground_truth, read_pool, with_coined)
 from common.partial_reviews import REVIEWS_PATH, read_reviews, row_key
@@ -314,9 +314,10 @@ def _translation_items(schema: dict, gt) -> list:
         items.append(_item("Translation table", TO_DO, f"{len(without)} component class(es) of the current schema "
                            f"have no row in the translation table yet: step 070 adds them (one paid call per 100) and "
                            f"stops for you to check them.", "when-step-070-stops", source))
-    unchecked = [r for r in current if r["checked"].lower() not in CHECKED]
-    stale = [r for r in current if r["checked"].lower() in CHECKED and (is_stale(r, crt) or is_stale_gtt(r, gtt_now))]
-    unknown = [r for r in current if r["checked"].lower() in CHECKED and is_missing_target(r, gtt_now)]
+    states = {r["_line"]: row_states(r, crt, gtt_now) for r in current}    # the states these lists need
+    unchecked = [r for r in current if not is_checked(r)]
+    stale = [r for r in current if STALE in states[r["_line"]]]
+    unknown = [r for r in current if is_checked(r) and MISSING_TARGET in states[r["_line"]]]
     repeated = repeats(table)
     for rows, what in ((unchecked, "still to check"),
                        (stale, "stale (a definition changed since the row was checked): check them again"),

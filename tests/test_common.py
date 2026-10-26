@@ -653,6 +653,16 @@ class Pieces(unittest.TestCase):
 
 class TranslationTable(unittest.TestCase):
 
+    def test_row_states_as_terminology_lists_them(self):
+        """docs/terminology.md, *row state*, the home of the row states: its list, in its order, is the code's
+        (component_class_mapping.ROW_STATES)."""
+        import re
+        text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
+        row = next(line for line in text.splitlines() if line.startswith("| **row state** |"))
+        listed = row.split("one of six", 1)[1].split("How they relate", 1)[0]
+        named = list(dict.fromkeys(re.findall(r"\*\*([a-z ]+)\*\*", listed)))
+        self.assertEqual(tuple(named), component_class_mapping.ROW_STATES)
+
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
 

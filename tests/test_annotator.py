@@ -105,6 +105,11 @@ def gt_rows():
         return list(csv.DictReader(fh))
 
 
+#: The translation table's row states and whose definition changed (common/common_helpers/component_class_mapping.py).
+CRT, GTT = component_class_mapping.IN_CRT, component_class_mapping.IN_GTT
+REPEATED, MISSING = component_class_mapping.REPEATED, component_class_mapping.MISSING_TARGET
+
+
 def checks_table_codes() -> set:
     """The codes in the first column of 050's table *Checks on each row* (050_annotate/050_annotate.md)."""
     import re
@@ -442,8 +447,10 @@ class D_Mapping(unittest.TestCase):
     def test_view(self):
         v = get("/api/mapping")
         self.assertTrue(v["found"])
-        self.assertEqual([r["stale"] for r in v["rows"]], [True, False, False, False])
-        self.assertEqual([r["repeated"] for r in v["rows"]], [False, False, True, True])
+        self.assertEqual([CRT in r["stale_in"] for r in v["rows"]], [True, False, False, False])
+        self.assertEqual([REPEATED in r["states"] for r in v["rows"]], [False, False, True, True])
+        self.assertEqual([r["states"] for r in v["rows"]],
+                         [["stale", "shared"], ["missing target"], ["repeated"], ["repeated", "shared"]])
         self.assertEqual(v["rows"][0]["crt_definition"], "an orbiting craft")
 
     def test_save(self):
@@ -451,7 +458,12 @@ class D_Mapping(unittest.TestCase):
                  "component_class_in_gtt": "Spacecraft", "checked": "yes", "keep_definition": True},
                 {"kind": "predicate", "component_class_from_past_or_crt_schema": "MOUNTED_ON",
                  "component_class_in_gtt": "aboard", "checked": "yes", "swap_subject_and_object": "yes"}]
-        self.assertEqual(post("/api/mapping/save", {"rows": sent}), {"saved": True})
+        saved = post("/api/mapping/save", {"rows": sent})
+        self.assertTrue(saved["saved"])
+        # the rows' states as saved, by line, for the page: Satellite and craft now both translate to Spacecraft
+        self.assertEqual({line: x["states"] for line, x in saved["rows"].items()},
+                         {"2": ["stale", "shared"], "3": [], "4": ["repeated"], "5": ["repeated", "shared"]})
+        self.assertEqual((saved["rows"]["2"]["sharing"], saved["rows"]["5"]["sharing"]), (["craft"], ["Satellite"]))
         rows = self.read()
         self.assertEqual(rows[0]["definition_from_past_or_crt_schema"], "an old definition")   # still stale
         self.assertEqual((rows[1]["component_class_in_gtt"], rows[1]["swap_subject_and_object"],
@@ -470,7 +482,8 @@ class D_Mapping(unittest.TestCase):
             w.writerow(["entity class", "Satellite", "Spacecraft", "no", "yes", "an orbiting craft", "an old meaning"])
             w.writerow(["entity class", "Craft", "Spacecraft", "no", "yes", "a craft", "a vehicle in space"])
         v = get("/api/mapping")
-        self.assertEqual([(r["stale"], r["stale_gtt"]) for r in v["rows"]], [(False, True), (False, False)])
+        self.assertEqual([(CRT in r["stale_in"], GTT in r["stale_in"]) for r in v["rows"]],
+                         [(False, True), (False, False)])
         sent = [{"kind": "entity class", "component_class_from_past_or_crt_schema": n, "component_class_in_gtt": "Spacecraft",
                  "checked": "yes", "keep_definition": True} for n in ("Satellite", "Craft")]
         post("/api/mapping/save", {"rows": sent})
@@ -478,7 +491,7 @@ class D_Mapping(unittest.TestCase):
         sent[0].pop("keep_definition")
         post("/api/mapping/save", {"rows": sent})
         self.assertEqual(self.read()[0]["definition_in_gtt"], "a vehicle in space")          # ticked: stores it
-        self.assertFalse(get("/api/mapping")["rows"][0]["stale_gtt"])
+        self.assertNotIn(GTT, get("/api/mapping")["rows"][0]["stale_in"])
 
     def test_refusals(self):
         before = self.path.read_bytes()
@@ -505,7 +518,7 @@ class D_Mapping(unittest.TestCase):
                  "component_class_in_gtt": "Spacecraft", "checked": "same component class"},
                 {"kind": "entity class", "component_class_from_past_or_crt_schema": "Instrument",
                  "component_class_in_gtt": "Spacecraft", "checked": "same component class"}]   # an old page's status
-        self.assertEqual(post("/api/mapping/save", {"rows": sent}), {"saved": True})
+        self.assertTrue(post("/api/mapping/save", {"rows": sent})["saved"])
         self.assertEqual([(r["component_class_in_gtt"], r["checked"]) for r in self.read()],
                          [("Spacecraft", "same component class"), ("Spacecraft", "no")])
 
@@ -532,11 +545,11 @@ class D_Mapping(unittest.TestCase):
         v = get("/api/mapping")
         self.assertNotIn("Comet", [x["component_class"] for x in v["gtt"]["entity class"]])
         self.assertIn("Spacecraft", [x["component_class"] for x in v["gtt"]["entity class"]])
-        self.assertEqual([(r["missing_target"], r["stale"], r["stale_gtt"]) for r in v["rows"]],
+        self.assertEqual([(MISSING in r["states"], CRT in r["stale_in"], GTT in r["stale_in"]) for r in v["rows"]],
                          [(True, False, False), (False, False, False)])
         same = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite",
                  "component_class_in_gtt": "Rocket", "checked": "yes", "keep_definition": True}]
-        self.assertEqual(post("/api/mapping/save", {"rows": same}), {"saved": True})
+        self.assertTrue(post("/api/mapping/save", {"rows": same})["saved"])
         self.assertEqual(self.read()[0]["component_class_in_gtt"], "Rocket")
         before = self.path.read_bytes()
         coined = [dict(same[0], component_class_in_gtt="Comet")]
@@ -715,7 +728,7 @@ class G_Vocabulary(unittest.TestCase):
         table = component_class_mapping.read_mapping(server.MAPPING_PATH)
         self.assertEqual(table[0]["component_class_in_gtt"], "Spacecraft")
         self.assertEqual(table[0]["definition_in_gtt"], "a craft in orbit")    # kept: so the row is stale
-        self.assertTrue(get("/api/mapping")["rows"][0]["stale_gtt"])
+        self.assertIn(GTT, get("/api/mapping")["rows"][0]["stale_in"])
         self.assertEqual(table[1]["component_class_in_gtt"], "ABOARD")          # other rows untouched
 
     def test_rename_predicate_keeps_reviews(self):

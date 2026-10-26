@@ -1419,7 +1419,11 @@ const aOrAn = (what) => what === "entity class" ? "an" : "a";               // a
 // A row "of the current schema": its component class is in the current schema
 // last (schema_used.json). Without that file, every row counts as current.
 const isCurrent = (r) => !mapping.schema_found || r.in_crt;
-const toCheck = (r) => r.stale || r.stale_gtt || r.missing_target || (r.checked !== "yes" && r.checked !== "same component class");
+// A row's states, and whose definition changed when it is stale, come from the server (mapping.state_names,
+// mapping.stale_in_names: common/common_helpers/component_class_mapping.py), as do the values that count as checked.
+const has = (r, state) => r.states.includes(mapping.state_names[state]);
+const staleIn = (r, whose) => r.stale_in.includes(mapping.stale_in_names[whose]);
+const toCheck = (r) => has(r, "STALE") || has(r, "MISSING_TARGET") || !mapping.checked_values.includes(r.checked);
 
 async function openMapping() {
   await flush();
@@ -1450,7 +1454,7 @@ async function openMapping() {
   const first = MAP_KINDS.find(([k]) => mapping.rows.some(r => r.kind === k && isCurrent(r) && toCheck(r)));
   mapKind = first ? first[0] : "entity class";
   mapOpen.clear();
-  mapping.rows.forEach(r => { if (r.repeated) mapOpen.add(r._line); });   // a repeated row opens on its Delete button
+  mapping.rows.forEach(r => { if (has(r, "REPEATED")) mapOpen.add(r._line); });   // a repeated row opens on its Delete button
   drawMappingFrame();
   drawMapping();
 }
@@ -1511,7 +1515,7 @@ function drawMappingFrame() {
 
 // Whether a row passes the filters (the kind tab aside). A repeated row always shows: it must be dealt with.
 function mapShown(r) {
-  if (r.repeated) return true;
+  if (has(r, "REPEATED")) return true;
   if (!(isCurrent(r) || showPast) || (onlyToCheck && !toCheck(r))) return false;
   if (mapCounterpart === "has" && r.component_class_in_gtt === mapping.none) return false;
   if (mapCounterpart === "none" && r.component_class_in_gtt !== mapping.none) return false;
@@ -1526,7 +1530,7 @@ function drawMapping() {
   drawMappingSummary();
   if (!$("maptable")) drawMappingFrame();
   const tabs = MAP_KINDS.map(([kind, label]) => {
-    const rows = mapping.rows.filter(r => r.kind === kind && (r.repeated || isCurrent(r) || showPast));
+    const rows = mapping.rows.filter(r => r.kind === kind && (has(r, "REPEATED") || isCurrent(r) || showPast));
     const left = rows.filter(toCheck).length;
     return el("button", { class: "maptab" + (kind === mapKind ? " current" : ""), role: "tab",
                           "aria-selected": kind === mapKind ? "true" : "false",
@@ -1608,27 +1612,25 @@ function mappingRow(r, i) {
   const chosen = vocab.find(v => v.component_class === gttName);
   // Other component classes of the current schema already translated to the same component_class:
   // evaluation won't be able to tell them apart.
-  const sharing = r.in_crt && !none
-    ? mapping.rows.filter(o => o !== r && o.in_crt && o.kind === r.kind && o.component_class_in_gtt === gttName)
-                  .map(o => o.component_class_from_past_or_crt_schema) : [];
+  const sharing = has(r, "SHARED") ? r.sharing : [];
   const same = r.checked === "same component class";
   // A (none) row whose component class the ground truth schema now has: probably out of date.
-  const nowExists = none && r.same_component_class_in_gtt ? { component_class: r.same_component_class_in_gtt } : null;
+  const nowExists = has(r, "NOW_EXISTS") ? { component_class: r.same_component_class_in_gtt } : null;
   // a row accepted automatically (same spelling) can be changed; changing it makes it an ordinary row to check
   const update = (key, value) => { r[key] = value; if (same && key !== "checked") r.checked = "no"; mapChanged(); drawMapping(); };
   const tickAgain = "then tick “Checked: this translation is right” again.";
   const andList = (xs) => xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 
   const notes = [];          // [kind, short label, full text]
-  if (r.stale) notes.push(["flag", `${crtName}: its current schema definition changed`,
+  if (staleIn(r, "IN_CRT")) notes.push(["flag", `${crtName}: its current schema definition changed`,
     `⚑ This row was checked when the current schema defined ${crtLabel} as: “` +
     (r.definition_from_past_or_crt_schema || "(no definition)") + `”. The current schema now defines it as shown on ` +
     `the left. Check that ${crtName} still translates to ${gttLabel}, ${tickAgain}`]);
-  if (r.stale_gtt) notes.push(["flag", `${gttName}: its ground truth schema definition changed`,
+  if (staleIn(r, "IN_GTT")) notes.push(["flag", `${gttName}: its ground truth schema definition changed`,
     `⚑ This row was checked when the ground truth schema defined ${gttLabel} as: “` +
     (r.definition_in_gtt || "(no definition)") + `”. The ground truth schema now defines it as shown on the right. ` +
     `Check that ${crtLabel} still translates to ${gttName}, ${tickAgain}`]);
-  if (none && r.suggested_gtt && !nowExists) notes.push(["flag", `Suggested: ${r.suggested_gtt} (ground truth schema ${what})`,
+  if (has(r, "SUGGESTED")) notes.push(["flag", `Suggested: ${r.suggested_gtt} (ground truth schema ${what})`,
     `⚑ The model suggests ${crtLabel} may mean ${r.suggested_gtt} (ground truth schema ${what}), ${aOrAn(what)} ${what} the ground truth ` +
     `schema gained since this row was checked. If that is right, pick ${r.suggested_gtt} in ` +
     `this box's dropdown; otherwise keep ${mapping.none}.`]);
@@ -1641,11 +1643,11 @@ function mappingRow(r, i) {
     `⚑ ${andList([crtName, ...sharing])} (current schema ${whats}) ${sharing.length === 1 ? "both" : "all"} translate to ` +
     `${gttLabel}, so step 070 can't tell them apart: extraction loses nothing by mixing them up. Nothing to do if the ` +
     `ground truth doesn't distinguish them; if it should, use separate ground truth schema ${whats} for them in the ground truth.`]);
-  if (r.missing_target) notes.push(["error", `${gttName}: not in the ground truth schema (missing target)`,
+  if (has(r, "MISSING_TARGET")) notes.push(["error", `${gttName}: not in the ground truth schema (missing target)`,
     `✖ This row translates ${crtLabel} to ${gttName}, which the ground truth schema doesn't have (a missing target), ` +
     `so step 070 stops on it. Pick a ground truth schema ${what} in this box's dropdown, or ${mapping.none}; or, if ` +
     `${gttName} is right, add it to the ground truth schema first.`]);
-  if (r.repeated) {
+  if (has(r, "REPEATED")) {
     const lines = (mapping.repeats.find(x => x.kind === r.kind && x.lines.includes(r._line)) || { lines: [r._line] }).lines;
     notes.push(["error", `${crtName} has ${lines.length} rows (lines ${lines.join(", ")}): keep one`,
       `✖ ${crtLabel} has ${lines.length} rows in ${mapping.file} (lines ${lines.join(", ")}); this box is line ${r._line}. ` +
@@ -1656,11 +1658,11 @@ function mappingRow(r, i) {
 
   const open = mapOpen.has(r._line);
   const toggle = () => { if (mapOpen.has(r._line)) mapOpen.delete(r._line); else mapOpen.add(r._line); drawMapping(); };
-  const autoAccepted = same && !r.stale && !r.stale_gtt;
-  const isChecked = r.checked === "yes" && !r.stale && !r.stale_gtt;
+  const autoAccepted = same && !has(r, "STALE");
+  const isChecked = r.checked === "yes" && !has(r, "STALE");
   const definition = (text, missing) => text ? el("div", { class: "mapdef" }, text) : el("div", { class: "mapdef empty" }, missing);
 
-  return el("section", { class: "mapbox" + (toCheck(r) || r.repeated ? " todo" : "") },
+  return el("section", { class: "mapbox" + (toCheck(r) || has(r, "REPEATED") ? " todo" : "") },
     // the names line, current schema → ground truth schema, and under each its definition
     el("div", { class: "mapgrid" },
       el("div", { class: "mapname" }, plainText("span", { title: crtLabel }, crtName)),
@@ -1694,7 +1696,8 @@ function mappingRow(r, i) {
             "✓ Accepted: spelled the same in both schemas")
         : el("label", { class: "mapflag" + (isChecked ? " ok" : "") },
             el("input", { type: "checkbox", checked: isChecked,
-                          onchange: (e) => { r.stale = false; r.stale_gtt = false;
+                          onchange: (e) => { r.states = r.states.filter(x => x !== mapping.state_names.STALE);
+                                             r.stale_in = [];
                                              update("checked", e.target.checked ? "yes" : "no"); } }),
             " Checked: this translation is right"),
       !isCurrent(r) ? el("span", { class: "pill todo", title: `Only past schemas used ${crtName} (${what}), not the current ` +
@@ -1702,7 +1705,7 @@ function mappingRow(r, i) {
             `${crtName}: only in past schemas`) : null,
       notes.map(([k, label, full]) => el("button", { class: `pill ${k} jump`, title: full, "aria-expanded": open ? "true" : "false",
                                                      onclick: toggle }, (k === "error" ? "✖ " : "⚑ ") + label)),
-      r.repeated ? el("button", { class: "mapdelete", onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
+      has(r, "REPEATED") ? el("button", { class: "mapdelete", onclick: () => deleteMappingRow(r) }, "Delete this row") : null),
     open && notes.length ? el("ul", { class: "problems" }, notes.map(([k, , full]) => el("li", { class: k }, full))) : null,
     reviewerNotes("translation row", rowReviewEntry(r)));
 }
@@ -1730,9 +1733,14 @@ async function saveMapping() {
   mapSaving = true; mapDirty = false;
   status("Saving…");
   try {
-    await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
+    const done = await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
       component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
-      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: !!(r.stale || r.stale_gtt) })) });
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: has(r, "STALE") })) });
+    // the rows' states as saved, unless the page changed again meanwhile (the next save brings those)
+    if (!mapDirty && mapping) {
+      mapping.rows.forEach(r => Object.assign(r, done.rows[r._line] || {}));
+      drawMapping();
+    }
     status(`Saved to ${mapping.file} at ${new Date().toLocaleTimeString()}`, "saved");
   } catch (e) {
     mapDirty = true;

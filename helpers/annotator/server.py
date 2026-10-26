@@ -130,9 +130,11 @@ from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_CO
                                  KIND_KEYS, draft_name, file_name, ground_truth_schema_gaps as schema_gaps,
                                  pattern_of,
                                  read_ground_truth, read_pool, uses_of, with_coined)
-from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, MAPPING_PATH, NONE, crt_definitions,
-                                 gtt_definition, gtt_definitions, is_missing_target, is_stale, is_stale_gtt,
-                                 read_mapping, repeats)
+from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH,
+                                            MISSING_TARGET, NONE, NOW_EXISTS, REPEATED, SHARED, STALE, SUGGESTED,
+                                            VALUES as MAPPING_VALUES, crt_definitions, gtt_definition,
+                                            gtt_definitions, is_checked, is_missing_target, is_stale_gtt,
+                                            read_mapping, repeats, row_states, sharing, stale_in)
 from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key, verdict_of
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.review_comments import NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR, read_all as read_reviewer_comments
@@ -646,19 +648,26 @@ def mapping_view(data: Data) -> dict:
     if METRICS.exists():
         for s in json.loads(METRICS.read_text(encoding="utf-8")).get("translation_suggestions", []):
             suggested[(s["kind"], component_class_key(s["component_class_from_past_or_crt_schema"]))] = s["component_class_in_gtt"]
-    rows = [{**r, "repeated": r["_line"] in extra,
-             "same_component_class_in_gtt": same_name.get(r["kind"], {}).get(component_class_key(r["component_class_from_past_or_crt_schema"])),
-             "suggested_gtt": suggested.get((r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"]))),
-             "in_crt": crt is not None and component_class_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {}), "crt_definition": (crt or {}).get(r["kind"], {}).get(component_class_key(r["component_class_from_past_or_crt_schema"])),
-             "stale": bool(crt) and r["checked"] in CHECKED
-                      and component_class_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {})
-                      and is_stale(r, crt),
-             "stale_gtt": r["checked"] in CHECKED and is_stale_gtt(r, gtt_now),
-             "missing_target": is_missing_target(r, gtt_now),
-             "example": examples.get(component_class_key(r["component_class_from_past_or_crt_schema"])) if r["kind"] == "predicate" else None}
-            for r in table]
+    shared = sharing(table, crt)
+    rows = []
+    for r in table:
+        key = component_class_key(r["component_class_from_past_or_crt_schema"])
+        same, hint = same_name.get(r["kind"], {}).get(key), suggested.get((r["kind"], key))
+        rows.append({**r, "same_component_class_in_gtt": same, "suggested_gtt": hint,
+                     "in_crt": crt is not None and key in crt.get(r["kind"], {}),
+                     "crt_definition": (crt or {}).get(r["kind"], {}).get(key),
+                     # its row states (common/common_helpers/component_class_mapping.row_states), whose definition
+                     # changed if it is stale, and what it shares its translation with
+                     "states": row_states(r, crt, gtt_now, repeated=r["_line"] in extra, same_in_gtt=same,
+                                          suggested=hint, shared=shared.get(r["_line"], [])),
+                     "stale_in": stale_in(r, crt, gtt_now), "sharing": shared.get(r["_line"], []),
+                     "example": examples.get(key) if r["kind"] == "predicate" else None})
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
-            "rows": rows, "none": NONE, "repeats": repeated,
+            "rows": rows, "none": NONE, "repeats": repeated, "checked_values": list(CHECKED),
+            # the names the page compares with: each row state (ROW_STATES) and whose definition changed (stale_in)
+            "state_names": {"REPEATED": REPEATED, "STALE": STALE, "MISSING_TARGET": MISSING_TARGET,
+                            "NOW_EXISTS": NOW_EXISTS, "SUGGESTED": SUGGESTED, "SHARED": SHARED},
+            "stale_in_names": {"IN_CRT": IN_CRT, "IN_GTT": IN_GTT},
             "gtt": {kind: [{"component_class": n, "definition": d} for n, d in sorted(names.items())]
                     for kind, names in gtt.items()}}
 
@@ -704,11 +713,11 @@ def save_mapping(data: Data, sent: list) -> None:
         swap = row["kind"] == "predicate" and s.get("swap_subject_and_object") == "yes"
         row["swap_subject_and_object"] = "yes" if swap else "no"
         checked = str(s.get("checked") or "no")
-        row["checked"] = checked if checked in ("yes", "no", "same component class") else "no"
+        row["checked"] = checked if checked in MAPPING_VALUES["checked"] else "no"
         if row["checked"] == "same component class" and (name == NONE or component_class_key(name) !=
                                                           component_class_key(row["component_class_from_past_or_crt_schema"])):
             row["checked"] = "no"                      # changed by hand: no longer the same spelling, so it needs checking
-        if row["checked"] in CHECKED and not s.get("keep_definition"):
+        if is_checked(row) and not s.get("keep_definition"):
             if crt is not None:
                 row["definition_from_past_or_crt_schema"] = \
                     crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
@@ -1125,7 +1134,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
             for r in hit:
                 r["component_class_in_gtt"] = target
             stale = [r["component_class_from_past_or_crt_schema"] for r in hit
-                     if r["checked"] in CHECKED and is_stale_gtt(r, new_hand)]
+                     if is_checked(r) and is_stale_gtt(r, new_hand)]
             gone = [r["component_class_from_past_or_crt_schema"] for r in hit if is_missing_target(r, new_hand)]
             if gone:
                 notes.append(f"{len(gone)} row(s) of the translation table will then have a missing target, since "
@@ -1224,7 +1233,7 @@ def define_vocab(data: Data, item: dict) -> dict:
             now = gtt_definitions(with_coined(read_schema_bytes(content), read_ground_truth()))
             stale = [r["component_class_from_past_or_crt_schema"] for r in read_mapping(MAPPING_PATH)
                      if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(name)
-                     and r["checked"] in CHECKED and is_stale_gtt(r, now)]
+                     and is_checked(r) and is_stale_gtt(r, now)]
         _write_all({GROUND_TRUTH_SCHEMA: content})
         data.read_hand()
     return {"saved": True, "stale": stale}
@@ -1325,7 +1334,9 @@ def make_handler(data: Data):
                     self._json({"problems": problems, "patterns": patterns_view(data, gt), **definitions_view(data, gt)})
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
-                    self._json({"saved": True})
+                    # each row's states as saved, by line, for the page to show (it computes none itself)
+                    self._json({"saved": True, "rows": {r["_line"]: {k: r[k] for k in ("states", "stale_in", "sharing")}
+                                                        for r in mapping_view(data)["rows"]}})
                 elif url.path == "/api/additions/save":
                     save_additions(data, body["entries"])
                     self._json({"saved": True})

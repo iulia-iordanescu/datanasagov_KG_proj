@@ -45,8 +45,8 @@ from pathlib import Path
 from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
-from common.component_class_mapping import (CHECKED, COLUMNS, KINDS, NONE, crt_definitions, gtt_definitions,
-                                            is_missing_target, is_stale, is_stale_gtt, read_mapping, repeats,
+from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, KINDS, NONE, crt_definitions, gtt_definitions,
+                                            is_checked, is_missing_target, read_mapping, repeats, stale_in,
                                             value_problems, values_text)
 from common.prompt_files import fill, load
 from common.report import named
@@ -210,13 +210,14 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     unchecked, stale, unknown, stale_gtt = [], [], [], []
     for kind, name in needed:
         r = have[(kind, component_class_key(name))]
-        if r["checked"].lower() not in CHECKED:
+        changed = stale_in(r, now, gtt_now)          # whose definition changed: the current schema's, the gtt's
+        if not is_checked(r):
             unchecked.append(_row(name, r))
-        elif is_stale(r, now):
+        elif IN_CRT in changed:
             stale.append(_row(name, r))
         elif is_missing_target(r, gtt_now):
             unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth schema)")
-        elif is_stale_gtt(r, gtt_now):
+        elif IN_GTT in changed:
             stale_gtt.append(_row(name, r))
     if unchecked:
         raise Stop(f"{len(unchecked)} row(s) of {ref_path(path)} still need checking, so 070 can't evaluate (it "

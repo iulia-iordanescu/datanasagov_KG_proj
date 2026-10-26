@@ -125,6 +125,61 @@ def is_stale_gtt(row: dict, gtt: dict) -> bool:
     return not is_missing_target(row, gtt) and not _same(row["definition_in_gtt"], gtt_definition(row, gtt))
 
 
+#: The row states, in the order of their home, docs/terminology.md, *row state* (what each means, how they relate,
+#: and which step 070 stops on in which order).
+REPEATED, STALE, MISSING_TARGET, NOW_EXISTS, SUGGESTED, SHARED = (
+    "repeated", "stale", "missing target", "now exists", "suggested", "shared")
+ROW_STATES = (REPEATED, STALE, MISSING_TARGET, NOW_EXISTS, SUGGESTED, SHARED)
+#: Whose definition changed, for a stale row: the current schema's (of its component class), or the ground truth
+#: schema's (of the one it translates to).
+IN_CRT, IN_GTT = "current schema", "ground truth schema"
+
+
+def is_checked(row: dict) -> bool:
+    """True if a person checked the row, or it was accepted automatically (CHECKED)."""
+    return row["checked"] in CHECKED
+
+
+def stale_in(row: dict, crt: dict | None, gtt: dict) -> list:
+    """Whose definition changed since the row was checked, in this order: IN_CRT (only for a row of the current
+    schema: crt, crt_definitions' result, given and holding its component class; is_stale), IN_GTT (is_stale_gtt;
+    never for a missing target). [] for a row not checked: only a checked row is stale."""
+    if not is_checked(row):
+        return []
+    mine = component_class_key(row["component_class_from_past_or_crt_schema"])
+    return ([IN_CRT] if crt and mine in crt.get(row["kind"], {}) and is_stale(row, crt) else []) + \
+        ([IN_GTT] if is_stale_gtt(row, gtt) else [])
+
+
+def sharing(rows: list, crt: dict | None) -> dict:
+    """{a row's line: the other component classes of the current schema translated to the same one}, for each row of
+    the current schema not translated to (none) that shares its translation; a row sharing nothing isn't listed."""
+    if not crt:
+        return {}
+    current = [r for r in rows if r["component_class_in_gtt"] != NONE
+               and component_class_key(r["component_class_from_past_or_crt_schema"]) in crt.get(r["kind"], {})]
+    out = {}
+    for r in current:
+        others = [o["component_class_from_past_or_crt_schema"] for o in current
+                  if o is not r and o["kind"] == r["kind"] and o["component_class_in_gtt"] == r["component_class_in_gtt"]]
+        if others:
+            out[r["_line"]] = others
+    return out
+
+
+def row_states(row: dict, crt: dict | None, gtt: dict, repeated: bool = False, same_in_gtt: str | None = None,
+               suggested: str | None = None, shared: list = ()) -> list:
+    """The row's states, in ROW_STATES' order (docs/terminology.md, *row state*). crt: crt_definitions' result (None
+    without one); gtt: gtt_definitions' result; repeated: the row is one of repeats(); same_in_gtt: the ground truth
+    schema's component class spelled like the row's, if any; suggested: the model's suggestion for a (none) row, if
+    any; shared: sharing()'s list for the row. now exists replaces suggested."""
+    none = row["component_class_in_gtt"] == NONE
+    found = {REPEATED: repeated, STALE: bool(stale_in(row, crt, gtt)), MISSING_TARGET: is_missing_target(row, gtt),
+             NOW_EXISTS: none and bool(same_in_gtt), SUGGESTED: none and bool(suggested) and not same_in_gtt,
+             SHARED: bool(shared)}
+    return [state for state in ROW_STATES if found[state]]
+
+
 def repeats(rows: list) -> list:
     """Component classes with more than one row: [{"kind", "component_class", "lines": [file line
     numbers]}], in the order first met."""
