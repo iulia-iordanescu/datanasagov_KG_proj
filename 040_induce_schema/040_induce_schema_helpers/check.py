@@ -43,13 +43,28 @@ class Schema:
     entity_classes: list = field(default_factory=list)
     predicates: list = field(default_factory=list)
     patterns: list = field(default_factory=list)
-    deferred: list = field(default_factory=list)            # {"entry_type", "schema_entry", "reason", "support"}
+    deferred: list = field(default_factory=list)            # {DEFERRED_FIELDS…, "reason_code": a DEFERRED_REASONS key}
     missing_definitions: list = field(default_factory=list) # {"kind", "component_class"}
     single_maintainer: list = field(default_factory=list)   # {"kind", "component_class"}
 
 
 def _origin(texts: list) -> list:
     return [origin("records", tid) for tid in texts]
+
+
+#: Why a schema entry is deferred, each reason's code with its words in the report; each entry has one, the first
+#: that applies, in this order (docs/terminology.md, *deferred*, their home): low support, then too vague
+#: (entity classes and predicates) or a component class not in the schema (patterns).
+LOW_SUPPORT, TOO_VAGUE, NOT_IN_SCHEMA = "low support", "too vague", "a component class not in the schema"
+DEFERRED_REASONS = {LOW_SUPPORT: "support below min_support", TOO_VAGUE: "too vague",
+                    NOT_IN_SCHEMA: "through a schema entry not in the schema"}
+#: A deferred entry's fields as the_schema.json writes them ("reason": the reason in detail).
+DEFERRED_FIELDS = ("entry_type", "schema_entry", "support", "reason")
+
+
+def _deferred(entry_type: str, schema_entry: str, support: int, code: str, detail: str) -> dict:
+    return {"entry_type": entry_type, "schema_entry": schema_entry, "support": support, "reason": detail,
+            "reason_code": code}
 
 
 def check_schema(counts, definitions, settings: dict) -> Schema:
@@ -60,12 +75,12 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
         target = getattr(schema, kind)
         for e in getattr(counts, kind):
             if e["support"] < cut:
-                schema.deferred.append({"entry_type": WORD[kind], "schema_entry": e["component_class"], "support": e["support"],
-                                        "reason": f"support {e['support']} < min_support {cut}"})
+                schema.deferred.append(_deferred(WORD[kind], e["component_class"], e["support"], LOW_SUPPORT,
+                                                 f"support {e['support']} < min_support {cut}"))
                 continue
             if e["component_class"] in vague:
-                schema.deferred.append({"entry_type": WORD[kind], "schema_entry": e["component_class"], "support": e["support"],
-                                        "reason": f"too vague: {vague[e['component_class']]}"})
+                schema.deferred.append(_deferred(WORD[kind], e["component_class"], e["support"], TOO_VAGUE,
+                                                 f"too vague: {vague[e['component_class']]}"))
                 continue
             definition = definitions.of.get(kind, {}).get(e["component_class"])
             if definition is None:
@@ -83,17 +98,16 @@ def check_schema(counts, definitions, settings: dict) -> Schema:
     for e in counts.patterns:
         s, p, o = e["pattern"]
         if e["support"] < cut:
-            reason = f"support {e['support']} < min_support {cut}"
+            code, reason = LOW_SUPPORT, f"support {e['support']} < min_support {cut}"
         elif not (s in kept_classes and o in kept_classes and p in kept_predicates):
             missing = [x for x, kept in ((s, kept_classes), (p, kept_predicates), (o, kept_classes)) if x not in kept]
-            reason = f"{missing[0]} is not in the schema"
+            code, reason = NOT_IN_SCHEMA, f"{missing[0]} is not in the schema"
         else:
             schema.patterns.append({"pattern": e["pattern"], "support": e["support"],
                                     "maintainers": e["maintainers"], "texts": e["texts"],
                                     ORIGIN_FIELD: _origin(e["texts"])})
             continue
-        schema.deferred.append({"entry_type": "pattern", "schema_entry": " ".join(e["pattern"]),
-                                "support": e["support"], "reason": reason})
+        schema.deferred.append(_deferred("pattern", " ".join(e["pattern"]), e["support"], code, reason))
     log.info(f"  schema: {len(schema.entity_classes):,} entity classes, {len(schema.predicates):,} "
              f"predicates, {len(schema.patterns):,} patterns; {len(schema.deferred):,} deferred")
     return schema

@@ -25,6 +25,11 @@ from pathlib import Path
 from common.step import MANIFEST_NAME, RESULTS_DIR, repo_path
 from common.stop import Stop
 
+#: Why 050 or 060 skips a record it was asked for, the two reasons both steps share (each step adds its own), and
+#: what to do about a record without text.
+NOT_IN_CATALOG, WITHOUT_TEXT = "not in the catalog", "without text"
+WITHOUT_TEXT_TO_DO = "Nothing to do: a record without text has nothing for the model to read."
+
 #: The free-text fields every record has (020 always writes them).
 TEXT_FIELDS = ("title", "notes")
 

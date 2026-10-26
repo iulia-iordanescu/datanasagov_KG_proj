@@ -50,7 +50,7 @@ from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, STALE, 
     is_checked, read_mapping, repeats, row_states
 from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, KIND_KEYS, NUMBERED, PATTERN, TUNING,
                                  check_rows, ground_truth_schema_gaps, read_ground_truth, read_pool, with_coined)
-from common.partial_reviews import REVIEWS_PATH, read_reviews, row_key
+from common.partial_reviews import PARTIAL_PAIR, REVIEWS_PATH, read_reviews, row_key
 from common.report import named
 from common.schema_io import addition_problem, additions_entries, read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, MANIFEST_NAME, PIPELINE_STEPS, RESULTS_DIR, ROOT, input_files, repo_path
@@ -349,7 +349,7 @@ def _partial_items(parts_by_id: dict) -> list:
         return []
     reviews = read_reviews(REVIEWS_PATH)
     with open(COMPARED, encoding="utf-8-sig", newline="") as fh:
-        waiting = {row_key(r) for r in csv.DictReader(fh) if r.get("status") == "partial pair"
+        waiting = {row_key(r) for r in csv.DictReader(fh) if r.get("status") == PARTIAL_PAIR
                    and parts_by_id.get(r.get("record_id")) == TUNING and row_key(r) not in reviews}
     if not waiting:
         return []

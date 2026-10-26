@@ -135,7 +135,8 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
                                             VALUES as MAPPING_VALUES, crt_definitions, gtt_definition,
                                             gtt_definitions, is_checked, is_missing_target, is_stale_gtt,
                                             read_mapping, repeats, row_states, sharing, stale_in)
-from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_PATH, SAME, row_key, verdict_of
+from common.partial_reviews import (COLUMNS as REVIEW_COLUMNS, EXACT_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY, NOT_SAME,
+                                    PARTIAL_PAIR, REVIEWS_PATH, SAME, row_key, verdict_of)
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.review_comments import (CHANGED, GONE, KIND_HEADINGS, NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR,
                                     UNCHANGED, read_all as read_reviewer_comments)
@@ -146,7 +147,8 @@ from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_
 from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text, norm_text
-from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
+from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDECIDED,
+                               component_class_key, is_describes)
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
@@ -973,7 +975,7 @@ def partial_view(data: Data) -> dict:
     # a record's occurrences, by their translated extracted triple as written (two that read the same are one element)
     by_triple = collections.defaultdict(list)
     for r in rows:
-        if r.get("status") != "ground truth only":
+        if r.get("status") != GROUND_TRUTH_ONLY:
             by_triple[(r["record_id"],) + tuple(r.get(f"translated_{k}", "") for k in OCCURRENCE)].append(r)
 
     def occurrences(row: dict) -> list | None:
@@ -1002,12 +1004,14 @@ def partial_view(data: Data) -> dict:
                       "differences": pair_differences(row)})
 
     for r in rows:
-        if r.get("status") == "partial pair":
+        if r.get("status") == PARTIAL_PAIR:
             add(r, reviews.get(row_key(r)))
     for r in _read_reviews_rows():
         if r["verdict"] == NOT_SAME:
             add(r, NOT_SAME)
-    return {"found": COMPARED.exists(), "file": f"annotations/{REVIEWS_PATH.name}", "items": items}
+    return {"found": COMPARED.exists(), "file": f"annotations/{REVIEWS_PATH.name}", "items": items,
+            # the statuses the page names an occurrence by (common/common_helpers/partial_reviews.py)
+            "statuses": {"EXTRACTED_ONLY": EXTRACTED_ONLY, "PAIRS": [EXACT_PAIR, PARTIAL_PAIR]}}
 
 
 def save_review(data: Data, item: dict) -> None:
@@ -1035,7 +1039,7 @@ def save_review(data: Data, item: dict) -> None:
 # fails.
 
 #: Component classes written by code, never renamed here.
-FIXED = {component_class_key(n) for n in ("CatalogEntry", "DESCRIBES", "X")}
+FIXED = {component_class_key(n) for n in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED)}
 #: The ground truth files' columns that hold each kind of component class.
 GT_COLUMNS = {"entity class": ("subject_class", "object_class"), "predicate": ("predicate",)}
 

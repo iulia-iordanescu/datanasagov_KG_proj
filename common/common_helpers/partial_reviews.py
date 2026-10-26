@@ -33,6 +33,13 @@ from common.text_match import norm_text
 from common.triples_io import REQUIRED
 
 REVIEWS_PATH = ANNOTATIONS_DIR / "partial_pair_reviews.csv"
+#: The status of a row of 070's compared_triples.csv (070_evaluate/070_evaluate.md, *Outputs*; the pairs and what
+#: pairing leaves without a partner: 070_evaluate/metrics/pairs.md), defined once for step 070, which writes them,
+#: and for the status and the annotation tool, which read them.
+EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY = "exact pair", "partial pair", "extracted only", "ground truth only"
+COMPARED_STATUSES = (EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY)
+#: A pair's status by its pair level (070_evaluate/070_evaluate_helpers/pairing.py, LEVELS).
+PAIR_STATUS = {"exact": EXACT_PAIR, "partial": PARTIAL_PAIR}
 SLOTS = REQUIRED                                  # subject, predicate, object
 COLUMNS = (["record_id"] + [f"ground_truth_{s}" for s in SLOTS] + [f"translated_{s}" for s in SLOTS]
            + ["verdict"])

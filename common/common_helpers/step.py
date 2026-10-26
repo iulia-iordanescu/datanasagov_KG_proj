@@ -456,6 +456,14 @@ class RunError:
 # run_step
 # --------------------------------------------------------------------------
 
+#: A step run's status, and the exit code its process ends with (what each means: docs/running_on_nasa_laptop.md,
+#: section 4, their home). run_pipeline.py takes them from here.
+RAN, STOPPED, INTERRUPTED, FAILED = "ran", "stopped", "interrupted", "failed"
+EXIT_CODES = {RAN: 0, STOPPED: 2, INTERRUPTED: 130, FAILED: 1}
+#: The statuses of a run that didn't finish.
+NOT_FINISHED = (FAILED, STOPPED, INTERRUPTED)
+
+
 def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=()) -> None:
     from common.report import write_step_report
 
@@ -516,20 +524,20 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         if results.harvest_partial is not None:
             run["harvest_partial"] = results.harvest_partial
         output_rows = _describe_outputs(output, results)
-        run["status"] = "ran"            # the statuses and exit codes: docs/running_on_nasa_laptop.md, section 4
+        run["status"] = RAN              # the statuses and exit codes: docs/running_on_nasa_laptop.md, section 4
     except InputMissing as exc:
-        run["status"], error = "failed", RunError(str(exc))
+        run["status"], error = FAILED, RunError(str(exc))
     except KeyboardInterrupt as exc:     # Ctrl+C, anywhere: during model calls and at the question before paying too
-        run["status"], error = "interrupted", RunError(str(exc).strip() or "stopped with Ctrl+C", traceback.format_exc())
+        run["status"], error = INTERRUPTED, RunError(str(exc).strip() or "stopped with Ctrl+C", traceback.format_exc())
     except SystemExit as exc:
         # A helper that stops the run on purpose (e.g. the person declined the
         # paid calls) must still leave a report and a log.
-        run["status"], error = "stopped", RunError(str(exc.code or "stopped"))
+        run["status"], error = STOPPED, RunError(str(exc.code or "stopped"))
     except Stop as exc:
         # A check found a problem the person can fix (common/common_helpers/stop.py).
-        run["status"], error = "stopped", RunError(str(exc))
+        run["status"], error = STOPPED, RunError(str(exc))
     except Exception as exc:  # noqa: BLE001 -- any failure must still produce a report
-        run["status"], error = "failed", RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
+        run["status"], error = FAILED, RunError(f"{type(exc).__name__}: {exc}", traceback.format_exc())
     finally:
         run["failed_calls"] = _failed_calls()            # also for a stopped or failed run, before the run id is gone
         audit.end_run()
@@ -547,7 +555,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         if error.traceback:
             log.debug("full traceback:\n" + error.traceback.rstrip())
 
-    if run["status"] == "ran":
+    if run["status"] == RAN:
         _write_manifest(output, run, chosen_settings, input_rows, output_rows, results)
     else:
         _restore_manifest(output, old_manifest)
@@ -567,4 +575,4 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
                  f"says why, and what to change)")
     audit.stop_log()
     if error:
-        sys.exit({"interrupted": 130, "stopped": 2}.get(run["status"], 1))
+        sys.exit(EXIT_CODES[run["status"]])

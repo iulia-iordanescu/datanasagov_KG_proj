@@ -1875,8 +1875,8 @@ function partialCard(i) {
       `Only one occurrence can pair with this ground truth triple. Its occurrences:`,
       el("ul", {}, occ.map(o => el("li", {}, plainText("span", {}, extractedText(o.extracted)), " (current schema): ",
         o.this ? "the occurrence in this pair"
-          : o.status === "extracted only" ? "extracted only"
-          : /pair$/.test(o.status) ? `paired with another ground truth triple (${o.status})` : o.status))))) : null);
+          : o.status === partial.statuses.EXTRACTED_ONLY ? o.status
+          : partial.statuses.PAIRS.includes(o.status) ? `paired with another ground truth triple (${o.status})` : o.status))))) : null);
 }
 // an extracted triple in one line: “subject instance” (subject class) predicate “object instance” (object class)
 const extractedText = (t) => `“${t.subject}” (${t.subject_class}) ${t.predicate} “${t.object}” (${t.object_class})`;

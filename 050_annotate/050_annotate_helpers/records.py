@@ -42,13 +42,16 @@ from pathlib import Path
 from common.chunking import full_text, pieces
 from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, HELD_OUT, NUMBERED, PARTS, TUNING, fair_sample, fair_words,
                                  pool_parts, read_ground_truth, read_pool, with_coined)
-from common.records_io import has_text, load_records, read_ids
+from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_ground_truth_schema
 from common.step import check_settings, input_files, repo_path
 from common.stop import Stop
 from common.validate import SchemaEntries
 
+
+#: 050's own reasons for skipping a record (the shared ones: common/common_helpers/records_io.py).
+ALREADY_ANNOTATED, WAITING = "already in the ground truth", "waiting in a drafted batch to be corrected"
 
 @dataclass
 class Chosen:
@@ -137,15 +140,14 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     chosen.batch = max([highest, *gt_numbers]) + 1
 
     per, ids = settings["records_per_batch"], read_ids(settings["ids"])
-    skipped = {"not in the catalog": [], "without text": [], "already in the ground truth": [],
-               "waiting in a drafted batch to be corrected": []}
+    skipped = {NOT_IN_CATALOG: [], WITHOUT_TEXT: [], ALREADY_ANNOTATED: [], WAITING: []}
     picked = []
 
     def usable(rid: str) -> bool:
-        reason = ("not in the catalog" if rid not in chosen.records else
-                  "without text" if not has_text(chosen.records[rid]) else
-                  "already in the ground truth" if rid in chosen.done else
-                  "waiting in a drafted batch to be corrected" if rid in chosen.waiting else None)
+        reason = (NOT_IN_CATALOG if rid not in chosen.records else
+                  WITHOUT_TEXT if not has_text(chosen.records[rid]) else
+                  ALREADY_ANNOTATED if rid in chosen.done else
+                  WAITING if rid in chosen.waiting else None)
         if reason:
             skipped[reason].append(rid)
         return reason is None
@@ -192,17 +194,17 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
 
     chosen.skipped = {reason: rids for reason, rids in skipped.items() if rids}
     to_do = {      # what to do about records skipped for each reason (the first two worded as in 060)
-        "not in the catalog": f"Check these ids in the setting ids for typos: each must be a record id in "
+        NOT_IN_CATALOG: f"Check these ids in the setting ids for typos: each must be a record id in "
                               f"{repo_path(inputs['records'])}.",
-        "without text": "Nothing to do: a record without text has nothing for the model to read.",
-        "already in the ground truth": "Nothing to do: they are already annotated in annotations/ground_truth/.",
-        "waiting in a drafted batch to be corrected": f"Correct them with `py helpers/annotate.py`; to draft one "
+        WITHOUT_TEXT: WITHOUT_TEXT_TO_DO,
+        ALREADY_ANNOTATED: "Nothing to do: they are already annotated in annotations/ground_truth/.",
+        WAITING: f"Correct them with `py helpers/annotate.py`; to draft one "
                                                     f"again instead, delete its drafted batch (both files) from "
                                                     f"{repo_path(output)}/ before correcting it."}
     for reason, rids in chosen.skipped.items():
         if ids:                                    # by default, passing over done records is expected
             where = ""
-            if reason == "waiting in a drafted batch to be corrected":
+            if reason == WAITING:
                 where = " (" + ", ".join(sorted({f"drafted batch {chosen.waiting[r]}" for r in rids})) + ")"
             chosen.notes.append(f"{len(rids)} record(s) you listed {'are' if len(rids) > 1 else 'is'} "
                                 f"{reason}{where}, so skipped: {named(rids)}. {to_do[reason]}")

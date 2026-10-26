@@ -102,7 +102,9 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
             "texts": len(texts.items), "maintainers": [m["maintainer"] for m in texts.maintainers]}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
     write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,
-                              "patterns": schema.patterns, "deferred": schema.deferred, "made": made})
+                              "patterns": schema.patterns,
+                              "deferred": [{k: d[k] for k in check.DEFERRED_FIELDS} for d in schema.deferred],
+                              "made": made})
     calls_made = {"extract": triples.calls, "label": labels.calls, "merge": labels.merge_calls,
                   "define": definitions.calls, "test": calls.paid.test_calls}
     pieces = {t["id"]: len(t["pieces"]) for t in texts.items}
@@ -237,9 +239,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                                               for f in counts.spelling_folds], SHOW, "; ") + ".", ""]
     by_reason = {}
     for d in schema.deferred:
-        reason = "too vague" if d["reason"].startswith("too vague") else \
-            ("support below min_support" if d["reason"].startswith("support")
-             else "through a schema entry not in the schema")
+        reason = check.DEFERRED_REASONS[d["reason_code"]]
         kind = d["entry_type"]
         by_reason[(kind, reason)] = by_reason.get((kind, reason), 0) + 1
     lines += ["### Schema", "",

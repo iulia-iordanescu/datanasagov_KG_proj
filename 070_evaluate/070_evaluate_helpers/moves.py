@@ -31,6 +31,7 @@ from common.report import cell, model_calls, named, per_text_table, this_report
 from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
 from common.ground_truth import HELD_OUT, PARTS, TUNING
+from common.partial_reviews import EXTRACTED_ONLY, GROUND_TRUTH_ONLY, PAIR_STATUS
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
@@ -486,9 +487,9 @@ def _compared_rows(records: list) -> list:
             return out
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
-        rows += [row(f"{level} pair", gi, ei) for gi, ei, level in c["pairs"]]
-        rows += [row("extracted only", ei=i) for i in range(len(ex)) if i not in paired_e]
-        rows += [row("ground truth only", gi=i) for i in range(len(gt)) if i not in paired_g]
+        rows += [row(PAIR_STATUS[level], gi, ei) for gi, ei, level in c["pairs"]]
+        rows += [row(EXTRACTED_ONLY, ei=i) for i in range(len(ex)) if i not in paired_e]
+        rows += [row(GROUND_TRUTH_ONLY, gi=i) for i in range(len(gt)) if i not in paired_g]
     return rows
 
 

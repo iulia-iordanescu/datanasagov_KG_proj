@@ -54,13 +54,17 @@ sys.path.insert(0, str(ROOT))
 from common.audit import new_run_id                                                    # noqa: E402
 from common.ground_truth import GROUND_TRUTH_DIR, read_ground_truth                    # noqa: E402
 from common import status as project                                                   # noqa: E402
-from common.step import LOGS_DIR, MANIFEST_NAME, PIPELINE_STEPS, REPORTS_DIR, RESULTS_DIR, git_commit  # noqa: E402
+from common.step import (EXIT_CODES, FAILED, INTERRUPTED, LOGS_DIR, MANIFEST_NAME, NOT_FINISHED, PIPELINE_STEPS,  # noqa: E402
+                         RAN, REPORTS_DIR, RESULTS_DIR, git_commit)
 
 STEPS = list(PIPELINE_STEPS)
 #: The steps that call the model, and so have the setting confirm_paid_calls.
 PAYING = {"040_induce_schema", "050_annotate", "060_extract", "070_evaluate"}
 #: run_step's exit codes (common/common_helpers/step.py): anything else is a failure.
-EXIT = {0: "ran", 2: "stopped", 130: "interrupted"}
+EXIT = {code: status for status, code in EXIT_CODES.items() if status != FAILED}
+#: A step this script didn't run: kept (050, a drafted batch waits), skipped (060, 070: no finished record), not run
+#: (a step before it didn't finish).
+KEPT, SKIPPED, NOT_RUN = "kept", "skipped", "not run"
 
 
 def chosen_steps(args) -> list:
@@ -102,11 +106,11 @@ def gate(step: str, forced: bool) -> tuple:
     if step == "050_annotate":
         why = batch_waiting()
         if why:
-            return "kept", (f"no new drafted batch: {why}. Finish it in the annotation tool (`py helpers/annotate.py`); "
+            return KEPT, (f"no new drafted batch: {why}. Finish it in the annotation tool (`py helpers/annotate.py`); "
                            f"050 drafts the next drafted batch once it's done. To draft one anyway: "
                            f"`py run_pipeline.py --only 050`")
     if step in ("060_extract", "070_evaluate") and not any_finished():
-        return "skipped", ("the ground truth has no finished record yet, and by default 060 extracts and 070 "
+        return SKIPPED, ("the ground truth has no finished record yet, and by default 060 extracts and 070 "
                            "evaluates only finished records. Finish one in the annotation tool "
                            "(`py helpers/annotate.py`, tick All facts extracted), then run `py run_pipeline.py` "
                            "again")
@@ -132,11 +136,11 @@ def run_one(step: str, confirm: str | None, say) -> dict:
     say(f"--- {step}: started")
     clock = time.monotonic()
     code = subprocess.run(command(step, confirm), cwd=ROOT).returncode
-    out = {"step": step, "status": EXIT.get(code, "failed"), "exit_code": code,
+    out = {"step": step, "status": EXIT.get(code, FAILED), "exit_code": code,
            "duration_s": round(time.monotonic() - clock, 1), "report": _new_report(step, before),
            "headline": {}, "warnings": None, "why": ""}
     manifest = RESULTS_DIR / step / MANIFEST_NAME
-    if out["status"] == "ran" and manifest.exists():
+    if out["status"] == RAN and manifest.exists():
         m = json.loads(manifest.read_text(encoding="utf-8"))
         out["headline"], out["warnings"] = m.get("headline") or {}, m.get("warnings")
     say(f"--- {step}: {out['status']} in {out['duration_s']} s" + (f" (exit code {code})" if code else ""))
@@ -172,13 +176,13 @@ def report_text(run: dict, rows: list, next_up: list | None = None) -> str:
     attention = []
     for r in rows:
         report = f" ([{r['report'].name}]({r['report'].name}))" if r["report"] else ""
-        if r["status"] in ("failed", "stopped", "interrupted"):
-            why = ("it was interrupted (Ctrl+C)" if r["status"] == "interrupted" else
+        if r["status"] in NOT_FINISHED:
+            why = ("it was interrupted (Ctrl+C)" if r["status"] == INTERRUPTED else
                    "its report (linked), section *Results*, says why, and what to do" if r["report"] else
                    f"the terminal and its log (outputs/logs/{r['step']}_<date>_<time>.log) show why")
             attention.append(f"- **{r['step']} {r['status']}**{report}: {why}. The steps after it didn't run: once "
                              f"it's solved, run `py run_pipeline.py --from {r['step'].split('_')[0]}`.")
-        elif r["status"] in ("kept", "skipped"):
+        elif r["status"] in (KEPT, SKIPPED):
             attention.append(f"- **{r['step']} {r['status']}:** {r['why']}.")
         elif r["warnings"]:
             attention.append(f"- **{r['step']}** has {r['warnings']} warning(s){report}: each is explained, with what "
@@ -224,7 +228,7 @@ def main(argv=None) -> int:
     rows, stopped = [], False
     for step in steps:
         if stopped:
-            rows.append({"step": step, "status": "not run", "duration_s": None, "report": None, "headline": {},
+            rows.append({"step": step, "status": NOT_RUN, "duration_s": None, "report": None, "headline": {},
                          "warnings": None, "why": ""})
             continue
         status, why = gate(step, forced=bool(args.only))
@@ -235,7 +239,7 @@ def main(argv=None) -> int:
             continue
         row = run_one(step, args.confirm_paid_calls, say)
         rows.append(row)
-        stopped = row["status"] != "ran"
+        stopped = row["status"] != RAN
 
     run = {"run_id": run_id, "started": started.isoformat(timespec="seconds"),
            "finished": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -257,7 +261,7 @@ def main(argv=None) -> int:
     shown = report_path.relative_to(ROOT).as_posix() if report_path.is_relative_to(ROOT) else report_path
     say(f"pipeline report: {shown}")
     say(summary)
-    bad = next((r for r in rows if r["status"] in ("failed", "stopped", "interrupted")), None)
+    bad = next((r for r in rows if r["status"] in NOT_FINISHED), None)
     return 0 if bad is None else (bad["exit_code"] or 1)
 
 

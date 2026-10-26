@@ -22,13 +22,16 @@ from pathlib import Path
 from common.chunking import full_text, pieces
 from common.ground_truth import DRAFTED_BY, read_ground_truth, read_pool
 from common.llm import maker
-from common.records_io import has_text, load_records, read_ids
+from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
 from common.step import check_settings, input_files, repo_path
 from common.stop import Stop
 
 MODES = ("ground_truth", "all")
 
+
+#: 060's own reason for skipping a record (the shared ones: common/common_helpers/records_io.py).
+NOT_FINISHED = "not finished in the ground truth"
 
 @dataclass
 class Chosen:
@@ -60,7 +63,7 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     gt = read_ground_truth(gt_files[0].parent if gt_files else Path(inputs["ground_truth"]).parent)
     chosen.ground_truth = {r["id"] for r in gt.rows}
     chosen.notes += [f"Ground truth, {p}" for p in gt.problems]
-    skipped = {"not in the catalog": [], "without text": [], "not finished in the ground truth": []}
+    skipped = {NOT_IN_CATALOG: [], WITHOUT_TEXT: [], NOT_FINISHED: []}
 
     if ids:
         chosen.how = f"the {len(ids)} id(s) given in the setting ids"
@@ -71,7 +74,7 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
         wanted = ids
     elif settings["extract_from"] == "ground_truth":
         finished = [rid for rid, r in gt.records.items() if r["finished"]]
-        skipped["not finished in the ground truth"] = [rid for rid, r in gt.records.items() if not r["finished"]]
+        skipped[NOT_FINISHED] = [rid for rid, r in gt.records.items() if not r["finished"]]
         chosen.how = f"the {len(finished)} finished record(s) of the ground truth"
         wanted = finished
     else:
@@ -81,22 +84,22 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
     for rid in wanted:
         record = chosen.records.get(rid)
         if record is None:
-            skipped["not in the catalog"].append(rid)
+            skipped[NOT_IN_CATALOG].append(rid)
         elif not has_text(record):
-            skipped["without text"].append(rid)
+            skipped[WITHOUT_TEXT].append(rid)
         else:
             chosen.items.append({"id": rid, "title": record.get("title") or "", "text": full_text(record),
                                  "pieces": pieces(record, settings["max_chars"])})
     chosen.skipped = {k: v for k, v in skipped.items() if v}
 
     to_do = {      # what to do about records skipped for each reason (worded as in 050)
-        "not in the catalog": f"Check these ids in {'the setting ids' if ids else 'annotations/ground_truth/'} "
+        NOT_IN_CATALOG: f"Check these ids in {'the setting ids' if ids else 'annotations/ground_truth/'} "
                               f"for typos: each must be a record id in {repo_path(inputs['records'])}.",
-        "without text": "Nothing to do: a record without text has nothing for the model to read."}
+        WITHOUT_TEXT: WITHOUT_TEXT_TO_DO}
     for reason, rids in chosen.skipped.items():
-        if reason == "without text" and not ids and settings["extract_from"] == "all":
+        if reason == WITHOUT_TEXT and not ids and settings["extract_from"] == "all":
             continue                                             # expected: most catalogs have a few
-        if reason == "not finished in the ground truth":
+        if reason == NOT_FINISHED:
             chosen.notes.append(f"{len(rids)} record(s) of the ground truth aren't finished yet (all facts "
                                 f"extracted not ticked), so skipped: {named(rids)}. Step 070 evaluates only "
                                 f"finished records. To include them, finish them in `py helpers/annotate.py` "

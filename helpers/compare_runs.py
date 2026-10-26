@@ -148,17 +148,18 @@ def paired(base: list, other: list) -> list:
 
 def verdict(row: dict, name: str) -> str:
     """The row's verdict: the first of VERDICTS that applies, in that order."""
+    missing, same, no_range, higher, lower, apart = VERDICTS
     if row["diff"] is None:
-        return "not comparable (a number is missing)"
+        return missing
     if row["diff"] == 0 and row["low"] in (0, None) and row["high"] in (0, None):
-        return "the same"
+        return same
     if row["low"] is None:
-        return "no range (too few records)"
+        return no_range
     if row["low"] > 0:
-        return f"{name} higher"
+        return higher.replace("<run>", name)
     if row["high"] < 0:
-        return f"{name} lower"
-    return "can't tell apart"
+        return lower.replace("<run>", name)
+    return apart
 
 
 def pct(v) -> str:
