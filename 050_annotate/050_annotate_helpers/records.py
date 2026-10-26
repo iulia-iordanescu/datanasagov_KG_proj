@@ -40,8 +40,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import (PARTS, DRAFT_NUMBERED, DRAFT_PATTERN, NUMBERED, fair_sample, fair_words, pool_parts,
-                                 read_ground_truth, read_pool, with_coined)
+from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, HELD_OUT, NUMBERED, PARTS, TUNING, fair_sample, fair_words,
+                                 pool_parts, read_ground_truth, read_pool, with_coined)
 from common.records_io import has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -152,7 +152,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
 
     if ids:
         chosen.how = f"the {len(ids)} id(s) given in the setting ids"
-        if part != "tuning":
+        if part != TUNING:
             chosen.notes.append(f"part ({part}) is ignored, because the setting ids names the records: this run "
                                 f"drafts the records listed in ids, whatever part they are in.")
         if settings["start_position"]:
@@ -176,7 +176,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
             if chosen.positions[rid] >= start and part in ("both", chosen.parts[rid]) and usable(rid):
                 picked.append(rid)
         if picked:
-            other = "held-out" if part == "tuning" else "tuning"
+            other = HELD_OUT if part == TUNING else TUNING
             chosen.notes.append(
                 f"This run drafts {len(picked)} {which}record(s), at pool positions "
                 f"{', '.join(str(chosen.positions[r]) for r in picked)} (setting part: {part}"

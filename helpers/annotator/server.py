@@ -127,8 +127,8 @@ from common.audit import ORIGIN_FIELD
 from common.chunking import full_text
 from common.files import write_csv, write_text
 from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
-                                 KIND_KEYS, draft_name, file_name, ground_truth_schema_gaps as schema_gaps,
-                                 pattern_of,
+                                 HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
+                                 ground_truth_schema_gaps as schema_gaps, pattern_of,
                                  read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH,
                                             MISSING_TARGET, NONE, NOW_EXISTS, REPEATED, SHARED, STALE, SUGGESTED,
@@ -319,7 +319,7 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     every = errors + flags
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
-    held_out = data.parts.get(row.get("id")) == "held-out"
+    held_out = data.parts.get(row.get("id")) == HELD_OUT
     return [{"code": c, "type": kind, "add": None if held_out and c in ADDS else _offer(c, row, every),
              "message": _frozen_message(data, c, row) if held_out and c in ADDS else _message(c, row, every, title)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
@@ -345,7 +345,7 @@ def refuse_if_held_out(data: Data, item: dict, what: str) -> None:
     """Refuse a change to the ground truth schema (adding, renaming, merging, changing a definition) while the record
     shown is held-out."""
     rid = str(item.get("record") or "")
-    if data.parts.get(rid) == "held-out":
+    if data.parts.get(rid) == HELD_OUT:
         raise ValueError(f"the record shown, {rid} (pool position {data.positions.get(rid, '?')}), is a held-out "
                          f"record, and the ground truth schema is frozen while annotating held-out records, so {what} "
                          f"is refused. For this record, " + INSTEAD.format(kind="entity class or predicate")
@@ -480,7 +480,7 @@ def _learned_from(data: Data, rows: list) -> str:
     """Where a component class was learned, as a "source:" line the source check
     (common/common_helpers/schema_io.ground_truth_source_problem) can read: the
     ground truth records using it, by part, as pool positions."""
-    by_part, outside = {"tuning": set(), "held-out": set()}, []
+    by_part, outside = {TUNING: set(), HELD_OUT: set()}, []
     for rid in dict.fromkeys(r["id"] for r in rows):
         if data.parts.get(rid) in by_part and rid in data.positions:
             by_part[data.parts[rid]].add(data.positions[rid])
@@ -513,7 +513,7 @@ def add_to_hand(data: Data, item: dict) -> str:
         name = str(item.get("component_class") or "").strip()
         refuse_if_held_out(data, item, f"adding {name}")
         uses = uses_of(read_ground_truth(), kind, name)
-        held = sorted({(data.positions.get(r["id"], -1), r["id"]) for r in uses if data.parts.get(r["id"]) == "held-out"})
+        held = sorted({(data.positions.get(r["id"], -1), r["id"]) for r in uses if data.parts.get(r["id"]) == HELD_OUT})
         if held:
             raise ValueError(f"{name} is used by {len(held)} held-out record(s): "
                              + ", ".join(f"pool position {p} ({rid})" for p, rid in held)
@@ -597,20 +597,19 @@ def save_batch(data: Data, n: int, records: list) -> list:
 def _gtt(data: Data) -> dict:
     """The ground truth schema by kind: {kind: {component class: definition}}: the file's own, as step 070 reads
     it, so a coined component class (used in the ground truth, not in the file yet) is never a translation's target."""
-    return {"entity class": dict(data.hand["entity_classes"]), "predicate": dict(data.hand["predicates"])}
+    return {kind: dict(data.hand[key]) for kind, key in KIND_KEYS.items()}
 
 
 def _coined(data: Data) -> dict:
     """{kind: {component_class_key(coined component class)}}: the ones the ground truth uses that the file lacks."""
     coined = with_coined(data.hand, read_ground_truth())["coined"]
-    return {"entity class": {component_class_key(n) for n in coined["entity_classes"]},
-            "predicate": {component_class_key(n) for n in coined["predicates"]}}
+    return {kind: {component_class_key(n) for n in coined[key]} for kind, key in KIND_KEYS.items()}
 
 
 def _gtt_definitions(gtt: dict) -> dict:
     """_gtt's result as common/common_helpers/component_class_mapping.gtt_definitions gives it:
     {kind: {component_class_key(component class): definition}}."""
-    return gtt_definitions({"entity_classes": gtt["entity class"], "predicates": gtt["predicate"]})
+    return gtt_definitions({key: gtt[kind] for kind, key in KIND_KEYS.items()})
 
 
 def _crt() -> dict | None:
@@ -992,7 +991,7 @@ def partial_view(data: Data) -> dict:
 
     def add(row: dict, verdict):
         rid = row["record_id"]
-        if data.parts.get(rid) != "tuning" or row_key(row) in seen:
+        if data.parts.get(rid) != TUNING or row_key(row) in seen:
             return
         seen.add(row_key(row))
         record = data.records.get(rid) or {}
@@ -1014,7 +1013,7 @@ def partial_view(data: Data) -> dict:
 def save_review(data: Data, item: dict) -> None:
     """File a verdict ("same fact", "not the same fact", or "" to take one
     back) for one pair of a tuning record, replacing any earlier one."""
-    if data.parts.get(item.get("record_id")) != "tuning":
+    if data.parts.get(item.get("record_id")) != TUNING:
         raise ValueError("only tuning records' pairs can be reviewed (held-out results stay unseen)")
     verdict = item.get("verdict") or ""
     if verdict not in (SAME, NOT_SAME, ""):

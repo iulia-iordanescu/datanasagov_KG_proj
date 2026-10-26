@@ -16,6 +16,7 @@ import collections
 import re
 
 import stats
+from common.ground_truth import HELD_OUT, TUNING
 
 
 #: How every number of the report, per_record.md and the readings is written when its formula would divide by 0: one
@@ -90,10 +91,10 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
            f"(`070_evaluate/metrics/recall.md`, *Assumes and can't see*).",
            ("- **Partial pairs:** " + (f"{review['unreviewed']} not reviewed yet; pairs your review ruled out (\"not the same "
                                         f"fact\"): {review['rejected']}."
-                                        if part == "tuning" else
+                                        if part == TUNING else
                                         "never reviewed for the held-out part (that would mean looking at it).")),
            ]
-    if part == "held-out":
+    if part == HELD_OUT:
         out.append(f"- **Held-out looks:** the held-out numbers have been shown {looks['count']} time(s), this run "
                    f"included (`annotations/held_out_looks.csv`). {since_previous(looks)} A change made after seeing "
                    f"them lets these records influence the pipeline, so they no longer measure records it was never "

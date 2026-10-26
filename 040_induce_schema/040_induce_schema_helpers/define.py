@@ -28,11 +28,12 @@ from pathlib import Path
 from common.cache import Cache, ask_cached, ask_split, needs
 from common.audit import log
 from common.prompt_files import fill, load
+from common.triples_io import KIND_OF_KEY
 
 #: The two kinds of schema entry that get a definition.
-KINDS = ("entity_classes", "predicates")
+KINDS = tuple(KIND_OF_KEY)                  # ("entity_classes", "predicates")
 #: The words for KINDS in the output files ("kind", "entry_type").
-WORD = {"entity_classes": "entity class", "predicates": "predicate"}
+WORD = KIND_OF_KEY
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
 PROMPTS = {"entity_classes": load(PROMPTS_DIR / "define_entity_classes.txt"),

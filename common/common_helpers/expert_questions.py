@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 
 from common.component_class_mapping import MAPPING_PATH, read_mapping
-from common.ground_truth import GROUND_TRUTH_DIR, read_ground_truth, read_pool
+from common.ground_truth import GROUND_TRUTH_DIR, TUNING, read_ground_truth, read_pool
 from common.records_io import load_records
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -560,7 +560,7 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
                                 f"so it can't be a tuning record. The page shows only tuning records: take it out.")
                 continue
             p = pool[rid]
-            if p["part"] != "tuning":
+            if p["part"] != TUNING:
                 problems.append(f"{at}: record {rid} (pool position {p['position']}) is a held-out record. The page "
                                 f"shows only tuning records: showing a held-out record, and changing the guidelines "
                                 f"or the ground truth schema from what an expert says about it, would let it "
@@ -663,13 +663,13 @@ def _check_affects(q: dict, where, pool: dict, gt, schema: dict, mapping: list, 
         return [f"{where(q, q['line'])}: 030's splits.json isn't there to check the records \"Affects\" names. Run "
                 f"`py 030_split/run.py` first, then make the page again."]
     by_position = {r["position"]: r for r in pool.values()}
-    tuning = {r["id"] for r in pool.values() if r["part"] == "tuning"}
+    tuning = {r["id"] for r in pool.values() if r["part"] == TUNING}
     listed_records = {r["position"] for r in a["records"]}
     for r in a["records"]:
         p = pool.get(r["id"])
         if p is None:
             problems.append(f"{where(q, r['line'])}: record {r['id']} isn't in the ground truth candidates pool.")
-        elif p["part"] != "tuning":
+        elif p["part"] != TUNING:
             problems.append(f"{where(q, r['line'])}: record {r['id']} (pool position {p['position']}) is a held-out "
                             f"record: the page names only tuning records. Take it out.")
         elif p["position"] != r["position"]:

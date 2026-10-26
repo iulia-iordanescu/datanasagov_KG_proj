@@ -64,7 +64,7 @@ from pathlib import Path
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_json
-from common.ground_truth import GROUND_TRUTH_SCHEMA_FROM, twin_table
+from common.ground_truth import GROUND_TRUTH_SCHEMA_FROM, HELD_OUT, TUNING, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
 from common.step import repo_path
@@ -84,8 +84,8 @@ HELD_OUT_EVERY = 3                          # from there on, every third positio
 def part_of(position: int) -> str:
     """ "tuning" or "held-out", by the rule above: 8, 11, 14, … are held-out."""
     if position < ALL_TUNING_BEFORE:
-        return "tuning"
-    return "held-out" if (position - ALL_TUNING_BEFORE) % HELD_OUT_EVERY == HELD_OUT_EVERY - 1 else "tuning"
+        return TUNING
+    return HELD_OUT if (position - ALL_TUNING_BEFORE) % HELD_OUT_EVERY == HELD_OUT_EVERY - 1 else TUNING
 
 
 @dataclass

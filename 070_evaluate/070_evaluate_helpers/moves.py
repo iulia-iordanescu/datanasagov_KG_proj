@@ -30,6 +30,7 @@ from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, per_text_table, this_report
 from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
+from common.ground_truth import HELD_OUT, PARTS, TUNING
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
@@ -385,7 +386,7 @@ def _log_look(evaluated, translation, schema_file: str) -> dict:
     current schema, 060's run, fingerprints of the translation used and of the held-out records' ground truth).
     Returns {"count": looks so far, "changed": [what differs from the previous look, as readings.LOOK_INPUTS names
     it] or None for a first look, "previous": that look's row or None}."""
-    held = sorted((r for r in evaluated.records if r["part"] == "held-out"), key=lambda r: r["id"])
+    held = sorted((r for r in evaluated.records if r["part"] == HELD_OUT), key=lambda r: r["id"])
     rows = [_ground_truth_rows(r) for r in held]
     look = {"date": dt.date.today().isoformat(), "run_id": audit.current_run_id() or "", "schema": schema_file,
             "held_out_records": str(len(held)),
@@ -575,7 +576,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     # Only the parts whose numbers are shown: the held-out records' triples stay
     # unseen too, unless --evaluate_held_out true.
     shown = [r for r in evaluated.records if r["part"] in metrics]
-    tuning = [r for r in shown if r["part"] == "tuning"]
+    tuning = [r for r in shown if r["part"] == TUNING]
     # Mismatches say which rows of the translation table to change, so they come from tuning records only: changing
     # a row because of a held-out record would let the held-out records influence the pipeline.
     mismatches = pairing.component_class_mismatches(tuning)
@@ -587,7 +588,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     write_json(metrics_path, {
         "made": {"run_id": audit.current_run_id(), **llm.describe(), "schema": schema_file, "settings": settings,
                  "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
-        "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in ("tuning", "held-out")},
+        "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in PARTS},
         "left_out": evaluated.left_out,
         "learned_from": evaluated.learned_from,
         "parts": {p: {"numbers": v["numbers"], "strata": v["strata"], "margin_checks": v["margin_checks"],
@@ -696,7 +697,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
              f"through `annotations/component_class_mapping.csv` "
              f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed).", "",
              "| Part | Records evaluated |", "|---|---:|"]
-    for part in ("tuning", "held-out"):
+    for part in PARTS:
         count = sum(r["part"] == part for r in evaluated.records)
         lines.append(f"| {part} | {count}{'' if part in metrics else ' (numbers not shown: see below)'} |")
     lines.append("")
@@ -753,7 +754,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         pr = {k: sum(r["compared"]["partial_review"][k] for r in recs) for k in ("unreviewed", "rejected")}
         lines += ["", (f"Partial pairs in these numbers not reviewed yet: {pr['unreviewed']}; pairs your review "
                        f"ruled out (\"not the same fact\"): {pr['rejected']}. Review them in `py helpers/annotate.py`, view "
-                       f"*Partial pairs*." if part == "tuning" else
+                       f"*Partial pairs*." if part == TUNING else
                        "Partial pairs of the held-out part are never reviewed (that would mean looking at it), "
                        "so its partial level may count pairs that aren't the same fact.")]
         lines += ["", "| Pair level | Entity-class accuracy | Subject-class accuracy | Object-class accuracy | "
@@ -806,13 +807,13 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                            translation.suggest_reused)],
                          calls.paid.test_calls, llm.model_label())
 
-    tuning = metrics.get("tuning", {}).get("numbers")
+    tuning = metrics.get(TUNING, {}).get("numbers")
     headline = {}
     if tuning:
         headline = {"precision (tuning, exact)": readings.pct(tuning["exact"]["precision"]["value"]),
                     "recall (tuning, exact)": readings.pct(tuning["exact"]["recall"]["value"]),
                     "pooled over": f"{tuning['records']} records ({POOLED})"}
-        twins = metrics["tuning"]["twins"]
+        twins = metrics[TUNING]["twins"]
         headline["twins (tuning)"] = ("not known" if twins is None else
                                       f"{len(twins['records'])} of {tuning['records']} evaluated")
     return Results(files=[metrics_path, per_record_path, compared_path, kept_path], headline=headline,

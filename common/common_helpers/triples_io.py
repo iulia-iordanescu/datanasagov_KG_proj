@@ -124,6 +124,11 @@ def clean_triple(raw) -> dict | None:
 # only part in it is naming the describes class;
 # UNDECIDED ("X") means it named none, for the person to fill in.
 
+#: The two kinds of component class (docs/terminology.md, *kind*), each with the key a schema, as
+#: common/common_helpers/schema_io.py reads it, files its component classes under; KIND_OF_KEY goes the other way.
+KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
+KIND_OF_KEY = {key: kind for kind, key in KIND_KEYS.items()}
+
 ENTRY_CLASS = "CatalogEntry"
 ENTRY_PREDICATE = "DESCRIBES"
 ENTRY_SOURCE = "(record structure)"

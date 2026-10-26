@@ -41,7 +41,8 @@ from types import SimpleNamespace
 
 from common.audit import ref_path
 from common.files import read_csv
-from common.ground_truth import coined_uses, fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds, with_coined
+from common.ground_truth import (HELD_OUT, coined_uses, fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds,
+                                 with_coined)
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import load_records
@@ -120,7 +121,7 @@ def held_out_sources(ground_truth_schema_path, pool_rows: list) -> list:
     """The ground truth schema's entity classes and predicates whose "source:" line names a held-out record, i.e. that
     were added while a held-out record used them, though the ground truth schema is frozen for held-out records
     (annotations/guidelines.md, Before you start): [(kind, component class, source, [(pool position, record id)])]."""
-    held = {r["position"]: r["id"] for r in pool_rows if r.get("part") == "held-out"}
+    held = {r["position"]: r["id"] for r in pool_rows if r.get("part") == HELD_OUT}
     sources = read_ground_truth_schema(ground_truth_schema_path)["sources"]
     found = []
     for section, kind in (("entity_classes", "entity class"), ("predicates", "predicate")):

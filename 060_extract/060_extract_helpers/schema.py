@@ -57,12 +57,12 @@ from common.report import named
 from common.schema_io import ANY, ground_truth_source_problem, pattern_key, read_schema, schema_text
 from common.step import repo_path
 from common.stop import Stop
-from common.triples_io import component_class_key
+from common.triples_io import KIND_OF_KEY, component_class_key
 from common.validate import SchemaEntries
 
-KINDS = ("entity_classes", "predicates")
+KINDS = tuple(KIND_OF_KEY)                  # the schema's keys: ("entity_classes", "predicates")
 #: entry_type, as every output file writes it (docs/terminology.md, *schema entry*).
-ENTRY_TYPE = {"entity_classes": "entity class", "predicates": "predicate", "patterns": "pattern"}
+ENTRY_TYPE = {**KIND_OF_KEY, "patterns": "pattern"}
 
 
 @dataclass

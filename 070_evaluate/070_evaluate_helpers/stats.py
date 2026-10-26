@@ -28,6 +28,7 @@ import collections
 import random
 
 from pairing import LEVELS, PER_COMPONENT_CLASS
+from common.ground_truth import HELD_OUT, PARTS, TUNING
 from common.triples_io import component_class_key
 
 #: Fewer evaluated records than this: no margin of error (a bootstrap on very
@@ -152,7 +153,7 @@ def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
 
 
 def by_part(evaluated) -> dict:
-    return {part: [r for r in evaluated.records if r["part"] == part] for part in ("tuning", "held-out")}
+    return {part: [r for r in evaluated.records if r["part"] == part] for part in PARTS}
 
 
 def strata_table(records: list, pool_strata: dict) -> list:
@@ -310,7 +311,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
     with the setting evaluate_held_out. {part: {"numbers", "strata", "confusion", "per_component_class", "per_record", "removed_by_060", ...},
     "kept_aside": {part: records not shown}}."""
     parts = by_part(evaluated)
-    shown = ["tuning"] + (["held-out"] if settings["evaluate_held_out"] else [])
+    shown = [TUNING] + ([HELD_OUT] if settings["evaluate_held_out"] else [])
     result = {}
     for part in shown:
         recs = parts[part]
@@ -324,5 +325,5 @@ def compute_metrics(evaluated, settings: dict) -> dict:
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
                         if numbers and numbers["margins"] else None,
                         "twins": twins(recs)}
-    result["kept_aside"] = {p: len(parts[p]) for p in ("tuning", "held-out") if p not in shown}
+    result["kept_aside"] = {p: len(parts[p]) for p in PARTS if p not in shown}
     return result

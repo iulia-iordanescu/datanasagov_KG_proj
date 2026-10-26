@@ -66,12 +66,12 @@ from pathlib import Path
 from common.audit import ref_path
 from common.step import ANNOTATIONS_DIR
 from common.stop import Stop
-from common.triples_io import component_class_key
+from common.triples_io import KIND_KEYS, component_class_key
 
 MAPPING_PATH = ANNOTATIONS_DIR / "component_class_mapping.csv"
 COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt", "swap_subject_and_object", "checked",
            "definition_from_past_or_crt_schema", "definition_in_gtt"]
-KINDS = {"entity class": "entity_classes", "predicate": "predicates"}   # {kind: the schema's key}
+KINDS = KIND_KEYS                                                       # {kind: the schema's key}
 NONE = "(none)"
 CHECKED = ("yes", "same component class")                                          # what 070 accepts as checked
 #: Every value each column of fixed values may hold (read_mapping lowercases them first).

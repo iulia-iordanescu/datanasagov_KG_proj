@@ -23,6 +23,7 @@ from common.files import write_csv, write_json
 from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table
 from common.step import Results
 from common.triples_io import COLUMNS as TRIPLE_COLUMNS, ENTRY_PREDICATE
+from common.ground_truth import HELD_OUT, TUNING
 
 KEPT_NAME = "extracted_triples.csv"
 REMOVED_NAME = "extracted_triples_removed.csv"
@@ -93,10 +94,10 @@ def _new_component_classes(chosen, rows, settings) -> tuple:
     listed = []
     for (kind, name), v in rows.new_component_classes.items():
         part = {r: chosen.pool.get(r, (None, None))[1] for r in v["records"]}
-        recs = [r for r in v["records"] if part[r] != "held-out" and not (all_records and r in chosen.ground_truth)]
+        recs = [r for r in v["records"] if part[r] != HELD_OUT and not (all_records and r in chosen.ground_truth)]
         if not (recs and name):
             continue
-        tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == "tuning")
+        tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == TUNING)
         source = ("ground truth tuning " + ", ".join(f"#{p}" for p in tuning) if tuning else
                   "extraction over records not annotated")
         listed.append({"kind": kind, "component_class": name, "records": len(recs), "source": source})

@@ -80,7 +80,7 @@ from pathlib import Path
 
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
-from common.triples_io import component_class_key, is_describes, triple_key
+from common.triples_io import KIND_KEYS, component_class_key, is_describes, triple_key
 from common.validate import (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED, ID_NOT_IN_RECORDS, INCOMPLETE, NO_SOURCE_TEXT,
                              SOURCE_NOT_IN_TEXT)
 
@@ -395,7 +395,8 @@ def coined_uses(gt: GroundTruth, coined: dict) -> list:
 
 
 #: The kinds of component class, as messages name them, and their key in a schema dict.
-KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
+# KIND_KEYS ({kind: the schema's key}) is common/common_helpers/triples_io.py's, imported above; status.py and
+# the annotation tool import it from here too.
 
 
 def uses_of(gt: GroundTruth, kind: str, name: str) -> list:
@@ -454,7 +455,9 @@ def read_pool(splits_path) -> list:
     return json.loads(Path(splits_path).read_text(encoding="utf-8"))["ground_truth_candidates"]["records"]
 
 
-PARTS = ("tuning", "held-out")
+#: The two parts of the pool (docs/terminology.md, *held-out part*), each value as 030's splits.json writes it.
+TUNING, HELD_OUT = "tuning", "held-out"
+PARTS = (TUNING, HELD_OUT)
 
 
 def pool_parts(pool_rows: list) -> dict:

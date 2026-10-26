@@ -93,7 +93,8 @@ import re
 from pathlib import Path
 
 from common.audit import ref_path
-from common.triples_io import component_class_key
+from common.ground_truth import HELD_OUT
+from common.triples_io import KIND_KEYS, component_class_key
 
 #: What a component class must look like, said the same way wherever one is typed (the annotation tool).
 ONE_WORD = ("the component class must be one word: letters or digits, no spaces, no ; and no -> "
@@ -262,7 +263,7 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     positions = [int(n) for n in re.findall(r"#(\d+)", source)]
     if not positions:
         return "says ground truth but names no record (write: ground truth tuning #12)"
-    held = [p for p in positions if parts.get(p) == "held-out"]
+    held = [p for p in positions if parts.get(p) == HELD_OUT]
     if held:
         return ("comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
                 + ", which must not shape the schema (name only tuning records, or delete the entry)")
@@ -375,7 +376,7 @@ def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patt
     predicate's patterns, [(subject class, object class)], go on the line
     under it, then the source, if any, on a "source:" line. kind is "entity
     class" or "predicate"."""
-    key = {"entity class": "entity_classes", "predicate": "predicates"}[kind]
+    key = KIND_KEYS[kind]
     name, definition, source = str(name).strip(), " ".join(str(definition).split()), " ".join(str(source).split())
     patterns = [(str(s).strip(), str(o).strip()) for s, o in patterns] if key == "predicates" else []
     if not component_class_key(name) or any(c.isspace() for c in name) or name.startswith("#") or ";" in name or "->" in name:
@@ -412,7 +413,6 @@ def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patt
 # read back first, and must read as exactly the expected schema (patterns
 # compared as a set: a merge can make two patterns one).
 
-KIND_KEYS = {"entity class": "entity_classes", "predicate": "predicates"}
 
 
 def _file_lines(path) -> tuple:
