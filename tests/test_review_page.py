@@ -564,7 +564,7 @@ class SampleView(unittest.TestCase):
     def test_many_rows(self):
         out = self.run_with(many_rows(40))
         self.assertEqual(out["first"], 30)
-        self.assertIn("30 rows chosen at random from the 40. If you have time, check these; the button below shows all 40.",
+        self.assertIn("30 rows chosen at random from the 40; the button below shows all 40.",
                       out["text"])
         self.assertEqual(out["button"], "Show all 40 rows")
         self.assertEqual(out["all"], 40)
@@ -574,8 +574,7 @@ class SampleView(unittest.TestCase):
 
     def test_unchecked_rows(self):
         out = self.run_with(many_rows(40, unchecked=5))
-        self.assertIn("30 rows chosen at random from the 35 checked rows. If you have time, check these; the button "
-                      "below shows all 40.", out["text"])
+        self.assertIn("30 rows chosen at random from the 35 checked rows; the button below shows all 40.", out["text"])
 
     def test_few_rows(self):
         out = self.run_with(many_rows(30))
@@ -965,22 +964,23 @@ class QuestionsView(unittest.TestCase):
         self.assertEqual(self.out["withClosed"], ["Q1", "Q2", "Q3"])
         self.assertEqual(self.out["low"], ["Q2", "Q3"])
         self.assertEqual((self.out["one"], self.out["next"]), (["Q1"], ["Q2"]))
-        for words in ("An example", "Each file holds 5 minutes of", "My current reading", "Option 2: A closed list",
-                      "The choices I see"):
+        for words in ("An example", "Each file holds 5 minutes of", "Our current reading", "Option 2: A closed list",
+                      "The choices we see"):
             self.assertIn(words, self.out["top"])
-        for words in ("pool position", TUNING, "A new exception to rule 1", "The example is the record at pool position 0",
-                      "What each option would change", "My notes"):
-            self.assertNotIn(words, self.out["top"])                         # the expert's part: none of my bookkeeping
+        for words in (TUNING, "A new exception to rule 1", "The example’s record id: " + TUNING,
+                      "What each option would change", "Our notes"):
+            self.assertNotIn(words, self.out["top"])                         # the expert's part: none of our bookkeeping
             self.assertIn(words, self.out["text"])                           # all of it at the bottom, folded
+        self.assertNotIn("Pool position 0", self.out["text"])               # the page names records by title, never by pool position
         self.assertEqual((self.out["forus"], self.out["forusOpen"], self.out["last"]),
-                         ("The answer to this question impacts: my bookkeeping, not needed to answer", False,
+                         ("The answer to this question impacts: our bookkeeping, not needed to answer", False,
                           "DETAILS.forus"))
         self.assertIn("1 record, 1 classed triple, 1 row of the translation table", self.out["affects"])
 
     def test_terms_linked_once(self):
         terms = self.out["terms"]
         self.assertEqual(len(terms), len(set(terms)))
-        for t in ("record", "ground truth schema", "ground truth candidates pool", "tuning part", "classed triple"):
+        for t in ("record", "ground truth schema", "ground truth candidates pool", "classed triple"):
             self.assertIn(t, terms)
         self.assertEqual((self.out["afterClick"], self.out["here"]), ("terms", "term-" + terms[0].replace(" ", "-")))
         self.assertIn("5 minutes of swath data", self.out["marked"])

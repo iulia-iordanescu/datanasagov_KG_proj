@@ -8,111 +8,213 @@
 <title>Schema review ({{VERSION}})</title>
 <link rel="icon" href="data:,">
 <!-- The annotation tool's look, copied from helpers/annotator/page.html when this page was made by
-     helpers/review_page.py; its typefaces (Libre Franklin, JetBrains Mono: SIL Open Font License) are inside. -->
+     helpers/review_page.py (its typefaces, Libre Franklin and JetBrains Mono, SIL Open Font License, are inside),
+     then this page's own palette and typefaces, the demo deck's: Archivo (The Archivo Project Authors) and Atkinson
+     Hyperlegible (Braille Institute of America), SIL Open Font License, from helpers/review_page_fonts/. -->
 <style>
 {{ANNOTATOR_STYLES}}
 </style>
 <style>
-  /* this page's own additions, in the same palette */
-  main.single { display: block; max-width: 1100px; margin: 0 auto; padding: 16px; }
+{{PAGE_FONTS}}
+</style>
+<style>
+  /* this page's own additions. The palette and typefaces are the demo deck's, so the page and the slides read as one
+     set: deep teal, teal, gold and indigo on a light page; Archivo for headings, Atkinson Hyperlegible for the text.
+     Every text colour on its background passes WCAG AA (4.5:1); gold and the deck's teal tint carry no small text. */
+  :root {
+    --teal: #0E7C86; --teal-ink: #0B5F67; --teal-deep: #0B3C49; --teal-bg: #DDEFF1;
+    --gold: #F2C14E; --gold-deep: #C99A1E; --gold-ink: #7A5C0E; --gold-bg: #FFF4D6;
+    --indigo: #5B63A8; --indigo-deep: #3F4790; --indigo-bg: #E6E8F5; --grey-bg: #EEF1F4;
+    --bg: #F7F9FB; --panel: #ffffff; --paper: #ffffff; --tint: #F1F5F8; --line: #D5DEE4;
+    --ink: #13252F; --muted: #4A5D68; --label: #4A5D68; --heading: #0B3C49;
+    --navy: var(--teal-ink); --navy-bg: var(--teal-bg); --sky: var(--teal); --sky-bg: var(--teal-bg);
+    --accent: var(--teal); --accent-bg: var(--teal-bg); --soft: #FBE3A0; --strong: #F2C14E;
+    --bar: var(--teal-deep); --bar-ink: #ffffff; --bar-soft: rgba(255, 255, 255, 0.16);
+    --button: var(--teal); --button-ink: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --teal: #5FC4CC; --teal-ink: #8FD8DE; --teal-bg: #133840;
+      --gold-ink: #F2C14E; --gold-bg: #3A3115; --indigo-deep: #A9AFE6; --indigo-bg: #262A48; --grey-bg: #1D3340;
+      --bg: #0D1B22; --panel: #13252F; --paper: #13252F; --tint: #17303B; --line: #2A4350;
+      --ink: #E6EEF2; --muted: #A9BAC4; --label: #C2D0D8; --heading: #E6EEF2; --soft: #5A4A17; --strong: #7A6400;
+      --button: #5FC4CC; --button-ink: #0D1B22;
+    }
+  }
+  body { font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; font-size: 16px; background: var(--bg); color: var(--ink); }
+  h1, h2, h3, h4, .qheading, .groupname, header nav.tabs button.tab, .ask .num, .ask .asklabel, .mapname, .maptab {
+    font-family: Archivo, "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; }
+  h2, h3 { color: var(--heading); }
+  a { color: var(--teal); }
+  button.primary, header #status button.primary { background: var(--button); border-color: var(--button); color: var(--button-ink); font-weight: 700; }
+  button.primary:hover { background: var(--button); filter: brightness(1.08); }
+  main.single { display: block; max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+  section.card { border-color: var(--line); border-radius: 14px; padding: 20px 24px; margin-bottom: 18px; }
+  @media (max-width: 600px) { section.card { padding: 16px; } main.single { padding: 14px 12px 32px; } }
+  /* the header: the deck's deep teal band, a gold rule under it */
+  header { background: var(--teal-deep); border-bottom: 4px solid var(--gold); }
+  @media (prefers-color-scheme: dark) { header { border-bottom-color: var(--gold); } }
+  header h1 button { color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: 0; }
   /* the version line: one short, calm line; the commit, page version and fingerprints open under "details" */
-  #version { margin: 0; padding: 7px 24px; border-bottom: 1px solid var(--line); background: var(--sky-bg); color: var(--label);
-             font-size: 13px; line-height: 1.5; }
+  #version { margin: 0; padding: 7px 24px; border-bottom: 1px solid var(--line); background: var(--panel); color: var(--muted);
+             font-size: 13.5px; line-height: 1.5; }
   #version summary { list-style: none; cursor: pointer; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
   #version summary::-webkit-details-marker { display: none; }
-  #version summary .more { color: var(--navy); font-weight: 600; font-size: 12.5px; }
+  #version summary .more { color: var(--teal-ink); font-weight: 700; font-size: 13px; }
   #version summary .more::after { content: " ▾"; }
   #version details[open] summary .more::after { content: " ▴"; }
   #version summary:hover .more { text-decoration: underline; text-underline-offset: 3px; }
   #version .full { margin: 6px 0 2px; max-width: 110ch; color: var(--ink); }
-  #version strong { color: var(--navy); }
-  #version .files { color: var(--label); overflow-wrap: anywhere; }
-  /* the view bar: room around each tab, the current one plainly filled, wrapping cleanly on narrow screens */
+  #version strong { color: var(--heading); }
+  #version .files { color: var(--muted); overflow-wrap: anywhere; }
+  /* the view bar: the asks' numbers in gold; the current view plainly filled; wrapping cleanly on narrow screens */
   header .topbar { padding: 12px 24px; row-gap: 10px; }
   header nav.tabs { flex: 0 1 auto; flex-wrap: wrap; gap: 6px; }
-  header nav.tabs button.tab { background: transparent; border: 1px solid var(--bar-soft); color: var(--bar-ink);
-                               padding: 7px 18px; font-weight: 500; }
-  header nav.tabs button.tab:hover { background: var(--bar-soft); border-color: var(--bar-soft); }
+  header nav.tabs button.tab { background: transparent; border: 1px solid rgba(255, 255, 255, 0.28); color: #ffffff;
+                               padding: 6px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+  header nav.tabs button.tab:hover { background: var(--bar-soft); border-color: rgba(255, 255, 255, 0.5); }
   header nav.tabs button.tab.current, header nav.tabs button.tab.current:hover {
-    background: var(--bar-ink); border-color: var(--bar-ink); color: #1f3a5f; font-weight: 600; }
-  header #status { flex-wrap: wrap; row-gap: 8px; }
+    background: #ffffff; border-color: #ffffff; color: #0B3C49; }
+  /* every tab is bold, current or not, so the tool's width-keeping copy of the label isn't needed (in a flex tab it would take room) */
+  header nav.tabs button.tab[data-label]::after { display: none; }
+  header nav.tabs .tabnum { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px;
+                            border-radius: 50%; background: var(--gold); color: #13252F; font-size: 12.5px; font-weight: 800; }
+  header #status { flex-wrap: wrap; row-gap: 8px; gap: 10px; color: #ffffff; opacity: 1; font-size: 14px; }
+  header #status button.primary { background: var(--gold); border-color: var(--gold); color: #13252F; }
+  header #status button:not(.primary) { background: transparent; color: #ffffff; border-color: rgba(255, 255, 255, 0.45); }
+  header #status button:not(.primary):hover { background: var(--bar-soft); }
+  header #status .counter { white-space: nowrap; }
   @media (max-width: 900px) {
     header .topbar { padding: 10px 16px; }
     header h1 { margin-right: 8px; padding-right: 0; border-right: 0; }
     #version { padding: 7px 16px; }
+    header #status .counter { white-space: normal; }
   }
-  header #status { gap: 10px; }
-  header #status button.primary { background: var(--bar-ink); color: #1f3a5f; border-color: var(--bar-ink); }
-  header #status .counter { white-space: nowrap; }
-  .commentbox { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
-  .commentbox label { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-weight: 600; color: var(--label); }
-  .commentbox textarea { width: 100%; min-height: 2.6em; font-size: 14px; font-weight: 400; resize: vertical; line-height: 1.4; }
-  .commentbox.has textarea { border-color: var(--sky); background: var(--sky-bg); }
-  .commentbox .hint { margin-top: 4px; }
-  .mapbox.commented { border-left-color: var(--sky); }
-  .entryhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
-  .entryhead .mapname { flex: 0 1 auto; }
-  .patline { font-size: 13px; color: var(--label); margin-top: 4px; overflow-wrap: break-word; }
-  .patline .pat { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
-  .home h2 { font-size: 22px; }
-  .home h3 { color: var(--navy); font-size: 16px; margin: 18px 0 6px; }
-  .home p, .home li { max-width: 78ch; line-height: 1.6; }
-  .home ul, .home ol { padding-left: 22px; }
-  .namefield { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+  /* the start view */
+  .home .lead { font-size: 17px; line-height: 1.65; max-width: 72ch; margin: 6px 0 4px; }
+  .home h2 { font-size: 26px; margin-bottom: 6px; }
+  .asks { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 0 0 18px; }
+  .ask { --c: var(--teal); --cbg: var(--teal-bg); --cink: var(--teal-ink);
+         background: var(--panel); border: 1px solid var(--line); border-top: 6px solid var(--c); border-radius: 14px;
+         padding: 16px 20px 18px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(11, 60, 73, 0.07); }
+  .ask.a2 { --c: var(--gold); --cbg: var(--gold-bg); --cink: var(--gold-ink); }
+  .ask.a3 { --c: var(--indigo); --cbg: var(--indigo-bg); --cink: var(--indigo-deep); }
+  .ask .askhead { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .ask .num { font-size: 40px; line-height: 1; font-weight: 800; color: var(--cink); background: var(--cbg);
+              border-radius: 12px; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .ask.a2 .num { background: var(--gold); color: #13252F; }
+  .ask .asklabel { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cink); }
+  .ask h3 { font-size: 20px; margin: 2px 0 0; line-height: 1.25; }
+  .ask h3 .opt { font-weight: 500; font-size: 15px; color: var(--muted); }
+  .ask p { margin: 4px 0 8px; line-height: 1.6; flex: 1; }
+  .ask .time { font-size: 14px; color: var(--muted); margin: 0 0 12px; flex: none; }
+  .ask button { align-self: flex-start; background: var(--cbg); border: 1px solid var(--c); color: var(--cink); font-weight: 700; padding: 8px 16px; }
+  .ask button:hover { background: var(--cbg); filter: brightness(0.97); border-color: var(--cink); }
+  .sendbox { border-left: 6px solid var(--teal); }
+  section.card.sendbox > h3 { font-size: 19px; margin: 0 0 6px; color: var(--heading); }
+  .sendbox ol { padding-left: 22px; margin: 6px 0 10px; max-width: 78ch; line-height: 1.65; }
+  .namefield { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 8px; font-weight: 700; }
   .namefield input { width: min(320px, 100%); }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
-  .terms td.term { white-space: nowrap; font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  /* each view's opening card: its ask's colour on top, what you see, what to look for, then folded extras */
+  .intro { --c: var(--teal); --cbg: var(--teal-bg); --cink: var(--teal-ink); border-top: 6px solid var(--c) !important; }
+  .intro.a2 { --c: var(--gold); --cbg: var(--gold-bg); --cink: var(--gold-ink); }
+  .intro.a3 { --c: var(--indigo); --cbg: var(--indigo-bg); --cink: var(--indigo-deep); }
+  .intro.plain { --c: var(--line); }
+  .intro .askbadge { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+                     color: var(--cink); background: var(--cbg); border-radius: 999px; padding: 2px 11px; margin-bottom: 6px; }
+  .intro h2 { font-size: 24px; margin: 0 0 6px; }
+  .intro p, .intro li { max-width: 78ch; line-height: 1.65; }
+  section.card.intro > h3 { font-size: 17px; margin: 18px 0 4px; color: var(--heading); }
+  .intro ul { padding-left: 22px; margin: 4px 0; }
+  .intro li { margin: 3px 0; }
+  details.fold { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  details.fold > summary { cursor: pointer; font-weight: 700; color: var(--teal-ink); }
+  details.fold > summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+  details.fold p, details.fold li { max-width: 78ch; line-height: 1.6; }
+  details.fold ul { padding-left: 22px; }
+  details.fold li { margin: 6px 0; }
+  dl.words { margin: 8px 0 4px; display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; max-width: 90ch; }
+  dl.words dt { font-weight: 700; }
+  dl.words dd { margin: 0; line-height: 1.55; }
+  @media (max-width: 600px) { dl.words { grid-template-columns: 1fr; gap: 2px; } dl.words dd { margin-bottom: 8px; } }
+  /* pills: an entity class in teal, a predicate in gold, as in the deck's triples */
+  .kind.ec, .triple .cls { background: var(--teal-bg); color: var(--teal-ink); border: 0; border-radius: 999px; padding: 1px 9px; }
+  .kind.pr, .triple .pred { background: var(--gold-bg); color: var(--gold-ink); border: 0; border-radius: 999px; padding: 1px 9px; font-weight: 700; }
+  .commentbox { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .commentbox label { display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; font-weight: 700; color: var(--label); }
+  .commentbox textarea { width: 100%; min-height: 2.6em; font-size: 15px; font-weight: 400; resize: vertical; line-height: 1.45; }
+  .commentbox.has textarea { border-color: var(--teal); background: var(--teal-bg); }
+  .commentbox .hint { margin-top: 4px; }
+  .mapbox { border-radius: 12px; }
+  .mapbox.commented { border-left-color: var(--teal); }
+  .entryhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .entryhead .mapname { flex: 0 1 auto; font-size: 16px; }
+  .mapbox .mapdef { font-size: 14.5px; color: var(--ink); }
+  .patline { font-size: 14px; color: var(--label); margin-top: 4px; overflow-wrap: break-word; }
+  .patline .pat { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 13px; }
+  .mapfilters select, .mapfilters input { max-width: 100%; }
+  @media (max-width: 600px) { .mapname { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; } }
+  .maptab.current { background: var(--teal-ink); border-color: var(--teal-ink); color: #ffffff; }
+  @media (prefers-color-scheme: dark) { .maptab.current { color: #0D1B22; } }
+  .terms td.term { white-space: nowrap; font-weight: 700; }
   .terms td { line-height: 1.5; }
   .notes p { margin: 0 0 4px; }
   .gone li { margin: 6px 0; }
   /* the Questions view: one calm card per question. At the top, what the expert needs to answer, in plain sections
-     with room between them; at the bottom, folded and quiet, my bookkeeping (not needed to answer). */
-  .mapbox.question { padding: 18px 24px 14px; margin-bottom: 18px; }
-  .question h3.qheading { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 0 0 2px; color: var(--ink); }
-  .question h3.qheading .qid { color: var(--navy); font-weight: 700; margin-right: 6px; }
-  .question .qmeta { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
-  .question h4 { color: var(--navy); font-size: 14.5px; font-weight: 600; margin: 22px 0 6px; }
+     with room between them; at the bottom, folded and quiet, our bookkeeping (not needed to answer). */
+  .mapbox.question { padding: 20px 26px 16px; margin-bottom: 18px; }
+  .mapbox.question.high { border-left: 6px solid var(--gold); }
+  @media (max-width: 600px) { .mapbox.question { padding: 16px; } }
+  .question h3.qheading { font-size: 19px; font-weight: 700; line-height: 1.4; margin: 0 0 4px; color: var(--heading); }
+  .question h3.qheading .qid { color: var(--teal-ink); font-weight: 800; margin-right: 8px; }
+  .question .qmeta { color: var(--muted); font-size: 13.5px; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .question .qmeta .pill { margin-left: 0; }
+  .pill.prio-high { background: var(--gold); color: #13252F; }
+  .pill.prio-medium { background: var(--teal-bg); color: var(--teal-ink); }
+  .pill.prio-low { background: var(--grey-bg); color: var(--muted); }
+  .question h4 { color: var(--heading); font-size: 15.5px; font-weight: 700; margin: 22px 0 6px; }
   .question p, .question li { max-width: 78ch; line-height: 1.65; }
   .question ul { padding-left: 22px; margin: 6px 0; }
   .question li { margin: 3px 0; }
   .question .prose table { margin: 8px 0 12px; max-width: 78ch; }
   .question .field { margin: 10px 0; }
-  .question .field > .label { display: block; font-size: 13px; font-weight: 600; color: var(--label); margin-bottom: 2px; }
-  .question .quote { margin: 2px 0 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--line);
+  .question .field > .label { display: block; font-size: 13.5px; font-weight: 700; color: var(--label); margin-bottom: 2px; }
+  .question .quote { margin: 2px 0 0; padding: 4px 0 4px 14px; border-left: 3px solid var(--teal-bg);
                      line-height: 1.65; overflow-wrap: anywhere; max-width: 78ch; }
   .question .quote p { margin: 0 0 6px; }
   .question .quote p:last-child { margin-bottom: 0; }
-  .question mark { background: var(--soft); color: inherit; padding: 0 2px; border-radius: 2px; }
-  .question .triple { font-size: 14px; margin: 4px 0; overflow-wrap: anywhere; }
-  .question .triple .inst { font-weight: 600; }
-  .question .triple .cls, .question .triple .pred { font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 12.5px; }
-  .question .triple .cls { color: var(--muted); }
-  .question .option { margin: 12px 0; }
-  .question .option .otitle { font-weight: 600; margin: 0 0 2px; }
+  .question mark { background: var(--soft); color: inherit; padding: 0 2px; border-radius: 3px; }
+  .question .triple { font-size: 15px; margin: 6px 0; overflow-wrap: anywhere; line-height: 1.9; }
+  .question .triple .inst { font-weight: 700; }
+  .question .triple .cls, .question .triple .pred { font-size: 13px; }
+  .question .option { margin: 12px 0; padding: 8px 14px; background: var(--tint); border-radius: 10px; }
+  .question .option .otitle { font-weight: 700; margin: 0 0 2px; }
   .question .option .prose p { margin: 2px 0 6px; }
   .question .commentbox { margin-top: 20px; padding-top: 12px; }
-  .question details.forus { margin: 16px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--label); font-size: 13.5px; }
-  .question details.forus summary { cursor: pointer; font-weight: 600; color: var(--label); }
+  .question details.forus { margin: 16px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--label); font-size: 14px; }
+  .question details.forus summary { cursor: pointer; font-weight: 700; color: var(--label); }
   .question details.forus summary .meta { font-weight: 400; }
-  .question details.forus h5 { font-size: 13px; color: var(--label); margin: 14px 0 4px; }
+  .question details.forus h5 { font-size: 13.5px; color: var(--label); margin: 14px 0 4px; }
   .question details.forus p, .question details.forus li { line-height: 1.55; }
   .question details.forus ul { margin: 4px 0; }
   a.term, a.term:visited { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
-  a.term:hover { color: var(--navy); text-decoration-style: solid; }
-  .groupname { color: var(--navy); font-size: 16px; margin: 14px 0 4px; }
-  .terms tr.here td { background: var(--sky-bg) !important; }
+  a.term:hover { color: var(--teal-ink); text-decoration-style: solid; }
+  .groupname { color: var(--heading); font-size: 17px; margin: 18px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .groupname::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--c, var(--line)); flex: none; }
+  .groupname.high { --c: var(--gold); } .groupname.medium { --c: var(--teal); } .groupname.low { --c: #9AAAB4; }
+  .terms tr.here td { background: var(--teal-bg) !important; }
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <h1><button id="homebutton" title="How to read this page">Schema review</button></h1>
+    <h1><button id="homebutton" title="The start of the page">Schema review</button></h1>
     <nav class="tabs" aria-label="Views">
-      <button class="tab" id="tab-home" data-label="How to read this">How to read this</button>
-      <button class="tab" id="tab-questions" data-label="Questions">Questions</button>
-      <button class="tab" id="tab-schema" data-label="Ground truth schema">Ground truth schema</button>
-      <button class="tab" id="tab-mapping" data-label="Translation table">Translation table</button>
-      <button class="tab" id="tab-terms" data-label="Terms">Terms</button>
+      <button class="tab" id="tab-home" data-label="Start">Start</button>
+      <button class="tab" id="tab-schema" data-label="1 Schema" title="Ask 1: review our schema"><span class="tabnum" aria-hidden="true">1</span>Schema</button>
+      <button class="tab" id="tab-questions" data-label="2 Questions" title="Ask 2: answer our questions"><span class="tabnum" aria-hidden="true">2</span>Questions</button>
+      <button class="tab" id="tab-mapping" data-label="3 Translation table" title="Ask 3: check part of the translation table"><span class="tabnum" aria-hidden="true">3</span>Translation table</button>
     </nav>
     <span id="status"></span>
   </div>
@@ -303,7 +405,7 @@ function emailParts(sent) {
   return n > MAX_EMAILS ? { parts: [], needed: n }
     : { parts: chunks.map((lines, i) => ({ subject: subject(i + 1, n), url: link(i + 1, n, lines) })), needed: n };
 }
-let emailing = null;                         // {parts, opened: Set, needed}: the emails to send, shown in How to read this
+let emailing = null;                         // {parts, opened: Set, needed}: the emails to send, shown on the start view
 function openMail(url) { const a = el("a", { href: url }); document.body.append(a); a.click(); a.remove(); }
 function email() {
   if (!reviewer.trim()) {
@@ -501,13 +603,53 @@ function check(st, key, label, title) {
 }
 const matches = (q, ...texts) => !q.trim() || texts.some((t) => arrows(t || "").toLowerCase().includes(arrows(q.trim()).toLowerCase()));
 
+// ---------------------------------------------------------------- what every view opens with
+// The words the page uses, in plain words, folded: on the start view and in each view's opening card. Each agrees with
+// docs/terminology.md (the Terms view, at its end, shows that file's own definitions).
+function wordsBox() {
+  const words = [
+    ["Record", "One entry of the data.nasa.gov catalog: its metadata, such as its title and its notes (the description)."],
+    ["Entity class", "A type of thing a fact can be about, e.g. Instrument or Spacecraft."],
+    ["Predicate", "A type of relationship between two things, e.g. ABOARD."],
+    ["Triple instance", "One fact, written in three pieces: a subject, a predicate and an object, e.g. “MODIS” – “is aboard” – “Aqua”."],
+    ["Classed triple", "The same fact with an entity class for its subject and its object, and a predicate of a schema: " +
+      "“MODIS” (Instrument) ABOARD “Aqua” (Spacecraft). The facts on this page are written this way."],
+    ["Ground truth", "The classed triples of a sample of records, written down and checked by a person: the answers we " +
+      "measure the model against."],
+    ["Schema", "A list of entity classes and predicates, each with a definition, and the pairs of entity classes each predicate " +
+      "has joined (its patterns). Ours is the ground truth schema: the one the ground truth uses, which we write while " +
+      "checking records by hand. The induced schema is the one the model learned from other records of the catalog; the model " +
+      "writes its facts with it (plus a few entries we added: together, the current schema)."],
+    ["Translation table", "For each entity class and predicate of the model's schema (current or past), the one of our ground " +
+      "truth schema that means the same, or (none). It lets us compare the model's facts with ours. Each line of it is a row."]];
+  return el("details", { class: "fold words nolink" }, el("summary", {}, "Words used on this page"),
+    el("dl", { class: "words" }, words.map(([w, d]) => [el("dt", {}, w), el("dd", {}, d)])),
+    el("p", { class: "meta" }, "Every term of our project, as we define it: ",
+       el("a", { href: "#terms", onclick: (ev) => { ev.preventDefault(); show("terms"); } }, "all terms"), "."));
+}
+// A view's opening card: which ask it answers, what you see and what we ask (2 to 4 sentences), what to look for, then
+// folded: more about the view, and the words used on the page.
+function viewIntro(ask, title, intro, lookFor, more, extra) {
+  return el("section", { class: `card intro a${ask}` },
+    el("span", { class: "askbadge" }, `Ask ${ask}`), el("h2", {}, title),
+    intro.map((t) => el("p", {}, t)), extra || null,
+    el("h3", {}, "Things to look for"), el("ul", {}, lookFor.map((t) => el("li", {}, t))),
+    el("details", { class: "fold more nolink" }, el("summary", {}, "More about this view"),
+       el("ul", {}, more.filter(Boolean).map((t) => el("li", {}, t)))),
+    wordsBox());
+}
+const CHANGED_NOTE = "A ⚑ “changed since you last looked” marks an entry that reads differently from the copy of this " +
+  "page you opened before in this browser (hover over it for the old text); “new since you last looked”, one that copy lacked.";
+const LIST_NOTE = "The search box and the checkboxes narrow the list; “Show one at a time” shows one entry at a time " +
+  "(the ↑ and ↓ keys go through them when you are not typing).";
+
 // ---------------------------------------------------------------- the ground truth schema
 function schemaBox(e) {
   const what = e.kind === "predicate" ? "predicate" : "entity class";
   return el("section", { class: "mapbox" + (has(e) ? " commented" : "") },
     el("div", { class: "entryhead" },
       el("div", { class: "mapname", title: `${e.entry} (ground truth schema ${what})` }, e.entry),
-      el("span", { class: "kind" }, what), changedPill(e)),
+      el("span", { class: "kind " + (e.kind === "predicate" ? "pr" : "ec") }, what), changedPill(e)),
     el("div", { class: "mapdef" + (e.definition ? "" : " empty") }, e.definition ? arrows(e.definition) : "No definition yet."),
     e.kind === "predicate" ? el("div", { class: "patline" }, "Patterns listed: ",
       e.patterns.length ? e.patterns.map(([s, o], i) => [i ? "; " : "", el("span", { class: "pat" }, `${s} → ${o}`)])
@@ -530,9 +672,22 @@ function drawSchema() {
   const notes = D.schema.notes.length ? el("section", { class: "card notes" }, el("h3", {}, "Notes in the file"),
     el("p", { class: "meta" }, arrows(D.schema.notes.join(" ")))) : null;
   return [
-    el("section", { class: "card" }, el("h2", {}, "Ground truth schema"),
-      el("p", { class: "meta" }, "annotations/ground_truth_schema.txt: the entity classes and predicates the ground truth may use, " +
-        "each with its definition; under a predicate, its patterns (subject class → object class) and any “only:” line that pins it.")),
+    viewIntro(1, "Our schema",
+      [`The ${counts["entity class"].all} entity classes and ${counts.predicate.all} predicates of our ground truth schema: the ` +
+       "types of things and relationships our hand-checked facts may use, each with a one-line definition. The two tabs " +
+       "below switch between entity classes and predicates. We ask: are they right for NASA data, and what is missing?"],
+      ["Is each definition right, and clear to someone in your field?",
+       "Should two entries be one, or one entry be split into two?",
+       "Is a type of thing or relationship that NASA records often state missing?",
+       "Does a predicate join entity classes it shouldn’t, or is it limited (“only:”) where it shouldn’t be?"],
+      ["Under each predicate, “Patterns listed” are the pairs of entity classes it has joined, read subject → object: " +
+       "Instrument → Spacecraft under ABOARD says that an instrument is aboard a spacecraft. Our facts may use more patterns " +
+       "than the list shows: a predicate may join whatever entity classes its meaning fits.",
+       "An “only:” line limits a predicate: it may join only the entity classes listed there (“any”: any entity class).",
+       "A “source:” line says which records first suggested the entry: “ground truth tuning #2” is the record numbered 2 in " +
+       "our list of records checked by hand.",
+       "The lines of explanation at the top of our file are under “Notes in the file”.",
+       LIST_NOTE, CHANGED_NOTE]),
     notes,
     el("section", { class: "card mapcard" }, kindTabs(st, counts),
       el("div", { class: "mapfilters" },
@@ -546,7 +701,7 @@ function drawSchema() {
 }
 
 // ---------------------------------------------------------------- the translation table
-const CHECKED = { "yes": ["ok", "✓ Checked by me"],
+const CHECKED = { "yes": ["ok", "✓ Checked by us"],
                   "same component class": ["ok", "✓ Accepted automatically: spelled the same in both schemas"],
                   "no": ["flag", "⚑ Not checked yet"] };
 function exampleLine(r) {
@@ -588,7 +743,7 @@ function sampleNote(st, nRows) {
   if (!SAMPLE) return null;
   const from = D.mapping.checked === nRows ? `the ${nRows}` : `the ${D.mapping.checked} checked rows`;
   return [el("p", {}, st.every ? `All ${nRows} rows. The button below shows only the ${SAMPLE.size} chosen at random from ${from}.`
-                               : `${SAMPLE.size} rows chosen at random from ${from}. If you have time, check these; the button below shows all ${nRows}.`),
+                               : `${SAMPLE.size} rows chosen at random from ${from}; the button below shows all ${nRows}.`),
           el("div", { class: "actions" },
             el("button", { id: "sampleswitch", onclick: () => { st.every = !st.every; redraw(); } },
                st.every ? `Show only the ${SAMPLE.size} chosen at random` : `Show all ${nRows} rows`))];
@@ -610,9 +765,27 @@ function drawMapping() {
       .map(([v, t]) => el("option", { value: v, selected: st.counterpart === v }, t)));
   const { at, bar } = itemsOneAtATime("mapping", shown.map((r) => r.id), "Row");
   return [
-    el("section", { class: "card" }, el("h2", {}, "Translation table"),
-      el("p", { class: "meta" }, "annotations/component_class_mapping.csv: each box is one row, an entity class or predicate of the " +
-        "current schema (or of a past one) → what it means in the ground truth schema, each with its definition as the row stores it."),
+    viewIntro(3, "The translation table",
+      ["The model doesn’t use our schema: it writes its facts with the induced schema, learned from other records. To compare " +
+       "its facts with ours, each of its entity classes and predicates is translated into the one of ours that means the same. " +
+       "Each box is one row: the model’s entity class or predicate on the left, ours on the right, each with its definition. " +
+       "We ask: does each pair mean the same?"],
+      ["Does the right side mean the same as the left, for NASA data?",
+       "A row that translates to (none): is there really nothing in our schema that means the same?",
+       "A predicate marked “Swap subject and object”: does the example under it read right after the swap?"],
+      ["The left side is an entity class or predicate of the model’s current schema (the induced schema plus a few entries we " +
+       "added), or of a past schema, one an earlier run of the model used: one table serves them all. Its definition is the " +
+       "one that schema gave it.",
+       "(none) on the right means nothing in our schema means the same.",
+       "Under a predicate, a made-up fact shows the row at work, before and after translation: A and B stand for any two things.",
+       "“Swap subject and object” means our predicate states the relationship the other way round: “A CARRIES B” is “B ABOARD A”.",
+       "The last pill says how the row was checked: “Checked by us”, “Accepted automatically: spelled the same in both " +
+       "schemas”, or “Not checked yet”. A ⚑ pill “its ground truth schema definition changed” means our definition changed " +
+       "after the row was checked.",
+       SAMPLE ? "The rows chosen at random are the same for every reviewer. A comment stays with its row whether all rows are " +
+                "shown or only those." : null,
+       "The list next to the search box shows only the rows that translate to an entry of ours, or only those that translate to (none).",
+       LIST_NOTE, CHANGED_NOTE],
       sampleNote(st, rows.length)),
     el("section", { class: "card mapcard" }, kindTabs(st, counts),
       el("div", { class: "mapfilters" },
@@ -722,8 +895,8 @@ const PRIORITY = { high: ["flag", "High priority"], medium: ["todo", "Medium pri
 const QS = D.statuses;
 const STATUS = { [QS.OPEN]: ["todo", "Open"], [QS.ANSWERED]: ["ok", "Answered"], [QS.WITHDRAWN]: ["todo", "Withdrawn"] };
 const QUESTION_KIND = D.question_kinds;
-// The bottom of a question, folded and quiet: my bookkeeping, not needed to answer. What it is about, my notes, what
-// each option would change, everything the answer may change (its Affects: records by pool position, title and id,
+// The bottom of a question, folded and quiet: our bookkeeping, not needed to answer. What it is about, our notes, what
+// each option would change, everything the answer may change (its Affects: records by title and id,
 // classed triples, rows, entries, rules, pipeline methods), the pipeline's words it quotes, and the example's ids.
 function impactsBox(q) {
   const a = q.affects, n = (x, one, many) => `${x.length} ${x.length === 1 ? one : many}`;
@@ -737,44 +910,45 @@ function impactsBox(q) {
   for (const t of a.triples) (byPos[t.position] = byPos[t.position] || []).push(t);
   const ex = q.records[0];
   return el("details", { class: "forus" },
-    el("summary", {}, "The answer to this question impacts:", el("span", { class: "meta" }, " my bookkeeping, not needed to answer")),
+    el("summary", {}, "The answer to this question impacts:", el("span", { class: "meta" }, " our bookkeeping, not needed to answer")),
     el("p", {}, `${q.entry} is about ${q.in_short} (a question about ${QUESTION_KIND[q.question_kind]}).`),
-    q.notes.length ? [el("h5", {}, "My notes"), prose(q.notes)] : null,
+    q.notes.length ? [el("h5", {}, "Our notes"), prose(q.notes)] : null,
     q.options.length ? [el("h5", {}, "What each option would change"), q.options.map((o) => el("div", {},
       el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose([{ ul: o.consequences }])))] : null,
     el("h5", {}, `Everything the answer may change: ${parts.join(", ")}`),
-    a.records.length ? field("Records (all tuning records)", el("ul", {}, a.records.map((r) => el("li", {},
-      `Pool position ${r.position}: “${r.title}”`, el("span", { class: "meta nolink" }, ` (id ${r.id})`),
+    a.records.length ? field("Records", el("ul", {}, a.records.map((r) => el("li", {},
+      `“${r.title}”`, el("span", { class: "meta nolink" }, ` (id ${r.id})`),
       byPos[r.position] ? el("div", {}, byPos[r.position].map((t) => [tripleLine(t),
-        t.draft ? el("span", { class: "meta" }, "my draft: this record isn't in the ground truth yet") : null])) : null)))) : null,
+        t.draft ? el("span", { class: "meta" }, "our draft: this record isn't in the ground truth yet") : null])) : null)))) : null,
     a.rows.length ? field("Rows of the translation table (current or past schema)", el("ul", {}, a.rows.map((r) => el("li", {}, `${r.kind} ${r.crt}`)))) : null,
     a.entries.length ? field("Entries of the ground truth schema", el("ul", {}, a.entries.map((e) => el("li", {}, `${e.kind} ${e.entry}`)))) : null,
     a.rules.length ? field("Rules of the annotation guidelines", el("ul", {}, a.rules.map((r) => el("li", {}, `${r.section}, rule ${r.rule}`)))) : null,
     a.methods.length ? field("Pipeline methods", el("ul", {}, a.methods.map((m) => el("li", {}, el("code", {}, m.path), `: ${m.what}`)))) : null,
     q.methods.length ? [el("h5", {}, "The pipeline's words, quoted"), q.methods.map((m) => field(m.path, quoted(m.words)))] : null,
-    ex ? el("p", { class: "nolink" }, `The example is the record at pool position ${ex["pool position"]} (id ${ex["record id"]}), a tuning record.`) : null);
+    ex ? el("p", { class: "nolink" }, `The example’s record id: ${ex["record id"]}.`) : null);
 }
 function questionBox(q) {
   const [, pl] = PRIORITY[q.priority], [, sl] = STATUS[q.status];
   const marks = (r) => r.source_texts.map((s) => s.text);
-  const card = el("section", { class: "mapbox question" + (has(q) ? " commented" : ""), id: `q-${q.entry}` },
+  const card = el("section", { class: `mapbox question ${q.priority}` + (has(q) ? " commented" : ""), id: `q-${q.entry}` },
     el("h3", { class: "qheading" }, el("span", { class: "qid nolink" }, q.entry), q.title),
-    el("div", { class: "qmeta nolink" }, pl + (q.status === QS.OPEN ? "" : ` · ${sl}`), changedPill(q)),
+    el("div", { class: "qmeta nolink" }, el("span", { class: `pill prio-${q.priority}` }, pl),
+      q.status === QS.OPEN ? null : el("span", { class: `pill ${STATUS[q.status][0]}` }, sl), changedPill(q)),
     prose(q.question),
     q.context.length ? prose(q.context) : null,
     q.records.map((r) => [el("h4", {}, "An example"),
       field("Its title", quoted(r.title, marks(r))),
       field("Its notes (the words this question is about are highlighted)", quoted(r.notes, marks(r))),
-      r.triples.length ? field(r.in_ground_truth ? "The facts I wrote down from these words" : "The facts I have written down from these words so far (a draft, not checked yet)",
+      r.triples.length ? field(r.in_ground_truth ? "The facts we wrote down from these words" : "The facts we have written down from these words so far (a draft, not checked yet)",
                                r.triples.map(tripleLine)) : null]),
     q.schema.length || q.rows.length || q.rules.length ? [el("h4", {}, "The definitions and rules this is judged by"),
       q.schema.map((e) => field(`${e.kind} ${e.entry} (ground truth schema)`, quoted(e.definition))),
       q.rows.map((r) => field(`Translation table: ${r.kind} ${r.crt} (current or past schema) → ${r.gtt === D.mapping.none ? `${D.mapping.none}: nothing in the ground truth schema` : `${r.gtt} (ground truth schema)`}` +
                               (r.swap ? ", subject and object swapped" : "") + "; the row's definition of " + r.crt + ":", quoted(r.definition))),
       q.rules.map((r) => field(`Annotation guidelines, ${r.section}, rule ${r.rule}`, quoted(r.words)))] : null,
-    q.options.length ? [el("h4", {}, "The choices I see (pick one, or tell me another)"), q.options.map((o) => el("div", { class: "option" },
+    q.options.length ? [el("h4", {}, "The choices we see (pick one, or tell us another)"), q.options.map((o) => el("div", { class: "option" },
       el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose(o.body)))] : null,
-    el("h4", {}, "My current reading"), prose(q.reading),
+    el("h4", {}, "Our current reading"), prose(q.reading),
     q.answer.length ? [el("h4", {}, "The answer"), prose(q.answer)] : null,
     commentBox(q, `Your answer or comment on ${q.entry}`),
     impactsBox(q));
@@ -796,15 +970,25 @@ function drawQuestions() {
     [["all", `Every priority (${live.length})`], ...PRIORITIES.map((p) => [p, `${PRIORITY[p][1]} (${count(p)})`])]
       .map(([v, t]) => el("option", { value: v, selected: st.priority === v }, t)));
   const groups = at === null ? PRIORITIES.map((p) => [p, shown.filter((q) => q.priority === p)]).filter(([, l]) => l.length) : null;
-  const intro = el("section", { class: "card" }, el("h2", {}, "Questions"),
-    el("p", { class: "meta" }, "What I am not sure about and would like an expert's answer to, most urgent first. Each question " +
-      "shows what you need to answer it: the question, one record as an example (its title and notes, the words concerned " +
-      "highlighted), the definitions and rules it is judged by, the choices I see, and my current reading. " +
-      "Write your answer in the box under a question; it is sent with your other comments. Under the box, folded, is my own " +
-      "bookkeeping (what the answer would change in my files); you don't need it to answer."),
+  const nHigh = count(PRIORITIES[0]);
+  const intro = viewIntro(2, "Our questions",
+    [`${live.length} question${live.length === 1 ? "" : "s"} we can’t settle alone, most urgent first: the ${nHigh} ` +
+     `${PRIORITY[PRIORITIES[0]][1].toLowerCase()} one${nHigh === 1 ? ", marked in gold, comes" : "s, marked in gold, come"} first. Each is written out ` +
+     "on its own: the question, one record as an example (its title and notes, with the words concerned highlighted), the " +
+     "definitions and rules it is judged by, the choices we see, and our current reading. Write your answer in the box under a question."],
+    ["Which choice is right, or is there another we didn’t list?",
+     "Would our current reading mislead someone in your field?",
+     "Does the question rest on something we have wrong about the data?",
+     "Short on time? The high priority questions first: answering a few already helps."],
+    ["The questions are grouped by priority. The list next to the search box shows one priority only.",
+     "A term with a dotted underline opens its definition in the list of all terms.",
+     "Under each answer box, folded, “The answer to this question impacts:” is our bookkeeping: what your answer would " +
+     "change in our files. You don’t need it to answer.",
+     "Every quote (a record’s words, a definition, a rule) is checked against its source each time this page is made.",
+     `Answered and withdrawn questions are hidden at first (${closedN} now); a checkbox shows them.`,
+     LIST_NOTE, CHANGED_NOTE],
     el("p", { class: "meta" }, PRIORITIES.map((p, i) => `${i ? " · " : ""}${PRIORITY[p][1]}: ${count(p)}`).join("") +
       (closedN && !st.closed ? ` · ${closedN} answered or withdrawn, not shown` : "")));
-  linkTerms(intro);
   return [intro,
     el("section", { class: "card mapcard" },
       el("div", { class: "mapfilters" },
@@ -815,7 +999,7 @@ function drawQuestions() {
       bar,
       !shown.length ? el("p", { class: "empty mapempty" }, all.length ? "Nothing matches the search and filters above." : "No questions yet.")
         : at !== null ? questionBox(shown[at])
-        : groups.map(([p, list]) => [el("h3", { class: "groupname" }, `${PRIORITY[p][1]} (${list.length})`), list.map(questionBox)]))];
+        : groups.map(([p, list]) => [el("h3", { class: `groupname ${p}` }, `${PRIORITY[p][1]} (${list.length})`), list.map(questionBox)]))];
 }
 
 // ---------------------------------------------------------------- terms
@@ -825,87 +1009,97 @@ function drawTerms() {
     const meaning = el("td", {}); meaning.innerHTML = arrowsHtml(t.meaning_html);           // from docs/terminology.md, escaped
     return el("tr", { id: termSlug(t.term) }, term, meaning);
   });
-  return [el("section", { class: "card" }, el("h2", {}, "Terms"),
-    el("p", { class: "meta" }, `The words this page uses, as my project's list of terms (docs/terminology.md) defines them at commit ${V.commit}.`),
+  return [el("section", { class: "card intro plain" }, el("h2", {}, "All terms"),
+    el("p", { class: "meta" }, `The words of our project, as our list of terms (docs/terminology.md) defines them at commit ${V.commit}. ` +
+      "Some name parts of the project this page doesn’t show."),
     el("table", { class: "schematable terms" }, el("thead", {}, el("tr", {}, el("th", {}, "Term"), el("th", {}, "Meaning"))),
        el("tbody", {}, rows)))];
 }
 
-// ---------------------------------------------------------------- how to read this
+// ---------------------------------------------------------------- the start view
+// A short welcome, the three asks in the demo deck's order (each: what we ask, roughly how long, a button to its view),
+// then how to send comments. How to read each view is in that view; nothing here is said again there.
 function drawHome() {
   const nameField = el("input", { id: "reviewer", type: "text", value: reviewer, placeholder: "e.g. Jane Smith", autocomplete: "name",
     oninput: (ev) => { reviewer = ev.target.value; save(KEY.name, reviewer); } });
   const picker = el("input", { type: "file", accept: ".csv,text/csv", hidden: true,
                                onchange: (ev) => { if (ev.target.files[0]) loadFile(ev.target.files[0]); ev.target.value = ""; } });
   const gone = written().filter((c) => c.topic !== "general" && !BY_ID[`${c.topic}|${c.entry}`]);
-  const nOpen = D.questions.filter((q) => q.status === QS.OPEN).length;
-  const nSchema = D.schema.entity_classes.length + " entity classes and " + D.schema.predicates.length + " predicates";
+  const open = D.questions.filter((q) => q.status === QS.OPEN);
+  const nHigh = open.filter((q) => q.priority === D.priorities[0]).length;
+  const nRows = D.mapping.rows.length;
+  const sample = SAMPLE
+    ? `${SAMPLE.size} rows chosen at random from the ${D.mapping.checked === nRows ? nRows : `${D.mapping.checked} checked`}: does ` +
+      "the model’s entity class or predicate mean the same as ours? If all " + `${SAMPLE.size} are right, at most about ` +
+      `${Math.round(100 * D.mapping.bound / D.mapping.checked)}% of the ${D.mapping.checked} are wrong ` +
+      `(${Math.round(100 * D.mapping.confidence)}% confidence).`
+    : `The ${nRows} rows: does the model’s entity class or predicate mean the same as ours?`;
+  const ask = (n, title, opt, text, time, button, target) => el("section", { class: `ask a${n}` },
+    el("div", { class: "askhead" }, el("div", { class: "num", "aria-hidden": "true" }, String(n)),
+       el("div", {}, el("div", { class: "asklabel" }, `Ask ${n}`), el("h3", {}, title, opt ? el("span", { class: "opt" }, ` ${opt}`) : null))),
+    el("p", {}, text), el("p", { class: "time" }, time),
+    el("button", { onclick: () => show(target) }, button));
   return [el("section", { class: "card home" },
-    el("h2", {}, "How to read this page"),
-    el("p", {}, "Thank you for reviewing this. My project builds a knowledge graph from the records of the data.nasa.gov catalog: " +
-      "a model reads each record's text and writes down the facts it states, each as a classed triple, e.g. “MODIS” (Instrument) " +
-      "ABOARD “Aqua” (Spacecraft). To measure how well it does, I check a sample of records by hand and write down every fact " +
-      "their texts state: the ground truth. This page shows two files that decide what those facts may say, as they were when " +
-      "the page was made (the line above says when), so that you can tell me where they are wrong, unclear, or missing something, " +
-      "and the questions I would like an expert's answer to."),
-    el("h3", {}, "Questions"),
-    el("p", {}, `${nOpen} question${nOpen === 1 ? "" : "s"} I would like an expert's answer to, most urgent first, each written out ` +
-      "whole, so it can be read on its own: one record as its example, quoted, the definitions and rules it is judged by, the " +
-      "choices I see, and my current reading. Your answer goes in the box under each one."),
-    el("h3", {}, "Ground truth schema"),
-    el("p", {}, `The ${nSchema} the ground truth may use, each with a one-line definition. An entity class is a kind of thing a ` +
-      "subject instance or object instance can be (Instrument); a predicate is a kind of relationship (ABOARD). Under a predicate " +
-      "are its patterns, the pairs of entity classes it has joined, read subject → object: Instrument → Spacecraft under ABOARD " +
-      "says that an instrument is carried on a spacecraft. The ground truth itself may use more patterns than the file lists. " +
-      "A line “only: …” pins a predicate: it may join only those entity classes (“any”: any entity class). A line " +
-      "“source: …” says where the idea for an entry came from: “ground truth tuning #2” means from the record at position 2 of " +
-      "my shuffled list of records to annotate."),
-    el("p", {}, "Worth asking: is each definition right, and clear to someone in your field? Should two entries be one, or one be two? " +
-      "Is a kind of thing or relationship that the catalog often states missing? Is a predicate pinned where it shouldn't be?"),
-    el("h3", {}, "Translation table"),
-    el("p", {}, "The model doesn't use the ground truth schema: it extracts with its own, the current schema, learned from other " +
-      "records of the catalog. To compare its facts with the ground truth, each entity class and predicate of the current schema " +
-      "(and of past ones) is translated into the one of the ground truth schema that means the same, or into (none) when none does. " +
-      "Each box is one row: on the left, the current or past schema's entity class or predicate and its definition; on the right, " +
-      "what it translates to and the ground truth schema's definition. “Swap subject and object” means the ground truth " +
-      "schema's predicate states the relationship the other way round (“A CARRIES B” is “B ABOARD A”). The last pill says " +
-      "whether I have checked the row."),
-    el("p", {}, "Worth asking: does each translation keep the meaning? Does a row that says (none) really have no counterpart?"),
-    el("h3", {}, "Your comments"),
-    el("p", {}, "Write in the box under any entry, and anything else under General comments below. Every comment is kept in this " +
-      "browser as you type, on this computer only, so you can stop and come back; the top of the page says how many you have written. " +
-      "When you're done, type your name and press Email my comments to Iulia: your email program opens a new email to me " +
-      "with your comments in it, for you to send (a long set of comments takes a few emails, numbered). If that doesn't " +
-      "work, press Download my comments, and attach the small file it saves (a CSV file) to an email to me. " +
-      "Your name and comments reach only me: I keep them on my computer, not in my project's public repository."),
-    el("p", {}, "This page is a copy: it can't change the files, and it sends nothing anywhere by itself (an email goes only when you " +
-      "press Send in your email program). When I update it, the same link shows the newer copy (or I send you a newer file): " +
-      "open it in the same browser, and your comments carry over, and entries that changed since the copy you opened before are marked " +
-      "“changed since you last looked”. In another browser or on another computer, read your comments back in from the file " +
-      "you downloaded (Load my comments from a file, below)."),
-    el("div", { class: "namefield" }, el("label", { for: "reviewer", class: "name" }, "Your name"), nameField),
-    commentBox(GENERAL, "General comments"),
-    el("div", { class: "actions" },
-      el("button", { class: "primary", onclick: email }, "Email my comments to Iulia"),
-      el("button", { onclick: download }, "Download my comments"),
-      el("button", { onclick: () => picker.click(), title: "Read back a file of comments this page saved before" },
-         "Load my comments from a file"), picker),
-    drawEmailing(),
-    !storageWorks ? el("p", { class: "problems" }, el("span", { class: "pill flag" },
-      "⚑ This browser doesn't let the page keep your comments: download them before you close it.")) : null,
-    gone.length ? el("div", { class: "gone" }, el("h3", {}, "Your comments on entries no longer on this page"),
-      el("p", { class: "meta" }, "They are still in your download, with the entry as it read when you wrote them."),
-      el("ul", {}, gone.map((c) => el("li", {}, el("strong", {}, `${c.topic} ${c.entry}`), `: ${c.text}`,
-                                          el("div", { class: "meta" }, `It read: ${arrows(c.shown)}`))))) : null)];
+    el("h2", {}, "Thank you for reviewing our work"),
+    el("p", { class: "lead" }, "We are building a knowledge graph from the records of the data.nasa.gov catalog: an AI model reads " +
+      "each record’s text and writes down the facts it states, such as “MODIS is aboard Aqua”. To measure how well it does, " +
+      "we wrote down, and checked by hand, every fact in a sample of records, and we would value your expertise on three parts of that work."),
+    wordsBox()),
+    el("div", { class: "asks" },
+      ask(1, "Review our schema", "",
+        `${D.schema.entity_classes.length} entity classes and ${D.schema.predicates.length} predicates, each with a one-line ` +
+        "definition. Are they right for NASA data? What is missing?",
+        "Roughly 30 to 45 minutes to read through.", "Open the schema", "schema"),
+      ask(2, "Answer our questions", "",
+        `${open.length} question${open.length === 1 ? "" : "s"} we can’t settle alone, each with an example record and the ` +
+        `choices we see. The ${nHigh} most urgent come first.`,
+        "Roughly 5 to 10 minutes a question; any number helps.", "Open the questions", "questions"),
+      ask(3, "Check part of the translation table", "(if you have time)", sample,
+        "Roughly 30 minutes.", "Open the translation table", "mapping")),
+    el("section", { class: "card sendbox" },
+      el("h3", {}, "How to send your comments"),
+      el("ol", {},
+        el("li", {}, "Type in the box under any entry, question or row, or under General comments below. This browser keeps " +
+          "what you type, so you can stop and come back."),
+        el("li", {}, "Type your name, and press Email my comments to Iulia: your email program opens an email with your comments in it. Press Send."),
+        el("li", {}, "If no email opens, press Download my comments, and attach the file it saves to an email to Iulia.")),
+      el("div", { class: "namefield" }, el("label", { for: "reviewer", class: "name" }, "Your name"), nameField),
+      commentBox(GENERAL, "General comments"),
+      el("div", { class: "actions" },
+        el("button", { class: "primary", onclick: email }, "Email my comments to Iulia"),
+        el("button", { onclick: download }, "Download my comments"),
+        el("button", { onclick: () => picker.click(), title: "Read back a file of comments this page saved before" },
+           "Load my comments from a file"), picker),
+      drawEmailing(),
+      !storageWorks ? el("p", { class: "problems" }, el("span", { class: "pill flag" },
+        "⚑ This browser doesn't let the page keep your comments: download them before you close it.")) : null,
+      el("details", { class: "fold nolink" }, el("summary", {}, "More about your comments and this page"),
+        el("ul", {},
+          el("li", {}, "Your comments stay in this browser, on this computer only, until you email or download them; the top " +
+            "of the page counts them. Clearing this browser’s site data before sending would lose them."),
+          el("li", {}, "Many comments take a few emails, numbered: the page then shows one button per email."),
+          el("li", {}, "Your name and comments go only to Iulia, who keeps them on her computer, not in the project’s public repository."),
+          el("li", {}, "This page is a read-only copy: it can’t change our files, and it sends nothing by itself (an email goes " +
+            "only when you press Send)."),
+          el("li", {}, "When we update the page, the same link shows the newer copy. Open it in the same browser and your " +
+            "comments carry over; in another browser or on another computer, press Load my comments from a file to read back " +
+            "the file you downloaded."))),
+      gone.length ? el("div", { class: "gone" }, el("h3", {}, "Your comments on entries no longer on this page"),
+        el("p", { class: "meta" }, "They are still in your download, with the entry as it read when you wrote them."),
+        el("ul", {}, gone.map((c) => el("li", {}, el("strong", {}, `${c.topic} ${c.entry}`), `: ${c.text}`,
+                                            el("div", { class: "meta" }, `It read: ${arrows(c.shown)}`))))) : null)];
 }
 
 // ---------------------------------------------------------------- views
+// in the asks' order; the Terms view has no tab: the words box and a question's linked terms open it
 let view = "home";
-const VIEWS = { home: drawHome, questions: drawQuestions, schema: drawSchema, mapping: drawMapping, terms: drawTerms };
+const VIEWS = { home: drawHome, schema: drawSchema, questions: drawQuestions, mapping: drawMapping, terms: drawTerms };
 function redraw() {
   for (const v of Object.keys(VIEWS)) {
-    $(`tab-${v}`).classList.toggle("current", v === view);
-    if (v === view) $(`tab-${v}`).setAttribute("aria-current", "page"); else $(`tab-${v}`).removeAttribute("aria-current");
+    const tab = $(`tab-${v}`);
+    if (!tab) continue;
+    tab.classList.toggle("current", v === view);
+    if (v === view) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
   }
   $("view").replaceChildren(...VIEWS[view]().flat(Infinity).filter(Boolean));
   drawStatus();
@@ -917,7 +1111,7 @@ function show(v) {
   redraw();
   window.scrollTo(0, 0);
 }
-for (const v of Object.keys(VIEWS)) $(`tab-${v}`).addEventListener("click", () => show(v));
+for (const v of Object.keys(VIEWS)) if ($(`tab-${v}`)) $(`tab-${v}`).addEventListener("click", () => show(v));
 $("homebutton").addEventListener("click", () => show("home"));
 drawVersion();
 show(location.hash.slice(1) || "home");

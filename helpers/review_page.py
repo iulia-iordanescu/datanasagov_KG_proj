@@ -38,7 +38,8 @@ button to show every row; wrong_rows_bound says what finding none (or a few) wro
 
 The page's look is the annotation tool's: its style sheets are read from
 helpers/annotator/page.html when the page is made (so the two never drift
-apart) and its typefaces from helpers/annotator/fonts/. How to use it:
+apart) and its typefaces from helpers/annotator/fonts/; over it, the page's own palette and typefaces, the demo
+deck's (page_fonts(), from helpers/review_page_fonts/). How to use it:
 helpers/review_page.md.
 """
 from __future__ import annotations
@@ -75,6 +76,13 @@ TERMS_PATH = ROOT / "docs" / "terminology.md"
 TEMPLATE = Path(__file__).with_name("review_page.html")
 ANNOTATOR_PAGE = Path(__file__).with_name("annotator") / "page.html"
 FONTS = Path(__file__).with_name("annotator") / "fonts"
+#: The page's own typefaces, the demo deck's (SIL Open Font License, licences beside them): Archivo for headings,
+#: Atkinson Hyperlegible (Braille Institute of America) for the text; put inside the page by page_fonts().
+PAGE_FONTS_DIR = Path(__file__).with_name("review_page_fonts")
+PAGE_FONTS = [("Archivo", "Archivo.woff2", "100 900", "normal"),
+              ("Atkinson Hyperlegible", "AtkinsonHyperlegible-Regular.woff2", "400", "normal"),
+              ("Atkinson Hyperlegible", "AtkinsonHyperlegible-Bold.woff2", "700", "normal"),
+              ("Atkinson Hyperlegible", "AtkinsonHyperlegible-Italic.woff2", "400", "italic")]
 OUT_DIR = OUTPUTS_DIR / "review"
 #: Where --publish puts the page: a branch that holds only it (and .nojekyll), which GitHub Pages serves at PAGES_URL.
 PAGES_BRANCH = "gh-pages"
@@ -84,7 +92,7 @@ PAGES_URL = "https://iulia-iordanescu.github.io/datanasagov_KG_proj/review/"
 PAGE_SOURCES = ["annotations/ground_truth_schema.txt", "annotations/component_class_mapping.csv",
                 "annotations/questions_for_experts.md", "annotations/guidelines.md", "annotations/ground_truth",
                 "docs/terminology.md", "helpers/review_page.py", "helpers/review_page.html", "helpers/annotator/page.html",
-                "helpers/annotator/fonts", "common/common_helpers/review_comments.py",
+                "helpers/annotator/fonts", "helpers/review_page_fonts", "common/common_helpers/review_comments.py",
                 "common/common_helpers/expert_questions.py"]
 #: How many checked rows of the translation table the Translation table view shows at first, chosen at random (the
 #: button below them shows every row). Why 30: with 164 checked rows, a reviewer who finds no wrong row among 30 chosen
@@ -180,6 +188,16 @@ def annotator_styles(page: Path = ANNOTATOR_PAGE, fonts: Path = FONTS) -> str:
     return re.sub(r'url\("/fonts/([\w.-]+\.woff2)"\)', font, css)
 
 
+def page_fonts(folder: Path = PAGE_FONTS_DIR, fonts=PAGE_FONTS) -> str:
+    """The @font-face rules of the page's own typefaces (PAGE_FONTS), each file put inside (a data: address)."""
+    rules = []
+    for family, name, weight, style in fonts:
+        data = base64.b64encode((folder / name).read_bytes()).decode("ascii")
+        rules.append(f'@font-face {{ font-family: "{family}"; src: url("data:font/woff2;base64,{data}") format("woff2"); '
+                     f'font-weight: {weight}; font-style: {style}; font-display: swap; }}')
+    return "\n".join(rules)
+
+
 def _script_json(data) -> str:
     """JSON safe inside a <script> element: no "</" can end it early."""
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
@@ -265,6 +283,9 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
     rows = mapping_entries(mapping_path, schema_path)
     questions = questions_data(questions_path, records_path, splits_path, ground_truth_dir, schema_path,
                                guidelines_path, terms, mapping_path)
+    sample, checked = sample_rows(rows), sum(map(is_checked, rows))
+    # what finding none wrong among the rows chosen at random means: at most `bound` of the checked rows are wrong
+    bound = wrong_rows_bound(checked, len(sample)) if sample else None
     files = [schema_path, mapping_path] + ([questions_path] if Path(questions_path).exists() else [])
     rel = [Path(p).resolve().relative_to(ROOT).as_posix() if Path(p).resolve().is_relative_to(ROOT) else Path(p).name
            for p in files]
@@ -274,8 +295,9 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
     return {"version": {"id": version, "generated": when.isoformat(timespec="seconds"), "date": f"{when:%Y-%m-%d}",
                         "commit": commit, "edited": edited, "content": content,
                         "files": [{"path": r, "sha256": fingerprint(p)} for r, p in zip(rel, files)]},
-            "schema": schema_entries(schema_path), "mapping": {"rows": rows, "none": NONE, "sample": sample_rows(rows),
-                                                                "checked": sum(map(is_checked, rows))},
+            "schema": schema_entries(schema_path), "mapping": {"rows": rows, "none": NONE, "sample": sample,
+                                                                "checked": checked, "bound": bound,
+                                                                "confidence": CONFIDENCE},
             "questions": questions, "priorities": list(PRIORITIES), "glossary": terms,
             "statuses": {"OPEN": OPEN, "ANSWERED": ANSWERED, "WITHDRAWN": WITHDRAWN},
             "question_kinds": QUESTION_KIND_WORDS,
@@ -288,7 +310,7 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
 def build(data: dict) -> str:
     """The page's HTML, from the template, the annotation tool's look, and the data."""
     page = TEMPLATE.read_text(encoding="utf-8")
-    for key, value in {"{{ANNOTATOR_STYLES}}": annotator_styles(), "{{DATA}}": _script_json(data),
+    for key, value in {"{{ANNOTATOR_STYLES}}": annotator_styles(), "{{PAGE_FONTS}}": page_fonts(), "{{DATA}}": _script_json(data),
                        "{{VERSION}}": html.escape(data["version"]["id"])}.items():
         if key not in page:
             raise ValueError(f"{TEMPLATE.name} lacks {key}")
