@@ -107,11 +107,11 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
         kept, _ = extraction.best_copies(checked, lambda c: tuple(c[0][k] for k in SLOTS), lambda c: bool(c[1]))
         verified, unverified = [], []
         for instance, errs, flgs in kept:
-            flags.update(flgs)
-            if errs:
+            if errs:                               # unverified: its errors counted, its flags not
                 errors.update(errs)
                 unverified.append({**instance, "errors": errs})
-            else:
+            else:                                  # verified: its flags counted
+                flags.update(flgs)
                 verified.append(instance)
         result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "title": t["title"],
                              "describes_class": describes, "triple_instances": verified,

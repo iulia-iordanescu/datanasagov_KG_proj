@@ -77,6 +77,27 @@ class Extracting(unittest.TestCase):
                 self.assertEqual(sum(out.errors.values()), unverified)
 
 
+    def test_flags_counted_for_verified_only(self):
+        """Stage 2: the report's "Verified, with flags worth a look" counts the flags of verified triple instances
+        only; an unverified one's flags (here subject_not_in_text) aren't counted."""
+        import extract
+        from common import extraction
+        verified = {"subject": "the instrument", "predicate": "is aboard", "object": "Aqua",
+                    "source_text": "MODIS aboard Aqua"}                 # subject_not_in_text, subject_not_in_source
+        unverified = {"subject": "Terra", "predicate": "carries", "object": "Aqua",
+                      "source_text": "Terra carries Aqua"}             # source_not_in_text; subject_not_in_text
+        item = {"id": "r", "maintainer": "m", "title": "T", "text": "title: T\n\nnotes: MODIS aboard Aqua.",
+                "record": {}, "pieces": ["p1"]}
+        replies = extraction.Replies(of={"r": [{"triples": [verified, unverified]}]})
+        saved = extraction.ask_model
+        extraction.ask_model = lambda *a, **k: replies
+        try:
+            out = extract.extract_triple_instances(SimpleNamespace(items=[item]), None, {"workers": 1})
+        finally:
+            extraction.ask_model = saved
+        self.assertEqual(out.errors, {"source_not_in_text": 1})
+        self.assertEqual(out.flags, {"subject_not_in_text": 1, "subject_not_in_source": 1})
+
 class Labeling(unittest.TestCase):
 
     def test_match(self):
