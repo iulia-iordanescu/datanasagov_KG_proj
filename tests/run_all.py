@@ -38,11 +38,15 @@ def main(argv: list) -> int:
     for f in files:
         clock = time.monotonic()
         try:
-            run = subprocess.run([sys.executable, "-m", "unittest", "-q", f.stem], cwd=HERE, timeout=TIME_LIMIT,
+            # -v: each test's name as it starts, so a file stopped at the time limit shows which test was running
+            run = subprocess.run([sys.executable, "-m", "unittest", "-v", f.stem], cwd=HERE, timeout=TIME_LIMIT,
                                  capture_output=True, text=True, encoding="utf-8", errors="replace")
             ok, said = run.returncode == 0, run.stdout + run.stderr
-        except subprocess.TimeoutExpired:
-            ok, said = False, f"still running after {TIME_LIMIT} s: something loops forever or waits for input\n"
+        except subprocess.TimeoutExpired as e:
+            partial = "".join(x.decode("utf-8", "replace") if isinstance(x, bytes) else x
+                              for x in (e.stdout, e.stderr) if x)
+            ok, said = False, (partial + f"\nstill running after {TIME_LIMIT} s: something loops forever or waits for "
+                               f"input; the last test named above is the one that was running\n")
         took = time.monotonic() - clock
         print(f"{'ok  ' if ok else 'FAIL'}  {f.name:<34} {took:6.1f} s")
         if not ok:

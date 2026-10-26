@@ -29,7 +29,7 @@ class Status(unittest.TestCase):
 
     def status(self) -> dict:
         r = subprocess.run([sys.executable, "-c", READ], cwd=self.tmp, capture_output=True, text=True,
-                           encoding="utf-8", env={"PYTHONIOENCODING": "utf-8", "SYSTEMROOT": "C:\\Windows",
+                           timeout=120, encoding="utf-8", env={"PYTHONIOENCODING": "utf-8", "SYSTEMROOT": "C:\\Windows",
                                                   "PATH": ""})
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)
