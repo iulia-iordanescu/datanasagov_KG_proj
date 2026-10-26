@@ -226,6 +226,9 @@ docs/pipeline_implementation_prompt.md
 # Licensed books and papers (PDFs) are never committed: cite them by title and authors instead
 *.pdf
 
+# Slide decks for talks are shared by hand, never committed: the repository is public
+*.pptx
+
 # Research notes and plans kept locally only
 DONOTTRACK/
 
