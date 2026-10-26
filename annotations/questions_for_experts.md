@@ -3198,6 +3198,8 @@ Option 3 for now (decided 2026-10-25, for me to confirm): the ground truth keeps
 
 The example is the record at pool position 12, the only tuning record annotated so far that tells a study (decided 2026-10-25, for me to confirm). Its other doubts: the source catalogs as datasets, and AGN as a target (Q12 (d)); the authors' aim and the method's "allows for" as purposes (Q9 (d)). What was left out, with its rule, is in `annotations/left_out.md`.
 
+Three more items of `annotations/left_out.md` for this record wait on this answer (decided 2026-10-25): "serendipitously selected" (how the study selected its samples), written with the study's method if the answer is option 1 or 2, else left out; "corresponding to the uncertainty in the X-ray positions" (why the maximum distance of 1.5 arcseconds was chosen), written with the pending fact HAS_MATCHING_DISTANCE if that fact is written, else left out; "taking account of the substantial overlaps between observations" (how the net sky area of 2XMMi-DR3, my ground truth triple HAS_SKY_AREA "~ 504 deg^2", was computed from its fields), which is a method of the catalog, not of the study, so it is written only if the answer makes such methods facts too.
+
 Pending facts, for the record at pool position 12 (bb1fe4b0, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer says yes:
 
 - pending fact: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose)
@@ -3232,3 +3234,158 @@ Pending facts, for the record at pool position 12 (bb1fe4b0, in the ground truth
 - rule: What counts as a fact, rule 2
 - rule: Writing a classed triple, rule 2
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
+
+## Q27: Words that say how a fact holds: do people searching need them?
+
+- status: open
+- priority: medium
+- question kind: rule
+- topic: words such as "collaboratively", "entire", "prime" and "associated", and a possible new rule of *What counts as a fact* in the annotation guidelines
+
+### The question
+
+Some words of a record say how a fact holds: the ground truth triple already states the fact, and the word adds only how it holds. I have left these words out of the ground truth for now. The four I have found so far:
+
+| Record | The record's words | The ground truth triple I wrote | What the word adds |
+|---|---|---|---|
+| the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" | "developed collaboratively between the U.S. National Aeronautics and Space Administration (NASA) and Argentina's space agency, Comisión Nacional de Actividades Espaciales (CONAE)" | "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization), and the same with "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) | "collaboratively": how the two agencies worked |
+| the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" | "The RDR data convert the EDR (raw) sensor data, from the entire comet encounter" | "RDR data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase) | "entire": how much of the phase the data come from |
+| the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" | "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)" | "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody) | "prime": that the comet is the main target |
+| the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" | "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments" | "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "quality control assessments" (PhysicalQuantity) | "associated": that the assessments go with the temperatures |
+
+I would like to know:
+
+- (a) For each word in the table: would someone searching this catalog want to find datasets by it, or can it be left out?
+- (b) "prime" in particular: would someone searching care whether a body is a dataset's main target, rather than one of its targets? My reading, not checked against a source: a main target means that other bodies may be in the images too.
+- (c) If such words can be left out in general, is this new rule right: "Not a word that only says how a fact holds. A ground truth triple has no place for it: the subject and object are things, and the predicate is the link."
+
+### Example record
+
+- record id: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- pool position: 13
+- title: ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0
+- notes: This CODMAC level 4 data set contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm, acquired by the OSIRIS Narrow Angle Camera on the Rosetta spacecraft during the COMET ESCORT 3 mission phase, covering the period from 2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000. The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1). This version V1.0 is the first version of this dataset: Lien corrected dataset after September 2019 PSA/PDS external peer review.
+- source text: The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)
+- classed triple: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody)
+
+### Ground truth schema
+
+- entity class CelestialBody: a natural object in space
+- predicate HAS_TARGET: is about this CelestialBody
+- predicate DEVELOPED_BY_PARTY: was built or created by this Person, Team, or Organization
+- predicate HAS_MISSION_PHASE: was collected during this MissionPhase
+- predicate HAS_MEASUREMENTS_OF: holds measurements of
+
+### Annotation guidelines
+
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+
+### Options
+
+#### Option 1: Leave them out, by a new rule
+
+A new rule of *What counts as a fact*: "Not a word that only says how a fact holds. A ground truth triple has no place for it: the subject and object are things, and the predicate is the link." The ground truth stays as it is now.
+
+#### Option 2: Keep the ones people search on
+
+Each word that people search on gets a ground truth triple of its own, with a predicate coined for it (for example, a predicate for a dataset's main target); the other words are left out by the rule of option 1.
+
+### My current reading
+
+Option 1, because in each case the ground truth triple already finds the dataset, and the word adds nothing a search would use. "prime" is the one I am least sure of, since a search for the other bodies in the images would need it.
+
+### My notes
+
+The example is the record at pool position 13. The four words are left out now, each an item of `annotations/left_out.md` that waits on this answer (decided 2026-10-25): "collaboratively" (pool position 3), "entire" (pool position 9), "prime" (pool position 13) and "associated" (pool position 7).
+
+### Consequences
+
+#### Option 1: Leave them out, by a new rule
+
+- The annotation guidelines get the new rule in *What counts as a fact*, and the model's copy of the rules (`common/common_prompts/extraction_rules.txt`) gets the same.
+- The ground truth doesn't change; the four items of `annotations/left_out.md` get the new rule as their reason.
+
+#### Option 2: Keep the ones people search on
+
+- New predicates in the ground truth schema for the words that matter (for example, a predicate for a dataset's main target), with a rule or an example for them in the annotation guidelines and in the model's copy of the rules.
+- The words that matter come back from `annotations/left_out.md` as ground truth triples; the others get the rule of option 1 as their reason.
+
+### Affects
+
+- record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
+- record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization)
+- classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "quality control assessments" (PhysicalQuantity)
+- rule: What counts as a fact, rule 2
+- pipeline method: annotations/ground_truth_schema.txt: a new predicate for each word found worth one (option 2)
+- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
+
+## Q28: Facts we have no predicate for yet: is each worth a fact?
+
+- status: open
+- priority: low
+- question kind: records and triples
+- topic: words that state something no predicate of the ground truth schema holds: "NASA" in "global NASA skin sea surface temperature (SST) products", "known issues", "Lien"
+
+### The question
+
+Some words of a record state something that no predicate of the ground truth schema holds, beyond a ground truth triple I wrote from the same passage or about the same thing. I have left them out of the ground truth for now. The three I have found so far:
+
+| Record | The record's words | The ground truth triple I wrote | What is left out |
+|---|---|---|---|
+| the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" | "global NASA skin sea surface temperature (SST) products" | "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization), from "The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG)" | "NASA": whose products these are |
+| the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" | "For complete information about known issues please refer to the MODIS/VIIRS Land Quality Assessment website" | "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) DOCUMENTED_AT "https://landweb.modaps.eosdis.nasa.gov/knownissue?sensor=MODIS&sat=Terra&as=6" (WebPage) | what the page is about: known issues |
+| the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" | "Lien corrected dataset after September 2019 PSA/PDS external peer review" | "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) REVISED_AFTER "September 2019 PSA/PDS external peer review" (Task) | "Lien": what was corrected |
+
+I would like to know:
+
+- (a) Is "NASA" in "global NASA skin sea surface temperature (SST) products" a fact beyond who generated the products, worth a predicate of its own (whose products they are)?
+- (b) Should the ground truth say what a web page is about (here, known issues), beyond that more details are written there?
+- (c) What does "Lien" mean here, and is it worth a fact beyond that the dataset was corrected after the review? My reading, not checked against a source: it names the issues the review raised.
+
+### Example record
+
+- record id: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
+- pool position: 4
+- title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
+- notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
+- source text: global NASA skin sea surface temperature (SST) products
+- source text: The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG)
+- classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
+
+### Ground truth schema
+
+- entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
+- predicate DEVELOPED_BY_PARTY: was built or created by this Person, Team, or Organization
+- entity class WebPage: a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
+- predicate DOCUMENTED_AT: more details about it are written at
+- entity class Task: a piece of work a Person, Team, or Organization does or is in charge of, e.g. quality flagging
+- predicate REVISED_AFTER: was corrected after this review
+
+### Annotation guidelines
+
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+
+### My current reading
+
+Leave all three out, as now. For (a), the ground truth triple of who generated the products already says they are NASA's. For (b) and (c), I would write a fact if people search for a dataset's known issues, or for what a review changed.
+
+### My notes
+
+The example is the record at pool position 4. Each of the three is an item of `annotations/left_out.md` that waits on this answer (decided 2026-10-25), and each answer settles one item: if it is worth a fact, a predicate is coined for it in the ground truth schema and the item comes back as a ground truth triple; if not, it stays left out. (a) is about the record at pool position 4, (b) about the record at pool position 7, (c) about the record at pool position 13.
+
+### Affects
+
+- record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) DOCUMENTED_AT "https://landweb.modaps.eosdis.nasa.gov/knownissue?sensor=MODIS&sat=Terra&as=6" (WebPage)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) REVISED_AFTER "September 2019 PSA/PDS external peer review" (Task)
+- rule: What counts as a fact, rule 2
+- pipeline method: annotations/ground_truth_schema.txt: a new predicate for each fact found worth one
