@@ -205,8 +205,8 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
     err = _Lines(path, qid).error
     head_end = next((i for i, l in enumerate(lines) if l.startswith("### ")), len(lines))
     head = dict((label, (value, n)) for label, value, n in _fields(lines[:head_end], at[:head_end], err,
-                                                                  ("status", "priority", "question kind", "topic")))
-    for need in ("status", "priority", "question kind", "topic"):
+                                                                  ("status", "priority", "question kind", "in short")))
+    for need in ("status", "priority", "question kind", "in short"):
         if need not in head:
             raise err(at[0] - 1, f'the question has no "- {need}: …" line under its heading')
     status = head["status"][0]
@@ -260,7 +260,7 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
                              'and only one with options')
     terms = []
     q = {"id": qid, "number": int(qid[1:]), "title": title, "status": status, "priority": priority,
-         "question_kind": qkind, "topic": head["topic"][0], "line": at[0] - 1, "records": [], "schema": [], "rows": [],
+         "question_kind": qkind, "in_short": head["in short"][0], "line": at[0] - 1, "records": [], "schema": [], "rows": [],
          "rules": [], "methods": [], "options": [], "context": [], "answer": [], "notes": [],
          "affects": {"records": [], "triples": [], "rows": [], "entries": [], "rules": [], "methods": []}}
     for s in subs:
@@ -351,7 +351,7 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
     body = [l for l, n in zip(lines, at) if n < answer_at and not re.match(r"^- (status|priority): ", l)]
     q["fingerprint"] = _fingerprint([f"## {qid}: {title}"] + body)
     q["shown"] = f"{qid}: {title} | fingerprint {q['fingerprint']}"
-    q["search"] = squeeze(" ".join([qid, title, q["topic"], _text(q["question"]), _text(q["context"]),
+    q["search"] = squeeze(" ".join([qid, title, q["in_short"], _text(q["question"]), _text(q["context"]),
                                     _text(q["reading"]), _text(q["answer"])]
                                    + [f"{r['title']} {r['notes']} {r['record id']}" for r in q["records"]]
                                    + [f"{e['entry']} {e['definition']}" for e in q["schema"]]

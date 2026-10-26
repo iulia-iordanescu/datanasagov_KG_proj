@@ -823,7 +823,7 @@ def expert_questions_view() -> dict:
         questions = read_questions(QUESTIONS_PATH)
     except ValueError as e:
         return {"file": f"annotations/{QUESTIONS_PATH.name}", "questions": [], "problem": str(e)}
-    keep = ("id", "title", "status", "priority", "question_kind", "topic", "affects")
+    keep = ("id", "title", "status", "priority", "question_kind", "in_short", "affects")
     return {"file": f"annotations/{QUESTIONS_PATH.name}", "questions": [{k: q[k] for k in keep} for q in questions],
             "problem": "", "open": OPEN}
 

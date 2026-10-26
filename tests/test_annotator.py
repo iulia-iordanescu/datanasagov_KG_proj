@@ -846,7 +846,7 @@ class Z_ReviewerComments(unittest.TestCase):
         self.assertEqual(get("/api/expert_questions")["questions"], [])               # no file: none
         rid = "aaaaaaaa-0000-0000-0000-000000000001"
         path.write_text("# Questions\n\n## Q1: Closed list?\n\n- status: open\n- priority: high\n"
-                        "- question kind: general\n- topic: layouts\n\n### The question\n\nIs it closed?\n\n"
+                        "- question kind: general\n- in short: layouts\n\n### The question\n\nIs it closed?\n\n"
                         "### My current reading\n\nUndecided.\n\n"
                         f"### Affects\n\n- record at pool position 0: {rid}\n"
                         f"- classed triple of the record at pool position 0: \"A\" (Dataset) HAS_X \"b\" (Thing)\n",

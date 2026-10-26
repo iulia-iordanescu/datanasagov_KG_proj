@@ -9,7 +9,7 @@ This file is the questions' one home: I write and change them here, and nowhere 
 - status: open
 - priority: high
 - question kind: schema entry
-- topic: the ground truth schema's SpatialRepresentation, and rule 1 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's SpatialRepresentation, and rule 1 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -131,7 +131,7 @@ The record at pool position 7 also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESEN
 - status: open
 - priority: high
 - question kind: schema entry
-- topic: the ground truth schema's Mission and Spacecraft, and FROM_MISSION and FROM_SPACECRAFT
+- in short: the ground truth schema's Mission and Spacecraft, and FROM_MISSION and FROM_SPACECRAFT
 
 ### The question
 
@@ -289,7 +289,7 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 - status: open
 - priority: high
 - question kind: schema entry
-- topic: the ground truth schema's Variable and PhysicalQuantity, and HAS_MEASUREMENTS_OF, HAS_VARIABLE and ESTIMATES
+- in short: the ground truth schema's Variable and PhysicalQuantity, and HAS_MEASUREMENTS_OF, HAS_VARIABLE and ESTIMATES
 
 ### The question
 
@@ -494,7 +494,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 12: it
 - status: open
 - priority: high
 - question kind: schema entry
-- topic: the ground truth schema's FROM_MISSION, FROM_SPACECRAFT, ACQUIRED_BY_INSTRUMENT, HAS_MISSION_PHASE and OBTAINS_DATA_FROM, its Spacecraft, Mission and MissionPhase, and the translation table's rows for the current schema's SOURCED_FROM, platforms and campaigns
+- in short: the ground truth schema's FROM_MISSION, FROM_SPACECRAFT, ACQUIRED_BY_INSTRUMENT, HAS_MISSION_PHASE and OBTAINS_DATA_FROM, its Spacecraft, Mission and MissionPhase, and the translation table's rows for the current schema's SOURCED_FROM, platforms and campaigns
 
 ### The question
 
@@ -718,7 +718,7 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 - status: open
 - priority: high
 - question kind: schema entry
-- topic: the ground truth schema's TemporalResolution, Time and Value, its HAS_TEMPORAL_RESOLUTION, HAS_GRANULE_DURATION and HAS_TIME_SPAN, and the translation table's rows for the current schema's Frequency, HAS_TIME_RESOLUTION, COVERS and HAS_DURATION
+- in short: the ground truth schema's TemporalResolution, Time and Value, its HAS_TEMPORAL_RESOLUTION, HAS_GRANULE_DURATION and HAS_TIME_SPAN, and the translation table's rows for the current schema's Frequency, HAS_TIME_RESOLUTION, COVERS and HAS_DURATION
 
 ### The question
 
@@ -873,7 +873,7 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's ProcessingLevel and HAS_PROCESSING_LEVEL, and a reference list of processing levels
+- in short: the ground truth schema's ProcessingLevel and HAS_PROCESSING_LEVEL, and a reference list of processing levels
 
 ### The question
 
@@ -997,7 +997,7 @@ Five of the tuning records I have annotated so far write a processing level, or 
 - status: open
 - priority: medium
 - question kind: rule
-- topic: rule 14 of the annotation guidelines (a processing step), and the ground truth schema's COMPUTED_FROM and PRODUCED_USING_ALGORITHM
+- in short: rule 14 of the annotation guidelines (a processing step), and the ground truth schema's COMPUTED_FROM and PRODUCED_USING_ALGORITHM
 
 ### The question
 
@@ -1132,7 +1132,7 @@ Rule 14 now says: "A word that says only that something was done ("corrected", "
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's Organization, Team, Role and BASED_IN, and the translation table's rows for Program, Facility, Location and LOCATED_IN
+- in short: the ground truth schema's Organization, Team, Role and BASED_IN, and the translation table's rows for Program, Facility, Location and LOCATED_IN
 
 ### The question
 
@@ -1293,7 +1293,7 @@ The model extracts classed triples with the current schema. Before they are comp
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's Purpose and HAS_PURPOSE
+- in short: the ground truth schema's Purpose and HAS_PURPOSE
 
 ### The question
 
@@ -1404,7 +1404,7 @@ All the HAS_PURPOSE classed triples of the records annotated so far are listed u
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's Discipline and Instrument for radio science data, the translation table's rows for Method and Topic, and a reference list of disciplines
+- in short: the ground truth schema's Discipline and Instrument for radio science data, the translation table's rows for Method and Topic, and a reference list of disciplines
 
 ### The question
 
@@ -1521,7 +1521,7 @@ The example is the record at pool position 1. The model extracts classed triples
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's SpatialExtent and HAS_SPATIAL_COVERAGE, and rule 9 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's SpatialExtent and HAS_SPATIAL_COVERAGE, and rule 9 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -1636,7 +1636,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's Dataset, for the data a record's dataset is made from and for collections of datasets; four rows of the translation table into Dataset
+- in short: the ground truth schema's Dataset, for the data a record's dataset is made from and for collections of datasets; four rows of the translation table into Dataset
 
 ### The question
 
@@ -1788,7 +1788,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema's Channel; the translation table's rows for Wavelength and Frequency (current or past schema)
+- in short: the ground truth schema's Channel; the translation table's rows for Wavelength and Frequency (current or past schema)
 
 ### The question
 
@@ -1903,7 +1903,7 @@ Option 2 also means a new exception to the list of rule 9 of *Writing a classed 
 - status: open
 - priority: low
 - question kind: translation table rows
-- topic: the translation table's row for PhysicalPhenomenon (current or past schema), into the ground truth schema's Phenomenon
+- in short: the translation table's row for PhysicalPhenomenon (current or past schema), into the ground truth schema's Phenomenon
 
 ### The question
 
@@ -2000,7 +2000,7 @@ The record at pool position 7 has the induced effect named in the context, writt
 - status: open
 - priority: low
 - question kind: translation table rows
-- topic: the translation table's rows for CoordinateSystem and HAS_COORDINATE_SYSTEM (current or past schema), and the ground truth schema's MapProjection
+- in short: the translation table's rows for CoordinateSystem and HAS_COORDINATE_SYSTEM (current or past schema), and the ground truth schema's MapProjection
 
 ### The question
 
@@ -2097,7 +2097,7 @@ The example is the record at pool position 4, the only tuning record whose groun
 - status: open
 - priority: low
 - question kind: schema entry
-- topic: the ground truth schema's Orbit and TimeOfDay, and rule 9 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's Orbit and TimeOfDay, and rule 9 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -2190,7 +2190,7 @@ The example is the record at pool position 4, the only tuning record annotated s
 - status: answered
 - priority: low
 - question kind: records and triples
-- topic: the ground truth schema's RELATED_TO and ESTIMATES, and rule 1 of *What counts as a fact* in the annotation guidelines
+- in short: the ground truth schema's RELATED_TO and ESTIMATES, and rule 1 of *What counts as a fact* in the annotation guidelines
 
 ### The question
 
@@ -2264,7 +2264,7 @@ Settled by checked sources, option 1. A review of this record on 2026-10-22 chec
 - status: open
 - priority: low
 - question kind: records and triples
-- topic: the ground truth schema's Variable, ESTIMATES and HAS_LOWER_UNCERTAINTY_THAN, and rule 13 of the annotation guidelines
+- in short: the ground truth schema's Variable, ESTIMATES and HAS_LOWER_UNCERTAINTY_THAN, and rule 13 of the annotation guidelines
 
 ### The question
 
@@ -2365,7 +2365,7 @@ The example is the record at pool position 4. Until an expert answers, its groun
 - status: open
 - priority: low
 - question kind: records and triples
-- topic: the ground truth schema's Version, HAS_VERSION, SUPERSEDES and ALSO_KNOWN_AS, and rules 10 and 13 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's Version, HAS_VERSION, SUPERSEDES and ALSO_KNOWN_AS, and rules 10 and 13 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -2461,7 +2461,7 @@ The example is the record at pool position 4; (c) is about the record at pool po
 - status: open
 - priority: low
 - question kind: records and triples
-- topic: the ground truth schema's Identifier, HAS_DOI, Document, Version and COMPUTED_FROM, the predicate HAS_IDENTIFIER I have coined, and rules 10, 11 and 14 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's Identifier, HAS_DOI, Document, Version and COMPUTED_FROM, the predicate HAS_IDENTIFIER I have coined, and rules 10, 11 and 14 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -2608,7 +2608,7 @@ Pending facts, for the record at pool position 6:
 - status: open
 - priority: low
 - question kind: general
-- topic: reference lists for the ground truth schema's Instrument, Spacecraft, Mission and PhysicalQuantity, and the questions the knowledge graph is for
+- in short: reference lists for the ground truth schema's Instrument, Spacecraft, Mission and PhysicalQuantity, and the questions the knowledge graph is for
 
 ### The question
 
@@ -2769,7 +2769,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 - status: open
 - priority: low
 - question kind: records and triples
-- topic: the ground truth schema's SpatialResolution and HAS_SPATIAL_RESOLUTION, and rules 11 and 13 of the annotation guidelines
+- in short: the ground truth schema's SpatialResolution and HAS_SPATIAL_RESOLUTION, and rules 11 and 13 of the annotation guidelines
 
 ### The question
 
@@ -2855,7 +2855,7 @@ The example is the record at pool position 4. The ground truth triples with HAS_
 - status: open
 - priority: low
 - question kind: schema entry
-- topic: the ground truth schema's SatelliteFormation and FLIES_IN
+- in short: the ground truth schema's SatelliteFormation and FLIES_IN
 
 ### The question
 
@@ -2926,7 +2926,7 @@ The example is the record at pool position 4, the only tuning record annotated s
 - status: open
 - priority: medium
 - question kind: records and triples
-- topic: rule 11 of the annotation guidelines, and the facts about the other versions, temporal resolutions and spatial resolutions of a product
+- in short: rule 11 of the annotation guidelines, and the facts about the other versions, temporal resolutions and spatial resolutions of a product
 
 ### The question
 
@@ -3036,7 +3036,7 @@ Items of `annotations/left_out.md` that this answer may bring back as ground tru
 - status: open
 - priority: medium
 - question kind: schema entry
-- topic: the ground truth schema as a flat list of entity classes, and its PART_OF predicate
+- in short: the ground truth schema as a flat list of entity classes, and its PART_OF predicate
 
 ### The question
 
@@ -3135,7 +3135,7 @@ The example is the record at pool position 5, the only tuning record annotated s
 - status: open
 - priority: medium
 - question kind: records and triples
-- topic: records that tell the study a table comes from; a study's aim, method and findings
+- in short: records that tell the study a table comes from; a study's aim, method and findings
 
 ### The question
 
@@ -3240,7 +3240,7 @@ Pending facts, for the record at pool position 12 (bb1fe4b0, in the ground truth
 - status: open
 - priority: medium
 - question kind: rule
-- topic: words such as "collaboratively", "entire", "prime" and "associated", and a possible new rule of *What counts as a fact* in the annotation guidelines
+- in short: words such as "collaboratively", "entire", "prime" and "associated", and a possible new rule of *What counts as a fact* in the annotation guidelines
 
 ### The question
 
@@ -3330,7 +3330,7 @@ The example is the record at pool position 13. The four words are left out now, 
 - status: open
 - priority: low
 - question kind: records and triples
-- topic: words that state something no predicate of the ground truth schema holds: "NASA" in "global NASA skin sea surface temperature (SST) products", "known issues", "Lien"
+- in short: words that state something no predicate of the ground truth schema holds: "NASA" in "global NASA skin sea surface temperature (SST) products", "known issues", "Lien"
 
 ### The question
 

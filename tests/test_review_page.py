@@ -685,7 +685,7 @@ Not read: the file's own introduction.
 - status: open
 - priority: high
 - question kind: schema entry
-- topic: the ground truth schema's SpatialRepresentation
+- in short: the ground truth schema's SpatialRepresentation
 
 ### The question
 

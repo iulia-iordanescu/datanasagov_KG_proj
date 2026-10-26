@@ -738,7 +738,7 @@ function impactsBox(q) {
   const ex = q.records[0];
   return el("details", { class: "forus" },
     el("summary", {}, "The answer to this question impacts:", el("span", { class: "meta" }, " my bookkeeping, not needed to answer")),
-    el("p", {}, `${q.entry} is about ${q.topic} (a question about ${QUESTION_KIND[q.question_kind]}).`),
+    el("p", {}, `${q.entry} is about ${q.in_short} (a question about ${QUESTION_KIND[q.question_kind]}).`),
     q.notes.length ? [el("h5", {}, "My notes"), prose(q.notes)] : null,
     q.options.length ? [el("h5", {}, "What each option would change"), q.options.map((o) => el("div", {},
       el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose([{ ul: o.consequences }])))] : null,
