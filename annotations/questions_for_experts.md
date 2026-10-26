@@ -778,7 +778,7 @@ I write these facts with different predicates of the ground truth schema: HAS_TI
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
 - Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
-- Writing a classed triple, rule 11: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (rule 13: it says more than the title's "8 Day"); the daily and monthly products are variants of the record's dataset, so they get none.
+- Writing a classed triple, rule 11: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 13, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get none.
 
 ### Options
 
