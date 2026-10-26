@@ -467,7 +467,7 @@ document.addEventListener("keydown", (e) => {
 
 // ---------------------------------------------------------------- filters shared by the two lists
 const state = { schema: { kind: "entity class", search: "", mine: false, changed: false, pinned: false },
-                mapping: { kind: "entity class", search: "", mine: false, changed: false, counterpart: "any" },
+                mapping: { kind: "entity class", search: "", mine: false, changed: false, counterpart: "any", every: false },
                 questions: { search: "", priority: "all", closed: false, mine: false, changed: false } };
 const has = (e) => !!(comments[e.id] && comments[e.id].text.trim());
 const changedPill = (e) => CHANGED.has(e.id)
@@ -572,9 +572,22 @@ function mappingBox(r) {
       changedPill(r)),
     commentBox(r, `Your comment on this row (${what} ${r.crt} → ${r.gtt})`));
 }
+// At first, only the rows helpers/review_page.py chose at random (D.mapping.sample: its sample_rows); a button shows
+// every row. With no sample (too few checked rows), every row, and no button.
+const SAMPLE = D.mapping.sample ? new Set(D.mapping.sample) : null;
+function sampleNote(st, nRows) {
+  if (!SAMPLE) return null;
+  const from = D.mapping.checked === nRows ? `the ${nRows}` : `the ${D.mapping.checked} checked rows`;
+  return [el("p", {}, st.every ? `All ${nRows} rows. The button below shows only the ${SAMPLE.size} chosen at random from ${from}.`
+                               : `${SAMPLE.size} rows chosen at random from ${from}. If you have time, check these; the button below shows all ${nRows}.`),
+          el("div", { class: "actions" },
+            el("button", { id: "sampleswitch", onclick: () => { st.every = !st.every; redraw(); } },
+               st.every ? `Show only the ${SAMPLE.size} chosen at random` : `Show all ${nRows} rows`))];
+}
 function drawMapping() {
   const st = state.mapping;
-  const all = ENTRIES.filter((e) => e.kind === "translation row");
+  const rows = ENTRIES.filter((e) => e.kind === "translation row");
+  const all = SAMPLE && !st.every ? rows.filter((r) => SAMPLE.has(r.entry)) : rows;
   const counts = Object.fromEntries(["entity class", "predicate"].map((k) => [k, {
     all: all.filter((e) => e.rowKind === k).length, mine: all.filter((e) => e.rowKind === k && has(e)).length }]));
   const shown = all.filter((r) => r.rowKind === st.kind && (!st.mine || has(r)) && (!st.changed || CHANGED.has(r.id) || NEW.has(r.id))
@@ -590,7 +603,8 @@ function drawMapping() {
   return [
     el("section", { class: "card" }, el("h2", {}, "Translation table"),
       el("p", { class: "meta" }, "annotations/component_class_mapping.csv: each box is one row, an entity class or predicate of the " +
-        "current schema (or of a past one) → what it means in the ground truth schema, each with its definition as the row stores it.")),
+        "current schema (or of a past one) → what it means in the ground truth schema, each with its definition as the row stores it."),
+      sampleNote(st, rows.length)),
     el("section", { class: "card mapcard" }, kindTabs(st, counts),
       el("div", { class: "mapfilters" },
         searchBox(st, "Search names and definitions"), counterpart,

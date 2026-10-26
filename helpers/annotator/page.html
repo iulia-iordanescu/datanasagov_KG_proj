@@ -1368,17 +1368,17 @@ async function drawNextUp() {
   if (!$("nextup")) return;                                         // the home page was left meanwhile
   for (const p of document.querySelectorAll(".viewbox .now")) {
     const mine = st.items.filter((i) => i.area === p.dataset.area);
-    const todo = mine.filter((i) => i.level === "to do").length, look = mine.length - todo;
+    const todo = mine.filter((i) => i.level === st.levels.TO_DO).length, look = mine.length - todo;
     p.replaceChildren(...(mine.length
       ? [todo ? el("span", { class: "pill error" }, `✖ ${todo} to do`) : null,
          look ? el("span", { class: "pill flag" }, `⚑ ${look} worth a look`) : null].filter((x) => x !== null)
       : [el("span", { class: "pill ok" }, "nothing needed now")]));
   }
-  const item = (i) => el("li", { class: i.level === "to do" ? "todo" : "look" },
+  const item = (i) => el("li", { class: i.level === st.levels.TO_DO ? "todo" : "look" },
     el("span", { class: "kind" }, i.area), " ", i.text.replace(/`/g, ""), " ",   // code-like words get their font anyway
     el("span", { class: "ref doclink", "data-doc": i.doc.split("#")[0], "data-anchor": i.doc.split("#")[1] || "" },
        "Why, and how"));
-  const todo = st.items.filter((i) => i.level === "to do"), look = st.items.filter((i) => i.level !== "to do");
+  const todo = st.items.filter((i) => i.level === st.levels.TO_DO), look = st.items.filter((i) => i.level === st.levels.LOOK);
   $("nextup").replaceChildren(...[el("h3", {}, "What to do next"),   // replaceChildren would write a null as "null"
     st.items.length ? null : el("p", { class: "empty" }, "Nothing: every step is up to date, and nothing waits for you."),
     todo.length ? el("h4", {}, "✖ To do") : null, todo.length ? el("ol", {}, todo.map(item)) : null,

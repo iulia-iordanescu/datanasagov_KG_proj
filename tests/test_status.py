@@ -177,3 +177,19 @@ class Status(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Documented(unittest.TestCase):
+
+    def test_upkeep_lists_the_codes_values(self):
+        """docs/upkeep.md, *What the status lists*, the home of the step states, the levels and the areas: each of its
+        three lists is the code's (common/common_helpers/status.py), in its order."""
+        import re
+        from support import ROOT
+        sys.path.insert(0, str(ROOT))
+        from common import status
+        text = (ROOT / "docs" / "upkeep.md").read_text(encoding="utf-8")
+        section = text.split("## What the status lists", 1)[1].split("\n## ", 1)[0]
+        section = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", section)                 # links reduced to their words
+        lists = [re.findall(r"^- \*\*([^*]+)\*\*", block, re.M) for block in section.split("\n\n") if block.startswith("- ")]
+        self.assertEqual([tuple(x) for x in lists], [status.STEP_STATES, status.LEVELS, status.AREAS])

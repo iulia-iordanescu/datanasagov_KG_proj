@@ -33,6 +33,9 @@ outputs/review/comments_<date>_<time>.md, flagging each comment whose entry has
 changed since the page it was written on, or is no longer in the files, and
 each one whose sender isn't verified.
 
+The Translation table view shows, at first, SAMPLE_SIZE checked rows chosen at random (sample_rows), with a
+button to show every row; wrong_rows_bound says what finding none (or a few) wrong among them means.
+
 The page's look is the annotation tool's: its style sheets are read from
 helpers/annotator/page.html when the page is made (so the two never drift
 apart) and its typefaces from helpers/annotator/fonts/. How to use it:
@@ -46,6 +49,7 @@ import datetime as dt
 import hashlib
 import html
 import json
+import math
 import re
 import subprocess
 import sys
@@ -54,7 +58,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 
-from common.component_class_mapping import MAPPING_PATH, NONE                 # noqa: E402
+from common.component_class_mapping import MAPPING_PATH, NONE, is_checked     # noqa: E402
 from common.expert_questions import (GUIDELINES_PATH, PRIORITIES, QUESTIONS_PATH, RECORDS_PATH,  # noqa: E402
                                      SPLITS_PATH, check_questions, read_questions)
 from common.ground_truth import GROUND_TRUTH_DIR                               # noqa: E402
@@ -81,6 +85,14 @@ PAGE_SOURCES = ["annotations/ground_truth_schema.txt", "annotations/component_cl
                 "docs/terminology.md", "helpers/review_page.py", "helpers/review_page.html", "helpers/annotator/page.html",
                 "helpers/annotator/fonts", "common/common_helpers/review_comments.py",
                 "common/common_helpers/expert_questions.py"]
+#: How many checked rows of the translation table the Translation table view shows at first, chosen at random (the
+#: button below them shows every row). Why 30: with 164 checked rows, a reviewer who finds no wrong row among 30 chosen
+#: at random can say, at 95% confidence, that at most 14 of the 164 (8.5%) are wrong (wrong_rows_bound).
+SAMPLE_SIZE = 30
+#: What chooses the sample (sample_rows): change it only to draw a new sample on purpose.
+SAMPLE_SEED = "review sample 1"
+#: The confidence wrong_rows_bound states its bound at.
+CONFIDENCE = 0.95
 #: The terms the page's Terms view shows, in this order, each as docs/terminology.md defines it (the first bold
 #: words of an entry's first column).
 GLOSSARY = ["schema", "schema entry", "entity class", "predicate", "kind", "component class", "pattern",
@@ -208,6 +220,38 @@ def _term_of(words: str, aliases: dict):
     return None
 
 
+def sample_rows(rows: list, size: int = SAMPLE_SIZE, seed: str = SAMPLE_SEED) -> list | None:
+    """The entries of the rows the Translation table view shows at first, in the rows' order: of the checked rows
+    (is_checked), the `size` whose SHA-256 of `seed` and the row's entry (its kind and component class, as comments
+    are filed) is smallest. Ordering the rows by a hash is a random order, the same on every computer and every
+    Python version; and since each row's rank depends on that row alone, the sample stays the same as long as its
+    rows are in the table: a row taken out of the sample's place is replaced by the next by rank, and a new row
+    enters it only if its rank is among the `size` smallest. None when there are no more than `size` checked rows:
+    the view then shows every row, with no button."""
+    checked = [r for r in rows if is_checked(r)]
+    if len(checked) <= size:
+        return None
+    rank = lambda r: hashlib.sha256(f"{seed}|{r['entry']}".encode("utf-8")).hexdigest()       # noqa: E731
+    chosen = {r["entry"] for r in sorted(checked, key=rank)[:size]}
+    return [r["entry"] for r in rows if r["entry"] in chosen]
+
+
+def wrong_rows_bound(rows: int, sample: int, wrong: int = 0, confidence: float = CONFIDENCE) -> int:
+    """The most of `rows` rows that can be wrong, at `confidence`, when `wrong` of `sample` rows chosen at random
+    (without putting any back) were found wrong: the largest D for which finding at most `wrong` wrong rows in the
+    sample still has a chance of at least 1 - `confidence` (the hypergeometric distribution: the sum over i <= wrong
+    of C(D, i) C(rows - D, sample - i) / C(rows, sample)). That chance only falls as D grows, so the first D where it
+    drops below 1 - `confidence` ends the search."""
+    total = math.comb(rows, sample)
+    best = wrong
+    for d in range(wrong, rows - sample + wrong + 1):
+        chance = sum(math.comb(d, i) * math.comb(rows - d, sample - i) for i in range(wrong + 1)) / total
+        if chance < 1 - confidence:
+            break
+        best = d
+    return best
+
+
 def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH, terms_path: Path = TERMS_PATH,
               questions_path: Path = QUESTIONS_PATH, records_path: Path = RECORDS_PATH, splits_path: Path = SPLITS_PATH,
               ground_truth_dir: Path = GROUND_TRUTH_DIR, guidelines_path: Path = GUIDELINES_PATH,
@@ -217,6 +261,7 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
     when = when or dt.datetime.now()
     commit = _git("rev-parse", "--short", "HEAD") or "unknown"
     terms = glossary(terms_path)
+    rows = mapping_entries(mapping_path, schema_path)
     questions = questions_data(questions_path, records_path, splits_path, ground_truth_dir, schema_path,
                                guidelines_path, terms, mapping_path)
     files = [schema_path, mapping_path] + ([questions_path] if Path(questions_path).exists() else [])
@@ -228,8 +273,8 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
     return {"version": {"id": version, "generated": when.isoformat(timespec="seconds"), "date": f"{when:%Y-%m-%d}",
                         "commit": commit, "edited": edited, "content": content,
                         "files": [{"path": r, "sha256": fingerprint(p)} for r, p in zip(rel, files)]},
-            "schema": schema_entries(schema_path), "mapping": {"rows": mapping_entries(mapping_path, schema_path),
-                                                                "none": NONE},
+            "schema": schema_entries(schema_path), "mapping": {"rows": rows, "none": NONE, "sample": sample_rows(rows),
+                                                                "checked": sum(map(is_checked, rows))},
             "questions": questions, "priorities": list(PRIORITIES), "glossary": terms,
             "linked_only_where_marked": LINKED_ONLY_WHERE_MARKED}
 

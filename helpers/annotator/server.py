@@ -143,7 +143,7 @@ from common.expert_questions import QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
-from common.status import project_status
+from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text, norm_text
 from common.triples_io import ENTRY_SOURCE, is_describes, component_class_key
@@ -1288,7 +1288,8 @@ def make_handler(data: Data):
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
                                 "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt)})
                 elif url.path == "/api/status":
-                    self._json(project_status(data.records or None))
+                    # with the levels the page compares with (common/common_helpers/status.py)
+                    self._json({**project_status(data.records or None), "levels": {"TO_DO": TO_DO, "LOOK": LOOK}})
                 elif url.path == "/api/gaps":
                     self._json(ground_truth_schema_gaps(data, read_ground_truth()))
                 elif url.path == "/api/mapping":

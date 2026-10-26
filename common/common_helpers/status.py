@@ -19,10 +19,8 @@ file: each item says which run that was, and a step whose inputs changed
 since its run is listed as out of date.
 
 Each item: {"area", "level", "text", "doc", "source"}
-    area    Steps, Setup, Ground truth, Schema additions, Translation table,
-            Partial pairs, Git
-    level   "to do": something blocks a step or makes its numbers wrong;
-            "worth a look": nothing stops, but a person should decide
+    area    one of AREAS
+    level   one of LEVELS
     text    what is true, with ids and files, and the one thing to do
     doc     the section of docs/upkeep.md that explains it
     source  the run or file the item comes from
@@ -74,7 +72,16 @@ COUNTED_PERSON_INPUTS = {"060_extract": {"additions"},
                                           "partial_reviews"}}
 #: The keys each service needs in .env (common/common_helpers/llm.py reads them).
 SERVICE_KEYS = {"litellm": ("LITELLM_API_KEY",), "asksage": ("ASKSAGE_EMAIL", "ASKSAGE_API_KEY")}
+# What each level, area and step state means, and how they relate: docs/upkeep.md, *What the status lists* (the
+# home). Each is defined once here; run_pipeline.py and the annotation tool take them from here.
 TO_DO, LOOK = "to do", "worth a look"
+#: An item's level, in the order the items are listed.
+LEVELS = (TO_DO, LOOK)
+#: An item's area, in the order the items come (project_status).
+AREAS = ("Setup", "Steps", "Ground truth", "Schema additions", "Translation table", "Partial pairs", "Git")
+#: A step's state (steps_status).
+RAN, OUT_OF_DATE, NO_RUN = "ran", "out of date", "no run recorded"
+STEP_STATES = (RAN, OUT_OF_DATE, NO_RUN)
 
 
 def _doc(section: str) -> str:
@@ -83,6 +90,7 @@ def _doc(section: str) -> str:
 
 
 def _item(area: str, level: str, text: str, section: str, source: str = "") -> dict:
+    assert area in AREAS and level in LEVELS, (area, level)
     return {"area": area, "level": level, "text": text, "doc": _doc(section), "source": source}
 
 
@@ -157,16 +165,16 @@ def _changed_inputs(step: str, manifest: dict) -> list:
 
 
 def steps_status() -> list:
-    """One entry per step: {"step", "state" ("ran", "out of date", "no run recorded"), "run_id", "finished",
+    """One entry per step: {"step", "state" (one of STEP_STATES), "run_id", "finished",
     "changed": [input names]}."""
     out = []
     for step in PIPELINE_STEPS:
         m = _manifest(step)
         if m is None:
-            out.append({"step": step, "state": "no run recorded", "run_id": None, "finished": None, "changed": []})
+            out.append({"step": step, "state": NO_RUN, "run_id": None, "finished": None, "changed": []})
             continue
         changed = [] if step == "050_annotate" else _changed_inputs(step, m)
-        out.append({"step": step, "state": "out of date" if changed else "ran", "run_id": m.get("run_id"),
+        out.append({"step": step, "state": OUT_OF_DATE if changed else RAN, "run_id": m.get("run_id"),
                     "finished": _when(m), "changed": changed})
     return out
 
@@ -176,7 +184,7 @@ def _step_items(steps: list, gt) -> list:
     finished = any(r["finished"] for r in gt.records.values())
     for s in steps:
         step, number = s["step"], s["step"][:3]
-        if s["state"] == "no run recorded":
+        if s["state"] == NO_RUN:
             # Only the next step to run is named (the ones after it need its output first); a later step that
             # did run (its outputs copied from another computer, say) is still checked below.
             if named_next or (step in ("060_extract", "070_evaluate") and not finished)                     or (step == "050_annotate" and batch_waiting(gt=gt)):
@@ -187,7 +195,7 @@ def _step_items(steps: list, gt) -> list:
                                f"`py {step}/run.py` (or `py run_pipeline.py --from {number}` for it and the steps "
                                f"after it).", "running-the-steps-again"))
             continue
-        if s["state"] == "out of date":
+        if s["state"] == OUT_OF_DATE:
             what = ", ".join(f"`{c}`" for c in s["changed"])
             if step == "030_split":
                 do = (f"run it again (`py {step}/run.py`) to check that the split still holds: it keeps "
@@ -211,7 +219,7 @@ def _setup_items(steps: list) -> list:
         env = dict(os.environ)
     from common import llm
     missing = [k for k in SERVICE_KEYS.get(llm.SERVICE, ()) if not (env.get(k) or "").strip()]
-    paying_ahead = any(s["state"] == "no run recorded" for s in steps if s["step"][:3] in ("040", "050", "060", "070"))
+    paying_ahead = any(s["state"] == NO_RUN for s in steps if s["step"][:3] in ("040", "050", "060", "070"))
     if missing and paying_ahead:
         return [_item("Setup", TO_DO, f"{' and '.join(missing)} {'is' if len(missing) == 1 else 'are'}n't in .env, "
                       f"so the steps that call the model (040, 050, 060, and 070, through {llm.SERVICE}, the default "
@@ -399,10 +407,10 @@ def status_text(st: dict) -> str:
     """The status for the terminal."""
     lines = [f"Where the project stands ({st['when']}), and what to do next", "", "Steps on this computer:"]
     for s in st["steps"]:
-        state = {"ran": f"ran {s['finished']} ({s['run_id']})",
-                 "out of date": f"OUT OF DATE: ran {s['finished']} ({s['run_id']}); since then changed: "
+        state = {RAN: f"ran {s['finished']} ({s['run_id']})",
+                 OUT_OF_DATE: f"OUT OF DATE: ran {s['finished']} ({s['run_id']}); since then changed: "
                                 f"{', '.join(s['changed'])}",
-                 "no run recorded": "no run recorded on this computer (no run that ended ran)"}[s["state"]]
+                 NO_RUN: "no run recorded on this computer (no run that ended ran)"}[s["state"]]
         lines.append(f"  {s['step']:<19} {state}")
     for level, title in ((TO_DO, "To do"), (LOOK, "Worth a look")):
         mine = [i for i in st["items"] if i["level"] == level]

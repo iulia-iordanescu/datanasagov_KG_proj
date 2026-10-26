@@ -433,6 +433,121 @@ class Display(unittest.TestCase):
                       self.out["body"])
 
 
+def many_rows(n: int, unchecked: int = 0) -> str:
+    """A translation table of n entity class rows, the last `unchecked` of them not checked."""
+    lines = [MAPPING.splitlines()[0]]
+    lines += [f"entity class,Thing{i},Spacecraft,no,{'no' if i >= n - unchecked else 'yes'},A thing.,a craft that operates in space"
+              for i in range(n)]
+    return "\n".join(lines) + "\n"
+
+
+class Sample(unittest.TestCase):
+    """The Translation table view's rows chosen at random (sample_rows), and what finding none wrong among them
+    means (wrong_rows_bound)."""
+
+    def rows(self, n, unchecked=0):
+        tmp = Path(tempfile.mkdtemp())
+        return R.mapping_entries(files(tmp, mapping=many_rows(n, unchecked))["mapping_path"], tmp / "ground_truth_schema.txt")
+
+    def test_fixed_and_distinct(self):
+        rows = self.rows(164)
+        sample = R.sample_rows(rows)
+        self.assertEqual(len(sample), R.SAMPLE_SIZE)
+        self.assertEqual(len(set(sample)), R.SAMPLE_SIZE)
+        self.assertEqual(R.sample_rows(rows), sample)                              # the same each time
+        self.assertEqual(R.sample_rows(list(reversed(rows))), list(reversed(sample)))   # whatever the rows' order
+        self.assertEqual(sample, [r["entry"] for r in rows if r["entry"] in sample])     # in the rows' order
+        self.assertNotEqual(R.sample_rows(rows, seed="another seed"), sample)
+        self.assertEqual(R.SAMPLE_SIZE, 30)
+
+    def test_stays_while_its_rows_are_there(self):
+        rows = self.rows(164)
+        sample = R.sample_rows(rows)
+        others = [r for r in rows if r["entry"] not in sample]
+        self.assertEqual(R.sample_rows([r for r in rows if r is not others[0]]), sample)   # another row taken out
+        gone = sample[0]
+        after = R.sample_rows([r for r in rows if r["entry"] != gone])               # a sampled row taken out
+        self.assertEqual(len(after), R.SAMPLE_SIZE)
+        self.assertEqual(len(set(after) - set(sample)), 1)
+        self.assertEqual(set(sample) - set(after), {gone})
+
+    def test_only_checked_rows(self):
+        rows = self.rows(60, unchecked=20)
+        sample = R.sample_rows(rows)
+        self.assertEqual(len(sample), R.SAMPLE_SIZE)
+        self.assertFalse({r["entry"] for r in rows if r["checked"] == "no"} & set(sample))
+
+    def test_no_sample_when_few(self):
+        self.assertIsNone(R.sample_rows(self.rows(30)))                            # every row shown, no button
+        self.assertIsNone(R.sample_rows(self.rows(45, unchecked=15)))              # 30 checked: no sample either
+        self.assertEqual(len(R.sample_rows(self.rows(31))), 30)
+
+    def test_the_bound(self):
+        from math import comb
+
+        def chance(rows, d, sample, wrong):                                      # at most `wrong` wrong in the sample
+            return sum(comb(d, i) * comb(rows - d, sample - i) for i in range(wrong + 1)) / comb(rows, sample)
+        for rows, sample, wrong in ((164, 30, 0), (164, 30, 1), (164, 30, 2), (50, 30, 0), (164, 30, 30)):
+            d = R.wrong_rows_bound(rows, sample, wrong)
+            self.assertGreaterEqual(chance(rows, d, sample, wrong), 0.05)
+            if d < rows:
+                self.assertLess(chance(rows, d + 1, sample, wrong), 0.05)
+        self.assertEqual(R.wrong_rows_bound(164, 30), 14)
+
+    def test_the_guide_and_the_code_state_the_bound(self):
+        """The numbers helpers/review_page.md and SAMPLE_SIZE's comment state are wrong_rows_bound's."""
+        guide = (ROOT / "helpers" / "review_page.md").read_text(encoding="utf-8")
+        code = (ROOT / "helpers" / "review_page.py").read_text(encoding="utf-8")
+        for text in (guide, code):
+            found = re.findall(r"at most (\d+) of the (\d+)(?: rows)? \((\d+\.\d)%\) are wrong", " ".join(text.replace("#:", "").split()))
+            self.assertTrue(found)
+            for d, rows, pct in found:
+                self.assertEqual(int(d), R.wrong_rows_bound(int(rows), R.SAMPLE_SIZE))
+                self.assertEqual(pct, f"{100 * int(d) / int(rows):.1f}")
+        for k, d in re.findall(r"\| (\d) \| (\d+) \|", guide):              # the guide's table, k found wrong
+            self.assertEqual(int(d), R.wrong_rows_bound(164, R.SAMPLE_SIZE, int(k)))
+
+
+@unittest.skipUnless(CHROME, "no Chrome or Edge on this computer to run the page's script")
+class SampleView(unittest.TestCase):
+    """In headless Chrome: the Translation table view shows the rows chosen at random first, with the button that
+    shows every row; with too few rows, every row and no button; a comment is filed by row in either view."""
+
+    SCRIPT = ("const out = {}; show('mapping'); const boxes = () => document.querySelectorAll('.mapbox').length;"
+              "const b = () => document.getElementById('sampleswitch');"
+              "out.text = document.getElementById('view').textContent; out.first = boxes(); out.button = b() ? b().textContent : null;"
+              "if (b()) { b().click(); out.all = boxes(); out.allText = document.getElementById('view').textContent;"
+              "  setComment(BY_ID['translation row|entity class Thing0'], 'Wrong.'); b().click(); out.back = boxes(); }"
+              "out.comments = Object.keys(comments).filter((k) => comments[k].text);"
+              "document.body.setAttribute('data-out', JSON.stringify(out));")
+
+    def run_with(self, mapping):
+        tmp = Path(tempfile.mkdtemp())
+        return json.loads(run_page(R.build(R.page_data(**files(tmp, mapping=mapping))), self.SCRIPT, tmp))
+
+    def test_many_rows(self):
+        out = self.run_with(many_rows(40))
+        self.assertEqual(out["first"], 30)
+        self.assertIn("30 rows chosen at random from the 40. If you have time, check these; the button below shows all 40.",
+                      out["text"])
+        self.assertEqual(out["button"], "Show all 40 rows")
+        self.assertEqual(out["all"], 40)
+        self.assertIn("Show only the 30 chosen at random", out["allText"])
+        self.assertEqual(out["back"], 30)
+        self.assertEqual(out["comments"], ["translation row|entity class Thing0"])     # which row, not which view
+
+    def test_unchecked_rows(self):
+        out = self.run_with(many_rows(40, unchecked=5))
+        self.assertIn("30 rows chosen at random from the 35 checked rows. If you have time, check these; the button "
+                      "below shows all 40.", out["text"])
+
+    def test_few_rows(self):
+        out = self.run_with(many_rows(30))
+        self.assertEqual(out["first"], 30)
+        self.assertIsNone(out["button"])
+        self.assertNotIn("chosen at random", out["text"])
+
+
 class Senders(unittest.TestCase):
 
     def test_allowed_domains(self):

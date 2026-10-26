@@ -246,7 +246,7 @@ def main(argv=None) -> int:
     try:
         st = project.project_status()
         next_up = project.status_markdown(st, docs_prefix="../../")
-        counts = {level: sum(i["level"] == level for i in st["items"]) for level in (project.TO_DO, project.LOOK)}
+        counts = {level: sum(i["level"] == level for i in st["items"]) for level in project.LEVELS}
         summary = (f"what to do next: {counts[project.TO_DO]} to do, {counts[project.LOOK]} worth a look "
                    f"(the report's *What to do next*, or `py run_pipeline.py --status`)")
     except Exception as e:                                 # the status never costs the run its report

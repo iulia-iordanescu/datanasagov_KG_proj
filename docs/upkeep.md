@@ -4,6 +4,31 @@ Everything a person does to keep the project going, grouped by when it comes up.
 
 The terms: [`terminology.md`](terminology.md).
 
+## What the status lists
+
+The status (`py run_pipeline.py --status`, the [annotation tool](terminology.md#4-ground-truth-and-samples)'s home page, and the end of every pipeline report, all from `common/common_helpers/status.py`) lists each step's state, then the items waiting for a person.
+
+**Each step's state**, exactly one of three:
+
+- **ran**: a run of the step that ended `ran` is recorded on this computer, and no input that counts has changed since (which inputs count: *Running the steps again*, below);
+- **out of date**: such a run is recorded, and an input that counts has changed since it; the status names the input. Step 050 is never out of date;
+- **no run recorded**: no run of the step that ended `ran` is recorded on this computer.
+
+**Each item** has exactly one level and one area, and names the section of this page that explains it (*Why, and how*). The levels:
+
+- **to do** (✖): something blocks a step or makes its numbers wrong;
+- **worth a look** (⚑): nothing stops, but a person should decide.
+
+The to do items come first, then the worth a look ones; within each level, in the order of the areas:
+
+- **Setup**: the model service's key missing from `.env` while a step that calls the model has no run recorded (to do);
+- **Steps**: the next step with no run recorded (only that one: the steps after it need its output first), and each step that is out of date (to do);
+- **[Ground truth](terminology.md#4-ground-truth-and-samples)**: a [drafted batch](terminology.md#4-ground-truth-and-samples) not opened yet, a ground truth file with records not finished, a problem reading the ground truth, rows with an error to fix, and [entity classes](terminology.md#3-schemas) or predicates the ground truth uses that the [ground truth schema](terminology.md#3-schemas) lacks (all to do);
+- **[Schema additions](terminology.md#3-schemas)**: lines of `annotations/schema_additions.txt` its layout can't read, and entries to fix before step 060 runs again (to do); [component classes](terminology.md#3-schemas) step 060's model used outside the schema (worth a look);
+- **[Translation table](terminology.md#7-evaluating-extraction-step-070)**: component classes of the [current schema](terminology.md#6-extracting-with-a-schema-step-060) with no row yet, rows still to check, stale rows, rows with a [missing target](terminology.md#7-evaluating-extraction-step-070), and component classes with more than one row (all to do);
+- **[Partial pairs](../070_evaluate/metrics/pairs.md)**: partial pairs of [tuning records](terminology.md#7-evaluating-extraction-step-070) not reviewed yet (worth a look);
+- **Git**: files in `annotations/` with changes not committed to Git (to do).
+
 ## Before the first run
 
 - **Set up the computer:** Python, the environment, the packages, and the `.env` file with the model's service key ([`virtual_environment_setup.md`](virtual_environment_setup.md)). On the NASA laptop, follow [`running_on_nasa_laptop.md`](running_on_nasa_laptop.md) from the top.
