@@ -170,7 +170,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **May matter because:** it is how a value is made from several observations.
   - **Question:** Q7.
 - **Left out:** "surface temperature bands" as a thing of its own (notes, "the daytime and nighttime surface temperature bands")
-  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." "surface temperature" is the "Land Surface Temperature" already written (rule 13: the wording that says more); "bands" is a type word (rule 13: "Leave out a type word that only describes the thing,"). "daytime" and "nighttime" are ground truth triples of their own (OBSERVED_AT_TIME_OF_DAY, rule 9).
+  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." "surface temperature" is the "Land Surface Temperature" already written (rule 13: the wording that says more); "bands" is a type word (rule 13: "Leave out a type word that only describes the thing,"). "daytime" and "nighttime" are ground truth triples of their own (OBSERVED_AT_TIME_OF_DAY, rule 9 of *Writing a classed triple*).
 - **Left out:** "associated" (notes, "associated quality control assessments")
   - **Rule:** none to quote: it says only that the assessments go with the temperature bands.
 - **Left out:** "Known Issues" (notes, the heading)
@@ -211,7 +211,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **Question:** Q6 (b).
 - **Left out:** "mission phase" (notes, "comet escort 1 mission phase")
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
-  - My ground truth triple has the phase "comet escort 1", its target "67P/Churyumov-Gerasimenko" a triple of its own (rule 9).
+  - My ground truth triple has the phase "comet escort 1", its target "67P/Churyumov-Gerasimenko" a triple of its own (rule 9 of *Writing a classed triple*).
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 

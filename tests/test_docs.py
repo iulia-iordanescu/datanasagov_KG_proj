@@ -533,7 +533,7 @@ class RulesInStep(unittest.TestCase):
 
 
 class QualifierQuotesRule9(unittest.TestCase):
-    """docs/terminology.md's *qualifier* quotes rule 9's words (a rule is cited by its words, not its number): the kinds
+    """docs/terminology.md's *qualifier* quotes the words of rule 9 of *Writing a classed triple* (a rule is cited by its words, not its number): the kinds
     it quotes are exactly those of rule 9's bold sentence in annotations/guidelines.md, so the quote can't drift."""
 
     def test_quote_matches_the_rule(self):
