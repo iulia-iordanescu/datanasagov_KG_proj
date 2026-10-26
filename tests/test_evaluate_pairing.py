@@ -1084,5 +1084,33 @@ class QuantitiesPair(unittest.TestCase):
         self.assertNotEqual(pairing.multiset_element(a), pairing.multiset_element(dict(a, object="10 km")))
 
 
+
+class HeldOutSources(unittest.TestCase):
+    """070 notes an entry of the ground truth schema whose source line names a held-out record: the ground truth
+    schema is frozen for held-out records (annotations/guidelines.md, Before you start)."""
+
+    def test_found(self):
+        import tempfile
+        from pathlib import Path
+        schema = "\n".join(["ENTITY CLASSES", "--------------",
+                            "Dataset           a set of data",
+                            "Moonlet           a small moon",
+                            "                  source: ground truth tuning #0; held-out #8, #11",
+                            "Comet             a comet",
+                            "                  source: ground truth tuning #2",
+                            "", "PREDICATES", "----------",
+                            "ORBITS            goes around",
+                            "                  source: ground truth held-out #8", ""])
+        pool = [{"id": f"r{i}", "position": i, "part": "held-out" if i in (8, 11) else "tuning"} for i in range(12)]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ground_truth_schema.txt"
+            path.write_text(schema, encoding="utf-8")
+            self.assertEqual(records.held_out_sources(path, pool),
+                             [("entity class", "Moonlet", "ground truth tuning #0; held-out #8, #11", [(8, "r8"), (11, "r11")]),
+                              ("predicate", "ORBITS", "ground truth held-out #8", [(8, "r8")])])
+            path.write_text(schema.replace("held-out", "tuning"), encoding="utf-8")
+            self.assertEqual(records.held_out_sources(path, pool), [])
+
+
 if __name__ == "__main__":
     unittest.main()

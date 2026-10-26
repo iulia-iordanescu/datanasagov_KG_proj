@@ -101,6 +101,13 @@ checks that nothing else changed, and otherwise puts the file back. A component
 class gets a "source:" line naming the ground truth records using it, by part
 ("ground truth tuning #3; held-out #8"), so it can be told whether held-out
 records shaped its component classes.
+
+The ground truth schema is frozen for held-out records (annotations/guidelines.md,
+Before you start): in a held-out record, an entity class or predicate the ground truth
+schema lacks gets its own message (_frozen_message) and no button to add it; adding one
+that a held-out record uses is refused; and adding, renaming, or merging is refused
+while the record shown is held-out (refuse_if_held_out; the page sends the id of the
+record shown). Step 070 notes an entry whose "source:" line names a held-out record.
 """
 from __future__ import annotations
 
@@ -304,8 +311,36 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     every = errors + flags
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
-    return [{"code": c, "type": kind, "message": _message(c, row, every, title), "add": _offer(c, row, every)}
+    held_out = data.parts.get(row.get("id")) == "held-out"
+    return [{"code": c, "type": kind, "add": None if held_out and c in ADDS else _offer(c, row, every),
+             "message": _frozen_message(data, c, row) if held_out and c in ADDS else _message(c, row, every, title)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
+
+
+#: What to do instead of changing the ground truth schema while annotating a held-out record (annotations/guidelines.md).
+INSTEAD = ("use the ground truth schema's {kind} that fits; if none fits, delete the ground truth triple and write the "
+           "fact in annotations/left_out.md, with a question for the experts (annotations/guidelines.md, Before you start)")
+
+
+def _frozen_message(data: Data, code: str, row: dict) -> str:
+    """The message of an entity class or predicate the ground truth schema lacks, in a held-out record: the ground
+    truth schema is frozen for held-out records, so it can't be added from one."""
+    kind, column = ADDS[code]
+    article = "an" if kind == "entity class" else "a"
+    return (f"\"{row.get(column) or '(none)'}\" isn't {article} {kind} of the ground truth schema, and this is a held-out "
+            f"record (pool position {data.positions.get(row['id'], '?')}): the ground truth schema is frozen while "
+            f"annotating held-out records, so nothing can be added to it from this record. If it's a typo, fix it; "
+            f"otherwise " + INSTEAD.format(kind=kind) + ".")
+
+
+def refuse_if_held_out(data: Data, item: dict, what: str) -> None:
+    """Refuse a change to the ground truth schema (adding, renaming, merging) while the record shown is held-out."""
+    rid = str(item.get("record") or "")
+    if data.parts.get(rid) == "held-out":
+        raise ValueError(f"the record shown, {rid} (pool position {data.positions.get(rid, '?')}), is a held-out "
+                         f"record, and the ground truth schema is frozen while annotating held-out records, so {what} "
+                         f"is refused. For this record, " + INSTEAD.format(kind="entity class or predicate")
+                         + ". If a tuning record needs the change, make it with a tuning record shown.")
 
 
 def _message(code: str, row: dict, every: list, title: str = "") -> str:
@@ -460,7 +495,16 @@ def add_to_hand(data: Data, item: dict) -> str:
         if kind not in KIND_KEYS:
             raise ValueError("entry_type must be entity class or predicate")
         name = str(item.get("component_class") or "").strip()
-        source = _learned_from(data, uses_of(read_ground_truth(), kind, name))
+        refuse_if_held_out(data, item, f"adding {name}")
+        uses = uses_of(read_ground_truth(), kind, name)
+        held = sorted({(data.positions.get(r["id"], -1), r["id"]) for r in uses if data.parts.get(r["id"]) == "held-out"})
+        if held:
+            raise ValueError(f"{name} is used by {len(held)} held-out record(s): "
+                             + ", ".join(f"pool position {p} ({rid})" for p, rid in held)
+                             + ". The ground truth schema is frozen for held-out records, so it can't be added from them. "
+                             f"In those records, " + INSTEAD.format(kind=kind)
+                             + f". If a tuning record needs {name}, add it once no held-out record uses it.")
+        source = _learned_from(data, uses)
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
         return f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else "")
@@ -1123,6 +1167,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
 
 
 def plan_vocab(data: Data, item: dict) -> dict:
+    refuse_if_held_out(data, item, f"renaming or merging {item.get('old')}")
     with HAND_LOCK:
         return _plan(data, item.get("kind"), item.get("old"), item.get("new"))[0]
 
@@ -1145,6 +1190,7 @@ def _write_all(files: dict) -> None:
 
 def apply_vocab(data: Data, item: dict) -> dict:
     """Rename or merge, as plan_vocab showed (worked out again, then written)."""
+    refuse_if_held_out(data, item, f"renaming or merging {item.get('old')}")
     with HAND_LOCK:
         shown, files = _plan(data, item.get("kind"), item.get("old"), item.get("new"))
         _write_all(files)

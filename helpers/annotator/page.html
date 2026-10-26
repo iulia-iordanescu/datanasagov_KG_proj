@@ -848,7 +848,7 @@ function show(i) {
               el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
               el("dt", {}, "Part"), el("dd", {}, rec.part
                 ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-                    ? "A held-out record: an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
+                    ? "A held-out record: the ground truth schema is frozen while annotating it (no entity class or predicate added, renamed, or merged: annotations/guidelines.md, Before you start), and an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               expertQuestionsOn(rec.id),
@@ -1285,6 +1285,8 @@ function addControl(a) {
   return box;
 }
 let adding = false;
+// The id of the record shown, if any: the server refuses to change the ground truth schema while it's a held-out record.
+function shownRecordId() { return batch && batch.records[current] ? batch.records[current].id : null; }
 async function addToHand(item) {
   if (adding) return;                               // one add at a time
   adding = true;
@@ -1292,7 +1294,7 @@ async function addToHand(item) {
   try {
     await flush();
     if (dirty) return;                              // the batch didn't save: save() has said why
-    const r = await api("/api/hand/add", item);
+    const r = await api("/api/hand/add", { ...item, record: shownRecordId() });
     drawGaps(await api("/api/gaps"));
     if (batch) { dirty = true; await save(); }       // the checks run again against the grown schema
     if (!dirty) status(r.added, "saved");            // else save() has said why it failed
@@ -2039,7 +2041,7 @@ async function planVocab(kind, old, input) {
   const name = input.value.trim();
   if (!name) { status("Type the new component class first (or an existing one, to merge into it).", "failed"); return; }
   try {
-    vocabPlan = await api("/api/vocab/plan", { kind, old, new: name });
+    vocabPlan = await api("/api/vocab/plan", { kind, old, new: name, record: shownRecordId() });
     drawVocab();
     window.scrollTo(0, 0);
   } catch (e) { fail(e); }
@@ -2047,7 +2049,7 @@ async function planVocab(kind, old, input) {
 
 async function applyVocab() {
   try {
-    const done = await api("/api/vocab/apply", { kind: vocabPlan.kind, old: vocabPlan.old, new: vocabPlan.new });
+    const done = await api("/api/vocab/apply", { kind: vocabPlan.kind, old: vocabPlan.old, new: vocabPlan.new, record: shownRecordId() });
     vocab = await api("/api/vocab");
     vocabPlan = null;
     status(`${done.merge ? "Merged" : "Renamed"} ${done.old} → ${done.new} (${done.kind}) at ${new Date().toLocaleTimeString()}. Commit the changed files.`, "saved");
@@ -2096,7 +2098,7 @@ function vocabEntry(kind, v) {
        v.in_hand
          ? el("button", { onclick: () => defineVocab(kind, v.component_class, def) }, "Save definition")
          : el("button", { onclick: async () => {
-             try { await api("/api/hand/add", { entry_type: kind, component_class: v.component_class, definition: def.value });
+             try { await api("/api/hand/add", { entry_type: kind, component_class: v.component_class, definition: def.value, record: shownRecordId() });
                    vocab = await api("/api/vocab"); status(`Added ${v.component_class} to the ground truth schema`, "saved"); drawVocab();
              } catch (e) { fail(e); } } }, "Add to the ground truth schema")),
     el("div", { class: "bar" }, rename, " ",

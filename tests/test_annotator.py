@@ -366,15 +366,40 @@ class C_HandSchema(unittest.TestCase):
         finally:
             other.unlink()
 
-    def test_held_out_source_named(self):
+    def test_held_out_frozen(self):
+        """The ground truth schema is frozen for held-out records (annotations/guidelines.md, Before you start): a
+        component class a held-out record coins gets its own message and no button, and can't be added; nothing can be
+        added while a held-out record is shown."""
+        hand = TMP / "annotations" / "ground_truth_schema.txt"
+        path = TMP / "annotations" / "ground_truth" / "batch_000.csv"
+        saved, before = path.read_bytes(), hand.read_bytes()
         rows = gt_rows()
-        rows[-1]["object_class"] = "Moonlet"                                  # r3: held-out
-        with open(TMP / "annotations" / "ground_truth" / "batch_000.csv", "w", encoding="utf-8", newline="") as fh:
-            w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
-            w.writeheader()
-            w.writerows(rows)
-        added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Moonlet", "definition": "small"})
-        self.assertIn("source: ground truth held-out #3", added["added"])
+        rows[-1].update(subject="CERES", subject_class="Instrument", predicate="ABOARD", object="Terra",
+                        object_class="Moonlet", source_text="CERES aboard Terra")      # r3: held-out
+        rows[1]["object_class"] = "Comet"                                     # r0: tuning
+        try:
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
+                w.writeheader()
+                w.writerows(rows)
+            problem = next(p for rec in get("/api/batch?n=0")["records"] for row in rec["rows"] for p in row["problems"]
+                           if p["code"] == "object_class_not_in_schema" and row["object_class"] == "Moonlet")
+            self.assertIn("held-out record (pool position 3)", problem["message"])
+            self.assertIn("annotations/left_out.md", problem["message"])
+            self.assertIsNone(problem["add"])
+            refused = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Moonlet", "definition": "small"})
+            self.assertIn("used by 1 held-out record(s): pool position 3 (r3)", refused["error"])
+            shown = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Comet", "definition": "a comet",
+                                           "record": "r3"})
+            self.assertIn("the record shown, r3 (pool position 3), is a held-out record", shown["error"])
+            self.assertEqual(hand.read_bytes(), before)
+            # a tuning record's coined component class keeps its button
+            tuning = next(p for rec in get("/api/batch?n=0")["records"] for row in rec["rows"] for p in row["problems"]
+                          if p["code"] == "object_class_not_in_schema" and row["object_class"] == "Comet")
+            self.assertEqual(tuning["add"], {"entry_type": "entity class", "component_class": "Comet"})
+        finally:
+            path.write_bytes(saved)
+            hand.write_bytes(before)
 
 
 class D_Mapping(unittest.TestCase):
@@ -636,6 +661,15 @@ class G_Vocabulary(unittest.TestCase):
         # the overview at the top of the page shows each predicate's patterns (an entity class has none)
         orbits = next(e for e in v["predicate"] if e["component_class"] == "ORBITS")
         self.assertEqual((orbits["patterns"], sat["patterns"]), ([["Satelite", "Planet"]], []))
+
+    def test_held_out_shown_refused(self):
+        before = self.snapshot()
+        for path in ("/api/vocab/plan", "/api/vocab/apply"):
+            r = post(path, {"kind": "entity class", "old": "Satelite", "new": "Satellite", "record": "r3"})
+            self.assertIn("renaming or merging Satelite is refused", r["error"])
+        self.assertEqual(self.snapshot(), before)
+        self.assertNotIn("error", post("/api/vocab/plan", {"kind": "entity class", "old": "Satelite", "new": "Satellite",
+                                                           "record": "r0"}))
 
     def test_plan_writes_nothing(self):
         before = self.snapshot()

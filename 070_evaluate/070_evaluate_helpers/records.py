@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import collections
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
@@ -111,6 +112,26 @@ def check_coined(gt, ground_truth_schema_path) -> None:
                    f"button), or fix the typo where it's used; {AGAIN}")
 
 
+#: In a "source:" line of the ground truth schema (written by the annotation tool), the held-out records it names.
+HELD_OUT_SOURCE = re.compile(r"held-out\s+(#\d+(?:\s*,\s*#\d+)*)")
+
+
+def held_out_sources(ground_truth_schema_path, pool_rows: list) -> list:
+    """The ground truth schema's entity classes and predicates whose "source:" line names a held-out record, i.e. that
+    were added while a held-out record used them, though the ground truth schema is frozen for held-out records
+    (annotations/guidelines.md, Before you start): [(kind, component class, source, [(pool position, record id)])]."""
+    held = {r["position"]: r["id"] for r in pool_rows if r.get("part") == "held-out"}
+    sources = read_ground_truth_schema(ground_truth_schema_path)["sources"]
+    found = []
+    for section, kind in (("entity_classes", "entity class"), ("predicates", "predicate")):
+        for name, source in sources[section].items():
+            named_ = [int(n) for m in HELD_OUT_SOURCE.finditer(source) for n in re.findall(r"\d+", m.group(1))]
+            records = [(n, held[n]) for n in named_ if n in held]
+            if records:
+                found.append((kind, name, source, records))
+    return found
+
+
 def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
     """Each evaluated record's "twin": its twin kind against the records the current schema was learned from
     (common.ground_truth.twin_kinds), "" when it isn't a twin, None when that isn't known (a note says why, and
@@ -165,6 +186,20 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                    f"can't keep the held-out part apart. Delete {splits}, run `py 030_split/run.py`, then run "
                    f"`py 070_evaluate/run.py` again.")
     evaluated.pool = [r["id"] for r in pool_rows]
+    frozen = held_out_sources(inputs["ground_truth_schema"], pool_rows)
+    if frozen:
+        evaluated.notes.append(
+            f"{len(frozen)} entity class(es) or predicate(s) of the ground truth schema "
+            f"({ref_path(Path(inputs['ground_truth_schema']))}) were added from held-out records, though the ground truth "
+            f"schema is frozen for held-out records (annotations/guidelines.md, Before you start): "
+            + named([f"{name} ({kind}; source: {source}; held-out "
+                     + ", ".join(f"pool position {n} ({rid})" for n, rid in records) + ")"
+                     for kind, name, source, records in frozen], 10, "; ")
+            + ". So those held-out records shaped the ground truth schema, and their numbers may flatter the pipeline. "
+              "In those records, use an entity class or predicate the ground truth schema had before, or delete the "
+              "ground truth triple and write the fact in annotations/left_out.md with a question for the experts; "
+              "then delete the entry from the ground truth schema if no tuning record uses it, or change its source "
+              "line to name only the tuning records that use it; " + AGAIN)
     by_id = {r["id"]: r for r in pool_rows}
     strata = {r["id"].strip(): (r.get("stratum") or "").strip() for r in read_csv(Path(inputs["candidates"]))}
     for r in pool_rows:
