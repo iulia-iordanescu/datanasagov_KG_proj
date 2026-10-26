@@ -20,11 +20,11 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 3 items, 2 that may matter.
 
 - **Left out:** "1/2/3" (title)
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** I read it as processing levels of a Planetary Data System scale, but the record does not say so; if it is, the dataset has three processing levels, and a search by level would find it.
   - **Question:** Q6 (b).
 - **Left out:** "1149" (title)
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** I do not know what it stands for; if it is a standard slot of such a title (an observation or sequence number), it identifies this dataset among its siblings.
   - **Question:** Q6 (b).
 - **Left out:** "comet" (notes, "at the comet 67P")
@@ -36,7 +36,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 2 items, none that may matter. The record has no list of other time steps or resolutions of its product ("daily" is its own, in "provides daily snow cover"), so nothing of a product family is left out here.
 
 - **Left out:** "satellite" (notes, "the Aqua satellite")
-  - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class already says it's a satellite"
+  - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
 - **Left out:** "Each data granule contains" (notes), that the data come in granules
   - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words."
   - My ground truth triple HAS_GRANULE_DURATION "5 minutes" already says each granule covers 5 minutes, which only makes sense if the data come in granules.
@@ -66,15 +66,15 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 The dense record: its notes describe a whole family of products (several time steps, two resolutions, day and night, two kinds of temperature) and the title names the one this record is. 12 items, 8 that may matter. The product family as a whole is asked in Q24.
 
 - **Left out:** "Day" (notes, "Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
   - **May matter because:** it says daytime products exist.
   - **Question:** Q24.
 - **Left out:** "daily", "monthly" and "annual" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
   - **May matter because:** they describe the product family: which time steps of this product exist.
   - **Question:** Q24.
 - **Left out:** "9.26 km" (notes, "available at both 4.63 and 9.26 km spatial resolution")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
   - **May matter because:** it is the other resolution of the product family.
   - **Question:** Q24; whether the title's "4km" is the 4.63 km: Q22.
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
@@ -102,9 +102,9 @@ The dense record: its notes describe a whole family of products (several time st
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
   - **Question:** Q15.
 - **Left out:** "satellite" (notes, "the Aqua satellite")
-  - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class already says it's a satellite"
+  - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
 - **Left out:** "which can be found at https://doi.org/10.5067/MODAM-8D4N4" (notes), the DOI of the previous v2014.1 datasets
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
   - **May matter because:** it is where the superseded release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 
@@ -134,7 +134,7 @@ The dense record: its notes describe a whole family of products (several time st
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), what the product MCD19A1N holds
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 11: "In every case, include the fact of how the two datasets are connected."). I decided this on 2026-10-25.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 11: "In every case, include the fact of how the two datasets are connected."). I decided this on 2026-10-25.
   - **May matter because:** it says what the product this dataset feeds holds (a surface reflectance).
   - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
@@ -163,7 +163,7 @@ The dense record: its notes describe a whole family of products (several time st
 - **Left out:** "(LST&E)" (notes, "Land Surface Temperature and Emissivity (LST&E)")
   - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item, when each item alone is a complete object." The abbreviation names the pair, so it belongs to neither item after the split.
 - **Left out:** "https://doi.org/10.5067/MODIS/MOD11A1.061" (notes, the address in "[MOD11A1 Version 6.1](https://doi.org/10.5067/MODIS/MOD11A1.061)"), the DOI of Version 6.1
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
   - **May matter because:** it is where the newer release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 - **Left out:** "Above 30 degrees latitude, some pixels may have multiple observations where the criteria for clear-sky are met." (notes)
@@ -182,7 +182,7 @@ The dense record: its notes describe a whole family of products (several time st
 - **Left out:** "Known Issues" (notes, the heading)
   - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts" (a heading, like a field name).
 - **Left out:** the other products in "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (notes)
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
   - **May matter because:** the date and its cause hold for the whole family of these products.
   - **Question:** Q24.
 - **Left out:** "known issues" as what the page is about (notes, "For complete information about known issues please refer to")
@@ -215,7 +215,7 @@ The dense record: its notes describe a whole family of products (several time st
 2 items, 1 that may matter.
 
 - **Left out:** "CAL" (title, "67P/CAL")
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** my reading, not checked against a source: it may mark calibration data; if so, it says what kind of data the dataset holds.
   - **Question:** Q6 (b).
 - **Left out:** "mission phase" (notes, "comet escort 1 mission phase")
@@ -306,7 +306,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says how the sources of the table were matched with the quasar catalog.
   - **Question:** Q26.
 - **Left out:** "2XMMi-DR3" HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (notes, "The total area of the catalog fields is ~ 814 deg^2")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
   - **Rule:** none to quote: "XMM-Newton sample" names the sources the table holds, not the table.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" PROVIDED_BY_PARTY "NASA HEASARC" (notes, "This is a service provided by NASA HEASARC")
@@ -317,11 +317,11 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 10 items, 8 that may matter.
 
 - **Left out:** "MTP020" (title, "ESC3-MTP020")
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** my reading, not checked against a source: it may name a planning period within the phase COMET ESCORT 3, which would tell this dataset from its siblings.
   - **Question:** Q6 (b).
 - **Left out:** "RDR" (title, "RDR-INFLDSTR")
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or acronym stands for"
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** another record explains it as "Level 3 (RDR)"; this one doesn't, and its level is "CODMAC level 4".
   - **Question:** Q6 (b).
 - **Left out:** "prime" (notes, "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)")

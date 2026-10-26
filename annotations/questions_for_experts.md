@@ -53,7 +53,7 @@ Checked on 2026-10-25: "SIN Grid" is the MODIS sinusoidal grid, and "Global 1km 
 
 ### Annotation guidelines
 
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an acronym the record leaves unexpanded. Three exceptions: rule 9 takes some qualifiers out of an instance, rule 12 copies a list's shared words onto each item, and rule 13 uses one wording for a thing everywhere in the record.
+- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Three exceptions: rule 9 takes some qualifiers out of an instance, rule 12 copies a list's shared words onto each item, and rule 13 uses one wording for a thing everywhere in the record.
 - Writing a classed triple, rule 6: Each fact once, even if the record states it twice or in other words. Rule 13 says which wording to keep. Suppose: the notes say "gridded" and the title says "Polar-Gridded". Then: one ground truth triple, with "Polar-Gridded", by rule 13.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
@@ -175,7 +175,7 @@ For the example, I wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 13: One thing, one wording, within a record.
@@ -777,7 +777,7 @@ I write these facts with different predicates of the ground truth schema: HAS_TI
 
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 11: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 13, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get none.
 
 ### Options
@@ -912,7 +912,7 @@ The knowledge graph will be built from the records' metadata fields and the extr
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
@@ -1051,7 +1051,7 @@ Settled, so not asked here: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDU
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item, when each item alone is a complete object. Put one item alone after the predicate. Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: "long wave IR 11 micron wavelength channel" alone is a complete object, so two ground truth triples, each object with the words the items share copied onto it, in the singular, since each is now one item: "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
@@ -1193,7 +1193,7 @@ The [model](../docs/terminology.md#8-the-pipeline) that reads the records has it
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role or thing is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type.
 - Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
@@ -1418,7 +1418,7 @@ The example below is a Rosetta radio science dataset. Its title has "RSI", and i
 
 ### Context
 
-The record doesn't say what "RSI" stands for, and the annotation guidelines don't let me write what an unexplained acronym stands for, so the object instance is "RSI", as written. "Radio Science" is the only Discipline I have written so far. The translation table names one entity class of the ground truth schema for each of the model's, whatever the record: so every Method the model finds is judged as an Algorithm, and every Topic as a Discipline. The two Algorithms I have written so far are methods applied to data.
+The record doesn't say what "RSI" stands for, and the annotation guidelines don't let me write what an unexplained abbreviation stands for, so the object instance is "RSI", as written. "Radio Science" is the only Discipline I have written so far. The translation table names one entity class of the ground truth schema for each of the model's, whatever the record: so every Method the model finds is judged as an Algorithm, and every Topic as a Discipline. The two Algorithms I have written so far are methods applied to data.
 
 ### Example record
 
@@ -1448,7 +1448,7 @@ The record doesn't say what "RSI" stands for, and the annotation guidelines don'
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 
@@ -1689,7 +1689,7 @@ The example below is the one whose input, "radiance data", has the most facts of
 
 - Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 14: A processing step: output = method(input).
 
 ### Options
@@ -2044,7 +2044,7 @@ The record below is the only one so far where I wrote down a map projection. I k
 
 ### Annotation guidelines
 
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an acronym the record leaves unexpanded.
+- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
 - Writing a classed triple, rule 13: One thing, one wording, within a record.
 - Writing a classed triple, rule 13: the other appears only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 10).
 
@@ -2220,7 +2220,7 @@ I write only what a record states (rule 1 of *What counts as a fact*, quoted bel
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 
 ### Options
 
@@ -2304,7 +2304,7 @@ The record introduces the two products as "Two SST products can be present in th
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - What counts as a fact, rule 7: Not uncertain facts.
 - Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
 
@@ -2379,7 +2379,7 @@ A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes th
 
 ### Context
 
-Rule 13 of the annotation guidelines writes one thing with one wording in a record: of two names that say the same, the one the record uses most often, or, on a tie, the one it gives first. Each wording appears once, and the title comes first, so I wrote "V2019.0". If they are two names of one release, rule 10 of *Writing a classed triple* allows an ALSO_KNOWN_AS triple only when the record gives the other name in words of its own, which it doesn't here.
+Rule 13 of the annotation guidelines writes one thing with one wording in a record: of two wordings that say the same, the one the record uses most often, or, on a tie, the one it gives first. Each wording appears once, and the title comes first, so I wrote "V2019.0". If they are two names of one release, rule 10 of *Writing a classed triple* allows an ALSO_KNOWN_AS triple only when the record gives the other name in words of its own, which it doesn't here.
 
 ### Example record
 
@@ -2404,7 +2404,7 @@ Rule 13 of the annotation guidelines writes one thing with one wording in a reco
 - What counts as a fact, rule 10: Not words that are true only as of when the record was written. Leave out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
 - What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two names that say the same, use the one the record uses most often (on a tie, the one it gives first)
+- Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)
 
 ### Options
 
@@ -2525,10 +2525,10 @@ What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.ear
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or acronym stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written.
 - Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 14: A processing step: output = method(input).
 
 ### Options
@@ -2800,7 +2800,7 @@ The spatial resolutions I have written so far: "500m" (the record "MODIS/Aqua Sn
 
 ### Annotation guidelines
 
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 - Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
 
 ### Options
@@ -2966,7 +2966,7 @@ How the groups of datasets could be written, if they are, depends on how the gro
 
 ### Annotation guidelines
 
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another time step, resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
+- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
 
 ### Options
 

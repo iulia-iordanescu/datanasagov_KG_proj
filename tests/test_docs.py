@@ -510,7 +510,7 @@ class RulesInStep(unittest.TestCase):
         ("General facts: include them, unless they're about another dataset that the record's dataset isn't made",
          "General facts: include them, unless they're about"),
         ("Never use outside knowledge", "Never add what you know from elsewhere"),
-        ("Connect your triples", "isn't connected to the catalog entry"),
+        ("Connect your triples", "isn't connected to the record's id"),
         ('Do NOT write "is a" triples', 'Not "is a" facts'),
         ("describes_class: the entity class", "## The describes triple"),
         ("The field names are formatting, not facts", "Not the field names"),
