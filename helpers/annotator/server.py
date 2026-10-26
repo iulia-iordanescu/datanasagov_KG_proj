@@ -139,7 +139,7 @@ from common.partial_reviews import COLUMNS as REVIEW_COLUMNS, NOT_SAME, REVIEWS_
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
 from common.review_comments import (CHANGED, GONE, KIND_HEADINGS, NOT_VERIFIED, REVIEWS_DIR as REVIEWER_COMMENTS_DIR,
                                     UNCHANGED, read_all as read_reviewer_comments)
-from common.expert_questions import QUESTIONS_PATH, read_questions
+from common.expert_questions import OPEN, QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
@@ -824,7 +824,7 @@ def expert_questions_view() -> dict:
         return {"file": f"annotations/{QUESTIONS_PATH.name}", "questions": [], "problem": str(e)}
     keep = ("id", "title", "status", "priority", "question_kind", "topic", "affects")
     return {"file": f"annotations/{QUESTIONS_PATH.name}", "questions": [{k: q[k] for k in keep} for q in questions],
-            "problem": ""}
+            "problem": "", "open": OPEN}
 
 
 def left_out_view() -> dict:

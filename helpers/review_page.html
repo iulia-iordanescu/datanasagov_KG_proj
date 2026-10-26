@@ -708,12 +708,11 @@ function tripleLine(t) {
     el("span", { class: "cls" }, `(${t.object_class})`));
 }
 const PRIORITY = { high: ["flag", "High priority"], medium: ["todo", "Medium priority"], low: ["todo", "Low priority"] };
-const STATUS = { open: ["todo", "Open"], answered: ["ok", "Answered"], withdrawn: ["todo", "Withdrawn"] };
-// What a question is about (its question kind, common/common_helpers/expert_questions.py QUESTION_KINDS), in words.
-const QUESTION_KIND = { "records and triples": "records and their classed triples",
-  "schema entry": "an entity class or predicate of the ground truth schema", "rule": "a rule of the annotation guidelines",
-  "translation table rows": "rows of the translation table", "pipeline method": "a method of the pipeline",
-  "general": "an idea, in general" };
+// A question's statuses, and each question kind in words: common/common_helpers/expert_questions.py (STATUSES,
+// QUESTION_KIND_WORDS), passed in the page's data like the priorities.
+const QS = D.statuses;
+const STATUS = { [QS.OPEN]: ["todo", "Open"], [QS.ANSWERED]: ["ok", "Answered"], [QS.WITHDRAWN]: ["todo", "Withdrawn"] };
+const QUESTION_KIND = D.question_kinds;
 // The bottom of a question, folded and quiet: my bookkeeping, not needed to answer. What it is about, my notes, what
 // each option would change, everything the answer may change (its Affects: records by pool position, title and id,
 // classed triples, rows, entries, rules, pipeline methods), the pipeline's words it quotes, and the example's ids.
@@ -751,7 +750,7 @@ function questionBox(q) {
   const marks = (r) => r.source_texts.map((s) => s.text);
   const card = el("section", { class: "mapbox question" + (has(q) ? " commented" : ""), id: `q-${q.entry}` },
     el("h3", { class: "qheading" }, el("span", { class: "qid nolink" }, q.entry), q.title),
-    el("div", { class: "qmeta nolink" }, pl + (q.status === "open" ? "" : ` · ${sl}`), changedPill(q)),
+    el("div", { class: "qmeta nolink" }, pl + (q.status === QS.OPEN ? "" : ` · ${sl}`), changedPill(q)),
     prose(q.question),
     q.context.length ? prose(q.context) : null,
     q.records.map((r) => [el("h4", {}, "An example"),
@@ -778,11 +777,11 @@ function drawQuestions() {
   const st = state.questions;
   const all = ENTRIES.filter((e) => e.kind === "question")
     .sort((a, b) => (PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority)) || (a.number - b.number));
-  const live = all.filter((q) => st.closed || q.status === "open");
+  const live = all.filter((q) => st.closed || q.status === QS.OPEN);
   const shown = live.filter((q) => (st.priority === "all" || q.priority === st.priority) && (!st.mine || has(q))
     && (!st.changed || CHANGED.has(q.id) || NEW.has(q.id)) && matches(st.search, q.search));
   const count = (p) => live.filter((q) => q.priority === p).length;
-  const closedN = all.filter((q) => q.status !== "open").length;
+  const closedN = all.filter((q) => q.status !== QS.OPEN).length;
   const { at, bar } = itemsOneAtATime("questions", shown.map((q) => q.id), "Question");
   const select = el("select", { "aria-label": "Questions by priority", onchange: (ev) => { st.priority = ev.target.value; redraw(); } },
     [["all", `Every priority (${live.length})`], ...PRIORITIES.map((p) => [p, `${PRIORITY[p][1]} (${count(p)})`])]
@@ -830,7 +829,7 @@ function drawHome() {
   const picker = el("input", { type: "file", accept: ".csv,text/csv", hidden: true,
                                onchange: (ev) => { if (ev.target.files[0]) loadFile(ev.target.files[0]); ev.target.value = ""; } });
   const gone = written().filter((c) => c.kind !== "general" && !BY_ID[`${c.kind}|${c.entry}`]);
-  const nOpen = D.questions.filter((q) => q.status === "open").length;
+  const nOpen = D.questions.filter((q) => q.status === QS.OPEN).length;
   const nSchema = D.schema.entity_classes.length + " entity classes and " + D.schema.predicates.length + " predicates";
   return [el("section", { class: "card home" },
     el("h2", {}, "How to read this page"),

@@ -59,7 +59,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 
 from common.component_class_mapping import MAPPING_PATH, NONE, is_checked     # noqa: E402
-from common.expert_questions import (GUIDELINES_PATH, PRIORITIES, QUESTIONS_PATH, RECORDS_PATH,  # noqa: E402
+from common.expert_questions import (ANSWERED, GUIDELINES_PATH, OPEN, PRIORITIES, QUESTION_KIND_WORDS,  # noqa: E402
+                                     QUESTIONS_PATH, RECORDS_PATH, WITHDRAWN,
                                      SPLITS_PATH, check_questions, read_questions)
 from common.ground_truth import GROUND_TRUTH_DIR                               # noqa: E402
 from common.records_io import load_records                                     # noqa: E402
@@ -276,6 +277,8 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
             "schema": schema_entries(schema_path), "mapping": {"rows": rows, "none": NONE, "sample": sample_rows(rows),
                                                                 "checked": sum(map(is_checked, rows))},
             "questions": questions, "priorities": list(PRIORITIES), "glossary": terms,
+            "statuses": {"OPEN": OPEN, "ANSWERED": ANSWERED, "WITHDRAWN": WITHDRAWN},
+            "question_kinds": QUESTION_KIND_WORDS,
             "linked_only_where_marked": LINKED_ONLY_WHERE_MARKED}
 
 

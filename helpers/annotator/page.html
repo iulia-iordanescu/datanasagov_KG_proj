@@ -2375,7 +2375,7 @@ function currentView() {
 let EXPERT_Q = { questions: [], problem: "" };
 api("/api/expert_questions").then((q) => { EXPERT_Q = q; }).catch(() => {});
 function expertQuestionsOn(id) {
-  const mine = EXPERT_Q.questions.filter((q) => q.status === "open" && q.affects.records.some((r) => r.id === id));
+  const mine = EXPERT_Q.questions.filter((q) => q.status === EXPERT_Q.open && q.affects.records.some((r) => r.id === id));
   if (!mine.length) return null;
   return [el("dt", { class: "grp" }, "Questions for experts"), el("dd", { class: "grp" }, mine.map((q, i) => {
     const pos = q.affects.records.find((r) => r.id === id).position;

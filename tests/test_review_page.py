@@ -136,6 +136,14 @@ class Page(unittest.TestCase):
 class Comments(unittest.TestCase):
     """A comment file as the page saves it, read back with --read."""
 
+    def test_question_statuses_as_the_guide_lists_them(self):
+        """helpers/review_page.md, *The questions file*, the home of a question's statuses: its **status** paragraph
+        defines the code's (expert_questions.STATUSES), in their order."""
+        from common import expert_questions
+        text = (ROOT / "helpers" / "review_page.md").read_text(encoding="utf-8")
+        para = text.split("**status**: exactly one of three.", 1)[1].split("**priority**", 1)[0]
+        self.assertEqual(tuple(re.findall(r"`([a-z]+)`:", para)), expert_questions.STATUSES)
+
     def test_states_as_the_guide_lists_them(self):
         """helpers/review_page.md, *What --read reports*, the home of the comment states: its table lists the code's
         states (review_comments.COMMENT_STATES), in their order."""

@@ -7,62 +7,10 @@ annotations/questions_for_experts.md (a person-made file), for the review page's
     questions = read_questions()          # [question]; ValueError, naming the line, on a question not in the format
     problems = check_questions(questions) # ["…"]: each quote that isn't what its source says now (empty: all agree)
 
-The file's format (the whole of it: helpers/review_page.md, *The questions file*). Everything before the first
-"## " heading is the file's own introduction and isn't read. Each question is a section:
-
-    ## Q<n>: <short title>
-    - status: open | answered | withdrawn
-    - priority: high | medium | low      (how much the answer matters now: the page shows high first)
-    - question kind: records and triples | schema entry | rule | translation table rows | pipeline method | general
-                                          (what the question is about: QUESTION_KINDS)
-    - topic: <a few words>
-      For the expert (EXPERT_SECTIONS: what they need to answer, shown at the top):
-    ### The question                      (required) prose
-    ### Context                           (optional) prose
-    ### Example record                    (at most one: the clearest example for the decision; every other
-                                          record goes in Affects) fields: record id, pool position, title, notes,
-                                          in the ground truth (only "not yet …"), source text (1 or more),
-                                          classed triple (any number): "S" (SubjectClass) PREDICATE "O" (ObjectClass)
-    ### Ground truth schema               (optional) fields: entity class <X>: <definition>; predicate <P>: <definition>
-    ### Translation table                 (optional) fields, one per row: <kind> <component class of the current or a
-                                          past schema> -> <component class of the ground truth schema, or (none)>
-                                          [(swap subject and object)]: <the row's definition, current or past schema>
-    ### Annotation guidelines             (optional) fields: <section>, rule <n>: <the rule's words, quoted>
-    ### Options                           (optional) "#### Option <k>: <title>", then prose: the choice, in plain words
-    ### My current reading                (required) prose
-    ### The answer                        (required when answered, and only then) prose
-      For me (shown folded, at the bottom, under "The answer to this question impacts:"):
-    ### My notes                          (optional) prose: what I have annotated, what the ground truth does meanwhile
-    ### Consequences                      (required with Options, and only then) "#### Option <k>: <the same title>",
-                                          then one "- " item per consequence
-    ### Affects                           (required) fields, one per thing the answer may change (AFFECTS):
-                                          record at pool position <n>: <record id>
-                                          classed triple of the record at pool position <n>: "S" (SubjectClass) P "O" (ObjectClass)
-                                          translation table row: <entity class|predicate> <component class, current or past schema>
-                                          ground truth schema entry: <entity class|predicate> <component class>
-                                          rule: <section of the guidelines>, rule <n>
-                                          pipeline method: <path in the repository>: <what of it>
-    ### Pipeline method                   (optional) fields: <path in the repository>: <words quoted from that file>
-
-in that order. A field is a line "- <label>: <value>"; a line indented by two spaces continues it (a blank line
-between two such lines is a paragraph break). Prose is paragraphs, and "- " lists, with `code`, **bold**, *italic*
-and [words](link); a link to docs/terminology.md names a term the page links to its Terms view.
-
-What the expert reads (the title, the expert's parts, the example's title and notes, the quotes) never says "pool
-position" or a record id: another record is named by its title, in quotes, after the word "record" ('the record
-"<title>"'), and check_questions checks that each title so named is one of a record Affects names.
-
-check_questions compares every quote with its source as it is now: the record's title and notes
-(020's records.jsonl, spaces aside), its pool position and part (030's splits.json: a held-out record is refused,
-since the page may show only tuning records), each source text (in the record's title or notes), each classed
-triple (one of the record's ground truth triples, with that source text, unless the record says "in the ground
-truth: not yet"), each definition (annotations/ground_truth_schema.txt), each row of the translation table
-(annotations/component_class_mapping.csv: its target, its swap, its definition), each rule's words
-(annotations/guidelines.md), each pipeline method's words (in the file named), and each record named by its
-title in what the expert reads (the title of a record Affects names). It checks that "Affects" names
-only things that exist (tuning records at their pool positions; ground truth triples; rows; entries; rules; paths),
-and that it is complete: a ground truth schema entry it names brings every ground truth triple that uses it and
-every row of the translation table that translates to it, and a classed triple brings its record.
+The file's format, what each status, priority and question kind means, what the expert reads, and every check
+check_questions makes: helpers/review_page.md, *The questions file* (their one home). Here, each value is defined
+once (STATUSES, PRIORITIES, QUESTION_KINDS, AFFECTS, the subsections) and used by the review page, the annotation
+tool and the tests.
 """
 from __future__ import annotations
 
@@ -82,13 +30,23 @@ GUIDELINES_PATH = ANNOTATIONS_DIR / "guidelines.md"
 SCHEMA_PATH = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 RECORDS_PATH = RESULTS_DIR / "020_clean" / "records.jsonl"
 SPLITS_PATH = RESULTS_DIR / "030_split" / "splits.json"
-STATUSES = ("open", "answered", "withdrawn")
+#: A question's status (what each means: helpers/review_page.md, *The questions file*).
+OPEN, ANSWERED, WITHDRAWN = "open", "answered", "withdrawn"
+STATUSES = (OPEN, ANSWERED, WITHDRAWN)
 #: How much a question's answer matters now, most first: the order the page shows them in.
 PRIORITIES = ("high", "medium", "low")
 #: What a question is about: the records and their classed triples; an entity class or predicate of the ground truth
 #: schema; a rule of the annotation guidelines; rows of the translation table; a method of the pipeline; or general
 #: (a question about an idea, with no record or classed triple of its own).
 QUESTION_KINDS = ("records and triples", "schema entry", "rule", "translation table rows", "pipeline method", "general")
+#: Each question kind in words, as the review page says what a question is about.
+QUESTION_KIND_WORDS = {"records and triples": "records and their classed triples",
+                       "schema entry": "an entity class or predicate of the ground truth schema",
+                       "rule": "a rule of the annotation guidelines",
+                       "translation table rows": "rows of the translation table",
+                       "pipeline method": "a method of the pipeline",
+                       "general": "an idea, in general"}
+assert tuple(QUESTION_KIND_WORDS) == QUESTION_KINDS
 #: The fields of "### Affects": what an answer may change.
 AFFECTS = ("record at pool position", "classed triple of the record at pool position", "translation table row",
            "ground truth schema entry", "rule", "pipeline method")
@@ -294,9 +252,9 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
     for name, many in SECTIONS:
         if many == "1" and name not in have:
             raise err(at[0] - 1, f'the question has no "### {name}" part')
-    if (status == "answered") != ("The answer" in have):
+    if (status == ANSWERED) != ("The answer" in have):
         raise err(at[0] - 1, 'an answered question has a "### The answer" part, and only an answered one'
-                             + (f' (its status is "{status}")' if status != "answered" else ""))
+                             + (f' (its status is "{status}")' if status != ANSWERED else ""))
     if ("Options" in have) != ("Consequences" in have):
         raise err(at[0] - 1, 'a question with "### Options" has "### Consequences" (what each option changes, for me), '
                              'and only one with options')
