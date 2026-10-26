@@ -71,6 +71,28 @@ BEGIN_LINE = "----- BEGIN RECORD -----"
 END_LINE = "----- END RECORD -----"
 ROW_KEYS = ("subject", "subject_class", "predicate", "object", "object_class", "source_text")
 
+# 060's reasons for removing an item (extracted_triples_removed.csv's "reason"). Their list, how they relate (each
+# removed item has exactly one, the joined one included) and the order they're decided in: docs/terminology.md,
+# *extracted triple* (the home). MALFORMED and DUPLICATE are given here, by build_rows; the other two by 060's checks.
+MALFORMED = "malformed"
+DUPLICATE = "duplicate"
+SOURCE_TEXT = "source_text"
+COMPONENT_CLASS_NOT_IN_SCHEMA = "component_class_not_in_schema"
+#: Each reason, in the order they're decided, and what it means in a report's words. A removal for both of the checks'
+#: reasons is written as the two, joined (joined_reason).
+REMOVAL_REASONS = {MALFORMED: "not a classed triple at all",
+                   DUPLICATE: "the same classed triple twice in the record (one copy is kept)",
+                   SOURCE_TEXT: "its source text is missing, or isn't in the record's text",
+                   COMPONENT_CLASS_NOT_IN_SCHEMA: "an entity class or predicate the current schema doesn't have"}
+#: The reasons build_rows gives: an item that wasn't checked (MALFORMED), or a copy of one kept (DUPLICATE).
+NOT_BY_A_CHECK = (MALFORMED, DUPLICATE)
+
+
+def joined_reason(reasons) -> str:
+    """The reason written for an item removed by 060's checks: its reasons, each once, sorted, joined by a space
+    ("component_class_not_in_schema source_text")."""
+    return " ".join(sorted(set(reasons)))
+
 
 def rules_for(record: dict) -> str:
     return fill(RULES, field_names=", ".join(f'"{n}:"' for n in text_fields(record)))
@@ -125,7 +147,7 @@ def best_copies(items: list, key, failed) -> tuple:
 def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
     """(rows, removed). rows: the describes triple, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
-    removed: {"reason": "malformed" | "duplicate", "raw" or the row}."""
+    removed: {"reason": MALFORMED | DUPLICATE, "raw" or the row}."""
     removed = []
     named = [str(r.get("describes_class") or "").strip() for r in replies if isinstance(r, dict)]
     head = describes_triple(record_id, title, next((c for c in named if c), ""))
@@ -136,12 +158,12 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
     checked = []
     for reply in replies:
         if not isinstance(reply, dict) or shape_error(reply):
-            removed.append({"reason": "malformed", "raw": json.dumps(reply, ensure_ascii=False)})
+            removed.append({"reason": MALFORMED, "raw": json.dumps(reply, ensure_ascii=False)})
             continue
         for item in reply["triples"]:
             t = clean_triple(item)
             if t is None:
-                removed.append({"reason": "malformed", "raw": json.dumps(item, ensure_ascii=False)})
+                removed.append({"reason": MALFORMED, "raw": json.dumps(item, ensure_ascii=False)})
                 continue
             row = {"id": record_id, **{k: t.get(k, "") for k in ROW_KEYS}}
             errors, flags = check_triple_instance(row, whole, title)
@@ -150,7 +172,7 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
     def copy_key(row):                          # the same triple instance with the same entity classes
         return triple_key(row), component_class_key(row["subject_class"]), component_class_key(row["object_class"])
     kept, copies = best_copies(checked, copy_key, lambda row: bool(row["errors"]))
-    removed += [{"reason": "duplicate", **{k: v for k, v in row.items() if k not in ("errors", "flags")}}
+    removed += [{"reason": DUPLICATE, **{k: v for k, v in row.items() if k not in ("errors", "flags")}}
                 for row in copies]
     pairs = {}                                  # triple key -> {entity class pairs} among the rows kept
     for row in kept:

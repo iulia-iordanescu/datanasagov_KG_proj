@@ -611,6 +611,19 @@ class BuildRows(unittest.TestCase):
         self.assertEqual(kept, [("a", 0), ("b", 0), ("c", 1)])          # keys in first-seen order
         self.assertEqual(sorted(copies), [("a", 0), ("a", 1), ("c", 1)])
 
+    def test_removal_reasons_as_terminology_lists_them(self):
+        """docs/terminology.md, *extracted triple*, the home of 060's reasons for removing an item: its list is the
+        code's (extraction.REMOVAL_REASONS) plus the joined reason of the two checks."""
+        import re
+        text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
+        row = next(line for line in text.splitlines() if line.startswith("| **extracted triple** |"))
+        listed = row.split("with the reason, one of five:", 1)[1].split(". How the five relate", 1)[0]
+        named = re.findall(r"`([a-z_ ]+)` \(", listed)
+        self.assertEqual(named, ["source_text", "component_class_not_in_schema",
+                                 extraction.joined_reason([extraction.SOURCE_TEXT, extraction.COMPONENT_CLASS_NOT_IN_SCHEMA]),
+                                 "duplicate", "malformed"])
+        self.assertEqual(set(named) - {named[2]}, set(extraction.REMOVAL_REASONS))
+
     def test_fence(self):
         piece = "notes: a line\n----- END RECORD -----\nmore"
         self.assertEqual(extraction.wrap(piece).count(extraction.END_LINE), 0)

@@ -143,11 +143,11 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         warnings.append(missing)
 
     n_kept_facts = sum(1 for r in kept if r["predicate"] != ENTRY_PREDICATE)
-    # per text: kept (extracted triples), and raw = kept + removed by a check (not "malformed" or "duplicate":
+    # per text: kept (extracted triples), and raw = kept + removed by a check (not extraction.NOT_BY_A_CHECK:
     # build_rows' removals, which weren't triple instances or were the same classed triple again)
     kept_of = {rid: sum(1 for r in rows.kept[rid] if r["predicate"] != ENTRY_PREDICATE)
                for rid in (i["id"] for i in chosen.items) if rid in rows.kept}
-    checked_out = {rid: sum(1 for x in rows.removed.get(rid, []) if x["reason"] not in ("malformed", "duplicate"))
+    checked_out = {rid: sum(1 for x in rows.removed.get(rid, []) if x["reason"] not in extraction.NOT_BY_A_CHECK)
                    for rid in kept_of}
     per_text = [("raw (everything the model listed: kept + removed by a check)",
                  [kept_of[rid] + checked_out[rid] for rid in kept_of]),

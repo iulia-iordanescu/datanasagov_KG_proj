@@ -263,11 +263,11 @@ class Pipeline(unittest.TestCase):
         removed = read_csv(self.output("060_extract", "extracted_triples_removed.csv"))
         self.assertEqual(len({r["id"] for r in kept}), 9)
         self.assertFalse([r for r in kept if r["object"] == "Moon" or r["object_class"] == "Satellite"])
-        self.assertEqual(sorted({r["reason"] for r in removed}),
-                         ["component_class_not_in_schema", "duplicate", "malformed", "source_text"])
+        from common import extraction
+        self.assertEqual({r["reason"] for r in removed}, set(extraction.REMOVAL_REASONS))   # the stand-in's mistakes
         ids = list(dict.fromkeys(r["id"] for r in kept))
         facts = [sum(1 for r in kept if r["id"] == rid and r["predicate"] != "DESCRIBES") for rid in ids]
-        checked_out = [sum(1 for r in removed if r["id"] == rid and r["reason"] not in ("malformed", "duplicate"))
+        checked_out = [sum(1 for r in removed if r["id"] == rid and r["reason"] not in extraction.NOT_BY_A_CHECK)
                        for rid in ids]
         self.assertTrue(any(checked_out))
         self.per_text("060_extract", {"raw (everything the model listed: kept + removed by a check)":
@@ -424,7 +424,8 @@ class Pipeline(unittest.TestCase):
                                       if r["id"] in set(metrics["evaluated"]["tuning"]))
         self.assertEqual({x["reason"]: x["removed"] for x in metrics["parts"]["tuning"]["removed_by_060"]}, dict(removed))
         self.assertIn("#### Removed by 060", report)
-        self.assertEqual(set(removed), {"source_text", "component_class_not_in_schema", "duplicate", "malformed"})  # the stand-in's mistakes
+        from common import extraction
+        self.assertEqual(set(removed), set(extraction.REMOVAL_REASONS))     # the stand-in's mistakes
         # the ground truth schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
         compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
         first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}

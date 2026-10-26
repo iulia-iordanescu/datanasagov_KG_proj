@@ -69,9 +69,10 @@ PROMPT = load(PROMPTS_DIR / "extract.txt")
 LIST_THINGS_FIRST = load(PROMPTS_DIR / "list_things_first.txt")
 
 #: Checks that remove a row, and the reason written for it.
-REMOVE = {NO_SOURCE_TEXT: "source_text", SOURCE_NOT_IN_TEXT: "source_text",
-          SUBJECT_CLASS_NOT_IN_SCHEMA: "component_class_not_in_schema", OBJECT_CLASS_NOT_IN_SCHEMA: "component_class_not_in_schema",
-          PREDICATE_NOT_IN_SCHEMA: "component_class_not_in_schema"}
+REMOVE = {NO_SOURCE_TEXT: extraction.SOURCE_TEXT, SOURCE_NOT_IN_TEXT: extraction.SOURCE_TEXT,
+          SUBJECT_CLASS_NOT_IN_SCHEMA: extraction.COMPONENT_CLASS_NOT_IN_SCHEMA,
+          OBJECT_CLASS_NOT_IN_SCHEMA: extraction.COMPONENT_CLASS_NOT_IN_SCHEMA,
+          PREDICATE_NOT_IN_SCHEMA: extraction.COMPONENT_CLASS_NOT_IN_SCHEMA}
 SLOTS_OF = {SUBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "subject_class"),
             OBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "object_class"),
             PREDICATE_NOT_IN_SCHEMA: ("predicate", "predicate"),
@@ -140,9 +141,9 @@ def sort_rows(chosen, schema, replies) -> Rows:
                     row["errors"] = []
                 kept.append(row)
                 continue
-            why = sorted({REMOVE[c] for c in row["errors"] + row["flags"] if c in REMOVE})
+            why = [REMOVE[c] for c in row["errors"] + row["flags"] if c in REMOVE]
             if why:
-                removed.append({"reason": " ".join(why), **row})
+                removed.append({"reason": extraction.joined_reason(why), **row})
             else:
                 kept.append(_in_schema_spelling(row, schema.schema_entries))
         for r in kept:

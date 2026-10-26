@@ -24,7 +24,7 @@ import readings
 import component_classes as component_classes_stage
 import records as records_stage
 import stats
-from common import audit, llm, text_match
+from common import audit, extraction, llm, text_match
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, per_text_table, this_report
@@ -115,15 +115,6 @@ def _too_few(n: dict) -> str:
             f"numbers could easily have come out very differently. Don't draw conclusions from them yet.**")
 
 
-#: What each of 060's reasons for removing an item means (their list: docs/terminology.md, *extracted triple*; the
-#: checks behind them: 060_extract/060_extract.md, *How it works*). A removal for two reasons is written as both, joined
-#: by a space ("component_class_not_in_schema source_text").
-REMOVED_REASONS = {"source_text": "its source text is missing, or isn't in the record's text",
-                   "component_class_not_in_schema": "an entity class or predicate the current schema doesn't have",
-                   "duplicate": "the same classed triple twice in the record (one copy is kept)",
-                   "malformed": "not a classed triple at all"}
-
-
 def _removed_lines(records: int, removed: list) -> list:
     """The report's table of what 060's checks removed from the evaluated records, per reason
     (stats.removed_by_reason)."""
@@ -138,8 +129,11 @@ def _removed_lines(records: int, removed: list) -> list:
     lines += ["| Reason (as 060 wrote it) | What it means | Items removed | Records with any item removed for it |",
               "|---|---|---:|---:|"]
     for x in removed:
-        means = " and ".join(REMOVED_REASONS.get(w, "a reason 070 doesn't know: not one of those in "
-                                                     "`docs/terminology.md`, *extracted triple*") for w in x["reason"].split())
+        # what each of 060's reasons means (common/common_helpers/extraction.py); a removal for two reasons is
+        # written as both, joined by a space ("component_class_not_in_schema source_text")
+        means = " and ".join(extraction.REMOVAL_REASONS.get(w, "a reason 070 doesn't know: not one of those in "
+                                                                "`docs/terminology.md`, *extracted triple*")
+                             for w in x["reason"].split())
         lines.append(f"| `{cell(x['reason'])}` | {cell(means)} | {x['removed']} | {x['records']} |")
     return lines + [f"| all | | {sum(x['removed'] for x in removed)} | |", ""]
 
