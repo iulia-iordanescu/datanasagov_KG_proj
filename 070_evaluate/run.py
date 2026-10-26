@@ -13,8 +13,9 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          extracted_triples_removed.csv, extracted_triples_details.json and
          schema_used.json (060),
          annotations/ground_truth_candidates.csv,
-         annotations/ground_truth_schema.txt,
-         annotations/ground_truth/, annotations/component_class_mapping.csv,
+         annotations/ground_truth_schema.txt, annotations/guidelines.md
+         (not parsed: fingerprinted, so the report says which version the
+         ground truth was scored against), annotations/ground_truth/, annotations/component_class_mapping.csv,
          annotations/partial_pair_reviews.csv
 Writes:  metrics.json, per_record.md, compared_triples.csv; adds rows to
          annotations/component_class_mapping.csv and, with --evaluate_held_out true, a line
@@ -38,6 +39,7 @@ INPUTS = {
     "schema_used":               "060_extract/schema_used.json",
     "candidates":                "./annotations/ground_truth_candidates.csv",
     "ground_truth_schema":               "./annotations/ground_truth_schema.txt",
+    "guidelines":                "./annotations/guidelines.md",
     "ground_truth":              "./annotations/ground_truth/batch_*.csv",
     "component_class_mapping":   "./annotations/component_class_mapping.csv",
     "partial_reviews":           "./annotations/partial_pair_reviews.csv",

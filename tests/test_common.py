@@ -1044,6 +1044,37 @@ class Confirm(unittest.TestCase):
             self.assertEqual(self.answer(typed), "Cancelled. Nothing was spent.", typed)
 
 
+class InputsNotCommitted(unittest.TestCase):
+    """An input kept in Git whose file differs from Git's copy, or isn't in Git yet, is noted in the report's Inputs
+    (step._describe_inputs, step.UNCOMMITTED), so the Git commit isn't taken for its version."""
+
+    def test_origin(self):
+        import subprocess
+        from unittest import mock
+        from common import step
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            git = lambda *a: subprocess.run(["git", *a], cwd=repo, capture_output=True, check=True)
+            git("init", "-q")
+            f = repo / "guidelines.md"
+            f.write_text("rule 1", encoding="utf-8")
+            new = repo / "new.md"
+            new.write_text("not added", encoding="utf-8")
+            git("add", "guidelines.md")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x")
+            origin = lambda path: step._describe_inputs({"x": path})[0][0]["origin"]
+            with mock.patch.object(step, "ROOT", repo):
+                self.assertEqual(origin(f), "kept in Git, made by a person")
+                f.write_text("rule 1, changed", encoding="utf-8")
+                self.assertEqual(origin(f), "kept in Git, made by a person" + step.UNCOMMITTED)
+                self.assertEqual(origin(new), "kept in Git, made by a person" + step.UNCOMMITTED)
+            with tempfile.TemporaryDirectory() as other:   # outside the repository: Git can't say, so no note
+                out = Path(other) / "a.md"
+                out.write_text("x", encoding="utf-8")
+                with mock.patch.object(step, "ROOT", repo):
+                    self.assertEqual(origin(out), "kept in Git, made by a person")
+
+
 class TrueFalseSetting(unittest.TestCase):
     """A true/false setting's values (step._parse_bool), as docs/running_on_nasa_laptop.md, *Settings several steps
     share*, lists them."""

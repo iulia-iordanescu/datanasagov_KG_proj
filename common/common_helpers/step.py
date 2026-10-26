@@ -213,6 +213,21 @@ def _check_inputs(inputs: dict, defaults: dict, may_be_empty=()) -> None:
                            + "\nThen run the step again.")
 
 
+#: Added to an input's origin in the report when it is kept in Git but differs from Git's copy (or isn't in Git yet).
+UNCOMMITTED = "; with changes not committed to Git: the Git commit doesn't hold this version"
+
+
+def _uncommitted(files: list) -> bool:
+    """True when any of these files, kept in Git, has changes not committed (or isn't in Git yet). False when Git
+    can't say (no Git, or files outside the repository)."""
+    try:
+        out = subprocess.run(["git", "status", "--porcelain", "--", *map(str, files)], cwd=ROOT,
+                             capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return bool(out.strip())
+
+
 def _describe_inputs(inputs: dict) -> tuple:
     """For each input: its files, their hash, and the run that produced them
     (from the manifest beside them, if any). Returns (rows, warnings,
@@ -230,7 +245,7 @@ def _describe_inputs(inputs: dict) -> tuple:
         elif in_git:
             # A file kept in Git (e.g. annotations/) is made by a person, not by
             # a run, so it has no manifest and none is expected.
-            origin = "kept in Git, made by a person"
+            origin = "kept in Git, made by a person" + (UNCOMMITTED if _uncommitted(files) else "")
         elif manifest_path.exists():
             try:
                 m = json.loads(manifest_path.read_text(encoding="utf-8"))
