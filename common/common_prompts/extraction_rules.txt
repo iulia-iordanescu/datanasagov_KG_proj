@@ -23,7 +23,9 @@
   ("latest", "current", "now", "then available", and words like them), and
   keep the rest of the fact: "the newest release, R4" gives the record's
   dataset's version "R4", without "newest", which stops being true once
-  another release comes out.
+  another release comes out; "E1 is the first edition" gives "E1" also known
+  as "first edition", since E1 stays the first edition whatever is released
+  later.
 - A number with a unit: the object is the number and its unit, as written;
   what the number measures goes in the predicate: "Kestrel has a swath width
   of 350 m" gives Kestrel's swath width "350 m".
@@ -53,12 +55,7 @@
   its own ("X, or Y"); the other triples then use one of the two names, as
   the rule on one wording says. When the record says "Release 27, also
   called Build 2.7", give the record's dataset's version "Release 27", and
-  "Release 27" also known as "Build 2.7". Write an also-known-as triple only
-  for another name that stays true whatever happens later: "Edition 4 is the
-  newest edition" gives none, since Edition 4 would no longer be the newest
-  once another is released; "E1 is the first edition" gives "E1" also known
-  as "first edition", since E1 stays the first edition whatever is released
-  later.
+  "Release 27" also known as "Build 2.7".
 - A table of values inside the record (rows of measurements, one per object):
   extract what the table is about (what it measures, what it covers), not
   one triple per cell.

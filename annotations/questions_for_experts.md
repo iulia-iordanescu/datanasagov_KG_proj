@@ -2401,8 +2401,9 @@ Rule 13 of the annotation guidelines writes one thing with one wording in a reco
 
 ### Annotation guidelines
 
+- What counts as a fact, rule 10: Not words that are true only as of when the record was written. Leave out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
+- What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
 - Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 10: Write ALSO_KNOWN_AS only for another name that stays true whatever happens later.
 - Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two names that say the same, use the one the record uses most often (on a tie, the one it gives first)
 
 ### Options
@@ -2421,7 +2422,7 @@ Option 1, because the record calls both the release that replaces v2014.1, and n
 
 ### My notes
 
-The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record at pool position 7 (decided 2026-10-25, for me to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`). (e) is about the record at pool position 13: I first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 of *Writing a classed triple* ("Write ALSO_KNOWN_AS only for another name that stays true whatever happens later"). If the answer says otherwise, that ground truth triple is deleted or changed.
+The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record at pool position 7 (decided 2026-10-25, for me to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`). (e) is about the record at pool position 13: I first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 of *What counts as a fact* ("V1.0 stays the first version whatever is released later"). If the answer says otherwise, that ground truth triple is deleted or changed.
 
 ### Consequences
 
@@ -2451,6 +2452,7 @@ The example is the record at pool position 4; (c) is about the record at pool po
 - classed triple of the record at pool position 13: "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version)
 - translation table row: predicate SUPERSEDES
 - ground truth schema entry: predicate SUPERSEDES
+- rule: What counts as a fact, rule 10
 - rule: Writing a classed triple, rule 10
 - rule: Writing a classed triple, rule 13
 
