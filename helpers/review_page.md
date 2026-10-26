@@ -61,7 +61,7 @@ The Translation table view shows, at first, 30 rows (`SAMPLE_SIZE` in `helpers/r
 
 1. A reviewer types in the box under any question, entry or row, or in *General comments*, and their name. Each comment is kept in their browser as they type (localStorage, on their computer only), so they can stop and come back; the top of the page counts the comments written. If the browser doesn't let the page keep them (some private windows), the page says so, and they must send or download before closing.
 2. **Email my comments to Iulia** opens their email program with a new email to me, its body all their comments, for them to send (below). It needs an email program set up for `mailto:` links in their browser; without one, nothing opens, and the page tells them to use the next button instead.
-3. **Download my comments** is the backup: it saves a small CSV file (UTF-8), one row per comment, for them to attach to an email to me. Its name is the standard `comments_<reviewer>_<YYYY-MM-DD>.csv` (the reviewer's name with each character other than a letter, digit, `_` or `-` made `_`, and the day it was saved), e.g. `comments_Jane_Smith_2026-10-24.csv`. Its columns: `reviewer`, `page_version`, `git_commit`, `kind` (`general`, `question`, `entity class`, `predicate`, or `translation row`), `entry` (the component class, or for a row its kind and the current schema's component class, e.g. `predicate CARRIES`, plus ` (line N)` for a second row of the same one; for a question its id, e.g. `Q1`; `(general)` for a general comment), `entry_text_shown` (the entry as the page showed it when the comment was written, so the comment still makes sense after the entry changes; for a question, its id, short title and the fingerprint of its words, e.g. `Q1: Should SpatialRepresentation be a closed list? | fingerprint 9ce614305731`), `comment`, and `timestamp`.
+3. **Download my comments** is the backup: it saves a small CSV file (UTF-8), one row per comment, for them to attach to an email to me. Its name is the standard `comments_<reviewer>_<YYYY-MM-DD>.csv` (the reviewer's name with each character other than a letter, digit, `_` or `-` made `_`, and the day it was saved), e.g. `comments_Jane_Smith_2026-10-24.csv`. Its columns: `reviewer`, `page_version`, `git_commit`, `topic` (`general`, `question`, `entity class`, `predicate`, or `translation row`; a file saved by a copy of the page made before 2026-10-26 calls this column `kind`, and is still read), `entry` (the component class, or for a row its kind and the current schema's component class, e.g. `predicate CARRIES`, plus ` (line N)` for a second row of the same one; for a question its id, e.g. `Q1`; `(general)` for a general comment), `entry_text_shown` (the entry as the page showed it when the comment was written, so the comment still makes sense after the entry changes; for a question, its id, short title and the fingerprint of its words, e.g. `Q1: Should SpatialRepresentation be a closed list? | fingerprint 9ce614305731`), `comment`, and `timestamp`.
 4. I save each email (Gmail: **⋮ → Download message**, which saves an `.eml` file), or paste its text into a `.txt` file, or save the attached CSV file (an `.eml` file with the CSV file attached is read whole, too), in `annotations/reviews/`, as it is.
 5. `py helpers/review_page.py --read` reads every `.csv`, `.eml` and `.txt` file there (or the files and folders named) and writes a summary to `outputs/review/comments_<date>_<time>.md`, also printed: grouped into general comments, questions (each under its id and short title), entity classes, predicates and rows of the translation table, then by entry, each comment with its reviewer, date, page version and sender. Each comment's state, and every problem a file can have: *What --read reports*, below. One reviewer's comment on one entry counts once, the latest: a reviewer who sends twice sends the same comments twice. The annotation tool's **Reviewer comments** view shows the same comments, read by the same code ([annotations/README.md](../annotations/README.md), *Reading reviewers' comments*).
 
@@ -71,8 +71,8 @@ The Translation table view shows, at first, 30 rows (`SAMPLE_SIZE` in `helpers/r
 
 | State | When | In the summary |
 |---|---|---|
-| `general` | A general comment (kind `general`). | Under *General comments*, no flag. |
-| `gone` | Its entry (its kind and entry) is no longer in the files: an entity class or predicate no longer in `annotations/ground_truth_schema.txt`, a row no longer in the translation table, or a question no longer in `annotations/questions_for_experts.md`. A comment of a kind the page doesn't have is `gone` too (listed apart, under *Comments of an unknown kind*). | ⚑ *No longer in the files*, with the entry as the page showed it. |
+| `general` | A general comment (topic `general`). | Under *General comments*, no flag. |
+| `gone` | Its entry (its topic and entry) is no longer in the files: an entity class or predicate no longer in `annotations/ground_truth_schema.txt`, a row no longer in the translation table, or a question no longer in `annotations/questions_for_experts.md`. A comment of a topic the page doesn't have is `gone` too (listed apart, under *Comments of an unknown topic*). | ⚑ *No longer in the files*, with the entry as the page showed it. |
 | `changed` | Its entry reads differently now from how the page showed it when the comment was written. Spaces don't count, since an email program may wrap a line. A question counts as changed when any of its words do, except its status and priority lines and its answer. | ⚑ *Changed since that page*, with the entry then and now. |
 | `unchanged` | Any other comment. | No flag. |
 
@@ -85,7 +85,7 @@ The Translation table view shows, at first, 30 rows (`SAMPLE_SIZE` in `helpers/r
 5. A file that can't be read (the error is named): skipped.
 6. A sending with a part missing: the comments in that part aren't read.
 7. A part without its end line `=== end of part … ===` (cut short, or not copied whole): read, but a comment at its end may be incomplete.
-8. Incomplete comments: a comment cut by a missing or cut-short part, or without its `[kind]` or `[entry]` line: left out, and counted.
+8. Incomplete comments: a comment cut by a missing or cut-short part, or without its `[topic]` or `[entry]` line: left out, and counted.
 9. The questions file not in its format: every comment on a question is then `gone`.
 
 How they relate: 1 to 5 are about one file. 2, 4 and 5 each exclude every other of 1 to 5 for that file; an `.eml` file can have 1 (once per `.csv` file attached that lacks a column) and 3 together. 6 to 8 are about one sending, its parts put back together from any files; a sending can have all three. 9 is about the questions file, at most once per reading. A comment with no words is dropped, without a problem.
@@ -104,7 +104,7 @@ REVIEW COMMENTS (format 1): please send this email as it is
 === start of part 1 of 1 ===
 
 === comment ===
-[kind] entity class
+[topic] entity class
 [entry] Instrument
 [page_version] review_2026-10-24_abc1234
 [git_commit] abc1234
@@ -116,7 +116,7 @@ REVIEW COMMENTS (format 1): please send this email as it is
 === end of part 1 of 1 ===
 ```
 
-A line that starts with none of the `[field]` names continues the line before it, joined with one space; a comment's own line breaks are its `[comment]` lines. (A line an email program broke after a hyphen, not at a space, comes back with a space after the hyphen.) The whole format is `EMAIL_FORMAT` in `common/common_helpers/review_comments.py`.
+An email from a copy of the page made before 2026-10-26 has `[kind]` where this one has `[topic]`: it is read as the topic. A line that starts with none of the `[field]` names continues the line before it, joined with one space; a comment's own line breaks are its `[comment]` lines. (A line an email program broke after a hyphen, not at a space, comes back with a space after the hyphen.) The whole format is `EMAIL_FORMAT` in `common/common_helpers/review_comments.py`.
 
 **Length.** A `mailto:` link carries the email in the link itself, and links that are too long fail to open: Windows passes on at most 2,083 characters (`INTERNET_MAX_URL_LENGTH`, the limit of Internet Explorer and of Windows' own handling of links, through which Outlook and other email programs on Windows get them). The page keeps each link to 1,900 characters (my margin), counting the address, the subject, and the body as the link encodes it (a space takes 3 characters, an accented letter 6). Comments that don't fit in one email are split into numbered emails, `part 1 of N` in the subject and in the body, cut at line ends (or inside a long comment, at a space); the page then shows one button per part, each marked ✓ once pressed, and `--read` puts the parts of one sending back together, in order, from any files. A missing part is named in the summary, and the comment it cut is left out. More than 5 emails is too many to ask of a reviewer: the page then asks them to press Download my comments and attach the file instead, with a button that opens a short email to me to attach it to.
 
@@ -137,7 +137,7 @@ Gmail's `from:(nasa.gov)` matches any sender whose address contains those words 
 
 ## Sending a newer copy
 
-Comments are filed by entry (its kind and component class, or a question's id), not by page, so they carry over: a reviewer who opens a newer copy (the same link, after an update) in the same browser finds their comments under the same entries, and a comment written when the entry read differently says so under its box. The page also remembers the entries of the copies a reviewer opened before (up to three), and marks each entry that changed since the copy opened before it (⚑ *changed since you last looked*, the old text on hover) or is new. Comments on entries the newer copy no longer has are listed under *How to read this*, and stay in what they send. In another browser or on another computer, **Load my comments from a file** reads a downloaded comment file back in.
+Comments are filed by their topic and entry (for an entity class or predicate, its kind and component class; for a question, its id), not by page, so they carry over: a reviewer who opens a newer copy (the same link, after an update) in the same browser finds their comments under the same entries, and a comment written when the entry read differently says so under its box. The page also remembers the entries of the copies a reviewer opened before (up to three), and marks each entry that changed since the copy opened before it (⚑ *changed since you last looked*, the old text on hover) or is new. Comments on entries the newer copy no longer has are listed under *How to read this*, and stay in what they send. In another browser or on another computer, **Load my comments from a file** reads a downloaded comment file back in.
 
 ## The questions file
 

@@ -49,11 +49,14 @@ from common.step import ANNOTATIONS_DIR
 SCHEMA_PATH = ANNOTATIONS_DIR / "ground_truth_schema.txt"
 REVIEWS_DIR = ANNOTATIONS_DIR / "reviews"
 #: The columns of a reviewer's comment file, in order.
-COMMENT_COLUMNS = ["reviewer", "page_version", "git_commit", "kind", "entry", "entry_text_shown", "comment", "timestamp"]
-#: The kinds of comment, in the order the summary lists them.
-KINDS = ["general", "question", "entity class", "predicate", "translation row"]
-#: Each kind's heading, in the summary of --read and in the annotation tool's Reviewer comments view.
-KIND_HEADINGS = {"general": "General comments",
+COMMENT_COLUMNS = ["reviewer", "page_version", "git_commit", "topic", "entry", "entry_text_shown", "comment", "timestamp"]
+#: A comment's topic (docs/terminology.md, *topic*): what it is about, in the order the summary lists them.
+TOPICS = ["general", "question", "entity class", "predicate", "translation row"]
+#: What copies of the page made before 2026-10-26 called the topic, as a column and an email field: still read as
+#: the topic, since reviewers may send comments written on such a copy.
+LEGACY_TOPIC = "kind"
+#: Each topic's heading, in the summary of --read and in the annotation tool's Reviewer comments view.
+TOPIC_HEADINGS = {"general": "General comments",
                  "question": "Questions for experts (annotations/questions_for_experts.md)",
                  "entity class": "Entity classes (ground truth schema)",
                  "predicate": "Predicates (ground truth schema)",
@@ -82,7 +85,7 @@ REVIEW COMMENTS (format 1): please send this email as it is
 === start of part 1 of 2 ===
 
 === comment ===
-[kind] entity class
+[topic] entity class
 [entry] Instrument
 [page_version] review_2026-10-24_abc1234
 [git_commit] abc1234
@@ -100,12 +103,13 @@ REVIEW COMMENTS (format 1): please send this email as it is
 # the parts of one send ([reviewer] and [sent] the same) are put back together in order, from any files.
 HEADER = "REVIEW COMMENTS (format 1)"
 HEADER_FIELDS = ("reviewer", "page_version", "git_commit", "sent", "part")
-BLOCK_FIELDS = ("kind", "entry", "page_version", "git_commit", "timestamp", "entry_text_shown", "comment")
+BLOCK_FIELDS = ("topic", "entry", "page_version", "git_commit", "timestamp", "entry_text_shown", "comment")
 BLOCK = "=== comment ==="
-_FIELD = re.compile(r"^\[(" + "|".join(sorted(set(HEADER_FIELDS + BLOCK_FIELDS))) + r")\] ?(.*)$")
+# [kind] (LEGACY_TOPIC) is read as [topic]
+_FIELD = re.compile(r"^\[(" + "|".join(sorted(set(HEADER_FIELDS + BLOCK_FIELDS + (LEGACY_TOPIC,)))) + r")\] ?(.*)$")
 _START = re.compile(r"^=== start of part (\d+) of (\d+) ===$")
 _END = re.compile(r"^=== end of part (\d+) of (\d+) ===$")
-_SPLIT = re.compile(r"\s+(?=(?:\[(?:" + "|".join(sorted(set(HEADER_FIELDS + BLOCK_FIELDS))) + r")\] |=== (?:comment|start of part|end of part) ))")
+_SPLIT = re.compile(r"\s+(?=(?:\[(?:" + "|".join(sorted(set(HEADER_FIELDS + BLOCK_FIELDS + (LEGACY_TOPIC,)))) + r")\] |=== (?:comment|start of part|end of part) ))")
 
 
 # ------------------------------ the entries ----------------------------------
@@ -174,8 +178,9 @@ def mapping_entries(path: Path = MAPPING_PATH, schema_path: Path = SCHEMA_PATH) 
 
 def entry_texts(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH,
                 questions_path: Path = QUESTIONS_PATH) -> dict:
-    """{(kind, entry): shown} for every entry the page would show now: what a comment is compared with. Every
-    question counts, whatever its status. ValueError if the questions file isn't in its format."""
+    """{(topic, entry): shown} for every entry the page would show now (an entity class's or predicate's topic is its
+    kind): what a comment is compared with. Every question counts, whatever its status. ValueError if the questions
+    file isn't in its format."""
     s = schema_entries(schema_path)
     out = {(e["kind"], e["entry"]): e["shown"] for e in s["entity_classes"] + s["predicates"]}
     out.update({("translation row", r["entry"]): r["shown"] for r in mapping_entries(mapping_path, schema_path)})
@@ -187,9 +192,9 @@ def comment_state(comment: dict, now: dict) -> str:
     """One of COMMENT_STATES, the first that applies, in their order: the comment's entry, now (entry_texts())
     against as the page showed it. Spaces don't count: an email client may have wrapped the line at one, or at a
     hyphen."""
-    if comment["kind"] == "general":
+    if comment["topic"] == "general":
         return GENERAL_STATE
-    key = (comment["kind"], comment["entry"])
+    key = (comment["topic"], comment["entry"])
     if key not in now:
         return GONE
     squeeze = lambda s: re.sub(r"\s+", "", s or "")                                  # noqa: E731
@@ -215,8 +220,11 @@ def sender_allowed(address: str, domains=ALLOWED_SENDER_DOMAINS) -> bool:
 
 
 def _csv_rows(text: str, name: str) -> tuple:
-    """(rows, problem or None) of a comment file's text."""
+    """(rows, problem or None) of a comment file's text. A file with the column kind (LEGACY_TOPIC) in place of topic
+    is read with it as the topic."""
     reader = csv.DictReader(io.StringIO(text.lstrip("﻿"), newline=""))
+    if reader.fieldnames and "topic" not in reader.fieldnames and LEGACY_TOPIC in reader.fieldnames:
+        reader.fieldnames = ["topic" if c == LEGACY_TOPIC else c for c in reader.fieldnames]
     missing = [c for c in COMMENT_COLUMNS if c not in (reader.fieldnames or [])]
     if missing:
         return [], (f"{name}: lacks the column(s) {', '.join(missing)}, so it isn't a comment file the review page "
@@ -292,9 +300,9 @@ def _blocks(lines: list) -> tuple:
     def close():
         nonlocal block
         if block is not None:
-            if block.get("_broken") or not block.get("kind") or not block.get("entry"):
+            if block.get("_broken") or not block.get("topic") or not block.get("entry"):
                 return 1
-            comments.append({"kind": block["kind"], "entry": block["entry"],
+            comments.append({"topic": block["topic"], "entry": block["entry"],
                              "page_version": block.get("page_version", ""), "git_commit": block.get("git_commit", ""),
                              "timestamp": block.get("timestamp", ""),
                              "entry_text_shown": block.get("entry_text_shown", ""),
@@ -312,8 +320,8 @@ def _blocks(lines: list) -> tuple:
         if block is None or not line:
             continue
         m = _FIELD.match(line)
-        if m and m.group(1) in BLOCK_FIELDS:
-            last = m.group(1)
+        if m and (m.group(1) in BLOCK_FIELDS or m.group(1) == LEGACY_TOPIC):
+            last = "topic" if m.group(1) == LEGACY_TOPIC else m.group(1)
             if last == "comment":
                 block.setdefault("comment", []).append(m.group(2).rstrip())
             else:
@@ -431,7 +439,7 @@ def read_comments(files, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
         r = {**{c: (r.get(c) or "").strip() for c in COMMENT_COLUMNS}, "file": r["file"], "sender": r["sender"]}
         if not r["comment"]:
             continue
-        key = (r["reviewer"].lower(), r["kind"], r["entry"])
+        key = (r["reviewer"].lower(), r["topic"], r["entry"])
         if key not in latest or r["timestamp"] >= latest[key]["timestamp"]:
             latest[key] = r
     return list(latest.values()), problems
@@ -440,7 +448,7 @@ def read_comments(files, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
 def read_all(paths=(REVIEWS_DIR,), schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH,
              domains=ALLOWED_SENDER_DOMAINS, questions_path: Path = QUESTIONS_PATH) -> dict:
     """Everything a reader of the comments needs: {"files": [names], "problems": [...], "comments": [each with
-    state (comment_state) and now (the entry as the files have it now, "" if gone)]}, sorted by kind, entry, time.
+    state (comment_state) and now (the entry as the files have it now, "" if gone)]}, sorted by topic, entry, time.
     A questions file not in its format is a problem (named), and the comments on questions then read as gone."""
     files = comment_files([p for p in paths if Path(p).exists()])
     comments, problems = read_comments(files, domains)
@@ -452,7 +460,7 @@ def read_all(paths=(REVIEWS_DIR,), schema_path: Path = SCHEMA_PATH, mapping_path
         now = entry_texts(schema_path, mapping_path, questions_path=Path("(none)"))
     for c in comments:
         c["state"] = comment_state(c, now)
-        c["now"] = now.get((c["kind"], c["entry"]), "")
-    order = {k: i for i, k in enumerate(KINDS)}
-    comments.sort(key=lambda c: (order.get(c["kind"], len(KINDS)), c["entry"].lower(), c["timestamp"]))
+        c["now"] = now.get((c["topic"], c["entry"]), "")
+    order = {k: i for i, k in enumerate(TOPICS)}
+    comments.sort(key=lambda c: (order.get(c["topic"], len(TOPICS)), c["entry"].lower(), c["timestamp"]))
     return {"files": files, "problems": problems, "comments": comments}

@@ -820,11 +820,11 @@ class Z_ReviewerComments(unittest.TestCase):
             with open(folder / "comments_Jane_Smith_2026-10-24.csv", "w", encoding="utf-8-sig", newline="") as fh:
                 w = csv.DictWriter(fh, RC.COMMENT_COLUMNS)
                 w.writeheader()
-                w.writerow({**row, "kind": "entity class", "entry": "Instrument", "comment": "Fine.",
+                w.writerow({**row, "topic": "entity class", "entry": "Instrument", "comment": "Fine.",
                             "entry_text_shown": now[("entity class", "Instrument")]})
-                w.writerow({**row, "kind": "entity class", "entry": "Spacecraft", "comment": "Too vague.",
+                w.writerow({**row, "topic": "entity class", "entry": "Spacecraft", "comment": "Too vague.",
                             "entry_text_shown": "Spacecraft: old words"})
-                w.writerow({**row, "kind": "predicate", "entry": "HAS_WIDGET", "comment": "Drop it.",
+                w.writerow({**row, "topic": "predicate", "entry": "HAS_WIDGET", "comment": "Drop it.",
                             "entry_text_shown": "HAS_WIDGET: has a widget"})
             (folder / "spam.eml").write_bytes(b"From: someone@notnasa.gov\r\nSubject: hi\r\n\r\nREVIEW COMMENTS (format 1)\r\n")
             before = sorted(p.name for p in folder.iterdir())
@@ -863,7 +863,7 @@ class Z_ReviewerComments(unittest.TestCase):
         finally:
             path.unlink()
         page = urllib.request.urlopen(url("/")).read().decode("utf-8")
-        for needed in ("/api/expert_questions", "expertQuestionsOn(rec.id)", 'kind === "question" ? questionHead(entry)'):
+        for needed in ("/api/expert_questions", "expertQuestionsOn(rec.id)", 'topic === "question" ? questionHead(entry)'):
             self.assertIn(needed, page)
 
     def test_page(self):

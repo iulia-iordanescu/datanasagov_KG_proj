@@ -66,7 +66,7 @@ from common.ground_truth import GROUND_TRUTH_DIR                               #
 from common.records_io import load_records                                     # noqa: E402
 from common.files import write_text                                            # noqa: E402
 from common.review_comments import (ALLOWED_SENDER_DOMAINS, CHANGED, COMMENT_COLUMNS, GENERAL, GONE,  # noqa: E402,F401
-                                    KIND_HEADINGS, KINDS,
+                                    LEGACY_TOPIC, TOPIC_HEADINGS, TOPICS,
                                     NOT_VERIFIED, REVIEWS_DIR, SCHEMA_PATH, entry_texts, mapping_entries, read_all,
                                     schema_entries)
 from common.step import OUTPUTS_DIR                                            # noqa: E402
@@ -279,6 +279,9 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
             "questions": questions, "priorities": list(PRIORITIES), "glossary": terms,
             "statuses": {"OPEN": OPEN, "ANSWERED": ANSWERED, "WITHDRAWN": WITHDRAWN},
             "question_kinds": QUESTION_KIND_WORDS,
+            # a comment's columns and topics (common/common_helpers/review_comments.py), and the name older copies
+            # of the page gave the topic, read as the topic
+            "comment_columns": COMMENT_COLUMNS, "topics": TOPICS, "legacy_topic": LEGACY_TOPIC,
             "linked_only_where_marked": LINKED_ONLY_WHERE_MARKED}
 
 
@@ -380,7 +383,7 @@ def _sender(c: dict) -> str:
 
 
 def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_DOMAINS, questions_fp: str = "") -> str:
-    """The comments as markdown, grouped by kind and entry. read: common.review_comments.read_all()."""
+    """The comments as markdown, grouped by topic and entry. read: common.review_comments.read_all()."""
     comments, files, problems = read["comments"], read["files"], read["problems"]
     reviewers = sorted({c["reviewer"] or "(no name)" for c in comments}, key=str.lower)
     lines = ["# Review comments", "",
@@ -399,17 +402,17 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
               f"address can be forged: read each comment before acting on it.", ""]
     if problems:
         lines += ["Files skipped, and what is missing:", ""] + [f"- {p}" for p in problems] + [""]
-    unknown = [c for c in comments if c["kind"] not in KINDS]
-    for kind in KINDS:
-        mine = [c for c in comments if c["kind"] == kind]
+    unknown = [c for c in comments if c["topic"] not in TOPICS]
+    for topic in TOPICS:
+        mine = [c for c in comments if c["topic"] == topic]
         if not mine:
             continue
-        lines += [f"## {KIND_HEADINGS[kind]}", ""]
+        lines += [f"## {TOPIC_HEADINGS[topic]}", ""]
         for entry in _unique(c["entry"] for c in sorted(mine, key=lambda c: c["entry"].lower())):
-            if kind == "question":
+            if topic == "question":
                 title = next((c["now"] for c in mine if c["entry"] == entry and c["now"]), "").split(" | ")[0]
                 lines += [f"### {title or entry}", ""]
-            elif kind != "general":
+            elif topic != "general":
                 lines += [f"### {entry}", ""]
             for c in sorted((c for c in mine if c["entry"] == entry), key=lambda c: c["timestamp"]):
                 lines.append(f"- **{c['reviewer'] or '(no name)'}**, {c['timestamp'][:10]} "
@@ -421,8 +424,8 @@ def summary(read: dict, schema_fp: str, mapping_fp: str, domains=ALLOWED_SENDER_
                     lines.append(f"  - Now: {c['now']}")
             lines.append("")
     if unknown:
-        lines += ["## Comments of an unknown kind", ""]
-        lines += [f"- **{c['reviewer'] or '(no name)'}** ({c['file']}), kind '{c['kind']}', entry '{c['entry']}': "
+        lines += ["## Comments of an unknown topic", ""]
+        lines += [f"- **{c['reviewer'] or '(no name)'}** ({c['file']}), topic '{c['topic']}', entry '{c['entry']}': "
                   f"{' '.join(c['comment'].split())}" for c in unknown] + [""]
     return "\n".join(lines)
 

@@ -154,21 +154,27 @@ function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); return true; }
   catch (_) { storageWorks = false; return false; }
 }
-// {id: {kind, entry, text, at, version, commit, shown}}: id is kind|entry, the same in every copy of the page, so
-// comments carry over to a newer copy opened in the same browser.
+// {id: {topic, entry, text, at, version, commit, shown}}: id is topic|entry, the same in every copy of the page, so
+// comments carry over to a newer copy opened in the same browser. A comment an older copy kept calls its topic
+// D.legacy_topic ("kind"): read as the topic.
 let comments = load(KEY.comments, {});
 if (!comments || typeof comments !== "object") comments = {};
+for (const c of Object.values(comments))
+  if (c && typeof c === "object" && c.topic === undefined && c[D.legacy_topic] !== undefined) {
+    c.topic = c[D.legacy_topic]; delete c[D.legacy_topic];
+  }
 let reviewer = load(KEY.name, "") || "";
 let oneAtATime = load(KEY.oneAtATime, false) === true;
 
 // ---------------------------------------------------------------- the entries
-const ENTRIES = [];                          // every entry of this copy: {id, kind, entry, shown, ...}
-for (const e of D.schema.entity_classes) ENTRIES.push({ ...e, id: `${e.kind}|${e.entry}` });
-for (const e of D.schema.predicates) ENTRIES.push({ ...e, id: `${e.kind}|${e.entry}` });
-for (const r of D.mapping.rows) ENTRIES.push({ ...r, kind: "translation row", rowKind: r.kind, id: `translation row|${r.entry}` });
-for (const q of D.questions) ENTRIES.push({ ...q, kind: "question", entry: q.id, id: `question|${q.id}` });
+// every entry of this copy: {id, topic, entry, shown, ...}; the topic of an entity class or predicate is its kind
+const ENTRIES = [];
+for (const e of D.schema.entity_classes) ENTRIES.push({ ...e, topic: e.kind, id: `${e.kind}|${e.entry}` });
+for (const e of D.schema.predicates) ENTRIES.push({ ...e, topic: e.kind, id: `${e.kind}|${e.entry}` });
+for (const r of D.mapping.rows) ENTRIES.push({ ...r, topic: "translation row", rowKind: r.kind, id: `translation row|${r.entry}` });
+for (const q of D.questions) ENTRIES.push({ ...q, topic: "question", entry: q.id, id: `question|${q.id}` });
 const BY_ID = Object.fromEntries(ENTRIES.map((e) => [e.id, e]));
-const GENERAL = { id: "general|(general)", kind: "general", entry: "(general)", shown: "" };
+const GENERAL = { id: "general|(general)", topic: "general", entry: "(general)", shown: "" };
 
 // Changed since you last looked: the copy opened before this one (an older one, by when it was made) left the text
 // of each entry here; an entry whose text differs is changed, one it lacked is new.
@@ -197,7 +203,7 @@ function localIso() {
          `${pad(d.getSeconds())}${off < 0 ? "-" : "+"}${pad(Math.trunc(off / 60))}:${pad(off % 60)}`;
 }
 function setComment(e, text) {
-  if (text.trim()) comments[e.id] = { kind: e.kind, entry: e.entry, text, at: localIso(),
+  if (text.trim()) comments[e.id] = { topic: e.topic, entry: e.entry, text, at: localIso(),
                                       version: V.id, commit: V.commit, shown: e.shown };
   else delete comments[e.id];
   clearTimeout(saveTimer);
@@ -218,18 +224,19 @@ function commentBox(e, label) {
   });
   requestAnimationFrame(grow);
   box.append(el("label", {}, label, ta));
-  if (c && c.text && e.kind !== "general" && c.shown !== e.shown)
+  if (c && c.text && e.topic !== "general" && c.shown !== e.shown)
     box.append(el("p", { class: "hint" }, `You wrote this on the copy ${c.version}, when the entry read: ${arrows(c.shown)}`));
   return box;
 }
 const csvCell = (v) => /[",\r\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
-const COLUMNS = ["reviewer", "page_version", "git_commit", "kind", "entry", "entry_text_shown", "comment", "timestamp"];
-const KIND_ORDER = ["general", "question", "entity class", "predicate", "translation row"];
+// a comment file's columns, and the topics in order: common/common_helpers/review_comments.py (COMMENT_COLUMNS, TOPICS)
+const COLUMNS = D.comment_columns;
+const TOPIC_ORDER = D.topics;
 function commentsCsv() {
-  const rows = written().sort((a, b) => (KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind)) ||
+  const rows = written().sort((a, b) => (TOPIC_ORDER.indexOf(a.topic) - TOPIC_ORDER.indexOf(b.topic)) ||
                                         a.entry.localeCompare(b.entry));
   const lines = [COLUMNS.join(",")].concat(rows.map((c) =>
-    [reviewer, c.version, c.commit, c.kind, c.entry, c.shown, c.text, c.at].map(csvCell).join(",")));
+    [reviewer, c.version, c.commit, c.topic, c.entry, c.shown, c.text, c.at].map(csvCell).join(",")));
   return "﻿" + lines.join("\r\n") + "\r\n";
 }
 function download() {
@@ -258,10 +265,10 @@ const to = () => ["iulia", "m", "iordanescu"].join(".") + "+kgreview" + String.f
 const MAILTO_MAX = 1900, MAX_EMAILS = 5;
 const HEADER = "REVIEW COMMENTS (format 1): please send this email as it is";
 function emailLines() {
-  const rows = written().sort((a, b) => (KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind)) ||
+  const rows = written().sort((a, b) => (TOPIC_ORDER.indexOf(a.topic) - TOPIC_ORDER.indexOf(b.topic)) ||
                                         a.entry.localeCompare(b.entry));
   const one = (s) => String(s || "").replace(/\s+/g, " ").trim();
-  return rows.flatMap((c) => ["=== comment ===", `[kind] ${c.kind}`, `[entry] ${one(c.entry)}`,
+  return rows.flatMap((c) => ["=== comment ===", `[topic] ${c.topic}`, `[entry] ${one(c.entry)}`,
     `[page_version] ${one(c.version)}`, `[git_commit] ${one(c.commit)}`, `[timestamp] ${one(c.at)}`,
     `[entry_text_shown] ${one(c.shown)}`,
     ...c.text.trim().split(/\r?\n/).map((l) => `[comment] ${l.replace(/\s+$/, "")}`), ""]);
@@ -363,16 +370,18 @@ function loadFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
     const rows = parseCsv(String(reader.result));
-    const head = rows.shift() || [];
+    let head = rows.shift() || [];
+    // a file an older copy saved calls the topic column D.legacy_topic ("kind"): read as the topic
+    if (!head.includes("topic") && head.includes(D.legacy_topic)) head = head.map((c) => c === D.legacy_topic ? "topic" : c);
     if (!COLUMNS.every((c) => head.includes(c))) { status(`${file.name} isn't a file of comments saved by this page.`); return; }
     const at = Object.fromEntries(head.map((c, i) => [c, i]));
     let added = 0;
     for (const r of rows) {
       const get = (c) => (r[at[c]] || "");
       if (!get("comment").trim()) continue;
-      const id = `${get("kind")}|${get("entry")}`;
+      const id = `${get("topic")}|${get("entry")}`;
       if (comments[id] && comments[id].at >= get("timestamp")) continue;
-      comments[id] = { kind: get("kind"), entry: get("entry"), text: get("comment"), at: get("timestamp"),
+      comments[id] = { topic: get("topic"), entry: get("entry"), text: get("comment"), at: get("timestamp"),
                        version: get("page_version"), commit: get("git_commit"), shown: get("entry_text_shown") };
       added++;
       if (!reviewer && get("reviewer")) { reviewer = get("reviewer"); save(KEY.name, reviewer); }
@@ -511,7 +520,7 @@ function schemaBox(e) {
 }
 function drawSchema() {
   const st = state.schema;
-  const all = ENTRIES.filter((e) => e.kind === "entity class" || e.kind === "predicate");
+  const all = ENTRIES.filter((e) => e.topic === "entity class" || e.topic === "predicate");
   const counts = Object.fromEntries(["entity class", "predicate"].map((k) => [k, {
     all: all.filter((e) => e.kind === k).length, mine: all.filter((e) => e.kind === k && has(e)).length }]));
   const shown = all.filter((e) => e.kind === st.kind && (!st.mine || has(e)) && (!st.changed || CHANGED.has(e.id) || NEW.has(e.id))
@@ -586,7 +595,7 @@ function sampleNote(st, nRows) {
 }
 function drawMapping() {
   const st = state.mapping;
-  const rows = ENTRIES.filter((e) => e.kind === "translation row");
+  const rows = ENTRIES.filter((e) => e.topic === "translation row");
   const all = SAMPLE && !st.every ? rows.filter((r) => SAMPLE.has(r.entry)) : rows;
   const counts = Object.fromEntries(["entity class", "predicate"].map((k) => [k, {
     all: all.filter((e) => e.rowKind === k).length, mine: all.filter((e) => e.rowKind === k && has(e)).length }]));
@@ -775,7 +784,7 @@ function questionBox(q) {
 const PRIORITIES = D.priorities;
 function drawQuestions() {
   const st = state.questions;
-  const all = ENTRIES.filter((e) => e.kind === "question")
+  const all = ENTRIES.filter((e) => e.topic === "question")
     .sort((a, b) => (PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority)) || (a.number - b.number));
   const live = all.filter((q) => st.closed || q.status === QS.OPEN);
   const shown = live.filter((q) => (st.priority === "all" || q.priority === st.priority) && (!st.mine || has(q))
@@ -828,7 +837,7 @@ function drawHome() {
     oninput: (ev) => { reviewer = ev.target.value; save(KEY.name, reviewer); } });
   const picker = el("input", { type: "file", accept: ".csv,text/csv", hidden: true,
                                onchange: (ev) => { if (ev.target.files[0]) loadFile(ev.target.files[0]); ev.target.value = ""; } });
-  const gone = written().filter((c) => c.kind !== "general" && !BY_ID[`${c.kind}|${c.entry}`]);
+  const gone = written().filter((c) => c.topic !== "general" && !BY_ID[`${c.topic}|${c.entry}`]);
   const nOpen = D.questions.filter((q) => q.status === QS.OPEN).length;
   const nSchema = D.schema.entity_classes.length + " entity classes and " + D.schema.predicates.length + " predicates";
   return [el("section", { class: "card home" },
@@ -886,7 +895,7 @@ function drawHome() {
       "⚑ This browser doesn't let the page keep your comments: download them before you close it.")) : null,
     gone.length ? el("div", { class: "gone" }, el("h3", {}, "Your comments on entries no longer on this page"),
       el("p", { class: "meta" }, "They are still in your download, with the entry as it read when you wrote them."),
-      el("ul", {}, gone.map((c) => el("li", {}, el("strong", {}, `${c.kind} ${c.entry}`), `: ${c.text}`,
+      el("ul", {}, gone.map((c) => el("li", {}, el("strong", {}, `${c.topic} ${c.entry}`), `: ${c.text}`,
                                           el("div", { class: "meta" }, `It read: ${arrows(c.shown)}`))))) : null)];
 }
 

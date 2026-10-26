@@ -159,8 +159,8 @@ class Comments(unittest.TestCase):
             w.writerows(rows)
         return path
 
-    def row(self, kind, entry, shown, comment, at="2026-10-24T10:00:00-04:00", who="Jane Smith"):
-        return {"reviewer": who, "page_version": "review_2026-10-24_abc1234", "git_commit": "abc1234", "kind": kind,
+    def row(self, topic, entry, shown, comment, at="2026-10-24T10:00:00-04:00", who="Jane Smith"):
+        return {"reviewer": who, "page_version": "review_2026-10-24_abc1234", "git_commit": "abc1234", "topic": topic,
                 "entry": entry, "entry_text_shown": shown, "comment": comment, "timestamp": at}
 
     def test_round_trip_and_flags(self):
@@ -194,6 +194,34 @@ class Comments(unittest.TestCase):
             self.assertNotIn("⚑", text.split("### Instrument", 1)[1].split("###", 1)[0])
             self.assertLess(text.index("## General comments"), text.index("## Entity classes"))
 
+    def test_kind_from_older_pages_is_read_as_topic(self):
+        """Copies of the page made before 2026-10-26 called the topic "kind": a comment file with a kind column, and
+        an email with [kind] lines, are read with it as the topic, as a file with topic is."""
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            paths = files(t)
+            now = R.entry_texts(**paths)
+            reviews = t / "reviews"
+            reviews.mkdir()
+            old_columns = [RC.LEGACY_TOPIC if c == "topic" else c for c in R.COMMENT_COLUMNS]
+            with open(reviews / "old.csv", "w", encoding="utf-8-sig", newline="") as fh:
+                w = csv.DictWriter(fh, old_columns, lineterminator="\r\n")
+                w.writeheader()
+                row = self.row("entity class", "Instrument", now[("entity class", "Instrument")], "From an old file.")
+                w.writerow({(RC.LEGACY_TOPIC if k == "topic" else k): v for k, v in row.items()})
+            (reviews / "old.txt").write_text(
+                "REVIEW COMMENTS (format 1): please send this email as it is\n[reviewer] Bo Lee\n"
+                "[page_version] review_2026-10-24_abc1234\n[git_commit] abc1234\n[sent] 2026-10-24T14:05:09-04:00\n"
+                "[part] 1 of 1\n=== start of part 1 of 1 ===\n\n=== comment ===\n[kind] predicate\n[entry] ABOARD\n"
+                "[page_version] review_2026-10-24_abc1234\n[git_commit] abc1234\n[timestamp] 2026-10-24T10:00:00-04:00\n"
+                f"[entry_text_shown] {now[('predicate', 'ABOARD')]}\n[comment] From an old email.\n\n"
+                "=== end of part 1 of 1 ===\n", encoding="utf-8")
+            read = R.read_all([reviews], **paths)
+            self.assertEqual(read["problems"], [])
+            self.assertEqual(sorted((c["topic"], c["entry"], c["comment"], c["state"]) for c in read["comments"]),
+                             [("entity class", "Instrument", "From an old file.", "unchanged"),
+                              ("predicate", "ABOARD", "From an old email.", "unchanged")])
+
     def test_a_file_of_another_shape_is_skipped(self):
         with tempfile.TemporaryDirectory() as t:
             t = Path(t)
@@ -217,7 +245,7 @@ def page_comments(now: dict) -> dict:
     """Comments as the page keeps them (its localStorage): a general one of two lines, a long one, one on an entry
     that changed since, one on a row of the translation table."""
     at = lambda m: f"2026-10-24T10:{m:02d}:00-04:00"                              # noqa: E731
-    one = lambda kind, entry, text, m, shown: {"kind": kind, "entry": entry, "text": text, "at": at(m),  # noqa: E731
+    one = lambda topic, entry, text, m, shown: {"topic": topic, "entry": entry, "text": text, "at": at(m),  # noqa: E731
                                                 "version": "review_2026-10-23_abc1234", "commit": "abc1234", "shown": shown}
     return {"general|(general)": one("general", "(general)", "Clear overall.\nSecond line: thanks.", 1, ""),
             "entity class|Instrument": one("entity class", "Instrument", " ".join(f"word{i}" for i in range(300)), 2,
@@ -272,7 +300,7 @@ class Email(unittest.TestCase):
                   "const few = {'general|(general)': comments['general|(general)']};"
                   "const all = emailParts('2026-10-24T12:00:00-04:00');"
                   "comments = few; const one = emailParts('2026-10-24T12:30:00-04:00');"
-                  "comments = {}; for (let i = 0; i < 40; i++) comments['entity class|E' + i] = {kind: 'entity class', "
+                  "comments = {}; for (let i = 0; i < 40; i++) comments['entity class|E' + i] = {topic: 'entity class', "
                   "entry: 'E' + i, text: 'x '.repeat(400), at: '2026-10-24T10:00:00-04:00', version: 'v', commit: 'c', shown: ''};"
                   "const many = emailParts('2026-10-24T13:00:00-04:00');"
                   "document.body.setAttribute('data-out', JSON.stringify({all, one, many}));")
@@ -286,11 +314,11 @@ class Email(unittest.TestCase):
         return R.read_all([folder], **self.paths)
 
     def expected(self) -> dict:
-        return {f"{c['kind']}|{c['entry']}": (c["text"].strip(), c["shown"], c["at"], c["version"], c["commit"])
+        return {f"{c['topic']}|{c['entry']}": (c["text"].strip(), c["shown"], c["at"], c["version"], c["commit"])
                 for c in self.comments.values()}
 
     def got(self, read: dict) -> dict:
-        return {f"{c['kind']}|{c['entry']}": (c["comment"], c["entry_text_shown"], c["timestamp"], c["page_version"],
+        return {f"{c['topic']}|{c['entry']}": (c["comment"], c["entry_text_shown"], c["timestamp"], c["page_version"],
                                               c["git_commit"]) for c in read["comments"]}
 
     def test_the_address_isnt_in_the_page(self):
@@ -965,7 +993,7 @@ class QuestionsView(unittest.TestCase):
         (folder / "comments_Jane_Smith.csv").write_text(self.out["csv"], encoding="utf-8")
         for f in (folder / "p0.txt", folder / "comments_Jane_Smith.csv"):
             read = R.read_all([f], **{k: self.paths[k] for k in ("schema_path", "mapping_path", "questions_path")})
-            self.assertEqual([(c["kind"], c["entry"], c["comment"], c["state"]) for c in read["comments"]],
+            self.assertEqual([(c["topic"], c["entry"], c["comment"], c["state"]) for c in read["comments"]],
                              [("question", "Q1", "A closed list, please.", "unchanged")], f.name)
 
 

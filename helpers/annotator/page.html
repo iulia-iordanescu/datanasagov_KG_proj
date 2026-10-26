@@ -2136,12 +2136,12 @@ function drawVocab() {
 // The comments reviewers sent back from the review page (helpers/review_page.md), read by the server from
 // annotations/reviews/ as py helpers/review_page.py --read reads them: under each entry of the Ground truth schema
 // and Translation table views, and all of them in the Reviewer comments view. Nothing here changes them.
-let REVIEWER = null;                       // {comments, problems, files, folder, not_verified, headings, states, byKey: {kind|entry: [comment]}}
+let REVIEWER = null;                       // {comments, problems, files, folder, not_verified, headings, states, byKey: {topic|entry: [comment]}}
 async function loadReviewerComments() {
   try {
     const r = await api("/api/reviewer_comments");
     r.byKey = {};
-    for (const c of r.comments) (r.byKey[`${c.kind}|${c.entry}`] = r.byKey[`${c.kind}|${c.entry}`] || []).push(c);
+    for (const c of r.comments) (r.byKey[`${c.topic}|${c.entry}`] = r.byKey[`${c.topic}|${c.entry}`] || []).push(c);
     REVIEWER = r;
   } catch (_) { REVIEWER = null; }          // the views work without them
 }
@@ -2171,15 +2171,15 @@ function reviewerComment(c) {
     plainText("div", { class: "reviewtext" }, c.comment));
 }
 // Under an entry: its reviewers' comments, compact; nothing if it has none.
-function reviewerNotes(kind, entry) {
-  const list = REVIEWER && REVIEWER.byKey[`${kind}|${entry}`];
+function reviewerNotes(topic, entry) {
+  const list = REVIEWER && REVIEWER.byKey[`${topic}|${entry}`];
   if (!list || !list.length) return null;
   return el("div", { class: "reviewnotes" },
     el("div", { class: "reviewhead", title: `From ${REVIEWER.folder}: read-only` }, `Reviewer comments (${list.length})`),
     list.map(reviewerComment));
 }
 
-let reviews = null, reviewWho = "", reviewState = "any", reviewKind = "any";
+let reviews = null, reviewWho = "", reviewState = "any", reviewTopic = "any";
 async function openReviews() {
   await flush();
   batch = null; mapping = null; partial = null; additions = null; vocab = null; leftOutView = null;
@@ -2197,7 +2197,7 @@ async function openReviews() {
 }
 function drawReviews() {
   const all = reviews.comments;
-  const S = reviews.states, REVIEW_KINDS = reviews.headings;     // from the server (common/common_helpers/review_comments.py)
+  const S = reviews.states, REVIEW_TOPICS = reviews.headings;     // from the server (common/common_helpers/review_comments.py)
   const who = [...new Set(all.map((c) => c.reviewer || "(no name)"))].sort((a, b) => a.localeCompare(b));
   const changed = all.filter((c) => c.state === S.CHANGED).length, gone = all.filter((c) => c.state === S.GONE).length;
   $("records").replaceChildren(el("div", { style: "padding:6px 8px" },
@@ -2226,21 +2226,21 @@ function drawReviews() {
     select("Reviewer", reviewWho, [["", "All reviewers"], ...who.map((w) => [w, w])], (v) => { reviewWho = v; }),
     select("Entry", reviewState, [["any", "Changed or not"], [S.CHANGED, "Only entries changed since"],
       [S.UNCHANGED, "Only entries unchanged"], [S.GONE, "Only entries no longer in the files"]], (v) => { reviewState = v; }),
-    select("Kind", reviewKind, [["any", "Every kind"], ...REVIEW_KINDS], (v) => { reviewKind = v; }))));
+    select("Topic", reviewTopic, [["any", "Every topic"], ...REVIEW_TOPICS], (v) => { reviewTopic = v; }))));
   const shown = all.filter((c) => (!reviewWho || (c.reviewer || "(no name)") === reviewWho) &&
-    (reviewKind === "any" || c.kind === reviewKind) && (reviewState === "any" || c.state === reviewState));
+    (reviewTopic === "any" || c.topic === reviewTopic) && (reviewState === "any" || c.state === reviewState));
   if (!shown.length) cards.push(el("section", { class: "card" }, el("p", { class: "empty" }, "No comments match the filters above.")));
-  for (const [kind, title] of REVIEW_KINDS) {
-    const mine = shown.filter((c) => c.kind === kind);
+  for (const [topic, title] of REVIEW_TOPICS) {
+    const mine = shown.filter((c) => c.topic === topic);
     if (!mine.length) continue;
     const entries = [...new Set(mine.map((c) => c.entry))];
     cards.push(el("section", { class: "card" }, el("h3", {}, title),
       entries.map((entry) => {
         const list = mine.filter((c) => c.entry === entry), now = list[0].now;
         return el("div", { class: "mapbox reviewgroup" },
-          kind === "general" ? null : plainText("h4", {}, kind === "question" ? questionHead(entry) : entry),
-          kind === "question" ? questionAffects(entry) : null,
-          kind === "general" ? null : now ? plainText("div", { class: "mapdef", title: "The entry as the files have it now" }, `Now: ${now}`)
+          topic === "general" ? null : plainText("h4", {}, topic === "question" ? questionHead(entry) : entry),
+          topic === "question" ? questionAffects(entry) : null,
+          topic === "general" ? null : now ? plainText("div", { class: "mapdef", title: "The entry as the files have it now" }, `Now: ${now}`)
             : el("div", { class: "mapdef empty" }, "No longer in the files."),
           list.map(reviewerComment));
       })));
