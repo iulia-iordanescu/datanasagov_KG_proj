@@ -50,11 +50,14 @@ assert tuple(QUESTION_KIND_WORDS) == QUESTION_KINDS
 #: The fields of "### Affects": what an answer may change.
 AFFECTS = ("record at pool position", "classed triple of the record at pool position", "translation table row",
            "ground truth schema entry", "rule", "pipeline method")
-#: The subsections of a question, in the order they must come: (heading, how many: "1" or "?"). The first ones
-#: (EXPERT_SECTIONS) are what the expert needs to answer; the rest are my bookkeeping, which the page folds away.
-SECTIONS = [("The question", "1"), ("Context", "?"), ("Example record", "?"), ("Ground truth schema", "?"),
+#: The subsections of a question, in the order they must come: (heading, how many: "1", "?" (at most one) or "*" (any
+#: number, one after another)). The first ones (EXPERT_SECTIONS) are what the expert needs to answer; the rest are my
+#: bookkeeping, which the page folds away. "Quoted for us" holds definitions, rows and rules in the same fields as
+#: "Ground truth schema", "Translation table" and "Annotation guidelines", checked the same way, but only for me.
+SECTIONS = [("The question", "1"), ("Context", "?"), ("Example record", "*"), ("Ground truth schema", "?"),
             ("Translation table", "?"), ("Annotation guidelines", "?"), ("Options", "?"), ("My current reading", "1"),
-            ("The answer", "?"), ("My notes", "?"), ("Consequences", "?"), ("Affects", "1"), ("Pipeline method", "?")]
+            ("The answer", "?"), ("My notes", "?"), ("Quoted for us", "?"), ("Consequences", "?"), ("Affects", "1"),
+            ("Pipeline method", "?")]
 EXPERT_SECTIONS = tuple(name for name, _ in SECTIONS[:SECTIONS.index(("My notes", "?"))])
 #: What the expert reads never names a record this way: by its pool position, or by its id.
 NOT_FOR_THE_EXPERT = re.compile(r"pool\s+positions?|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
@@ -243,10 +246,8 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
         if names.index(k) < order:
             raise err(s["line"], f'"### {s["heading"]}" is out of order: a question\'s parts come in the order '
                                  f'{", ".join(names)}')
-        if [kind(o["heading"]) for o in subs[:subs.index(s)]].count(k):
-            raise err(s["line"], f'"### {s["heading"]}" is there twice' + (
-                ': a question shows one record, the clearest example for its decision, and lists every other '
-                'record and classed triple it affects under "### Affects"' if k == "Example record" else ""))
+        if dict(SECTIONS)[k] != "*" and [kind(o["heading"]) for o in subs[:subs.index(s)]].count(k):
+            raise err(s["line"], f'"### {s["heading"]}" is there twice')
         order = names.index(k)
     have = [kind(s["heading"]) for s in subs]
     for name, many in SECTIONS:
@@ -312,6 +313,23 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
             if not rec["source_texts"]:
                 raise err(s["line"], 'a record has at least one "- source text: …": the passage the question is about')
             q["records"].append(rec)
+        elif k == "Quoted for us":
+            for label, value, n in _fields(s["lines"], s["at"], err):
+                row = re.fullmatch(r"(entity class|predicate) (\S+) -> (\S+)( \(swap subject and object\))?", label)
+                entry = re.fullmatch(r"(entity class|predicate) (\S+)", label)
+                rule = re.fullmatch(r"(.+), rule (\d+)", label)
+                if row:
+                    q["rows"].append({"kind": row.group(1), "crt": row.group(2), "gtt": row.group(3),
+                                      "swap": bool(row.group(4)), "definition": value, "line": n, "us": True})
+                elif entry:
+                    q["schema"].append({"kind": entry.group(1), "entry": entry.group(2), "definition": value,
+                                        "line": n, "us": True})
+                elif rule:
+                    q["rules"].append({"section": rule.group(1).strip(), "rule": int(rule.group(2)), "words": value,
+                                       "line": n, "us": True})
+                else:
+                    raise err(n, f'"{label}": a field here is a definition, a row or a rule, written as under '
+                                 f'"### Ground truth schema", "### Translation table" or "### Annotation guidelines"')
         elif k == "Ground truth schema":
             for label, value, n in _fields(s["lines"], s["at"], err):
                 m = re.fullmatch(r"(entity class|predicate) (\S+)", label)

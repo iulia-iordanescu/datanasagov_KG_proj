@@ -236,9 +236,10 @@ GLOSS_AFTER = re.compile(r"(?:'s|'|’s|’)?[\"”]?\s*\[[^\]\n]+\](?!\()")
 
 
 #: The parts of a question (annotations/questions_for_experts.md) that quote other files word for word: a record's
-#: text, definitions, rows of the translation table, rules, a pipeline method's words, and the Affects list.
+#: text, definitions, rows of the translation table, rules (also those quoted for me only), a pipeline method's words,
+#: and the Affects list.
 QUOTE_SECTIONS = re.compile(r"^### (Example record|Ground truth schema|Translation table|Annotation guidelines"
-                            r"|Pipeline method|Affects)\s*$")
+                            r"|Quoted for us|Pipeline method|Affects)\s*$")
 
 
 def quotes_blanked(text: str) -> str:

@@ -823,9 +823,11 @@ class Questions(unittest.TestCase):
                  "#### Option 2: A closed list\n\n- A new": ("#### Option 2: A list\n\n- A new",
                                                             "the same numbers and titles"),
                  "### Consequences\n": ("### Effects of each\n", "isn't one of a question's parts"),
-                 "### Ground truth schema\n": (QUESTION.split("### Example record\n")[1].split("### Ground")[0]
-                                              .join(["### Example record\n", "### Ground truth schema\n"]),
-                                              "is there twice: a question shows one record"),
+                 "### Consequences\n\n#### Option 1": ("### My notes\n\nAgain.\n\n### Consequences\n\n#### Option 1",
+                                                      "\"### My notes\" is there twice"),
+                 "\n### Consequences\n\n#### Option 1: Keep": ("\n### Quoted for us\n\n- something else: its words\n\n"
+                                                              "### Consequences\n\n#### Option 1: Keep",
+                                                              "a field here is a definition, a row or a rule"),
                  "Is a [record]": ("At pool position 0, is a [record]", "\"pool position\" is in what the expert reads"),
                  "Undecided.\n": (f"Undecided, as for {TUNING}.\n", f"\"{TUNING}\" is in what the expert reads")}
         for old, (new, words) in cases.items():
@@ -887,7 +889,7 @@ class Questions(unittest.TestCase):
         qs = R.questions_data(terms=R.glossary())
         self.assertTrue(qs)
         self.assertEqual([q["id"] for q in qs], [f"Q{i}" for i in range(1, len(qs) + 1)])
-        self.assertTrue(all(len(q["records"]) <= 1 for q in qs))
+        self.assertTrue(all(r["source_texts"] for q in qs for r in q["records"]))     # each example says what it is for
 
     def test_the_expert_never_reads_a_pool_position(self):
         """What the expert reads of each question of the real file (its title, its parts for the expert, its
@@ -941,7 +943,9 @@ class QuestionsView(unittest.TestCase):
                                                       1).replace("- priority: high", "- priority: low")
         third = second.replace("A second one", "An answered one", 1).replace("- status: open", "- status: answered") \
             .replace("### My notes\n", "### The answer\n\nYes.\n\n### My notes\n")
-        cls.paths = question_world(cls.tmp, QUESTION + "\n## Q2: " + second + "\n## Q3: " + third)
+        first = QUESTION.replace("### Consequences\n", "### Quoted for us\n\n- entity class SpatialRepresentation: how data are "
+                                                     "laid out over the ground\n\n### Consequences\n", 1)
+        cls.paths = question_world(cls.tmp, first + "\n## Q2: " + second + "\n## Q3: " + third)
         cls.page = R.build(R.page_data(**cls.paths))
         script = ("const out = {}; try { show('questions'); const v = () => document.getElementById('view');"
                   "out.text = v().textContent; out.cards = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
@@ -954,6 +958,8 @@ class QuestionsView(unittest.TestCase):
                   "out.last = card.lastElementChild.tagName + '.' + card.lastElementChild.className;"
                   "const top = card.cloneNode(true); top.querySelector('details.forus').remove(); out.top = top.textContent;"
                   "out.tab = document.getElementById('tab-questions').getAttribute('aria-current');"
+                  "out.judged = [...card.querySelectorAll('details.judged')].map((d) => [d.querySelector('summary').textContent, d.open]);"
+                  "out.fullnotes = !!card.querySelector('details.fullnotes');"
                   "state.questions.closed = true; redraw(); out.withClosed = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
                   "state.questions.priority = 'low'; redraw(); out.low = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
                   "state.questions.priority = 'all'; oneAtATime = true; redraw(); out.one = [...v().querySelectorAll('.question .qid')].map((e) => e.textContent);"
@@ -985,6 +991,12 @@ class QuestionsView(unittest.TestCase):
                          ("The answer to this question impacts: our bookkeeping, not needed to answer", False,
                           "DETAILS.forus"))
         self.assertIn("1 record, 1 classed triple, 1 row of the translation table", self.out["affects"])
+        # the definitions and the rules, each folded on its own and closed at first; those quoted for us at the bottom
+        self.assertEqual(self.out["judged"], [["The definitions this is judged by (2)", False],
+                                              ["The rules this is judged by (1)", False]])
+        self.assertNotIn("Definitions and rules we quoted, for us", self.out["top"])
+        self.assertIn("Definitions and rules we quoted, for us", self.out["affects"])
+        self.assertTrue(self.out["fullnotes"])          # the notes' second paragraph holds no source text: cut, all folded
 
     def test_terms_linked_once(self):
         terms = self.out["terms"]

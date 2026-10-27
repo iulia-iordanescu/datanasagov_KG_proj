@@ -180,6 +180,10 @@
   .question .option .otitle { font-weight: 700; margin: 0 0 2px; }
   .question .option .prose p { margin: 2px 0 6px; }
   .question .commentbox { margin-top: 20px; padding-top: 12px; }
+  .question details.judged { margin: 12px 0 0; }
+  .question details.judged summary { cursor: pointer; font-weight: 700; color: var(--label); }
+  .question details.fullnotes { margin: 4px 0 0; font-size: 14px; }
+  .question details.fullnotes summary { cursor: pointer; color: var(--label); }
   .question details.forus { margin: 16px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--label); font-size: 14px; }
   .question details.forus summary { cursor: pointer; font-weight: 700; color: var(--label); }
   .question details.forus summary .meta { font-weight: 400; }
@@ -871,6 +875,25 @@ function quoted(text, marks) {
     return el("p", {}, out.filter((x) => x !== ""));
   }));
 }
+// A record's notes cut to the sentences that hold a source text (a sentence ends at . ! or ? before a space and a
+// capital letter, digit, quote or bracket), each gap marked "…": null when every sentence holds one (show them whole).
+function excerpt(text, marks) {
+  let cut = false;
+  const paras = String(text).split(/\n\n/).map((para) => {
+    const spans = (marks || []).map((m) => new RegExp(m.split(/\s+/).filter(Boolean).map(esc).join("\\s+")).exec(para))
+      .filter(Boolean).map((f) => [f.index, f.index + f[0].length]);
+    const sents = []; let at = 0;
+    for (const m of para.matchAll(/[.!?]\s+(?=[A-Z0-9"“(])/g)) { sents.push([at, m.index + 1]); at = m.index + m[0].length; }
+    sents.push([at, para.length]);
+    const kept = sents.map(([a, b]) => spans.some(([x, y]) => x < b && a < y));
+    if (kept.every(Boolean)) return para;
+    cut = true;
+    const out = []; let gap = false;
+    sents.forEach(([a, b], i) => { if (kept[i]) { out.push(para.slice(a, b)); gap = false; } else if (!gap) { out.push("…"); gap = true; } });
+    return out.join(" ");
+  });
+  return cut ? paras.filter((p, i) => !(p === "…" && paras[i - 1] === "…")).join("\n\n") : null;
+}
 function field(label, ...content) { return el("div", { class: "field" }, el("span", { class: "label" }, label), content); }
 function tripleLine(t) {
   return el("div", { class: "triple" }, el("span", { class: "inst" }, `“${t.subject}”`), " ", el("span", { class: "cls" }, `(${t.subject_class})`),
@@ -896,11 +919,11 @@ function impactsBox(q) {
     a.methods.length ? n(a.methods, "pipeline method", "pipeline methods") : null].filter(Boolean);
   const byPos = {};
   for (const t of a.triples) (byPos[t.position] = byPos[t.position] || []).push(t);
-  const ex = q.records[0];
   return el("details", { class: "forus" },
     el("summary", {}, "The answer to this question impacts:", el("span", { class: "meta" }, " our bookkeeping, not needed to answer")),
     el("p", {}, `${q.entry} is about ${q.in_short} (a question about ${QUESTION_KIND[q.question_kind]}).`),
     q.notes.length ? [el("h5", {}, "Our notes"), prose(q.notes)] : null,
+    quotes(q, true),
     q.options.length ? [el("h5", {}, "What each option would change"), q.options.map((o) => el("div", {},
       el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose([{ ul: o.consequences }])))] : null,
     el("h5", {}, `Everything the answer may change: ${parts.join(", ")}`),
@@ -913,7 +936,22 @@ function impactsBox(q) {
     a.rules.length ? field("Rules of the annotation guidelines", el("ul", {}, a.rules.map((r) => el("li", {}, `${r.section}, rule ${r.rule}`)))) : null,
     a.methods.length ? field("Pipeline methods", el("ul", {}, a.methods.map((m) => el("li", {}, el("code", {}, m.path), `: ${m.what}`)))) : null,
     q.methods.length ? [el("h5", {}, "The pipeline's words, quoted"), q.methods.map((m) => field(m.path, quoted(m.words)))] : null,
-    ex ? el("p", { class: "nolink" }, `The example’s record id: ${ex["record id"]}.`) : null);
+    q.records.length ? el("p", { class: "nolink" }, q.records.length === 1 ? `The example’s record id: ${q.records[0]["record id"]}.`
+      : `The examples’ record ids: ${q.records.map((r) => `“${r.title}” ${r["record id"]}`).join("; ")}.`) : null);
+}
+// The definitions, rows and rules a question quotes. For the expert (us false): two folded sections, closed at first,
+// the definitions (entity classes, predicates, rows of the translation table) and the rules. For us: one plain list.
+function quotes(q, us) {
+  const mine = (x) => x.filter((y) => !!y.us === us);
+  const [schema, rows, rules] = [mine(q.schema), mine(q.rows), mine(q.rules)];
+  const defs = [...schema.map((e) => field(`${e.kind} ${e.entry} (ground truth schema)`, quoted(e.definition))),
+    ...rows.map((r) => field(`Translation table: ${r.kind} ${r.crt} (current or past schema) → ${r.gtt === D.mapping.none ? `${D.mapping.none}: nothing in the ground truth schema` : `${r.gtt} (ground truth schema)`}` +
+                             (r.swap ? ", subject and object swapped" : "") + "; the row's definition of " + r.crt + ":", quoted(r.definition)))];
+  const rls = rules.map((r) => field(`Annotation guidelines, ${r.section}, rule ${r.rule}`, quoted(r.words)));
+  if (!defs.length && !rls.length) return null;
+  if (us) return [el("h5", {}, "Definitions and rules we quoted, for us"), defs, rls];
+  const fold = (title, list) => list.length ? el("details", { class: "judged" }, el("summary", {}, `${title} (${list.length})`), list) : null;
+  return [fold("The definitions this is judged by", defs), fold("The rules this is judged by", rls)];
 }
 function questionBox(q) {
   const [, pl] = PRIORITY[q.priority], [, sl] = STATUS[q.status];
@@ -924,16 +962,15 @@ function questionBox(q) {
       q.status === QS.OPEN ? null : el("span", { class: `pill ${STATUS[q.status][0]}` }, sl), changedPill(q)),
     prose(q.question),
     q.context.length ? prose(q.context) : null,
-    q.records.map((r) => [el("h4", {}, "An example"),
+    quotes(q, false),
+    q.records.map((r, i) => [el("h4", {}, q.records.length === 1 ? "An example" : `Example ${i + 1}`),
       field("Its title", quoted(r.title, marks(r))),
-      field("Its notes (the words this question is about are highlighted)", quoted(r.notes, marks(r))),
+      ((ex) => ex === null ? field("Its notes (the words this question is about are highlighted)", quoted(r.notes, marks(r)))
+        : field("From its notes (the words this question is about are highlighted; … marks what is left out)",
+                ex.replace(/[\s…]/g, "") ? quoted(ex, marks(r)) : null,
+                el("details", { class: "fullnotes" }, el("summary", {}, "Show the full notes"), quoted(r.notes, marks(r)))))(excerpt(r.notes, marks(r))),
       r.triples.length ? field(r.in_ground_truth ? "The facts we wrote down from these words" : "The facts we have written down from these words so far (a draft, not checked yet)",
                                r.triples.map(tripleLine)) : null]),
-    q.schema.length || q.rows.length || q.rules.length ? [el("h4", {}, "The definitions and rules this is judged by"),
-      q.schema.map((e) => field(`${e.kind} ${e.entry} (ground truth schema)`, quoted(e.definition))),
-      q.rows.map((r) => field(`Translation table: ${r.kind} ${r.crt} (current or past schema) → ${r.gtt === D.mapping.none ? `${D.mapping.none}: nothing in the ground truth schema` : `${r.gtt} (ground truth schema)`}` +
-                              (r.swap ? ", subject and object swapped" : "") + "; the row's definition of " + r.crt + ":", quoted(r.definition))),
-      q.rules.map((r) => field(`Annotation guidelines, ${r.section}, rule ${r.rule}`, quoted(r.words)))] : null,
     q.options.length ? [el("h4", {}, "The choices we see (pick one, or tell us another)"), q.options.map((o) => el("div", { class: "option" },
       el("div", { class: "otitle" }, `Option ${o.number}: ${o.title}`), prose(o.body)))] : null,
     el("h4", {}, "Our current reading"), prose(q.reading),
@@ -962,8 +999,9 @@ function drawQuestions() {
   const intro = viewIntro(2, "Our questions",
     [`${live.length} question${live.length === 1 ? "" : "s"} we can’t settle alone, most urgent first: the ${nHigh} ` +
      `${PRIORITY[PRIORITIES[0]][1].toLowerCase()} one${nHigh === 1 ? ", marked in gold, comes" : "s, marked in gold, come"} first. Each is written out ` +
-     "on its own: the question, one record as an example (its title and notes, with the words concerned highlighted), the " +
-     "definitions and rules it is judged by, the choices we see, and our current reading. Write your answer in the box under a question."],
+     "on its own: the question, the definitions and rules it is judged by (folded: open them when you need them), one or a few " +
+     "records as examples (the sentences that matter, the words concerned highlighted), the choices we see, and our current reading. " +
+     "Write your answer in the box under a question."],
     ["Which choice is right, or is there another we didn’t list?",
      "Would our current reading mislead someone in your field?",
      "Does the question rest on something we have wrong about the data?",
