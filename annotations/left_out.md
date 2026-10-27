@@ -76,7 +76,7 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** "9.26 km" (notes, "available at both 4.63 and 9.26 km spatial resolution")
   - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
   - **May matter because:** it is the other resolution of the product family.
-  - **Question:** Q24; whether the title's "4km" is the 4.63 km: Q22.
+  - **Question:** Q24; whether the title's "4km" is the 4.63 km was Q22, withdrawn on 2026-10-26: settled from PO.DAAC's page for this dataset, "4km" is the rounded 4.63 km grid (see Q22's My notes).
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
   - **Rule:** Writing a classed triple, rule 11, as for the list it belongs to.
   - **May matter because:** it says the products are averages over their temporal resolution, so the 8 days are the time each value averages over.
@@ -95,12 +95,12 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Question:** Q28 (a).
 - **Left out:** "with other Earth Observation Satellites (EOS)" (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The words name no satellite; "A-train" is the ground truth triple (FLIES_IN).
-  - **Question:** Q23.
+  - **Question:** Q23 (whether "Aqua" FLIES_IN "A-train" is about the spacecraft or its mission); its part on whether the A-train is a formation or a constellation was settled on 2026-10-26 from NASA's A-train fact sheet: see Q23's My notes.
 - **Left out:** "at a variety of spatial resolutions" (notes, "MODIS captures data in 36 spectral bands at a variety of spatial resolutions")
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The words name no value.
 - **Left out:** "projection" (notes, "Platte Carre projection")
   - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
-  - **Question:** Q15.
+  - **Question:** Q15 (whether a coordinate system is a map projection); its part on "Platte Carre" was settled on 2026-10-26: it is the record's spelling of "Plate Carrée", the equidistant cylindrical projection on the equator (see Q15's My notes).
 - **Left out:** "satellite" (notes, "the Aqua satellite")
   - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
 - **Left out:** "which can be found at https://doi.org/10.5067/MODAM-8D4N4" (notes), the DOI of the previous v2014.1 datasets
