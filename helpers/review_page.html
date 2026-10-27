@@ -895,10 +895,13 @@ function excerpt(text, marks) {
   return cut ? paras.filter((p, i) => !(p === "…" && paras[i - 1] === "…")).join("\n\n") : null;
 }
 function field(label, ...content) { return el("div", { class: "field" }, el("span", { class: "label" }, label), content); }
+// A classed triple. In a question's example, an instance that is a record's title shows the record's label instead,
+// "(Record A)", without its entity class (helpers/review_page.py, label_records).
 function tripleLine(t) {
-  return el("div", { class: "triple" }, el("span", { class: "inst" }, `“${t.subject}”`), " ", el("span", { class: "cls" }, `(${t.subject_class})`),
-    " ", el("span", { class: "pred" }, t.predicate), " ", el("span", { class: "inst" }, `“${t.object}”`), " ",
-    el("span", { class: "cls" }, `(${t.object_class})`));
+  const side = (inst, cls, label) => label ? [el("span", { class: "inst" }, `(${label})`)]
+    : [el("span", { class: "inst" }, `“${inst}”`), " ", el("span", { class: "cls" }, `(${cls})`)];
+  return el("div", { class: "triple" }, side(t.subject, t.subject_class, t.subject_label),
+    " ", el("span", { class: "pred" }, t.predicate), " ", side(t.object, t.object_class, t.object_label));
 }
 const PRIORITY = { high: ["flag", "High priority"], medium: ["todo", "Medium priority"], low: ["todo", "Low priority"] };
 // A question's statuses, and each question kind in words: common/common_helpers/expert_questions.py (STATUSES,
@@ -963,7 +966,7 @@ function questionBox(q) {
     prose(q.question),
     q.context.length ? prose(q.context) : null,
     quotes(q, false),
-    q.records.map((r, i) => [el("h4", {}, q.records.length === 1 ? "An example" : `Example ${i + 1}`),
+    q.records.map((r, i) => [el("h4", {}, (q.records.length === 1 ? "An example" : `Example ${i + 1}`) + (r.label ? `: ${r.label}` : "")),
       field("Its title", quoted(r.title, marks(r))),
       ((ex) => ex === null ? field("Its notes (the words this question is about are highlighted)", quoted(r.notes, marks(r)))
         : field("From its notes (the words this question is about are highlighted; … marks what is left out)",

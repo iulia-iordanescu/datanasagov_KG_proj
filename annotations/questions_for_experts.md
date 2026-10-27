@@ -312,7 +312,7 @@ For the example, we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.
 Our schema separates two things a dataset can hold: a PhysicalQuantity, a property that any method could measure (sea surface temperature, snow cover), and a Variable, one named value that one algorithm computes (SST4, NDSI). A dataset HAS_MEASUREMENTS_OF a PhysicalQuantity and HAS_VARIABLE a Variable, and a Variable ESTIMATES a PhysicalQuantity (all defined below). The example shows the line as we draw it: one record's sea surface temperature, and two named products that estimate it, SST4 and NSST. We are not sure where the line falls in other records:
 
 - (a) Is a quantity that a record says an algorithm computed still a PhysicalQuantity, or a Variable? We wrote both of these as PhysicalQuantities: "Sea Surface Salinity (SSS) retrievals" (the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005") and "Aerosol Optical Depth", computed by "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid"). And is an index such as the Normalized Difference Snow Index (NDSI), which the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "is derived from radiance data", a Variable, or something of its own?
-- (b) Some things a dataset holds are not a property of what is observed. What should each be? Counts as the instrument recorded them: "maps of fast neutron residual count rates" (the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0"; we wrote a Variable). Images with their unit: "image data in W/m^2/sr/nm" (the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0"). Supporting layers: "quality control assessments, observation times, view zenith angles, and clear-sky coverages" (the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006") and "atmospheric properties and view geometry" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid"). Labels: "redshifts and spectral classifications" (the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"). Except for the count rates, we wrote each as a PhysicalQuantity the dataset has measurements of.
+- (b) Some things a dataset holds are not a property of what is observed. What should each be? First, counts as the instrument recorded them: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "These data are maps of fast neutron residual count rates", and we wrote the count rates as a Variable. Second, layers that come with the data: the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" says "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments, observation times, view zenith angles, and clear-sky coverages", and we wrote each of the four as a PhysicalQuantity the dataset has measurements of.
 - (c) Many records say "It is a Global Gravity measurement at the comet 67P" (one is the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"); others, in the same sentence, say "Phobos Gravity", "Occultation" or "Solar Conjunction". We wrote "Gravity" as what is measured and "Global" as the area covered. Or is "Global Gravity" the name of one kind of radio science measurement, as a whole? If these are kinds of measurement, what does each measure, in plain words?
 
 ### Example record
@@ -390,6 +390,10 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 The question's context, as it was: The example below holds both: a PhysicalQuantity, and two Variables that estimate it. The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its snow cover is "detected using Normalized Difference Snow Index (NDSI) and a series of screens", and "The NDSI is derived from radiance data"; the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "These data are maps of fast neutron residual count rates"; and the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" says "Aquarius L-band radiometer Sea Surface Salinity (SSS) retrievals".
 
 The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" recurs across the catalog. We counted it in the records of the catalog (020's records.jsonl, 36,406 records, harvested before 2026-10-24): "It is a Global Gravity measurement" in 2,835 records (2,442 of them "at the comet 67P"), "It is a Occultation measurement" in 439, "It is a Solar Conjunction measurement" in 240, and "It is a Phobos Gravity measurement" in 9. Since "Phobos Gravity" sits beside "Global Gravity", our reading is that the word before "Gravity" says which gravity measurement it is, not an area; but we don't know. (Whether "Global" can be an area at a comet at all, we ask separately; here the question is only what is measured.)
+
+Taken out of the expert's (b) on 2026-10-26, because it named five records in one paragraph; kept here word for word. The expert's (b) now shows two cases, each with its record: the count rates (the old (c)) and the supporting layers of the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (part of the old (g)). The images with their unit, the atmospheric properties and view geometry, and the redshifts and spectral classifications stay for us, as the old (i), the old (g) and the old (j) above say them.
+
+- The expert's (b), as it was: Some things a dataset holds are not a property of what is observed. What should each be? Counts as the instrument recorded them: "maps of fast neutron residual count rates" (the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0"; we wrote a Variable). Images with their unit: "image data in W/m^2/sr/nm" (the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0"). Supporting layers: "quality control assessments, observation times, view zenith angles, and clear-sky coverages" (the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006") and "atmospheric properties and view geometry" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid"). Labels: "redshifts and spectral classifications" (the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"). Except for the count rates, we wrote each as a PhysicalQuantity the dataset has measurements of.
 
 ### Quoted for us
 
@@ -2033,7 +2037,7 @@ How the translation table is used: the model extracts classed triples with a sch
 - translation table row: entity class PhysicalPhenomenon
 - ground truth schema entry: entity class Phenomenon
 
-## Q15: Is a coordinate system a map projection, and how should "Platte Carre" be written?
+## Q15: Is a coordinate system a map projection?
 
 - status: open
 - priority: low
@@ -2042,10 +2046,7 @@ How the translation table is used: the model extracts classed triples with a sch
 
 ### The question
 
-Our schema has an entity class MapProjection, "a way of drawing the curved Earth on a flat map", such as the "equidistant cylindrical" projection in the example below. The [model](../docs/terminology.md#8-the-pipeline) we test learned its own schema from other records, and its nearest entity class is CoordinateSystem, "a spatial reference frame or grid, such as a heliographic system or equidistant grid" (both definitions below). When we score the model, we count its CoordinateSystem as our MapProjection. We would like to know:
-
-- (a) Is every coordinate system that records of this catalog name a map projection? Our reading is that it isn't: a coordinate system says how a position is given (a heliographic system gives positions on the Sun), a map projection says how a curved surface is drawn flat, and a grid, a fixed set of cells that values are collected into, is a third thing. If so, where should a coordinate system go?
-- (b) The example writes "equidistant cylindrical (also known as Platte Carre projection". Is "Platte Carre" the projection usually spelled "Plate Carrée", and is it the same projection as "equidistant cylindrical"? We keep a record's own spelling: would that mislead someone searching for it?
+Our schema has an entity class MapProjection, "a way of drawing the curved Earth on a flat map", such as the "equidistant cylindrical" projection in the example below. The [model](../docs/terminology.md#8-the-pipeline) we test learned its own schema from other records, and its nearest entity class is CoordinateSystem, "a spatial reference frame or grid, such as a heliographic system or equidistant grid" (both definitions below). When we score the model, we count its CoordinateSystem as our MapProjection. We would like to know: is every coordinate system that records of this catalog name a map projection? Our reading is that it isn't: a coordinate system says how a position is given (a heliographic system gives positions on the Sun), a map projection says how a curved surface is drawn flat, and a grid, a fixed set of cells that values are collected into, is a third thing. If so, where should a coordinate system go?
 
 ### Example record
 
@@ -2069,9 +2070,9 @@ Our schema has an entity class MapProjection, "a way of drawing the curved Earth
 
 ### Options
 
-#### Option 1: Keep counting a coordinate system as a map projection, and the record's spelling
+#### Option 1: Keep counting a coordinate system as a map projection
 
-The model's CoordinateSystem keeps counting as our MapProjection; we keep "Platte Carre" as the record writes it.
+The model's CoordinateSystem keeps counting as our MapProjection.
 
 #### Option 2: Keep coordinate systems apart from map projections
 
@@ -2079,7 +2080,7 @@ The model's CoordinateSystem no longer counts as our MapProjection: it counts as
 
 ### My current reading
 
-Option 1: in the records we have read so far, the only coordinate system is a map projection, and we keep the record's own spelling. We would choose option 2 if other coordinate systems are common in the catalog (a).
+Option 1: in the records we have read so far, the only coordinate system is a map projection. We would choose option 2 if other coordinate systems are common in the catalog.
 
 ### My notes
 
@@ -2096,6 +2097,12 @@ The question's context, as it was: How the translation table is used: the model 
 
 The record below is the only one so far where we wrote down a map projection. We kept the record's own words, as rule 1 of *Writing a classed triple* says, also for "Platte Carre".
 
+Taken out of the expert's view on 2026-10-26, as a question we can settle from sources; kept here word for word. The title was "Is a coordinate system a map projection, and how should "Platte Carre" be written?"; the expert's (a) is now the question, without its letter. Option 1 was "Keep counting a coordinate system as a map projection, and the record's spelling", and its text ended "; we keep "Platte Carre" as the record writes it.". My current reading said "the only coordinate system is a map projection, and we keep the record's own spelling", and ended "common in the catalog (a).". Option 2's consequences said "(question (a))".
+
+- (b) The example writes "equidistant cylindrical (also known as Platte Carre projection". Is "Platte Carre" the projection usually spelled "Plate Carrée", and is it the same projection as "equidistant cylindrical"? We keep a record's own spelling: would that mislead someone searching for it?
+
+Checked on 2026-10-26: Esri's page on the projection (https://desktop.arcgis.com/en/arcmap/latest/map/projections/plate-carree.htm) says "The plate carrée map projection is an equidistant cylindrical projection with the standard parallel located at the equator", and PROJ, the map projection library, names it "Equidistant Cylindrical (Plate Carrée)" (https://proj4.org/operations/projections/eqc.html). PO.DAAC's page for this dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_4KM_NIGHTTIME_V2019.0) gives "Projection Type: Cylindrical Lat-Lon", a grid of equal steps in latitude and longitude, which is the plate carrée case (our reading of "Cylindrical Lat-Lon"). So "Platte Carre" is the record's misspelling of "Plate Carrée", and the fact "equidistant cylindrical" (MapProjection) ALSO_KNOWN_AS "Platte Carre" (MapProjection) is true for this record: checked. Whether the knowledge graph should also hold the usual spelling, for searches, is ours to decide, not a question for a source; rule 1 of *Writing a classed triple* keeps the record's own words, so the ground truth stays as it is.
+
 ### Quoted for us
 
 - predicate MAPPED_INTO: its values were laid onto a map drawn with this MapProjection
@@ -2108,7 +2115,7 @@ The record below is the only one so far where we wrote down a map projection. We
 
 ### Consequences
 
-#### Option 1: Keep counting a coordinate system as a map projection, and the record's spelling
+#### Option 1: Keep counting a coordinate system as a map projection
 
 - The rows for CoordinateSystem and HAS_COORDINATE_SYSTEM stay, translating into MapProjection and MAPPED_INTO.
 - Right when a coordinate system the model extracts is a map projection; counted wrong when it is a coordinate system of another sort (a heliographic system).
@@ -2119,7 +2126,7 @@ The record below is the only one so far where we wrote down a map projection. We
 
 - CoordinateSystem and HAS_COORDINATE_SYSTEM translate into (none), or into an entity class (and a predicate) of their own.
 - Map projections the model files under CoordinateSystem then count as extracted only (with (none)), or are compared with a coordinate system entity class the ground truth doesn't use for them.
-- Right only if coordinate systems that aren't map projections are common in the catalog (question (a)).
+- Right only if coordinate systems that aren't map projections are common in the catalog (the question).
 
 ### Affects
 
@@ -2136,7 +2143,7 @@ The record below is the only one so far where we wrote down a map projection. We
 
 ## Q16: Is the time "13:30" in Aqua's orbit a fact of its own?
 
-- status: open
+- status: withdrawn
 - priority: low
 - question kind: schema entry
 - in short: the ground truth schema's Orbit and TimeOfDay, and rule 9 of *Writing a classed triple* in the annotation guidelines
@@ -2193,6 +2200,10 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 The question's context, as it was: The ground truth schema has a TimeOfDay entity class, and rule 9 of *Writing a classed triple* in the annotation guidelines takes a time of day out of an instance, as a ground truth triple of its own, unless taking it out would give a triple that isn't true. Taking "13:30" out with the only predicate the ground truth schema has for a time of day, OBSERVED_AT_TIME_OF_DAY, would say that the orbit comes from observations made at 13:30, which isn't true. So, by rule 9 of *Writing a classed triple*, "13:30" stays in the orbit's instance. The question is whether the ground truth schema should have another predicate for this time, so that it can be a ground truth triple of its own.
 
 Option 2's text, as it was: A new predicate in the ground truth schema, e.g. HAS_ASCENDING_NODE_TIME ("crosses the equator going north at this TimeOfDay"), and the ground truth writes two classed triples: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit" (Orbit), and a second one that gives "13:30" (TimeOfDay), with Aqua or the orbit as its subject instance (question (c)).
+
+Withdrawn on 2026-10-26: what it asks of facts we can check in sources, and the rest is ours to decide, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it.
+
+Checked on 2026-10-26: NASA's page on Aqua (https://science.nasa.gov/mission/aqua/about-aqua-spacecraft-and-instruments/) gives its orbit as "Sun synchronous, near polar orbit" and its "Equatorial crossing" as "1:30 p.m. ascending node": 13:30 is the local time at which Aqua crosses the equator going north, as our reading in (a) said. NASA's Catalog of Earth Satellite Orbits (https://science.nasa.gov/earth/earth-observatory/catalog-of-earth-satellite-orbits) defines the two words apart: a polar orbit "moves around the Earth from pole to pole"; in a sun-synchronous one, "whenever and wherever the satellite crosses the equator, the local solar time on the ground is always the same". So, for (b), "sun synchronous" and "polar" are two properties of the orbit, not the name of one type: checked. Whether people search this catalog by the time a satellite crosses the equator, the rest of (a), no source settles: not settled, our reading: we keep option 1, the orbit whole, as My current reading says; the ground truth stays as it is.
 
 ### Quoted for us
 
@@ -2317,7 +2328,7 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 
 - (a) Is SST4 a skin SST too, so that both products estimate the same quantity, the skin sea surface temperature? We would then write the same words for both.
 - (b) The record says "The SST4 product has lower uncertainty", without saying than what. We read it as "lower uncertainty than NSST", the other product the record describes. Is that how you read it?
-- (c) The title is "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". From its "SST MID-IR" we wrote that the dataset holds SST4 (the product made from the mid-infrared channels), and wrote nothing about NSST, since "can be present" doesn't say that it is there. Does a "SST MID-IR ... Nighttime" product hold SST4 only, or NSST too?
+- (c) From "SST MID-IR" in the example's title we wrote that the dataset holds SST4 (the product made from the mid-infrared channels), and wrote nothing about NSST, since "can be present" doesn't say that it is there. Does a "SST MID-IR ... Nighttime" product hold SST4 only, or NSST too?
 
 ### Example record
 
@@ -2360,6 +2371,8 @@ Option 1, because the record names SST4's quantity only "SST", and the compariso
 ### My notes
 
 The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". Until an expert answers, its ground truth keeps option 1, and HAS_VARIABLE "SST4" only. If experts say a "Nighttime" "SST MID-IR" product holds NSST too, we would still write it only if the record says so, and note the gap.
+
+Changed on 2026-10-26, because the review page now shows a record's title only once, in its example: the expert's (c) began "The title is "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". From its "SST MID-IR" we wrote".
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The sub-questions keep their letters; only the rule numbers and quotes of rules were taken out of them.
 
@@ -2832,7 +2845,7 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 
 ## Q22: Is a title's "4km" the notes' "4.63 km"?
 
-- status: open
+- status: withdrawn
 - priority: low
 - question kind: records and triples
 - in short: the ground truth schema's SpatialResolution and HAS_SPATIAL_RESOLUTION, and rules 11 and 13 of the annotation guidelines
@@ -2885,6 +2898,12 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - The question's context, as it was: The spatial resolutions we have written so far: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the example below), and "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
 - The options and reading, as they were: Option 1: The dataset HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), the more precise wording, and no fact for 9.26 km. Option 2: "4km" is a resolution of its own, not the rounded 4.63 km: the dataset HAS_SPATIAL_RESOLUTION "4km" (SpatialResolution), and rule 13's example changes. My current reading: Option 1, because rule 13 takes the more precise wording and the record's own words give 4.63 km as one of the two resolutions it is available at. We would move to option 2 only if experts say a title's value and the notes' value can name different resolutions.
 
+Withdrawn on 2026-10-26: a question we can settle from sources, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it.
+
+Checked on 2026-10-26, for (a): PO.DAAC's page for this dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_4KM_NIGHTTIME_V2019.0) gives "Spatial Resolution: 0.041 Decimal Degrees x 0.041 Decimal Degrees", and its page for the 9km dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_9KM_NIGHTTIME_V2019.0) "0.083 Decimal Degrees x 0.083 Decimal Degrees": 1/24 and 1/12 of a degree, which at the equator are about 4.6 km and 9.3 km (our arithmetic: about 111.3 km per degree). So the title's "4km" is the rounded name of the 4.63 km grid: checked, for this record. Whether a title's rounded value is always the notes' value, across the catalog: not settled, our reading (it holds for the three records we have, "500m", "4km" and "1km").
+
+Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records, harvested before 2026-10-24) has a record of its own for the 9km products, "MODIS Aqua Level 3 SST MID-IR 8 Day 9km Nighttime V2019.0", beside this one, and the same 4km and 9km pair for Daily, Monthly and Annual. So 9.26 km is about another dataset, as rule 11 reads it. Option 1 stands; the ground truth stays as it is.
+
 ### Quoted for us
 
 - Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the fact of how the two datasets are connected.
@@ -2919,7 +2938,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - rule: Writing a classed triple, rule 11
 - rule: Writing a classed triple, rule 13
 
-## Q23: Is the A-train a formation, a constellation, or something else?
+## Q23: Is flying in the A-train a fact about the spacecraft Aqua, or about its mission?
 
 - status: open
 - priority: low
@@ -2928,10 +2947,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 ### The question
 
-The example below says Aqua was launched into its orbit "formation flying in the A-train with other Earth Observation Satellites (EOS)". We wrote that Aqua (a Spacecraft) FLIES_IN the A-train (a SatelliteFormation), both defined below. We would like to know:
-
-- (a) Is the A-train a formation (spacecraft flying close together, in an arrangement kept on purpose), a constellation (spacecraft in coordinated orbits, which need not fly close together), or something else? Our reading, not checked against a source: NASA also calls it the "Afternoon Constellation". If it is a constellation, does the difference matter to someone searching this catalog, or would one kind of thing for any group of spacecraft that work together do?
-- (b) Is "formation flying in the A-train" a fact about Aqua (the spacecraft) or about its mission?
+The example below says Aqua was launched into its orbit "formation flying in the A-train with other Earth Observation Satellites (EOS)". We wrote that Aqua (a Spacecraft) FLIES_IN the A-train (a SatelliteFormation), both defined below. We would like to know: is "formation flying in the A-train" a fact about Aqua (the spacecraft) or about its mission?
 
 ### Example record
 
@@ -2947,19 +2963,9 @@ The example below says Aqua was launched into its orbit "formation flying in the
 - entity class SatelliteFormation: a group of Spacecraft flying together in formation in orbit, e.g. the A-train
 - predicate FLIES_IN: flies in formation as part of
 
-### Options
-
-#### Option 1: Keep SatelliteFormation as it is
-
-The A-train stays a SatelliteFormation, as the record's own words "formation flying" say.
-
-#### Option 2: One entity class for any group of spacecraft
-
-One kind of thing for any group of spacecraft that work together, in place of SatelliteFormation, covering formations, constellations and trains, and FLIES_IN read as "is part of this group".
-
 ### My current reading
 
-Option 1 for now, because the record itself says "formation flying". We would move to option 2 if you say the A-train is a constellation, or that the difference doesn't matter for a search of this catalog.
+A fact about Aqua, the spacecraft, as we wrote it, because it is the spacecraft that flies in the A-train.
 
 ### My notes
 
@@ -2972,21 +2978,18 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - The question's context, as it was: Of the records we have read so far, the example below is the only one that names a group of spacecraft.
 - Option 2's words, as they were: An entity class for any group of spacecraft that work together, in place of SatelliteFormation, with a definition that covers formations, constellations and trains, and FLIES_IN read as "is part of this group".
 
+Taken out of the expert's view on 2026-10-26, as a question we can settle from a source; kept here word for word, with the options, my current reading and the consequences, which were about it. The title was "Is the A-train a formation, a constellation, or something else?"; the expert's (b) is now the question, without its letter.
+
+- (a) Is the A-train a formation (spacecraft flying close together, in an arrangement kept on purpose), a constellation (spacecraft in coordinated orbits, which need not fly close together), or something else? Our reading, not checked against a source: NASA also calls it the "Afternoon Constellation". If it is a constellation, does the difference matter to someone searching this catalog, or would one kind of thing for any group of spacecraft that work together do?
+- The options, as they were: Option 1: Keep SatelliteFormation as it is. The A-train stays a SatelliteFormation, as the record's own words "formation flying" say. Option 2: One entity class for any group of spacecraft. One kind of thing for any group of spacecraft that work together, in place of SatelliteFormation, covering formations, constellations and trains, and FLIES_IN read as "is part of this group".
+- My current reading, as it was: Option 1 for now, because the record itself says "formation flying". We would move to option 2 if you say the A-train is a constellation, or that the difference doesn't matter for a search of this catalog.
+- The consequences, as they were: Option 1 (Keep SatelliteFormation as it is): Nothing changes. If the A-train is a constellation, the definition of SatelliteFormation, and its example, say something an expert would not. Option 2 (One entity class for any group of spacecraft): The entity class and predicate are renamed and redefined in the ground truth schema; the one ground truth triple keeps its instances. Groups of spacecraft that other records name are written the same way, whatever their arrangement.
+
+Checked on 2026-10-26: NASA Goddard's fact sheet "Formation Flying: The Afternoon 'A-Train' Satellite Constellation" (FS-2003-1-053-GSFC, March 2003, https://assets.science.nasa.gov/content/dam/science/missions/a-train/publications/A-TrainFactSheet.pdf) says "Since these missions will all fly in tandem, the set of satellites is referred to as a constellation, or alternatively, as a formation", calls "A-Train" "a popular nickname for the Afternoon Constellation", and says the spacecraft keep tight positions ("CALIPSO must not lag Aqua by more than two minutes but may never precede Aqua"). So NASA calls the A-train both, and it does fly in formation, as SatelliteFormation's definition ("a group of Spacecraft flying together in formation in orbit") says: checked. Option 1 stands; the ground truth stays as it is.
+
 ### Quoted for us
 
 - entity class Spacecraft: a craft that operates in space
-
-### Consequences
-
-#### Option 1: Keep SatelliteFormation as it is
-
-- Nothing changes.
-- If the A-train is a constellation, the definition of SatelliteFormation, and its example, say something an expert would not.
-
-#### Option 2: One entity class for any group of spacecraft
-
-- The entity class and predicate are renamed and redefined in the ground truth schema; the one ground truth triple keeps its instances.
-- Groups of spacecraft that other records name are written the same way, whatever their arrangement.
 
 ### Affects
 
@@ -3004,7 +3007,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 ### The question
 
-A record's notes often describe the family of products its dataset belongs to, not only the dataset itself. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km, nighttime product; but its notes begin "Day and night" and say "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution". Each of those other products is another dataset, with a record of its own, so we leave their facts out of this record: we wrote only that this dataset is weekly (8 day) and 4.63 km, and nothing says the others exist. We would like to know:
+A record's notes often describe the family of products its dataset belongs to, not only the dataset itself. The title of the example below says "8 Day 4km Nighttime", so its dataset is the 8-day, 4 km, nighttime product; but its notes begin "Day and night" and say "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution". Each of those other products is another dataset, with a record of its own, so we leave their facts out of this record: we wrote only that this dataset is weekly (8 day) and 4.63 km, and nothing says the others exist. We would like to know:
 
 - (a) Is the information about the family worth keeping in a knowledge graph of this catalog? Would someone ask "which temporal resolutions does this product come in?", or "is there a 9.26 km version of it?", and expect the answer from a record that describes only one of them?
 - (b) If it is, as what? As facts about each of the other products, as facts about a family of products (a group of datasets sharing a name, with the family's own facts), or as facts about the instrument that makes them? And is a fact such as "there is also a daily product" about this dataset (it has siblings), or only about the family?
@@ -3046,6 +3049,8 @@ Option 1 for now, because our guidelines leave facts of other datasets out, and 
 ### My notes
 
 The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the densest record we have annotated: the items its notes leave out are listed in `annotations/left_out.md`. Q22 asks a narrower question about the same sentence (is the title's "4km" the notes' "4.63 km"), and Q5 (b) what the "Average" means; neither is settled by this one. We decided against merging this into Q19 (releases, "R2019.0" and "Collection"): an answer about whether "R2019.0" is "V2019.0" does not settle whether a family of products is recorded. It is not merged into Q25 either: Q25 asks how the schema groups things; this asks whether the facts are wanted at all, and one answer to this does not settle the other, though option 2 needs Q25's answer for a part-of predicate.
+
+Changed on 2026-10-26, because the review page now shows a record's title only once, in its example: the question said "The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is".
 
 Items of `annotations/left_out.md` that this answer may bring back as ground truth triples:
 

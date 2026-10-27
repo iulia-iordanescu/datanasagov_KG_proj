@@ -903,6 +903,53 @@ class Questions(unittest.TestCase):
                 self.assertNotIn("pool position", text.lower(), q["id"])
                 self.assertNotRegex(text, r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}", q["id"])
 
+    @staticmethod
+    def expert_view(q: dict) -> str:
+        """The words of a question's expert part that name records, as the page shows them: the question, its
+        context, its examples (title and classed triples), the options, our reading, the answer."""
+        def words(blocks):
+            out = []
+            for b in blocks:
+                out += [b["p"]] if "p" in b else b.get("ul", []) + [c for row in b.get("table", []) for c in row]
+            return out
+        texts = words(q["question"]) + words(q["context"])
+        for r in q["records"]:
+            texts.append(r["title"])
+            texts += [f'{t.get("subject_label") or t["subject"]} {t.get("object_label") or t["object"]}' for t in r["triples"]]
+        for o in q["options"]:
+            texts += words(o["body"])
+        return html.unescape(" ".join(texts + words(q["reading"]) + words(q["answer"])))
+
+    def test_records_labelled(self):
+        """A record's title is shown once per question, a label after: an example's in its own part ("Record A"),
+        "(Record A, below)" before it and "(Record A)" after, in the prose and in its classed triples."""
+        text = QUESTION.replace("A table:", 'The record "Snow V1" is one. A table:').replace(
+            "Undecided.", 'Undecided: the record "Snow V1" has "Snow V1" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" '
+                          '(SpatialRepresentation).')
+        with tempfile.TemporaryDirectory() as t:
+            q = questions_of(question_world(Path(t), text))[0]
+        r = q["records"][0]
+        self.assertEqual((r["label"], r["title"]), ("Record A", "Snow V1"))
+        self.assertEqual(r["triples"][0]["subject_label"], "Record A")
+        self.assertIn("(Record A, below) is one.", q["question"][0]["p"])
+        self.assertEqual(q["reading"][0]["p"], 'Undecided: (Record A) has (Record A) HAS_SPATIAL_REPRESENTATION '
+                                               '"swath" (SpatialRepresentation).')
+        self.assertEqual(self.expert_view(q).count("Snow V1"), 1)
+        self.assertIn("Snow V1", str(q["notes"]) + str(q["affects"]))       # our bookkeeping keeps the full titles
+
+    def test_the_real_file_shows_each_title_once(self):
+        """In each question of the real file, each record's title is shown once in the expert's part, a label after."""
+        if not (R.RECORDS_PATH.exists() and R.SPLITS_PATH.exists()):
+            self.skipTest("020's records.jsonl or 030's splits.json isn't on this computer")
+        for q in R.questions_data(terms=R.glossary()):
+            seen = self.expert_view(q)
+            titles = {r["title"] for r in q["records"]} | {n["title"] for n in q["named_records"]}
+            for title in titles:
+                self.assertLessEqual(seen.count(f'"{title}"') + seen.count(f"“{title}”"), 1, (q["id"], title))
+            for r in q["records"]:
+                self.assertRegex(r["label"], r"^Record [A-Z]$", q["id"])
+                self.assertNotIn(f"“{r['title']}”", seen, q["id"])          # an example's title only in its own part
+
     def test_comments_on_a_question(self):
         """A comment on a question, read back: unchanged, then changed once the question's words change (its status
         doesn't count); gone when the question is."""
@@ -979,7 +1026,8 @@ class QuestionsView(unittest.TestCase):
         self.assertEqual(self.out["withClosed"], ["Q1", "Q2", "Q3"])
         self.assertEqual(self.out["low"], ["Q2", "Q3"])
         self.assertEqual((self.out["one"], self.out["next"]), (["Q1"], ["Q2"]))
-        for words in ("An example", "Each file holds 5 minutes of", "Our current reading", "Option 2: A closed list",
+        for words in ("An example: Record A", "(Record A) HAS_SPATIAL_REPRESENTATION", "Each file holds 5 minutes of",
+                      "Our current reading", "Option 2: A closed list",
                       "The choices we see"):
             self.assertIn(words, self.out["top"])
         for words in (TUNING, "A new exception to rule 1", "The example’s record id: " + TUNING,

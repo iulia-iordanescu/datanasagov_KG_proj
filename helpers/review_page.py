@@ -246,7 +246,72 @@ def questions_data(questions_path: Path = QUESTIONS_PATH, records_path: Path = R
         for q in questions:
             for r in q["affects"]["records"]:
                 r["title"] = (records.get(r["id"]) or {}).get("title", "")
+    for q in questions:
+        label_records(q)
     return questions
+
+
+def label_records(q: dict) -> None:
+    """A record's long title shown once per question, a short label after (helpers/review_page.md, *The questions
+    file*). Each record the expert's part of `q` names gets a letter, A, B, …: its examples first, in order, then the
+    other records in the order they first appear. An example shows its title in its own part ("Example 1: Record A");
+    any other record is shown as Record B: “<title>” where it first appears. After that, everywhere in the expert's
+    part, the title is "(Record B)", and an example's classed triple shows "(Record A)" for an instance that is the
+    title (its Dataset dropped: the label says it). Where the text names an example before the example, it reads
+    "(Record A, below)". Our bookkeeping (notes, quotes, Affects) keeps the full titles; the file is not changed."""
+    examples = [r["title"] for r in q["records"]]
+    titles = list(dict.fromkeys(examples + [n["title"] for n in q.get("named_records", [])]
+                                + [r.get("title", "") for r in q["affects"]["records"]]))
+    titles = [t for t in titles if t]
+    if not titles:
+        return
+    # the expert's part, in the order the page shows it: the question, its context, the examples, the options, our
+    # reading, the answer. Each slot: (container, key) of an HTML string; an example: ("example", record).
+    slots = []
+
+    def blocks(bs):
+        for b in bs:
+            if "p" in b:
+                slots.append((b, "p"))
+            elif "ul" in b:
+                slots.extend((b["ul"], i) for i in range(len(b["ul"])))
+            elif "table" in b:
+                slots.extend((row, j) for row in b["table"] for j in range(len(row)))
+    blocks(q["question"])
+    blocks(q["context"])
+    slots.extend(("example", r) for r in q["records"])
+    for o in q["options"]:
+        blocks(o["body"])
+    blocks(q["reading"])
+    blocks(q["answer"])
+    escaped = {html.escape(t, quote=False): t for t in titles}
+    rx = re.compile(r'(?:(?<!\w)(?:[Tt]he )?records? )?"(' + "|".join(re.escape(e) for e in sorted(escaped, key=len, reverse=True))
+                    + r')"(?: \(Dataset\))?')
+    order = list(dict.fromkeys(examples))
+    for c, k in slots:
+        if c != "example":
+            order += [escaped[m.group(1)] for m in rx.finditer(c[k]) if escaped[m.group(1)] not in order]
+    letter = {t: chr(ord("A") + i) if i < 26 else f"A{i - 25}" for i, t in enumerate(order)}
+    shown = set()
+
+    def label(m):
+        t, s = escaped[m.group(1)], m.string
+        bare = s[m.start() - 1:m.start()] == "(" and s[m.end():m.end() + 1] == ")"    # already in brackets
+        if t in shown or t in examples:
+            words = f"Record {letter[t]}" + ("" if t in shown else ", below")
+            return words if bare else f"({words})"
+        shown.add(t)
+        return f"Record {letter[t]}: “{m.group(1)}”"
+    for c, k in slots:
+        if c == "example":
+            shown.add(k["title"])
+            k["label"] = f"Record {letter[k['title']]}"
+            for t in k["triples"]:
+                for side in ("subject", "object"):
+                    if t[side] in letter:
+                        t[side + "_label"] = f"Record {letter[t[side]]}"
+        else:
+            c[k] = rx.sub(label, c[k])
 
 
 def _term_of(words: str, aliases: dict):
