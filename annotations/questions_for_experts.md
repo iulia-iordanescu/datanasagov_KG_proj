@@ -13,14 +13,14 @@ This file is the questions' one home: I write and change them here, and nowhere 
 
 ### The question
 
-How a dataset's data are laid out over the ground is, so far, written in each [record](../docs/terminology.md#1-records-and-their-text)'s own words: "swath", "Polar-Gridded", "spatially gridded", "map", "gridded". I am not sure whether to keep those words, or to use a closed list of values instead, the same few words for every record of the catalog. To decide, I need to know:
+How a dataset's data are laid out over the ground is, so far, written in each [record](../docs/terminology.md#1-records-and-their-text)'s own words: "swath", "Polar-Gridded", "spatially gridded", "map", "gridded". We are not sure whether to keep those words, or to use a closed list of values instead, the same few words for every record of the catalog. To decide, we need to know:
 
 - (a) Is the spatial representation, for the records of this catalog, a closed set of values? Beyond swath and gridded, which layouts occur? The CF conventions name the layouts of data that are not on a grid, their discrete sampling geometries: a single point, a time series at one place, a trajectory (e.g. an aircraft's or a ship's track), a vertical profile, a time series of profiles, and a trajectory of profiles (Eaton, Gregory, Drach, Taylor, Hankin, et al., *NetCDF Climate and Forecast (CF) Metadata Conventions*, version 1.13, 17 December 2025, chapter 9, *Discrete Sampling Geometries*, Table 9.1; https://cfconventions.org/, doi:10.5281/zenodo.17801666). Which of these occur in this catalog, and are there others?
 - (b) Is a Planetary Data System "map" product gridded? For example, the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "These data are maps of fast neutron residual count rates".
-- (c) Is "Polar-Gridded" (in the example below) gridded, on a polar grid? That is, would it be the value gridded, plus a separate fact about which grid? The same for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", whose title ends in "Global 1km SIN Grid", the MODIS sinusoidal grid (checked, see below): should a record's grid be a fact of its own, written with the predicate BINNED_INTO and a Grid, as the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" already has: "pixels" (Dataset) BINNED_INTO "integerized sinusoidal area grid (ISEAG)" (Grid)? And does a polar grid say anything about the area the data cover: do "Polar-Gridded" data cover only the polar regions, or the whole Earth, laid out on a grid drawn around a pole? The example states no area, so I wrote none for it. The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" ends in the same "Global 1km SIN Grid", and its notes add "with 1 kilometer (km) spatial resolution in a 1,200 by 1,200 km grid". My reading, not checked against a source: "1,200 by 1,200 km" is the size of one tile of that grid. Is it, and should that size be a fact of its own, about the grid, or about how much ground each of the dataset's files covers?
-- (d) What kinds of thing collect the data of this catalog, and for each kind, which spatial representations occur? My guess is below: please complete or correct it.
+- (c) Is "Polar-Gridded" (in the example below) gridded, on a polar grid? That is, would it be the value gridded, plus a separate fact about which grid? The same for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", whose title ends in "Global 1km SIN Grid", the MODIS sinusoidal grid (checked, see below): should a record's grid be a fact of its own, written with the predicate BINNED_INTO and a Grid, as the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" already has: "pixels" (Dataset) BINNED_INTO "integerized sinusoidal area grid (ISEAG)" (Grid)? And does a polar grid say anything about the area the data cover: do "Polar-Gridded" data cover only the polar regions, or the whole Earth, laid out on a grid drawn around a pole? The example states no area, so we wrote none for it. The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" ends in the same "Global 1km SIN Grid", and its notes add "with 1 kilometer (km) spatial resolution in a 1,200 by 1,200 km grid". Our reading, not checked against a source: "1,200 by 1,200 km" is the size of one tile of that grid. Is it, and should that size be a fact of its own, about the grid, or about how much ground each of the dataset's files covers?
+- (d) What kinds of thing collect the data of this catalog, and for each kind, which spatial representations occur? Our guess is below: please complete or correct it.
 
-| What collects the data | Spatial representations I expect |
+| What collects the data | Spatial representations we expect |
 |---|---|
 | a satellite | swath; gridded |
 | an aircraft, or a ship | a track (a trajectory) |
@@ -30,7 +30,7 @@ How a dataset's data are laid out over the ground is, so far, written in each [r
 
 ### Context
 
-The records I have read so far write a layout in these words: "5 minutes of swath data" (written down as "swath"), "Polar-Gridded", "spatially gridded (L3)" (written down as "spatially gridded"), "These data are maps" ("map") and "gridded Level 2 product" ("gridded"). The example below writes its layout in two ways, "Polar-Gridded" in its title and "gridded" in its notes.
+The records we have read so far write a layout in these words: "5 minutes of swath data" (written down as "swath"), "Polar-Gridded", "spatially gridded (L3)" (written down as "spatially gridded"), "These data are maps" ("map") and "gridded Level 2 product" ("gridded"). The example below writes its layout in two ways, "Polar-Gridded" in its title and "gridded" in its notes.
 
 Checked on 2026-10-25: "SIN Grid" is the MODIS sinusoidal grid, and "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on it, so "Global" there names the grid's worldwide tiling (NASA LAADS, the MCD19A2 product page, https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MCD19A2; NASA MODAPS, MCD19A2N, https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html). Whether that grid is a fact of its own is still question (c).
 
@@ -76,20 +76,20 @@ Undecided, leaning towards option 2, a closed list, if the answers to (a) and (d
 
 ### My notes
 
-I have annotated the records at [pool positions](../docs/terminology.md#4-ground-truth-and-samples) 0 to 5, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and I have now also annotated the one at pool position 6. Of these seven, five state a spatial representation: pool position 2 ("5 minutes of swath data": "swath"), 3 ("Polar-Gridded"), 4 ("spatially gridded (L3)": "spatially gridded"), 5 ("These data are maps": "map") and 6 ("gridded Level 2 product": "gridded"). The example is the one at pool position 3; all five, with their classed triples, are listed under Affects.
+We have annotated the first six records of the pool, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and we have now also annotated the seventh. Of these seven, five state a spatial representation: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" ("5 minutes of swath data": "swath"), "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" ("Polar-Gridded"), "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" ("spatially gridded (L3)": "spatially gridded"), "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" ("These data are maps": "map") and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" ("gridded Level 2 product": "gridded"). The example is the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"; all five, with their classed triples, are listed under Affects.
 
-Until the questions are answered, the ground truth keeps each record's own words: the record at pool position 4 keeps "spatially gridded" as written (rule 1 of *Writing a classed triple*, and its rule 9: "A qualifier stays in the instance, as written, if it is any other kind"). The record at pool position 3 states no area, so its ground truth has none.
+Until the questions are answered, the ground truth keeps each record's own words: the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" keeps "spatially gridded" as written (rule 1 of *Writing a classed triple*, and its rule 9: "A qualifier stays in the instance, as written, if it is any other kind"). The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" states no area, so its ground truth has none.
 
-Pending facts, for the record at pool position 6 (4c64f3ed, in the ground truth now without them):
+Pending facts, for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (4c64f3ed, in the ground truth now without them):
 
 - pending fact: its fact 14, "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) BINNED_INTO "SIN Grid" or "Global 1km SIN Grid" (Grid), left out for now; added if the answer to (c) says a record's grid is a fact of its own (and which wording).
 
-Pending facts, for the record at pool position 7 (d5477563, in the ground truth now without them; decided 2026-10-25, for me to confirm):
+Pending facts, for the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (d5477563, in the ground truth now without them; decided 2026-10-25, for us to confirm):
 
-- pending fact: its fact 9, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) BINNED_INTO "SIN Grid" or "Global 1km SIN Grid" (Grid), left out for now, as for the record at pool position 6.
+- pending fact: its fact 9, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) BINNED_INTO "SIN Grid" or "Global 1km SIN Grid" (Grid), left out for now, as for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid".
 - pending fact: the grid's size, from "in a 1,200 by 1,200 km grid": "1,200 by 1,200 km" (Value), on the grid or on the dataset, with a predicate to coin; added with the grid if the answer to (c) says so.
 
-The record at pool position 7 also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation), from "swath product": the layout of the input it is computed from, in the record's own word.
+The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation), from "swath product": the layout of the input it is computed from, in the record's own word.
 
 ### Consequences
 
@@ -135,18 +135,18 @@ The record at pool position 7 also has "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESEN
 
 ### The question
 
-Many records name where their data came from with one word that can mean a mission or the spacecraft that flew it: "DAWN", "Aqua", "Terra", "Rosetta", "Aquarius". The ground truth schema has an entity class for each, Mission ("a named spaceflight effort") and Spacecraft ("a craft that operates in space"), and a predicate for each, FROM_MISSION and FROM_SPACECRAFT. When a record writes only such a word, I have to choose one of the two, and the [fact](../docs/terminology.md#2-triples) I write down depends on that choice. To decide, I need to know:
+Many records name where their data came from with one word that can mean a mission or the spacecraft that flew it: "DAWN", "Aqua", "Terra", "Rosetta", "Aquarius". The ground truth schema has an entity class for each, Mission ("a named spaceflight effort") and Spacecraft ("a craft that operates in space"), and a predicate for each, FROM_MISSION and FROM_SPACECRAFT. When a record writes only such a word, we have to choose one of the two, and the [fact](../docs/terminology.md#2-triples) we write down depends on that choice. To decide, we need to know:
 
 - (a) When a record says only "DAWN", "Aqua" or "Terra", without the word "mission" or "satellite" next to it, would someone in your field read it as the spacecraft, as the mission, or as both at once?
-- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? My reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there I wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission). The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" starts with "ROSETTA-ORBITER", and its notes say "acquired by the OSIRIS Narrow Angle Camera on the Rosetta spacecraft"; I read the two as one spacecraft and wrote "ROSETTA-ORBITER", the wording that says more (rule 13): "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft) and "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft). Is the orbiter the same as "the Rosetta spacecraft" there?
-- (c) "Aquarius/Satélite de Aplicaciones Científicas (SAC-D) mission" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"): my reading, not checked against a source, is that Aquarius was an instrument carried on the SAC-D spacecraft, and Aquarius/SAC-D the mission. Is that right, and if so, should the record's "Aquarius L-band radiometer" be the only Instrument here, with no Spacecraft named?
+- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? Our reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there we wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission). The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" starts with "ROSETTA-ORBITER", and its notes say "acquired by the OSIRIS Narrow Angle Camera on the Rosetta spacecraft"; we read the two as one spacecraft and wrote "ROSETTA-ORBITER", the wording that says more (rule 13): "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft) and "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft). Is the orbiter the same as "the Rosetta spacecraft" there?
+- (c) "Aquarius/Satélite de Aplicaciones Científicas (SAC-D) mission" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"): our reading, not checked against a source, is that Aquarius was an instrument carried on the SAC-D spacecraft, and Aquarius/SAC-D the mission. Is that right, and if so, should the record's "Aquarius L-band radiometer" be the only Instrument here, with no Spacecraft named?
 - (d) Is there a rule that holds for this whole catalog, e.g. "a word that is only a mission's word is a Mission; a word written before an instrument (MODIS/Aqua) is a Spacecraft"?
 
 ### Context
 
-The example below has both. So far I have used Mission where the record writes the word "mission" or a mission's data set ("a Rosetta Radio Science data set", "the Aquarius/… (SAC-D) mission"), and Spacecraft where the word names the craft that carries the instrument ("MODIS/Aqua", "on board the Aqua satellite", "DAWN" in the title, "ROSETTA-ORBITER").
+The example below has both. So far we have used Mission where the record writes the word "mission" or a mission's data set ("a Rosetta Radio Science data set", "the Aquarius/… (SAC-D) mission"), and Spacecraft where the word names the craft that carries the instrument ("MODIS/Aqua", "on board the Aqua satellite", "DAWN" in the title, "ROSETTA-ORBITER").
 
-For the example, I wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission), from "a Rosetta Radio Science data set", and "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft), from its title. For the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0", I wrote only "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft), from its title, although DAWN is also the name of the mission.
+For the example, we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission), from "a Rosetta Radio Science data set", and "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft), from its title. For the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0", we wrote only "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft), from its title, although DAWN is also the name of the mission.
 
 ### Example record
 
@@ -200,11 +200,11 @@ A rule per part of the catalog, e.g. in a Planetary Data System title, the first
 
 ### My current reading
 
-Option 1, as the ground truth does now, because it follows the record's own words (rule 1 of *Writing a classed triple*) and adds nothing the record doesn't state. I would move to option 4 if your answers to (b) and (d) give a rule that holds across the catalog, since it would make the choice the same for every record.
+Option 1, as the ground truth does now, because it follows the record's own words (rule 1 of *Writing a classed triple*) and adds nothing the record doesn't state. We would move to option 4 if your answers to (b) and (d) give a rule that holds across the catalog, since it would make the choice the same for every record.
 
 ### My notes
 
-Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far, six name a mission or a spacecraft, at pool positions 1 to 6 (the one at pool position 6 is in the ground truth now); all their classed triples that the answer may change are listed under Affects. The example is the record at pool position 1; the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" is at pool position 5.
+Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) we have annotated so far, six name a mission or a spacecraft: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061", "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005", "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (the last is in the ground truth now); all their classed triples that the answer may change are listed under Affects. The example is the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0".
 
 ### Consequences
 
@@ -218,12 +218,12 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 
 - One choice for every record: easier to apply the same way.
 - The ground truth triples with FROM_SPACECRAFT (listed under Affects) change to FROM_MISSION ("DAWN", "Aqua", "ROSETTA-ORBITER", "Terra").
-- "MODIS" ABOARD "Aqua" (pool positions 2 and 4) would join an Instrument to a Mission, which ABOARD's definition ("is carried on") doesn't fit: a mission doesn't carry an instrument.
+- "MODIS" ABOARD "Aqua" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0") would join an Instrument to a Mission, which ABOARD's definition ("is carried on") doesn't fit: a mission doesn't carry an instrument.
 
 #### Option 3: Both, a Mission and a Spacecraft
 
 - A search finds the data under either predicate.
-- Against "What counts as a fact", rule 1 (quoted above): a record that names only the craft doesn't state the mission, so the second ground truth triple adds what I know from elsewhere.
+- Against "What counts as a fact", rule 1 (quoted above): a record that names only the craft doesn't state the mission, so the second ground truth triple adds what we know from elsewhere.
 - The ground truth gets more ground truth triples per record, and the model would be expected to write both too.
 
 #### Option 4: A rule by where the record comes from
@@ -293,24 +293,24 @@ Of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070)
 
 ### The question
 
-The ground truth schema separates two things a dataset can hold. A PhysicalQuantity is "a property that can be measured, in general, whatever method measures it" (sea surface temperature, snow cover). A Variable is "one named kind of value computed from an Instrument's measurements by one particular Algorithm" (SST4, NDSI). A dataset HAS_MEASUREMENTS_OF a PhysicalQuantity, and HAS_VARIABLE a Variable; a Variable ESTIMATES a PhysicalQuantity. I am not sure the line falls where I put it in the records annotated so far. I would like to know:
+The ground truth schema separates two things a dataset can hold. A PhysicalQuantity is "a property that can be measured, in general, whatever method measures it" (sea surface temperature, snow cover). A Variable is "one named kind of value computed from an Instrument's measurements by one particular Algorithm" (SST4, NDSI). A dataset HAS_MEASUREMENTS_OF a PhysicalQuantity, and HAS_VARIABLE a Variable; a Variable ESTIMATES a PhysicalQuantity. We are not sure the line falls where we put it in the records annotated so far. We would like to know:
 
 - (a) Is the line right as the two definitions draw it: a PhysicalQuantity is a property of the thing observed, which any method could measure; a Variable is one named product of one algorithm?
-- (b) The Normalized Difference Snow Index (NDSI, in the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061") is an index computed from radiances. Is it a Variable, or something of its own (an index), neither a Variable nor a PhysicalQuantity? And is my reading of how the snow cover is made right: the NDSI is computed from the radiance data (by a method the record doesn't name), and the snow cover from the NDSI by "a series of screens"?
+- (b) The Normalized Difference Snow Index (NDSI, in the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061") is an index computed from radiances. Is it a Variable, or something of its own (an index), neither a Variable nor a PhysicalQuantity? And is our reading of how the snow cover is made right: the NDSI is computed from the radiance data (by a method the record doesn't name), and the snow cover from the NDSI by "a series of screens"?
 - (c) "fast neutron residual count rates" (in the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0") are rates an instrument counts, not a property of Vesta. Are they a Variable, or a third thing: what the instrument recorded, before it is turned into a property of the body? The same record says "The nominal fast neutron count rates were detrended", and the ground truth writes "nominal fast neutron count rates" as a Variable too. Those are the counts as the instrument recorded them, before any processing, which sits badly with a Variable's "computed from an Instrument's measurements by one particular Algorithm": what are they?
 - (d) "Sea Surface Salinity (SSS) retrievals" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005") is written down as "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_MEASUREMENTS_OF "Sea Surface Salinity (SSS)" (PhysicalQuantity). Should every quantity a record calls a "retrieval" be a Variable instead, since an algorithm computed it?
-- (e) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "It is a Global Gravity measurement at the comet 67P", and I wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity) and "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent). Is "Gravity" the quantity measured (the comet's gravity field)? Or is "Global Gravity" the name of a kind of radio science measurement, as a whole, beside "Occultation" and "Solar Conjunction", which other records of the catalog name in the same sentence? If these are kinds of measurement: what is measured in each, in plain words (for example, my reading, not checked against a source: an occultation measures the atmosphere the radio signal passes through)?
-- (f) "Aerosol Optical Depth" (in the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") is what the record's product holds, computed by MAIAC ("Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product"). I wrote it as a PhysicalQuantity, a property of the atmosphere that other methods could measure too, and MAIAC as the method. Is that right, or is it a Variable, since one algorithm computed it?
-- (g) The same record says "The MCD19A2N product provides the atmospheric properties and view geometry", and I wrote "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity) and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity). Is "atmospheric properties" specific enough to be a fact, or too vague to write down? And is "view geometry" (the angles between the sun, the satellite and the ground) a PhysicalQuantity, something measured, or supporting information the files hold, which would need another entity class or predicate? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" lists more of the same kind: "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments, observation times, view zenith angles, and clear-sky coverages". I wrote them the same way, each a PhysicalQuantity the dataset HAS_MEASUREMENTS_OF ("quality control assessments", "observation times", "view zenith angles", "clear-sky coverages"); quality control assessments and observation times stretch "a property that can be measured" further still. Should these be written as something the files hold, rather than as measurements?
-- (h) The same record goes on: "along with bands 31 and 32 emissivities from land cover types". I wrote "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity), and the same for band 32, reading "from" as: each pixel's emissivity is estimated from its type of land cover (my reading, not checked against a source). Is that reading right? If so, are emissivities estimated that way Variables rather than PhysicalQuantities, and what kind of thing is "land cover types": a PhysicalQuantity, an input dataset, or something else?
-- (i) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" holds "image data in W/m^2/sr/nm", which I wrote as "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "image data in W/m^2/sr/nm" (PhysicalQuantity), keeping the unit in the instance. Image data are not a property; my reading, not checked against a source, is that the unit is that of a spectral radiance, which the record doesn't name. What should be written: the images as the layout of the data, the unit as a fact of its own, or something else?
-- (j) The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says its sources were matched with a quasar catalog "to obtain redshifts and spectral classifications for the sources". I wrote "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity) and the same with "spectral classifications" (PhysicalQuantity). A redshift is a property that can be measured. Is a spectral classification (the label a source's spectrum is given, such as the type of quasar) a PhysicalQuantity too, or a label of its own?
+- (e) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "It is a Global Gravity measurement at the comet 67P", and we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MEASUREMENTS_OF "Gravity" (PhysicalQuantity) and "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent). Is "Gravity" the quantity measured (the comet's gravity field)? Or is "Global Gravity" the name of a kind of radio science measurement, as a whole, beside "Occultation" and "Solar Conjunction", which other records of the catalog name in the same sentence? If these are kinds of measurement: what is measured in each, in plain words (for example, our reading, not checked against a source: an occultation measures the atmosphere the radio signal passes through)?
+- (f) "Aerosol Optical Depth" (in the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") is what the record's product holds, computed by MAIAC ("Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product"). We wrote it as a PhysicalQuantity, a property of the atmosphere that other methods could measure too, and MAIAC as the method. Is that right, or is it a Variable, since one algorithm computed it?
+- (g) The same record says "The MCD19A2N product provides the atmospheric properties and view geometry", and we wrote "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity) and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "view geometry" (PhysicalQuantity). Is "atmospheric properties" specific enough to be a fact, or too vague to write down? And is "view geometry" (the angles between the sun, the satellite and the ground) a PhysicalQuantity, something measured, or supporting information the files hold, which would need another entity class or predicate? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" lists more of the same kind: "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments, observation times, view zenith angles, and clear-sky coverages". We wrote them the same way, each a PhysicalQuantity the dataset HAS_MEASUREMENTS_OF ("quality control assessments", "observation times", "view zenith angles", "clear-sky coverages"); quality control assessments and observation times stretch "a property that can be measured" further still. Should these be written as something the files hold, rather than as measurements?
+- (h) The same record goes on: "along with bands 31 and 32 emissivities from land cover types". We wrote "band 31 emissivity" (PhysicalQuantity) COMPUTED_FROM "land cover types" (PhysicalQuantity), and the same for band 32, reading "from" as: each pixel's emissivity is estimated from its type of land cover (our reading, not checked against a source). Is that reading right? If so, are emissivities estimated that way Variables rather than PhysicalQuantities, and what kind of thing is "land cover types": a PhysicalQuantity, an input dataset, or something else?
+- (i) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" holds "image data in W/m^2/sr/nm", which we wrote as "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "image data in W/m^2/sr/nm" (PhysicalQuantity), keeping the unit in the instance. Image data are not a property; our reading, not checked against a source, is that the unit is that of a spectral radiance, which the record doesn't name. What should be written: the images as the layout of the data, the unit as a fact of its own, or something else?
+- (j) The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says its sources were matched with a quasar catalog "to obtain redshifts and spectral classifications for the sources". We wrote "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity) and the same with "spectral classifications" (PhysicalQuantity). A redshift is a property that can be measured. Is a spectral classification (the label a source's spectrum is given, such as the type of quasar) a PhysicalQuantity too, or a label of its own?
 
 ### Context
 
 The example below holds both: a PhysicalQuantity, and two Variables that estimate it. The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its snow cover is "detected using Normalized Difference Snow Index (NDSI) and a series of screens", and "The NDSI is derived from radiance data"; the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "These data are maps of fast neutron residual count rates"; and the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" says "Aquarius L-band radiometer Sea Surface Salinity (SSS) retrievals".
 
-The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" recurs across the catalog. I counted it in the records of the catalog (020's records.jsonl, 36,406 records, harvested before 2026-10-24): "It is a Global Gravity measurement" in 2,835 records (2,442 of them "at the comet 67P"), "It is a Occultation measurement" in 439, "It is a Solar Conjunction measurement" in 240, and "It is a Phobos Gravity measurement" in 9. Since "Phobos Gravity" sits beside "Global Gravity", my reading is that the word before "Gravity" says which gravity measurement it is, not an area; but I don't know. (Whether "Global" can be an area at a comet at all, I ask separately; here the question is only what is measured.)
+The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" recurs across the catalog. We counted it in the records of the catalog (020's records.jsonl, 36,406 records, harvested before 2026-10-24): "It is a Global Gravity measurement" in 2,835 records (2,442 of them "at the comet 67P"), "It is a Occultation measurement" in 439, "It is a Solar Conjunction measurement" in 240, and "It is a Phobos Gravity measurement" in 9. Since "Phobos Gravity" sits beside "Global Gravity", our reading is that the word before "Gravity" says which gravity measurement it is, not an area; but we don't know. (Whether "Global" can be an area at a comet at all, we ask separately; here the question is only what is measured.)
 
 ### Example record
 
@@ -380,17 +380,17 @@ Coin an entity class for a kind of measurement (for example, MeasurementType), w
 
 ### My current reading
 
-Option 1, because the two definitions already separate what is measured from the values an algorithm computes, and most records annotated so far fit them; "Aerosol Optical Depth" stays a PhysicalQuantity, since my reading is that other methods measure it too. Your answers to (b) and (c) decide whether the NDSI and the count rates need an entity class of their own (options 2 and 4). For (e), I lean towards "Global Gravity" whole (option 5, or its last consequence), because "Phobos Gravity" in other records reads like the same kind of name, with no area in it.
+Option 1, because the two definitions already separate what is measured from the values an algorithm computes, and most records annotated so far fit them; "Aerosol Optical Depth" stays a PhysicalQuantity, since our reading is that other methods measure it too. Your answers to (b) and (c) decide whether the NDSI and the count rates need an entity class of their own (options 2 and 4). For (e), we lean towards "Global Gravity" whole (option 5, or its last consequence), because "Phobos Gravity" in other records reads like the same kind of name, with no area in it.
 
 ### My notes
 
-Six of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far hold a PhysicalQuantity or a Variable, at pool positions 1 to 6 (the one at pool position 6 is in the ground truth now); their classed triples that say what the dataset holds, and what a value was computed from, are listed under Affects. The example is the record at pool position 4. The others named: pool position 1 (the "Global Gravity" sentence), 2 (the NDSI), 3 (the salinity retrievals), 5 (the count rates), 6 (the aerosol optical depth, the atmospheric properties and the view geometry).
+Six of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) we have annotated so far hold a PhysicalQuantity or a Variable (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" is in the ground truth now); their classed triples that say what the dataset holds, and what a value was computed from, are listed under Affects. The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". The others named: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (the "Global Gravity" sentence), "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (the NDSI), "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (the salinity retrievals), "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (the count rates), "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (the aerosol optical depth, the atmospheric properties and the view geometry).
 
-Approved on 2026-10-25, for the record at pool position 6 (fact 13): HAS_MEASUREMENTS_OF "atmospheric properties" and HAS_MEASUREMENTS_OF "view geometry", source text "The MCD19A2N product provides the atmospheric properties and view geometry"; sub-question (g) asks the two doubts about them.
+Approved on 2026-10-25, for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (fact 13): HAS_MEASUREMENTS_OF "atmospheric properties" and HAS_MEASUREMENTS_OF "view geometry", source text "The MCD19A2N product provides the atmospheric properties and view geometry"; sub-question (g) asks the two doubts about them.
 
-Decided on 2026-10-25, for me to confirm, for the record at pool position 7: its four supporting layers, each HAS_MEASUREMENTS_OF a PhysicalQuantity, as for the record at pool position 6 (sub-question (g)); its two band emissivities, each HAS_MEASUREMENTS_OF a PhysicalQuantity and COMPUTED_FROM "land cover types" (sub-question (h)).
+Decided on 2026-10-25, for us to confirm, for the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006": its four supporting layers, each HAS_MEASUREMENTS_OF a PhysicalQuantity, as for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (sub-question (g)); its two band emissivities, each HAS_MEASUREMENTS_OF a PhysicalQuantity and COMPUTED_FROM "land cover types" (sub-question (h)).
 
-Decided on 2026-10-25, for me to confirm, for the record at pool position 12: its HAS_MEASUREMENTS_OF "redshifts" and "spectral classifications", each a PhysicalQuantity (sub-question (j)).
+Decided on 2026-10-25, for us to confirm, for the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3": its HAS_MEASUREMENTS_OF "redshifts" and "spectral classifications", each a PhysicalQuantity (sub-question (j)).
 
 ### Consequences
 
@@ -406,18 +406,18 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 12: it
 
 #### Option 3: Every computed quantity is a Variable
 
-- The ground truth triple with "Sea Surface Salinity (SSS)" (pool position 3) changes to HAS_VARIABLE, a Variable, and so does "Aerosol Optical Depth" (pool position 6).
+- The ground truth triple with "Sea Surface Salinity (SSS)" (the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005") changes to HAS_VARIABLE, a Variable, and so does "Aerosol Optical Depth" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
 - Almost every value in a satellite dataset is computed by some algorithm, so most PhysicalQuantities would become Variables, and a search for "salinity data" would have to look under both.
 - The annotation guidelines, and the model's copy of their rules, say when a quantity counts as computed.
 
 #### Option 4: An entity class of its own for what an instrument records
 
-- The ground truth triples with the count rates (pool position 5) change their entity class, and perhaps "radiance data" (pool position 2).
+- The ground truth triples with the count rates (the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0") change their entity class, and perhaps "radiance data" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061").
 - One more distinction for the annotation guidelines, and it holds only if your answer to (c) confirms it.
 
 #### Option 5: A kind of measurement of its own
 
-- The record at pool position 1's ground truth triples with "Gravity" and with "Global" become one ground truth triple with "Global Gravity" (rule 9 of *Writing a classed triple*: "Global" stays in the instance if it is no area).
+- The ground truth triples of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" with "Gravity" and with "Global" become one ground truth triple with "Global Gravity" (rule 9 of *Writing a classed triple*: "Global" stays in the instance if it is no area).
 - A new entity class and predicate in the ground truth schema; the model must learn to tell a kind of measurement from a quantity measured.
 - If your answer to (e) is that "Global Gravity" is a name as a whole but still something measured, it stays a PhysicalQuantity instead, "Global Gravity", with the same change to the two ground truth triples.
 
@@ -498,7 +498,7 @@ Decided on 2026-10-25, for me to confirm, for the record at pool position 12: it
 
 ### The question
 
-A record often says where its data came from: an instrument, the craft that carried it, a mission, a phase of a mission, a field campaign, or the data center that holds the data. The ground truth schema has one predicate for each of several of these (FROM_MISSION, FROM_SPACECRAFT, ACQUIRED_BY_INSTRUMENT, HAS_MISSION_PHASE, OBTAINS_DATA_FROM), and its Spacecraft is "a craft that operates in space", its Mission "a named spaceflight effort". The schema the [model](../docs/terminology.md#8-the-pipeline) extracts with, the current schema, learned from other records of the catalog, draws these lines differently: it has mostly one broad predicate for all of them, SOURCED_FROM, which the translation table translates to (none), nothing in the ground truth schema; its Spacecraft includes aircraft and balloons, and its Mission includes balloon programs. So a [fact](../docs/terminology.md#2-triples) of FROM_MISSION or FROM_SPACECRAFT, when the model extracts it under SOURCED_FROM, can't count as found, and the same aircraft counts differently depending on which word of the current schema the model used. I would like to know:
+A record often says where its data came from: an instrument, the craft that carried it, a mission, a phase of a mission, a field campaign, or the data center that holds the data. The ground truth schema has one predicate for each of several of these (FROM_MISSION, FROM_SPACECRAFT, ACQUIRED_BY_INSTRUMENT, HAS_MISSION_PHASE, OBTAINS_DATA_FROM), and its Spacecraft is "a craft that operates in space", its Mission "a named spaceflight effort". The schema the [model](../docs/terminology.md#8-the-pipeline) extracts with, the current schema, learned from other records of the catalog, draws these lines differently: it has mostly one broad predicate for all of them, SOURCED_FROM, which the translation table translates to (none), nothing in the ground truth schema; its Spacecraft includes aircraft and balloons, and its Mission includes balloon programs. So a [fact](../docs/terminology.md#2-triples) of FROM_MISSION or FROM_SPACECRAFT, when the model extracts it under SOURCED_FROM, can't count as found, and the same aircraft counts differently depending on which word of the current schema the model used. We would like to know:
 
 - (a) For a dataset of this catalog, which of these are different relationships that someone in your field would ask about separately: the instrument, the craft that carried it (a spacecraft, or an aircraft, ship, balloon, ground station), the mission, the phase of a mission, the field campaign, the data center?
 - (b) Which of them could be one relationship, "comes from", without losing anything you would search for?
@@ -512,7 +512,7 @@ A record often says where its data came from: an instrument, the craft that carr
 
 The example below names an instrument, the spacecraft that carries it, and a data center. In the current schema, the model filed such facts under SOURCED_FROM, ACQUIRED_BY and COLLECTED_DURING (the translation table's [rows](../docs/terminology.md#8-the-pipeline) for them are below). The example also says that the data center, JPL, "acquires MODIS ocean L3 SST data from the OBPG", which the ground truth writes with OBTAINS_DATA_FROM.
 
-None of the records I have read so far names an aircraft, a balloon, a space station or a field campaign; they come up in records the model read when it learned the current schema. Before the model's classed triples are compared with the ground truth, each entity class and predicate of the current schema is translated into the one of the ground truth schema its row of the translation table names; a row that names (none) means the model's classed triples with it count as not in the ground truth.
+None of the records we have read so far names an aircraft, a balloon, a space station or a field campaign; they come up in records the model read when it learned the current schema. Before the model's classed triples are compared with the ground truth, each entity class and predicate of the current schema is translated into the one of the ground truth schema its row of the translation table names; a row that names (none) means the model's classed triples with it count as not in the ground truth.
 
 ### Example record
 
@@ -587,11 +587,11 @@ Coin an entity class for a field campaign (for example, Campaign) and a predicat
 
 ### My current reading
 
-Options 2 to 4 are about the predicates, options 5 and 6 about the entity classes, so one of each can be combined. For the predicates, option 3, then option 2 for what it leaves mixed: they keep the ground truth schema's distinctions, which follow what the records state, and fix the cause in the current schema, while option 4 throws the distinctions away. Your answers to (a) and (b) tell me which distinctions are worth keeping. For the entity classes, undecided: option 5 looks closer to how Earth science data are described, but no record annotated so far needs it, nor option 6; your answers to (d) and (f) decide them.
+Options 2 to 4 are about the predicates, options 5 and 6 about the entity classes, so one of each can be combined. For the predicates, option 3, then option 2 for what it leaves mixed: they keep the ground truth schema's distinctions, which follow what the records state, and fix the cause in the current schema, while option 4 throws the distinctions away. Your answers to (a) and (b) tell us which distinctions are worth keeping. For the entity classes, undecided: option 5 looks closer to how Earth science data are described, but no record annotated so far needs it, nor option 6; your answers to (d) and (f) decide them.
 
 ### My notes
 
-Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), at pool positions 1, 3 and 4, have ground truth that states several of these relationships; every classed triple the answer may change is listed under Affects. The example is the record at pool position 4. None of the records annotated so far (pool positions 0 to 6) names an aircraft, a balloon, a space station or a field campaign, so no ground truth triple shows them yet.
+Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", have ground truth that states several of these relationships; every classed triple the answer may change is listed under Affects. The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". None of the records annotated so far (the first seven of the pool) names an aircraft, a balloon, a space station or a field campaign, so no ground truth triple shows them yet.
 
 ### Consequences
 
@@ -722,22 +722,22 @@ Three [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070),
 
 ### The question
 
-The ground truth schema has three entity classes for time: Time, "a point or period on the calendar, which happens once"; TemporalResolution, "the amount of time between one value of the data and the next, e.g. daily; weekly (8 day)"; and Value, "an amount", which HAS_GRANULE_DURATION uses for how much time each file covers. Its predicates for time are HAS_TEMPORAL_RESOLUTION ("gives values this often"), HAS_GRANULE_DURATION ("each of its files covers this much time") and HAS_TIME_SPAN ("covers this period"). Some records' words for time fit more than one of them, and the schema the [model](../docs/terminology.md#8-the-pipeline) extracts with, the current schema, learned from other records of the catalog, draws the lines more widely (its entries are in the translation table, below). I would like to know:
+The ground truth schema has three entity classes for time: Time, "a point or period on the calendar, which happens once"; TemporalResolution, "the amount of time between one value of the data and the next, e.g. daily; weekly (8 day)"; and Value, "an amount", which HAS_GRANULE_DURATION uses for how much time each file covers. Its predicates for time are HAS_TEMPORAL_RESOLUTION ("gives values this often"), HAS_GRANULE_DURATION ("each of its files covers this much time") and HAS_TIME_SPAN ("covers this period"). Some records' words for time fit more than one of them, and the schema the [model](../docs/terminology.md#8-the-pipeline) extracts with, the current schema, learned from other records of the catalog, draws the lines more widely (its entries are in the translation table, below). We would like to know:
 
-- (a) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061", the example below, is a Level-2 swath dataset whose files each hold "5 minutes of swath data", and the record says it "provides daily snow cover". Is "daily" its temporal resolution, the time between one value and the next? My reading, not checked against a source: each file holds what the instrument saw along its path in those 5 minutes, and "daily" says how often the product is made, or how often the instrument passes over the same ground, not the time between two values in a file.
+- (a) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061", the example below, is a Level-2 swath dataset whose files each hold "5 minutes of swath data", and the record says it "provides daily snow cover". Is "daily" its temporal resolution, the time between one value and the next? Our reading, not checked against a source: each file holds what the instrument saw along its path in those 5 minutes, and "daily" says how often the product is made, or how often the instrument passes over the same ground, not the time between two values in a file.
 - (b) The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" is an "8 Day" average ("Average daily, weekly (8 day), monthly and annual skin SST products"). Its 8 days are both the time each value averages over and the time between one value and the next. Is that one thing, a temporal resolution, or two that should be told apart (the period a value averages over, and how often a value is given)?
 - (c) Is the line between Time (a date or period that happens once), TemporalResolution (how often), and the time a file covers (HAS_GRANULE_DURATION, a Value) the one you would draw?
 - (d) Is a granule, for this catalog, always one file? The ground truth schema's HAS_GRANULE_DURATION says "each of its files", reading the example below that way.
 - (e) Is "each file (granule) covers 5 minutes" the same kind of fact as "the observation series lasted 3 years"? Would someone searching this catalog want them kept apart?
 - (f) In this catalog, when a record says a dataset "covers" something, is it more often a period, an area, or a measured variable? Should "covers the Arctic" and "covers 2003 to 2010" ever share one predicate?
-- (g) The current schema's entity class Frequency puts two things together: "A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band", and the translation table translates it into TemporalResolution. In this catalog, are how often data are given (daily, weekly) and a radio frequency band (S-band, X-band, Ku-band) two different kinds of thing, which should never share an entity class? (My reading is that they are: one is a time between values, the other a part of the radio spectrum. Where a radio band belongs, I ask separately.)
-- (h) The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says its data run "from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011", and that its encounter data cover "a ~40 minute period". I wrote the period as "January, 2007 up to March, 2011" (Time), its two ends in the record's words with the phases taken out (they are facts of their own), and the 40 minutes with a predicate I coined, HAS_DURATION ("covers this much time, from its first value to its last"): "encounter data" (Dataset) HAS_DURATION "~40 minute period" (Value). Is how long a set of observations lasts a fact to keep apart from the period on the calendar, and from the time a file covers (question (e))?
+- (g) The current schema's entity class Frequency puts two things together: "A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band", and the translation table translates it into TemporalResolution. In this catalog, are how often data are given (daily, weekly) and a radio frequency band (S-band, X-band, Ku-band) two different kinds of thing, which should never share an entity class? (Our reading is that they are: one is a time between values, the other a part of the radio spectrum. Where a radio band belongs, we ask separately.)
+- (h) The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says its data run "from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011", and that its encounter data cover "a ~40 minute period". We wrote the period as "January, 2007 up to March, 2011" (Time), its two ends in the record's words with the phases taken out (they are facts of their own), and the 40 minutes with a predicate we coined, HAS_DURATION ("covers this much time, from its first value to its last"): "encounter data" (Dataset) HAS_DURATION "~40 minute period" (Value). Is how long a set of observations lasts a fact to keep apart from the period on the calendar, and from the time a file covers (question (e))?
 
 ### Context
 
 The example below states both how often ("daily") and how much time each file covers ("5 minutes"). Under rule 9 of *Writing a classed triple* (quoted below), a word such as "daily" in "daily snow cover" is taken out of the object instance and written as a temporal resolution of its own.
 
-I write these facts with different predicates of the ground truth schema: HAS_TIME_SPAN for a period (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0": "covers the time 2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000"), HAS_SPATIAL_COVERAGE for an area, and HAS_GRANULE_DURATION for the time each file covers (the example below). Before the model's classed triples are compared with the ground truth, each entity class and predicate of the current schema is translated into the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names, and a row names only one. So a classed triple of the model that uses COVERS for an area is compared as a period, and one that files a radio band under Frequency is compared as a temporal resolution: both are counted wrong even when the model found the fact.
+We write these facts with different predicates of the ground truth schema: HAS_TIME_SPAN for a period (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0": "covers the time 2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000"), HAS_SPATIAL_COVERAGE for an area, and HAS_GRANULE_DURATION for the time each file covers (the example below). Before the model's classed triples are compared with the ground truth, each entity class and predicate of the current schema is translated into the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names, and a row names only one. So a classed triple of the model that uses COVERS for an area is compared as a period, and one that files a radio band under Frequency is compared as a temporal resolution: both are counted wrong even when the model found the fact.
 
 ### Example record
 
@@ -800,13 +800,13 @@ The [step](../docs/terminology.md#8-the-pipeline) that learns the current schema
 
 ### My current reading
 
-Option 1 for now, because the definition of TemporalResolution covers the records I have read so far as they are written and needs no knowledge from outside the record; and option 4 later. If your answer to (a) is that "daily" means something else for a swath dataset, I would move to option 3 for those datasets; if your answer to (b) is that the averaging period is a separate thing, to option 2. Your answer to (e) decides whether the ground truth schema also needs a predicate for how long a whole series lasted.
+Option 1 for now, because the definition of TemporalResolution covers the records we have read so far as they are written and needs no knowledge from outside the record; and option 4 later. If your answer to (a) is that "daily" means something else for a swath dataset, we would move to option 3 for those datasets; if your answer to (b) is that the averaging period is a separate thing, to option 2. Your answer to (e) decides whether the ground truth schema also needs a predicate for how long a whole series lasted.
 
 ### My notes
 
-Five of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) I have annotated so far state a time of these sorts, at pool positions 1, 2, 3, 4 and 6 (the one at pool position 6 is in the ground truth now); every classed triple the answer may change is listed under Affects. The example is the record at pool position 2; the "8 Day" one is at pool position 4, the period one at pool position 1.
+Five of the [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070) we have annotated so far state a time of these sorts: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061", "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005", "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (the last is in the ground truth now); every classed triple the answer may change is listed under Affects. The example is the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"; the "8 Day" one is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the period one the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0".
 
-Option 4 comes when I improve the step that learns the schema (040): splitting a broad predicate by its object's entity class is on my list of improvements.
+Option 4 comes when we improve the step that learns the schema (040): splitting a broad predicate by its object's entity class is on our list of improvements.
 
 ### Consequences
 
@@ -818,12 +818,12 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 
 #### Option 2: Tell apart how often from the period a value averages over
 
-- The ground truth triple "weekly (8 day)" (pool position 4) may become two, or move to the new predicate, depending on your answer to (b).
+- The ground truth triple "weekly (8 day)" (the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0") may become two, or move to the new predicate, depending on your answer to (b).
 - One more entity class and predicate in the ground truth schema, for the annotation guidelines and the model to tell apart.
 
 #### Option 3: No temporal resolution for a swath dataset
 
-- The ground truth triple "daily" (pool position 2) is deleted or moved to another predicate, and the annotation guidelines say when.
+- The ground truth triple "daily" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061") is deleted or moved to another predicate, and the annotation guidelines say when.
 - The record states "daily snow cover", so that [fact](../docs/terminology.md#2-triples) must still be written down somehow ("Every fact the record states", rule 2 of "What counts as a fact").
 
 #### Option 4: Let the current schema keep the meanings apart
@@ -877,15 +877,15 @@ Option 4 comes when I improve the step that learns the schema (040): splitting a
 
 ### The question
 
-The ground truth schema's ProcessingLevel is "how far data have been processed from what the Instrument recorded, e.g. Level 2". The records write it in many ways ("Level-2 (L2)", "Level-3", "Level 3", "L2", "L2G", and perhaps "1/2/3"), and so far the ground truth keeps each record's own words. I would like to know:
+The ground truth schema's ProcessingLevel is "how far data have been processed from what the Instrument recorded, e.g. Level 2". The records write it in many ways ("Level-2 (L2)", "Level-3", "Level 3", "L2", "L2G", and perhaps "1/2/3"), and so far the ground truth keeps each record's own words. We would like to know:
 
 - (a) The example below has "L2G" in its title and "gridded Level 2 product" in its notes. Is L2G "Level 2, gridded": a processing level (Level 2) plus a layout on a grid, which the ground truth writes as two [facts](../docs/terminology.md#2-triples)? Or is L2G a processing level of its own?
-- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? My reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (my reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". I read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above? The record "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" has "ALICE 2" in its title, and its notes say "This data set contains CODMAC level 2 data", which I wrote as "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel). Its title also has "67P/CAL", which the record doesn't explain, so I wrote nothing for "CAL": what does it stand for (my reading, not checked against a source: calibration)? The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" has three more such codes in its title: "MTP020" (after "ESC3", which its notes write as "the COMET ESCORT 3 mission phase"), "RDR" and "INFLDSTR"; for the last, the notes have "in-field stray-light corrected". I wrote nothing for "MTP020" and "RDR". What do they stand for?
-- (c) Which list of processing levels should the ground truth follow? The one I know of is NASA Earthdata's *Data Processing Levels* (Level 0, Level 1A, 1B, 1C, Level 2, 2A, 2B, Level 3, 3A, Level 4; https://www.earthdata.nasa.gov/learn/earth-observation-data-basics/data-processing-levels). Does it hold for the whole catalog, or do records of other parts of NASA, e.g. the Planetary Data System, use other levels? If there are two lists, how do they line up?
+- (b) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", from the Planetary Data System, has "RSI 1/2/3" in its title. Are 1, 2 and 3 processing levels of the data from the instrument RSI? Our reading, not checked against a source: they may be levels of a planetary data scale, but the record doesn't say so, and the annotation guidelines say never to write down what an unexplained code stands for, so the ground truth has no processing level for this record. If they are levels, are they CODMAC levels (our reading, not checked against a source: the Planetary Data System has numbered its data's processing levels by the CODMAC scale)? And what does "1149" stand for, in the same title's "COMET ESCORT 4 1149 V1.0"? If the Planetary Data System's data set names give it a fixed place with a fixed meaning, should the ground truth write it as a fact of its own? One answer about how these data set names are built would settle both codes. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has "DFMI 2/3" in its title, and its notes say "This data set contains Level 2/3 (EDR/RDR) data". We read "2/3" as two levels, paired in order with "EDR/RDR", and wrote two facts: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel) and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel). Is that pairing right, and does this record confirm the reading of "1/2/3" above? The record "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" has "ALICE 2" in its title, and its notes say "This data set contains CODMAC level 2 data", which we wrote as "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel). Its title also has "67P/CAL", which the record doesn't explain, so we wrote nothing for "CAL": what does it stand for (our reading, not checked against a source: calibration)? The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" has three more such codes in its title: "MTP020" (after "ESC3", which its notes write as "the COMET ESCORT 3 mission phase"), "RDR" and "INFLDSTR"; for the last, the notes have "in-field stray-light corrected". We wrote nothing for "MTP020" and "RDR". What do they stand for?
+- (c) Which list of processing levels should the ground truth follow? The one we know of is NASA Earthdata's *Data Processing Levels* (Level 0, Level 1A, 1B, 1C, Level 2, 2A, 2B, Level 3, 3A, Level 4; https://www.earthdata.nasa.gov/learn/earth-observation-data-basics/data-processing-levels). Does it hold for the whole catalog, or do records of other parts of NASA, e.g. the Planetary Data System, use other levels? If there are two lists, how do they line up?
 
 ### Context
 
-Of the records I have read so far, the example below is the one whose "L2G" I am least sure of. The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" has two levels: "Level 3" for its own dataset, and "L2" for the pixels it was made from ("the L2 pixels are binned").
+Of the records we have read so far, the example below is the one whose "L2G" we are least sure of. The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" has two levels: "Level 3" for its own dataset, and "L2" for the pixels it was made from ("the L2 pixels are binned").
 
 The knowledge graph will be built from the records' metadata fields and the extracted triples. Two records that write one level in two wordings ("Level 3" and "L3") give two different object instances; a reference list would give one.
 
@@ -934,11 +934,11 @@ The ground truth keeps each record's own words; the value of the list each wordi
 
 ### My current reading
 
-Option 1 for now, because it writes only the record's own words. I would move to option 2 or 3 if your answer to (c) gives one list that covers the catalog. For the example, I have written "Level 2" and "gridded" as two facts, my reading of "gridded Level 2 product"; your answer to (a) tells me whether that is right.
+Option 1 for now, because it writes only the record's own words. We would move to option 2 or 3 if your answer to (c) gives one list that covers the catalog. For the example, we have written "Level 2" and "gridded" as two facts, our reading of "gridded Level 2 product"; your answer to (a) tells us whether that is right.
 
 ### My notes
 
-Five of the tuning records I have annotated so far write a processing level, or a code that may be one, at pool positions 1, 2, 3, 4 and 6 (the one at pool position 6 is in the ground truth now); every classed triple the answer may change is listed under Affects. The example is the record at pool position 6.
+Five of the tuning records we have annotated so far write a processing level, or a code that may be one: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061", "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005", "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (the last is in the ground truth now); every classed triple the answer may change is listed under Affects. The example is the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid".
 
 ### Consequences
 
@@ -1001,19 +1001,19 @@ Five of the tuning records I have annotated so far write a processing level, or 
 
 ### The question
 
-Rule 14 of the annotation guidelines (quoted below) writes each processing step a record describes as output = method(input): the output COMPUTED_FROM ("was made by processing this input") each input, and the output PRODUCED_USING_ALGORITHM ("was made or detected by applying this Algorithm") the method. In one record I am not sure which part is the input, and I would like a general way to tell. I would like to know:
+Rule 14 of the annotation guidelines (quoted below) writes each processing step a record describes as output = method(input): the output COMPUTED_FROM ("was made by processing this input") each input, and the output PRODUCED_USING_ALGORITHM ("was made or detected by applying this Algorithm") the method. In one record we are not sure which part is the input, and we would like a general way to tell. We would like to know:
 
-- (a) The example below says its two sea surface temperature (SST) products are "derived from the long wave IR 11 and 12 micron wavelength channels" and generated "using the mid-infrared 3.95 and 4.05 micron wavelength channels". I wrote each channel as an input: COMPUTED_FROM, with a Channel ("a range of wavelengths an Instrument measures separately") as its object instance. Is it right to say that an SST product is computed from a wavelength channel? My reading, not checked against a source: it is computed from what the instrument measured in those channels, and the channel says where in the spectrum that was, not what was processed.
+- (a) The example below says its two sea surface temperature (SST) products are "derived from the long wave IR 11 and 12 micron wavelength channels" and generated "using the mid-infrared 3.95 and 4.05 micron wavelength channels". We wrote each channel as an input: COMPUTED_FROM, with a Channel ("a range of wavelengths an Instrument measures separately") as its object instance. Is it right to say that an SST product is computed from a wavelength channel? Our reading, not checked against a source: it is computed from what the instrument measured in those channels, and the channel says where in the spectrum that was, not what was processed.
 - (b) If a channel is not an input: how would you say it? Is "uses the 11 micron channel" or "is measured in the 11 micron channel" a relationship of its own, apart from "is computed from"?
-- (c) Is there a general way to tell an input from a method, that would settle the case above and others like it? For example, the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its index "is derived from radiance data", which I wrote as an input, and the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" names its product a "Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product", which I write as made using MAIAC, a method.
-- (d) I split "the long wave IR 11 and 12 micron wavelength channels" into "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel" (rule 12, quoted below). Would someone in your field write each channel that way?
-- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says its data set "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data". Each word names a step and what it corrects, though only as a participle. I left each out for now (decided 2026-10-25, for me to confirm); they would be methods: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm), and the same for "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)". Elsewhere, where a record has only a verb ("binned", "detrended", "convert", "cross-correlated"), I wrote no method. Is a participle that names what was corrected or calibrated a method, and should it be written in the record's words ("radiometric calibrated") or as the name of the step ("radiometric calibration")?
+- (c) Is there a general way to tell an input from a method, that would settle the case above and others like it? For example, the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its index "is derived from radiance data", which we wrote as an input, and the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" names its product a "Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product", which we write as made using MAIAC, a method.
+- (d) We split "the long wave IR 11 and 12 micron wavelength channels" into "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel" (rule 12, quoted below). Would someone in your field write each channel that way?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says its data set "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data". Each word names a step and what it corrects, though only as a participle. We left each out for now (decided 2026-10-25, for us to confirm); they would be methods: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm), and the same for "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)". Elsewhere, where a record has only a verb ("binned", "detrended", "convert", "cross-correlated"), we wrote no method. Is a participle that names what was corrected or calibrated a method, and should it be written in the record's words ("radiometric calibrated") or as the name of the step ("radiometric calibration")?
 
 ### Context
 
 The example below has products computed from channels, and facts that say which channels are unique to MODIS.
 
-Settled, so not asked here: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map to produced this residual map", and I wrote the epithermal neutron map as an input, COMPUTED_FROM, beside the count rates. A review of that record on 2026-10-22 checked NASA's archive documents for it: the epithermal neutron map is used to correct the fast neutron counts, so it is an input. No method is written for that record, since "detrended" names an operation but no algorithm with a name of its own.
+Settled, so not asked here: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map to produced this residual map", and we wrote the epithermal neutron map as an input, COMPUTED_FROM, beside the count rates. A review of that record on 2026-10-22 checked NASA's archive documents for it: the epithermal neutron map is used to correct the fast neutron counts, so it is an input. No method is written for that record, since "detrended" names an operation but no algorithm with a name of its own.
 
 ### Example record
 
@@ -1067,13 +1067,13 @@ Coin a predicate in the ground truth schema for "uses the measurements of this C
 
 ### My current reading
 
-Option 1 until you answer, because the record's own words are "derived from", which read to me as an input used in the computation. If your answer to (a) is that a channel is not an input, I would choose option 2, since a ground truth triple should say what is true. Your answer to (c) would become part of rule 14.
+Option 1 until you answer, because the record's own words are "derived from", which read to us as an input used in the computation. If your answer to (a) is that a channel is not an input, we would choose option 2, since a ground truth triple should say what is true. Your answer to (c) would become part of rule 14.
 
 ### My notes
 
-Four of the tuning records I have annotated up to pool position 6 describe a processing step, at pool positions 2, 4, 5 and 6, and so do those at pool positions 7, 9, 12 and 13 (decided 2026-10-25, for me to confirm; (e) is about pool position 13's) (the one at pool position 6 is in the ground truth now); all their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record at pool position 4; the settled one is at pool position 5.
+Of the first seven records of the pool, all tuning records, four describe a processing step: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061", "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (the last is in the ground truth now); and so do "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0", "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" and "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (decided 2026-10-25, for us to confirm; (e) is about the last one's). All their classed triples with COMPUTED_FROM or PRODUCED_USING_ALGORITHM are listed under Affects. The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"; the settled one is the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0".
 
-Pending facts, for the record at pool position 13 (ab33f184, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer to (e) says such corrections should be kept: the four statements "solar stray-light corrected", "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)", each with a predicate to decide.
+Pending facts, for the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (ab33f184, in the ground truth now without them; decided 2026-10-25, for us to confirm), each added if the answer to (e) says such corrections should be kept: the four statements "solar stray-light corrected", "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)", each with a predicate to decide.
 
 Rule 14 now says: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." If the answer to (e) says such words should be kept, they would be a triple of another predicate, not PRODUCED_USING_ALGORITHM.
 
@@ -1136,18 +1136,18 @@ Rule 14 now says: "A word that says only that something was done ("corrected", "
 
 ### The question
 
-The records name groups of people, offices, programs, sites and places in several ways, and I am not sure I sort them the way someone in the field would. The ground truth schema has three entity classes for groups: Organization (a named institution or one of its named parts), Team (a group of people without a name of its own) and Role (a position someone holds). It has no entity class for a place, and one predicate about where something is: BASED_IN, "belongs to this Country". I would like to know:
+The records name groups of people, offices, programs, sites and places in several ways, and we are not sure we sort them the way someone in the field would. The ground truth schema has three entity classes for groups: Organization (a named institution or one of its named parts), Team (a group of people without a name of its own) and Role (a position someone holds). It has no entity class for a place, and one predicate about where something is: BASED_IN, "belongs to this Country". We would like to know:
 
-- (a) The example below says that JPL "is the official Physical Oceanography Data Archive (PO.DAAC) for SST". I wrote this down as a role JPL holds. Would you say PO.DAAC is a role (a job JPL does), or an organization of its own (with JPL as where it is, or who runs it)?
-- (b) The example also names the "NASA Ocean Biology Processing Group (OBPG)" and "Peter Minnett and his team". I wrote the first as an Organization, since it has a name of its own, and the second as a Team, since it doesn't. Is that line (a name of its own, or not) the right one?
-- (c) The record "NASA Standards and and Technical Assistance Resource Tool" names the "NASA Technical Standards Program", which provides access to standards and sponsors a web tool. I wrote it as an Organization. Is a NASA "program" like this one an organization (an office with staff), or something else, such as a funded effort? And is "NASA" part of the program's name, so that I keep "NASA Technical Standards Program" whole, as I do now, or does it say whose program it is, which would be a fact of its own (the program a part of NASA)?
+- (a) The example below says that JPL "is the official Physical Oceanography Data Archive (PO.DAAC) for SST". We wrote this down as a role JPL holds. Would you say PO.DAAC is a role (a job JPL does), or an organization of its own (with JPL as where it is, or who runs it)?
+- (b) The example also names the "NASA Ocean Biology Processing Group (OBPG)" and "Peter Minnett and his team". We wrote the first as an Organization, since it has a name of its own, and the second as a Team, since it doesn't. Is that line (a name of its own, or not) the right one?
+- (c) The record "NASA Standards and and Technical Assistance Resource Tool" names the "NASA Technical Standards Program", which provides access to standards and sponsors a web tool. We wrote it as an Organization. Is a NASA "program" like this one an organization (an office with staff), or something else, such as a funded effort? And is "NASA" part of the program's name, so that we keep "NASA Technical Standards Program" whole, as we do now, or does it say whose program it is, which would be a fact of its own (the program a part of NASA)?
 - (d) In this catalog, is a facility (e.g. a space center, an observatory, a ground station) best thought of as an Organization, as a place, or as both, depending on the sentence?
 - (e) Do the records of this catalog name places (a research station, a field of the sky, a site) often enough, and in [facts](../docs/terminology.md#2-triples) that matter enough, that the ground truth schema should have an entity class for them?
 - (f) Is "is located in" the same relationship as "belongs to this Country" when the place is a country (e.g. a center located in the U.S.)? When the place is not a country (a state, a city, a region), what should it be?
 
 ### Context
 
-The example below names an archive, a named group and a team. Which entity class each gets decides which predicates fit it (for example, SPONSORED_BY_PARTY joins only an Organization, a Person or a Team), and how a search of the knowledge graph finds it. The only facts about where something is that I have written so far are two of the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005", both about which country an organization belongs to: "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country), and "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country).
+The example below names an archive, a named group and a team. Which entity class each gets decides which predicates fit it (for example, SPONSORED_BY_PARTY joins only an Organization, a Person or a Team), and how a search of the knowledge graph finds it. The only facts about where something is that we have written so far are two of the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005", both about which country an organization belongs to: "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country), and "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country).
 
 The [model](../docs/terminology.md#8-the-pipeline) that reads the records has its own entity classes, and the translation table (quoted below) says which entity class of the ground truth schema each one means. It has an entity class Program (which means nothing in the ground truth schema: (none)), Facility (which means Organization), Location ((none)), and a predicate LOCATED_IN (which means BASED_IN).
 
@@ -1218,13 +1218,13 @@ When a record names a place in a fact of its own, the ground truth schema gets a
 
 ### My current reading
 
-Option 1, for now: it follows the records' own words (JPL "is" the archive), every case above fits it, and so far no fact I wrote depends on a facility or a place other than a country. I would change it if you tell me that PO.DAAC, or a NASA program, is usually thought of as an organization in its own right (option 2 or 3), and choose option 4 once a record states a fact about a place.
+Option 1, for now: it follows the records' own words (JPL "is" the archive), every case above fits it, and so far no fact we wrote depends on a facility or a place other than a country. We would change it if you tell us that PO.DAAC, or a NASA program, is usually thought of as an organization in its own right (option 2 or 3), and choose option 4 once a record states a fact about a place.
 
 ### My notes
 
-The record at pool position 12 adds "NASA HEASARC" (Organization), written so by rule 13, though the record also writes "the HEASARC" (decided 2026-10-25, for me to confirm); its "the authors" (Team) are left out for now, with the study they belong to (Q26). The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record at pool position 4, and the program of (c) is the record at pool position 0's. The facts about a country are the record at pool position 3's: rule 9 of *Writing a classed triple* makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
+The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" adds "NASA HEASARC" (Organization), written so by rule 13, though the record also writes "the HEASARC" (decided 2026-10-25, for us to confirm); its "the authors" (Team) are left out for now, with the study they belong to (Q26). The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", and the program of (c) is the record "NASA Standards and and Technical Assistance Resource Tool"'s. The facts about a country are the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"'s: rule 9 of *Writing a classed triple* makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
 
-The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names; a row that names (none): a classed triple that uses it always counts as extracted only. I would choose option 4 with the answers to (d) to (f) telling me what to coin, once a tuning record states a fact about a place.
+The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names; a row that names (none): a classed triple that uses it always counts as extracted only. We would choose option 4 with the answers to (d) to (f) telling us what to coin, once a tuning record states a fact about a place.
 
 ### Consequences
 
@@ -1236,14 +1236,14 @@ The model extracts classed triples with the current schema. Before they are comp
 
 #### Option 2: A named archive or program is an Organization too
 
-- A new predicate is coined (for example, for "is run by" or "hosts"), and the record at pool position 4 gets one more classed triple.
+- A new predicate is coined (for example, for "is run by" or "hosts"), and the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" gets one more classed triple.
 - Only what the record states may be written (rule 1 of *What counts as a fact*): the record says JPL "is" the archive, not that JPL runs or hosts it, so the new predicate has to say exactly that.
 - A search of the knowledge graph for PO.DAAC finds it as an organization, like any other data center.
 
 #### Option 3: A program is its own entity class
 
 - The translation table's row for the current schema's Program changes from (none) to the new entity class, so the model's Program instances can be compared with the ground truth.
-- SPONSORED_BY_PARTY and DEVELOPED_BY_PARTY join only an Organization, a Person or a Team: they would need the new entity class added, or the record at pool position 0 changes.
+- SPONSORED_BY_PARTY and DEVELOPED_BY_PARTY join only an Organization, a Person or a Team: they would need the new entity class added, or the record "NASA Standards and and Technical Assistance Resource Tool" changes.
 
 #### Option 4: Places get an entity class of the ground truth schema
 
@@ -1297,16 +1297,16 @@ The model extracts classed triples with the current schema. Before they are comp
 
 ### The question
 
-The ground truth schema has an entity class Purpose ("an aim something is meant to achieve") and a predicate HAS_PURPOSE. I am not sure how far it should reach. To decide, I need to know:
+The ground truth schema has an entity class Purpose ("an aim something is meant to achieve") and a predicate HAS_PURPOSE. We are not sure how far it should reach. To decide, we need to know:
 
-- (a) The example below says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". I wrote this as the purpose of Aqua, the spacecraft, because that is what the sentence is about. Would you say it is the spacecraft's purpose, or its mission's (a satellite mission usually has the science goals)? The record names no mission for Aqua, so I can't write the mission without adding what the record doesn't state.
-- (b) In that phrase, "Earth" is the body studied. The annotation guidelines take a target body out of an instance as a [fact](../docs/terminology.md#2-triples) of its own (rule 9 of *Writing a classed triple*). I kept the phrase whole, since "study the global dynamics of the atmosphere, land and oceans" without "Earth" no longer says whose atmosphere. Is keeping it whole right, or should "Earth" also be its own fact (Aqua is about the Earth)?
+- (a) The example below says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". We wrote this as the purpose of Aqua, the spacecraft, because that is what the sentence is about. Would you say it is the spacecraft's purpose, or its mission's (a satellite mission usually has the science goals)? The record names no mission for Aqua, so we can't write the mission without adding what the record doesn't state.
+- (b) In that phrase, "Earth" is the body studied. The annotation guidelines take a target body out of an instance as a [fact](../docs/terminology.md#2-triples) of its own (rule 9 of *Writing a classed triple*). We kept the phrase whole, since "study the global dynamics of the atmosphere, land and oceans" without "Earth" no longer says whose atmosphere. Is keeping it whole right, or should "Earth" also be its own fact (Aqua is about the Earth)?
 - (c) The [model](../docs/terminology.md#8-the-pipeline) that reads the records has predicates for what something is "used to study" and for its "objective", and the translation table translates both to HAS_PURPOSE. Is "used to study ocean salinity" a purpose, in your field, or a different relationship (what a mission or instrument studies), better kept apart?
-- (d) The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says "In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples", and that the structure function the authors used "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived". I left both out of the ground truth for now (whether a study's aim and method are facts at all, I ask in Q26); they would be purposes: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose), and "structure function (SF)" (Algorithm) HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (Purpose). Is what a method "allows for" its purpose? (Whose aim the study's is, the authors' or the table's, I ask with the study's findings, in Q26.)
+- (d) The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says "In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples", and that the structure function the authors used "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived". We left both out of the ground truth for now (whether a study's aim and method are facts at all, we ask in Q26); they would be purposes: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose), and "structure function (SF)" (Algorithm) HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (Purpose). Is what a method "allows for" its purpose? (Whose aim the study's is, the authors' or the table's, we ask with the study's findings, in Q26.)
 
 ### Context
 
-The purposes I have written so far are a web tool's (the record "NASA Standards and and Technical Assistance Resource Tool"), those of a series of screens applied to data (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), and those of Aqua and of an algorithm (the example below, whose purpose of Aqua the questions above are about).
+The purposes we have written so far are a web tool's (the record "NASA Standards and and Technical Assistance Resource Tool"), those of a series of screens applied to data (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), and those of Aqua and of an algorithm (the example below, whose purpose of Aqua the questions above are about).
 
 ### Example record
 
@@ -1357,11 +1357,11 @@ A predicate of its own for what a mission, spacecraft or instrument studies (a P
 
 ### My current reading
 
-Option 1, for now: it writes what each sentence says, about what it is about. I would choose option 3 if you tell me that what a mission studies and what it is meant to achieve are kept apart in your field.
+Option 1, for now: it writes what each sentence says, about what it is about. We would choose option 3 if you tell us that what a mission studies and what it is meant to achieve are kept apart in your field.
 
 ### My notes
 
-All the HAS_PURPOSE classed triples of the records annotated so far are listed under Affects (the record at pool position 12's two, of (d), are pending facts, left out for now: added if the answer to Q26 says yes; decided 2026-10-25, for me to confirm): a web tool's purpose (pool position 0), the purposes of a series of screens applied to data (pool position 2), and those of Aqua and of an algorithm (pool position 4, the example). The predicates of (c) are the current schema's USED_TO_STUDY and HAS_OBJECTIVE.
+All the HAS_PURPOSE classed triples of the records annotated so far are listed under Affects (the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"'s two, of (d), are pending facts, left out for now: added if the answer to Q26 says yes; decided 2026-10-25, for us to confirm): a web tool's purpose (the record "NASA Standards and and Technical Assistance Resource Tool"), the purposes of a series of screens applied to data (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), and those of Aqua and of an algorithm (the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the example). The predicates of (c) are the current schema's USED_TO_STUDY and HAS_OBJECTIVE.
 
 ### Consequences
 
@@ -1408,17 +1408,17 @@ All the HAS_PURPOSE classed triples of the records annotated so far are listed u
 
 ### The question
 
-The example below is a Rosetta radio science dataset. Its title has "RSI", and its notes call it "a Rosetta Radio Science data set". I wrote "RSI" as the Instrument that collected the data, and "Radio Science" as its Discipline ("a field of science"). I am not sure about either, nor about where a technique of measuring belongs. To decide, I need to know:
+The example below is a Rosetta radio science dataset. Its title has "RSI", and its notes call it "a Rosetta Radio Science data set". We wrote "RSI" as the Instrument that collected the data, and "Radio Science" as its Discipline ("a field of science"). We are not sure about either, nor about where a technique of measuring belongs. To decide, we need to know:
 
-- (a) Is "RSI" in a title like this one the name of an instrument? My reading (not checked in a source): radio science measures the spacecraft's own radio signal, as received on Earth, so the "instrument" is the spacecraft's radio system together with the ground stations. Is it right to call RSI an Instrument?
+- (a) Is "RSI" in a title like this one the name of an instrument? Our reading (not checked in a source): radio science measures the spacecraft's own radio signal, as received on Earth, so the "instrument" is the spacecraft's radio system together with the ground stations. Is it right to call RSI an Instrument?
 - (b) Is "Radio Science" a field of science (like oceanography), or a technique (a way of measuring, used in several fields)?
-- (c) If it is a technique: should the ground truth have an entity class for techniques, apart from Algorithm ("a method applied to data to compute a result") and Discipline? The [model](../docs/terminology.md#8-the-pipeline) that reads the records has an entity class Method that also covers ways of collecting or sending data (an operating mode; my example: radio occultation, an observing technique), and the translation table (quoted below) says it means Algorithm. Is such a technique an Algorithm, or something else?
+- (c) If it is a technique: should the ground truth have an entity class for techniques, apart from Algorithm ("a method applied to data to compute a result") and Discipline? The [model](../docs/terminology.md#8-the-pipeline) that reads the records has an entity class Method that also covers ways of collecting or sending data (an operating mode; our example: radio occultation, an observing technique), and the translation table (quoted below) says it means Algorithm. Is such a technique an Algorithm, or something else?
 - (d) The model's Topic covers any subject a dataset addresses ("agriculture", "AGN", "ecosystem interaction"), and the translation table says it means Discipline. Is a subject like these a Discipline, a field of science?
-- (e) Which list of disciplines should the ground truth follow, so that a record's words can be checked against it? The one I know of is the divisions of NASA's Science Mission Directorate, among them Earth Science, Planetary Science, Astrophysics and Heliophysics (https://science.nasa.gov/about-us/). Is that the right list for this catalog, or is another one used?
+- (e) Which list of disciplines should the ground truth follow, so that a record's words can be checked against it? The one we know of is the divisions of NASA's Science Mission Directorate, among them Earth Science, Planetary Science, Astrophysics and Heliophysics (https://science.nasa.gov/about-us/). Is that the right list for this catalog, or is another one used?
 
 ### Context
 
-The record doesn't say what "RSI" stands for, and the annotation guidelines don't let me write what an unexplained abbreviation stands for, so the object instance is "RSI", as written. "Radio Science" is the only Discipline I have written so far. The translation table names one entity class of the ground truth schema for each of the model's, whatever the record: so every Method the model finds is judged as an Algorithm, and every Topic as a Discipline. The two Algorithms I have written so far are methods applied to data.
+The record doesn't say what "RSI" stands for, and the annotation guidelines don't let us write what an unexplained abbreviation stands for, so the object instance is "RSI", as written. "Radio Science" is the only Discipline we have written so far. The translation table names one entity class of the ground truth schema for each of the model's, whatever the record: so every Method the model finds is judged as an Algorithm, and every Topic as a Discipline. The two Algorithms we have written so far are methods applied to data.
 
 ### Example record
 
@@ -1472,11 +1472,11 @@ A Discipline's object instance is the value of the list your answer to (e) names
 
 ### My current reading
 
-Option 1, for now, since the record gives no more than the code and the words "Radio Science", and every Algorithm and Discipline I have written so far fits its definition. Your answers to (a) and (b) decide options 2 and 3; your answers to (d) and (e) decide option 4.
+Option 1, for now, since the record gives no more than the code and the words "Radio Science", and every Algorithm and Discipline we have written so far fits its definition. Your answers to (a) and (b) decide options 2 and 3; your answers to (d) and (e) decide option 4.
 
 ### My notes
 
-The example is the record at pool position 1. The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. The ground truth's two Algorithms so far are the records' at pool positions 2 and 4 (not listed under Affects: no option changes them).
+The example is the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0". The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. The ground truth's two Algorithms so far are those of the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (not listed under Affects: no option changes them).
 
 ### Consequences
 
@@ -1525,19 +1525,19 @@ The example is the record at pool position 1. The model extracts classed triples
 
 ### The question
 
-The ground truth schema's SpatialExtent is "the area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars)", and a dataset HAS_SPATIAL_COVERAGE such an area. Rule 9 of *Writing a classed triple* in the annotation guidelines (quoted below) takes an area the data cover out of an instance, as a fact of its own. In two records I am not sure whether a word is such an area. To decide, I need to know:
+The ground truth schema's SpatialExtent is "the area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars)", and a dataset HAS_SPATIAL_COVERAGE such an area. Rule 9 of *Writing a classed triple* in the annotation guidelines (quoted below) takes an area the data cover out of an instance, as a fact of its own. In two records we are not sure whether a word is such an area. To decide, we need to know:
 
-- (a) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "It is a Global Gravity measurement at the comet 67P". I wrote "Global" as the area the data cover (all of the comet 67P). At a comet, what would "Global" mean: the whole comet, or something else? Or is "Global Gravity" the name of one sort of radio science measurement, as a whole, so that "Global" is no area at all? (Other records of the catalog have the same sentence with "Phobos Gravity", "Occultation" or "Solar Conjunction" in its place: see below.)
-- (b) The example below is a dataset of "Land Aerosol Optical Depth". I took "Land" out as the area the data cover ("MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Land" (SpatialExtent)), and kept "Aerosol Optical Depth" as the quantity measured. Is "Land" (the land surfaces of the Earth, as against the oceans) an area in the sense of SpatialExtent, "part of" the Earth? Or is "Land Aerosol Optical Depth" one quantity, the aerosol optical depth over land, which should stay whole? Or does "Land" say what sort of surface the method that computes the product (MAIAC) is made for, so that it stays in the quantity's words as a qualifier of another sort (rule 9 of *Writing a classed triple*: "any other kind")?
+- (a) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "It is a Global Gravity measurement at the comet 67P". We wrote "Global" as the area the data cover (all of the comet 67P). At a comet, what would "Global" mean: the whole comet, or something else? Or is "Global Gravity" the name of one sort of radio science measurement, as a whole, so that "Global" is no area at all? (Other records of the catalog have the same sentence with "Phobos Gravity", "Occultation" or "Solar Conjunction" in its place: see below.)
+- (b) The example below is a dataset of "Land Aerosol Optical Depth". We took "Land" out as the area the data cover ("MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Land" (SpatialExtent)), and kept "Aerosol Optical Depth" as the quantity measured. Is "Land" (the land surfaces of the Earth, as against the oceans) an area in the sense of SpatialExtent, "part of" the Earth? Or is "Land Aerosol Optical Depth" one quantity, the aerosol optical depth over land, which should stay whole? Or does "Land" say what sort of surface the method that computes the product (MAIAC) is made for, so that it stays in the quantity's words as a qualifier of another sort (rule 9 of *Writing a classed triple*: "any other kind")?
 - (c) In general: should SpatialExtent hold only a region of a body (the Arctic, a pole, the whole body), or also a sort of surface (land, ocean, sea ice) that the data are limited to?
 
 ### Context
 
-The areas I have written so far are "Global" (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"), "global" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and my draft "Land" (the example below, which question (b) is about).
+The areas we have written so far are "Global" (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"), "global" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and our draft "Land" (the example below, which question (b) is about).
 
-Settled, so not asked here: the example's title ends in "Global 1km SIN Grid". Checked on 2026-10-25, "SIN Grid" is the MODIS sinusoidal grid, and "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on it, so "Global" there names the grid's worldwide tiling, not the area this dataset covers (NASA LAADS, the MCD19A2 product page, https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MCD19A2; NASA MODAPS, MCD19A2N, https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html). So I wrote no area "Global" for it. A "global" written as a word of its own ("This global Level-2 (L2) data set") I am sure of; the three words above I am not.
+Settled, so not asked here: the example's title ends in "Global 1km SIN Grid". Checked on 2026-10-25, "SIN Grid" is the MODIS sinusoidal grid, and "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on it, so "Global" there names the grid's worldwide tiling, not the area this dataset covers (NASA LAADS, the MCD19A2 product page, https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MCD19A2; NASA MODAPS, MCD19A2N, https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html). So we wrote no area "Global" for it. A "global" written as a word of its own ("This global Level-2 (L2) data set") we are sure of; the three words above we are not.
 
-The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" recurs across the catalog. I counted it in the catalog's 36,406 records: "It is a Global Gravity measurement" in 2,835 records (2,442 of them "at the comet 67P"), "It is a Occultation measurement" in 439, "It is a Solar Conjunction measurement" in 240, and "It is a Phobos Gravity measurement" in 9. Since "Phobos Gravity" sits beside "Global Gravity", my reading is that the word before "Gravity" may say which gravity measurement it is, not an area; but I don't know.
+The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" recurs across the catalog. We counted it in the catalog's 36,406 records: "It is a Global Gravity measurement" in 2,835 records (2,442 of them "at the comet 67P"), "It is a Occultation measurement" in 439, "It is a Solar Conjunction measurement" in 240, and "It is a Phobos Gravity measurement" in 9. Since "Phobos Gravity" sits beside "Global Gravity", our reading is that the word before "Gravity" may say which gravity measurement it is, not an area; but we don't know.
 
 ### Example record
 
@@ -1571,7 +1571,7 @@ The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1
 
 ### Options
 
-#### Option 1: Keep them as I wrote them
+#### Option 1: Keep them as we wrote them
 
 "Global" (at the comet 67P) and "Land" (in the example) are areas the data cover, each a fact of its own.
 
@@ -1585,17 +1585,17 @@ The definition of SpatialExtent says that a sort of surface the data are limited
 
 ### My current reading
 
-Undecided. For "Land", I lean towards option 3: it says which part of the Earth the data cover, which is what a search would ask. For "Global Gravity", I lean towards keeping it whole, since "Phobos Gravity" in other records reads like the same sort of title; your answer to (a) decides it.
+Undecided. For "Land", we lean towards option 3: it says which part of the Earth the data cover, which is what a search would ask. For "Global Gravity", we lean towards keeping it whole, since "Phobos Gravity" in other records reads like the same sort of title; your answer to (a) decides it.
 
 ### My notes
 
-Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (pool position 1), "global" (pool positions 2 and 4), and "Land" (pool position 6, the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1). Rule 9 of *Writing a classed triple* now records my reading of a word naming a kind of ground or water: it is an area the data cover when "the [rest] of the [word]" is false ("the aerosol optical depth of the land" is false, because the aerosols are in the air), so "Land" stays taken out in the example; if the answers say otherwise, rule 9, the model's copy of the rules, and the ground truth triples under Affects change with them.
+Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"), "global" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and "Land" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1). Rule 9 of *Writing a classed triple* now records our reading of a word naming a kind of ground or water: it is an area the data cover when "the [rest] of the [word]" is false ("the aerosol optical depth of the land" is false, because the aerosols are in the air), so "Land" stays taken out in the example; if the answers say otherwise, rule 9, the model's copy of the rules, and the ground truth triples under Affects change with them.
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. The current schema's SpatialCoverage and HAS_SPATIAL_COVERAGE translate into SpatialExtent and HAS_SPATIAL_COVERAGE, so the answer also decides what an extracted triple with them is compared with.
 
 ### Consequences
 
-#### Option 1: Keep them as I wrote them
+#### Option 1: Keep them as we wrote them
 
 - Nothing changes in the ground truth triples listed under Affects.
 - If "Global Gravity" is the name of one sort of measurement, the area "Global" is a [fact](../docs/terminology.md#2-triples) the record doesn't state, and the 2,835 records with this sentence would each get it.
@@ -1603,8 +1603,8 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 #### Option 2: Only regions of a body are areas
 
-- The ground truth triples of the record at pool position 6 become one: HAS_MEASUREMENTS_OF "Land Aerosol Optical Depth", with no HAS_SPATIAL_COVERAGE.
-- The record at pool position 1 loses HAS_SPATIAL_COVERAGE "Global", and its HAS_MEASUREMENTS_OF "Gravity" becomes "Global Gravity", if the answer to (a) says so.
+- The ground truth triples of the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" become one: HAS_MEASUREMENTS_OF "Land Aerosol Optical Depth", with no HAS_SPATIAL_COVERAGE.
+- The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" loses HAS_SPATIAL_COVERAGE "Global", and its HAS_MEASUREMENTS_OF "Gravity" becomes "Global Gravity", if the answer to (a) says so.
 - A search for land-only data has to look inside the quantities' words.
 
 #### Option 3: Name sorts of surface in the definition
@@ -1640,18 +1640,18 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 ### The question
 
-The ground truth schema's Dataset is "a set of observations, measurements, or samples". Besides each record's own dataset, I have written three other things as Datasets, all inputs from which the record's dataset was made; and the [model](../docs/terminology.md#8-the-pipeline) that reads the records has three entity classes for collections of data that the translation table (quoted below) says also mean Dataset. I am not sure each is a dataset in the sense someone in the field would use. To decide, I need to know:
+The ground truth schema's Dataset is "a set of observations, measurements, or samples". Besides each record's own dataset, we have written three other things as Datasets, all inputs from which the record's dataset was made; and the [model](../docs/terminology.md#8-the-pipeline) that reads the records has three entity classes for collections of data that the translation table (quoted below) says also mean Dataset. We are not sure each is a dataset in the sense someone in the field would use. To decide, we need to know:
 
-- (a) The example below says the index it uses "is derived from radiance data acquired by" MODIS, followed by two DOIs, MYD02HKM and MYD021KM. I wrote one Dataset, "radiance data", with both DOIs. Are these one dataset or two (my reading: two products, at two resolutions)? If two, how should two inputs with the same words be told apart, when the record names them only by their DOIs?
-- (b) The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" says "the L2 pixels are binned" into a grid. I wrote "pixels" as a Dataset, at processing level "L2". Is a set of Level 2 pixels a dataset, or just the Level 2 data, unnamed?
-- (c) The record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says the counts "were detrended using the GRaND epithermal neutron map". I wrote that map as a Dataset, collected by GRaND. No record of the catalog has "epithermal" in its title (I searched the catalog's titles), so I can't tell whether the map is a dataset of its own; the catalog has other GRaND maps of Vesta (for example, "DAWN GRAND MAP VESTA NEUTRON ABSORPTION V1.0"). The annotation guidelines leave out facts about another dataset, but keep them when the record's dataset is made from it (rule 11 of *Writing a classed triple*), so I kept what collected the map. Is it right to keep the map as an input, with what collected it?
-- (d) For someone using this catalog, is an astronomical source catalog (a list of objects, each with its measured properties) a dataset in the same sense as a set of measurements of the Earth's surface? The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" is a table of 412 quasars selected from the source catalog "2XMMi-DR3" and matched with "the DR7 edition of the SDSS Quasar Catalog", "based on CDS Catalog J/A+A/536/A84 [...] file table1.dat". I wrote the table, the two catalogs, "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets, and "active galactic nuclei (AGN)", the kind of object the table is about, as its target: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_TARGET "active galactic nuclei (AGN)" (CelestialBody), although a CelestialBody is "a natural object in space" and AGN are a kind of object. Are these right?
+- (a) The example below says the index it uses "is derived from radiance data acquired by" MODIS, followed by two DOIs, MYD02HKM and MYD021KM. We wrote one Dataset, "radiance data", with both DOIs. Are these one dataset or two (our reading: two products, at two resolutions)? If two, how should two inputs with the same words be told apart, when the record names them only by their DOIs?
+- (b) The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" says "the L2 pixels are binned" into a grid. We wrote "pixels" as a Dataset, at processing level "L2". Is a set of Level 2 pixels a dataset, or just the Level 2 data, unnamed?
+- (c) The record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says the counts "were detrended using the GRaND epithermal neutron map". We wrote that map as a Dataset, collected by GRaND. No record of the catalog has "epithermal" in its title (we searched the catalog's titles), so we can't tell whether the map is a dataset of its own; the catalog has other GRaND maps of Vesta (for example, "DAWN GRAND MAP VESTA NEUTRON ABSORPTION V1.0"). The annotation guidelines leave out facts about another dataset, but keep them when the record's dataset is made from it (rule 11 of *Writing a classed triple*), so we kept what collected the map. Is it right to keep the map as an input, with what collected it?
+- (d) For someone using this catalog, is an astronomical source catalog (a list of objects, each with its measured properties) a dataset in the same sense as a set of measurements of the Earth's surface? The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" is a table of 412 quasars selected from the source catalog "2XMMi-DR3" and matched with "the DR7 edition of the SDSS Quasar Catalog", "based on CDS Catalog J/A+A/536/A84 [...] file table1.dat". We wrote the table, the two catalogs, "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets, and "active galactic nuclei (AGN)", the kind of object the table is about, as its target: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_TARGET "active galactic nuclei (AGN)" (CelestialBody), although a CelestialBody is "a natural object in space" and AGN are a kind of object. Are these right?
 - (e) Is a database or archive that holds many datasets the same sort of thing as one of the datasets it holds, or should the two be kept apart (e.g. so that a search for datasets doesn't return archives)?
-- (f) Is a "data product" (e.g. "Level-3 products", "the SST4 product") always a dataset, or sometimes one variable inside a dataset? The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says "This data set contains Level 2/3 (EDR/RDR) data", and later "The RDR data convert the EDR (raw) sensor data": I wrote "RDR data" and "EDR (raw) sensor data" as two Datasets, each PART_OF the record's dataset, and "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset). Are the parts of a dataset datasets themselves, or should they be written another way?
+- (f) Is a "data product" (e.g. "Level-3 products", "the SST4 product") always a dataset, or sometimes one variable inside a dataset? The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says "This data set contains Level 2/3 (EDR/RDR) data", and later "The RDR data convert the EDR (raw) sensor data": we wrote "RDR data" and "EDR (raw) sensor data" as two Datasets, each PART_OF the record's dataset, and "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset). Are the parts of a dataset datasets themselves, or should they be written another way?
 
 ### Context
 
-The example below is the one whose input, "radiance data", has the most facts of its own (four, two of them DOIs). COMPUTED_FROM joins what was made to what it was made from. Of the records I have read so far, only the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" names astronomical source catalogs (question (d)); none names a database. The translation table says that the model's Dataset, DataProduct, Catalog and Database all mean the ground truth schema's Dataset.
+The example below is the one whose input, "radiance data", has the most facts of its own (four, two of them DOIs). COMPUTED_FROM joins what was made to what it was made from. Of the records we have read so far, only the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" names astronomical source catalogs (question (d)); none names a database. The translation table says that the model's Dataset, DataProduct, Catalog and Database all mean the ground truth schema's Dataset.
 
 ### Example record
 
@@ -1712,13 +1712,13 @@ When a record names an archive, a database or a source catalog that holds many d
 
 ### My current reading
 
-Option 1, for now: it writes what each record states, as rule 11 of *Writing a classed triple* now does for an input, and every collection of data in the records I have read so far is one set of measurements. Your answers decide whether (a) needs option 2, whether (c) needs option 3, and whether (d) and (e) need option 4.
+Option 1, for now: it writes what each record states, as rule 11 of *Writing a classed triple* now does for an input, and every collection of data in the records we have read so far is one set of measurements. Your answers decide whether (a) needs option 2, whether (c) needs option 3, and whether (d) and (e) need option 4.
 
 ### My notes
 
-The example is the record at pool position 2. The other two inputs are "the L2 pixels" of the record at pool position 4 and "the GRaND epithermal neutron map" of the record at pool position 5; every ground truth triple about each of the three inputs is listed under Affects. The record at pool position 12 names three source catalogs and a file of one (decided 2026-10-25, for me to confirm); none of the tuning records so far names a database. The search of (c) was over the titles of 020's records.jsonl.
+The example is the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061". The other two inputs are "the L2 pixels" of the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" and "the GRaND epithermal neutron map" of the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0"; every ground truth triple about each of the three inputs is listed under Affects. The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" names three source catalogs and a file of one (decided 2026-10-25, for us to confirm); none of the tuning records so far names a database. The search of (c) was over the titles of 020's records.jsonl.
 
-Decided on 2026-10-25, for me to confirm: the record at pool position 7 has an input of its own, "MOD11_L2" (its swath product, with its DOI), and the record at pool position 9 has two parts, "RDR data" and "EDR (raw) sensor data"; their classed triples are listed under Affects.
+Decided on 2026-10-25, for us to confirm: the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" has an input of its own, "MOD11_L2" (its swath product, with its DOI), and the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" has two parts, "RDR data" and "EDR (raw) sensor data"; their classed triples are listed under Affects.
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only.
 
@@ -1733,7 +1733,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 #### Option 2: One input per DOI
 
-- The record at pool position 2 gets two inputs, each with one DOI; their instances share the same words, so the ground truth needs a way to tell them apart (for example, the DOI written in the instance), which is a new exception to rule 1 of *Writing a classed triple*.
+- The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" gets two inputs, each with one DOI; their instances share the same words, so the ground truth needs a way to tell them apart (for example, the DOI written in the instance), which is a new exception to rule 1 of *Writing a classed triple*.
 
 #### Option 3: Inputs only, no facts about them
 
@@ -1792,7 +1792,7 @@ How the translation table is used: the [model](../docs/terminology.md#8-the-pipe
 
 ### The question
 
-The ground truth schema's Channel is "a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel". The schema the [model](../docs/terminology.md#8-the-pipeline) learned from the catalog's records has two entity classes that hold bands of the spectrum: Wavelength ("A wavelength band or spectral range, such as an infrared filter band, in which observations are made"), which the translation table translates into Channel, and Frequency ("A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band"), which it translates into TemporalResolution, which fits only the rates. To decide where bands of the spectrum belong, I need to know:
+The ground truth schema's Channel is "a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel". The schema the [model](../docs/terminology.md#8-the-pipeline) learned from the catalog's records has two entity classes that hold bands of the spectrum: Wavelength ("A wavelength band or spectral range, such as an infrared filter band, in which observations are made"), which the translation table translates into Channel, and Frequency ("A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band"), which it translates into TemporalResolution, which fits only the rates. To decide where bands of the spectrum belong, we need to know:
 
 - (a) Which radio frequency bands occur in the records of this catalog, and what do they describe there: the band an Instrument measures in (e.g. a radar or a radiometer), the band a Spacecraft sends its data down in, or something else?
 - (b) For a radio frequency band that an Instrument measures in, is Channel the right entity class, or does a radio band need an entity class of its own? And when a record writes the band as part of the Instrument's words ("Aquarius L-band radiometer", in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"), should it stay inside them, as it does now, or be a [fact](../docs/terminology.md#2-triples) of its own?
@@ -1800,9 +1800,9 @@ The ground truth schema's Channel is "a range of wavelengths an Instrument measu
 
 ### Context
 
-The example below has every Channel I have written down so far: four wavelength channels its two sea surface temperature products are computed from, two of them "unique to MODIS". The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" names a radio frequency band inside its Instrument's words: "Aquarius L-band radiometer" keeps "L-band", since rule 9 of *Writing a classed triple* takes a qualifier out of an instance only if it is one of the sorts it lists, and a radio band isn't one. So none of the facts I have written down yet has a radio band as its object.
+The example below has every Channel we have written down so far: four wavelength channels its two sea surface temperature products are computed from, two of them "unique to MODIS". The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" names a radio frequency band inside its Instrument's words: "Aquarius L-band radiometer" keeps "L-band", since rule 9 of *Writing a classed triple* takes a qualifier out of an instance only if it is one of the sorts it lists, and a radio band isn't one. So none of the facts we have written down yet has a radio band as its object.
 
-How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with mine, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names.
+How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with ours, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names.
 
 ### Example record
 
@@ -1856,13 +1856,13 @@ A radio band gets an entity class of its own; Channel stays a range of wavelengt
 
 ### My current reading
 
-Option 1 for now: the only radio band I have met so far is inside an Instrument's words, and the four channels fit Channel as it is. If radio bands are common in the catalog (a), option 2 or 3, as your answer to (b) says.
+Option 1 for now: the only radio band we have met so far is inside an Instrument's words, and the four channels fit Channel as it is. If radio bands are common in the catalog (a), option 2 or 3, as your answer to (b) says.
 
 ### My notes
 
-The example is the record at pool position 4; the record at pool position 3 has "Aquarius L-band radiometer". A row of the translation table that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"; the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" has "Aquarius L-band radiometer". A row of the translation table that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only.
 
-Option 2 also means a new exception to the list of rule 9 of *Writing a classed triple*, and telling the step that learns the current schema to keep radio bands apart from rates, so that they get a row into Channel. Option 3: the entity class is one I coin in the ground truth schema, once a tuning record needs it.
+Option 2 also means a new exception to the list of rule 9 of *Writing a classed triple*, and telling the step that learns the current schema to keep radio bands apart from rates, so that they get a row into Channel. Option 3: the entity class is one we coin in the ground truth schema, once a tuning record needs it.
 
 ### Consequences
 
@@ -1873,7 +1873,7 @@ Option 2 also means a new exception to the list of rule 9 of *Writing a classed 
 
 #### Option 2: Widen Channel to any band of the spectrum
 
-- The ground truth schema's definition of Channel, rule 9 of *Writing a classed triple*, and the model's copy of the rules change; the record at pool position 3 gets a triple for "L-band".
+- The ground truth schema's definition of Channel, rule 9 of *Writing a classed triple*, and the model's copy of the rules change; the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" gets a triple for "L-band".
 - The learning step's instructions change, and its next run costs model calls.
 
 #### Option 3: An entity class of its own for radio bands
@@ -1907,18 +1907,18 @@ Option 2 also means a new exception to the list of rule 9 of *Writing a classed 
 
 ### The question
 
-The ground truth schema's Phenomenon is "something that happens in nature and can be observed, e.g. sun glint". The schema the [model](../docs/terminology.md#8-the-pipeline) learned has an entity class PhysicalPhenomenon, "A natural or induced process, event, or effect, such as radiation-belt electron losses, signal refraction, or biological responses to spaceflight, that is observed or studied", which the translation table translates into Phenomenon. I would like to know:
+The ground truth schema's Phenomenon is "something that happens in nature and can be observed, e.g. sun glint". The schema the [model](../docs/terminology.md#8-the-pipeline) learned has an entity class PhysicalPhenomenon, "A natural or induced process, event, or effect, such as radiation-belt electron losses, signal refraction, or biological responses to spaceflight, that is observed or studied", which the translation table translates into Phenomenon. We would like to know:
 
 - (a) Is every natural or induced process or effect, as PhysicalPhenomenon has it, a Phenomenon in the sense of the ground truth schema, including effects caused by people or by spaceflight (biological responses to spaceflight)?
 - (b) If not: should Phenomenon's definition be widened ("something that happens, in nature or caused by people, and can be observed"), or should induced effects be something else?
 
 ### Context
 
-The records I have read so far have one Phenomenon, "sun glint", in the example below. It fits both definitions; the question is about records still to come.
+The records we have read so far have one Phenomenon, "sun glint", in the example below. It fits both definitions; the question is about records still to come.
 
-The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" has an effect caused by spaceflight: "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued on November 16, 2022, due to significant loss of data retrieval following the Constellation Exit Maneuvers". Since Phenomenon is "something that happens in nature", I wrote it as an Issue, an entity class I coined: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) PRODUCTION_DISCONTINUED_DUE_TO "significant loss of data retrieval following the Constellation Exit Maneuvers" (Issue). If Phenomenon is widened (option 2), it may become a Phenomenon instead.
+The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" has an effect caused by spaceflight: "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued on November 16, 2022, due to significant loss of data retrieval following the Constellation Exit Maneuvers". Since Phenomenon is "something that happens in nature", we wrote it as an Issue, an entity class we coined: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) PRODUCTION_DISCONTINUED_DUE_TO "significant loss of data retrieval following the Constellation Exit Maneuvers" (Issue). If Phenomenon is widened (option 2), it may become a Phenomenon instead.
 
-How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with mine, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same.
+How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with ours, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same.
 
 ### Example record
 
@@ -1964,9 +1964,9 @@ Option 1 for now: the only Phenomenon so far fits both definitions. Your answer 
 
 ### My notes
 
-The example is the record at pool position 4, the only tuning record annotated so far with a Phenomenon; since "sun glint" fits both definitions, the row translates it rightly, which is why this question's priority is low. A classed triple that uses a row naming (none) can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. Option 3's entity class would be one I coin once a tuning record needs one.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the only tuning record annotated so far with a Phenomenon; since "sun glint" fits both definitions, the row translates it rightly, which is why this question's priority is low. A classed triple that uses a row naming (none) can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. Option 3's entity class would be one we coin once a tuning record needs one.
 
-The record at pool position 7 has the induced effect named in the context, written as an Issue (coined 2026-10-25, for me to confirm); its two classed triples with it are listed under Affects.
+The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" has the induced effect named in the context, written as an Issue (coined 2026-10-25, for us to confirm); its two classed triples with it are listed under Affects.
 
 ### Consequences
 
@@ -2004,17 +2004,17 @@ The record at pool position 7 has the induced effect named in the context, writt
 
 ### The question
 
-The schema the [model](../docs/terminology.md#8-the-pipeline) learned has an entity class CoordinateSystem: "A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data", and a predicate HAS_COORDINATE_SYSTEM. The translation table translates them into the ground truth schema's MapProjection, "a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical", and MAPPED_INTO. I would like to know:
+The schema the [model](../docs/terminology.md#8-the-pipeline) learned has an entity class CoordinateSystem: "A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data", and a predicate HAS_COORDINATE_SYSTEM. The translation table translates them into the ground truth schema's MapProjection, "a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical", and MAPPED_INTO. We would like to know:
 
-- (a) Is every coordinate system a record of this catalog names a map projection? My reading is that it isn't: a coordinate system says how a position is given (e.g. a heliographic system, positions on the Sun), while a map projection says how a curved surface is drawn flat; and a grid ("a fixed set of cells that data values are collected into, e.g. ISEAG") is a third thing. If so, where should a coordinate system go?
+- (a) Is every coordinate system a record of this catalog names a map projection? Our reading is that it isn't: a coordinate system says how a position is given (e.g. a heliographic system, positions on the Sun), while a map projection says how a curved surface is drawn flat; and a grid ("a fixed set of cells that data values are collected into, e.g. ISEAG") is a third thing. If so, where should a coordinate system go?
 - (b) The record below writes "Platte Carre". Is that the projection usually spelled "Plate Carrée", and is it the same projection as "equidistant cylindrical", so that the fact "equidistant cylindrical" (MapProjection) ALSO_KNOWN_AS "Platte Carre" (MapProjection) is true?
 - (c) Should the knowledge graph keep a record's own spelling ("Platte Carre"), as the annotation guidelines do now, or the usual one?
 
 ### Context
 
-How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with mine, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same.
+How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with ours, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same.
 
-The record below is the only one so far where I wrote down a map projection. I kept the record's own words, as rule 1 of *Writing a classed triple* says, also for "Platte Carre".
+The record below is the only one so far where we wrote down a map projection. We kept the record's own words, as rule 1 of *Writing a classed triple* says, also for "Platte Carre".
 
 ### Example record
 
@@ -2060,11 +2060,11 @@ CoordinateSystem and HAS_COORDINATE_SYSTEM translate into nothing of the ground 
 
 ### My current reading
 
-Option 1: in the records I have read so far, the only coordinate system is a map projection; the spelling stays the record's own, as rule 1 of *Writing a classed triple* says. I would choose option 2 if other coordinate systems are common in the catalog (a).
+Option 1: in the records we have read so far, the only coordinate system is a map projection; the spelling stays the record's own, as rule 1 of *Writing a classed triple* says. We would choose option 2 if other coordinate systems are common in the catalog (a).
 
 ### My notes
 
-The example is the record at pool position 4, the only tuning record whose ground truth so far has a map projection as an object instance, so the rows translate it rightly; that is why this question's priority is low: one record, and the facts are written down either way. A classed triple that uses a row naming (none) can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. Option 2's entity class (and predicate) would be ones I coin in the ground truth schema once a tuning record names a coordinate system that isn't a map projection.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the only tuning record whose ground truth so far has a map projection as an object instance, so the rows translate it rightly; that is why this question's priority is low: one record, and the facts are written down either way. A classed triple that uses a row naming (none) can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. Option 2's entity class (and predicate) would be ones we coin in the ground truth schema once a tuning record names a coordinate system that isn't a map projection.
 
 ### Consequences
 
@@ -2101,9 +2101,9 @@ The example is the record at pool position 4, the only tuning record whose groun
 
 ### The question
 
-A record says that Aqua was launched "into a sun synchronous, polar orbit with a daylight ascending node at 13:30". The ground truth keeps that whole passage as one object instance: Aqua HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30". I would like to know:
+A record says that Aqua was launched "into a sun synchronous, polar orbit with a daylight ascending node at 13:30". The ground truth keeps that whole passage as one object instance: Aqua HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30". We would like to know:
 
-- (a) Is the time of the ascending node (13:30) something people who use this catalog search on by itself, for instance to find the satellites that cross the equator in the early afternoon? My reading, not checked against a source: the ascending node is where the orbit crosses the equator going north, and 13:30 is the local time at which it does so in daylight.
+- (a) Is the time of the ascending node (13:30) something people who use this catalog search on by itself, for instance to find the satellites that cross the equator in the early afternoon? Our reading, not checked against a source: the ascending node is where the orbit crosses the equator going north, and 13:30 is the local time at which it does so in daylight.
 - (b) Are "sun synchronous" and "polar" two properties of the orbit, each worth a classed triple of its own, or does "sun synchronous, polar orbit" name one type of orbit?
 - (c) If the time is a [fact](../docs/terminology.md#2-triples) of its own, what does it belong to: the orbit, or the satellite (Aqua)?
 
@@ -2149,11 +2149,11 @@ As option 2, and "sun synchronous" and "polar" also become ground truth triples 
 
 ### My current reading
 
-Option 1, keep the orbit whole, because rule 9 of *Writing a classed triple* keeps the time in the instance, and the records I have read so far name an orbit only once (Aqua's, in the example below). I would change to option 2 if people search this catalog by the time a satellite crosses the equator.
+Option 1, keep the orbit whole, because rule 9 of *Writing a classed triple* keeps the time in the instance, and the records we have read so far name an orbit only once (Aqua's, in the example below). We would change to option 2 if people search this catalog by the time a satellite crosses the equator.
 
 ### My notes
 
-The example is the record at pool position 4, the only tuning record annotated so far that names an orbit.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the only tuning record annotated so far that names an orbit.
 
 ### Consequences
 
@@ -2165,7 +2165,7 @@ The example is the record at pool position 4, the only tuning record annotated s
 
 #### Option 2: The time as a ground truth triple of its own
 
-- A new predicate in the ground truth schema, and an example for it in the annotation guidelines, so that I write it the same way in every record; the [model](../docs/terminology.md#8-the-pipeline) follows the same rules, so its copy of the rules changes too.
+- A new predicate in the ground truth schema, and an example for it in the annotation guidelines, so that we write it the same way in every record; the [model](../docs/terminology.md#8-the-pipeline) follows the same rules, so its copy of the rules changes too.
 - The orbit's instance loses the words "with a daylight ascending node at 13:30", which are no longer in that triple.
 - The time can be searched for by itself.
 
@@ -2194,14 +2194,14 @@ The example is the record at pool position 4, the only tuning record annotated s
 
 ### The question
 
-A record of data from the GRaND instrument of the Dawn spacecraft says: "The residual map is related to the average atomic mass on Vesta." The ground truth writes this as the dataset RELATED_TO "average atomic mass". I would like to know:
+A record of data from the GRaND instrument of the Dawn spacecraft says: "The residual map is related to the average atomic mass on Vesta." The ground truth writes this as the dataset RELATED_TO "average atomic mass". We would like to know:
 
 - (a) What is the relationship between the residual map and the average atomic mass: does the residual map give approximate values of the average atomic mass, or is it only one clue among several?
 - (b) Would someone in your field read "is related to" in such a record as "gives approximate values for", or only as "has something to do with"?
 
 ### Context
 
-I write only what a record states (rule 1 of *What counts as a fact*, quoted below), so a more specific predicate than RELATED_TO needs words in the record that say so. The ground truth schema has ESTIMATES, "gives approximate values for", which the ground truth uses for what a Variable gives approximate values of.
+We write only what a record states (rule 1 of *What counts as a fact*, quoted below), so a more specific predicate than RELATED_TO needs words in the record that say so. The ground truth schema has ESTIMATES, "gives approximate values for", which the ground truth uses for what a Variable gives approximate values of.
 
 ### Example record
 
@@ -2234,7 +2234,7 @@ Only if "related to" here means "gives approximate values for" (question (a)): t
 
 ### My current reading
 
-Option 1, because "related to" is all the record states. I would change to option 2 if experts say that, in such a record, "related to" means that the map gives approximate values of the average atomic mass.
+Option 1, because "related to" is all the record states. We would change to option 2 if experts say that, in such a record, "related to" means that the map gives approximate values of the average atomic mass.
 
 ### The answer
 
@@ -2268,7 +2268,7 @@ Settled by checked sources, option 1. A review of this record on 2026-10-22 chec
 
 ### The question
 
-A record of MODIS sea surface temperature (SST) products describes two SST products in its files: a skin SST made for day and night (NSST), and, at night, a second SST product, identified as SST4. The ground truth now says that NSST gives approximate values of the "skin sea surface temperature (SST)", that SST4 gives approximate values of "SST", and that SST4 has lower uncertainty than NSST. I would like to know:
+A record of MODIS sea surface temperature (SST) products describes two SST products in its files: a skin SST made for day and night (NSST), and, at night, a second SST product, identified as SST4. The ground truth now says that NSST gives approximate values of the "skin sea surface temperature (SST)", that SST4 gives approximate values of "SST", and that SST4 has lower uncertainty than NSST. We would like to know:
 
 - (a) Is SST4 a skin SST too, so that both products estimate the same quantity, the skin sea surface temperature? If so, rule 13 of the annotation guidelines (one thing, one wording, within a record) would write "skin sea surface temperature (SST)" for both.
 - (b) The record says "The SST4 product has lower uncertainty", without saying than what. The ground truth reads it as "lower uncertainty than NSST", the other product the record describes. Is that how an expert reads it?
@@ -2276,7 +2276,7 @@ A record of MODIS sea surface temperature (SST) products describes two SST produ
 
 ### Context
 
-The record introduces the two products as "Two SST products can be present in these files. The first is a skin SST ... At night, a second SST product ...". Whether "a second SST product" is a skin SST too is what (a) asks: I may use what the words mean to see that two wordings name the same thing (rule 13), but I may not add a [fact](../docs/terminology.md#2-triples) the record doesn't state (rule 1 of *What counts as a fact*).
+The record introduces the two products as "Two SST products can be present in these files. The first is a skin SST ... At night, a second SST product ...". Whether "a second SST product" is a skin SST too is what (a) asks: we may use what the words mean to see that two wordings name the same thing (rule 13), but we may not add a [fact](../docs/terminology.md#2-triples) the record doesn't state (rule 1 of *What counts as a fact*).
 
 ### Example record
 
@@ -2324,11 +2324,11 @@ If "lower uncertainty" doesn't clearly mean "than NSST": no comparison is writte
 
 ### My current reading
 
-Option 1, because the record names SST4's quantity only "SST", and the comparison with NSST is the only reading I see, with two products introduced as "the first" and "a second". For (c), I write only that the dataset holds SST4, since "can be present" doesn't state that NSST is there.
+Option 1, because the record names SST4's quantity only "SST", and the comparison with NSST is the only reading we see, with two products introduced as "the first" and "a second". For (c), we write only that the dataset holds SST4, since "can be present" doesn't state that NSST is there.
 
 ### My notes
 
-The example is the record at pool position 4. Until an expert answers, its ground truth keeps option 1, and HAS_VARIABLE "SST4" only. If experts say a "Nighttime" "SST MID-IR" product holds NSST too, I would still write it only if the record says so, and note the gap.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". Until an expert answers, its ground truth keeps option 1, and HAS_VARIABLE "SST4" only. If experts say a "Nighttime" "SST MID-IR" product holds NSST too, we would still write it only if the record says so, and note the gap.
 
 ### Consequences
 
@@ -2369,17 +2369,17 @@ The example is the record at pool position 4. Until an expert answers, its groun
 
 ### The question
 
-A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes the previous v2014.1 datasets". I read "R2019.0" and "V2019.0" as two names of one release, and wrote: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VERSION "V2019.0" (Version), and "V2019.0" (Version) SUPERSEDES "v2014.1" (Version). I would like to know:
+A record's title ends in "V2019.0", and its notes say "The R2019.0 supersedes the previous v2014.1 datasets". We read "R2019.0" and "V2019.0" as two names of one release, and wrote: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VERSION "V2019.0" (Version), and "V2019.0" (Version) SUPERSEDES "v2014.1" (Version). We would like to know:
 
-- (a) Are "R2019.0" and "V2019.0" the same release of the data? My reading, not checked against a source: "R" may stand for a reprocessing, and the reprocessing of 2019 made version 2019.0.
+- (a) Are "R2019.0" and "V2019.0" the same release of the data? Our reading, not checked against a source: "R" may stand for a reprocessing, and the reprocessing of 2019 made version 2019.0.
 - (b) If they are not the same, what is "R2019.0": a reprocessing, a release of the processing software, or something else?
-- (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". I wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
-- (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. I read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and I wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
-- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". I wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version). I also wrote "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version), since V1.0 stays the first version whatever is released later (decided 2026-10-25). Is that right, or is "the first version" a fact of another kind (the dataset has no earlier version)?
+- (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". We wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
+- (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. We read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and we wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
+- (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". We wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version). We also wrote "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version), since V1.0 stays the first version whatever is released later (decided 2026-10-25). Is that right, or is "the first version" a fact of another kind (the dataset has no earlier version)?
 
 ### Context
 
-Rule 13 of the annotation guidelines writes one thing with one wording in a record: of two wordings that say the same, the one the record uses most often, or, on a tie, the one it gives first. Each wording appears once, and the title comes first, so I wrote "V2019.0". If they are two names of one release, rule 10 of *Writing a classed triple* allows an ALSO_KNOWN_AS triple only when the record gives the other name in words of its own, which it doesn't here.
+Rule 13 of the annotation guidelines writes one thing with one wording in a record: of two wordings that say the same, the one the record uses most often, or, on a tie, the one it gives first. Each wording appears once, and the title comes first, so we wrote "V2019.0". If they are two names of one release, rule 10 of *Writing a classed triple* allows an ALSO_KNOWN_AS triple only when the record gives the other name in words of its own, which it doesn't here.
 
 ### Example record
 
@@ -2418,11 +2418,11 @@ They differ: "R2019.0" SUPERSEDES "v2014.1" (Version), as the record writes it, 
 
 ### My current reading
 
-Option 1, because the record calls both the release that replaces v2014.1, and nothing in it says they differ. I would change to option 2 if experts say "R" and "V" mark different things in NASA's ocean products. For (c), I keep "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version), since the record says the two terms "are used interchangeably"; if a Collection is a reprocessing of all MODIS products, "Collection 6.1" would need an entity class and a predicate of its own (something the dataset belongs to), which the ground truth schema doesn't have yet.
+Option 1, because the record calls both the release that replaces v2014.1, and nothing in it says they differ. We would change to option 2 if experts say "R" and "V" mark different things in NASA's ocean products. For (c), we keep "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version), since the record says the two terms "are used interchangeably"; if a Collection is a reprocessing of all MODIS products, "Collection 6.1" would need an entity class and a predicate of its own (something the dataset belongs to), which the ground truth schema doesn't have yet.
 
 ### My notes
 
-The example is the record at pool position 4; (c) is about the record at pool position 2. Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record at pool position 7 (decided 2026-10-25, for me to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`). (e) is about the record at pool position 13: I first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 of *What counts as a fact* ("V1.0 stays the first version whatever is released later"). If the answer says otherwise, that ground truth triple is deleted or changed.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"; (c) is about the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061". Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (decided 2026-10-25, for us to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`). (e) is about the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0": we first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 of *What counts as a fact* ("V1.0 stays the first version whatever is released later"). If the answer says otherwise, that ground truth triple is deleted or changed.
 
 ### Consequences
 
@@ -2465,18 +2465,18 @@ The example is the record at pool position 4; (c) is about the record at pool po
 
 ### The question
 
-I am annotating a record of a MODIS aerosol product, and three passages of its [text](../docs/terminology.md#1-records-and-their-text) I am not sure how to write as classed triples; one of them raises a question about another record too:
+We are annotating a record of a MODIS aerosol product, and three passages of its [text](../docs/terminology.md#1-records-and-their-text) we are not sure how to write as classed triples; one of them raises a question about another record too:
 
-- (a) "Near Real Time (NRT)": is it a latency (how soon after the observation the data are made available), a separate processing stream (a different product from the standard one), or a version? Each would be a different predicate, and the ground truth schema has none for a latency. Until you answer, I write no classed triple for it.
-- (b) "(MCD19A2N)": I have written it as an identifier of the dataset, with a predicate I coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" names its product "MOD11A1 Version 6", and the one users are encouraged to use instead "MOD11A1 Version 6.1": one short name for two versions. I wrote "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier). Is a short name that two versions share an identifier of each of them, or of the product across its versions? The same record gives its input's DOI as a link address, which I wrote as written: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier).
-- (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a [fact](../docs/terminology.md#2-triples) to write, as I now do (it says how the two datasets are connected), or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
-- (d) The same question of what counts as an identifier, in another record: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "Details of the map and data reduction are described in LAWRENCEETAL2013". I wrote LAWRENCEETAL2013 as a Document, "a written publication, or a set of them, named in words or by a reference key": "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document). Is a Planetary Data System reference key such as LAWRENCEETAL2013 the publication itself (a Document named by its key, as now), or an identifier of the publication, an Identifier of its own?
+- (a) "Near Real Time (NRT)": is it a latency (how soon after the observation the data are made available), a separate processing stream (a different product from the standard one), or a version? Each would be a different predicate, and the ground truth schema has none for a latency. Until you answer, we write no classed triple for it.
+- (b) "(MCD19A2N)": we have written it as an identifier of the dataset, with a predicate we coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" names its product "MOD11A1 Version 6", and the one users are encouraged to use instead "MOD11A1 Version 6.1": one short name for two versions. We wrote "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier). Is a short name that two versions share an identifier of each of them, or of the product across its versions? The same record gives its input's DOI as a link address, which we wrote as written: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier).
+- (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a [fact](../docs/terminology.md#2-triples) to write, as we now do (it says how the two datasets are connected), or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
+- (d) The same question of what counts as an identifier, in another record: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "Details of the map and data reduction are described in LAWRENCEETAL2013". We wrote LAWRENCEETAL2013 as a Document, "a written publication, or a set of them, named in words or by a reference key": "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document). Is a Planetary Data System reference key such as LAWRENCEETAL2013 the publication itself (a Document named by its key, as now), or an identifier of the publication, an Identifier of its own?
 
 ### Context
 
-Below are the facts I have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. I have written no fact for "Near Real Time (NRT)" until (a) is answered. For (c), I have written "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), and left out what MCD19A1N holds (rule 11, quoted below).
+Below are the facts we have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. We have written no fact for "Near Real Time (NRT)" until (a) is answered. For (c), we have written "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), and left out what MCD19A1N holds (rule 11, quoted below).
 
-What I have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.earthdata.nasa.gov/data/projects/lance) says: "Near real-time (NRT) refers to data available 1 to 3 hours after an observation by an instrument aboard a space-based platform"; the Terra, Aqua and Aura measurements "are processed into higher-level "standard" products within 8 to 40 hours of observation"; and "If latency is not a primary concern, users are encouraged to use standard science products, which are created using the best available ancillary, calibration, and ephemeris information". MODAPS lists MCD19A2N among its Collection 6.1 NRT products, as a product of its own, with its own DOI, 10.5067/MODIS/MCD19A2N.NRT.061 (https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html), apart from the standard product MCD19A2. So my reading of the sources: NRT here names a processing stream, a separate product, whose defining property is how soon it is made available. The record itself states no number of hours, and the annotation guidelines write only what the record states, so a latency value from these sources can't go into its ground truth. The catalog also has another record, titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT", whose notes begin with the same words as this record's.
+What we have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.earthdata.nasa.gov/data/projects/lance) says: "Near real-time (NRT) refers to data available 1 to 3 hours after an observation by an instrument aboard a space-based platform"; the Terra, Aqua and Aura measurements "are processed into higher-level "standard" products within 8 to 40 hours of observation"; and "If latency is not a primary concern, users are encouraged to use standard science products, which are created using the best available ancillary, calibration, and ephemeris information". MODAPS lists MCD19A2N among its Collection 6.1 NRT products, as a product of its own, with its own DOI, 10.5067/MODIS/MCD19A2N.NRT.061 (https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html), apart from the standard product MCD19A2. So our reading of the sources: NRT here names a processing stream, a separate product, whose defining property is how soon it is made available. The record itself states no number of hours, and the annotation guidelines write only what the record states, so a latency value from these sources can't go into its ground truth. The catalog also has another record, titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT", whose notes begin with the same words as this record's.
 
 ### Example record
 
@@ -2543,17 +2543,17 @@ None of (a), (b), (c) is written as a fact for now: the record keeps only the fa
 
 #### Option 3: New predicates for a latency and an identifier
 
-A new predicate for a latency (the dataset has the latency "Near Real Time (NRT)"), and the one I coined for an identifier kept (the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier)), both in the ground truth schema, with HAS_DOI either kept or made one with HAS_IDENTIFIER (question (b)); (c) and (d) as you answer them.
+A new predicate for a latency (the dataset has the latency "Near Real Time (NRT)"), and the one we coined for an identifier kept (the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier)), both in the ground truth schema, with HAS_DOI either kept or made one with HAS_IDENTIFIER (question (b)); (c) and (d) as you answer them.
 
 ### My current reading
 
-Undecided. For (a), I lean towards reading NRT as a processing stream, a product of its own (the sources above), with no latency value, since the record states none. For (b), I lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), I write "MCD19A1N" COMPUTED_FROM this dataset, by rule 11 ("In every case, include the fact of how the two datasets are connected"), and leave out what MCD19A1N holds, since it is made from this dataset. For (d), I keep LAWRENCEETAL2013 a Document, as the definition of Document names it. I would still like to know whether MCD19A1N is computed from this product, and whether "the atmospheric properties and view geometry" are what this dataset holds.
+Undecided. For (a), we lean towards reading NRT as a processing stream, a product of its own (the sources above), with no latency value, since the record states none. For (b), we lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), we write "MCD19A1N" COMPUTED_FROM this dataset, by rule 11 ("In every case, include the fact of how the two datasets are connected"), and leave out what MCD19A1N holds, since it is made from this dataset. For (d), we keep LAWRENCEETAL2013 a Document, as the definition of Document names it. We would still like to know whether MCD19A1N is computed from this product, and whether "the atmospheric properties and view geometry" are what this dataset holds.
 
 ### My notes
 
-The example is the record at pool position 6, in the ground truth now: the triple with HAS_IDENTIFIER is written so for now. "Near Real Time (NRT)" has no classed triple until (a) is answered. The record titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT" is not in my ground truth candidates pool. (d) is about the record at pool position 5, only named in the question; its classed triple is listed under Affects. Until an expert answers (d), its ground truth keeps LAWRENCEETAL2013 a Document.
+The example is the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", in the ground truth now: the triple with HAS_IDENTIFIER is written so for now. "Near Real Time (NRT)" has no classed triple until (a) is answered. The record titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT" is not in our ground truth candidates pool. (d) is about the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0", only named in the question; its classed triple is listed under Affects. Until an expert answers (d), its ground truth keeps LAWRENCEETAL2013 a Document.
 
-Pending facts, for the record at pool position 6:
+Pending facts, for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid":
 
 - pending fact: its fact 11, "Near Real Time (NRT)", left without a fact for now; added if the answer to (a) says what it is (a latency, a processing stream or a version), with the predicate that answer calls for.
 - its fact 12, "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset): no longer pending, a ground truth triple now (decided 2026-10-25), by rule 11 of *Writing a classed triple* ("In every case, include the fact of how the two datasets are connected"); deleted if the answer to (c) says it is a fact about the other dataset only. What MCD19A1N holds stays left out (`annotations/left_out.md`).
@@ -2612,9 +2612,9 @@ Pending facts, for the record at pool position 6:
 
 ### The question
 
-The ground truth writes each subject instance and object instance in the record's own words. For the instruments, spacecraft, missions and physical quantities of the ground truth schema, published lists of values exist, and a record's words could be checked against them, or replaced by them. I would like to know:
+The ground truth writes each subject instance and object instance in the record's own words. For the instruments, spacecraft, missions and physical quantities of the ground truth schema, published lists of values exist, and a record's words could be checked against them, or replaced by them. We would like to know:
 
-- (a) Which reference list do experts in this field rely on for the Instrument, Spacecraft, Mission and PhysicalQuantity of a dataset? The one I know of is the Global Change Master Directory (GCMD) Keywords, "a hierarchical set of controlled Earth Science vocabularies", with lists of Instruments/Sensors, Platforms/Sources, Projects, and Measurement Names, among others (https://www.earthdata.nasa.gov/data/tools/gcmd-keyword-viewer). Is it the right one for this catalog, and is there a list of the same standing for the planetary, astrophysics and heliophysics records, whose missions and instruments are beyond Earth science?
+- (a) Which reference list do experts in this field rely on for the Instrument, Spacecraft, Mission and PhysicalQuantity of a dataset? The one we know of is the Global Change Master Directory (GCMD) Keywords, "a hierarchical set of controlled Earth Science vocabularies", with lists of Instruments/Sensors, Platforms/Sources, Projects, and Measurement Names, among others (https://www.earthdata.nasa.gov/data/tools/gcmd-keyword-viewer). Is it the right one for this catalog, and is there a list of the same standing for the planetary, astrophysics and heliophysics records, whose missions and instruments are beyond Earth science?
 - (b) What questions should the knowledge graph built from this catalog be able to answer for you? For example: "Which datasets were collected by MODIS aboard Aqua at Level 3?", or "Which datasets cover the Arctic every day?". Your questions decide which facts matter most, and so which entity classes and predicates the ground truth schema needs.
 
 ### Context
@@ -2641,11 +2641,11 @@ Each record keeps its own words; the values on a reference list are added to the
 
 ### My current reading
 
-Undecided, leaning towards option 3, because it keeps the ground truth close to what each record states, and still lets the knowledge graph use a reference list. I would choose option 2 for an entity class whose values an expert says form a short, closed list.
+Undecided, leaning towards option 3, because it keeps the ground truth close to what each record states, and still lets the knowledge graph use a reference list. We would choose option 2 for an entity class whose values an expert says form a short, closed list.
 
 ### My notes
 
-Linking instances to reference lists is on my list of improvements to the pipeline (quoted below, under Pipeline method), as a later stage that keeps each record's own words.
+Linking instances to reference lists is on our list of improvements to the pipeline (quoted below, under Pipeline method), as a later stage that keeps each record's own words.
 
 ### Consequences
 
@@ -2663,7 +2663,7 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 #### Option 3: Own words in the ground truth, reference lists added later
 
 - The annotation guidelines and the ground truth don't change, and the knowledge graph can still be searched by a list's values.
-- Work to match each wording to a list's value, outside the ground truth: on my list of improvements, not built yet.
+- Work to match each wording to a list's value, outside the ground truth: on our list of improvements, not built yet.
 
 ### Affects
 
@@ -2773,15 +2773,15 @@ Linking instances to reference lists is on my list of improvements to the pipeli
 
 ### The question
 
-The title of the example below says "4km", and its notes say the products "are available at both 4.63 and 9.26 km spatial resolution". Rule 13 of the annotation guidelines writes one thing with one wording in a record, the more precise one when two wordings name the same thing; its own example is this record: "a title says "4km" and the notes say "4.63 km". Then: "4.63 km", the more precise." So I wrote "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), and nothing for 9.26 km, which rule 11 leaves out as a fact about another dataset (the same data at another resolution). Whether that is right depends on facts I can't check from the record. I would like to know:
+The title of the example below says "4km", and its notes say the products "are available at both 4.63 and 9.26 km spatial resolution". Rule 13 of the annotation guidelines writes one thing with one wording in a record, the more precise one when two wordings name the same thing; its own example is this record: "a title says "4km" and the notes say "4.63 km". Then: "4.63 km", the more precise." So we wrote "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), and nothing for 9.26 km, which rule 11 leaves out as a fact about another dataset (the same data at another resolution). Whether that is right depends on facts we can't check from the record. We would like to know:
 
-- (a) Is "4km" in such a title the rounded name of the 4.63 km grid, so that the two name one resolution? My reading, not checked against a source: 4.63 km is about 1/24 of a degree at the equator, and the products are named by the rounded value.
+- (a) Is "4km" in such a title the rounded name of the 4.63 km grid, so that the two name one resolution? Our reading, not checked against a source: 4.63 km is about 1/24 of a degree at the equator, and the products are named by the rounded value.
 - (b) Is the dataset of this record only the 4.63 km one, with the 9.26 km products in a record of their own, so that 9.26 km is about another dataset?
-- (c) The record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" is the same case: its title says "1km" and its notes "produced daily at 1 kilometer (km) pixel resolutions", and I have written "1 kilometer (km)", the wording that spells out its abbreviation. Is a title's rounded or shortened value always the notes' value, for products of this catalog, or can the two differ?
+- (c) The record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" is the same case: its title says "1km" and its notes "produced daily at 1 kilometer (km) pixel resolutions", and we have written "1 kilometer (km)", the wording that spells out its abbreviation. Is a title's rounded or shortened value always the notes' value, for products of this catalog, or can the two differ?
 
 ### Context
 
-The spatial resolutions I have written so far: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the example below), and "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
+The spatial resolutions we have written so far: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the example below), and "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
 
 ### Example record
 
@@ -2815,11 +2815,11 @@ The dataset HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), the more preci
 
 ### My current reading
 
-Option 1, because rule 13 takes the more precise wording and the record's own words give 4.63 km as one of the two resolutions it is available at. I would move to option 2 only if experts say a title's value and the notes' value can name different resolutions.
+Option 1, because rule 13 takes the more precise wording and the record's own words give 4.63 km as one of the two resolutions it is available at. We would move to option 2 only if experts say a title's value and the notes' value can name different resolutions.
 
 ### My notes
 
-The example is the record at pool position 4. The ground truth triples with HAS_SPATIAL_RESOLUTION so far are listed under Affects: "500m" (pool position 2), "4.63 km" (pool position 4), and "1 kilometer (km)" (pool position 6).
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". The ground truth triples with HAS_SPATIAL_RESOLUTION so far are listed under Affects: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
 
 ### Consequences
 
@@ -2859,15 +2859,15 @@ The example is the record at pool position 4. The ground truth triples with HAS_
 
 ### The question
 
-The example below says Aqua was launched "into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS)". I wrote "Aqua" (Spacecraft) FLIES_IN ("flies in formation as part of") "A-train" (SatelliteFormation), a SatelliteFormation being "a group of Spacecraft flying together in formation in orbit, e.g. the A-train". The A-train may be read in more than one way, and I would like to know:
+The example below says Aqua was launched "into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS)". We wrote "Aqua" (Spacecraft) FLIES_IN ("flies in formation as part of") "A-train" (SatelliteFormation), a SatelliteFormation being "a group of Spacecraft flying together in formation in orbit, e.g. the A-train". The A-train may be read in more than one way, and we would like to know:
 
-- (a) Is the A-train a formation (spacecraft flying close together, in an arrangement kept on purpose), a constellation (spacecraft in coordinated orbits, which need not fly close together), or something else? My reading, not checked against a source: NASA also calls it the "Afternoon Constellation".
+- (a) Is the A-train a formation (spacecraft flying close together, in an arrangement kept on purpose), a constellation (spacecraft in coordinated orbits, which need not fly close together), or something else? Our reading, not checked against a source: NASA also calls it the "Afternoon Constellation".
 - (b) If it is a constellation: should the ground truth schema's entity class be one for any group of spacecraft that work together (a constellation, a formation, a train), or should formations and constellations be told apart?
 - (c) Is "formation flying in the A-train" a fact about Aqua (the spacecraft) or about its mission?
 
 ### Context
 
-Of the records I have read so far, the example below is the only one that names a group of spacecraft.
+Of the records we have read so far, the example below is the only one that names a group of spacecraft.
 
 ### Example record
 
@@ -2896,11 +2896,11 @@ An entity class for any group of spacecraft that work together, in place of Sate
 
 ### My current reading
 
-Option 1 for now, because the record itself says "formation flying". I would move to option 2 if experts say the A-train is a constellation, or that the difference doesn't matter for a search of this catalog.
+Option 1 for now, because the record itself says "formation flying". We would move to option 2 if experts say the A-train is a constellation, or that the difference doesn't matter for a search of this catalog.
 
 ### My notes
 
-The example is the record at pool position 4, the only tuning record annotated so far that names a group of spacecraft; its one classed triple with FLIES_IN is listed under Affects.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the only tuning record annotated so far that names a group of spacecraft; its one classed triple with FLIES_IN is listed under Affects.
 
 ### Consequences
 
@@ -2930,7 +2930,7 @@ The example is the record at pool position 4, the only tuning record annotated s
 
 ### The question
 
-The notes of a record often describe more than the one dataset the record is about: they describe the product family it belongs to. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km (4.63 km), nighttime product; its notes say that "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution", and begin "Day and night spatially gridded (L3) ... products". So the record also states which temporal resolutions (daily, monthly, annual), which spatial resolution (9.26 km) and which time of day (day) the other products of the family have. Rule 11 of the annotation guidelines leaves these out, because each of those products is another dataset with a record of its own, where its facts go. The ground truth then says that this dataset is "weekly (8 day)" and "4.63 km", and nothing says that the others exist. I would like to know:
+The notes of a record often describe more than the one dataset the record is about: they describe the product family it belongs to. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km (4.63 km), nighttime product; its notes say that "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution", and begin "Day and night spatially gridded (L3) ... products". So the record also states which temporal resolutions (daily, monthly, annual), which spatial resolution (9.26 km) and which time of day (day) the other products of the family have. Rule 11 of the annotation guidelines leaves these out, because each of those products is another dataset with a record of its own, where its facts go. The ground truth then says that this dataset is "weekly (8 day)" and "4.63 km", and nothing says that the others exist. We would like to know:
 
 - (a) Is the information about the family worth keeping, in a knowledge graph of this catalog? Would someone ask "which temporal resolutions does this product come in?", or "is there a 9.26 km version of it?", and expect an answer from the record that describes only one of them?
 - (b) If it is, as what? As facts about each of the other products (each of them a dataset, but with no record of its own to hold its title), as facts about a family of products (a group of datasets sharing a name, with the family's own facts), or on the instrument that makes them?
@@ -2938,7 +2938,7 @@ The notes of a record often describe more than the one dataset the record is abo
 
 ### Context
 
-The same happens with the releases of a product: the record also says "The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4", and I wrote only that "V2019.0" replaces "v2014.1", not the address of the older datasets. Another record of the catalog (titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") names the standard product and its Near Real Time sibling in one sentence.
+The same happens with the releases of a product: the record also says "The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4", and we wrote only that "V2019.0" replaces "v2014.1", not the address of the older datasets. Another record of the catalog (titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") names the standard product and its Near Real Time sibling in one sentence.
 
 How the groups of datasets could be written, if they are, depends on how the ground truth schema treats kinds and parts of things; that is asked in another question (Q25).
 
@@ -2988,16 +2988,16 @@ Please describe it.
 
 ### My current reading
 
-Option 1 for now, because rule 11 says so and the family facts need an entity class and predicates the ground truth schema does not have. But I think the information is worth keeping if an expert says people ask for it, and I would then lean towards option 2, since the facts are about the family, not about one instrument. I would like to know first whether a person looking for this product would expect to learn the other temporal resolutions and spatial resolutions from this record.
+Option 1 for now, because rule 11 says so and the family facts need an entity class and predicates the ground truth schema does not have. But we think the information is worth keeping if an expert says people ask for it, and we would then lean towards option 2, since the facts are about the family, not about one instrument. We would like to know first whether a person looking for this product would expect to learn the other temporal resolutions and spatial resolutions from this record.
 
 ### My notes
 
-The example is the record at pool position 4, the densest record I have annotated: the items its notes leave out are listed in `annotations/left_out.md`. Q22 asks a narrower question about the same sentence (is the title's "4km" the notes' "4.63 km"), and Q5 (b) what the "Average" means; neither is settled by this one. I decided against merging this into Q19 (releases, "R2019.0" and "Collection"): an answer about whether "R2019.0" is "V2019.0" does not settle whether a family of products is recorded. It is not merged into Q25 either: Q25 asks how the schema groups things; this asks whether the facts are wanted at all, and one answer to this does not settle the other, though option 2 needs Q25's answer for a part-of predicate.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the densest record we have annotated: the items its notes leave out are listed in `annotations/left_out.md`. Q22 asks a narrower question about the same sentence (is the title's "4km" the notes' "4.63 km"), and Q5 (b) what the "Average" means; neither is settled by this one. We decided against merging this into Q19 (releases, "R2019.0" and "Collection"): an answer about whether "R2019.0" is "V2019.0" does not settle whether a family of products is recorded. It is not merged into Q25 either: Q25 asks how the schema groups things; this asks whether the facts are wanted at all, and one answer to this does not settle the other, though option 2 needs Q25's answer for a part-of predicate.
 
 Items of `annotations/left_out.md` that this answer may bring back as ground truth triples:
 
-- the record at pool position 4: "Day"; "daily", "monthly" and "annual"; "9.26 km"; "Average"; the DOI of the previous v2014.1 datasets;
-- the record at pool position 6: the Near Real Time (NRT) product and the product MCD19A1N computed from this dataset, as members of a family (their own question: Q20).
+- the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0": "Day"; "daily", "monthly" and "annual"; "9.26 km"; "Average"; the DOI of the previous v2014.1 datasets;
+- the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid": the Near Real Time (NRT) product and the product MCD19A1N computed from this dataset, as members of a family (their own question: Q20).
 
 ### Consequences
 
@@ -3009,7 +3009,7 @@ Items of `annotations/left_out.md` that this answer may bring back as ground tru
 #### Option 2: A new entity class for a product family, with its own facts
 
 - A new entity class and a predicate saying a dataset is a member of a family (see Q25), in the ground truth schema, with their definitions, and an example in rule 11 of the annotation guidelines and in the model's copy of the rules.
-- The listed items become ground truth triples of the family; the record at pool position 4 gets one more ground truth triple, for the membership.
+- The listed items become ground truth triples of the family; the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" gets one more ground truth triple, for the membership.
 - Every record that lists its siblings is written the same way, so a family has one name in all of them: the work of joining the names of one family grows.
 
 #### Option 3: Record them on the instrument
@@ -3040,14 +3040,14 @@ Items of `annotations/left_out.md` that this answer may bring back as ground tru
 
 ### The question
 
-The ground truth schema is a flat list: no entity class is a kind of another, and no predicate says a thing belongs to a group of things, except PART_OF ("is one part of"), which I coined for one record. Two questions follow, and I would like to know:
+The ground truth schema is a flat list: no entity class is a kind of another, and no predicate says a thing belongs to a group of things, except PART_OF ("is one part of"), which we coined for one record. Two questions follow, and we would like to know:
 
-- (1) Which entity classes are kinds of others? My guess: a Spacecraft, an aircraft, a ship, a balloon and a ground station are kinds of a platform (the thing that carries instruments; whether this catalog needs one entity class for it is Q4 (d)); a Person, a Team and an Organization are kinds of an agent (a party that develops, sponsors, launches or is responsible for something). If these were kinds of a larger entity class, a predicate such as "developed by" could say "any agent" instead of listing the three, and a search could ask for anything a platform carries. Are these two groups right? Which other kinds of kinds do you see in this catalog (for example, a Dataset and a Document as kinds of something that holds information)?
+- (1) Which entity classes are kinds of others? Our guess: a Spacecraft, an aircraft, a ship, a balloon and a ground station are kinds of a platform (the thing that carries instruments; whether this catalog needs one entity class for it is Q4 (d)); a Person, a Team and an Organization are kinds of an agent (a party that develops, sponsors, launches or is responsible for something). If these were kinds of a larger entity class, a predicate such as "developed by" could say "any agent" instead of listing the three, and a search could ask for anything a platform carries. Are these two groups right? Which other kinds of kinds do you see in this catalog (for example, a Dataset and a Document as kinds of something that holds information)?
 - (2) Which groupings of instances matter? In the example below, the notes name a part of an instrument: "GRaND plus Z boron loaded sensor" is one part of "GRaND". Other groupings of the same shape: a product family (the daily, weekly, monthly and annual products of one kind of data, Q24), a mission and its phases, a formation and its spacecraft. For each, is "is part of" the right link, or are they different kinds of link (a member of a group, a part of a whole, a phase of a mission) that should not share one predicate?
 
 ### Context
 
-Today each predicate lists the entity classes it takes, so "developed by" lists Organization, Person and Team one by one. A hierarchy (an entity class that is a kind of another) is standard in schemas of knowledge graphs; adding one to the ground truth schema would change how the ground truth is written and how the model's schema is compared with it, so I want to know first whether the catalog needs it.
+Today each predicate lists the entity classes it takes, so "developed by" lists Organization, Person and Team one by one. A hierarchy (an entity class that is a kind of another) is standard in schemas of knowledge graphs; adding one to the ground truth schema would change how the ground truth is written and how the model's schema is compared with it, so we want to know first whether the catalog needs it.
 
 ### Example record
 
@@ -3087,11 +3087,11 @@ Please describe it.
 
 ### My current reading
 
-Option 1 for now: the ground truth has one use of PART_OF and no record whose facts need a kind of a kind. I would move to option 2 if experts say the two groups of question (1) are right, since the same fact is then asked across several entity classes, and I would add the separate links of option 3 only for groupings that experts say differ.
+Option 1 for now: the ground truth has one use of PART_OF and no record whose facts need a kind of a kind. We would move to option 2 if experts say the two groups of question (1) are right, since the same fact is then asked across several entity classes, and we would add the separate links of option 3 only for groupings that experts say differ.
 
 ### My notes
 
-The example is the record at pool position 5, the only tuning record annotated so far with a PART_OF triple (listed under Affects). Q4 (d) asks the platform half of (1) for the data's carriers; Q24 is the product family half of (2), kept apart because it asks whether the family facts are wanted at all. Both would use the hierarchy this question asks for if it is kept: the improvements item "An entity class hierarchy for the schemas" (`docs/improvements.md`) lists what it touches (the schema reader and its file format, the pin check, step 040's induced schema, the translation table). The same file's item "Kinds of translation, not only "means the same"" would let a row of the translation table say a current-schema entity class is narrower or broader than a ground truth schema one, instead of only equal or none: with a hierarchy, a row for an aircraft could say it is a kind of a platform.
+The example is the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0", the only tuning record annotated so far with a PART_OF triple (listed under Affects). Q4 (d) asks the platform half of (1) for the data's carriers; Q24 is the product family half of (2), kept apart because it asks whether the family facts are wanted at all. Both would use the hierarchy this question asks for if it is kept: the improvements item "An entity class hierarchy for the schemas" (`docs/improvements.md`) lists what it touches (the schema reader and its file format, the pin check, step 040's induced schema, the translation table). The same file's item "Kinds of translation, not only "means the same"" would let a row of the translation table say a current-schema entity class is narrower or broader than a ground truth schema one, instead of only equal or none: with a hierarchy, a row for an aircraft could say it is a kind of a platform.
 
 ### Consequences
 
@@ -3139,7 +3139,7 @@ The example is the record at pool position 5, the only tuning record annotated s
 
 ### The question
 
-Some records of the catalog describe a table from an astronomical study, and most of their notes tell the study itself: what the authors aimed to find, the method they used, and what they found. The example below is one. I have left all of it out of the ground truth for now. If it is to be written, I would write it with "the authors" as the subject (a Team, the ground truth schema's entity class for "a group of people without a name of its own"), and I would coin three entries: the predicates USED_METHOD and REPORTED, and the entity class Finding. I would like to know:
+Some records of the catalog describe a table from an astronomical study, and most of their notes tell the study itself: what the authors aimed to find, the method they used, and what they found. The example below is one. We have left all of it out of the ground truth for now. If it is to be written, we would write it with "the authors" as the subject (a Team, the ground truth schema's entity class for "a group of people without a name of its own"), and we would coin three entries: the predicates USED_METHOD and REPORTED, and the entity class Finding. We would like to know:
 
 - (a) For someone searching this catalog, are a study's findings (for example "a strong anti-correlation of the variability with X-ray luminosity, accompanied by a change of the slope of the SF") worth having in the knowledge graph, or only what the table holds and where it comes from?
 - (b) If they are: is "the authors" the right subject, or the table itself (whose title names what the study is about), or the publication the table comes from (which the record names only by its catalog's key, "CDS Catalog J/A+A/536/A84")?
@@ -3147,7 +3147,7 @@ Some records of the catalog describe a table from an astronomical study, and mos
 
 ### Context
 
-The notes also say what is in the table: its sources were selected from "2XMMi-DR3", "cross-correlated with the DR7 edition of the SDSS Quasar Catalog", "resulting in 412 quasars that were observed by XMM-Newton from 2 to 25 epochs each for a total of 1376 observations". Those I wrote as facts of the table, whatever the answer here. One finding is negated ("They do not find evidence of the break in the SF"), and I wrote no fact for it, since the annotation guidelines leave out negated facts. I also left out the background the notes start with (how the X-ray variability of AGN "has been most often investigated"), and that the structure function "is also more appropriate than fractional variability and excess variance": the first names no study or thing of its own, and the second is a judgement.
+The notes also say what is in the table: its sources were selected from "2XMMi-DR3", "cross-correlated with the DR7 edition of the SDSS Quasar Catalog", "resulting in 412 quasars that were observed by XMM-Newton from 2 to 25 epochs each for a total of 1376 observations". Those we wrote as facts of the table, whatever the answer here. One finding is negated ("They do not find evidence of the break in the SF"), and we wrote no fact for it, since the annotation guidelines leave out negated facts. We also left out the background the notes start with (how the X-ray variability of AGN "has been most often investigated"), and that the structure function "is also more appropriate than fractional variability and excess variance": the first names no study or thing of its own, and the second is a judgement.
 
 ### Example record
 
@@ -3192,15 +3192,15 @@ Only what the table holds, how it was made and where it comes from are facts; th
 
 ### My current reading
 
-Option 3 for now (decided 2026-10-25, for me to confirm): the ground truth keeps what the table holds and where it comes from, and the study's aim, method and findings wait for your answer. If your answer to (a) is that findings belong in the knowledge graph, option 1 or 2, by your answer to (b).
+Option 3 for now (decided 2026-10-25, for us to confirm): the ground truth keeps what the table holds and where it comes from, and the study's aim, method and findings wait for your answer. If your answer to (a) is that findings belong in the knowledge graph, option 1 or 2, by your answer to (b).
 
 ### My notes
 
-The example is the record at pool position 12, the only tuning record annotated so far that tells a study (decided 2026-10-25, for me to confirm). Its other doubts: the source catalogs as datasets, and AGN as a target (Q12 (d)); the authors' aim and the method's "allows for" as purposes (Q9 (d)). What was left out, with its rule, is in `annotations/left_out.md`.
+The example is the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3", the only tuning record annotated so far that tells a study (decided 2026-10-25, for us to confirm). Its other doubts: the source catalogs as datasets, and AGN as a target (Q12 (d)); the authors' aim and the method's "allows for" as purposes (Q9 (d)). What was left out, with its rule, is in `annotations/left_out.md`.
 
-Three more items of `annotations/left_out.md` for this record wait on this answer (decided 2026-10-25): "serendipitously selected" (how the study selected its samples), written with the study's method if the answer is option 1 or 2, else left out; "corresponding to the uncertainty in the X-ray positions" (why the maximum distance of 1.5 arcseconds was chosen), written with the pending fact HAS_MATCHING_DISTANCE if that fact is written, else left out; "taking account of the substantial overlaps between observations" (how the net sky area of 2XMMi-DR3, my ground truth triple HAS_SKY_AREA "~ 504 deg^2", was computed from its fields), which is a method of the catalog, not of the study, so it is written only if the answer makes such methods facts too.
+Three more items of `annotations/left_out.md` for this record wait on this answer (decided 2026-10-25): "serendipitously selected" (how the study selected its samples), written with the study's method if the answer is option 1 or 2, else left out; "corresponding to the uncertainty in the X-ray positions" (why the maximum distance of 1.5 arcseconds was chosen), written with the pending fact HAS_MATCHING_DISTANCE if that fact is written, else left out; "taking account of the substantial overlaps between observations" (how the net sky area of 2XMMi-DR3, our ground truth triple HAS_SKY_AREA "~ 504 deg^2", was computed from its fields), which is a method of the catalog, not of the study, so it is written only if the answer makes such methods facts too.
 
-Pending facts, for the record at pool position 12 (bb1fe4b0, in the ground truth now without them; decided 2026-10-25, for me to confirm), each added if the answer says yes:
+Pending facts, for the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (bb1fe4b0, in the ground truth now without them; decided 2026-10-25, for us to confirm), each added if the answer says yes:
 
 - pending fact: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose)
 - pending fact: "the authors" (Team) USED_METHOD "structure function (SF)" (Algorithm)
@@ -3244,19 +3244,19 @@ Pending facts, for the record at pool position 12 (bb1fe4b0, in the ground truth
 
 ### The question
 
-Some words of a record say how a fact holds: the ground truth triple already states the fact, and the word adds only how it holds. I have left these words out of the ground truth for now. The four I have found so far:
+Some words of a record say how a fact holds: the ground truth triple already states the fact, and the word adds only how it holds. We have left these words out of the ground truth for now. The four we have found so far:
 
-| Record | The record's words | The ground truth triple I wrote | What the word adds |
+| Record | The record's words | The ground truth triple we wrote | What the word adds |
 |---|---|---|---|
 | the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" | "developed collaboratively between the U.S. National Aeronautics and Space Administration (NASA) and Argentina's space agency, Comisión Nacional de Actividades Espaciales (CONAE)" | "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization), and the same with "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) | "collaboratively": how the two agencies worked |
 | the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" | "The RDR data convert the EDR (raw) sensor data, from the entire comet encounter" | "RDR data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase) | "entire": how much of the phase the data come from |
 | the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" | "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)" | "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody) | "prime": that the comet is the main target |
 | the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" | "Provided along with the daytime and nighttime surface temperature bands are associated quality control assessments" | "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "quality control assessments" (PhysicalQuantity) | "associated": that the assessments go with the temperatures |
 
-I would like to know:
+We would like to know:
 
 - (a) For each word in the table: would someone searching this catalog want to find datasets by it, or can it be left out?
-- (b) "prime" in particular: would someone searching care whether a body is a dataset's main target, rather than one of its targets? My reading, not checked against a source: a main target means that other bodies may be in the images too.
+- (b) "prime" in particular: would someone searching care whether a body is a dataset's main target, rather than one of its targets? Our reading, not checked against a source: a main target means that other bodies may be in the images too.
 - (c) If such words can be left out in general, is this new rule right: "Not a word that only says how a fact holds. A ground truth triple has no place for it: the subject and object are things, and the predicate is the link."
 
 ### Example record
@@ -3292,11 +3292,11 @@ Each word that people search on gets a ground truth triple of its own, with a pr
 
 ### My current reading
 
-Option 1, because in each case the ground truth triple already finds the dataset, and the word adds nothing a search would use. "prime" is the one I am least sure of, since a search for the other bodies in the images would need it.
+Option 1, because in each case the ground truth triple already finds the dataset, and the word adds nothing a search would use. "prime" is the one we are least sure of, since a search for the other bodies in the images would need it.
 
 ### My notes
 
-The example is the record at pool position 13. The four words are left out now, each an item of `annotations/left_out.md` that waits on this answer (decided 2026-10-25): "collaboratively" (pool position 3), "entire" (pool position 9), "prime" (pool position 13) and "associated" (pool position 7).
+The example is the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0". The four words are left out now, each an item of `annotations/left_out.md` that waits on this answer (decided 2026-10-25): "collaboratively" (the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"), "entire" (the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0"), "prime" (the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0") and "associated" (the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006").
 
 ### Consequences
 
@@ -3334,19 +3334,19 @@ The example is the record at pool position 13. The four words are left out now, 
 
 ### The question
 
-Some words of a record state something that no predicate of the ground truth schema holds, beyond a ground truth triple I wrote from the same passage or about the same thing. I have left them out of the ground truth for now. The three I have found so far:
+Some words of a record state something that no predicate of the ground truth schema holds, beyond a ground truth triple we wrote from the same passage or about the same thing. We have left them out of the ground truth for now. The three we have found so far:
 
-| Record | The record's words | The ground truth triple I wrote | What is left out |
+| Record | The record's words | The ground truth triple we wrote | What is left out |
 |---|---|---|---|
 | the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" | "global NASA skin sea surface temperature (SST) products" | "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization), from "The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG)" | "NASA": whose products these are |
 | the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" | "For complete information about known issues please refer to the MODIS/VIIRS Land Quality Assessment website" | "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) DOCUMENTED_AT "https://landweb.modaps.eosdis.nasa.gov/knownissue?sensor=MODIS&sat=Terra&as=6" (WebPage) | what the page is about: known issues |
 | the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" | "Lien corrected dataset after September 2019 PSA/PDS external peer review" | "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) REVISED_AFTER "September 2019 PSA/PDS external peer review" (Task) | "Lien": what was corrected |
 
-I would like to know:
+We would like to know:
 
 - (a) Is "NASA" in "global NASA skin sea surface temperature (SST) products" a fact beyond who generated the products, worth a predicate of its own (whose products they are)?
 - (b) Should the ground truth say what a web page is about (here, known issues), beyond that more details are written there?
-- (c) What does "Lien" mean here, and is it worth a fact beyond that the dataset was corrected after the review? My reading, not checked against a source: it names the issues the review raised.
+- (c) What does "Lien" mean here, and is it worth a fact beyond that the dataset was corrected after the review? Our reading, not checked against a source: it names the issues the review raised.
 
 ### Example record
 
@@ -3373,11 +3373,11 @@ I would like to know:
 
 ### My current reading
 
-Leave all three out, as now. For (a), the ground truth triple of who generated the products already says they are NASA's. For (b) and (c), I would write a fact if people search for a dataset's known issues, or for what a review changed.
+Leave all three out, as now. For (a), the ground truth triple of who generated the products already says they are NASA's. For (b) and (c), we would write a fact if people search for a dataset's known issues, or for what a review changed.
 
 ### My notes
 
-The example is the record at pool position 4. Each of the three is an item of `annotations/left_out.md` that waits on this answer (decided 2026-10-25), and each answer settles one item: if it is worth a fact, a predicate is coined for it in the ground truth schema and the item comes back as a ground truth triple; if not, it stays left out. (a) is about the record at pool position 4, (b) about the record at pool position 7, (c) about the record at pool position 13.
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". Each of the three is an item of `annotations/left_out.md` that waits on this answer (decided 2026-10-25), and each answer settles one item: if it is worth a fact, a predicate is coined for it in the ground truth schema and the item comes back as a ground truth triple; if not, it stays left out. (a) is about the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", (b) about the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", (c) about the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0".
 
 ### Affects
 

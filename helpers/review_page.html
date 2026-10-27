@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Nothing on this page may reach the network: no address outside the page itself loads (typefaces come inline). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
-<title>Schema review ({{VERSION}})</title>
+<title>Review our work: a knowledge graph for data.nasa.gov ({{VERSION}})</title>
 <link rel="icon" href="data:,">
 <!-- The annotation tool's look, copied from helpers/annotator/page.html when this page was made by
      helpers/review_page.py (its typefaces, Libre Franklin and JetBrains Mono, SIL Open Font License, are inside),
@@ -19,27 +19,20 @@
 </style>
 <style>
   /* this page's own additions. The palette and typefaces are the demo deck's, so the page and the slides read as one
-     set: deep teal, teal, gold and indigo on a light page; Archivo for headings, Atkinson Hyperlegible for the text.
-     Every text colour on its background passes WCAG AA (4.5:1); gold and the deck's teal tint carry no small text. */
+     set: deep teal, teal and gold on a light page (light only: no dark version); Archivo for headings, Atkinson
+     Hyperlegible for the text. The three asks share one colour, teal. Every text colour on its background passes WCAG AA
+     (4.5:1); gold and the deck's teal tint carry no small text. */
   :root {
+    color-scheme: light;
     --teal: #0E7C86; --teal-ink: #0B5F67; --teal-deep: #0B3C49; --teal-bg: #DDEFF1;
     --gold: #F2C14E; --gold-deep: #C99A1E; --gold-ink: #7A5C0E; --gold-bg: #FFF4D6;
-    --indigo: #5B63A8; --indigo-deep: #3F4790; --indigo-bg: #E6E8F5; --grey-bg: #EEF1F4;
+    --grey-bg: #EEF1F4;
     --bg: #F7F9FB; --panel: #ffffff; --paper: #ffffff; --tint: #F1F5F8; --line: #D5DEE4;
     --ink: #13252F; --muted: #4A5D68; --label: #4A5D68; --heading: #0B3C49;
     --navy: var(--teal-ink); --navy-bg: var(--teal-bg); --sky: var(--teal); --sky-bg: var(--teal-bg);
     --accent: var(--teal); --accent-bg: var(--teal-bg); --soft: #FBE3A0; --strong: #F2C14E;
     --bar: var(--teal-deep); --bar-ink: #ffffff; --bar-soft: rgba(255, 255, 255, 0.16);
     --button: var(--teal); --button-ink: #ffffff;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --teal: #5FC4CC; --teal-ink: #8FD8DE; --teal-bg: #133840;
-      --gold-ink: #F2C14E; --gold-bg: #3A3115; --indigo-deep: #A9AFE6; --indigo-bg: #262A48; --grey-bg: #1D3340;
-      --bg: #0D1B22; --panel: #13252F; --paper: #13252F; --tint: #17303B; --line: #2A4350;
-      --ink: #E6EEF2; --muted: #A9BAC4; --label: #C2D0D8; --heading: #E6EEF2; --soft: #5A4A17; --strong: #7A6400;
-      --button: #5FC4CC; --button-ink: #0D1B22;
-    }
   }
   body { font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; font-size: 16px; background: var(--bg); color: var(--ink); }
   h1, h2, h3, h4, .qheading, .groupname, header nav.tabs button.tab, .ask .num, .ask .asklabel, .mapname, .maptab {
@@ -53,8 +46,10 @@
   @media (max-width: 600px) { section.card { padding: 16px; } main.single { padding: 14px 12px 32px; } }
   /* the header: the deck's deep teal band, a gold rule under it */
   header { background: var(--teal-deep); border-bottom: 4px solid var(--gold); }
-  @media (prefers-color-scheme: dark) { header { border-bottom-color: var(--gold); } }
   header h1 button { color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: 0; }
+  /* the title is long: on a narrow screen it wraps, never runs off the edge */
+  header h1 { white-space: normal; flex: 0 1 auto; min-width: 0; }
+  header h1 button { white-space: normal; text-align: left; }
   /* the version line: one short, calm line; the commit, page version and fingerprints open under "details" */
   #version { margin: 0; padding: 7px 24px; border-bottom: 1px solid var(--line); background: var(--panel); color: var(--muted);
              font-size: 13.5px; line-height: 1.5; }
@@ -67,7 +62,7 @@
   #version .full { margin: 6px 0 2px; max-width: 110ch; color: var(--ink); }
   #version strong { color: var(--heading); }
   #version .files { color: var(--muted); overflow-wrap: anywhere; }
-  /* the view bar: the asks' numbers in gold; the current view plainly filled; wrapping cleanly on narrow screens */
+  /* the view bar: the asks' numbers in the asks' teal; the current view plainly filled; wrapping cleanly on narrow screens */
   header .topbar { padding: 12px 24px; row-gap: 10px; }
   header nav.tabs { flex: 0 1 auto; flex-wrap: wrap; gap: 6px; }
   header nav.tabs button.tab { background: transparent; border: 1px solid rgba(255, 255, 255, 0.28); color: #ffffff;
@@ -78,7 +73,7 @@
   /* every tab is bold, current or not, so the tool's width-keeping copy of the label isn't needed (in a flex tab it would take room) */
   header nav.tabs button.tab[data-label]::after { display: none; }
   header nav.tabs .tabnum { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px;
-                            border-radius: 50%; background: var(--gold); color: #13252F; font-size: 12.5px; font-weight: 800; }
+                            border-radius: 50%; background: var(--teal-bg); color: var(--teal-ink); font-size: 12.5px; font-weight: 800; }
   header #status { flex-wrap: wrap; row-gap: 8px; gap: 10px; color: #ffffff; opacity: 1; font-size: 14px; }
   header #status button.primary { background: var(--gold); border-color: var(--gold); color: #13252F; }
   header #status button:not(.primary) { background: transparent; color: #ffffff; border-color: rgba(255, 255, 255, 0.45); }
@@ -97,17 +92,13 @@
   .ask { --c: var(--teal); --cbg: var(--teal-bg); --cink: var(--teal-ink);
          background: var(--panel); border: 1px solid var(--line); border-top: 6px solid var(--c); border-radius: 14px;
          padding: 16px 20px 18px; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(11, 60, 73, 0.07); }
-  .ask.a2 { --c: var(--gold); --cbg: var(--gold-bg); --cink: var(--gold-ink); }
-  .ask.a3 { --c: var(--indigo); --cbg: var(--indigo-bg); --cink: var(--indigo-deep); }
   .ask .askhead { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
   .ask .num { font-size: 40px; line-height: 1; font-weight: 800; color: var(--cink); background: var(--cbg);
               border-radius: 12px; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; flex: none; }
-  .ask.a2 .num { background: var(--gold); color: #13252F; }
   .ask .asklabel { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cink); }
   .ask h3 { font-size: 20px; margin: 2px 0 0; line-height: 1.25; }
   .ask h3 .opt { font-weight: 500; font-size: 15px; color: var(--muted); }
-  .ask p { margin: 4px 0 8px; line-height: 1.6; flex: 1; }
-  .ask .time { font-size: 14px; color: var(--muted); margin: 0 0 12px; flex: none; }
+  .ask p { margin: 4px 0 14px; line-height: 1.6; flex: 1; }
   .ask button { align-self: flex-start; background: var(--cbg); border: 1px solid var(--c); color: var(--cink); font-weight: 700; padding: 8px 16px; }
   .ask button:hover { background: var(--cbg); filter: brightness(0.97); border-color: var(--cink); }
   .sendbox { border-left: 6px solid var(--teal); }
@@ -116,10 +107,8 @@
   .namefield { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 8px; font-weight: 700; }
   .namefield input { width: min(320px, 100%); }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
-  /* each view's opening card: its ask's colour on top, what you see, what to look for, then folded extras */
+  /* each view's opening card: the asks' teal on top, what you see, what to look for, then folded extras */
   .intro { --c: var(--teal); --cbg: var(--teal-bg); --cink: var(--teal-ink); border-top: 6px solid var(--c) !important; }
-  .intro.a2 { --c: var(--gold); --cbg: var(--gold-bg); --cink: var(--gold-ink); }
-  .intro.a3 { --c: var(--indigo); --cbg: var(--indigo-bg); --cink: var(--indigo-deep); }
   .intro.plain { --c: var(--line); }
   .intro .askbadge { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
                      color: var(--cink); background: var(--cbg); border-radius: 999px; padding: 2px 11px; margin-bottom: 6px; }
@@ -156,7 +145,6 @@
   .mapfilters select, .mapfilters input { max-width: 100%; }
   @media (max-width: 600px) { .mapname { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; } }
   .maptab.current { background: var(--teal-ink); border-color: var(--teal-ink); color: #ffffff; }
-  @media (prefers-color-scheme: dark) { .maptab.current { color: #0D1B22; } }
   .terms td.term { white-space: nowrap; font-weight: 700; }
   .terms td { line-height: 1.5; }
   .notes p { margin: 0 0 4px; }
@@ -209,7 +197,7 @@
 <body>
 <header>
   <div class="topbar">
-    <h1><button id="homebutton" title="The start of the page">Schema review</button></h1>
+    <h1><button id="homebutton" title="The start of the page">Review our work: a knowledge graph for data.nasa.gov</button></h1>
     <nav class="tabs" aria-label="Views">
       <button class="tab" id="tab-home" data-label="Start">Start</button>
       <button class="tab" id="tab-schema" data-label="1 Schema" title="Ask 1: review our schema"><span class="tabnum" aria-hidden="true">1</span>Schema</button>
@@ -1017,7 +1005,7 @@ function drawTerms() {
 }
 
 // ---------------------------------------------------------------- the start view
-// A short welcome, the three asks in the demo deck's order (each: what we ask, roughly how long, a button to its view),
+// A short welcome, the three asks in the demo deck's order (each: what we ask and a button to its view),
 // then how to send comments. How to read each view is in that view; nothing here is said again there.
 function drawHome() {
   const nameField = el("input", { id: "reviewer", type: "text", value: reviewer, placeholder: "e.g. Jane Smith", autocomplete: "name",
@@ -1034,10 +1022,10 @@ function drawHome() {
       `${Math.round(100 * D.mapping.bound / D.mapping.checked)}% of the ${D.mapping.checked} are wrong ` +
       `(${Math.round(100 * D.mapping.confidence)}% confidence).`
     : `The ${nRows} rows: does the model’s entity class or predicate mean the same as ours?`;
-  const ask = (n, title, opt, text, time, button, target) => el("section", { class: `ask a${n}` },
+  const ask = (n, title, opt, text, button, target) => el("section", { class: `ask a${n}` },
     el("div", { class: "askhead" }, el("div", { class: "num", "aria-hidden": "true" }, String(n)),
        el("div", {}, el("div", { class: "asklabel" }, `Ask ${n}`), el("h3", {}, title, opt ? el("span", { class: "opt" }, ` ${opt}`) : null))),
-    el("p", {}, text), el("p", { class: "time" }, time),
+    el("p", {}, text),
     el("button", { onclick: () => show(target) }, button));
   return [el("section", { class: "card home" },
     el("h2", {}, "Thank you for reviewing our work"),
@@ -1048,14 +1036,12 @@ function drawHome() {
     el("div", { class: "asks" },
       ask(1, "Review our schema", "",
         `${D.schema.entity_classes.length} entity classes and ${D.schema.predicates.length} predicates, each with a one-line ` +
-        "definition. Are they right for NASA data? What is missing?",
-        "Roughly 30 to 45 minutes to read through.", "Open the schema", "schema"),
+        "definition. Are they right for NASA data? What is missing?", "Open the schema", "schema"),
       ask(2, "Answer our questions", "",
         `${open.length} question${open.length === 1 ? "" : "s"} we can’t settle alone, each with an example record and the ` +
-        `choices we see. The ${nHigh} most urgent come first.`,
-        "Roughly 5 to 10 minutes a question; any number helps.", "Open the questions", "questions"),
+        `choices we see. The ${nHigh} most urgent come first; any number helps.`, "Open the questions", "questions"),
       ask(3, "Check part of the translation table", "(if you have time)", sample,
-        "Roughly 30 minutes.", "Open the translation table", "mapping")),
+        "Open the translation table", "mapping")),
     el("section", { class: "card sendbox" },
       el("h3", {}, "How to send your comments"),
       el("ol", {},

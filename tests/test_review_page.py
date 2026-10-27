@@ -82,10 +82,19 @@ class Page(unittest.TestCase):
         self.assertNotRegex(code, r"{{[A-Z_]+}}")                            # every placeholder filled
 
     def test_the_annotation_tools_look(self):
-        """The annotation tool's style sheets, as its page holds them."""
+        """The annotation tool's style sheets, as its page holds them, light only."""
         tool = (ROOT / "helpers" / "annotator" / "page.html").read_text(encoding="utf-8")
         first = re.findall(r"<style>(.*?)</style>", tool, re.S)[1]
-        self.assertIn(first.strip()[:2000], self.page)
+        self.assertIn("prefers-color-scheme: dark", first)                   # the tool has a dark version ...
+        self.assertIn(R.light_only(first).strip()[:2000], self.page)
+
+    def test_light_only(self):
+        """... the page has none, and its title names it."""
+        self.assertNotIn("prefers-color-scheme", self.page)
+        self.assertIn("color-scheme: light", self.page)
+        self.assertIn("<title>Review our work: a knowledge graph for data.nasa.gov (", self.page)
+        self.assertEqual(R.light_only("a { b: 1; }\n@media (prefers-color-scheme: dark) { :root { c: 2; } h { d: 3; } }\n"
+                                      "e { f: 4; }\n"), "a { b: 1; }\ne { f: 4; }\n")
 
     def test_every_entry(self):
         s, m = self.data["schema"], self.data["mapping"]["rows"]

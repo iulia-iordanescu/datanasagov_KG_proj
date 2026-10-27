@@ -174,13 +174,32 @@ def fingerprint(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:12]
 
 
+def light_only(css: str) -> str:
+    """The style sheet without its dark version: every @media (prefers-color-scheme: dark) { ... } block left out,
+    nested braces and all, so the page renders light whatever the computer's setting."""
+    out, i = [], 0
+    for m in re.finditer(r"@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)\s*\{", css):
+        if m.start() < i:                                       # inside a block already left out
+            continue
+        depth, j = 1, m.end()
+        while depth and j < len(css):
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            j += 1
+        if depth:
+            raise ValueError("a @media (prefers-color-scheme: dark) block has no closing brace")
+        out.append(css[i:m.start()])
+        i = j + (css[j:j + 1] == "\n")                          # with its line's end
+    return "".join(out) + css[i:]
+
+
 def annotator_styles(page: Path = ANNOTATOR_PAGE, fonts: Path = FONTS) -> str:
-    """The annotation tool's style sheets, as its page holds them, with each typeface it loads from /fonts/ put
-    inside (a data: address), so the review page needs no server and no network."""
+    """The annotation tool's style sheets, as its page holds them but light only (light_only: the review page has no
+    dark version), with each typeface it loads from /fonts/ put inside (a data: address), so the review page needs no
+    server and no network."""
     styles = re.findall(r"<style>(.*?)</style>", page.read_text(encoding="utf-8"), re.S)
     if not styles:
         raise ValueError(f"{page.relative_to(ROOT).as_posix()} has no <style> block to take the look from")
-    css = "\n".join(styles)
+    css = light_only("\n".join(styles))
 
     def font(m):
         data = base64.b64encode((fonts / m.group(1)).read_bytes()).decode("ascii")
