@@ -9,7 +9,11 @@ counterpart in the ground truth schema, which has since gained component
 classes. GROUND_TRUTH holds those of its component classes that nothing is
 matched to yet. For each component class in
 SCHEMA, say whether a component class in GROUND_TRUTH, of the same kind,
-means the same thing. Judge by meaning and definition, not by spelling.
+means the same thing. If none of GROUND_TRUTH does, say whether one is for
+its main meaning, when one meaning clearly dominates; a component class of
+GROUND_TRUTH broader than it counts. Suggest nothing for it when its meaning
+splits between several component classes of GROUND_TRUTH. Judge by meaning
+and definition, not by spelling.
 Suggest a pair only if you are confident; leave a component class out
 otherwise.
 
