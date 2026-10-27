@@ -1335,8 +1335,8 @@ async function showHome() {
                                       : `Open batch ${next.n} (a new drafted batch)`)
                : el("span", { class: "empty" }, "No batch yet: step 050 drafts one (py 050_annotate/run.py).")),
       box("Translation table", "Extraction and the ground truth use different schemas. Once step 070 has run, choose " +
-          "for each entity class and predicate of the current schema the one of the ground truth schema that means " +
-          "the same thing.", openMapping),
+          "for each entity class and predicate of the current schema the one of the ground truth schema it translates " +
+          "to: the same meaning, else its main meaning, or (none) (Help → How to use this view).", openMapping),
       box("Partial pairs", "Once step 070 has run, decide for each partial pair (an occurrence and a ground truth triple " +
           "that nearly match) whether the two state the same fact.", openPartial),
       box("Schema additions", "Entity classes, predicates, and patterns a person adds to the current schema, each with " +
@@ -1560,7 +1560,7 @@ function drawMapping() {
   // column headings, aligned with every box's two columns
   const head = el("div", { class: "maphead" },
     el("div", {}, `Current schema ${what}`), mapArrow(),
-    el("div", { title: `${mapping.none}: nothing in the ground truth schema means this` }, `Ground truth schema ${what}`));
+    el("div", { title: `${mapping.none}: nothing in the ground truth schema to translate this to` }, `Ground truth schema ${what}`));
   const { at, bar } = itemsOneAtATime("mapping", shown.map(([r]) => `${r.kind}|${r._line}`), "Row", drawMapping);
   $("maptable").replaceChildren(bar, head, ...(at === null ? shown : [shown[at]]).map(([r, i]) => mappingRow(r, i)));
 }
@@ -1570,7 +1570,7 @@ function exampleLine(r) {
   const ex = r.example || { subject: "A", object: "B" };
   const before = `${ex.subject}  ${r.component_class_from_past_or_crt_schema}  ${ex.object}`;
   const after = r.component_class_in_gtt === mapping.none
-    ? `(not translated: nothing in the ground truth schema means ${r.component_class_from_past_or_crt_schema})`
+    ? `(not translated: nothing in the ground truth schema to translate ${r.component_class_from_past_or_crt_schema} to)`
     : r.swap_subject_and_object === "yes" ? `${ex.object}  ${r.component_class_in_gtt}  ${ex.subject}`
     : `${ex.subject}  ${r.component_class_in_gtt}  ${ex.object}`;
   return el("div", { class: "example", title: r.example
@@ -1674,7 +1674,7 @@ function mappingRow(r, i) {
       definition(r.crt_definition, mapping.schema_found ? `The current schema has no definition of ${crtName}.`
         : "Not shown: step 060's schema_used.json wasn't found."),
       el("div", {}),
-      none ? definition(null, `${mapping.none}: nothing in the ground truth schema means ${crtName}.`)
+      none ? definition(null, `${mapping.none}: nothing in the ground truth schema to translate ${crtName} to.`)
         : chosen ? definition(chosen.definition, `${gttName} has no definition in the ground truth schema yet: ` +
                                                  `add one there.`)
         : definition(null, `${gttName} isn't in the ground truth schema: pick another ground truth schema ${what} in the dropdown.`)),

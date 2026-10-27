@@ -5,8 +5,12 @@ the current schema, each with its "kind". Every entry gives a
 "component_class" and its "definition".
 
 For each component class in SCHEMA, give the component class in
-GROUND_TRUTH, of the same kind, that means the same thing, or null if none
-of GROUND_TRUTH does. Judge by meaning and definition, not by spelling.
+GROUND_TRUTH, of the same kind, that means the same thing. If none of
+GROUND_TRUTH does, give the one for its main meaning, when one meaning
+clearly dominates; a component class of GROUND_TRUTH broader than it counts.
+Give null when its meaning splits between several component classes of
+GROUND_TRUTH, or when none of GROUND_TRUTH has its meaning. Judge by meaning
+and definition, not by spelling.
 
 For a predicate, set "reversed": true when the predicate in GROUND_TRUTH
 states the same relationship in the opposite direction ("A CARRIES B" means

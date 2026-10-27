@@ -13,7 +13,7 @@ the ground truth schema, through the table a person checks:
     kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
     entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
     predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema means this
+    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema to translate it to
 
 (columns: common/common_helpers/component_class_mapping.py)
 
@@ -134,13 +134,15 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
                      "checked": "no"})
     notes = [f"The model proposed {len(strays)} component class(es) that aren't in the ground truth schema, so "
              f"their rows say (none) instead: {named(strays, 5, '; ')}. When you check those rows, choose a component "
-             f"class of the ground truth schema if one means the same, else keep (none)."] \
+             f"class of the ground truth schema by the rule for a row (the same meaning, else its main meaning when "
+             f"one clearly dominates: translation table in docs/terminology.md), else keep (none)."] \
         if strays else []
     if left_out:
         notes.append(f"The model's answer left out {len(left_out)} component class(es) it was asked about, so their "
                      f"rows say (none), proposed like the others (checked = no): {named(left_out, 5, '; ')}. When you "
-                     f"check those rows, choose a component class of the ground truth schema if one means the same, "
-                     f"else keep (none).")
+                     f"check those rows, choose a component class of the ground truth schema by the rule for a row "
+                     f"(the same meaning, else its main meaning when one clearly dominates: translation table in "
+                     f"docs/terminology.md), else keep (none).")
     return rows, notes, made, cache.reused
 
 

@@ -613,7 +613,7 @@ function wordsBox() {
       "checking records by hand. The induced schema is the one the model learned from other records of the catalog; the model " +
       "writes its facts with it (plus a few entries we added: together, the current schema)."],
     ["Translation table", "For each entity class and predicate of the model's schema (current or past), the one of our ground " +
-      "truth schema that means the same, or (none). It lets us compare the model's facts with ours. Each line of it is a row."]];
+      "truth schema it translates to (the one with the same meaning, or else the one for its main meaning), or (none). It lets us compare the model's facts with ours. Each line of it is a row."]];
   return el("details", { class: "fold words nolink" }, el("summary", {}, "Words used on this page"),
     el("dl", { class: "words" }, words.map(([w, d]) => [el("dt", {}, w), el("dd", {}, d)])),
     el("p", { class: "meta" }, "Every term of our project, as we define it: ",
@@ -698,7 +698,7 @@ const CHECKED = { "yes": ["ok", "✓ Checked by us"],
                   "no": ["flag", "⚑ Not checked yet"] };
 function exampleLine(r) {
   if (r.rowKind !== "predicate") return null;
-  const after = r.gtt === D.mapping.none ? `(not translated: nothing in the ground truth schema means ${r.crt})`
+  const after = r.gtt === D.mapping.none ? `(not translated: nothing in the ground truth schema to translate ${r.crt} to)`
     : r.swap === "yes" ? `B  ${r.gtt}  A` : `A  ${r.gtt}  B`;
   return el("div", { class: "example", title: "A made-up triple (subject instance A, object instance B), before and after translation" },
             `A  ${r.crt}  B   →   ${after}`);
@@ -711,11 +711,11 @@ function mappingBox(r) {
     el("div", { class: "mapgrid" },
       el("div", { class: "mapname", title: `${r.crt} (current or past schema ${what})` }, r.crt),
       mapArrow(),
-      el("div", { class: "mapname" + (none ? " empty" : ""), title: none ? `${D.mapping.none}: nothing in the ground truth schema means this`
+      el("div", { class: "mapname" + (none ? " empty" : ""), title: none ? `${D.mapping.none}: nothing in the ground truth schema to translate this to`
                                                                          : `${r.gtt} (ground truth schema ${what})` }, r.gtt),
       el("div", { class: "mapdef" + (r.crt_def ? "" : " empty") }, r.crt_def || "No definition stored."),
       el("div", {}),
-      none ? el("div", { class: "mapdef empty" }, `${D.mapping.none}: nothing in the ground truth schema means ${r.crt}.`)
+      none ? el("div", { class: "mapdef empty" }, `${D.mapping.none}: nothing in the ground truth schema to translate ${r.crt} to.`)
            : el("div", { class: "mapdef" + (r.gtt_def ? "" : " empty") }, r.gtt_def || "No definition stored.")),
     exampleLine(r),
     el("div", { class: "mapflags" },
@@ -759,16 +759,21 @@ function drawMapping() {
   return [
     viewIntro(3, "The translation table",
       ["The model doesn’t use our schema: it writes its facts with the induced schema, learned from other records. To compare " +
-       "its facts with ours, each of its entity classes and predicates is translated into the one of ours that means the same. " +
+       "its facts with ours, each of its entity classes and predicates is translated into one of ours of the same kind, by this " +
+       "rule. It translates to the one of ours with the same meaning. If we have none, it translates to the one for its main " +
+       "meaning, when one meaning clearly dominates; one of ours that is broader counts (SpaceStation translates to " +
+       "Spacecraft). It translates to (none) when its meaning splits between several of ours (SOURCED_FROM, split between " +
+       "FROM_MISSION and FROM_SPACECRAFT). Several of the model’s may translate to the same one of ours. " +
        "Each box is one row: the model’s entity class or predicate on the left, ours on the right, each with its definition. " +
-       "We ask: does each pair mean the same?"],
-      ["Does the right side mean the same as the left, for NASA data?",
-       "A row that translates to (none): is there really nothing in our schema that means the same?",
+       "We ask: does each row follow this rule?"],
+      ["Does the right side have the same meaning as the left, for NASA data, or else the left side’s main meaning?",
+       "A row that translates to (none): is there really nothing in our schema with the same meaning, and no one main meaning " +
+       "of the left side that one of ours has?",
        "A predicate marked “Swap subject and object”: does the example under it read right after the swap?"],
       ["The left side is an entity class or predicate of the model’s current schema (the induced schema plus a few entries we " +
        "added), or of a past schema, one an earlier run of the model used: one table serves them all. Its definition is the " +
        "one that schema gave it.",
-       "(none) on the right means nothing in our schema means the same.",
+       "(none) on the right means nothing in our schema has the same meaning, or the meaning splits between several of ours.",
        "Under a predicate, a made-up fact shows the row at work, before and after translation: A and B stand for any two things.",
        "“Swap subject and object” means our predicate states the relationship the other way round: “A CARRIES B” is “B ABOARD A”.",
        "The last pill says how the row was checked: “Checked by us”, “Accepted automatically: spelled the same in both " +

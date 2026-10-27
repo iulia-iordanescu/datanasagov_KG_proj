@@ -6,7 +6,7 @@ the current schema (the one step 060 used) means.
     kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
     entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
     predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema means this
+    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema to translate it to
 
     kind                     "entity class" or "predicate"
     component_class_from_past_or_crt_schema
