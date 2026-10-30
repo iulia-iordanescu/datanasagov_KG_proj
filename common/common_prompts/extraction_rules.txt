@@ -39,7 +39,14 @@
   gives "CTH" and the time of day "nighttime"; "the U.K. Coastal Survey
   Bureau (CSB)" gives "Coastal Survey Bureau (CSB)", and the triple that CSB
   is based in the U.K.; "the surface albedo of Halden-4" gives "surface
-  albedo", and the record's dataset's target "Halden-4". A word naming a
+  albedo", and the record's dataset's target "Halden-4". The new triple's
+  subject is the subject or object the qualifier was in, when that thing is
+  the subject of a triple of its own: "the Level-1B swaths ... the swaths
+  are calibrated with lamp data" gives the swaths' processing level
+  "Level-1B", since the swaths have a triple of their own. Otherwise it is
+  the subject of the triple whose object that thing was: "surface albedo"
+  has no triple of its own, so "Halden-4" is the record's dataset's target.
+  A word naming a
   kind of ground or water ("land", "ocean", "sea", "ice") stays in the
   subject or object if "the [rest] of the [word]" is true, and is an area
   the data cover if it is false: "Ocean Cloud Fraction" gives "Cloud

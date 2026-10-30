@@ -708,6 +708,7 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_MISSION_PHASE "comet escort 1" (MissionPhase)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
+- classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TARGET "67P/Churyumov-Gerasimenko" (CelestialBody)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
@@ -1010,8 +1011,8 @@ The options as they were, before 2026-10-26: Option 1, Keep each record's own wo
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
-- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel)
-- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel)
+- classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) HAS_PROCESSING_LEVEL "Level 2 (EDR)" (ProcessingLevel)
+- classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_PROCESSING_LEVEL "Level 3 (RDR)" (ProcessingLevel)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 4" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
