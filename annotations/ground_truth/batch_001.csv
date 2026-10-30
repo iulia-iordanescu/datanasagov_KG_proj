@@ -5,6 +5,7 @@ id,subject,subject_class,predicate,object,object_class,source_text,all_facts_ext
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,FROM_SPACECRAFT,Aqua,Spacecraft,Combined Terra and Aqua,1,
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_MEASUREMENTS_OF,Aerosol Optical Depth,PhysicalQuantity,Land Aerosol Optical Depth,1,
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_COVERAGE,Land,SpatialExtent,Land Aerosol Optical Depth,1,
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_COVERAGE,Global,SpatialExtent,Global 1km SIN Grid,1,
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,produced daily,1,
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_PROCESSING_LEVEL,Level 2,ProcessingLevel,gridded Level 2 product,1,
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gridded Level 2 product,1,

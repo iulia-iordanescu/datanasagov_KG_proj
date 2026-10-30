@@ -127,16 +127,12 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (pool position 6, id 4c64f3ed-39b4-4f95-95a0-022898ba47a4)
 
-5 items, all 5 that may matter. The record's decisions are complete (its ground truth triples are in `annotations/ground_truth/batch_001.csv`, a demo batch): these items are the ones I decided or am waiting on.
+4 items, all 4 that may matter. The record's decisions are complete (its ground truth triples are in `annotations/ground_truth/batch_001.csv`, a demo batch): these items are the ones I decided or am waiting on.
 
 - **Left out:** "Near Real Time (NRT)" (notes)
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". What counts as a fact, rule 1 ("Only what the record states") does not tell whether it is a latency, a separate processing stream or a version, and the ground truth schema has no predicate for a latency.
   - **May matter because:** NRT products are made available within hours of the observation, so they are different from the standard product; I checked this, the record says no number of hours.
   - **Question:** Q20 (a); the pending fact is listed there.
-- **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
-  - **Rule:** Writing a classed triple, rule 19: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid, so "Global" belongs to the grid's name, not to an area.
-  - **May matter because:** the grid tiles the whole globe.
-  - **Question:** Q11, Q1 (c).
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It would be a BINNED_INTO triple with a Grid, as in the record at pool position 4.
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
@@ -152,12 +148,8 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (pool position 7, id d5477563-0415-4e65-ab7c-d4bc9ed809e5)
 
-15 items, 9 that may matter.
+14 items, 8 that may matter.
 
-- **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
-  - **Rule:** Writing a classed triple, rule 19: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid (as for the record at pool position 6), so "Global" belongs to the grid's name, not to an area.
-  - **May matter because:** the grid tiles the whole globe.
-  - **Question:** Q1 (c), Q11.
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". As for the record at pool position 6.
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data.

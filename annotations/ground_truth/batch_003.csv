@@ -7,6 +7,7 @@ d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissi
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,provides daily per-pixel,1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_PROCESSING_LEVEL,L3,ProcessingLevel,L3,1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_SPATIAL_RESOLUTION,1 kilometer (km),SpatialResolution,with 1 kilometer (km) spatial resolution,1,
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_SPATIAL_COVERAGE,Global,SpatialExtent,Global 1km SIN Grid,1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_VERSION,Version 6,Version,The MOD11A1 Version 6 data product,1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_IDENTIFIER,MOD11A1,Identifier,The MOD11A1 Version 6 data product,1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,DECOMMISSIONED_ON,"July 31, 2023",Time,"The MOD11A1 Version 6 data product was decommissioned on July 31, 2023",1,
