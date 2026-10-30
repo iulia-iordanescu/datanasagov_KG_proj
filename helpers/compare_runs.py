@@ -45,8 +45,8 @@ UNRECORDED = [
     "thinking cap); its translation is recorded by fingerprint, so a different translation shows anyway.",
     "- **The partial-pair verdicts** (`annotations/partial_pair_reviews.csv`): review no partial pairs between the "
     "runs you compare.",
-    "- **The model's own variation:** the same recipe can answer differently on another run (temperature 0 makes "
-    "that rare, not impossible), and a cached answer is reused, so two runs of one recipe usually agree.",
+    "- **The model's own variation:** the same recipe can answer differently on another run (no setting makes a "
+    "model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree.",
 ]
 LIMITS = [
     "- **Many comparisons:** about 1 in 20 ranges misses by chance, so among many rows, one *higher* or *lower* "

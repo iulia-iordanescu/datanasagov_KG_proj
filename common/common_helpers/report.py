@@ -237,6 +237,8 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
               "Thinking: the step's `thinking` setting was "
               f"`{llm.THINKING}`" + (f", sent as `reasoning_effort` `{llm.thinking_sent()}`." if llm.thinking_sent()
                                     else ", not sent to this model.")
+              + (f" Effort: {llm.effort_note()}." if llm.effort_note() else "")
+              + (f" Temperature: {llm.TEMPERATURE}." if llm.temperature_sent() else " Temperature: not sent.")
               + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else ""), "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet.", ""]

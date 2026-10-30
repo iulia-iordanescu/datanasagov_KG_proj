@@ -41,6 +41,7 @@ class Guards(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.saved = (llm.MODEL, llm.SERVICE, llm.THINKING, llm.MAX_ANSWER_TOKENS)
+        llm.MAX_ANSWER_TOKENS = 16000                       # the checks below are written for this limit, not the default
         self.patches = [mock.patch.object(llm, "_post", stand_ins.stand_in_post),
                         mock.patch.object(llm, "load_dotenv", lambda *a, **k: None),
                         mock.patch.object(llm.time, "sleep", lambda s: None),
@@ -323,7 +324,8 @@ class Guards(unittest.TestCase):
         self.assertEqual((cut["reasoning_tokens"], cut["answer_tokens"]), (300, 16000))
         self.assertTrue(cut["answer"].startswith('{"tri'))                              # the partial answer, whole
         self.assertEqual(cut["call_settings"], {"temperature": 0, "max_answer_tokens": 16000, "thinking": "low",
-                                                "thinking_sent": "low", "read_timeout_s": llm.READ_TIMEOUT})
+                                                "thinking_sent": "low", "effort": None,
+                                                "read_timeout_s": llm.READ_TIMEOUT})
         self.assertEqual(len(cut["prompt_sha256"]), 64)
         self.assertIn("The answer itself is long", cut["what_to_do"])
         self.assertEqual((failed["outcome"], failed["error_type"]), ("failed", "ApiError"))

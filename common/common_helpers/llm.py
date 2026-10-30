@@ -86,7 +86,12 @@ DRAFTING_MODEL = "gemini-2.5-pro"
 SERVICE = "litellm"
 SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 
-#: Every call asks for the model's most likely answer, the same each time as far as the model allows.
+#: Every call to a model that takes it asks for the model's most likely answer (temperature 0), the same each time
+#: as far as the model allows: only where temperature_sent says so. Anthropic's Claude Opus 5.5 takes no sampling
+#: parameters ("Omit `temperature`, `top_p`, and `top_k`", and temperature 0 "never guaranteed identical outputs on
+#: prior models": https://platform.claude.com/docs/en/models/opus-5-5/migration-guide); Google advises keeping
+#: Gemini 3's temperature at its default 1.0 ("Setting temperature below 1.0 may lead to unexpected behavior, such as
+#: looping or degraded performance": https://ai.google.dev/gemini-api/docs/gemini-3). Not part of the cache key.
 TEMPERATURE = 0
 
 #: How much a model that thinks before answering may think: the default of every step's `thinking` setting, which
@@ -104,12 +109,25 @@ THINKING_LEVELS = ("low", "medium", "high", "model_default")
 #: 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000 characters, mid-JSON. With
 #: 16,000, one answer was still cut off, at 25,658 characters: fewer than 16,000 tokens usually hold, so tokens the
 #: model spends thinking may count too, or the model repeated itself. The log shows which (a cut-off answer is
-#: written there whole, with the service's token counts).
-MAX_ANSWER_TOKENS = 16000
+#: written there whole, with the service's token counts). 32,000 since 2026-10-30: the limit includes the model's
+#: thinking for both models used (Anthropic: "leave room in `max_tokens` for the thinking", What's new in Claude Opus
+#: 5.5; Google: the limit includes "thought tokens"), and a cut-off text piece is left out whole, so a low limit loses
+#: exactly the long, fact-rich records. Both models allow it: Claude Opus 5.5's max output is 128K tokens
+#: (https://platform.claude.com/docs/en/models/opus-5-5/overview), Gemini 2.5 Pro's 65,536
+#: (https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro). Not part of the cache key: answers that finished
+#: stay valid; an answer stored as cut off at a lower limit is asked again (common/common_helpers/cache.py).
+MAX_ANSWER_TOKENS = 32000
 
 #: How long a call waits for its answer, in seconds, every call alike: long enough for an answer of
-#: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed).
-READ_TIMEOUT = 600
+#: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed). 1,200 s covers
+#: 32,000 tokens at about 27 tokens a second, thinking included.
+READ_TIMEOUT = 1200
+
+#: The effort level a model runs at when none is sent, where its maker documents one: Claude Opus 5.5 always thinks,
+#: and "A request that omits `effort` runs at `medium`" (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5;
+#: https://platform.claude.com/docs/en/build-with-claude/effort). For the run's record only: no effort is sent.
+DEFAULT_EFFORT = {"claude-opus-5.5": "medium", "claude-opus-5-5": "medium",
+                  "claude-haiku-5.5": "medium", "claude-haiku-5-5": "medium"}
 
 #: Every request sent to the service in this run, retries, re-asks, and failures included: what is billed, as far as
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
@@ -124,17 +142,57 @@ SERVED = set()
 
 def describe() -> dict:
     """What answered this run's calls, for the run's record (each step's "made"): the service, the model as asked
-    for, the exact model the service said answered (when it says), and the settings every call is sent with."""
-    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), "temperature": TEMPERATURE,
-            "max_answer_tokens": MAX_ANSWER_TOKENS, "thinking": THINKING, "thinking_sent": thinking_sent()}
+    for, the exact model the service said answered (when it says), and the settings every call is sent with, as
+    sent (call_settings)."""
+    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings()}
+
+
+def call_settings(model: str | None = None, service: str | None = None) -> dict:
+    """The settings a call to this model through this service is sent with, in the run record's words: a setting
+    that isn't sent says so, and why, so the record never states a setting the model didn't get."""
+    model = model or MODEL
+    sent = thinking_sent(model, service)
+    if sent:
+        thinking = THINKING
+    elif takes_thinking_cap(model, service):
+        thinking = "not sent (model_default: the model thinks as it would by default)"
+    else:
+        thinking = f"not sent (the step's setting, {THINKING}, isn't sent to this model)"
+    return {"temperature": TEMPERATURE if temperature_sent(model, service) else
+            "not sent (the model does not accept it, or its maker advises against changing it)",
+            "max_answer_tokens": MAX_ANSWER_TOKENS, "thinking": thinking, "thinking_sent": sent,
+            "effort": effort_note(model)}
+
+
+def effort_note(model: str | None = None) -> str | None:
+    """The effort a Claude model ran at, in words (None for other makers' models): the pipeline sends none, so it is
+    the model's default (DEFAULT_EFFORT, where documented)."""
+    model = model or MODEL
+    if maker(model) != "Anthropic":
+        return None
+    default = DEFAULT_EFFORT.get(model.lower().removeprefix("google-"))
+    return f"not sent (model default, {default})" if default else "not sent (model default)"
+
+
+def temperature_sent(model: str | None = None, service: str | None = None) -> bool:
+    """Whether calls to this model are sent TEMPERATURE: not to Anthropic's Claude models, which take no sampling
+    parameters, nor to Google's Gemini 3 and later, whose maker advises keeping the default (TEMPERATURE cites
+    both); to every other model, Gemini 2.5 among them. The same through either service."""
+    model = model or MODEL
+    if maker(model) == "Anthropic":
+        return False
+    version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
+    return not (maker(model) == "Google" and version and float(version.group(1)) >= 3)
 
 
 def thinking_sent(model: str | None = None, service: str | None = None) -> str | None:
     """The `reasoning_effort` a call sends (THINKING), or None when it sends none. Sent only through LiteLLM, and only
-    to the models LiteLLM documents it for that think unless told otherwise: Google's Gemini 2.5 and later
-    (https://docs.litellm.ai/docs/providers/gemini). Not to Anthropic's Claude models, which think only when asked
-    (https://docs.litellm.ai/docs/providers/anthropic), and not to others, which might refuse a parameter they don't
-    take. Ask Sage's query takes no such parameter."""
+    to the models LiteLLM documents it for: Google's Gemini 2.5 and later (https://docs.litellm.ai/docs/providers/gemini).
+    Not to Anthropic's Claude models: Claude Opus 5.5 always thinks, at the effort sent, or at its default, medium,
+    when none is sent (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5), and whether LiteLLM
+    passes an effort setting on to it isn't checked yet (py helpers/check_effort.py; docs/running_on_nasa_laptop.md,
+    "Checking that LiteLLM passes Claude's effort on"). Not to other models either, which might refuse a parameter they don't take. Ask Sage's query takes
+    no such parameter."""
     return None if THINKING == "model_default" or not takes_thinking_cap(model, service) else THINKING
 
 
@@ -301,8 +359,9 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
     use nothing but the text in front of it, and retrieved references are
     billed input tokens on all N calls. There is no max-tokens parameter on
     this endpoint, so output length cannot be capped from here."""
-    payload = {"message": prompt, "model": model, "temperature": TEMPERATURE, "dataset": "none",
-               "limit_references": 0}
+    payload = {"message": prompt, "model": model, "dataset": "none", "limit_references": 0}
+    if temperature_sent(model, "asksage"):
+        payload["temperature"] = TEMPERATURE
     _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "message"},
                    "request_bytes": len(json.dumps(payload).encode("utf-8"))}
     # Fetched for each request, not once per run: a 401 clears the cache
@@ -425,8 +484,9 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
     when the reply names it, goes into SERVED for the run's record."""
     url, headers = _litellm("/v1/chat/completions")
-    payload = {"model": model, "messages": _messages(prompt, model, cache_until),
-               "temperature": TEMPERATURE, "max_tokens": MAX_ANSWER_TOKENS}
+    payload = {"model": model, "messages": _messages(prompt, model, cache_until), "max_tokens": MAX_ANSWER_TOKENS}
+    if temperature_sent(model, "litellm"):
+        payload["temperature"] = TEMPERATURE
     if thinking_sent(model, "litellm"):
         payload["reasoning_effort"] = thinking_sent(model, "litellm")
     _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "messages"},
@@ -937,9 +997,7 @@ class PaidCalls:
                  "run_id": path.name.removesuffix("_failed_calls.jsonl"), **where,
                  "outcome": "not_sent" if error is None else "cut_off" if isinstance(error, CutOff) else "failed",
                  "service": SERVICE, "model": MODEL,
-                 "call_settings": {"temperature": TEMPERATURE, "max_answer_tokens": MAX_ANSWER_TOKENS,
-                                   "thinking": THINKING, "thinking_sent": thinking_sent(),
-                                   "read_timeout_s": READ_TIMEOUT},
+                 "call_settings": {**call_settings(), "read_timeout_s": READ_TIMEOUT},
                  "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
                  "prompt_characters": len(prompt)}
         if error is None:

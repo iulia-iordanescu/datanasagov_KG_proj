@@ -1221,7 +1221,7 @@ class LiteLLM(unittest.TestCase):
         self.assertEqual(url, "https://proxy.fast.luna.nasa.gov/v1/chat/completions")
         self.assertEqual(headers, {"Authorization": "Bearer sk-test"})
         self.assertEqual(body, {"model": "claude-opus-5.5", "messages": [{"role": "user", "content": "hi"}],
-                                "temperature": 0, "max_tokens": llm.MAX_ANSWER_TOKENS})
+                                "max_tokens": llm.MAX_ANSWER_TOKENS})            # no temperature: Claude takes none
         self.assertEqual(llm.SERVED, {"claude-opus-5-5-20260101"})
 
     def test_refusal_not_retried(self):
@@ -1339,10 +1339,27 @@ class LiteLLM(unittest.TestCase):
         self.assertEqual(llm.cache_identity(), "litellm:claude-sonnet-5")
         llm.SERVED.add("claude-sonnet-5-20260101")
         self.assertEqual(llm.describe(), {"service": "litellm", "model": "claude-sonnet-5",
-                                          "served_as": ["claude-sonnet-5-20260101"], "temperature": 0,
-                                          "max_answer_tokens": llm.MAX_ANSWER_TOKENS, "thinking": llm.THINKING,
-                                          "thinking_sent": None})
+                                          "served_as": ["claude-sonnet-5-20260101"],
+                                          "temperature": "not sent (the model does not accept it, or its maker "
+                                                         "advises against changing it)",
+                                          "max_answer_tokens": llm.MAX_ANSWER_TOKENS,
+                                          "thinking": f"not sent (the step's setting, {llm.THINKING}, isn't sent to "
+                                                      "this model)",
+                                          "thinking_sent": None, "effort": "not sent (model default)"})
         self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
+        llm.MODEL = "claude-opus-5.5"                                            # its documented default effort
+        self.assertEqual(llm.describe()["effort"], "not sent (model default, medium)")
+
+    def test_temperature_sent(self):
+        """Temperature 0 goes only to models that take it: not Claude (no sampling parameters on Opus 5.5), not
+        Gemini 3 and later (Google advises the default); Gemini 2.5 and other makers' models get it."""
+        llm = self.llm
+        self.assertFalse(llm.temperature_sent("claude-opus-5.5", "litellm"))
+        self.assertFalse(llm.temperature_sent("google-claude-sonnet-5", "asksage"))
+        self.assertFalse(llm.temperature_sent("gemini-3-pro", "litellm"))
+        self.assertTrue(llm.temperature_sent("gemini-2.5-pro", "litellm"))
+        self.assertTrue(llm.temperature_sent("gpt-5", "litellm"))
+        self.assertIsNone(llm.effort_note("gemini-2.5-pro"))
 
     def test_unknown_service(self):
         with self.assertRaisesRegex(ValueError, "asksage, litellm"):
