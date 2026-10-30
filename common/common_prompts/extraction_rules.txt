@@ -84,6 +84,11 @@
   monitor the health of the Earth lakes, rivers and wetlands" gives the
   target body "Earth", then three purposes: "monitor the health of lakes",
   "monitor the health of rivers", and "monitor the health of wetlands").
+  This holds for a list in the subject as well as in the object: put each
+  item alone in the list's place ("Maria Lopez and Ken Ito lead the
+  calibration" gives two triples, with the subjects "Maria Lopez" and
+  "Ken Ito"). An item that names no specific thing ("her group", "his
+  team") gives no triple.
 - One thing, one wording: when the record names the same thing more than
   once, in different words: if one wording says more (contains the other, is
   more precise, or spells out its abbreviation), use it, in every triple

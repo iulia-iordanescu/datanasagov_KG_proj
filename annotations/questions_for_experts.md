@@ -1103,7 +1103,7 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone after the predicate, with the words the items share copied onto it, in the singular. Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
+- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it, in the singular. Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
@@ -1167,7 +1167,7 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 
 The records name groups of people, offices, programs, sites and places, and we are not sure we sort them the way someone in the field would. Our schema has three entity classes for groups: Organization (a group with a name of its own, such as NASA), Team (a group of people without a name of its own) and Role (a position someone holds); all are defined below. It has no entity class for a place. We would like to know:
 
-- (a) Is that line right: a group with a name of its own is an Organization, one without is a Team, and what an organization is there for is a Role it holds? In the first example, we wrote "NASA Ocean Biology Processing Group (OBPG)" as an Organization, "Peter Minnett and his team" as a Team, and "JPL ... is the official Physical Oceanography Data Archive (PO.DAAC) for SST" as a Role that JPL holds. Would you rather call PO.DAAC an organization of its own, run by JPL?
+- (a) Is that line right: a group with a name of its own is an Organization, one without is a Team, and what an organization is there for is a Role it holds? In the first example, we wrote "NASA Ocean Biology Processing Group (OBPG)" as an Organization, "Peter Minnett" as a Person (the record says "Peter Minnett and his team"; "his team" names no team, so it is left out), and "JPL ... is the official Physical Oceanography Data Archive (PO.DAAC) for SST" as a Role that JPL holds. Would you rather call PO.DAAC an organization of its own, run by JPL?
 - (b) The second example says "The NASA Technical Standards Program provides access to NASA developed standards and handbooks". We wrote the program as an Organization, with its name whole, "NASA" included. Is a NASA program like this one an organization (an office with staff), or something else, such as a funded effort?
 - (c) Facilities and places: in this catalog, is a facility (a space center, an observatory, a ground station) an organization, a place, or either one, depending on the sentence? And do the records name places (a research station, a field of the sky, a site) often enough, in facts that matter, for us to add an entity class for places?
 
@@ -1182,7 +1182,7 @@ The records name groups of people, offices, programs, sites and places, and we a
 - source text: Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging
 - classed triple: "JPL" (Organization) SERVES_AS "official Physical Oceanography Data Archive (PO.DAAC) for SST" (Role)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
-- classed triple: "Peter Minnett and his team" (Team) AFFILIATED_WITH "Rosenstiel School of Marine and Atmospheric Science (RSMAS)" (Organization)
+- classed triple: "Peter Minnett" (Person) AFFILIATED_WITH "Rosenstiel School of Marine and Atmospheric Science (RSMAS)" (Organization)
 
 ### Example record
 
@@ -1300,12 +1300,12 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - classed triple of the record at pool position 3: "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
-- classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) AFFILIATED_WITH "Rosenstiel School of Marine and Atmospheric Science (RSMAS)" (Organization)
+- classed triple of the record at pool position 4: "Peter Minnett" (Person) AFFILIATED_WITH "Rosenstiel School of Marine and Atmospheric Science (RSMAS)" (Organization)
 - classed triple of the record at pool position 4: "JPL" (Organization) OBTAINS_DATA_FROM "NASA Ocean Biology Processing Group (OBPG)" (Organization)
 - classed triple of the record at pool position 4: "JPL" (Organization) SERVES_AS "official Physical Oceanography Data Archive (PO.DAAC) for SST" (Role)
-- classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) RESPONSIBLE_FOR "sea surface temperature algorithm development" (Task)
-- classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) RESPONSIBLE_FOR "error statistics" (Task)
-- classed triple of the record at pool position 4: "Peter Minnett and his team" (Team) RESPONSIBLE_FOR "quality flagging" (Task)
+- classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "sea surface temperature algorithm development" (Task)
+- classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "error statistics" (Task)
+- classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "quality flagging" (Task)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "NASA HEASARC" (Organization)
 - translation table row: entity class Program
 - translation table row: entity class Location
@@ -1397,7 +1397,7 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone after the predicate, with the words the items share copied onto it, in the singular.
+- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it, in the singular.
 - Writing a classed triple, rule 12: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 9 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
@@ -1418,7 +1418,8 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
-- classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly and conveniently" (Purpose)
+- classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly" (Purpose)
+- classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information conveniently" (Purpose)
 - classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
 - classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
