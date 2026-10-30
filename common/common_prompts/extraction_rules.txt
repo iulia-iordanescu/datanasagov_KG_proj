@@ -142,13 +142,7 @@
   notes: "Tier 3"); if they are two equal wordings, use the one the record uses
   most often (on a tie, the one it gives first); the other appears only in
   an also-known-as triple, and only if the record states one. The record's
-  dataset is the exception: it is always written as its title. A wording
-  that differs only in capitals, spaces, hyphens or punctuation is the same
-  wording, not a second one: write it as it appears where the record isn't
-  typed all in capitals (usually the notes); if it appears more than once
-  there, the form used most often (on a tie, the first): "Halden", not the
-  all-capitals title's "HALDEN". If it appears only in all capitals, write
-  it as written. Leave out a
+  dataset is the exception: it is always written as its title. Leave out a
   type word that only describes the thing, written in lowercase beside the
   name: write "Halden", not "Halden satellite", since its entity class,
   Spacecraft, already says what it is. Keep a type word written as part of
@@ -180,7 +174,10 @@
 - Only facts the record states. Never use outside knowledge, and never write
   what an unexplained code or abbreviation stands for. This includes its
   entity class: an unexplained code gets no triple whose meaning depends on
-  what it stands for (seeing that two wordings
+  what it stands for. A code counts as explained only when it follows one of
+  these catalog conventions: "V" or "Version" followed by a number is a
+  version ("V027"); "L" or "Level" followed by a number is a processing level
+  ("L2"). Any other code needs the record's own explanation (seeing that two wordings
   name the same thing is allowed: see the rule on one wording). The title
   states facts too: "Kestrel/Halden Lake Ice 20-Min L2 Swath 800m V027" says
   the record's dataset was collected by Kestrel and has a spatial resolution
