@@ -1,3 +1,5 @@
-Return ONLY JSON, no prose:
-{"describes_class": "...", "triples": [{$fields}]}
+REPLY FORMAT
+
+Return only JSON, with no prose:
+{"describes_class": "<entity class>", "triples": [{$fields}]}
 with "triples": [] if there are none to extract.

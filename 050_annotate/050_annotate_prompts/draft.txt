@@ -1,23 +1,29 @@
-Extract the facts this record states, as subject / predicate / object
-triples, each with an entity class (the type of thing it is) for the
-subject and for the object.
-
-$passes
-
-NAMING SECOND. Use an entity class or predicate from the schema when one fits,
-so records name the same things the same way. Otherwise coin one in the
-same style: entity classes in CamelCase, predicates in UPPER_SNAKE_CASE.
-The schema is short and incomplete, so expect to need new entity
-classes and predicates; coining one is a normal outcome.
-
 SCHEMA
 $schema
 
 RULES
 $rules
 
+$examples
+
+TASK
+
+Extract the facts the record below states, as subject / predicate / object
+triples, each with an entity class (the kind of thing it is) for the
+subject and for the object. A person checks and corrects your answer.
+
+$passes
+
+Naming comes second. Use an entity class or predicate from the schema above
+when one fits, so records name the same things the same way. Otherwise
+coin one in the same style: entity classes in CamelCase, predicates in
+UPPER_SNAKE_CASE. The schema is short and incomplete, so expect to need new
+entity classes and predicates; coining one is a normal outcome.
+
 $reply
 
 ----- BEGIN RECORD -----
 $text
 ----- END RECORD -----
+
+$closing

@@ -72,7 +72,7 @@ EXAMPLES = load(PROMPTS / "extraction_examples.txt")
 CLOSING = load(PROMPTS / "extraction_closing.txt")
 #: What each step asks to be complete about, for its prompt's $passes (passes): 050 every fact, whatever the schema
 #: can express; 060 only the facts its schema can express.
-SCOPE_ALL = " (whether or not the schema below can express it)"
+SCOPE_ALL = " (whether or not the schema can express it)"
 SCOPE_SCHEMA = " that the schema can express"
 #: The lines around a record in the prompts. Everything before BEGIN_LINE is the same in every request of a run, so
 #: 060 sends it for prompt caching (llm._messages).

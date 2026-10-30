@@ -20,9 +20,13 @@ Use only component classes exactly as they are written in GROUND_TRUTH.
 Several component classes of SCHEMA may map to the same component class of
 GROUND_TRUTH. Answer for every component class of SCHEMA.
 
-Return ONLY JSON, no prose, with "schema" the component class from SCHEMA
-and "ground_truth" the one from GROUND_TRUTH:
-{"mapping": [{"kind": "entity class" or "predicate", "schema": "...", "ground_truth": "..." or null, "reversed": false}]}
+REPLY FORMAT
+
+Return only JSON, with no prose. In each entry, "kind" is "entity class" or
+"predicate", "schema" is the component class from SCHEMA, "ground_truth" is
+the one from GROUND_TRUTH (null when there is none), and "reversed" is true
+or false:
+{"mapping": [{"kind": "<kind>", "schema": "<component class>", "ground_truth": "<component class>", "reversed": false}]}
 
 GROUND_TRUTH
 $ground_truth

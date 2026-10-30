@@ -987,13 +987,77 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
         self.assertIn("--extract_from all", str(stop.exception))
 
 
+class WorkedExamples(unittest.TestCase):
+    """The two invented worked examples 050 and 060 show the model (common/common_prompts/extraction_examples.txt;
+    prompt audit F7, 2026-10-30) pass the pipeline's own checks on their answers: every row is a well-formed
+    classed triple, every source text is in its record's text (as one passage, or passages joined by " … "), every
+    entity class, predicate and pattern is in the example schema shown with them, no fact is given twice, and the
+    record's dataset is written as its title. They share no 5-word run with any harvested record either (the ground
+    truth is checked for every prompt by tests/test_docs.py, PromptsQuoteNoGroundTruth)."""
+
+    def examples(self) -> tuple:
+        text = extraction.EXAMPLES.template
+        schema_block = text.split("EXAMPLE SCHEMA", 1)[1].split("----- BEGIN EXAMPLE RECORD", 1)[0]
+        found = []
+        for n in ("1", "2"):
+            record = text.split(f"----- BEGIN EXAMPLE RECORD {n} -----\n", 1)[1].split(
+                f"\n----- END EXAMPLE RECORD {n} -----", 1)[0]
+            answer = text.split(f"EXAMPLE ANSWER {n}\n", 1)[1].split("\n]}", 1)[0] + "\n]}"
+            found.append((n, record, json.loads(answer)))
+        return schema_block, found
+
+    def test_answers_pass_the_checks(self):
+        from common import schema_io
+        from common.validate import SchemaEntries
+        schema_block, found = self.examples()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "example_schema.txt"
+            path.write_text(schema_block, encoding="utf-8")
+            schema = schema_io.read_schema(path)
+        self.assertEqual([u for u in schema["unread"] if "Each entry reads" not in u], [])   # only the header's prose
+        entries = SchemaEntries(schema)
+        self.assertEqual(len(found), 2)
+        for n, record, answer in found:
+            with self.subTest(example=n):
+                title = record.split("\n", 1)[0].removeprefix("title: ")
+                rows, removed = extraction.build_rows("example", title, record, [answer], entries)
+                self.assertEqual(removed, [], "a malformed or repeated triple")
+                self.assertEqual(rows[0]["errors"] + rows[0]["flags"], [], "the describes triple")
+                for row in rows[1:]:
+                    with self.subTest(triple=(row["subject"], row["predicate"], row["object"])):
+                        self.assertEqual(row["errors"], [])
+                        schema_flags = [f for f in row["flags"] if "schema" in f or "pinned" in f]
+                        self.assertEqual(schema_flags, [])
+                        if row["subject_class"] == "Dataset":
+                            self.assertEqual(row["subject"], title)       # rule 23: the record's dataset is its title
+
+    def test_no_run_of_a_real_record(self):
+        records = ROOT / "outputs" / "intermediate_results" / "020_clean" / "records.jsonl"
+        if not records.exists():
+            self.skipTest("no harvested records on this computer")
+        import re
+        words = lambda s: re.sub(r"\W+", " ", s.lower()).split()
+        runs = lambda w: {" ".join(w[i:i + 5]) for i in range(len(w) - 4)}
+        example_runs = set()
+        for _, record, _ in self.examples()[1]:
+            example_runs |= runs(words(record))
+        hits = set()
+        with open(records, encoding="utf-8") as fh:
+            for line in fh:
+                r = json.loads(line)
+                hits |= runs(words(f"{r.get('title') or ''} {r.get('notes') or ''}")) & example_runs
+        self.assertFalse(hits, f"the worked examples share these 5-word runs with harvested records: {sorted(hits)[:10]}")
+
+
 class TwoPasses(unittest.TestCase):
-    """050's and 060's prompts both ask for the same completeness instruction and TRACE-KG's order of work (first find
-    every thing the record names, then state the facts about each), from one shared file,
-    common/common_prompts/extraction_passes.txt ($passes); they differ only in which facts they ask for (050 every
-    fact, 060 only the ones its schema can express). The instruction is before the schema, inside the part sent for
-    prompt caching; the list is not asked for in the reply, so the reply format is shared. It replaced 060's setting
-    list_things_first (2026-10-30), which no longer exists."""
+    """050's and 060's prompts share their instructions from common/common_prompts: the completeness instruction and
+    TRACE-KG's order of work (first find every thing the record names, then state the facts about each;
+    extraction_passes.txt, $passes), the worked examples (extraction_examples.txt, $examples) and the closing line after
+    the record (extraction_closing.txt, $closing); they differ only in which facts they ask for (050 every fact, 060
+    only the ones its schema can express) and in how they may name (050 coins, 060 uses its schema only). The layout
+    (prompt audit F5, 2026-10-30): schema, rules, examples, task, reply format, record, closing line. Everything
+    before the record is the part sent for prompt caching. It replaced 060's setting list_things_first (2026-10-30),
+    which no longer exists."""
 
     RECORD = {"id": "r1", "title": "Kestrel Lake Ice L2", "notes": "Made by the Tern algorithm."}
     SCHEMA = "ENTITY CLASSES\nInstrument  a device"
@@ -1010,38 +1074,52 @@ class TwoPasses(unittest.TestCase):
     def prompt(self, step="060") -> str:
         if step == "060":
             return extraction.prompt(self.extract.PROMPT, self.SCHEMA, self.RECORD, "title: Kestrel Lake Ice L2",
-                                     passes=extraction.passes(extraction.SCOPE_SCHEMA))
+                                     **extraction.task_parts(extraction.SCOPE_SCHEMA))
         return extraction.prompt(self.draft.PROMPT, self.SCHEMA, self.RECORD, "title: Kestrel Lake Ice L2",
-                                 passes=extraction.passes(extraction.SCOPE_ALL))
+                                 **extraction.task_parts(extraction.SCOPE_ALL))
 
     def test_always_two_passes(self):
         for step in ("050", "060"):
             with self.subTest(step=step):
                 template = (self.extract if step == "060" else self.draft).PROMPT.template
-                for name in ("$schema", "$rules", "$reply", "$text", "$passes"):
+                for name in ("$schema", "$rules", "$reply", "$text", "$passes", "$examples", "$closing"):
                     template = template.replace(name, "")
                 self.assertNotIn("$", template)                                # no other placeholder left
                 prompt = self.prompt(step)
                 first = prompt.index("Work in two passes")
-                self.assertIn("COMPLETENESS FIRST.", prompt)
-                self.assertLess(prompt.index("COMPLETENESS FIRST."), first)
+                self.assertIn("Completeness comes first.", prompt)
+                self.assertLess(prompt.index("Completeness comes first."), first)
                 self.assertIn("1. Find every thing the record names", prompt)
                 self.assertIn("2. Take the things one at a time.", prompt)
                 self.assertIn("this list in your answer.", prompt)
-                self.assertLess(first, prompt.index("\nSCHEMA\n"))                  # before the schema
                 self.assertLess(first, prompt.index(extraction.BEGIN_LINE))        # in the part sent for prompt caching
                 self.assertIn(extraction.reply(True), prompt)                      # the shared reply format, unchanged
         self.assertLess(self.prompt("060").index("leave describes_class empty."),
                         self.prompt("060").index("Work in two passes"))
 
+    def test_layout(self):
+        """Schema, rules, examples, task, reply format, record, closing line: long reference first, the task after it,
+        and the task restated after the record (Anthropic: queries at the end; Google: instructions at the end)."""
+        for step in ("050", "060"):
+            with self.subTest(step=step):
+                p = self.prompt(step)
+                marks = ["SCHEMA\n", "RULES\n", "WORKED EXAMPLES", "TASK\n", "Work in two passes", "REPLY FORMAT",
+                         extraction.BEGIN_LINE, extraction.END_LINE, "Now state every fact"]
+                where = [p.index(m) for m in marks]
+                self.assertEqual(where, sorted(where), marks)
+                self.assertEqual(p.count(extraction.BEGIN_LINE), 1)              # the cache split is unambiguous
+                self.assertTrue(p.rstrip().endswith("the reply format above."))
+
     def test_same_shared_text_different_scope(self):
         p050, p060 = self.prompt("050"), self.prompt("060")
-        self.assertIn("every fact the record states (whether or not the schema below can express it)", p050)
+        self.assertIn("every fact the record states (whether or not the schema can express it)", p050)
         self.assertIn("every fact the record states that the schema can express", p060)
-        shared = extraction.PASSES.template.split("$scope")
-        for part in shared:
-            self.assertIn(part, p050)
-            self.assertIn(part, p060)
+        for shared in (extraction.PASSES, extraction.CLOSING):
+            for part in shared.template.split("$scope"):
+                self.assertIn(part.strip(), p050)
+                self.assertIn(part.strip(), p060)
+        self.assertIn(extraction.EXAMPLES.template.strip(), p050)
+        self.assertIn(extraction.EXAMPLES.template.strip(), p060)
 
     def test_setting_is_gone(self):
         import contextlib
@@ -1370,7 +1448,8 @@ class LiteLLM(unittest.TestCase):
                                           "max_answer_tokens": llm.MAX_ANSWER_TOKENS,
                                           "thinking": f"not sent (the step's setting, {llm.THINKING}, isn't sent to "
                                                       "this model)",
-                                          "thinking_sent": None, "effort": "not sent (model default)"})
+                                          "thinking_sent": None, "effort": "not sent (model default)",
+                                          "service_note": llm.SERVICE_NOTES["litellm"]})
         self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
         llm.MODEL = "claude-opus-5.5"                                            # its documented default effort
         self.assertEqual(llm.describe()["effort"], "not sent (model default, medium)")

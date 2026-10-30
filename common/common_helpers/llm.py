@@ -148,7 +148,13 @@ def describe() -> dict:
     """What answered this run's calls, for the run's record (each step's "made"): the service, the model as asked
     for, the exact model the service said answered (when it says), and the settings every call is sent with, as
     sent (call_settings)."""
-    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings()}
+    return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings(),
+            "service_note": SERVICE_NOTES.get(SERVICE)}
+
+
+#: What a service may do to a request that the run record can't see (prompt audit F19, 2026-10-30).
+SERVICE_NOTES = {"litellm": "LiteLLM can drop a setting the model doesn't take without saying so (its drop_params "
+                            "option), so a setting recorded as sent may not have reached the model"}
 
 
 def call_settings(model: str | None = None, service: str | None = None) -> dict:

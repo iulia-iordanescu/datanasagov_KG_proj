@@ -1,0 +1,148 @@
+WORKED EXAMPLES
+
+Two invented records, each with its complete answer, written to the rules
+above. They use a small example schema of their own, shown here with them.
+For the record you are given, use the schema and predicates the task says
+to use, not this example schema.
+
+EXAMPLE SCHEMA
+
+ENTITY CLASSES
+--------------
+Dataset              a set of observations, measurements, or derived values
+Instrument           a device that measures, or a part of one
+Spacecraft           a vehicle that flies in space
+Organization         a named institution or one of its named parts
+PhysicalQuantity     a property that can be measured
+Content              what a dataset holds, in its own words
+Algorithm            a method applied to data to compute a result
+Channel              a wavelength band an instrument measures in
+Purpose              what something is for
+CelestialBody        a natural body in space
+SpatialExtent        the area the data cover
+TemporalResolution   the time between one value of the data and the next
+SpatialResolution    the amount of ground or sky each value of the data covers
+ProcessingLevel      how far the data are processed
+Version              a release of a dataset
+Time                 a point or period of time
+MissionPhase         a named period of a mission
+AngleRange           a range of angles
+
+PREDICATES
+----------
+Each entry reads subject -> object, with its patterns (subject class -> object class).
+
+HAS_MEASUREMENTS_OF      holds measurements of this
+                         Dataset -> PhysicalQuantity
+HAS_CONTENT              holds this
+                         Dataset -> Content
+HAS_TEMPORAL_RESOLUTION  gives values this often
+                         Dataset -> TemporalResolution
+HAS_SPATIAL_COVERAGE     covers this area
+                         Dataset -> SpatialExtent
+HAS_SPATIAL_RESOLUTION   each of its values covers this much ground
+                         Dataset -> SpatialResolution
+HAS_PROCESSING_LEVEL     is processed to this level
+                         Dataset -> ProcessingLevel
+HAS_VERSION              is this release
+                         Dataset -> Version
+ACQUIRED_BY_INSTRUMENT   was collected by this instrument
+                         Dataset -> Instrument
+FROM_SPACECRAFT          came from this spacecraft
+                         Dataset -> Spacecraft
+ABOARD                   is carried by this spacecraft
+                         Instrument -> Spacecraft
+HAS_PART                 has this as one of its parts
+                         Instrument -> Instrument
+LAUNCHED_BY              was launched by this organization
+                         Spacecraft -> Organization
+HAS_TARGET               is about this body
+                         Spacecraft -> CelestialBody; Content -> CelestialBody
+HAS_PURPOSE              is meant to do this
+                         Spacecraft -> Purpose; Content -> Purpose
+COMPUTED_FROM            is computed from this input
+                         Dataset -> PhysicalQuantity; PhysicalQuantity -> Channel
+PRODUCED_USING_ALGORITHM  is computed with this method
+                         Dataset -> Algorithm
+PRODUCED_BY              was made by this organization
+                         Content -> Organization
+HAS_TIME_SPAN            covers this period
+                         Dataset -> Time
+HAS_MISSION_PHASE        was observed during this phase
+                         Dataset -> MissionPhase
+HAS_LOWER_NOISE_THAN     has lower noise than this
+                         Instrument -> Instrument
+HAS_PHASE_ANGLE_RANGE    covers phase angles in this range
+                         Dataset -> AngleRange
+
+----- BEGIN EXAMPLE RECORD 1 -----
+title: Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004
+
+notes: This dataset holds daily lake ice extent from the Kestrel Wide-Field Imager (KWFI) aboard the Halden satellite. Halden was launched by the Brenmark Space Office to map the seasonal change of the Earth lakes and reservoirs. The dataset is made from the Lake Ice Index (LII) using TernFit. The LII is computed from the 1.6 and 2.2 micron channels. Observations run from March 2003, through the commissioning and the first survey, until December 2015. A monthly product is also available. This is the latest and best lake ice record.
+----- END EXAMPLE RECORD 1 -----
+
+EXAMPLE ANSWER 1
+{"describes_class": "Dataset", "triples": [
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_MEASUREMENTS_OF", "object": "lake ice extent", "object_class": "PhysicalQuantity", "source_text": "This dataset holds daily lake ice extent"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_TEMPORAL_RESOLUTION", "object": "daily", "object_class": "TemporalResolution", "source_text": "This dataset holds daily lake ice extent"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_SPATIAL_COVERAGE", "object": "Global", "object_class": "SpatialExtent", "source_text": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_PROCESSING_LEVEL", "object": "L3", "object_class": "ProcessingLevel", "source_text": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_SPATIAL_RESOLUTION", "object": "6km", "object_class": "SpatialResolution", "source_text": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_VERSION", "object": "V004", "object_class": "Version", "source_text": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "ACQUIRED_BY_INSTRUMENT", "object": "Kestrel Wide-Field Imager (KWFI)", "object_class": "Instrument", "source_text": "This dataset holds daily lake ice extent from the Kestrel Wide-Field Imager (KWFI)"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "FROM_SPACECRAFT", "object": "Halden", "object_class": "Spacecraft", "source_text": "This dataset holds daily lake ice extent from the Kestrel Wide-Field Imager (KWFI) aboard the Halden satellite"},
+{"subject": "Kestrel Wide-Field Imager (KWFI)", "subject_class": "Instrument", "predicate": "ABOARD", "object": "Halden", "object_class": "Spacecraft", "source_text": "Kestrel Wide-Field Imager (KWFI) aboard the Halden satellite"},
+{"subject": "Halden", "subject_class": "Spacecraft", "predicate": "LAUNCHED_BY", "object": "Brenmark Space Office", "object_class": "Organization", "source_text": "Halden was launched by the Brenmark Space Office"},
+{"subject": "Halden", "subject_class": "Spacecraft", "predicate": "HAS_TARGET", "object": "Earth", "object_class": "CelestialBody", "source_text": "Halden was launched by the Brenmark Space Office to map the seasonal change of the Earth lakes and reservoirs"},
+{"subject": "Halden", "subject_class": "Spacecraft", "predicate": "HAS_PURPOSE", "object": "map the seasonal change of lakes", "object_class": "Purpose", "source_text": "Halden was launched by the Brenmark Space Office to map the seasonal change of the Earth lakes and reservoirs"},
+{"subject": "Halden", "subject_class": "Spacecraft", "predicate": "HAS_PURPOSE", "object": "map the seasonal change of reservoirs", "object_class": "Purpose", "source_text": "Halden was launched by the Brenmark Space Office to map the seasonal change of the Earth lakes and reservoirs"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "COMPUTED_FROM", "object": "Lake Ice Index (LII)", "object_class": "PhysicalQuantity", "source_text": "The dataset is made from the Lake Ice Index (LII)"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "PRODUCED_USING_ALGORITHM", "object": "TernFit", "object_class": "Algorithm", "source_text": "The dataset is made from the Lake Ice Index (LII) using TernFit"},
+{"subject": "Lake Ice Index (LII)", "subject_class": "PhysicalQuantity", "predicate": "COMPUTED_FROM", "object": "1.6 micron channel", "object_class": "Channel", "source_text": "The LII is computed from the 1.6 and 2.2 micron channels"},
+{"subject": "Lake Ice Index (LII)", "subject_class": "PhysicalQuantity", "predicate": "COMPUTED_FROM", "object": "2.2 micron channel", "object_class": "Channel", "source_text": "The LII is computed from the 1.6 and 2.2 micron channels"},
+{"subject": "Kestrel/Halden Lake Ice Extent L3 Daily Global 6km V004", "subject_class": "Dataset", "predicate": "HAS_TIME_SPAN", "object": "from March 2003 until December 2015", "object_class": "Time", "source_text": "Observations run from March 2003, through the commissioning and the first survey, until December 2015"}
+]}
+
+Why: "daily" and "Earth" are qualifiers taken out (rule 19); "lake ice
+extent" and the purposes have no triple of their own, so the record's
+dataset and Halden get them. "Kestrel/Halden" splits because both are named
+separately in the notes, and both facts are already there (rules 16, 22).
+"satellite" is a type word left out (rule 23). The lakes and reservoirs list
+is split, and "Earth" is taken out first (rules 19, 22). Two processing
+steps (rule 24). The period keeps the record's own linking words (rule 22).
+The monthly product is a variant of the record's dataset (rule 21), and
+"latest" and "best" are left out (rules 5, 10).
+
+----- BEGIN EXAMPLE RECORD 2 -----
+title: VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0
+
+notes: This data set contains albedo maps of the asteroid Merrow from the Dust Camera (DUSTCAM) aboard VOSK-1, taken during orbit phase OP7. DUSTCAM has two detectors, the wide detector and the narrow detector. The data set covers phase angles between 10 and 70 degrees. The narrow detector has lower noise. The albedo maps were produced by the Lund Planetary Group and the Ostra Imaging Lab to support a comparison of albedo and slope.
+----- END EXAMPLE RECORD 2 -----
+
+EXAMPLE ANSWER 2
+{"describes_class": "Dataset", "triples": [
+{"subject": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0", "subject_class": "Dataset", "predicate": "HAS_CONTENT", "object": "albedo maps", "object_class": "Content", "source_text": "This data set contains albedo maps"},
+{"subject": "albedo maps", "subject_class": "Content", "predicate": "HAS_TARGET", "object": "Merrow", "object_class": "CelestialBody", "source_text": "albedo maps of the asteroid Merrow"},
+{"subject": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0", "subject_class": "Dataset", "predicate": "ACQUIRED_BY_INSTRUMENT", "object": "Dust Camera (DUSTCAM)", "object_class": "Instrument", "source_text": "This data set contains albedo maps of the asteroid Merrow from the Dust Camera (DUSTCAM)"},
+{"subject": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0", "subject_class": "Dataset", "predicate": "FROM_SPACECRAFT", "object": "VOSK-1", "object_class": "Spacecraft", "source_text": "This data set contains albedo maps of the asteroid Merrow from the Dust Camera (DUSTCAM) aboard VOSK-1"},
+{"subject": "Dust Camera (DUSTCAM)", "subject_class": "Instrument", "predicate": "ABOARD", "object": "VOSK-1", "object_class": "Spacecraft", "source_text": "Dust Camera (DUSTCAM) aboard VOSK-1"},
+{"subject": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0", "subject_class": "Dataset", "predicate": "HAS_MISSION_PHASE", "object": "OP7", "object_class": "MissionPhase", "source_text": "This data set contains albedo maps of the asteroid Merrow from the Dust Camera (DUSTCAM) aboard VOSK-1, taken during orbit phase OP7"},
+{"subject": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0", "subject_class": "Dataset", "predicate": "HAS_VERSION", "object": "V1.0", "object_class": "Version", "source_text": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0"},
+{"subject": "Dust Camera (DUSTCAM)", "subject_class": "Instrument", "predicate": "HAS_PART", "object": "wide detector", "object_class": "Instrument", "source_text": "DUSTCAM has two detectors, the wide detector and the narrow detector"},
+{"subject": "Dust Camera (DUSTCAM)", "subject_class": "Instrument", "predicate": "HAS_PART", "object": "narrow detector", "object_class": "Instrument", "source_text": "DUSTCAM has two detectors, the wide detector and the narrow detector"},
+{"subject": "narrow detector", "subject_class": "Instrument", "predicate": "HAS_LOWER_NOISE_THAN", "object": "wide detector", "object_class": "Instrument", "source_text": "DUSTCAM has two detectors, the wide detector and the narrow detector … The narrow detector has lower noise"},
+{"subject": "VOSK-1 DUSTCAM 2 ALBEDO MAPS V1.0", "subject_class": "Dataset", "predicate": "HAS_PHASE_ANGLE_RANGE", "object": "between 10 and 70 degrees", "object_class": "AngleRange", "source_text": "The data set covers phase angles between 10 and 70 degrees"},
+{"subject": "albedo maps", "subject_class": "Content", "predicate": "PRODUCED_BY", "object": "Lund Planetary Group", "object_class": "Organization", "source_text": "The albedo maps were produced by the Lund Planetary Group and the Ostra Imaging Lab"},
+{"subject": "albedo maps", "subject_class": "Content", "predicate": "PRODUCED_BY", "object": "Ostra Imaging Lab", "object_class": "Organization", "source_text": "The albedo maps were produced by the Lund Planetary Group and the Ostra Imaging Lab"},
+{"subject": "albedo maps", "subject_class": "Content", "predicate": "HAS_PURPOSE", "object": "support a comparison of albedo and slope", "object_class": "Purpose", "source_text": "The albedo maps were produced by the Lund Planetary Group and the Ostra Imaging Lab to support a comparison of albedo and slope"}
+]}
+
+Why: "Merrow" is a target body taken out of "albedo maps", which has triples
+of its own, so the maps get it (rule 19); "asteroid" and "orbit phase" are
+type words left out (rule 23). "OP7" is explained by the record (an orbit
+phase); the "2" in the title is an unexplained code, so it gives no triple
+(rule 1). The detectors and the two producers are lists, split (rule 22);
+"a comparison of albedo and slope" is a collective "and", kept whole (rule
+22). The narrow detector is compared with the other of exactly two
+detectors, with both passages as its source_text (rule 1). The phase angles
+are one range (rule 22).

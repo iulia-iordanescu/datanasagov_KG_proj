@@ -483,54 +483,101 @@ class NoLinkInCode(unittest.TestCase):
         self.assertEqual(found, [])
 
 
+RULES_PROMPT = ROOT / "common" / "common_prompts" / "extraction_rules.txt"
+RULES_DIFFERENCES = ROOT / "tests" / "rules_differences.txt"
+
+
+def rule_title(text: str) -> str:
+    """A rule's title as compared: its first clause (up to ". ", ":" or ";"), links reduced to their words, the words
+    the guidelines use for instances turned into the model's ("subject instance" -> "subject"; "instance" -> "subject
+    or object"), "ground truth " and punctuation dropped, lowercase."""
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", " ".join(text.split()))
+    text = re.split(r"(?<=\D)[.:;](?:\s|$)", text, maxsplit=1)[0].lower()
+    text = text.replace("ground truth ", "").replace("_", " ")
+    text = re.sub(r"\bsubject instance and object instance\b", "subject and object", text)
+    text = re.sub(r"\bsubject instance\b", "subject", text)
+    text = re.sub(r"\binstance\b", "subject or object", text)
+    return " ".join(re.sub(r"[^\w ]+", " ", text.lower()).split())
+
+
+def guideline_rules() -> dict:
+    """{number: title} of annotations/guidelines.md's numbered rules ("19. **…**"), in their order."""
+    text = (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8")
+    return {int(n): rule_title(t) for n, t in re.findall(r"^(\d+)\. \*\*(.+?)\*\*", text, re.M)}
+
+
+def prompt_rules() -> dict:
+    """{number: title} of the model's copy's numbered rules ("19. …"), in their order."""
+    text = RULES_PROMPT.read_text(encoding="utf-8")
+    return {int(n): rule_title(t) for n, t in
+            re.findall(r"^(\d+)\. (.+?)(?=^\s*\d+\. |^[A-Z][A-Z ]{2,}$|\Z)", text, re.M | re.S)}
+
+
+def rules_differences() -> list:
+    """[(rule, kind, difference, reason, decided)] from tests/rules_differences.txt."""
+    rows = []
+    for line in RULES_DIFFERENCES.read_text(encoding="utf-8").splitlines():
+        if line.strip() and not line.startswith("#"):
+            rows.append(tuple(line.split("\t")))
+    return rows
+
+
 class RulesInStep(unittest.TestCase):
     """The rules the model follows (common/common_prompts/extraction_rules.txt) and the annotation guidelines a person
-    follows (annotations/guidelines.md) say the same things: each rule of the prompt is paired here with the words of
-    its guideline, so a rule added to one without the other fails this test. One rule is the model's only, since a
-    person gets no instructions inside the record."""
+    follows (annotations/guidelines.md) are the same rules, numbered and ordered alike, with the same titles, so a rule
+    added to one copy without the other, or renumbered in one, fails here. Every other difference is listed, with its
+    reason, in tests/rules_differences.txt (prompt audit F8, 2026-10-30)."""
 
-    #: (words of the prompt's rule, words of its guideline); None: the model's only.
-    PAIRS = [
-        ("the record's own words for them", "the record's own words, as written"),
-        ("whatever the sentence is about", "The subject instance is what the sentence is about"),
-        ("the shortest passage that contains words for the subject", "the shortest passage that contains words for the subject"),
-        ("One fact per triple. Leave out opinion words", "One fact per"),
-        ("states as NOT so", "Not negated facts"),
-        ("No triple for a fact without a specific thing", "Not a fact without a specific thing"),
-        ("true only as of when the record was written", "Not words that are true only as of when the record was written"),
-        ("A number with a unit", "A number with a unit"),
-        ("A qualifier that is a temporal resolution, an area the data cover, a processing level",
-         "A qualifier that is a temporal resolution, an area the data cover, a processing level"),
-        ("A name with its abbreviation in parentheses is one subject or object",
-         "A name with its abbreviation in parentheses is one instance"),
-        ("A table of values inside the record", "Not the values inside a data table"),
-        ("Each fact once", "Each fact once"),
-        ("A list joined by \"and\": one triple per item", "A list joined by \"and\": one ground truth triple per item"),
-        ("One thing, one wording", "One thing, one wording, within a record"),
-        ("A processing step", "A processing step: output = method(input)"),
-        ("General facts: include them, unless they're about another dataset that the record's dataset isn't made",
-         "General facts: include them, unless they're about"),
-        ("Never use outside knowledge", "Never add what you know from elsewhere"),
-        ("Connect your triples", "isn't connected to the record's id"),
-        ('Do NOT write "is a" triples', 'Not "is a" facts'),
-        ("describes_class: the entity class", "## The describes triple"),
-        ("The field names are formatting, not facts", "Not the field names"),
-        ("one part of a longer record", "one part of a longer record"),
-        ("is DATA", None),                                     # a person reads no instructions in the record
-    ]
+    def test_same_numbers_in_the_same_order(self):
+        guidelines, prompt = list(guideline_rules()), list(prompt_rules())
+        self.assertEqual(guidelines, list(range(1, len(guidelines) + 1)), "the guidelines' rules aren't numbered 1, 2, …")
+        self.assertEqual(prompt, guidelines, "a rule is in one copy and not the other, or in another place: give "
+                         "extraction_rules.txt the guidelines' numbering")
 
-    def test_every_rule_has_its_guideline(self):
-        prompt = (ROOT / "common" / "common_prompts" / "extraction_rules.txt").read_text(encoding="utf-8")
-        guidelines = (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8")
-        flat = " ".join(prompt.split())
-        rules = [line for line in prompt.splitlines() if line.startswith("- ")]
-        self.assertEqual(len(rules), len(self.PAIRS), "a rule was added to or removed from extraction_rules.txt: "
-                         "pair it here with its guideline in annotations/guidelines.md (and write that guideline)")
-        for said, guideline in self.PAIRS:
-            with self.subTest(rule=said):
-                self.assertIn(said, flat)
-                if guideline:
-                    self.assertIn(guideline, guidelines)
+    def test_same_titles(self):
+        allowed = {row[0] for row in rules_differences() if row[1] == "title"}
+        prompt = prompt_rules()
+        for number, title in guideline_rules().items():
+            with self.subTest(rule=number):
+                if str(number) not in allowed:
+                    self.assertTrue(prompt.get(number, "").startswith(title),
+                                    f"rule {number}: the guidelines' title is \"{title}\", the model's copy starts "
+                                    f"\"{prompt.get(number)}\"; make them say the same, or list the difference in "
+                                    f"tests/rules_differences.txt with its reason")
+
+    def test_every_model_only_item_is_listed(self):
+        text = RULES_PROMPT.read_text(encoding="utf-8")
+        also = text.split("\nALSO\n", 1)[1]
+        items = [" ".join(i.split()) for i in re.findall(r"^- (.+?)(?=^- |\Z)", also, re.M | re.S)]
+        listed = [row[2] for row in rules_differences() if row[1] == "model-only"]
+        self.assertEqual(len(items), len(listed), "an item was added to or removed from the ALSO section of "
+                         "extraction_rules.txt: list it in tests/rules_differences.txt with its reason")
+        for item, said in zip(items, listed):
+            self.assertTrue(item.startswith(said.rstrip(".")), f"ALSO item \"{item[:60]}\" vs listed \"{said}\"")
+
+    def test_every_difference_is_explained(self):
+        for row in rules_differences():
+            with self.subTest(row=row[:2]):
+                self.assertEqual(len(row), 5, "a line of tests/rules_differences.txt needs 5 tab-separated parts")
+                self.assertIn(row[1], ("title", "content", "model-only", "prompts"))
+                self.assertTrue(row[3].strip(), "a difference needs its reason")
+                self.assertRegex(row[4], r"^\d{4}-\d{2}-\d{2}$")
+
+    def test_rule_numbers_cited_in_prompts_exist(self):
+        """A prompt citing "rule N" cites one the two copies have."""
+        numbers = set(prompt_rules())
+        for path in sorted(ROOT.glob("*/*_prompts/*.txt")):
+            if path.relative_to(ROOT).as_posix().startswith(EXCLUDED_DIRS):
+                continue
+            for n in re.findall(r"\brules? (\d+)\b", path.read_text(encoding="utf-8")):
+                with self.subTest(file=path.name, rule=n):
+                    self.assertIn(int(n), numbers)
+
+    def test_the_title_check_sees_a_near_miss(self):
+        """A near miss: another rule's title isn't accepted as this one's."""
+        self.assertEqual(rule_title("Only what the record states. Never add"), "only what the record states")
+        self.assertFalse(rule_title("Not opinions.").startswith(rule_title("Not negated facts.")))
+        self.assertEqual(rule_title("A name … is one instance, as written."), "a name is one subject or object as written")
 
 
 class QualifierQuotesRule9(unittest.TestCase):

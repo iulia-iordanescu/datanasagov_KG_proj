@@ -1,22 +1,29 @@
-Extract the facts this record states that the schema below can express, as
-subject / predicate / object triples, each with an entity class (the kind of
-thing it is) for the subject and for the object.
-
-Use ONLY the entity classes and predicates of the schema, spelled exactly as
-written, describes_class included. Leave out any fact they cannot express;
-do not invent entity classes or predicates. If no entity class fits what the title
-names, leave describes_class empty.
-
-$passes
-
 SCHEMA
 $schema
 
 RULES
 $rules
 
+$examples
+
+TASK
+
+Extract the facts the record below states that the schema above can
+express, as subject / predicate / object triples, each with an entity class
+(the kind of thing it is) for the subject and for the object.
+
+Use only the schema's entity classes and predicates, spelled exactly as
+written, describes_class included, so that every triple can be evaluated
+against the schema. Leave out a fact they cannot express, and don't invent
+entity classes or predicates. If no entity class fits what the title names,
+leave describes_class empty.
+
+$passes
+
 $reply
 
 ----- BEGIN RECORD -----
 $text
 ----- END RECORD -----
+
+$closing
