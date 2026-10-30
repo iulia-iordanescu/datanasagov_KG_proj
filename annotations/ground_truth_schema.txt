@@ -208,3 +208,5 @@ AVAILABLE_AT         can be got from this WebPage
                      source: ground truth tuning #12
 REVISED_AFTER        was corrected after this review
                      source: ground truth tuning #13
+HAS_TOTAL_FIELD_AREA  the areas of its fields add up to this, counting overlaps each time
+                      source: ground truth tuning #12

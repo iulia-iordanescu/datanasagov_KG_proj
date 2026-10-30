@@ -224,7 +224,7 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 
-The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 26 items, 17 that may matter.
+The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 25 items, 17 that may matter.
 
 - **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." It is background about earlier studies in general, naming no study, dataset or other specific thing for a triple.
@@ -254,7 +254,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 - **Left out:** "but not all public observations are included in this catalog" (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
 - **Left out:** "taking account of the substantial overlaps between observations" (notes)
-  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It only explains why the total area of the catalog's fields ("~ 814 deg^2", left out below) is larger than my ground truth triple HAS_SKY_AREA "~ 504 deg^2". It waits with the study's aim, method and findings on the experts' answer (Q26; decision of 2026-10-25).
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It only explains why my ground truth triple HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (the total area of the catalog's fields) is larger than my ground truth triple HAS_SKY_AREA "~ 504 deg^2". It waits with the study's aim, method and findings on the experts' answer (Q26; decision of 2026-10-25).
   - **May matter because:** it says how the net sky area was computed from the catalog's fields.
   - **Question:** Q26.
 - **Left out:** "therefore a significant number of sources (41,979) have more than one record within the catalog" (notes)
@@ -305,8 +305,6 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". The maximum distance is a detail of the study's method, so it goes with the method (decision of 2026-10-25, with the study's method, Q26).
   - **May matter because:** it says how the sources of the table were matched with the quasar catalog.
   - **Question:** Q26.
-- **Left out:** "2XMMi-DR3" HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (notes, "The total area of the catalog fields is ~ 814 deg^2")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." It also counts the overlapping fields each time, so it states the same area as HAS_SKY_AREA "~ 504 deg^2" a second time.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
   - **Rule:** none to quote: "XMM-Newton sample" names the sources the table holds, not the table.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" PROVIDED_BY_PARTY "NASA HEASARC" (notes, "This is a service provided by NASA HEASARC")
