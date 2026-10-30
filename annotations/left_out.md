@@ -28,7 +28,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
   - **May matter because:** I do not know what it stands for; if it is a standard slot of such a title (an observation or sequence number), it identifies this dataset among its siblings.
   - **Question:** Q6 (b).
 - **Left out:** "comet" (notes, "at the comet 67P")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
   - My ground truth triple has the target "67P".
 
 ## "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (pool position 2, id 6cfafd07-40f1-46da-9d92-36c2bb319f0b)
@@ -36,9 +36,9 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 2 items, none that may matter. The record has no list of other temporal resolutions or spatial resolutions of its product ("daily" is its own, in "provides daily snow cover"), so nothing of a product family is left out here.
 
 - **Left out:** "satellite" (notes, "the Aqua satellite")
-  - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
+  - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
 - **Left out:** "Each data granule contains" (notes), that the data come in granules
-  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words."
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words."
   - My ground truth triple HAS_GRANULE_DURATION "5 minutes" already says each granule covers 5 minutes, which only makes sense if the data come in granules.
 
 ## "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (pool position 3, id 2705e0d1-95e7-4588-813b-ca91a6da94ff)
@@ -46,11 +46,11 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 4 items, 3 that may matter.
 
 - **Left out:** "retrievals" (notes, "Sea Surface Salinity (SSS) retrievals")
-  - **Rule:** Writing a classed triple, rule 14: "Each step gives up to two ground truth triples, each written only if the record names both of its ends" My reading: "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)".
+  - **Rule:** Writing a classed triple, rule 24: "Each step gives up to two ground truth triples, each written only if the record names both of its ends" My reading: "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)".
   - **May matter because:** it says the salinity values are computed from what the instrument measured, not measured directly.
   - **Question:** Q3 (what is measured, and what is computed).
 - **Left out:** "Polar" as a fact of its own (title, "Polar-Gridded")
-  - **Rule:** Writing a classed triple, rule 6: "one ground truth triple, with "Polar-Gridded""; the word stays whole in the spatial representation.
+  - **Rule:** Writing a classed triple, rule 16: "one ground truth triple, with "Polar-Gridded""; the word stays whole in the spatial representation.
   - **May matter because:** "Polar" may name the grid used (a fact about which grid), or the area the data cover (the poles); I wrote neither.
   - **Question:** Q1 (c), and Q11 for the area.
 - **Left out:** "collaboratively" (notes, "developed collaboratively between")
@@ -66,19 +66,19 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 The dense record: its notes describe a whole family of products (several temporal resolutions, two spatial resolutions, day and night, two kinds of temperature) and the title names the one this record is. 14 items, 10 that may matter. The product family as a whole is asked in Q24.
 
 - **Left out:** "Day" (notes, "Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
   - **May matter because:** it says daytime products exist.
   - **Question:** Q24.
 - **Left out:** "daily", "monthly" and "annual" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
   - **May matter because:** they describe the product family: which temporal resolutions of this product exist.
   - **Question:** Q24.
 - **Left out:** "9.26 km" (notes, "available at both 4.63 and 9.26 km spatial resolution")
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
   - **May matter because:** it is the other resolution of the product family.
   - **Question:** Q24; whether the title's "4km" is the 4.63 km was Q22, withdrawn on 2026-10-26: settled from PO.DAAC's page for this dataset, "4km" is the rounded 4.63 km grid (see Q22's My notes).
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
-  - **Rule:** Writing a classed triple, rule 11, as for the list it belongs to.
+  - **Rule:** Writing a classed triple, rule 21, as for the list it belongs to.
   - **May matter because:** it says the products are averages over their temporal resolution, so the 8 days are the time each value averages over.
   - **Question:** Q5 (b), and Q24.
 - **Left out:** "can be present" (notes, "Two SST products can be present in these files"), and with it the dataset's variable NSST
@@ -86,7 +86,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** if the files hold both, the dataset has two variables, not one.
   - **Question:** Q18.
 - **Left out:** "binned" and "mapped" as methods (notes, "the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the dataset was made, step by step.
   - **Question:** Q7.
 - **Left out:** "NASA" (notes, "global NASA skin sea surface temperature (SST) products")
@@ -99,20 +99,20 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** "at a variety of spatial resolutions" (notes, "MODIS captures data in 36 spectral bands at a variety of spatial resolutions")
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The words name no value.
 - **Left out:** "projection" (notes, "Platte Carre projection")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
   - **Question:** Q15 (whether a coordinate system is a map projection); its part on "Platte Carre" was settled on 2026-10-26: it is the record's spelling of "Plate Carrée", the equidistant cylindrical projection on the equator (see Q15's My notes).
 - **Left out:** "satellite" (notes, "the Aqua satellite")
-  - **Rule:** Writing a classed triple, rule 13: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
+  - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
 - **Left out:** "which can be found at https://doi.org/10.5067/MODAM-8D4N4" (notes), the DOI of the previous v2014.1 datasets
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
   - **May matter because:** it is where the superseded release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 
 - **Left out:** "his team" (notes, "Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS)  are responsible for sea surface temperature algorithm development, error statistics and quality flagging")
-  - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone in the list's place (the subject or the object)," which splits the subject into "Peter Minnett" and "his team"; then What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "his team" names no team, so only "Peter Minnett" keeps the four ground truth triples (decided on 2026-10-30).
+  - **Rule:** Writing a classed triple, rule 22: "A list joined by "and": one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object)," which splits the subject into "Peter Minnett" and "his team"; then What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "his team" names no team, so only "Peter Minnett" keeps the four ground truth triples (decided on 2026-10-30).
   - **May matter because:** the record gives the responsibilities and the affiliation to the team as well as to Peter Minnett; the team's share is lost.
 - **Left out:** "NSST" (notes, "The first is a skin SST produced for both day and night (NSST) observations"), as another wording of "skin SST"
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for." "(NSST)" follows "night", not "skin SST", so it is not a name with its abbreviation in parentheses (Writing a classed triple, rule 10: "A name with its abbreviation in parentheses is one instance, as written."), and the record does not say what NSST names. The ground truth triples use "skin SST" (decided on 2026-10-30, audit finding G7).
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for." "(NSST)" follows "night", not "skin SST", so it is not a name with its abbreviation in parentheses (Writing a classed triple, rule 20: "A name with its abbreviation in parentheses is one instance, as written."), and the record does not say what NSST names. The ground truth triples use "skin SST" (decided on 2026-10-30, audit finding G7).
   - **May matter because:** NSST may be the product's own name; other records of the family may use it.
   - **Question:** Q18, (d). Its meaning may later come from the model, checked against a source: docs/improvements.md, *Knowledge enrichment from the model, verified and labelled* (080).
 
@@ -121,7 +121,7 @@ The dense record: its notes describe a whole family of products (several tempora
 1 item, 1 that may matter.
 
 - **Left out:** "detrended" as a method (notes, "The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the rates "were detrended", only a verb; I wrote the two COMPUTED_FROM triples (the rates, the epithermal map) and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the rates "were detrended", only a verb; I wrote the two COMPUTED_FROM triples (the rates, the epithermal map) and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is the method that made the residual map.
   - **Question:** Q7 (settled for now, not asked), Q12 (c) for the map as an input.
 
@@ -134,7 +134,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** NRT products are made available within hours of the observation, so they are different from the standard product; I checked this, the record says no number of hours.
   - **Question:** Q20 (a); the pending fact is listed there.
 - **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
-  - **Rule:** Writing a classed triple, rule 9: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid, so "Global" belongs to the grid's name, not to an area.
+  - **Rule:** Writing a classed triple, rule 19: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid, so "Global" belongs to the grid's name, not to an area.
   - **May matter because:** the grid tiles the whole globe.
   - **Question:** Q11, Q1 (c).
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
@@ -142,7 +142,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), what the product MCD19A1N holds
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 11: "In every case, include the connection the record states (rule 1 of *What counts as a fact*: only what the record states)."). I decided this on 2026-10-25.
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 21: "In every case, include the connection the record states (rule 1 of *What counts as a fact*: only what the record states)."). I decided this on 2026-10-25.
   - **May matter because:** it says what the product this dataset feeds holds (a surface reflectance).
   - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
@@ -155,7 +155,7 @@ The dense record: its notes describe a whole family of products (several tempora
 15 items, 9 that may matter.
 
 - **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
-  - **Rule:** Writing a classed triple, rule 9: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid (as for the record at pool position 6), so "Global" belongs to the grid's name, not to an area.
+  - **Rule:** Writing a classed triple, rule 19: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid (as for the record at pool position 6), so "Global" belongs to the grid's name, not to an area.
   - **May matter because:** the grid tiles the whole globe.
   - **Question:** Q1 (c), Q11.
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
@@ -167,11 +167,11 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** my reading, not checked against a source: it is the size of one tile of the MODIS sinusoidal grid, which may be how much ground each file covers.
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "per-pixel" (notes, "provides daily per-pixel Land Surface Temperature")
-  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." The ground truth triple HAS_SPATIAL_RESOLUTION "1 kilometer (km)" already says how much ground each value covers.
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." The ground truth triple HAS_SPATIAL_RESOLUTION "1 kilometer (km)" already says how much ground each value covers.
 - **Left out:** "(LST&E)" (notes, "Land Surface Temperature and Emissivity (LST&E)")
-  - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item." The abbreviation names the pair, so it belongs to neither item after the split.
+  - **Rule:** Writing a classed triple, rule 22: "A list joined by "and": one ground truth triple per item." The abbreviation names the pair, so it belongs to neither item after the split.
 - **Left out:** "https://doi.org/10.5067/MODIS/MOD11A1.061" (notes, the address in "[MOD11A1 Version 6.1](https://doi.org/10.5067/MODIS/MOD11A1.061)"), the DOI of Version 6.1
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
   - **May matter because:** it is where the newer release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 - **Left out:** "Above 30 degrees latitude, some pixels may have multiple observations where the criteria for clear-sky are met." (notes)
@@ -182,7 +182,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** it is how a value is made from several observations.
   - **Question:** Q7.
 - **Left out:** "surface temperature bands" as a thing of its own (notes, "the daytime and nighttime surface temperature bands")
-  - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." "surface temperature" is the "Land Surface Temperature" already written (rule 13: the wording that says more); "bands" is a type word (rule 13: "Leave out a type word that only describes the thing,"). "daytime" and "nighttime" are ground truth triples of their own (OBSERVED_AT_TIME_OF_DAY, rule 9 of *Writing a classed triple*).
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." "surface temperature" is the "Land Surface Temperature" already written (rule 23: the wording that says more); "bands" is a type word (rule 23: "Leave out a type word that only describes the thing,"). "daytime" and "nighttime" are ground truth triples of their own (OBSERVED_AT_TIME_OF_DAY, rule 19 of *Writing a classed triple*).
 - **Left out:** "associated" (notes, "associated quality control assessments")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It says only that the assessments go with the temperature bands. Whether a word that only says how a fact holds is a fact waits on the experts' answer (Q27; decision of 2026-10-25).
   - **May matter because:** it says which values the quality control assessments go with: the temperature bands.
@@ -190,7 +190,7 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** "Known Issues" (notes, the heading)
   - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts" (a heading, like a field name).
 - **Left out:** the other products in "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (notes)
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
   - **May matter because:** the date and its cause hold for the whole family of these products.
   - **Question:** Q24.
 - **Left out:** "known issues" as what the page is about (notes, "For complete information about known issues please refer to")
@@ -198,19 +198,19 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** a search for a dataset's known issues would need it.
   - **Question:** Q28 (b).
 - **Left out:** "website" (notes, "MODIS/VIIRS Land Quality Assessment website")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
 - **Left out:** "product" (notes, "[MOD11_L2](https://doi.org/10.5067/MODIS/MOD11_L2.006) swath product")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"; "swath" is a ground truth triple of its own (HAS_SPATIAL_REPRESENTATION, as "gridded" for the record at pool position 6).
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"; "swath" is a ground truth triple of its own (HAS_SPATIAL_REPRESENTATION, as "gridded" for the record at pool position 6).
 
 ## "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (pool position 9, id dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb)
 
 3 items, 2 that may matter.
 
 - **Left out:** "comet" (notes, "encounter with comet 9P/Tempel 1" and "the entire comet encounter")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
   - My ground truth triple has the target "9P/Tempel 1", and the phase "encounter".
 - **Left out:** "convert" as a method (notes, "The RDR data convert the EDR (raw) sensor data")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the RDR data are made from the raw data.
   - **Question:** Q7.
 - **Left out:** "entire" (notes, "from the entire comet encounter")
@@ -227,8 +227,8 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** my reading, not checked against a source: it may mark calibration data; if so, it says what kind of data the dataset holds.
   - **Question:** Q6 (b).
 - **Left out:** "mission phase" (notes, "comet escort 1 mission phase")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
-  - My ground truth triple has the phase "comet escort 1", its target "67P/Churyumov-Gerasimenko" a triple of its own (rule 9 of *Writing a classed triple*).
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
+  - My ground truth triple has the phase "comet escort 1", its target "67P/Churyumov-Gerasimenko" a triple of its own (rule 19 of *Writing a classed triple*).
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 
@@ -239,7 +239,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says why the study was made.
   - **Question:** Q26.
 - **Left out:** "and Swift (the latter is not included in this table, notice)" (notes), the study's second sample
-  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
   - **May matter because:** the study's findings are about both samples.
   - **Question:** Q26 (c).
 - **Left out:** "serendipitously selected" (notes)
@@ -273,7 +273,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says how precise the X-ray positions are.
   - **Question:** Q26.
 - **Left out:** "cross-correlated" as a method (notes, "The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
   - **Question:** Q7.
 - **Left out:** "This is a service" (notes, "This is a service provided by NASA HEASARC")
   - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who made the table is my ground truth triple DEVELOPED_BY_PARTY "NASA HEASARC".
@@ -335,27 +335,27 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** a search for other bodies in these images would need it.
   - **Question:** Q27 (b).
 - **Left out:** "comet" (notes, "comet 67P/Churyumov-Gerasimenko 1 (1969 R1)")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
 - **Left out:** "spacecraft" and "mission phase" (notes, "the Rosetta spacecraft" and "the COMET ESCORT 3 mission phase")
-  - **Rule:** Writing a classed triple, rule 13: "Leave out a type word that only describes the thing,"; "the Rosetta spacecraft" is written as "ROSETTA-ORBITER", the wording that says more (rule 13).
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"; "the Rosetta spacecraft" is written as "ROSETTA-ORBITER", the wording that says more (rule 23).
   - **Question:** Q2 (b).
 - **Left out:** "Lien" (notes, "Lien corrected dataset after September 2019 PSA/PDS external peer review")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". My ground truth triple REVISED_AFTER "September 2019 PSA/PDS external peer review" says the dataset was corrected after the review; "Lien" names what was corrected, the issues the review raised (my reading, not checked against a source). Whether this is a fact, with a predicate to coin, waits on the experts' answer (Q28; decision of 2026-10-25).
   - **May matter because:** it says what the correction was about.
   - **Question:** Q28 (c).
 - **Left out:** PRODUCED_USING_ALGORITHM "solar stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "solar stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "solar stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "in-field stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "in-field stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "radiometric calibrated" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "radiometric calibrated" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "radiometric calibrated" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).
 - **Left out:** PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 14: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "geometric distortion corrected (resampled)" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "geometric distortion corrected (resampled)" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (e).

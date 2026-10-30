@@ -82,7 +82,7 @@ ROWS_FLAGS = (CONFLICTING_CLASSES,)
 GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE)
 #: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED, SEVERAL_QUALIFIERS and SLASH_LIST_SPLIT flags.
 TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT)
-#: The predicates of the ground truth schema for the qualifiers rule 9 of "Writing a classed triple"
+#: The predicates of the ground truth schema for the qualifiers rule 19 of "Writing a classed triple"
 #: (annotations/guidelines.md) takes out of an instance: a temporal resolution, an area the data cover, a processing
 #: level, a spatial resolution, a country, a time of day, a target body, in that order.
 QUALIFIER_PREDICATES = ("HAS_TEMPORAL_RESOLUTION", "HAS_SPATIAL_COVERAGE", "HAS_PROCESSING_LEVEL",

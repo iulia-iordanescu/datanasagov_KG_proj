@@ -95,7 +95,7 @@ def read_left_out(path: Path = LEFT_OUT_PATH) -> list:
 
 
 def rule_ref(item: dict) -> str:
-    """The rule an item's Rule line names ("Writing a classed triple, rule 13"), or NO_RULE."""
+    """The rule an item's Rule line names ("Writing a classed triple, rule 23"), or NO_RULE."""
     m = _RULE_REF.match(item["rule"])
     return m[1] if m else NO_RULE
 

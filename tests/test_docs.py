@@ -534,14 +534,14 @@ class RulesInStep(unittest.TestCase):
 
 
 class QualifierQuotesRule9(unittest.TestCase):
-    """docs/terminology.md's *qualifier* quotes the words of rule 9 of *Writing a classed triple* (a rule is cited by its words, not its number): the kinds
-    it quotes are exactly those of rule 9's bold sentence in annotations/guidelines.md, so the quote can't drift."""
+    """docs/terminology.md's *qualifier* quotes the words of rule 19 of *Writing a classed triple* (a rule is cited by its words, not its number): the kinds
+    it quotes are exactly those of rule 19's bold sentence in annotations/guidelines.md, so the quote can't drift."""
 
     def test_quote_matches_the_rule(self):
         terms = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
         guidelines = (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8")
         quoted = re.search(r'a qualifier that is "([^"]+)" is taken out', terms).group(1)
-        rule = re.search(r"^9\. \*\*A qualifier that is (.+?) is a ground truth triple of its own", guidelines, re.M).group(1)
+        rule = re.search(r"^19\. \*\*A qualifier that is (.+?) is a ground truth triple of its own", guidelines, re.M).group(1)
         self.assertEqual(quoted, rule)
 
 

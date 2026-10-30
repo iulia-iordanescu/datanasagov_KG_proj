@@ -9,7 +9,7 @@ This file is the questions' one home: I write and change them here, and nowhere 
 - status: open
 - priority: high
 - question kind: schema entry
-- in short: the ground truth schema's SpatialRepresentation, and rule 1 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's SpatialRepresentation, and rule 11 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -62,7 +62,7 @@ Undecided, leaning towards option 2, a closed list, if your answer to (a) gives 
 
 We have annotated the first six records of the pool, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and we have now also annotated the seventh. Of these seven, five state a spatial representation: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" ("5 minutes of swath data": "swath"), "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" ("Polar-Gridded"), "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" ("spatially gridded (L3)": "spatially gridded"), "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" ("These data are maps": "map") and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" ("gridded Level 2 product": "gridded"). The example is the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"; all five, with their classed triples, are listed under Affects.
 
-Until the questions are answered, the ground truth keeps each record's own words: the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" keeps "spatially gridded" as written (rule 1 of *Writing a classed triple*, and its rule 9: "A qualifier stays in the instance, as written, if it is any other kind"). The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" states no area, so its ground truth has none.
+Until the questions are answered, the ground truth keeps each record's own words: the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" keeps "spatially gridded" as written (rule 11 of *Writing a classed triple*, and its rule 19: "A qualifier stays in the instance, as written, if it is any other kind"). The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" states no area, so its ground truth has none.
 
 Pending facts, for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (4c64f3ed, in the ground truth now without them):
 
@@ -88,16 +88,16 @@ The question's context, as it was: The records we have read so far write a layou
 
 Checked on 2026-10-25: "SIN Grid" is the MODIS sinusoidal grid, and "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on it, so "Global" there names the grid's worldwide tiling (NASA LAADS, the MCD19A2 product page, https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MCD19A2; NASA MODAPS, MCD19A2N, https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html). Whether that grid is a fact of its own is still question (c).
 
-Option 1, as it was: Each record keeps its own words for its layout, as written (rule 1 of *Writing a classed triple*): "swath", "Polar-Gridded", "spatially gridded", "map", "gridded". Option 2 named "the others your answers to (a) and (d) name". My current reading, as it was: Undecided, leaning towards option 2, a closed list, if the answers to (a) and (d) give a list that covers the catalog. Until then, the ground truth keeps each record's own words (option 1).
+Option 1, as it was: Each record keeps its own words for its layout, as written (rule 11 of *Writing a classed triple*): "swath", "Polar-Gridded", "spatially gridded", "map", "gridded". Option 2 named "the others your answers to (a) and (d) name". My current reading, as it was: Undecided, leaning towards option 2, a closed list, if the answers to (a) and (d) give a list that covers the catalog. Until then, the ground truth keeps each record's own words (option 1).
 
 ### Quoted for us
 
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5 and 10 (opinion words, and words true only as of writing, are left out); and rules 9, 12 and 13 below.
-- Writing a classed triple, rule 6: Each fact once, even if the record states it twice or in other words. Rule 13 says which wording to keep. Suppose: the notes say "gridded" and the title says "Polar-Gridded". Then: one ground truth triple, with "Polar-Gridded", by rule 13.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item.
-- Writing a classed triple, rule 13: One thing, one wording, within a record.
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5 and 10 (opinion words, and words true only as of writing, are left out); and rules 19, 22 and 23 below.
+- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 says which wording to keep. Suppose: the notes say "gridded" and the title says "Polar-Gridded". Then: one ground truth triple, with "Polar-Gridded", by rule 23.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 22: A list joined by "and": one ground truth triple per item.
+- Writing a classed triple, rule 23: One thing, one wording, within a record.
 
 ### Consequences
 
@@ -108,7 +108,7 @@ Option 1, as it was: Each record keeps its own words for its layout, as written 
 
 #### Option 2: A closed list
 
-- A new exception to rule 1 of *Writing a classed triple*, like rules 9, 12 and 13 (quoted above): written in the annotation guidelines and in the copy of the rules the model follows, which both change.
+- A new exception to rule 11 of *Writing a classed triple*, like rules 19, 22 and 23 (quoted above): written in the annotation guidelines and in the copy of the rules the model follows, which both change.
 - The ground truth triples listed under Affects are checked again, and some object instances change ("spatially gridded"; "map" and "Polar-Gridded", depending on the answers to (b) and (c)).
 - The list has to cover the catalog: a record whose layout isn't on it has no value to use (question (a)).
 - A record's own word for its layout ("Polar-Gridded") is no longer in that triple; what it adds to the value (a polar grid) is kept only if it is a fact of its own (question (c)).
@@ -130,8 +130,8 @@ Option 1, as it was: Each record keeps its own words for its layout, as written 
 - classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
 - ground truth schema entry: entity class SpatialRepresentation
 - ground truth schema entry: predicate HAS_SPATIAL_REPRESENTATION
-- rule: Writing a classed triple, rule 1
-- rule: Writing a classed triple, rule 6
+- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 16
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which a closed list would change
 
 ## Q2: Mission or Spacecraft, when a mission and its spacecraft are written with the same words?
@@ -204,7 +204,7 @@ Checked on 2026-10-26 by fetching the pages: NASA's mission pages have two views
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. Sub-questions (b) and (d) below became the expert's (b); (c) and the rest of (b) we settle ourselves, from a source or once (a) and (b) are answered:
 
-- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? Our reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there we wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission). The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" starts with "ROSETTA-ORBITER", and its notes say "acquired by the OSIRIS Narrow Angle Camera on the Rosetta spacecraft"; we read the two as one spacecraft and wrote "ROSETTA-ORBITER", the wording that says more (rule 13): "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft) and "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft). Is the orbiter the same as "the Rosetta spacecraft" there?
+- (b) In a Planetary Data System data set title, such as "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" or "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0", is the first word the spacecraft that carried the instrument? Our reading, not checked against a source: these titles start with the spacecraft, which the Planetary Data System calls the instrument host. The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" starts with "STARDUST", and its notes name the mission with other words, "the Stardust-NExT mission"; there we wrote both: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft), and "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission). The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" starts with "ROSETTA-ORBITER", and its notes say "acquired by the OSIRIS Narrow Angle Camera on the Rosetta spacecraft"; we read the two as one spacecraft and wrote "ROSETTA-ORBITER", the wording that says more (rule 23): "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft) and "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft). Is the orbiter the same as "the Rosetta spacecraft" there?
 - (c) "Aquarius/Satélite de Aplicaciones Científicas (SAC-D) mission" (in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"): our reading, not checked against a source, is that Aquarius was an instrument carried on the SAC-D spacecraft, and Aquarius/SAC-D the mission. Is that right, and if so, should the record's "Aquarius L-band radiometer" be the only Instrument here, with no Spacecraft named?
 - (d) Is there a rule that holds for this whole catalog, e.g. "a word that is only a mission's word is a Mission; a word written before an instrument (MODIS/Aqua) is a Spacecraft"?
 
@@ -218,9 +218,9 @@ For the example, we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.
 - predicate ABOARD: is carried on
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
 - entity class Spacecraft -> Spacecraft: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
-- Writing a classed triple, rule 13: One thing, one wording, within a record.
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 23: One thing, one wording, within a record.
 
 ### Consequences
 
@@ -300,9 +300,9 @@ For the example, we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.
 - ground truth schema entry: predicate FROM_MISSION
 - ground truth schema entry: predicate FROM_SPACECRAFT
 - rule: What counts as a fact, rule 1
-- rule: Writing a classed triple, rule 1
-- rule: Writing a classed triple, rule 4
-- rule: Writing a classed triple, rule 13
+- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 14
+- rule: Writing a classed triple, rule 23
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which follows any change to them
 
 ## Q3: Variable or PhysicalQuantity: what is measured, and what is computed?
@@ -414,10 +414,10 @@ Taken out of the expert's (b) on 2026-10-26, because it named five records in on
 - predicate MEASURES -> HAS_MEASUREMENTS_OF: The subject (an instrument, mission, dataset or product) measures or provides data on the object, a physical quantity, variable or phenomenon.
 - predicate PROVIDES -> HAS_MEASUREMENTS_OF: The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.
 - predicate MEASURED_BY -> HAS_MEASUREMENTS_OF (swap subject and object): Links a measured quantity to the instrument, system or method used to measure it.
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
 
@@ -444,7 +444,7 @@ Taken out of the expert's (b) on 2026-10-26, because it named five records in on
 
 #### Option 5: A kind of measurement of its own
 
-- The ground truth triples of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" with "Gravity" and with "Global" become one ground truth triple with "Global Gravity" (rule 9 of *Writing a classed triple*: "Global" stays in the instance if it is no area).
+- The ground truth triples of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" with "Gravity" and with "Global" become one ground truth triple with "Global Gravity" (rule 19 of *Writing a classed triple*: "Global" stays in the instance if it is no area).
 - A new entity class and predicate in the ground truth schema; the model must learn to tell a kind of measurement from a quantity measured.
 - If the expert's answer to (c) is that "Global Gravity" is a name as a whole but still something measured, it stays a PhysicalQuantity instead, "Global Gravity", with the same change to the two ground truth triples.
 
@@ -511,9 +511,9 @@ Taken out of the expert's (b) on 2026-10-26, because it named five records in on
 - ground truth schema entry: predicate HAS_MEASUREMENTS_OF
 - ground truth schema entry: predicate HAS_VARIABLE
 - ground truth schema entry: predicate ESTIMATES
-- rule: Writing a classed triple, rule 4
-- rule: Writing a classed triple, rule 9
 - rule: Writing a classed triple, rule 14
+- rule: Writing a classed triple, rule 19
+- rule: Writing a classed triple, rule 24
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which follows any change to them
 
 ## Q4: Where a dataset's data come from: which relationships to tell apart, and what carries the instruments?
@@ -623,8 +623,8 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
 - entity class Campaign -> (none): A coordinated period of field or flight measurement activity, such as an aircraft or balloon campaign, conducted to collect data.
 - entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
-- Writing a classed triple, rule 5: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
 
 ### Consequences
 
@@ -736,8 +736,8 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - ground truth schema entry: predicate ACQUIRED_BY_INSTRUMENT
 - ground truth schema entry: predicate HAS_MISSION_PHASE
 - ground truth schema entry: predicate OBTAINS_DATA_FROM
-- rule: Writing a classed triple, rule 4
-- rule: Writing a classed triple, rule 5
+- rule: Writing a classed triple, rule 14
+- rule: Writing a classed triple, rule 15
 - pipeline method: 040_induce_schema/run.py: how the current schema is learned (the old option 3, in My notes: splitting a broad predicate)
 - pipeline method: common/common_helpers/component_class_mapping.py: how a row of the translation table translates (the old option 2, in My notes: by the entity class of the object)
 
@@ -819,7 +819,7 @@ The question's opening, as it was: The ground truth schema has three entity clas
 - (g) The current schema's entity class Frequency puts two things together: "A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band", and the translation table translates it into TemporalResolution. In this catalog, are how often data are given (daily, weekly) and a radio frequency band (S-band, X-band, Ku-band) two different kinds of thing, which should never share an entity class? (Our reading is that they are: one is a time between values, the other a part of the radio spectrum. Where a radio band belongs, we ask separately.)
 - (h) The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says its data run "from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011", and that its encounter data cover "a ~40 minute period". We wrote the period as "January, 2007 up to March, 2011" (Time), its two ends in the record's words with the phases taken out (they are facts of their own), and the 40 minutes with a predicate we coined, HAS_DURATION ("covers this much time, from its first value to its last"): "encounter data" (Dataset) HAS_DURATION "~40 minute period" (Value). Is how long a set of observations lasts a fact to keep apart from the period on the calendar, and from the time a file covers (question (e))?
 
-The question's context, as it was: The example below states both how often ("daily") and how much time each file covers ("5 minutes"). Under rule 9 of *Writing a classed triple* (quoted below), a word such as "daily" in "daily snow cover" is taken out of the object instance and written as a temporal resolution of its own.
+The question's context, as it was: The example below states both how often ("daily") and how much time each file covers ("5 minutes"). Under rule 19 of *Writing a classed triple* (quoted below), a word such as "daily" in "daily snow cover" is taken out of the object instance and written as a temporal resolution of its own.
 
 We write these facts with different predicates of the ground truth schema: HAS_TIME_SPAN for a period (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0": "covers the time 2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000"), HAS_SPATIAL_COVERAGE for an area, and HAS_GRANULE_DURATION for the time each file covers (the example below). Before the model's classed triples are compared with the ground truth, each entity class and predicate of the current schema is translated into the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names, and a row names only one. So a classed triple of the model that uses COVERS for an area is compared as a period, and one that files a radio band under Frequency is compared as a temporal resolution: both are counted wrong even when the model found the fact.
 
@@ -837,10 +837,10 @@ My current reading, as it was: Option 1 for now, because the definition of Tempo
 - predicate HAS_TIME_RESOLUTION -> HAS_TEMPORAL_RESOLUTION: The subject (a dataset or measurement) has the object as its temporal resolution, averaging interval, cycle or file time-period.
 - predicate COVERS -> HAS_TIME_SPAN: The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.
 - predicate HAS_DURATION -> HAS_GRANULE_DURATION: The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 11: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 13, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get none.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 21: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
+- Writing a classed triple, rule 21: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get none.
 
 ### Consequences
 
@@ -893,8 +893,8 @@ My current reading, as it was: Option 1 for now, because the definition of Tempo
 - ground truth schema entry: predicate HAS_TEMPORAL_RESOLUTION
 - ground truth schema entry: predicate HAS_GRANULE_DURATION
 - ground truth schema entry: predicate HAS_TIME_SPAN
-- rule: Writing a classed triple, rule 9
-- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 19
+- rule: Writing a classed triple, rule 21
 - pipeline method: 040_induce_schema/run.py: how the current schema is learned (the old option 4, in My notes: splitting a broad predicate or entity class)
 
 ## Q6: Processing levels: what is L2G, what are "1/2/3" in a Planetary Data System title, and which list should the ground truth follow?
@@ -970,10 +970,10 @@ The options as they were, before 2026-10-26: Option 1, Keep each record's own wo
 
 - entity class ProcessingLevel -> ProcessingLevel: A designation of how far a data product has been processed from raw instrument output, such as Level 0 through Level 3 or Near Real Time.
 - predicate HAS_PROCESSING_LEVEL -> HAS_PROCESSING_LEVEL: The subject (a data product) has the object as its data processing level, such as L0, Level-2 or Level-3.
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
-- Writing a classed triple, rule 13: One thing, one wording, within a record.
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 20: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
+- Writing a classed triple, rule 23: One thing, one wording, within a record.
 
 ### Consequences
 
@@ -984,7 +984,7 @@ The options as they were, before 2026-10-26: Option 1, Keep each record's own wo
 
 #### Option 2: A closed list of processing levels
 
-- A new exception to rule 1 of "Writing a classed triple" (quoted above, for us), written in the annotation guidelines and in the copy of the rules the [model](../docs/terminology.md#8-the-pipeline) follows, which both change.
+- A new exception to rule 11 of "Writing a classed triple" (quoted above, for us), written in the annotation guidelines and in the copy of the rules the [model](../docs/terminology.md#8-the-pipeline) follows, which both change.
 - The ground truth triples listed under Affects are checked again, and some object instances change.
 - Every record names a processing level the same way, so a search needs one value; a code such as "1/2/3" still gets a value only if the record explains it.
 - A record's level that isn't on the list has no value to use, unless the list covers the whole catalog.
@@ -1022,10 +1022,10 @@ The options as they were, before 2026-10-26: Option 1, Keep each record's own wo
 - ground truth schema entry: entity class ProcessingLevel
 - ground truth schema entry: predicate HAS_PROCESSING_LEVEL
 - rule: What counts as a fact, rule 1
-- rule: Writing a classed triple, rule 1
-- rule: Writing a classed triple, rule 9
-- rule: Writing a classed triple, rule 10
-- rule: Writing a classed triple, rule 13
+- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 19
+- rule: Writing a classed triple, rule 20
+- rule: Writing a classed triple, rule 23
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which a list of processing levels to follow would change
 
 ## Q7: A processing step: what is its input, and what is its method?
@@ -1033,7 +1033,7 @@ The options as they were, before 2026-10-26: Option 1, Keep each record's own wo
 - status: open
 - priority: medium
 - question kind: rule
-- in short: rule 14 of the annotation guidelines (a processing step), and the ground truth schema's COMPUTED_FROM and PRODUCED_USING_ALGORITHM
+- in short: rule 24 of the annotation guidelines (a processing step), and the ground truth schema's COMPUTED_FROM and PRODUCED_USING_ALGORITHM
 
 ### The question
 
@@ -1085,23 +1085,23 @@ Of the first seven records of the pool, all tuning records, four describe a proc
 
 Pending facts, for the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (ab33f184, in the ground truth now without them; decided 2026-10-25, for us to confirm), each added if the answer to (e) says such corrections should be kept: the four statements "solar stray-light corrected", "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)", each with a predicate to decide.
 
-Rule 14 now says: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." If the answer to (e) says such words should be kept, they would be a triple of another predicate, not PRODUCED_USING_ALGORITHM.
+Rule 24 now says: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." If the answer to (e) says such words should be kept, they would be a triple of another predicate, not PRODUCED_USING_ALGORITHM.
 
-Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) now holds the old (a) and (b); their (b) is the old (c); their (c) the old (e) (so "the answer to (e)" above is now their answer to (c)). The old (d), how to write each channel after splitting a list, we settle ourselves (it follows the rule for lists, rule 12, and the expert can say so under (a) if it reads wrong). The example no longer shows two of its passages and their classed triples, not needed for the question, which stay in the ground truth: source text "To generate the L3 products the L2 pixels are binned", with "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) COMPUTED_FROM "pixels" (Dataset) (in Affects); and source text "the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS", with "mid-infrared 3.95 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) and "mid-infrared 4.05 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument).
+Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) now holds the old (a) and (b); their (b) is the old (c); their (c) the old (e) (so "the answer to (e)" above is now their answer to (c)). The old (d), how to write each channel after splitting a list, we settle ourselves (it follows the rule for lists, rule 22, and the expert can say so under (a) if it reads wrong). The example no longer shows two of its passages and their classed triples, not needed for the question, which stay in the ground truth: source text "To generate the L3 products the L2 pixels are binned", with "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) COMPUTED_FROM "pixels" (Dataset) (in Affects); and source text "the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS", with "mid-infrared 3.95 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) and "mid-infrared 4.05 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument).
 
-The question's opening, as it was: Rule 14 of the annotation guidelines (quoted below) writes each processing step a record describes as output = method(input): the output COMPUTED_FROM ("was made by processing this input") each input, and the output PRODUCED_USING_ALGORITHM ("was made or detected by applying this Algorithm") the method. In one record we are not sure which part is the input, and we would like a general way to tell. We would like to know:
+The question's opening, as it was: Rule 24 of the annotation guidelines (quoted below) writes each processing step a record describes as output = method(input): the output COMPUTED_FROM ("was made by processing this input") each input, and the output PRODUCED_USING_ALGORITHM ("was made or detected by applying this Algorithm") the method. In one record we are not sure which part is the input, and we would like a general way to tell. We would like to know:
 
 - (a) The example below says its two sea surface temperature (SST) products are "derived from the long wave IR 11 and 12 micron wavelength channels" and generated "using the mid-infrared 3.95 and 4.05 micron wavelength channels". We wrote each channel as an input: COMPUTED_FROM, with a Channel ("a range of wavelengths an Instrument measures separately") as its object instance. Is it right to say that an SST product is computed from a wavelength channel? Our reading, not checked against a source: it is computed from what the instrument measured in those channels, and the channel says where in the spectrum that was, not what was processed.
 - (b) If a channel is not an input: how would you say it? Is "uses the 11 micron channel" or "is measured in the 11 micron channel" a relationship of its own, apart from "is computed from"?
 - (c) Is there a general way to tell an input from a method, that would settle the case above and others like it? For example, the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says its index "is derived from radiance data", which we wrote as an input, and the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" names its product a "Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product", which we write as made using MAIAC, a method.
-- (d) We split "the long wave IR 11 and 12 micron wavelength channels" into "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel" (rule 12, quoted below). Would someone in your field write each channel that way?
+- (d) We split "the long wave IR 11 and 12 micron wavelength channels" into "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel" (rule 22, quoted below). Would someone in your field write each channel that way?
 - (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says its data set "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data". Each word names a step and what it corrects, though only as a participle. We left each out for now (decided 2026-10-25, for us to confirm); they would be methods: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) PRODUCED_USING_ALGORITHM "solar stray-light corrected" (Algorithm), and the same for "in-field stray-light corrected", "radiometric calibrated" and "geometric distortion corrected (resampled)". Elsewhere, where a record has only a verb ("binned", "detrended", "convert", "cross-correlated"), we wrote no method. Is a participle that names what was corrected or calibrated a method, and should it be written in the record's words ("radiometric calibrated") or as the name of the step ("radiometric calibration")?
 
 The question's context, as it was: The example below has products computed from channels, and facts that say which channels are unique to MODIS.
 
 Settled, so not asked here: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map to produced this residual map", and we wrote the epithermal neutron map as an input, COMPUTED_FROM, beside the count rates. A review of that record on 2026-10-22 checked NASA's archive documents for it: the epithermal neutron map is used to correct the fast neutron counts, so it is an input. No method is written for that record, since "detrended" names an operation but no algorithm with a name of its own.
 
-Option 2, as it was: Coin a predicate in the ground truth schema for "uses the measurements of this Channel", and write the channels with it instead of COMPUTED_FROM. My current reading, as it was, ended: "Your answer to (c) would become part of rule 14."
+Option 2, as it was: Coin a predicate in the ground truth schema for "uses the measurements of this Channel", and write the channels with it instead of COMPUTED_FROM. My current reading, as it was, ended: "Your answer to (c) would become part of rule 24."
 
 ### Quoted for us
 
@@ -1110,8 +1110,8 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
-- Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
+- Writing a classed triple, rule 22: A list joined by "and": one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
+- Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
 
@@ -1160,9 +1160,9 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - translation table row: predicate USES
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
-- rule: Writing a classed triple, rule 12
-- rule: Writing a classed triple, rule 14
-- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of rule 14, which a general way to tell an input from a method would change
+- rule: Writing a classed triple, rule 22
+- rule: Writing a classed triple, rule 24
+- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of rule 24, which a general way to tell an input from a method would change
 
 ## Q8: Organizations, teams, roles, programs, facilities and places: which entity class?
 
@@ -1232,7 +1232,7 @@ Option 1, for now: it follows the records' own words (JPL "is" the archive), eve
 
 ### My notes
 
-The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" adds "NASA HEASARC" (Organization), written so by rule 13, though the record also writes "the HEASARC" (decided 2026-10-25, for us to confirm); its "the authors" are left out for now, with the study they belong to (Q26). The ground truth schema's entity class Team ("a group of people without a name of its own, e.g. Peter Minnett and his team") was removed on 2026-10-30: a named group is an Organization, and an unnamed group names no specific thing, so it gives no fact (What counts as a fact, rule 9, as with "his team" that day); the expert's question, (a) and option 1 were reworded then. The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", and the program of the old (c) (now the expert's (b)) is the record "NASA Standards and and Technical Assistance Resource Tool"'s. The facts about a country are the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"'s: rule 9 of *Writing a classed triple* makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
+The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" adds "NASA HEASARC" (Organization), written so by rule 23, though the record also writes "the HEASARC" (decided 2026-10-25, for us to confirm); its "the authors" are left out for now, with the study they belong to (Q26). The ground truth schema's entity class Team ("a group of people without a name of its own, e.g. Peter Minnett and his team") was removed on 2026-10-30: a named group is an Organization, and an unnamed group names no specific thing, so it gives no fact (What counts as a fact, rule 9, as with "his team" that day); the expert's question, (a) and option 1 were reworded then. The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", and the program of the old (c) (now the expert's (b)) is the record "NASA Standards and and Technical Assistance Resource Tool"'s. The facts about a country are the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"'s: rule 19 of *Writing a classed triple* makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
 
 The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names; a row that names (none): a classed triple that uses it always counts as extracted only. We would choose option 4 with the answers to the old (d) to (f) (now the expert's (c)) telling us what to coin, once a tuning record states a fact about a place.
 
@@ -1265,8 +1265,8 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role or thing is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type.
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 
 ### Consequences
 
@@ -1327,8 +1327,8 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - ground truth schema entry: predicate SERVES_AS
 - ground truth schema entry: predicate BASED_IN
 - rule: What counts as a fact, rule 4
-- rule: Writing a classed triple, rule 4
-- rule: Writing a classed triple, rule 9
+- rule: Writing a classed triple, rule 14
+- rule: Writing a classed triple, rule 19
 
 ## Q9: Whose purpose is it, and is "used to study" a purpose?
 
@@ -1381,16 +1381,16 @@ Option 1, for now: it writes what each sentence says, about what it is about. We
 
 All the HAS_PURPOSE classed triples of the records annotated so far are listed under Affects (the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"'s two, of the old (d), now part of the expert's (b), are pending facts, left out for now: added if the answer to Q26 says yes; decided 2026-10-25, for us to confirm): a web tool's purpose (the record "NASA Standards and and Technical Assistance Resource Tool"), the purposes of a series of screens applied to data (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), and those of Aqua and of an algorithm (the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", the example). The predicates of the old (c) are the current schema's USED_TO_STUDY and HAS_OBJECTIVE.
 
-Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) is the old (a); their (b) holds the old (c) and (d). The old (b) we settle ourselves: rule 12's own example keeps the phrase whole, and option 2 stays one of the expert's choices.
+Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) is the old (a); their (b) holds the old (c) and (d). The old (b) we settle ourselves: rule 22's own example keeps the phrase whole, and option 2 stays one of the expert's choices.
 
 - (a) The example below says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". We wrote this as the purpose of Aqua, the spacecraft, because that is what the sentence is about. Would you say it is the spacecraft's purpose, or its mission's (a satellite mission usually has the science goals)? The record names no mission for Aqua, so we can't write the mission without adding what the record doesn't state.
-- (b) In that phrase, "Earth" is the body studied. The annotation guidelines take a target body out of an instance as a [fact](../docs/terminology.md#2-triples) of its own (rule 9 of *Writing a classed triple*). We kept the phrase whole, since "study the global dynamics of the atmosphere, land and oceans" without "Earth" no longer says whose atmosphere. Is keeping it whole right, or should "Earth" also be its own fact (Aqua is about the Earth)?
+- (b) In that phrase, "Earth" is the body studied. The annotation guidelines take a target body out of an instance as a [fact](../docs/terminology.md#2-triples) of its own (rule 19 of *Writing a classed triple*). We kept the phrase whole, since "study the global dynamics of the atmosphere, land and oceans" without "Earth" no longer says whose atmosphere. Is keeping it whole right, or should "Earth" also be its own fact (Aqua is about the Earth)?
 - (c) The [model](../docs/terminology.md#8-the-pipeline) that reads the records has predicates for what something is "used to study" and for its "objective", and the translation table translates both to HAS_PURPOSE. Is "used to study ocean salinity" a purpose, in your field, or a different relationship (what a mission or instrument studies), better kept apart?
 - (d) The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says "In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples", and that the structure function the authors used "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived". We left both out of the ground truth for now (whether a study's aim and method are facts at all, we ask in Q26); they would be purposes: "the authors" (Team) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (Purpose), and "structure function (SF)" (Algorithm) HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (Purpose). Is what a method "allows for" its purpose? (Whose aim the study's is, the authors' or the table's, we ask with the study's findings, in Q26.)
 
 The question's context, as it was: The purposes we have written so far are a web tool's (the record "NASA Standards and and Technical Assistance Resource Tool"), those of a series of screens applied to data (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), and those of Aqua and of an algorithm (the example below, whose purpose of Aqua the questions above are about).
 
-Changed on 2026-10-30, when rule 12 changed to split every list, after rule 9: rule 9 takes "Earth" out of the purpose (Aqua HAS_TARGET "Earth"), and rule 12 splits the rest into three purposes, so the old option 2 is no longer a choice and was taken out of the expert's view; the old option 3 is now option 2. Kept here as they were: option 1, "The purpose stays with what the sentence is about (Aqua), the phrase stays whole, and what something is used to study, or its objective, counts as a purpose."; option 2, ""Earth" also becomes a fact of its own (Aqua is about the Earth), and the purpose keeps its words.", with its consequences "HAS_TARGET so far joins a Dataset to a CelestialBody; it would join a Spacecraft too, a new pattern." and "The purpose's object instance keeps "Earth" (taking it out would leave "the atmosphere, land and oceans" of no body), so the body is written twice, once inside the purpose."; the Aqua classed triple, "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose).
+Changed on 2026-10-30, when rule 22 changed to split every list, after rule 19: rule 19 takes "Earth" out of the purpose (Aqua HAS_TARGET "Earth"), and rule 22 splits the rest into three purposes, so the old option 2 is no longer a choice and was taken out of the expert's view; the old option 3 is now option 2. Kept here as they were: option 1, "The purpose stays with what the sentence is about (Aqua), the phrase stays whole, and what something is used to study, or its objective, counts as a purpose."; option 2, ""Earth" also becomes a fact of its own (Aqua is about the Earth), and the purpose keeps its words.", with its consequences "HAS_TARGET so far joins a Dataset to a CelestialBody; it would join a Spacecraft too, a new pattern." and "The purpose's object instance keeps "Earth" (taking it out would leave "the atmosphere, land and oceans" of no body), so the body is written twice, once inside the purpose."; the Aqua classed triple, "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose).
 
 The options as they were worded before 2026-10-26: option 1, "The purpose stays with what the sentence is about (Aqua), the phrase stays whole with "Earth" in it, and "used to study" and "objective" both count as a purpose."; option 2, ""Earth" becomes a fact of its own, "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody), and the purpose keeps its words."; option 3, "A predicate of its own for what a mission, spacecraft or instrument studies (a PhysicalQuantity or a Phenomenon), and keep HAS_PURPOSE for aims written as an action ("make it simpler to access…")."
 
@@ -1402,11 +1402,11 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - entity class Spacecraft: a craft that operates in space
 - predicate USED_TO_STUDY -> HAS_PURPOSE: The subject (a mission, instrument, program or dataset) is designed or used to investigate, characterize or trace the object, a scientific phenomenon or process.
 - predicate HAS_OBJECTIVE -> HAS_PURPOSE: The subject (a mission, campaign, project or set of researchers) aims to achieve, study or address the object, a scientific goal, question or problem.
-- Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans").
-- Writing a classed triple, rule 12: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 9 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
+- Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 22: A list joined by "and": one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans").
+- Writing a classed triple, rule 22: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 19 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
 
@@ -1438,9 +1438,9 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - translation table row: predicate HAS_OBJECTIVE
 - ground truth schema entry: entity class Purpose
 - ground truth schema entry: predicate HAS_PURPOSE
-- rule: Writing a classed triple, rule 2
-- rule: Writing a classed triple, rule 9
 - rule: Writing a classed triple, rule 12
+- rule: Writing a classed triple, rule 19
+- rule: Writing a classed triple, rule 22
 
 ## Q10: Radio science, techniques and fields of science: is RSI an Instrument, is Radio Science a Discipline, and which list of disciplines?
 
@@ -1521,8 +1521,8 @@ The options as they were worded before 2026-10-26: option 1, ""RSI" is an Instru
 - entity class Topic -> Discipline: A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.
 - predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject (a set of observations or data) belongs to the object, a scientific discipline or category.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 
 ### Consequences
 
@@ -1543,7 +1543,7 @@ The options as they were worded before 2026-10-26: option 1, ""RSI" is an Instru
 
 #### Option 4: Disciplines from a reference list
 
-- A new exception to rule 1 of "Writing a classed triple" (quoted above, for us), in the annotation guidelines and in the copy of the rules the model follows, which both change.
+- A new exception to rule 11 of "Writing a classed triple" (quoted above, for us), in the annotation guidelines and in the copy of the rules the model follows, which both change.
 - The ground truth triple HAS_DISCIPLINE "Radio Science" is checked against the list.
 - The row for the current schema's Topic changes: to (none), or to a new entity class for subjects.
 - Every record names a field of science the same way, so a search of the knowledge graph by field needs one value.
@@ -1559,8 +1559,8 @@ The options as they were worded before 2026-10-26: option 1, ""RSI" is an Instru
 - ground truth schema entry: entity class Discipline
 - ground truth schema entry: predicate HAS_DISCIPLINE
 - rule: What counts as a fact, rule 1
-- rule: Writing a classed triple, rule 1
-- rule: Writing a classed triple, rule 4
+- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 14
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which a list of disciplines to follow would change
 
 ## Q11: What counts as an area the data cover: "Global" at a comet, and "Land"?
@@ -1568,7 +1568,7 @@ The options as they were worded before 2026-10-26: option 1, ""RSI" is an Instru
 - status: open
 - priority: medium
 - question kind: schema entry
-- in short: the ground truth schema's SpatialExtent and HAS_SPATIAL_COVERAGE, and rule 9 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's SpatialExtent and HAS_SPATIAL_COVERAGE, and rule 19 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -1612,14 +1612,14 @@ Undecided. For "Land", we lean towards option 3: it says which part of the Earth
 
 ### My notes
 
-Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"), "global" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and "Land" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1). Rule 9 of *Writing a classed triple* now records our reading of a word naming a kind of ground or water: it is an area the data cover when "the [rest] of the [word]" is false ("the aerosol optical depth of the land" is false, because the aerosols are in the air), so "Land" stays taken out in the example; if the answers say otherwise, rule 9, the model's copy of the rules, and the ground truth triples under Affects change with them.
+Every ground truth triple with HAS_SPATIAL_COVERAGE so far is listed under Affects: "Global" (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"), "global" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and "Land" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", the example). The count of the recurring sentence is over 020's records.jsonl (36,406 records). Until the answers, the ground truth stays as written (option 1). Rule 19 of *Writing a classed triple* now records our reading of a word naming a kind of ground or water: it is an area the data cover when "the [rest] of the [word]" is false ("the aerosol optical depth of the land" is false, because the aerosols are in the air), so "Land" stays taken out in the example; if the answers say otherwise, rule 19, the model's copy of the rules, and the ground truth triples under Affects change with them.
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only. The current schema's SpatialCoverage and HAS_SPATIAL_COVERAGE translate into SpatialExtent and HAS_SPATIAL_COVERAGE, so the answer also decides what an extracted triple with them is compared with.
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) is the old (b), their (b) the old (c). The old (a), on "Global Gravity", is the same doubt as Q3's (c) (whether "Global Gravity" names a kind of measurement), so the expert reads it there only; what "Global" means at a comet we settle once Q3's (c) is answered: if "Global Gravity" is a name as a whole, "Global" is no area. The example no longer shows the source text "Global 1km SIN Grid" (settled, see the context below).
 
 - (a) The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" says "It is a Global Gravity measurement at the comet 67P". We wrote "Global" as the area the data cover (all of the comet 67P). At a comet, what would "Global" mean: the whole comet, or something else? Or is "Global Gravity" the name of one sort of radio science measurement, as a whole, so that "Global" is no area at all? (Other records of the catalog have the same sentence with "Phobos Gravity", "Occultation" or "Solar Conjunction" in its place: see below.)
-- (b) The example below is a dataset of "Land Aerosol Optical Depth". We took "Land" out as the area the data cover ("MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Land" (SpatialExtent)), and kept "Aerosol Optical Depth" as the quantity measured. Is "Land" (the land surfaces of the Earth, as against the oceans) an area in the sense of SpatialExtent, "part of" the Earth? Or is "Land Aerosol Optical Depth" one quantity, the aerosol optical depth over land, which should stay whole? Or does "Land" say what sort of surface the method that computes the product (MAIAC) is made for, so that it stays in the quantity's words as a qualifier of another sort (rule 9 of *Writing a classed triple*: "any other kind")?
+- (b) The example below is a dataset of "Land Aerosol Optical Depth". We took "Land" out as the area the data cover ("MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Land" (SpatialExtent)), and kept "Aerosol Optical Depth" as the quantity measured. Is "Land" (the land surfaces of the Earth, as against the oceans) an area in the sense of SpatialExtent, "part of" the Earth? Or is "Land Aerosol Optical Depth" one quantity, the aerosol optical depth over land, which should stay whole? Or does "Land" say what sort of surface the method that computes the product (MAIAC) is made for, so that it stays in the quantity's words as a qualifier of another sort (rule 19 of *Writing a classed triple*: "any other kind")?
 - (c) In general: should SpatialExtent hold only a region of a body (the Arctic, a pole, the whole body), or also a sort of surface (land, ocean, sea ice) that the data are limited to?
 
 The question's context, as it was: The areas we have written so far are "Global" (the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0"), "global" (the records "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" and "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"), and our draft "Land" (the example below, which question (b) is about).
@@ -1628,7 +1628,7 @@ Settled, so not asked here: the example's title ends in "Global 1km SIN Grid". C
 
 The sentence of the record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" recurs across the catalog. We counted it in the catalog's 36,406 records: "It is a Global Gravity measurement" in 2,835 records (2,442 of them "at the comet 67P"), "It is a Occultation measurement" in 439, "It is a Solar Conjunction measurement" in 240, and "It is a Phobos Gravity measurement" in 9. Since "Phobos Gravity" sits beside "Global Gravity", our reading is that the word before "Gravity" may say which gravity measurement it is, not an area; but we don't know.
 
-The options and current reading as they were worded before 2026-10-26: option 1, ""Global" (at the comet 67P) and "Land" (in the example) are areas the data cover, each a fact of its own."; option 2, "SpatialExtent holds only a region of a body, or the whole of it. "Land Aerosol Optical Depth" stays whole, as the quantity measured, since rule 9 of *Writing a classed triple* keeps a qualifier that is no area in the instance; "Global Gravity" stays whole too, if the answer to (a) is that it names a measurement."; option 3, "The definition of SpatialExtent says that a sort of surface the data are limited to (land, ocean, sea ice) is an area too, and rule 9 of *Writing a classed triple* takes it out like any area."; current reading, "Undecided. For "Land", we lean towards option 3: it says which part of the Earth the data cover, which is what a search would ask. For "Global Gravity", we lean towards keeping it whole, since "Phobos Gravity" in other records reads like the same sort of title; your answer to (a) decides it."
+The options and current reading as they were worded before 2026-10-26: option 1, ""Global" (at the comet 67P) and "Land" (in the example) are areas the data cover, each a fact of its own."; option 2, "SpatialExtent holds only a region of a body, or the whole of it. "Land Aerosol Optical Depth" stays whole, as the quantity measured, since rule 19 of *Writing a classed triple* keeps a qualifier that is no area in the instance; "Global Gravity" stays whole too, if the answer to (a) is that it names a measurement."; option 3, "The definition of SpatialExtent says that a sort of surface the data are limited to (land, ocean, sea ice) is an area too, and rule 19 of *Writing a classed triple* takes it out like any area."; current reading, "Undecided. For "Land", we lean towards option 3: it says which part of the Earth the data cover, which is what a search would ask. For "Global Gravity", we lean towards keeping it whole, since "Phobos Gravity" in other records reads like the same sort of title; your answer to (a) decides it."
 
 ### Quoted for us
 
@@ -1638,8 +1638,8 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 - predicate HAS_TARGET: is about this CelestialBody
 - entity class SpatialCoverage -> SpatialExtent: The geographic or sky extent covered by a dataset or observation, such as global, a swath width, or a number of square degrees or areas.
 - predicate HAS_SPATIAL_COVERAGE -> HAS_SPATIAL_COVERAGE: The subject (a dataset or survey) covers the object, a geographic region, latitude range, area extent or coverage descriptor.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
 
 ### Consequences
 
@@ -1651,14 +1651,14 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 
 #### Option 2: Only regions of a body are areas
 
-- The ground truth triples of the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" become one: HAS_MEASUREMENTS_OF "Land Aerosol Optical Depth", with no HAS_SPATIAL_COVERAGE (rule 9 of *Writing a classed triple* keeps a qualifier that is no area in the instance).
+- The ground truth triples of the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" become one: HAS_MEASUREMENTS_OF "Land Aerosol Optical Depth", with no HAS_SPATIAL_COVERAGE (rule 19 of *Writing a classed triple* keeps a qualifier that is no area in the instance).
 - The record "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" loses HAS_SPATIAL_COVERAGE "Global", and its HAS_MEASUREMENTS_OF "Gravity" becomes "Global Gravity", if the answer to Q3's (c) says so.
 - A search for land-only data has to look inside the quantities' words.
 
 #### Option 3: Name sorts of surface in the definition
 
 - The ground truth schema's definition of SpatialExtent changes, and the rows of the translation table into it are checked again.
-- The model's copy of the rules (rule 9 of *Writing a classed triple*) says the same, so extraction takes "Land" out too.
+- The model's copy of the rules (rule 19 of *Writing a classed triple*) says the same, so extraction takes "Land" out too.
 
 ### Affects
 
@@ -1677,8 +1677,8 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 - translation table row: predicate HAS_PROPERTY
 - ground truth schema entry: entity class SpatialExtent
 - ground truth schema entry: predicate HAS_SPATIAL_COVERAGE
-- rule: Writing a classed triple, rule 9
-- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules (the list of qualifiers taken out, rule 9 of *Writing a classed triple*)
+- rule: Writing a classed triple, rule 19
+- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules (the list of qualifiers taken out, rule 19 of *Writing a classed triple*)
 
 ## Q12: What counts as a dataset: inputs named in a record, and archives, catalogs and data products?
 
@@ -1747,18 +1747,18 @@ Decided on 2026-10-25, for us to confirm: the record "MODIS/Terra Land Surface T
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names. A row that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only.
 
-Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) is the old (a); their (b) holds the old (b) and (f); their (c) the old (d) and (e). Left for us: the old (c), on the epithermal map, which is about our own rule 11 (option 3 stays one of the expert's choices); the rest of the old (d), "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets, which follows from the answer to (c); and the doubt in the old (d) about "active galactic nuclei (AGN)" (CelestialBody), a kind of object written with an entity class whose definition is "a natural object in space", which is about our schema's definition, for us to settle (or to ask with Q25).
+Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) is the old (a); their (b) holds the old (b) and (f); their (c) the old (d) and (e). Left for us: the old (c), on the epithermal map, which is about our own rule 21 (option 3 stays one of the expert's choices); the rest of the old (d), "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets, which follows from the answer to (c); and the doubt in the old (d) about "active galactic nuclei (AGN)" (CelestialBody), a kind of object written with an entity class whose definition is "a natural object in space", which is about our schema's definition, for us to settle (or to ask with Q25).
 
 - (a) The example below says the index it uses "is derived from radiance data acquired by" MODIS, followed by two DOIs, MYD02HKM and MYD021KM. We wrote one Dataset, "radiance data", with both DOIs. Are these one dataset or two (our reading: two products, at two resolutions)? If two, how should two inputs with the same words be told apart, when the record names them only by their DOIs?
 - (b) The record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" says "the L2 pixels are binned" into a grid. We wrote "pixels" as a Dataset, at processing level "L2". Is a set of Level 2 pixels a dataset, or just the Level 2 data, unnamed?
-- (c) The record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says the counts "were detrended using the GRaND epithermal neutron map". We wrote that map as a Dataset, collected by GRaND. No record of the catalog has "epithermal" in its title (we searched the catalog's titles), so we can't tell whether the map is a dataset of its own; the catalog has other GRaND maps of Vesta (for example, "DAWN GRAND MAP VESTA NEUTRON ABSORPTION V1.0"). The annotation guidelines leave out facts about another dataset, but keep them when the record's dataset is made from it (rule 11 of *Writing a classed triple*), so we kept what collected the map. Is it right to keep the map as an input, with what collected it?
+- (c) The record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says the counts "were detrended using the GRaND epithermal neutron map". We wrote that map as a Dataset, collected by GRaND. No record of the catalog has "epithermal" in its title (we searched the catalog's titles), so we can't tell whether the map is a dataset of its own; the catalog has other GRaND maps of Vesta (for example, "DAWN GRAND MAP VESTA NEUTRON ABSORPTION V1.0"). The annotation guidelines leave out facts about another dataset, but keep them when the record's dataset is made from it (rule 21 of *Writing a classed triple*), so we kept what collected the map. Is it right to keep the map as an input, with what collected it?
 - (d) For someone using this catalog, is an astronomical source catalog (a list of objects, each with its measured properties) a dataset in the same sense as a set of measurements of the Earth's surface? The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" is a table of 412 quasars selected from the source catalog "2XMMi-DR3" and matched with "the DR7 edition of the SDSS Quasar Catalog", "based on CDS Catalog J/A+A/536/A84 [...] file table1.dat". We wrote the table, the two catalogs, "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets, and "active galactic nuclei (AGN)", the kind of object the table is about, as its target: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_TARGET "active galactic nuclei (AGN)" (CelestialBody), although a CelestialBody is "a natural object in space" and AGN are a kind of object. Are these right?
 - (e) Is a database or archive that holds many datasets the same sort of thing as one of the datasets it holds, or should the two be kept apart (e.g. so that a search for datasets doesn't return archives)?
 - (f) Is a "data product" (e.g. "Level-3 products", "the SST4 product") always a dataset, or sometimes one variable inside a dataset? The record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" says "This data set contains Level 2/3 (EDR/RDR) data", and later "The RDR data convert the EDR (raw) sensor data": we wrote "RDR data" and "EDR (raw) sensor data" as two Datasets, each PART_OF the record's dataset, and "RDR data" (Dataset) COMPUTED_FROM "EDR (raw) sensor data" (Dataset). Are the parts of a dataset datasets themselves, or should they be written another way?
 
 The question's context, as it was: The example below is the one whose input, "radiance data", has the most facts of its own (four, two of them DOIs). COMPUTED_FROM joins what was made to what it was made from. Of the records we have read so far, only the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" names astronomical source catalogs (question (d)); none names a database. The translation table says that the model's Dataset, DataProduct, Catalog and Database all mean the ground truth schema's Dataset.
 
-The options and current reading as they were worded before 2026-10-26: option 1, "Every input named in a record is a Dataset, in the record's words, with the facts the record states about it; the model's Catalog, Database and DataProduct all mean Dataset."; option 3, "Keep each input as a Dataset, but write nothing else about an input that is another dataset of the catalog (its instrument, its processing level). Rule 11 of *Writing a classed triple* now keeps such facts, so it would change."; option 4, "When a record names an archive, a database or a source catalog that holds many datasets, the ground truth schema gets an entity class for it, and the model's Database (and Catalog, if your answer to (d) is no) means it."; current reading, "Option 1, for now: it writes what each record states, as rule 11 of *Writing a classed triple* now does for an input, and every collection of data in the records we have read so far is one set of measurements. Your answers decide whether (a) needs option 2, whether (c) needs option 3, and whether (d) and (e) need option 4."
+The options and current reading as they were worded before 2026-10-26: option 1, "Every input named in a record is a Dataset, in the record's words, with the facts the record states about it; the model's Catalog, Database and DataProduct all mean Dataset."; option 3, "Keep each input as a Dataset, but write nothing else about an input that is another dataset of the catalog (its instrument, its processing level). Rule 21 of *Writing a classed triple* now keeps such facts, so it would change."; option 4, "When a record names an archive, a database or a source catalog that holds many datasets, the ground truth schema gets an entity class for it, and the model's Database (and Catalog, if your answer to (d) is no) means it."; current reading, "Option 1, for now: it writes what each record states, as rule 21 of *Writing a classed triple* now does for an input, and every collection of data in the records we have read so far is one set of measurements. Your answers decide whether (a) needs option 2, whether (c) needs option 3, and whether (d) and (e) need option 4."
 
 ### Quoted for us
 
@@ -1769,10 +1769,10 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 - entity class DataProduct -> Dataset: A specific processed output of data, such as calibrated images, retrieval products, files, or data segments, generated from instrument or model data.
 - entity class Catalog -> Dataset: A published, organized list of astronomical sources or objects with their properties, typically derived from a survey or mission.
 - entity class Database -> Dataset: An organized collection or repository of data records, sources or proposals that can be stored, queried and accessed.
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 14: A processing step: output = method(input).
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
+- Writing a classed triple, rule 21: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
+- Writing a classed triple, rule 21: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 24: A processing step: output = method(input).
 
 ### Consequences
 
@@ -1780,18 +1780,18 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 
 - Nothing changes in the ground truth triples or the rows above.
 - Two inputs named by the same words ("radiance data") become one node of the knowledge graph, with both DOIs.
-- Facts about an input that has its own record (the epithermal map's instrument) are written in this record too, as rule 11 now allows ("Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
+- Facts about an input that has its own record (the epithermal map's instrument) are written in this record too, as rule 21 now allows ("Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
 - An archive and the datasets inside it carry the same entity class, so the knowledge graph can't tell them apart by their entity class.
 
 #### Option 2: One input per DOI
 
-- The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" gets two inputs, each with one DOI; their instances share the same words, so the ground truth needs a way to tell them apart (for example, the DOI written in the instance), which is a new exception to rule 1 of *Writing a classed triple*.
+- The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" gets two inputs, each with one DOI; their instances share the same words, so the ground truth needs a way to tell them apart (for example, the DOI written in the instance), which is a new exception to rule 11 of *Writing a classed triple*.
 
 #### Option 3: Inputs only, no facts about them
 
 - The ground truth triples "GRaND epithermal neutron map" ACQUIRED_BY_INSTRUMENT "GRaND", "radiance data" ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)", and "pixels" HAS_PROCESSING_LEVEL "L2" are left out.
 - An annotator, and the model, must know whether an input has its own record, which the record's [text](../docs/terminology.md#1-records-and-their-text) often doesn't say.
-- Rule 11 of *Writing a classed triple* and the model's copy of the rules change: they now keep the facts about a dataset the record's dataset is made from, and would leave them out.
+- Rule 21 of *Writing a classed triple* and the model's copy of the rules change: they now keep the facts about a dataset the record's dataset is made from, and would leave them out.
 
 #### Option 4: An entity class for collections of datasets
 
@@ -1832,8 +1832,8 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 - translation table row: entity class DataProduct
 - translation table row: entity class Catalog
 - translation table row: entity class Database
-- rule: Writing a classed triple, rule 11
-- rule: Writing a classed triple, rule 14
+- rule: Writing a classed triple, rule 21
+- rule: Writing a classed triple, rule 24
 
 ## Q13: What counts as a channel: radio frequency bands and wavelength bands?
 
@@ -1888,7 +1888,7 @@ Option 1 for now: the only radio band we have met so far is inside an instrument
 
 The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"; the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" has "Aquarius L-band radiometer". A row of the translation table that names (none) says nothing in the ground truth schema means the same: a classed triple that uses it can never be part of a [pair](../docs/terminology.md#7-evaluating-extraction-step-070) with a ground truth triple, so it always counts as extracted only.
 
-Option 2 also means a new exception to the list of rule 9 of *Writing a classed triple*, and telling the step that learns the current schema to keep radio bands apart from rates, so that they get a row into Channel. Option 3: the entity class is one we coin in the ground truth schema, once a tuning record needs it.
+Option 2 also means a new exception to the list of rule 19 of *Writing a classed triple*, and telling the step that learns the current schema to keep radio bands apart from rates, so that they get a row into Channel. Option 3: the entity class is one we coin in the ground truth schema, once a tuning record needs it.
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The expert's (a) is the old (a); their (b) holds the old (b) and (c). The example no longer shows the source text "the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS" nor the classed triples "mid-infrared 3.95 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) and "mid-infrared 4.05 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument); both are under Affects.
 
@@ -1898,7 +1898,7 @@ The question as it was: The ground truth schema's Channel is "a range of wavelen
 - (b) For a radio frequency band that an Instrument measures in, is Channel the right entity class, or does a radio band need an entity class of its own? And when a record writes the band as part of the Instrument's words ("Aquarius L-band radiometer", in the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"), should it stay inside them, as it does now, or be a [fact](../docs/terminology.md#2-triples) of its own?
 - (c) Is every wavelength band in which observations are made (e.g. an infrared filter band) a Channel, or only a band the Instrument measures separately?
 
-The question's context, as it was: The example below has every Channel we have written down so far: four wavelength channels its two sea surface temperature products are computed from, two of them "unique to MODIS". The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" names a radio frequency band inside its Instrument's words: "Aquarius L-band radiometer" keeps "L-band", since rule 9 of *Writing a classed triple* takes a qualifier out of an instance only if it is one of the sorts it lists, and a radio band isn't one. So none of the facts we have written down yet has a radio band as its object.
+The question's context, as it was: The example below has every Channel we have written down so far: four wavelength channels its two sea surface temperature products are computed from, two of them "unique to MODIS". The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" names a radio frequency band inside its Instrument's words: "Aquarius L-band radiometer" keeps "L-band", since rule 19 of *Writing a classed triple* takes a qualifier out of an instance only if it is one of the sorts it lists, and a radio band isn't one. So none of the facts we have written down yet has a radio band as its object.
 
 How the translation table is used: the [model](../docs/terminology.md#8-the-pipeline) extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with ours, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names.
 
@@ -1913,9 +1913,9 @@ The options as they were worded before 2026-10-26: option 1, ("Channel stays a r
 - predicate ACQUIRED_BY_INSTRUMENT: was collected by this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
 
 ### Consequences
 
@@ -1926,7 +1926,7 @@ The options as they were worded before 2026-10-26: option 1, ("Channel stays a r
 
 #### Option 2: Widen Channel to any band of the spectrum
 
-- The ground truth schema's definition of Channel, rule 9 of *Writing a classed triple*, and the model's copy of the rules change; the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" gets a triple for "L-band".
+- The ground truth schema's definition of Channel, rule 19 of *Writing a classed triple*, and the model's copy of the rules change; the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" gets a triple for "L-band".
 - The learning step's instructions change, and its next run costs model calls.
 
 #### Option 3: An entity class of its own for radio bands
@@ -1948,8 +1948,8 @@ The options as they were worded before 2026-10-26: option 1, ("Channel stays a r
 - translation table row: entity class Wavelength
 - translation table row: entity class Frequency
 - ground truth schema entry: entity class Channel
-- rule: Writing a classed triple, rule 9
-- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules (the list of qualifiers taken out, rule 9 of *Writing a classed triple*)
+- rule: Writing a classed triple, rule 19
+- pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules (the list of qualifiers taken out, rule 19 of *Writing a classed triple*)
 
 ## Q14: Is every process or effect a phenomenon, including ones caused by people or by spaceflight?
 
@@ -2022,7 +2022,7 @@ How the translation table is used: the model extracts classed triples with a sch
 
 - predicate LIMITED_BY: its use is restricted by
 - predicate PRODUCTION_DISCONTINUED_DUE_TO: stopped being produced because of
-- Writing a classed triple, rule 4: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 
 ### Consequences
 
@@ -2109,13 +2109,13 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 The question's context, as it was: How the translation table is used: the model extracts classed triples with a schema it learned from other records of the catalog (the current schema; a schema an earlier run used is a past schema). Before its classed triples are compared with ours, each entity class and predicate of that schema is replaced by the one of the ground truth schema its row of the translation table names. A row that names (none) says nothing in the ground truth schema means the same.
 
-The record below is the only one so far where we wrote down a map projection. We kept the record's own words, as rule 1 of *Writing a classed triple* says, also for "Platte Carre".
+The record below is the only one so far where we wrote down a map projection. We kept the record's own words, as rule 11 of *Writing a classed triple* says, also for "Platte Carre".
 
 Taken out of the expert's view on 2026-10-26, as a question we can settle from sources; kept here word for word. The title was "Is a coordinate system a map projection, and how should "Platte Carre" be written?"; the expert's (a) is now the question, without its letter. Option 1 was "Keep counting a coordinate system as a map projection, and the record's spelling", and its text ended "; we keep "Platte Carre" as the record writes it.". My current reading said "the only coordinate system is a map projection, and we keep the record's own spelling", and ended "common in the catalog (a).". Option 2's consequences said "(question (a))".
 
 - (b) The example writes "equidistant cylindrical (also known as Platte Carre projection". Is "Platte Carre" the projection usually spelled "Plate Carrée", and is it the same projection as "equidistant cylindrical"? We keep a record's own spelling: would that mislead someone searching for it?
 
-Checked on 2026-10-26: Esri's page on the projection (https://desktop.arcgis.com/en/arcmap/latest/map/projections/plate-carree.htm) says "The plate carrée map projection is an equidistant cylindrical projection with the standard parallel located at the equator", and PROJ, the map projection library, names it "Equidistant Cylindrical (Plate Carrée)" (https://proj4.org/operations/projections/eqc.html). PO.DAAC's page for this dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_4KM_NIGHTTIME_V2019.0) gives "Projection Type: Cylindrical Lat-Lon", a grid of equal steps in latitude and longitude, which is the plate carrée case (our reading of "Cylindrical Lat-Lon"). So "Platte Carre" is the record's misspelling of "Plate Carrée", and the fact "equidistant cylindrical" (MapProjection) ALSO_KNOWN_AS "Platte Carre" (MapProjection) is true for this record: checked. Whether the knowledge graph should also hold the usual spelling, for searches, is ours to decide, not a question for a source; rule 1 of *Writing a classed triple* keeps the record's own words, so the ground truth stays as it is.
+Checked on 2026-10-26: Esri's page on the projection (https://desktop.arcgis.com/en/arcmap/latest/map/projections/plate-carree.htm) says "The plate carrée map projection is an equidistant cylindrical projection with the standard parallel located at the equator", and PROJ, the map projection library, names it "Equidistant Cylindrical (Plate Carrée)" (https://proj4.org/operations/projections/eqc.html). PO.DAAC's page for this dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_4KM_NIGHTTIME_V2019.0) gives "Projection Type: Cylindrical Lat-Lon", a grid of equal steps in latitude and longitude, which is the plate carrée case (our reading of "Cylindrical Lat-Lon"). So "Platte Carre" is the record's misspelling of "Plate Carrée", and the fact "equidistant cylindrical" (MapProjection) ALSO_KNOWN_AS "Platte Carre" (MapProjection) is true for this record: checked. Whether the knowledge graph should also hold the usual spelling, for searches, is ours to decide, not a question for a source; rule 11 of *Writing a classed triple* keeps the record's own words, so the ground truth stays as it is.
 
 ### Quoted for us
 
@@ -2123,9 +2123,9 @@ Checked on 2026-10-26: Esri's page on the projection (https://desktop.arcgis.com
 - predicate ALSO_KNOWN_AS: is the same thing under another name
 - predicate DOCUMENTED_AT: more details about it are written at
 - predicate HAS_COORDINATE_SYSTEM -> MAPPED_INTO: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
-- Writing a classed triple, rule 13: One thing, one wording, within a record.
-- Writing a classed triple, rule 13: the other appears only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 10).
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
+- Writing a classed triple, rule 23: One thing, one wording, within a record.
+- Writing a classed triple, rule 23: the other appears only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
 
 ### Consequences
 
@@ -2152,15 +2152,15 @@ Checked on 2026-10-26: Esri's page on the projection (https://desktop.arcgis.com
 - translation table row: predicate HAS_COORDINATE_SYSTEM
 - ground truth schema entry: entity class MapProjection
 - ground truth schema entry: predicate MAPPED_INTO
-- rule: Writing a classed triple, rule 1
-- rule: Writing a classed triple, rule 13
+- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 23
 
 ## Q16: Is the time "13:30" in Aqua's orbit a fact of its own?
 
 - status: withdrawn
 - priority: low
 - question kind: schema entry
-- in short: the ground truth schema's Orbit and TimeOfDay, and rule 9 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's Orbit and TimeOfDay, and rule 19 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -2211,7 +2211,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 - (c) If the time is a fact of its own, what does it belong to: the orbit, or the satellite (Aqua)?
 
-The question's context, as it was: The ground truth schema has a TimeOfDay entity class, and rule 9 of *Writing a classed triple* in the annotation guidelines takes a time of day out of an instance, as a ground truth triple of its own, unless taking it out would give a triple that isn't true. Taking "13:30" out with the only predicate the ground truth schema has for a time of day, OBSERVED_AT_TIME_OF_DAY, would say that the orbit comes from observations made at 13:30, which isn't true. So, by rule 9 of *Writing a classed triple*, "13:30" stays in the orbit's instance. The question is whether the ground truth schema should have another predicate for this time, so that it can be a ground truth triple of its own.
+The question's context, as it was: The ground truth schema has a TimeOfDay entity class, and rule 19 of *Writing a classed triple* in the annotation guidelines takes a time of day out of an instance, as a ground truth triple of its own, unless taking it out would give a triple that isn't true. Taking "13:30" out with the only predicate the ground truth schema has for a time of day, OBSERVED_AT_TIME_OF_DAY, would say that the orbit comes from observations made at 13:30, which isn't true. So, by rule 19 of *Writing a classed triple*, "13:30" stays in the orbit's instance. The question is whether the ground truth schema should have another predicate for this time, so that it can be a ground truth triple of its own.
 
 Option 2's text, as it was: A new predicate in the ground truth schema, e.g. HAS_ASCENDING_NODE_TIME ("crosses the equator going north at this TimeOfDay"), and the ground truth writes two classed triples: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit" (Orbit), and a second one that gives "13:30" (TimeOfDay), with Aqua or the orbit as its subject instance (question (c)).
 
@@ -2221,9 +2221,9 @@ Checked on 2026-10-26: NASA's page on Aqua (https://science.nasa.gov/mission/aqu
 
 ### Quoted for us
 
-- Writing a classed triple, rule 5: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
-- Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true. Suppose: a record says "an afternoon orbit". Then: taking "afternoon" out would give "orbit" OBSERVED_AT_TIME_OF_DAY "afternoon", which says the orbit comes from observations made in the afternoon. That isn't true, so the instance stays "afternoon orbit".
+- Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
+- Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true. Suppose: a record says "an afternoon orbit". Then: taking "afternoon" out would give "orbit" OBSERVED_AT_TIME_OF_DAY "afternoon", which says the orbit comes from observations made in the afternoon. That isn't true, so the instance stays "afternoon orbit".
 
 ### Consequences
 
@@ -2250,8 +2250,8 @@ Checked on 2026-10-26: NASA's page on Aqua (https://science.nasa.gov/mission/aqu
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
 - ground truth schema entry: entity class Orbit
 - ground truth schema entry: predicate HAS_ORBIT
-- rule: Writing a classed triple, rule 5
-- rule: Writing a classed triple, rule 9
+- rule: Writing a classed triple, rule 15
+- rule: Writing a classed triple, rule 19
 - pipeline method: annotations/ground_truth_schema.txt: a new predicate for the time an orbit crosses the equator (option 2), or for each property of an orbit (option 3)
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
 
@@ -2334,7 +2334,7 @@ Settled by checked sources, option 1. A review of this record on 2026-10-22 chec
 - status: open
 - priority: low
 - question kind: records and triples
-- in short: the ground truth schema's Variable, ESTIMATES and HAS_LOWER_UNCERTAINTY_THAN, and rule 13 of the annotation guidelines
+- in short: the ground truth schema's Variable, ESTIMATES and HAS_LOWER_UNCERTAINTY_THAN, and rule 23 of the annotation guidelines
 
 ### The question
 
@@ -2389,27 +2389,27 @@ Option 1, because the record names SST4's quantity only "SST", and the compariso
 
 The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". Until an expert answers, its ground truth keeps option 1, and HAS_VARIABLE "SST4" only. If experts say a "Nighttime" "SST MID-IR" product holds NSST too, we would still write it only if the record says so, and note the gap.
 
-Added on 2026-10-30, (d): the ground truth wrote the product as "skin SST (NSST)" until audit finding G7 (decided on 2026-10-30, docs/improvements.md): "(NSST)" follows "night", so it is not a name with its abbreviation in parentheses (rule 10 of *Writing a classed triple*), and the record does not say what NSST names (rule 1 of *What counts as a fact*). Its seven ground truth triples now use "skin SST", and "NSST" is in annotations/left_out.md. If the answer is that NSST names the skin SST product, the triples would use "skin SST" with "NSST" as another wording (ALSO_KNOWN_AS needs words of the record's own, rule 10, so probably no such triple); if it names the night observations, nothing changes.
+Added on 2026-10-30, (d): the ground truth wrote the product as "skin SST (NSST)" until audit finding G7 (decided on 2026-10-30, docs/improvements.md): "(NSST)" follows "night", so it is not a name with its abbreviation in parentheses (rule 20 of *Writing a classed triple*), and the record does not say what NSST names (rule 1 of *What counts as a fact*). Its seven ground truth triples now use "skin SST", and "NSST" is in annotations/left_out.md. If the answer is that NSST names the skin SST product, the triples would use "skin SST" with "NSST" as another wording (ALSO_KNOWN_AS needs words of the record's own, rule 20, so probably no such triple); if it names the night observations, nothing changes.
 
 Changed on 2026-10-26, because the review page now shows a record's title only once, in its example: the expert's (c) began "The title is "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". From its "SST MID-IR" we wrote".
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The sub-questions keep their letters; only the rule numbers and quotes of rules were taken out of them.
 
 - The question, as it was: A record of MODIS sea surface temperature (SST) products describes two SST products in its files: a skin SST made for day and night (NSST), and, at night, a second SST product, identified as SST4. The ground truth now says that NSST gives approximate values of the "skin sea surface temperature (SST)", that SST4 gives approximate values of "SST", and that SST4 has lower uncertainty than NSST.
-- (a) Is SST4 a skin SST too, so that both products estimate the same quantity, the skin sea surface temperature? If so, rule 13 of the annotation guidelines (one thing, one wording, within a record) would write "skin sea surface temperature (SST)" for both.
+- (a) Is SST4 a skin SST too, so that both products estimate the same quantity, the skin sea surface temperature? If so, rule 23 of the annotation guidelines (one thing, one wording, within a record) would write "skin sea surface temperature (SST)" for both.
 - (b) The record says "The SST4 product has lower uncertainty", without saying than what. The ground truth reads it as "lower uncertainty than NSST", the other product the record describes. Is that how an expert reads it?
 - (c) The dataset's title is "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", and the record says "Two SST products can be present in these files". The ground truth says the dataset HAS_VARIABLE "SST4", from the title's "SST MID-IR" (SST4 is the one made from the mid-infrared channels), and writes no HAS_VARIABLE for NSST, since "can be present" is not a statement that it is (rule 7 of *What counts as a fact*: "Not uncertain facts."). Does a "SST MID-IR ... Nighttime" product hold SST4 only, or NSST too?
 
-The question's context, as it was: The record introduces the two products as "Two SST products can be present in these files. The first is a skin SST ... At night, a second SST product ...". Whether "a second SST product" is a skin SST too is what (a) asks: we may use what the words mean to see that two wordings name the same thing (rule 13), but we may not add a fact the record doesn't state (rule 1 of *What counts as a fact*).
+The question's context, as it was: The record introduces the two products as "Two SST products can be present in these files. The first is a skin SST ... At night, a second SST product ...". Whether "a second SST product" is a skin SST too is what (a) asks: we may use what the words mean to see that two wordings name the same thing (rule 23), but we may not add a fact the record doesn't state (rule 1 of *What counts as a fact*).
 
-Option 2's text, as it was: If SST4 is a skin SST: "SST4" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity), one wording for both, by rule 13.
+Option 2's text, as it was: If SST4 is a skin SST: "SST4" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity), one wording for both, by rule 23.
 
 ### Quoted for us
 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - What counts as a fact, rule 7: Not uncertain facts.
-- Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
 
 ### Consequences
 
@@ -2421,7 +2421,7 @@ Option 2's text, as it was: If SST4 is a skin SST: "SST4" (Variable) ESTIMATES "
 #### Option 2: Both estimate the skin sea surface temperature
 
 - One ground truth triple changes its object instance.
-- The record's word for SST4's quantity is "SST", so this relies on rule 13's "what you know about the words", which an expert has to confirm.
+- The record's word for SST4's quantity is "SST", so this relies on rule 23's "what you know about the words", which an expert has to confirm.
 
 #### Option 3: Leave out the comparison
 
@@ -2439,14 +2439,14 @@ Option 2's text, as it was: If SST4 is a skin SST: "SST4" (Variable) ESTIMATES "
 - ground truth schema entry: predicate ESTIMATES
 - ground truth schema entry: predicate HAS_LOWER_UNCERTAINTY_THAN
 - rule: What counts as a fact, rule 1
-- rule: Writing a classed triple, rule 13
+- rule: Writing a classed triple, rule 23
 
 ## Q19: Versions and releases: are "R2019.0" and "V2019.0" the same release, and is a MODIS "Collection" a version?
 
 - status: open
 - priority: low
 - question kind: records and triples
-- in short: the ground truth schema's Version, HAS_VERSION, SUPERSEDES and ALSO_KNOWN_AS, and rules 10 and 13 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's Version, HAS_VERSION, SUPERSEDES and ALSO_KNOWN_AS, and rules 20 and 23 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -2490,7 +2490,7 @@ Option 1, because the record calls both the release that replaces v2014.1, and n
 
 ### My notes
 
-The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"; (c) is about the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061". Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (decided 2026-10-25, for us to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 11 (`annotations/left_out.md`). (e) is about the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0": we first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 of *What counts as a fact* ("V1.0 stays the first version whatever is released later"). If the answer says otherwise, that ground truth triple is deleted or changed. (The letters in this paragraph are those of the sub-questions as they were, below.)
+The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0"; (c) is about the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061". Until an expert answers, the ground truth keeps option 1, and "Version 61" ALSO_KNOWN_AS "Collection 6.1". (d) is about the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (decided 2026-10-25, for us to confirm): "Version 6", and "Version 6.1" SUPERSEDES "Version 6"; the DOI of Version 6.1 is left out by rule 21 (`annotations/left_out.md`). (e) is about the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0": we first left "first version" out; it is now kept as "V1.0" ALSO_KNOWN_AS "first version", by rule 10 of *What counts as a fact* ("V1.0 stays the first version whatever is released later"). If the answer says otherwise, that ground truth triple is deleted or changed. (The letters in this paragraph are those of the sub-questions as they were, below.)
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The old (a) and (b) are now the expert's (a); the old (c) their (b) (without "is the title's V061 that same Version 61?", which we settle ourselves); the second half of the old (d) their (c). Left for us: whether "V006", "Version 6" and "V6" are one version (the first half of the old (d): the record's own words name one product, so we read them as one), and the old (e), which the annotation guidelines' own example settles ("V1.0" ALSO_KNOWN_AS "first version").
 
@@ -2498,10 +2498,10 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - (a) Are "R2019.0" and "V2019.0" the same release of the data? Our reading, not checked against a source: "R" may stand for a reprocessing, and the reprocessing of 2019 made version 2019.0.
 - (b) If they are not the same, what is "R2019.0": a reprocessing, a release of the processing software, or something else?
 - (c) The record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" says "The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data". We wrote the facts "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_VERSION "Version 61" (Version) and "Version 61" (Version) ALSO_KNOWN_AS "Collection 6.1" (Version). Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all MODIS products at once, which this dataset is part of (and so something the dataset belongs to, not its version)? And is the title's "V061" that same Version 61?
-- (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. We read them as one version, and wrote "Version 6", the wording that spells it out (rule 13). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and we wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
+- (d) The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" writes its version three ways: "V006" in its title, "Version 6" twice in its notes, and "V6" once. We read them as one version, and wrote "Version 6", the wording that spells it out (rule 23). Its notes begin "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023. Users are encouraged to use the MOD11A1 Version 6.1 data product.", and we wrote "Version 6.1" (Version) SUPERSEDES "Version 6" (Version), as for "V2019.0" above. Are "V006", "Version 6" and "V6" one version? And does the record say that Version 6.1 replaces Version 6, or only recommend it?
 - (e) The record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" says "This version V1.0 is the first version of this dataset". We wrote "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_VERSION "V1.0" (Version). We also wrote "V1.0" (Version) ALSO_KNOWN_AS "first version" (Version), since V1.0 stays the first version whatever is released later (decided 2026-10-25). Is that right, or is "the first version" a fact of another kind (the dataset has no earlier version)?
 
-The question's context, as it was: Rule 13 of the annotation guidelines writes one thing with one wording in a record: of two wordings that say the same, the one the record uses most often, or, on a tie, the one it gives first. Each wording appears once, and the title comes first, so we wrote "V2019.0". If they are two names of one release, rule 10 of *Writing a classed triple* allows an ALSO_KNOWN_AS triple only when the record gives the other name in words of its own, which it doesn't here.
+The question's context, as it was: Rule 23 of the annotation guidelines writes one thing with one wording in a record: of two wordings that say the same, the one the record uses most often, or, on a tie, the one it gives first. Each wording appears once, and the title comes first, so we wrote "V2019.0". If they are two names of one release, rule 20 of *Writing a classed triple* allows an ALSO_KNOWN_AS triple only when the record gives the other name in words of its own, which it doesn't here.
 
 Option 2's text, as it was: They differ: "R2019.0" SUPERSEDES "v2014.1" (Version), as the record writes it, with "R2019.0" in an entity class that fits what it is (question (b)), and the dataset still HAS_VERSION "V2019.0" (Version).
 
@@ -2509,8 +2509,8 @@ Option 2's text, as it was: They differ: "R2019.0" SUPERSEDES "v2014.1" (Version
 
 - What counts as a fact, rule 10: Not words that are true only as of when the record was written. Leave out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
 - What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
-- Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)
+- Writing a classed triple, rule 20: A name with its abbreviation in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)
 
 ### Consequences
 
@@ -2541,15 +2541,15 @@ Option 2's text, as it was: They differ: "R2019.0" SUPERSEDES "v2014.1" (Version
 - translation table row: predicate SUPERSEDES
 - ground truth schema entry: predicate SUPERSEDES
 - rule: What counts as a fact, rule 10
-- rule: Writing a classed triple, rule 10
-- rule: Writing a classed triple, rule 13
+- rule: Writing a classed triple, rule 20
+- rule: Writing a classed triple, rule 23
 
 ## Q20: What is "Near Real Time (NRT)", what counts as an identifier ("MCD19A2N", "LAWRENCEETAL2013"), and is "MCD19A1N" another dataset?
 
 - status: open
 - priority: low
 - question kind: records and triples
-- in short: the ground truth schema's Identifier, HAS_DOI, Document, Version and COMPUTED_FROM, the predicate HAS_IDENTIFIER we have coined, and rules 10, 11 and 14 of *Writing a classed triple* in the annotation guidelines
+- in short: the ground truth schema's Identifier, HAS_DOI, Document, Version and COMPUTED_FROM, the predicate HAS_IDENTIFIER we have coined, and rules 20, 21 and 24 of *Writing a classed triple* in the annotation guidelines
 
 ### The question
 
@@ -2608,10 +2608,10 @@ The example is the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G
 Pending facts, for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid":
 
 - pending fact: its fact 11, "Near Real Time (NRT)", left without a fact for now; added if the answer to (a) says what it is (a latency, a processing stream or a version), with the predicate that answer calls for.
-- its fact 12, "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset): no longer pending, a ground truth triple now (decided 2026-10-25), by rule 11 of *Writing a classed triple* ("In every case, include the connection the record states"); deleted if the answer to (c) says it is a fact about the other dataset only. What MCD19A1N holds stays left out (`annotations/left_out.md`).
+- its fact 12, "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset): no longer pending, a ground truth triple now (decided 2026-10-25), by rule 21 of *Writing a classed triple* ("In every case, include the connection the record states"); deleted if the answer to (c) says it is a fact about the other dataset only. What MCD19A1N holds stays left out (`annotations/left_out.md`).
 - "atmospheric properties" and "view geometry": written as its fact 13, two HAS_MEASUREMENTS_OF triples (approved 2026-10-25); their doubts are Q3 (b) (formerly Q3 (g)).
 
-Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The sub-questions (a) to (c) keep their letters, shortened. Left for us: whether HAS_DOI and HAS_IDENTIFIER should be one predicate, and how to write a DOI given as a link address (from the old (b)), which follow from the answer to (b); whether "MCD19A1N is computed from this dataset" is a fact to write (from the old (c)), which our rule 11 settles; and the old (d), on LAWRENCEETAL2013, which the ground truth schema's definition of Document settles for now (it names LAWRENCEETAL2013 as its example). The question's title still names LAWRENCEETAL2013, as comments may be filed under it.
+Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The sub-questions (a) to (c) keep their letters, shortened. Left for us: whether HAS_DOI and HAS_IDENTIFIER should be one predicate, and how to write a DOI given as a link address (from the old (b)), which follow from the answer to (b); whether "MCD19A1N is computed from this dataset" is a fact to write (from the old (c)), which our rule 21 settles; and the old (d), on LAWRENCEETAL2013, which the ground truth schema's definition of Document settles for now (it names LAWRENCEETAL2013 as its example). The question's title still names LAWRENCEETAL2013, as comments may be filed under it.
 
 - The question, as it was: We are annotating a record of a MODIS aerosol product, and three passages of its [text](../docs/terminology.md#1-records-and-their-text) we are not sure how to write as classed triples; one of them raises a question about another record too:
 - (a) "Near Real Time (NRT)": is it a latency (how soon after the observation the data are made available), a separate processing stream (a different product from the standard one), or a version? Each would be a different predicate, and the ground truth schema has none for a latency. Until you answer, we write no classed triple for it.
@@ -2619,15 +2619,15 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a fact to write, as we now do (it says how the two datasets are connected), or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
 - (d) The same question of what counts as an identifier, in another record: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "Details of the map and data reduction are described in LAWRENCEETAL2013". We wrote LAWRENCEETAL2013 as a Document, "a written publication, or a set of them, named in words or by a reference key": "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document). Is a Planetary Data System reference key such as LAWRENCEETAL2013 the publication itself (a Document named by its key, as now), or an identifier of the publication, an Identifier of its own?
 
-The question's context, as it was: Below are the facts we have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. We have written no fact for "Near Real Time (NRT)" until (a) is answered. For (c), we have written "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), and left out what MCD19A1N holds (rule 11, quoted below).
+The question's context, as it was: Below are the facts we have written for this record, now in the ground truth; one of them is "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier), which (b) asks about. We have written no fact for "Near Real Time (NRT)" until (a) is answered. For (c), we have written "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), and left out what MCD19A1N holds (rule 21, quoted below).
 
 What we have checked about (a), on 2026-10-25. NASA's LANCE page (https://www.earthdata.nasa.gov/data/projects/lance) says: "Near real-time (NRT) refers to data available 1 to 3 hours after an observation by an instrument aboard a space-based platform"; the Terra, Aqua and Aura measurements "are processed into higher-level "standard" products within 8 to 40 hours of observation"; and "If latency is not a primary concern, users are encouraged to use standard science products, which are created using the best available ancillary, calibration, and ephemeris information". MODAPS lists MCD19A2N among its Collection 6.1 NRT products, as a product of its own, with its own DOI, 10.5067/MODIS/MCD19A2N.NRT.061 (https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html), apart from the standard product MCD19A2. So our reading of the sources: NRT here names a processing stream, a separate product, whose defining property is how soon it is made available. The record itself states no number of hours, and the annotation guidelines write only what the record states, so a latency value from these sources can't go into its ground truth. The catalog also has another record, titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid NRT", whose notes begin with the same words as this record's.
 
 The example, as it was, also had these source texts and classed triples (all in the ground truth of the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid"): source texts "The Moderate Resolution Imaging Spectroradiometer (MODIS)", "Combined Terra and Aqua", "Land Aerosol Optical Depth", "produced daily", "gridded Level 2 product", "at 1 kilometer (km) pixel resolutions" and "Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth"; classed triples "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument); FROM_SPACECRAFT "Terra" (Spacecraft); FROM_SPACECRAFT "Aqua" (Spacecraft); HAS_MEASUREMENTS_OF "Aerosol Optical Depth" (PhysicalQuantity); HAS_SPATIAL_COVERAGE "Land" (SpatialExtent); HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution); HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel); HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation); HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution); PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm); each with the dataset "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" as its subject instance. The example now shows only the passages (a) to (c) are about.
 
-The options, as they were: Option 2: (a) "Near Real Time (NRT)" kept inside the dataset's description, with no fact of its own; (b) "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ALSO_KNOWN_AS "MCD19A2N", in place of HAS_IDENTIFIER, and HAS_DOI as it is; (c) "MCD19A1N product" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), as a processing step of rule 14 with this dataset as its input. Option 3: A new predicate for a latency (the dataset has the latency "Near Real Time (NRT)"), and the one we coined for an identifier kept (the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier)), both in the ground truth schema, with HAS_DOI either kept or made one with HAS_IDENTIFIER (question (b)); (c) and (d) as you answer them.
+The options, as they were: Option 2: (a) "Near Real Time (NRT)" kept inside the dataset's description, with no fact of its own; (b) "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ALSO_KNOWN_AS "MCD19A2N", in place of HAS_IDENTIFIER, and HAS_DOI as it is; (c) "MCD19A1N product" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset), as a processing step of rule 24 with this dataset as its input. Option 3: A new predicate for a latency (the dataset has the latency "Near Real Time (NRT)"), and the one we coined for an identifier kept (the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier)), both in the ground truth schema, with HAS_DOI either kept or made one with HAS_IDENTIFIER (question (b)); (c) and (d) as you answer them.
 
-The current reading, as it was: Undecided. For (a), we lean towards reading NRT as a processing stream, a product of its own (the sources above), with no latency value, since the record states none. For (b), we lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), we write "MCD19A1N" COMPUTED_FROM this dataset, by rule 11 ("In every case, include the connection the record states"), and leave out what MCD19A1N holds, since it is made from this dataset. For (d), we keep LAWRENCEETAL2013 a Document, as the definition of Document names it. We would still like to know whether MCD19A1N is computed from this product, and whether "the atmospheric properties and view geometry" are what this dataset holds.
+The current reading, as it was: Undecided. For (a), we lean towards reading NRT as a processing stream, a product of its own (the sources above), with no latency value, since the record states none. For (b), we lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), we write "MCD19A1N" COMPUTED_FROM this dataset, by rule 21 ("In every case, include the connection the record states"), and leave out what MCD19A1N holds, since it is made from this dataset. For (d), we keep LAWRENCEETAL2013 a Document, as the definition of Document names it. We would still like to know whether MCD19A1N is computed from this product, and whether "the atmospheric properties and view geometry" are what this dataset holds.
 
 ### Quoted for us
 
@@ -2639,10 +2639,10 @@ The current reading, as it was: Undecided. For (a), we lean towards reading NRT 
 - predicate HAS_LATENCY -> (none): The subject (a data product or table) is made available or updated with the object, a latency or update delay.
 - predicate HAS_IDENTIFIER -> (none): The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- Writing a classed triple, rule 10: A name with its abbreviation in parentheses is one instance, as written.
-- Writing a classed triple, rule 11: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 14: A processing step: output = method(input).
+- Writing a classed triple, rule 20: A name with its abbreviation in parentheses is one instance, as written.
+- Writing a classed triple, rule 21: General facts: include them, unless they're about another dataset that the record's dataset isn't made from or part of.
+- Writing a classed triple, rule 21: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 24: A processing step: output = method(input).
 
 ### Consequences
 
@@ -2654,8 +2654,8 @@ The current reading, as it was: Undecided. For (a), we lean towards reading NRT 
 #### Option 2: Write each with what the ground truth schema has
 
 - No new entity class or predicate.
-- (b) treats a product code as another name, which rule 10 of *Writing a classed triple* doesn't cover (it covers an abbreviation in parentheses, and MCD19A2N doesn't abbreviate the words before it).
-- (c) writes a fact whose subject instance is another dataset, which rule 11 may forbid (question (c)).
+- (b) treats a product code as another name, which rule 20 of *Writing a classed triple* doesn't cover (it covers an abbreviation in parentheses, and MCD19A2N doesn't abbreviate the words before it).
+- (c) writes a fact whose subject instance is another dataset, which rule 21 may forbid (question (c)).
 
 #### Option 3: New predicates for a latency and an identifier
 
@@ -2682,9 +2682,9 @@ The current reading, as it was: Undecided. For (a), we lean towards reading NRT 
 - translation table row: predicate HAS_LATENCY
 - translation table row: predicate HAS_IDENTIFIER
 - rule: What counts as a fact, rule 1
-- rule: Writing a classed triple, rule 10
-- rule: Writing a classed triple, rule 11
-- rule: Writing a classed triple, rule 14
+- rule: Writing a classed triple, rule 20
+- rule: Writing a classed triple, rule 21
+- rule: Writing a classed triple, rule 24
 - pipeline method: annotations/ground_truth_schema.txt: a new predicate for a latency and one for an identifier (option 3)
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
 
@@ -2743,7 +2743,7 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 
 ### Quoted for us
 
-- Writing a classed triple, rule 1: Subject instance and object instance: the record's own words, as written.
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 
 ### Consequences
 
@@ -2754,7 +2754,7 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 
 #### Option 2: Reference lists in the ground truth
 
-- A new exception to rule 1 of *Writing a classed triple* (the record's own words, as written), in the annotation guidelines and in the copy of the rules the [model](../docs/terminology.md#8-the-pipeline) follows.
+- A new exception to rule 11 of *Writing a classed triple* (the record's own words, as written), in the annotation guidelines and in the copy of the rules the [model](../docs/terminology.md#8-the-pipeline) follows.
 - The ground truth triples written so far are checked again, and some object instances change.
 - A record's value that isn't on the list has no value to use, unless the list is complete for this catalog.
 
@@ -2857,7 +2857,7 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 - ground truth schema entry: entity class Spacecraft
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class PhysicalQuantity
-- rule: Writing a classed triple, rule 1
+- rule: Writing a classed triple, rule 11
 - pipeline method: docs/improvements.md: linking subject instances and object instances to reference lists
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
 
@@ -2870,7 +2870,7 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 - status: withdrawn
 - priority: low
 - question kind: records and triples
-- in short: the ground truth schema's SpatialResolution and HAS_SPATIAL_RESOLUTION, and rules 11 and 13 of the annotation guidelines
+- in short: the ground truth schema's SpatialResolution and HAS_SPATIAL_RESOLUTION, and rules 21 and 23 of the annotation guidelines
 
 ### The question
 
@@ -2914,22 +2914,22 @@ The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V20
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as they were. The expert's (a) now holds the old (a) and the general part of (c); their (b) is the old (b). (a) may be settled from a source too (the Ocean Biology Processing Group's documents on its Level 3 grids).
 
-- The question's opening, as it was: The title of the example below says "4km", and its notes say the products "are available at both 4.63 and 9.26 km spatial resolution". Rule 13 of the annotation guidelines writes one thing with one wording in a record, the more precise one when two wordings name the same thing; its own example is this record: "a title says "4km" and the notes say "4.63 km". Then: "4.63 km", the more precise." So we wrote "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), and nothing for 9.26 km, which rule 11 leaves out as a fact about another dataset (the same data at another resolution). Whether that is right depends on facts we can't check from the record.
+- The question's opening, as it was: The title of the example below says "4km", and its notes say the products "are available at both 4.63 and 9.26 km spatial resolution". Rule 23 of the annotation guidelines writes one thing with one wording in a record, the more precise one when two wordings name the same thing; its own example is this record: "a title says "4km" and the notes say "4.63 km". Then: "4.63 km", the more precise." So we wrote "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), and nothing for 9.26 km, which rule 21 leaves out as a fact about another dataset (the same data at another resolution). Whether that is right depends on facts we can't check from the record.
 - (b) Is the dataset of this record only the 4.63 km one, with the 9.26 km products in a record of their own, so that 9.26 km is about another dataset?
 - (c) The record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" is the same case: its title says "1km" and its notes "produced daily at 1 kilometer (km) pixel resolutions", and we have written "1 kilometer (km)", the wording that spells out its abbreviation. Is a title's rounded or shortened value always the notes' value, for products of this catalog, or can the two differ?
 - The question's context, as it was: The spatial resolutions we have written so far: "500m" (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), "4.63 km" (the example below), and "1 kilometer (km)" (the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid").
-- The options and reading, as they were: Option 1: The dataset HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), the more precise wording, and no fact for 9.26 km. Option 2: "4km" is a resolution of its own, not the rounded 4.63 km: the dataset HAS_SPATIAL_RESOLUTION "4km" (SpatialResolution), and rule 13's example changes. My current reading: Option 1, because rule 13 takes the more precise wording and the record's own words give 4.63 km as one of the two resolutions it is available at. We would move to option 2 only if experts say a title's value and the notes' value can name different resolutions.
+- The options and reading, as they were: Option 1: The dataset HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution), the more precise wording, and no fact for 9.26 km. Option 2: "4km" is a resolution of its own, not the rounded 4.63 km: the dataset HAS_SPATIAL_RESOLUTION "4km" (SpatialResolution), and rule 23's example changes. My current reading: Option 1, because rule 23 takes the more precise wording and the record's own words give 4.63 km as one of the two resolutions it is available at. We would move to option 2 only if experts say a title's value and the notes' value can name different resolutions.
 
 Withdrawn on 2026-10-26: a question we can settle from sources, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it.
 
 Checked on 2026-10-26, for (a): PO.DAAC's page for this dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_4KM_NIGHTTIME_V2019.0) gives "Spatial Resolution: 0.041 Decimal Degrees x 0.041 Decimal Degrees", and its page for the 9km dataset (https://podaac.jpl.nasa.gov/dataset/MODIS_AQUA_L3_SST_MID-IR_8DAY_9KM_NIGHTTIME_V2019.0) "0.083 Decimal Degrees x 0.083 Decimal Degrees": 1/24 and 1/12 of a degree, which at the equator are about 4.6 km and 9.3 km (our arithmetic: about 111.3 km per degree). So the title's "4km" is the rounded name of the 4.63 km grid: checked, for this record. Whether a title's rounded value is always the notes' value, across the catalog: not settled, our reading (it holds for the three records we have, "500m", "4km" and "1km").
 
-Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records, harvested before 2026-10-24) has a record of its own for the 9km products, "MODIS Aqua Level 3 SST MID-IR 8 Day 9km Nighttime V2019.0", beside this one, and the same 4km and 9km pair for Daily, Monthly and Annual. So 9.26 km is about another dataset, as rule 11 reads it. Option 1 stands; the ground truth stays as it is.
+Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records, harvested before 2026-10-24) has a record of its own for the 9km products, "MODIS Aqua Level 3 SST MID-IR 8 Day 9km Nighttime V2019.0", beside this one, and the same 4km and 9km pair for Daily, Monthly and Annual. So 9.26 km is about another dataset, as rule 21 reads it. Option 1 stands; the ground truth stays as it is.
 
 ### Quoted for us
 
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 13: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
+- Writing a classed triple, rule 21: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
 
 ### Consequences
 
@@ -2940,7 +2940,7 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 
 #### Option 2: The title's value, when the two differ
 
-- One ground truth triple changes its object instance, and rule 13's example in the annotation guidelines and in the copy of the rules the [model](../docs/terminology.md#8-the-pipeline) follows changes.
+- One ground truth triple changes its object instance, and rule 23's example in the annotation guidelines and in the copy of the rules the [model](../docs/terminology.md#8-the-pipeline) follows changes.
 - The notes' "4.63 and 9.26 km" would then describe the products in general, not this dataset.
 
 ### Affects
@@ -2958,8 +2958,8 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 - translation table row: entity class SpatialResolution
 - translation table row: predicate HAS_RESOLUTION
 - translation table row: predicate HAS_PROPERTY
-- rule: Writing a classed triple, rule 11
-- rule: Writing a classed triple, rule 13
+- rule: Writing a classed triple, rule 21
+- rule: Writing a classed triple, rule 23
 
 ## Q23: Is flying in the A-train a fact about the spacecraft Aqua, or about its mission?
 
@@ -3026,7 +3026,7 @@ Checked on 2026-10-26: NASA Goddard's fact sheet "Formation Flying: The Afternoo
 - status: open
 - priority: medium
 - question kind: records and triples
-- in short: rule 11 of the annotation guidelines, and the facts about the other versions, temporal resolutions and spatial resolutions of a product
+- in short: rule 21 of the annotation guidelines, and the facts about the other versions, temporal resolutions and spatial resolutions of a product
 
 ### The question
 
@@ -3082,13 +3082,13 @@ Items of `annotations/left_out.md` that this answer may bring back as ground tru
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as they were. The expert's (b) now holds the old (b) and (c).
 
-- The question's opening, as it was: The notes of a record often describe more than the one dataset the record is about: they describe the product family it belongs to. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km (4.63 km), nighttime product; its notes say that "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution", and begin "Day and night spatially gridded (L3) ... products". So the record also states which temporal resolutions (daily, monthly, annual), which spatial resolution (9.26 km) and which time of day (day) the other products of the family have. Rule 11 of the annotation guidelines leaves these out, because each of those products is another dataset with a record of its own, where its facts go. The ground truth then says that this dataset is "weekly (8 day)" and "4.63 km", and nothing says that the others exist.
+- The question's opening, as it was: The notes of a record often describe more than the one dataset the record is about: they describe the product family it belongs to. The example below is titled "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", so its dataset is the 8-day, 4 km (4.63 km), nighttime product; its notes say that "Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution", and begin "Day and night spatially gridded (L3) ... products". So the record also states which temporal resolutions (daily, monthly, annual), which spatial resolution (9.26 km) and which time of day (day) the other products of the family have. Rule 21 of the annotation guidelines leaves these out, because each of those products is another dataset with a record of its own, where its facts go. The ground truth then says that this dataset is "weekly (8 day)" and "4.63 km", and nothing says that the others exist.
 - (b) If it is, as what? As facts about each of the other products (each of them a dataset, but with no record of its own to hold its title), as facts about a family of products (a group of datasets sharing a name, with the family's own facts), or on the instrument that makes them?
 - (c) Where a family is named by one record only, as here, is a fact such as "there is also a daily product" about this dataset (it has siblings), or only about the family?
 - The question's context, as it was: The same happens with the releases of a product: the record also says "The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4", and we wrote only that "V2019.0" replaces "v2014.1", not the address of the older datasets. Another record of the catalog (titled "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid") names the standard product and its Near Real Time sibling in one sentence. How the groups of datasets could be written, if they are, depends on how the ground truth schema treats kinds and parts of things; that is asked in another question (Q25).
 - The example's release passage, taken out of the example: source text "The R2019.0 supersedes the previous v2014.1 datasets"; classed triple "V2019.0" (Version) SUPERSEDES "v2014.1" (Version) (listed under Affects).
-- Options 1 and 3, as they were: Option 1: The family's other temporal resolutions, spatial resolutions and times of day are not recorded, by rule 11. A search finds this dataset by its own temporal resolution and spatial resolution only. Option 3: The facts are written about the instrument that makes the products, as general facts about it (rule 11 includes general facts about a dataset's instrument): the instrument "Moderate-resolution Imaging Spectroradiometer (MODIS)" with the temporal resolutions and spatial resolutions of its skin sea surface temperature products.
-- My current reading, as it was: Option 1 for now, because rule 11 says so and the family facts need an entity class and predicates the ground truth schema does not have. But we think the information is worth keeping if an expert says people ask for it, and we would then lean towards option 2, since the facts are about the family, not about one instrument. We would like to know first whether a person looking for this product would expect to learn the other temporal resolutions and spatial resolutions from this record.
+- Options 1 and 3, as they were: Option 1: The family's other temporal resolutions, spatial resolutions and times of day are not recorded, by rule 21. A search finds this dataset by its own temporal resolution and spatial resolution only. Option 3: The facts are written about the instrument that makes the products, as general facts about it (rule 21 includes general facts about a dataset's instrument): the instrument "Moderate-resolution Imaging Spectroradiometer (MODIS)" with the temporal resolutions and spatial resolutions of its skin sea surface temperature products.
+- My current reading, as it was: Option 1 for now, because rule 21 says so and the family facts need an entity class and predicates the ground truth schema does not have. But we think the information is worth keeping if an expert says people ask for it, and we would then lean towards option 2, since the facts are about the family, not about one instrument. We would like to know first whether a person looking for this product would expect to learn the other temporal resolutions and spatial resolutions from this record.
 
 ### Quoted for us
 
@@ -3097,7 +3097,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - entity class SpatialResolution: the amount of ground each value of the data covers, e.g. 500 m; 4.63 km
 - predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground, e.g. 500 m
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
-- Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
 
 ### Consequences
 
@@ -3108,14 +3108,14 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 #### Option 2: A new entity class for a product family, with its own facts
 
-- A new entity class and a predicate saying a dataset is a member of a family (see Q25), in the ground truth schema, with their definitions, and an example in rule 11 of the annotation guidelines and in the model's copy of the rules.
+- A new entity class and a predicate saying a dataset is a member of a family (see Q25), in the ground truth schema, with their definitions, and an example in rule 21 of the annotation guidelines and in the model's copy of the rules.
 - The listed items become ground truth triples of the family; the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" gets one more ground truth triple, for the membership.
 - Every record that lists its siblings is written the same way, so a family has one name in all of them: the work of joining the names of one family grows.
 
 #### Option 3: Record them on the instrument
 
 - The facts are written about MODIS, not about the dataset or its family; they would say that the instrument has "daily" and "monthly" products, which is true of one product of it only, not of all.
-- Rule 11's second sentence changes.
+- Rule 21's second sentence changes.
 
 #### Option 4: Another way
 
@@ -3128,7 +3128,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution)
 - classed triple of the record at pool position 4: "V2019.0" (Version) SUPERSEDES "v2014.1" (Version)
-- rule: Writing a classed triple, rule 11
+- rule: Writing a classed triple, rule 21
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
 
 ## Q25: Which entity classes are kinds of others, and which groupings of things matter?
@@ -3317,10 +3317,10 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - entity class Purpose: an aim something is meant to achieve
 - entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
 - predicate HAS_PURPOSE: is meant to achieve
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not uncertain facts.
-- Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.
+- Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
 
 ### Consequences
 
@@ -3342,7 +3342,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - rule: What counts as a fact, rule 2
-- rule: Writing a classed triple, rule 2
+- rule: Writing a classed triple, rule 12
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
 
 ## Q27: Words that say how a fact holds: do people searching need them?
@@ -3402,7 +3402,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
 - predicate HAS_MEASUREMENTS_OF: holds measurements of
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 
 ### Consequences
 
@@ -3478,7 +3478,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - predicate DOCUMENTED_AT: more details about it are written at
 - entity class Task: a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
 - predicate REVISED_AFTER: was corrected after this review
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 
 ### Affects
 

@@ -284,9 +284,9 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(server.connection_problems("r1", rows[:1]), [[]])     # only the describes triple
 
     def test_several_qualifiers(self):
-        """Suppose a record's ground truth gives its dataset two processing levels (as rule 9 takes them out of
+        """Suppose a record's ground truth gives its dataset two processing levels (as rule 19 takes them out of
         "Level 2/3 (EDR/RDR) data"), once with the subject spelled differently ("title r1"). Then both rows are
-        flagged, naming the values. Not flagged: one value of a rule-9 predicate, two values of a predicate rule 9
+        flagged, naming the values. Not flagged: one value of a rule-19 predicate, two values of a predicate rule 19
         doesn't take out (FROM), the same predicate on two different subjects, and a row with no object. The view and a
         save agree."""
         def row(s, p, o):
@@ -295,7 +295,7 @@ class B_Batch(unittest.TestCase):
                 row("Title r1", "HAS_PROCESSING_LEVEL", "Level 2 (EDR)"),
                 row("title  r1", "HAS_PROCESSING_LEVEL", "Level 3 (RDR)"),     # the same subject, evened out
                 row("Title r1", "HAS_TARGET", "Vesta"),                        # one value: not flagged
-                row("Title r1", "FROM", "Aqua"),                               # not a rule-9 predicate
+                row("Title r1", "FROM", "Aqua"),                               # not a rule-19 predicate
                 row("Title r1", "FROM", "Terra"),
                 row("Other", "HAS_TARGET", "Mars"),                            # another subject
                 row("Title r1", "HAS_TARGET", "")]                             # no object: skipped
@@ -376,7 +376,7 @@ class B_Batch(unittest.TestCase):
             found = {p["code"]: p["message"] for p in server.check_row(server.Data(), row, "Title r1")}
             return found[f"{slot}_not_in_source"], f"{slot}_not_in_text" in found
         note = (" However, the {} instance does appear elsewhere in the record's text, so it may be written this way "
-                "on purpose, to follow a rule: e.g. rule 13 of \"Writing a classed triple\" (one wording for a thing "
+                "on purpose, to follow a rule: e.g. rule 23 of \"Writing a classed triple\" (one wording for a thing "
                 "within a record) or rule 2 of \"What counts as a fact\" (the title states facts too); if so, "
                 "nothing to do.")
         message, not_in_text = problem("subject", "AIRS", "Aqua", "Aqua orbits Earth")

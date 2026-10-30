@@ -85,10 +85,10 @@ and never needs adding. One check is the tool's own (connection_problems): a
 ground truth triple that no chain of the record's ground truth triples links to
 the record's id is flagged (not_connected), so the fact that connects it is
 looked for. Another is too (qualifier_problems): a subject instance given two or
-more values by one of rule 9's predicates is flagged (several_qualifiers), since
-rule 9 may have lost which fact each value went with. A third (slash_list_problems):
+more values by one of rule 19's predicates is flagged (several_qualifiers), since
+rule 19 may have lost which fact each value went with. A third (slash_list_problems):
 an instance holding one item of a "/" or "+" list whose items the record's text
-never names separately is flagged (slash_list_split), since rule 12 keeps such a
+never names separately is flagged (slash_list_split), since rule 22 keeps such a
 list whole. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
@@ -204,22 +204,22 @@ MESSAGES = {
                            "reworded on purpose, nothing to do.",
     OBJECT_NOT_IN_TEXT: "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                           "reworded on purpose (e.g. a period or range written as its start and end joined by the record's "
-                          "linking words, rule 1 of \"Writing a classed triple\"), nothing to do.",
+                          "linking words, rule 11 of \"Writing a classed triple\"), nothing to do.",
     SUBJECT_NOT_IN_SOURCE: "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
                              "passage, or too short. A source text contains words for the subject, the predicate and the object; "
                              "when the subject is named only in an earlier sentence, it runs from where it is named to the end of the "
-                             "fact (rule 7 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
+                             "fact (rule 17 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
                              "if the passage has words for the subject that differ from the instance (a list split, a qualifier "
                              "taken out, one wording within a record), nothing to do.",
     OBJECT_NOT_IN_SOURCE: "The object instance isn't in this ground truth triple's source text: the source text may be the wrong "
                             "passage, or too short. A source text contains words for the subject, the predicate and the object "
-                            "(rule 7 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
+                            "(rule 17 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
                             "if the passage has words for the object that differ from the instance (a list split, a qualifier "
                             "taken out, one wording within a record), nothing to do.",
     SUBJECT_EQUALS_OBJECT: "The subject instance and the object instance are the same: a fact relates two different "
                              "things, so one of them is probably wrong. Correct it.",
     DATASET_SUBJECT_NOT_TITLE: "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
-                                 "record's dataset, use the title (rule 13); if it is another dataset, such as an "
+                                 "record's dataset, use the title (rule 23); if it is another dataset, such as an "
                                  "input, keep it.",
     SUBJECT_CLASS_NOT_IN_SCHEMA: "\"{subject_class}\" isn't an entity class of the ground truth schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
@@ -256,18 +256,18 @@ MESSAGES = {
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
     # the tool's own check (slash_list_problems), on a record's rows and its text
     SLASH_LIST_SPLIT: "The {slot} instance \"{instance}\" looks like one item of the list \"{group}\", joined by \"/\" or "
-                        "\"+\", but the record's text never names that list's items separately: {missing}. Rule 12 of "
+                        "\"+\", but the record's text never names that list's items separately: {missing}. Rule 22 of "
                         "\"Writing a classed triple\" splits such a list only when the text also names its items "
                         "separately somewhere else; otherwise it stays whole, as written (\"RSI 1/2/3\"). Write "
                         "the list whole, as written; if the item is named separately in words this check doesn't "
                         "match, nothing to do.",
     # the tool's own check (qualifier_problems), on a record's rows together
-    SEVERAL_QUALIFIERS: "\"{subject}\" has {count} ground truth triples with {predicate}: {values}. Rule 9 of "
+    SEVERAL_QUALIFIERS: "\"{subject}\" has {count} ground truth triples with {predicate}: {values}. Rule 19 of "
                           "\"Writing a classed triple\" takes such a qualifier out of the instance it was in, so if "
                           "each of these came from a different fact of the record (e.g. \"Level 2/3 (EDR/RDR) data\": "
                           "Level 2 goes with the EDR data, Level 3 with the RDR data), the ground truth no longer says "
-                          "which goes with which. That loss is known and accepted (docs/improvements.md, Rule 9 can lose "
-                          "which fact a qualifier went with): nothing to fix, since rule 9 always applies. Read the "
+                          "which goes with which. That loss is known and accepted (docs/improvements.md, Rule 19 can lose "
+                          "which fact a qualifier went with): nothing to fix, since rule 19 always applies. Read the "
                           "record's text to see whether it happened here; if the values describe \"{subject}\" "
                           "together (a dataset observed at daytime and at nighttime), nothing was lost.",
 }
@@ -276,7 +276,7 @@ MESSAGES = {
 #: Added to subject_not_in_source / object_not_in_source when the instance is elsewhere in the record's text (the
 #: row has no subject_not_in_text / object_not_in_text); {slot} is "subject" or "object".
 ELSEWHERE_IN_TEXT = (" However, the {slot} instance does appear elsewhere in the record's text, so it may be written "
-                     "this way on purpose, to follow a rule: e.g. rule 13 of \"Writing a classed triple\" (one wording "
+                     "this way on purpose, to follow a rule: e.g. rule 23 of \"Writing a classed triple\" (one wording "
                      "for a thing within a record) or rule 2 of \"What counts as a fact\" (the title states facts "
                      "too); if so, nothing to do.")
 
@@ -436,7 +436,7 @@ ADDS = {SUBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "subject_class"),
 
 def qualifier_problems(rows: list) -> list:
     """For each of a record's rows, its several_qualifiers flag (a list of one), or []: a row whose predicate is one
-    of rule 9's (QUALIFIER_PREDICATES), when another row gives the same subject instance (evened out, as norm_text
+    of rule 19's (QUALIFIER_PREDICATES), when another row gives the same subject instance (evened out, as norm_text
     does) the same predicate. Two values aren't always a loss (a dataset observed at daytime and at nighttime), so a
     flag, for a person to read the record. Rows lacking a subject instance, predicate, or object instance are skipped."""
     def key(row: dict):
@@ -496,7 +496,7 @@ def slash_lists(text: str) -> list:
 def slash_list_problems(text: str, rows: list) -> list:
     """For each of a record's rows, its slash_list_split flags, or []: a subject or object instance that isn't in the
     record's text as written (evened out, as norm_text does) but holds, as a word, one item of a "/" or "+" list
-    whose items the text never names separately (rule 12 of "Writing a classed triple": such a list stays whole). An
+    whose items the text never names separately (rule 22 of "Writing a classed triple": such a list stays whole). An
     instance in the text as written, or holding the whole list, isn't flagged. A flag, since the item may be named
     separately in words this check doesn't match."""
     whole = " ".join((text or "").lower().split())
