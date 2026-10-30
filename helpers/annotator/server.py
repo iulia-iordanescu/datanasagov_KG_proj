@@ -86,7 +86,10 @@ ground truth triple that no chain of the record's ground truth triples links to
 the record's id is flagged (not_connected), so the fact that connects it is
 looked for. Another is too (qualifier_problems): a subject instance given two or
 more values by one of rule 9's predicates is flagged (several_qualifiers), since
-rule 9 may have lost which fact each value went with. The component classes
+rule 9 may have lost which fact each value went with. A third (slash_list_problems):
+an instance holding one item of a "/" or "+" list whose items the record's text
+never names separately is flagged (slash_list_split), since rule 12 keeps such a
+list whole. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
 component class is offered for reuse. A coined component class is an error
@@ -154,7 +157,7 @@ from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDEC
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
-                             PREDICATE_NOT_IN_SCHEMA, QUALIFIER_PREDICATES, SEVERAL_QUALIFIERS, SOURCE_NOT_IN_TEXT,
+                             PREDICATE_NOT_IN_SCHEMA, QUALIFIER_PREDICATES, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT, SOURCE_NOT_IN_TEXT,
                              SUBJECT_CLASS_NOT_IN_SCHEMA, SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE,
                              SUBJECT_NOT_IN_TEXT, SchemaEntries, check_against_schema, check_describes,
                              check_triple_instance)
@@ -202,11 +205,16 @@ MESSAGES = {
     OBJECT_NOT_IN_TEXT: "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                           "reworded on purpose, nothing to do.",
     SUBJECT_NOT_IN_SOURCE: "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
-                             "passage, or too short. Select a passage that states the whole fact, then press \"Use "
-                             "selection\"; if the text states the fact without naming it there, nothing to do.",
+                             "passage, or too short. A source text contains words for the subject, the predicate and the object; "
+                             "when the subject is named only in an earlier sentence, it runs from where it is named to the end of the "
+                             "fact (rule 7 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
+                             "if the passage has words for the subject that differ from the instance (a list split, a qualifier "
+                             "taken out, one wording within a record), nothing to do.",
     OBJECT_NOT_IN_SOURCE: "The object instance isn't in this ground truth triple's source text: the source text may be the wrong "
-                            "passage, or too short. Select a passage that states the whole fact, then press \"Use "
-                            "selection\"; if the text states the fact without naming it there, nothing to do.",
+                            "passage, or too short. A source text contains words for the subject, the predicate and the object "
+                            "(rule 7 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
+                            "if the passage has words for the object that differ from the instance (a list split, a qualifier "
+                            "taken out, one wording within a record), nothing to do.",
     SUBJECT_EQUALS_OBJECT: "The subject instance and the object instance are the same: a fact relates two different "
                              "things, so one of them is probably wrong. Correct it.",
     DATASET_SUBJECT_NOT_TITLE: "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
@@ -245,6 +253,13 @@ MESSAGES = {
     NOT_CONNECTED: "No chain of ground truth triples links this ground truth triple to the record's id (through "
                      "the describes triple). Look for the fact that connects it, and add it only if the "
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
+    # the tool's own check (slash_list_problems), on a record's rows and its text
+    SLASH_LIST_SPLIT: "The {slot} instance \"{instance}\" looks like one item of the list \"{group}\", joined by \"/\" or "
+                        "\"+\", but the record's text never names that list's items separately: {missing}. Rule 12 of "
+                        "\"Writing a classed triple\" splits such a list only when the text also names its items "
+                        "separately somewhere else; otherwise it stays whole, as written (\"RSI 1/2/3\"). Write "
+                        "the list whole, as written; if the item is named separately in words this check doesn't "
+                        "match, nothing to do.",
     # the tool's own check (qualifier_problems), on a record's rows together
     SEVERAL_QUALIFIERS: "\"{subject}\" has {count} ground truth triples with {predicate}: {values}. Rule 9 of "
                           "\"Writing a classed triple\" takes such a qualifier out of the instance it was in, so if "
@@ -441,6 +456,77 @@ def qualifier_problems(rows: list) -> list:
     return out
 
 
+#: A list joined by "/" or "+" in a record's text: two or more items, no spaces inside an item ("2/3", "EDR/RDR",
+#: "Terra+Aqua"), with the parentheses or brackets around it left out.
+SLASH_LIST = re.compile(r"(?<![\w/+])[\w.\-]+(?:[/+][\w.\-]+)+(?![\w/+])")
+#: Words that make a "/" part of an address, not a list.
+NOT_A_LIST = ("://", "www.", "doi", ".gov", ".org", ".edu", ".com", ".html")
+
+
+def slash_lists(text: str) -> list:
+    """The record's "/" or "+" lists, as groups: a list and the lists right after it with as many items (in
+    parentheses or not) are one group, since they name the same items twice ("Level 2/3 (EDR/RDR)": items "2" and
+    "EDR", "3" and "RDR"). Each group: (its words in the text, its items per position, whether the text names every
+    position's item separately, outside the group, the word right before it: "RSI" for "RSI 1/2/3")."""
+    def word(m):                                        # the whitespace-separated word the match is in
+        return text[text.rfind(" ", 0, m.start()) + 1:(text.find(" ", m.end()) + 1 or len(text) + 1) - 1].lower()
+    found = [m for m in SLASH_LIST.finditer(text) if not any(w in word(m) for w in NOT_A_LIST)]
+    groups, i = [], 0
+    while i < len(found):
+        group = [found[i]]
+        while i + 1 < len(found) and len(re.split(r"[/+]", found[i + 1].group(0))) == len(re.split(r"[/+]", group[0].group(0)))                 and re.fullmatch(r"[\s()\[\]]*", text[group[-1].end():found[i + 1].start()]):
+            i += 1
+            group.append(found[i])
+        i += 1
+        start, end = group[0].start(), group[-1].end()
+        rest = text[:start] + " " + text[end:]
+        rest = SLASH_LIST.sub(" ", rest)                    # an item inside another list isn't named separately
+        positions = list(zip(*[re.split(r"[/+]", m.group(0)) for m in group]))
+        named = all(any(re.search(rf"(?<![\w]){re.escape(item)}(?![\w])", rest, re.I) for item in items)
+                    for items in positions)
+        before = re.findall(r"[\w.\-]+", text[max(0, start - 40):start])
+        groups.append((text[start:end], positions, named, before[-1] if before else ""))
+    # the same list written twice ("DFMI 2/3" in the title, "Level 2/3 (EDR/RDR)" in the notes) is named separately
+    # when either place's group is
+    named_words = {words for g in groups if g[2] for words in re.split(r"[\s()\[\]]+", g[0]) if words}
+    return [(w, p, n or w in named_words, b) for w, p, n, b in groups]
+
+
+def slash_list_problems(text: str, rows: list) -> list:
+    """For each of a record's rows, its slash_list_split flags, or []: a subject or object instance that isn't in the
+    record's text as written (evened out, as norm_text does) but holds, as a word, one item of a "/" or "+" list
+    whose items the text never names separately (rule 12 of "Writing a classed triple": such a list stays whole). An
+    instance in the text as written, or holding the whole list, isn't flagged. A flag, since the item may be named
+    separately in words this check doesn't match."""
+    whole = " ".join((text or "").lower().split())
+    groups = [g for g in slash_lists(text or "") if not g[2]]
+
+    def in_text(instance: str) -> bool:                 # as written, and not just the start of a list ("RSI 1/2/3")
+        words = " ".join(instance.lower().split())
+        return re.search(rf"(?<![\w]){re.escape(words)}(?![\w/+])", whole) is not None
+    out = []
+    for row in rows:
+        found = []
+        for slot in ("subject", "object"):
+            instance = str(row.get(slot) or "").strip()
+            if not instance or in_text(instance):
+                continue
+            for words, positions, _, before in groups:
+                if norm_text(words) in norm_text(instance):
+                    continue
+                # a number alone ("3") is an item only beside the word before the list ("RSI 3", not "Level 3")
+                if any(re.search(rf"(?<![\w]){re.escape(item)}(?![\w])", instance, re.I)
+                       and (not item.isdigit() or re.search(rf"(?<![\w]){re.escape(before)}(?![\w])", instance, re.I))
+                       for items in positions for item in items if before or not item.isdigit()):
+                    found.append({"code": SLASH_LIST_SPLIT, "type": "flag", "add": None,
+                                  "message": MESSAGES[SLASH_LIST_SPLIT].format(
+                                      slot=slot, instance=instance, group=words,
+                                      missing=", ".join(f'"{"/".join(items)}"' for items in positions))})
+                    break
+        out.append(found)
+    return out
+
+
 def _offer(code: str, row: dict, flags: list) -> dict | None:
     """What the page offers to add to the ground truth schema for one error, or None."""
     if code in ADDS:
@@ -475,8 +561,9 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title, uses) + extra + several}
-                 for r, extra, several in zip(rows, connection_problems(rid, rows), qualifier_problems(rows))],
+        "rows": [{**r, "problems": check_row(data, r, title, uses) + extra + several + slash}
+                 for r, extra, several, slash in zip(rows, connection_problems(rid, rows), qualifier_problems(rows),
+                                                     slash_list_problems(full_text(record) if record else "", rows))],
     }
 
 
@@ -616,8 +703,10 @@ def save_batch(data: Data, n: int, records: list) -> list:
             found.append(check_row(data, row, title, uses))
             if not _is_blank(row):
                 written.append(row)
-        found = [f + extra + several for f, extra, several in zip(found, connection_problems(rec["id"], rec.get("rows", [])),
-                                                                 qualifier_problems(rec.get("rows", [])))]
+        record = data.records.get(rec["id"])
+        found = [f + extra + several + slash for f, extra, several, slash in zip(
+            found, connection_problems(rec["id"], rec.get("rows", [])), qualifier_problems(rec.get("rows", [])),
+            slash_list_problems(full_text(record) if record else "", rec.get("rows", [])))]
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
     # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone

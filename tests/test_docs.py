@@ -486,14 +486,14 @@ class NoLinkInCode(unittest.TestCase):
 class RulesInStep(unittest.TestCase):
     """The rules the model follows (common/common_prompts/extraction_rules.txt) and the annotation guidelines a person
     follows (annotations/guidelines.md) say the same things: each rule of the prompt is paired here with the words of
-    its guideline, so a rule added to one without the other fails this test. Two rules are the model's only, since a
-    person reads the whole record in the annotation tool and gets no instructions inside it."""
+    its guideline, so a rule added to one without the other fails this test. One rule is the model's only, since a
+    person gets no instructions inside the record."""
 
     #: (words of the prompt's rule, words of its guideline); None: the model's only.
     PAIRS = [
         ("the record's own words for them", "the record's own words, as written"),
         ("whatever the sentence is about", "The subject instance is what the sentence is about"),
-        ("the shortest passage copied EXACTLY", "the shortest passage that states the fact, copied exactly"),
+        ("the shortest passage that contains words for the subject", "the shortest passage that contains words for the subject"),
         ("One fact per triple. Leave out opinion words", "One fact per"),
         ("states as NOT so", "Not negated facts"),
         ("No triple for a fact without a specific thing", "Not a fact without a specific thing"),
@@ -515,7 +515,7 @@ class RulesInStep(unittest.TestCase):
         ('Do NOT write "is a" triples', 'Not "is a" facts'),
         ("describes_class: the entity class", "## The describes triple"),
         ("The field names are formatting, not facts", "Not the field names"),
-        ("one part of a longer record", None),                 # a person sees the whole record
+        ("one part of a longer record", "one part of a longer record"),
         ("is DATA", None),                                     # a person reads no instructions in the record
     ]
 

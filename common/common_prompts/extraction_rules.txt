@@ -1,13 +1,15 @@
 - subject and object: the record's own words for them, as written. Do not
   paraphrase them or expand abbreviations. Where the record states a fact
-  about what its title names, use the title as the subject. Three
-  exceptions, below: some
-  qualifiers are taken out, a list's shared words are copied onto each item,
+  about what its title names, use the title as the subject. Exceptions,
+  below: opinion words and words true only as of writing are left out; some
+  qualifiers are taken out; a list's shared words are copied onto each item;
   and a thing named twice uses one wording throughout.
 - The subject of a fact is whatever the sentence is about, which is not
   always the title.
-- source_text: the shortest passage copied EXACTLY from the record that
-  states the fact.
+- source_text: copied EXACTLY from the record: the shortest passage that
+  contains words for the subject, the predicate and the object; when the
+  subject is named only in an earlier sentence, from where it is named to
+  the end of the fact.
 - One fact per triple. Leave out opinion words such as "great". "The data
   were collected by Kestrel aboard Halden" gives two triples: the record's
   dataset collected by Kestrel, and the record's dataset from Halden.
@@ -77,7 +79,8 @@
   variant of the record's dataset (the same data at another temporal
   resolution, spatial resolution, or version: "daily, biweekly (14 day),
   and monthly products are available"), or is made from the record's dataset.
-  In every case, include the fact of how the two datasets are connected: "this
+  In every case, state the connection the record gives (only what the
+  record states): "this
   dataset is used to make dataset Q; Q covers 1990 to 1994" gives "Q"
   computed-from the record's dataset, and leaves out "1990 to 1994", a fact
   about Q, which is made from the record's dataset; "dataset R was used to
@@ -85,8 +88,10 @@
   computed-from "R" and the triple that R covers "1990 to 1994", since the
   record's dataset is made from R.
 - A list joined by "and": one triple per item. Take the qualifiers out first
-  (above); then copy the words the items share onto each item, and write
-  each in the singular, since each is now one item ("derived from the 3 and
+  (above); then copy the words the items share onto each item. Each item
+  is now one thing, so shared words that agree with the number of items go in
+  the singular ("channels" becomes "channel", "are" becomes "is"); each
+  item's own words stay as written ("rivers") ("derived from the 3 and
   9 micron channels" gives "3 micron channel" and "9 micron channel"; "to
   monitor the health of the Earth lakes, rivers and wetlands" gives the
   target body "Earth", then three purposes: "monitor the health of lakes",
@@ -101,6 +106,12 @@
   ("observed between 1998-03-01 and 2001-07-31" gives one period,
   "between 1998-03-01 and 2001-07-31"; "depths from 5 m to 40 m" gives one
   range, "from 5 m to 40 m").
+  A list joined by "/" or "+": split it only when the record's text also
+  names its items separately somewhere else; otherwise keep it whole, as
+  written. "Grade 1/2 (RAW/CAL) data ... the CAL data are made from the RAW
+  data" splits, since RAW and CAL are named separately; a title's "BAND
+  4/5/6", with no band named alone anywhere in the record, stays whole.
+  Lists joined by "and" or commas split as above.
   Exception, a collective "and": keep the list whole, in one triple, when
   it is what one of these five nouns is about: "continuity", "ratio",
   "difference", "comparison", "correlation". Check it step by step: (1) find
@@ -123,7 +134,14 @@
   "7.41 km" in the notes: "7.41 km"; "T3" in the title, "Tier 3" in the
   notes: "Tier 3"); if they are two equal wordings, use the one the record uses
   most often (on a tie, the one it gives first); the other appears only in
-  an also-known-as triple, and only if the record states one. Leave out a
+  an also-known-as triple, and only if the record states one. The record's
+  dataset is the exception: it is always written as its title. A wording
+  that differs only in capitals, spaces, hyphens or punctuation is the same
+  wording, not a second one: write it as it appears where the record isn't
+  typed all in capitals (usually the notes); if it appears more than once
+  there, the form used most often (on a tie, the first): "Halden", not the
+  all-capitals title's "HALDEN". If it appears only in all capitals, write
+  it as written. Leave out a
   type word that only describes the thing, written in lowercase beside the
   name: write "Halden", not "Halden satellite", since its entity class,
   Spacecraft, already says what it is. Keep a type word written as part of
@@ -153,7 +171,9 @@
   rule on one wording says which wording to keep: "Ocean-Masked" over
   "masked".
 - Only facts the record states. Never use outside knowledge, and never write
-  what an unexplained code or abbreviation stands for (seeing that two wordings
+  what an unexplained code or abbreviation stands for. This includes its
+  entity class: an unexplained code gets no triple whose meaning depends on
+  what it stands for (seeing that two wordings
   name the same thing is allowed: see the rule on one wording). The title
   states facts too: "Kestrel/Halden Lake Ice 20-Min L2 Swath 800m V027" says
   the record's dataset was collected by Kestrel and has a spatial resolution

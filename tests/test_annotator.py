@@ -309,6 +309,28 @@ class B_Batch(unittest.TestCase):
                       message)
         self.assertEqual(server.qualifier_problems(rows)[1][0]["type"], "flag")
 
+    def test_slash_list_split(self):
+        """Suppose a record's text has "RSI 1/2/3", whose items it never names alone, and "Level 2/3 (EDR/RDR) data",
+        whose items it names separately ("The RDR data convert the EDR data"). Then an instance "RSI 1" (one item of
+        the first list, not in the text as written) is flagged, naming the list. Not flagged: "RSI 1/2/3" whole, "RSI"
+        (in the text as written), "Level 3 (RDR)" (its list's items are named separately), "Terra" from
+        "Terra+Aqua" when the text says "Terra" alone too, and a web address's "/" ("https://doi.org/10.5067/X/Y")."""
+        def row(s, p, o):
+            return {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r1", "subject": s, "predicate": p, "object": o}
+        text = ("title: RSI 1/2/3 Level 2/3 (EDR/RDR) data Terra+Aqua\nnotes: The RDR data convert the EDR data. "
+                "Terra flies first. See https://doi.org/10.5067/X/Y for more.")
+        rows = [row("Title r1", "ACQUIRED_BY_INSTRUMENT", "RSI 1"),          # one item of a list never named alone
+                row("Title r1", "ACQUIRED_BY_INSTRUMENT", "RSI 1/2/3"),      # the whole list
+                row("Title r1", "ACQUIRED_BY_INSTRUMENT", "RSI"),            # in the text as written
+                row("RDR data", "HAS_PROCESSING_LEVEL", "Level 3 (RDR)"),    # items named separately
+                row("Title r1", "FROM_SPACECRAFT", "Terra"),                 # named alone too
+                row("Title r1", "HAS_DOI", "10.5067/X")]                     # an address, not a list
+        found = server.slash_list_problems(text, rows)
+        self.assertEqual([[p["code"] for p in f] for f in found], [["slash_list_split"], [], [], [], [], []])
+        self.assertEqual(found[0][0]["type"], "flag")
+        self.assertIn('"RSI 1" looks like one item of the list "1/2/3"', found[0][0]["message"])
+        self.assertEqual(server.slash_list_problems("", rows), [[]] * len(rows))      # no text: nothing to match
+
     def test_record_links(self):
         """Suppose the stand-in record r1's batch file from the harvest of 2026-10-01 is on this computer, and r2's
         and r0's aren't (r2 names a batch file that isn't there; r0 names none). Then About this record gets, for r1,

@@ -30,7 +30,7 @@ The words this project uses, and exactly what each one means. It is expected to 
 | **maintainer** | A record's `maintainer` field, with its spellings joined by step 020: "KRISTAN MORGAN" and "Kristan Morgan" are one maintainer. `undefined` when the record has none. |
 | **text** (of a record) | What a model is given to read for one record: the record's text fields, joined in order, each preceded by its field name so the model can tell which part came from which field (example below). |
 | **text piece** | Part of a long text, short enough for one model call. Almost every text is a single piece. |
-| **source text** | The passage of a text that states the fact of a triple instance or a classed triple, copied word for word from the text. |
+| **source text** | The shortest passage of a text that contains words for the subject, the predicate and the object of a triple instance or a classed triple (when the subject is named only in an earlier sentence, from where it is named to the end of the fact), copied word for word from the text. |
 
 A record's text:
 

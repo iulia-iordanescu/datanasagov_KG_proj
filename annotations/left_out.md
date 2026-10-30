@@ -130,7 +130,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** NRT products are made available within hours of the observation, so they are different from the standard product; I checked this, the record says no number of hours.
   - **Question:** Q20 (a); the pending fact is listed there.
 - **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
-  - **Rule:** Writing a classed triple, rule 9: "if taking it out would give a triple that isn't true". Written alone, "Global" would claim the data cover the ocean too; the data cover "Land" (my ground truth triple). Checked: "Global" in the title belongs to the grid's name.
+  - **Rule:** Writing a classed triple, rule 9: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid, so "Global" belongs to the grid's name, not to an area.
   - **May matter because:** the grid tiles the whole globe.
   - **Question:** Q11, Q1 (c).
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
@@ -138,7 +138,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), what the product MCD19A1N holds
-  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 11: "In every case, include the fact of how the two datasets are connected."). I decided this on 2026-10-25.
+  - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 11: "In every case, include the connection the record states (rule 1 of *What counts as a fact*: only what the record states)."). I decided this on 2026-10-25.
   - **May matter because:** it says what the product this dataset feeds holds (a surface reflectance).
   - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
@@ -151,7 +151,7 @@ The dense record: its notes describe a whole family of products (several tempora
 15 items, 9 that may matter.
 
 - **Left out:** "Global" as an area the data cover (title, "Global 1km SIN Grid")
-  - **Rule:** Writing a classed triple, rule 9: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid (checked for the record at pool position 6), so "Global" belongs to the grid's name, not to an area.
+  - **Rule:** Writing a classed triple, rule 9: "A qualifier stays in the instance, as written, if it is any other kind". "Global 1km SIN Grid" is the standard end of the titles of the MODIS products made on the MODIS sinusoidal grid (as for the record at pool position 6), so "Global" belongs to the grid's name, not to an area.
   - **May matter because:** the grid tiles the whole globe.
   - **Question:** Q1 (c), Q11.
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own

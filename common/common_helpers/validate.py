@@ -63,6 +63,7 @@ INCOMPLETE = "incomplete"
 EMPTY = "empty"
 NOT_CONNECTED = "not_connected"
 SEVERAL_QUALIFIERS = "several_qualifiers"
+SLASH_LIST_SPLIT = "slash_list_split"
 
 #: check_triple_instance's errors: the triple instance is unverified.
 ERRORS = (NO_SOURCE_TEXT, SOURCE_NOT_IN_TEXT)
@@ -79,8 +80,8 @@ DESCRIBES_FLAGS = (DESCRIBES_CLASS_NOT_IN_SCHEMA,)
 ROWS_FLAGS = (CONFLICTING_CLASSES,)
 #: The errors only stage 4 of 050 raises (ground_truth.check_rows); its others are ERRORS and DESCRIBES_ERRORS.
 GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE)
-#: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED and SEVERAL_QUALIFIERS flags.
-TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS)
+#: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED, SEVERAL_QUALIFIERS and SLASH_LIST_SPLIT flags.
+TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT)
 #: The predicates of the ground truth schema for the qualifiers rule 9 of "Writing a classed triple"
 #: (annotations/guidelines.md) takes out of an instance: a temporal resolution, an area the data cover, a processing
 #: level, a spatial resolution, a country, a time of day, a target body, in that order.
