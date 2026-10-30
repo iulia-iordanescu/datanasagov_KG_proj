@@ -198,7 +198,7 @@ class Pipeline(unittest.TestCase):
     def test_t05_annotate(self):
         self.assertEqual(list((self.annotations / "ground_truth").iterdir()), [])     # a first run: no ground truth yet
         out, _ = self.run_step("050_annotate", *NO_CONFIRM, "--records_per_batch", "9", "--part", "both")
-        self.assertIn("stand-in model got reasoning_effort: low]", out)        # gemini-2.5-pro: the thinking cap sent
+        self.assertIn("stand-in model got reasoning_effort: medium]", out)     # gemini-2.5-pro: 050's thinking cap sent
         self.assertIn("test call: ok (answer ", out)
         self.assertIn("model calls: 9 of 9 done, 0 failed, took", out)          # the last progress line
         self.assertNotIn("failed model calls:", out)                           # nothing failed: no failed-call record

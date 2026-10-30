@@ -28,7 +28,8 @@ PROMPT = load(PROMPTS_DIR / "draft.txt")
 
 def ask_model(chosen, calls, settings: dict) -> extraction.Replies:
     def prompt_for(item, piece):
-        return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece)
+        return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece,
+                                 passes=extraction.passes(extraction.SCOPE_ALL))
     return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "draft",
                                 f"050 will draft {len(chosen.items)} record(s) into drafted batch {chosen.batch}",
                                 "drafting")

@@ -9,6 +9,8 @@ and 060 is evaluated against 050 on equal terms.
     reply(with_classes)        the reply format (common/common_prompts/extraction_reply.txt):
                                each triple with its entity classes (050, 060) or
                                without (040, which learns them in a later stage)
+    passes(scope)              050's and 060's shared completeness instruction and
+                               two passes (common/common_prompts/extraction_passes.txt)
     prompt(...)                a step's prompt filled with all of the above
     wrap(piece)                a text piece between BEGIN/END RECORD lines
     shape_error(reply)         what is wrong with a reply's shape (no "triples" list), or None
@@ -65,6 +67,11 @@ from common.validate import CONFLICTING_CLASSES, SchemaEntries, check_against_sc
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
 RULES = load(PROMPTS / "extraction_rules.txt")
 REPLY = load(PROMPTS / "extraction_reply.txt")
+PASSES = load(PROMPTS / "extraction_passes.txt")
+#: What each step asks to be complete about, for its prompt's $passes (passes): 050 every fact, whatever the schema
+#: can express; 060 only the facts its schema can express.
+SCOPE_ALL = " (whether or not the schema below can express it)"
+SCOPE_SCHEMA = " that the schema can express"
 #: The lines around a record in the prompts. Everything before BEGIN_LINE is the same in every request of a run, so
 #: 060 sends it for prompt caching (llm._messages).
 BEGIN_LINE = "----- BEGIN RECORD -----"
@@ -98,6 +105,13 @@ def rules_for(record: dict) -> str:
     return fill(RULES, field_names=", ".join(f'"{n}:"' for n in text_fields(record)))
 
 
+def passes(scope: str) -> str:
+    """The shared completeness instruction and TRACE-KG's order of work (common/common_prompts/extraction_passes.txt),
+    for 050's and 060's $passes: first find every thing the record names, then state the facts about each; scope
+    (SCOPE_ALL or SCOPE_SCHEMA) says which facts."""
+    return fill(PASSES, scope=scope)
+
+
 def reply(with_classes: bool = True) -> str:
     """The reply format, each triple with its entity classes or without."""
     keys = ROW_KEYS if with_classes else ("subject", "predicate", "object", "source_text")
@@ -108,7 +122,7 @@ def prompt(template, schema_text: str, record: dict, piece: str, with_classes: b
     """The prompt for one text piece: template (040's, 050's, or 060's) filled
     with the schema (none for 040), this record's rules, the shared reply
     format and the piece; own: the step's own $names, if its template has any
-    (none has, as of 2026-10-30)."""
+    (050 and 060: passes, as of 2026-10-30)."""
     return fill(template, schema=schema_text, rules=rules_for(record), reply=reply(with_classes),
                 text=wrap(piece), **own)
 

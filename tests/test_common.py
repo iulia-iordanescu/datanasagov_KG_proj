@@ -988,35 +988,60 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
 
 
 class TwoPasses(unittest.TestCase):
-    """060's prompt (060_extract_prompts/extract.txt) always asks for TRACE-KG's order of work: first find every thing
-    the record names, then state the facts about each. The instruction is a paragraph of its own before the schema,
-    inside the part sent for prompt caching; the list is not asked for in the reply, so the reply format is 050's.
-    It replaced the setting list_things_first (2026-10-30), which no longer exists."""
+    """050's and 060's prompts both ask for the same completeness instruction and TRACE-KG's order of work (first find
+    every thing the record names, then state the facts about each), from one shared file,
+    common/common_prompts/extraction_passes.txt ($passes); they differ only in which facts they ask for (050 every
+    fact, 060 only the ones its schema can express). The instruction is before the schema, inside the part sent for
+    prompt caching; the list is not asked for in the reply, so the reply format is shared. It replaced 060's setting
+    list_things_first (2026-10-30), which no longer exists."""
 
     RECORD = {"id": "r1", "title": "Kestrel Lake Ice L2", "notes": "Made by the Tern algorithm."}
+    SCHEMA = "ENTITY CLASSES\nInstrument  a device"
 
     def setUp(self):
         from support import use_step
         use_step("060_extract")
         import extract                                                         # 060_extract_helpers/extract.py
         self.extract = extract
+        use_step("050_annotate")
+        import draft                                                           # 050_annotate_helpers/draft.py
+        self.draft = draft
 
-    def prompt(self) -> str:
-        return extraction.prompt(self.extract.PROMPT, "ENTITY CLASSES\nInstrument  a device", self.RECORD,
-                                 "title: Kestrel Lake Ice L2")
+    def prompt(self, step="060") -> str:
+        if step == "060":
+            return extraction.prompt(self.extract.PROMPT, self.SCHEMA, self.RECORD, "title: Kestrel Lake Ice L2",
+                                     passes=extraction.passes(extraction.SCOPE_SCHEMA))
+        return extraction.prompt(self.draft.PROMPT, self.SCHEMA, self.RECORD, "title: Kestrel Lake Ice L2",
+                                 passes=extraction.passes(extraction.SCOPE_ALL))
 
     def test_always_two_passes(self):
-        prompt = self.prompt()
-        self.assertNotIn("$", self.extract.PROMPT.template.replace("$schema", "").replace("$rules", "")
-                         .replace("$reply", "").replace("$text", ""))           # no other placeholder left
-        first = prompt.index("Work in two passes")
-        self.assertIn("1. Find every thing the record names", prompt)
-        self.assertIn("2. Take the things one at a time.", prompt)
-        self.assertIn("this list in your answer.", prompt)
-        self.assertLess(prompt.index("leave describes_class empty."), first)
-        self.assertLess(first, prompt.index("\nSCHEMA\n"))                      # before the schema
-        self.assertLess(first, prompt.index(extraction.BEGIN_LINE))            # in the part sent for prompt caching
-        self.assertIn(extraction.reply(True), prompt)                          # the shared reply format, unchanged
+        for step in ("050", "060"):
+            with self.subTest(step=step):
+                template = (self.extract if step == "060" else self.draft).PROMPT.template
+                for name in ("$schema", "$rules", "$reply", "$text", "$passes"):
+                    template = template.replace(name, "")
+                self.assertNotIn("$", template)                                # no other placeholder left
+                prompt = self.prompt(step)
+                first = prompt.index("Work in two passes")
+                self.assertIn("COMPLETENESS FIRST.", prompt)
+                self.assertLess(prompt.index("COMPLETENESS FIRST."), first)
+                self.assertIn("1. Find every thing the record names", prompt)
+                self.assertIn("2. Take the things one at a time.", prompt)
+                self.assertIn("this list in your answer.", prompt)
+                self.assertLess(first, prompt.index("\nSCHEMA\n"))                  # before the schema
+                self.assertLess(first, prompt.index(extraction.BEGIN_LINE))        # in the part sent for prompt caching
+                self.assertIn(extraction.reply(True), prompt)                      # the shared reply format, unchanged
+        self.assertLess(self.prompt("060").index("leave describes_class empty."),
+                        self.prompt("060").index("Work in two passes"))
+
+    def test_same_shared_text_different_scope(self):
+        p050, p060 = self.prompt("050"), self.prompt("060")
+        self.assertIn("every fact the record states (whether or not the schema below can express it)", p050)
+        self.assertIn("every fact the record states that the schema can express", p060)
+        shared = extraction.PASSES.template.split("$scope")
+        for part in shared:
+            self.assertIn(part, p050)
+            self.assertIn(part, p060)
 
     def test_setting_is_gone(self):
         import contextlib

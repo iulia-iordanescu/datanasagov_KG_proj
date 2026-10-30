@@ -7,19 +7,7 @@ written, describes_class included. Leave out any fact they cannot express;
 do not invent entity classes or predicates. If no entity class fits what the title
 names, leave describes_class empty.
 
-Work in two passes, in this order:
-1. Find every thing the record names: the dataset its title names, and
-   every instrument, spacecraft, mission, algorithm, variable, input
-   dataset, organization, person, place, or other thing it names. Do not
-   write this list in your answer.
-2. Take the things one at a time. For each, state every fact the record
-   gives about it that the schema can express. A fact about any of these
-   things counts as much as a fact about the dataset the title names: "the
-   Kestrel product LT2 is computed from channel 7" gives "LT2" computed-from
-   "channel 7", with "LT2" as the subject, not the record's dataset.
-The rules below still hold, the rule on general facts among them: state the
-facts about another dataset only if the record's dataset is made from it or
-is part of it, and state the connection the record gives.
+$passes
 
 SCHEMA
 $schema

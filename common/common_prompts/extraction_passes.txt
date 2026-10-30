@@ -1,0 +1,17 @@
+COMPLETENESS FIRST. Extract every fact the record states$scope, unless a
+rule below leaves it out. Leaving out any other such fact is the worst
+outcome.
+
+Work in two passes, in this order:
+1. Find every thing the record names: the dataset its title names, and
+   every instrument, spacecraft, mission, algorithm, variable, input
+   dataset, organization, person, place, or other thing it names. Do not
+   write this list in your answer.
+2. Take the things one at a time. For each, state every fact the record
+   gives about it$scope. A fact about any of these things counts as much as
+   a fact about the dataset the title names: "the Kestrel product LT2 is
+   computed from channel 7" gives "LT2" computed-from "channel 7", with
+   "LT2" as the subject, not the record's dataset.
+The rules below still hold, the rule on general facts among them: state the
+facts about another dataset only if the record's dataset is made from it or
+is part of it, and state the connection the record gives.
