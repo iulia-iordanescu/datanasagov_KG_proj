@@ -42,11 +42,9 @@ MapProjection     a way of drawing the curved Earth on a flat map, e.g. equidist
                   source: ground truth tuning #4
 WebPage           a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
                   source: ground truth tuning #4
-Team              a group of people without a name of its own, e.g. Peter Minnett and his team
+Task              a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
                   source: ground truth tuning #4
-Task              a piece of work a Person, Team, or Organization does or is in charge of, e.g. quality flagging
-                  source: ground truth tuning #4
-Role              a position a Person, Team, or Organization holds, what they are, e.g. the official archive for SST
+Role              a position a Person or Organization holds, what they are, e.g. the official archive for SST
                   source: ground truth tuning #4
 Variable          one named kind of value computed from an Instrument's measurements by one particular Algorithm, e.g. SST4; NDSI
                   source: ground truth tuning #4
@@ -101,9 +99,9 @@ HAS_RELEASE          has this Dataset as one of its releases; a release label is
 PROVIDES_ACCESS_TO_DOCUMENT  makes this Document available
                      Organization -> Document
                      only: any -> Document
-SPONSORED_BY_PARTY   is sponsored by this Person, Team, or Organization
+SPONSORED_BY_PARTY   is sponsored by this Person or Organization
                      WebTool -> Organization
-                     only: any -> Organization; any -> Person; any -> Team
+                     only: any -> Organization; any -> Person
 HAS_SPATIAL_COVERAGE  covers this area
                       Dataset -> SpatialExtent
 HAS_PROCESSING_LEVEL  is processed to this ProcessingLevel
@@ -129,15 +127,15 @@ HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily; weekly (8 day)
                          only: any -> TemporalResolution
 BASED_IN             belongs to this Country
                      source: ground truth tuning #3
-DEVELOPED_BY_PARTY   was built or created by this Person, Team, or Organization
+DEVELOPED_BY_PARTY   was built or created by this Person or Organization
                      source: ground truth tuning #3
-                     only: any -> Organization; any -> Person; any -> Team
+                     only: any -> Organization; any -> Person
 OBSERVED_AT_TIME_OF_DAY  comes from observations made at or during this TimeOfDay
                      source: ground truth tuning #4
                      only: any -> TimeOfDay
-LAUNCHED_BY_PARTY    was launched into space by this Person, Team, or Organization
+LAUNCHED_BY_PARTY    was launched into space by this Person or Organization
                      source: ground truth tuning #4
-                     only: any -> Organization; any -> Person; any -> Team
+                     only: any -> Organization; any -> Person
 LAUNCHED_ON          was launched into space on
                      source: ground truth tuning #4
 HAS_ORBIT            travels in this Orbit

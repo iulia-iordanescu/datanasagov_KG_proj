@@ -611,7 +611,7 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 
 ### Quoted for us
 
-- predicate DEVELOPED_BY_PARTY: was built or created by this Person, Team, or Organization
+- predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate SOURCED_FROM -> (none): The subject (a dataset, file, objective or person) originates from the object, a source instrument, platform, observation set, data portion or institution.
 - predicate ACQUIRED_BY -> ACQUIRED_BY_INSTRUMENT: The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.
 - predicate COLLECTED_DURING -> HAS_MISSION_PHASE: The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.
@@ -1167,13 +1167,13 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - status: open
 - priority: medium
 - question kind: schema entry
-- in short: the ground truth schema's Organization, Team, Role and BASED_IN, and the translation table's rows for Program, Facility, Location and LOCATED_IN
+- in short: the ground truth schema's Organization, Role and BASED_IN, and the translation table's rows for Program, Facility, Location and LOCATED_IN
 
 ### The question
 
-The records name groups of people, offices, programs, sites and places, and we are not sure we sort them the way someone in the field would. Our schema has three entity classes for groups: Organization (a group with a name of its own, such as NASA), Team (a group of people without a name of its own) and Role (a position someone holds); all are defined below. It has no entity class for a place. We would like to know:
+The records name groups of people, offices, programs, sites and places, and we are not sure we sort them the way someone in the field would. Our schema has two entity classes for groups: Organization (a group with a name of its own, such as NASA) and Role (a position someone holds); both are defined below. A group without a name of its own (such as "his team") gives no fact, since a fact needs something the record names. It has no entity class for a place. We would like to know:
 
-- (a) Is that line right: a group with a name of its own is an Organization, one without is a Team, and what an organization is there for is a Role it holds? In the first example, we wrote "NASA Ocean Biology Processing Group (OBPG)" as an Organization, "Peter Minnett" as a Person (the record says "Peter Minnett and his team"; "his team" names no team, so it is left out), and "JPL ... is the official Physical Oceanography Data Archive (PO.DAAC) for SST" as a Role that JPL holds. Would you rather call PO.DAAC an organization of its own, run by JPL?
+- (a) Is that line right: a group with a name of its own is an Organization, one without gives no fact, and what an organization is there for is a Role it holds? In the first example, we wrote "NASA Ocean Biology Processing Group (OBPG)" as an Organization, "Peter Minnett" as a Person (the record says "Peter Minnett and his team"; "his team" names no team, so it is left out), and "JPL ... is the official Physical Oceanography Data Archive (PO.DAAC) for SST" as a Role that JPL holds. Would you rather call PO.DAAC an organization of its own, run by JPL?
 - (b) The second example says "The NASA Technical Standards Program provides access to NASA developed standards and handbooks". We wrote the program as an Organization, with its name whole, "NASA" included. Is a NASA program like this one an organization (an office with staff), or something else, such as a funded effort?
 - (c) Facilities and places: in this catalog, is a facility (a space center, an observatory, a ground station) an organization, a place, or either one, depending on the sentence? And do the records name places (a research station, a field of the sky, a site) often enough, in facts that matter, for us to add an entity class for places?
 
@@ -1202,15 +1202,15 @@ The records name groups of people, offices, programs, sites and places, and we a
 ### Ground truth schema
 
 - entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
-- entity class Team: a group of people without a name of its own, e.g. Peter Minnett and his team
-- entity class Role: a position a Person, Team, or Organization holds, what they are, e.g. the official archive for SST
+
+- entity class Role: a position a Person or Organization holds, what they are, e.g. the official archive for SST
 - predicate SERVES_AS: holds this Role
 
 ### Options
 
 #### Option 1: Keep the line as it is
 
-A named group or office is an Organization; a group without a name of its own is a Team; what an Organization is there for (the official archive for SST) is a Role it holds. A facility counts as an Organization; places other than countries get no entity class.
+A named group or office is an Organization; a group without a name of its own gives no fact; what an Organization is there for (the official archive for SST) is a Role it holds. A facility counts as an Organization; places other than countries get no entity class.
 
 #### Option 2: A named archive or program is an Organization too
 
@@ -1230,7 +1230,7 @@ Option 1, for now: it follows the records' own words (JPL "is" the archive), eve
 
 ### My notes
 
-The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" adds "NASA HEASARC" (Organization), written so by rule 13, though the record also writes "the HEASARC" (decided 2026-10-25, for us to confirm); its "the authors" (Team) are left out for now, with the study they belong to (Q26). The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", and the program of the old (c) (now the expert's (b)) is the record "NASA Standards and and Technical Assistance Resource Tool"'s. The facts about a country are the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"'s: rule 9 of *Writing a classed triple* makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
+The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" adds "NASA HEASARC" (Organization), written so by rule 13, though the record also writes "the HEASARC" (decided 2026-10-25, for us to confirm); its "the authors" are left out for now, with the study they belong to (Q26). The ground truth schema's entity class Team ("a group of people without a name of its own, e.g. Peter Minnett and his team") was removed on 2026-10-30: a named group is an Organization, and an unnamed group names no specific thing, so it gives no fact (What counts as a fact, rule 9, as with "his team" that day); the expert's question, (a) and option 1 were reworded then. The groups appear as the subject instance or object instance of the classed triples listed under Affects; the example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0", and the program of the old (c) (now the expert's (b)) is the record "NASA Standards and and Technical Assistance Resource Tool"'s. The facts about a country are the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"'s: rule 9 of *Writing a classed triple* makes a country that qualifies an organization ("U.S. National Aeronautics and Space Administration (NASA)") a ground truth triple of its own.
 
 The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names; a row that names (none): a classed triple that uses it always counts as extracted only. We would choose option 4 with the answers to the old (d) to (f) (now the expert's (c)) telling us what to coin, once a tuning record states a fact about a place.
 
@@ -1253,10 +1253,10 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 
 - entity class Country: a nation, e.g. U.S.; Argentina
 - predicate AFFILIATED_WITH: works at or belongs to this Organization
-- predicate SPONSORED_BY_PARTY: is sponsored by this Person, Team, or Organization
+- predicate SPONSORED_BY_PARTY: is sponsored by this Person or Organization
 - predicate BASED_IN: belongs to this Country
 - entity class Organization -> Organization: An institution, agency, center, or collaborative body, such as NASA, HEASARC, or CIESIN, responsible for producing, managing, or distributing data or research.
-- entity class Team -> Team: A group of people, such as investigators, specialists or institutional groups, working together on a mission, project or study.
+- entity class Team -> (none): A group of people, such as investigators, specialists or institutional groups, working together on a mission, project or study.
 - entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
 - entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
@@ -1283,7 +1283,7 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 #### Option 3: A program is its own entity class
 
 - The translation table's row for the current schema's Program changes from (none) to the new entity class, so the model's Program instances can be compared with the ground truth.
-- SPONSORED_BY_PARTY and DEVELOPED_BY_PARTY join only an Organization, a Person or a Team: they would need the new entity class added, or the record "NASA Standards and and Technical Assistance Resource Tool" changes.
+- SPONSORED_BY_PARTY and DEVELOPED_BY_PARTY join only an Organization or a Person: they would need the new entity class added, or the record "NASA Standards and and Technical Assistance Resource Tool" changes.
 
 #### Option 4: Places get an entity class of the ground truth schema
 
@@ -1320,7 +1320,7 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - translation table row: entity class Team
 - translation table row: predicate LOCATED_IN
 - ground truth schema entry: entity class Organization
-- ground truth schema entry: entity class Team
+
 - ground truth schema entry: entity class Role
 - ground truth schema entry: predicate SERVES_AS
 - ground truth schema entry: predicate BASED_IN
@@ -3133,9 +3133,9 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 ### The question
 
-Our schema is a flat list of kinds of things: none is a kind of another. So a link such as "developed by" has to list Person, Team and Organization one by one, and a search can't ask for "anything that carries instruments". The only link that groups things is PART_OF ("is one part of"). We would like to know:
+Our schema is a flat list of kinds of things: none is a kind of another. So a link such as "developed by" has to list Person and Organization one by one, and a search can't ask for "anything that carries instruments". The only link that groups things is PART_OF ("is one part of"). We would like to know:
 
-- (a) Which kinds of things are kinds of others? Our guess: a spacecraft, an aircraft, a ship, a balloon and a ground station are kinds of a platform (the thing that carries instruments); a Person, a Team and an Organization (defined below) are kinds of an agent (a party that develops, sponsors, launches or is responsible for something). Are these two groups right? Which others do you see in this catalog (for example, a dataset and a document as kinds of something that holds information)?
+- (a) Which kinds of things are kinds of others? Our guess: a spacecraft, an aircraft, a ship, a balloon and a ground station are kinds of a platform (the thing that carries instruments); a Person and an Organization (defined below) are kinds of an agent (a party that develops, sponsors, launches or is responsible for something). Are these two groups right? Which others do you see in this catalog (for example, a dataset and a document as kinds of something that holds information)?
 - (b) Which groupings of things matter, and are they one kind of link? In the example below, the notes name a part of an instrument: "GRaND plus Z boron loaded sensor" is one part of "GRaND". Other groupings of the same shape: a product family (the daily, weekly, monthly and annual products of one kind of data), a mission and its phases, a formation and its spacecraft. For each, is "is part of" the right link, or are they different links (a member of a group, a part of a whole, a phase of a mission) that should not share one?
 
 ### Example record
@@ -3150,7 +3150,7 @@ Our schema is a flat list of kinds of things: none is a kind of another. So a li
 ### Ground truth schema
 
 - entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
-- entity class Team: a group of people without a name of its own, e.g. Peter Minnett and his team
+
 - entity class Person: one named human being, e.g. Peter Minnett
 - predicate PART_OF: is one part of
 
@@ -3162,7 +3162,7 @@ No kind of thing is a kind of another, and PART_OF stays for any part of a whole
 
 #### Option 2: A hierarchy of entity classes, and PART_OF as it is
 
-Kinds of things get broader kinds above them (for example a platform, with spacecraft, aircraft, ship, balloon and ground station under it; an agent, with Person, Team and Organization under it), and PART_OF keeps its one meaning.
+Kinds of things get broader kinds above them (for example a platform, with spacecraft, aircraft, ship, balloon and ground station under it; an agent, with Person and Organization under it), and PART_OF keeps its one meaning.
 
 #### Option 3: A hierarchy, and separate links for a part, a member and a phase
 
@@ -3281,7 +3281,7 @@ Option 3 for now: we keep what the table holds and where it comes from, and the 
 
 The example is the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3", the only tuning record annotated so far that tells a study (decided 2026-10-25, for us to confirm). Its other doubts: the source catalogs as datasets, and AGN as a target (Q12 (d)); the authors' aim and the method's "allows for" as purposes (Q9 (d)). What was left out, with its rule, is in `annotations/left_out.md`.
 
-Three more items of `annotations/left_out.md` for this record wait on this answer (decided 2026-10-25): "serendipitously selected" (how the study selected its samples), written with the study's method if the answer is option 1 or 2, else left out; "corresponding to the uncertainty in the X-ray positions" (why the maximum distance of 1.5 arcseconds was chosen), written with the pending fact HAS_MATCHING_DISTANCE if that fact is written, else left out; "taking account of the substantial overlaps between observations" (how the net sky area of 2XMMi-DR3, our ground truth triple HAS_SKY_AREA "~ 504 deg^2", was computed from its fields), which is a method of the catalog, not of the study, so it is written only if the answer makes such methods facts too.
+Three more items of `annotations/left_out.md` for this record wait on this answer (decided 2026-10-25): "serendipitously selected" (how the study selected its samples), written with the study's method if the answer is option 1 or 2, else left out; "corresponding to the uncertainty in the X-ray positions" (why the maximum distance of 1.5 arcseconds was chosen), written with the pending fact HAS_MATCHING_DISTANCE if that fact is written, else left out; "taking account of the substantial overlaps between observations" (how the net sky area of 2XMMi-DR3, our ground truth triple HAS_SKY_AREA "~ 504 deg^2", was computed from its fields), which is a method of the catalog, not of the study, so it is written only if the answer makes such methods facts too. On 2026-10-30 the ground truth schema's Team ("a group of people without a name of its own, e.g. Peter Minnett and his team") was removed: a named group is an Organization, and an unnamed group gives no fact (What counts as a fact, rule 9). "The authors" names no specific group, so option 1 as worded ("the authors" as the subject) would need a named subject or a decision to bring Team back; the pending facts below keep "(Team)" as they were written on 2026-10-25.
 
 Pending facts, for the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (bb1fe4b0, in the ground truth now without them; decided 2026-10-25, for us to confirm), each added if the answer says yes:
 
@@ -3306,7 +3306,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 ### Quoted for us
 
-- entity class Team: a group of people without a name of its own, e.g. Peter Minnett and his team
+
 - entity class Purpose: an aim something is meant to achieve
 - entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
 - predicate HAS_PURPOSE: is meant to achieve
@@ -3392,7 +3392,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 - entity class CelestialBody: a natural object in space
 - predicate HAS_TARGET: is about this CelestialBody
-- predicate DEVELOPED_BY_PARTY: was built or created by this Person, Team, or Organization
+- predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
 - predicate HAS_MEASUREMENTS_OF: holds measurements of
 - What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
@@ -3466,10 +3466,10 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 ### Quoted for us
 
 - entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
-- predicate DEVELOPED_BY_PARTY: was built or created by this Person, Team, or Organization
+- predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - entity class WebPage: a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
 - predicate DOCUMENTED_AT: more details about it are written at
-- entity class Task: a piece of work a Person, Team, or Organization does or is in charge of, e.g. quality flagging
+- entity class Task: a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
 - predicate REVISED_AFTER: was corrected after this review
 - What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rules 3 to 10 below, and rules 10, 11 and 14 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 
