@@ -283,6 +283,32 @@ class B_Batch(unittest.TestCase):
         self.assertEqual([[p["code"] for p in found] for found in server.connection_problems("r1", rows)], expected)
         self.assertEqual(server.connection_problems("r1", rows[:1]), [[]])     # only the describes triple
 
+    def test_several_qualifiers(self):
+        """Suppose a record's ground truth gives its dataset two processing levels (as rule 9 takes them out of
+        "Level 2/3 (EDR/RDR) data"), once with the subject spelled differently ("title r1"). Then both rows are
+        flagged, naming the values. Not flagged: one value of a rule-9 predicate, two values of a predicate rule 9
+        doesn't take out (FROM), the same predicate on two different subjects, and a row with no object. The view and a
+        save agree."""
+        def row(s, p, o):
+            return {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r1", "subject": s, "predicate": p, "object": o}
+        rows = [{**row("r1", "DESCRIBES", "Title r1"), "subject_class": "CatalogEntry"},
+                row("Title r1", "HAS_PROCESSING_LEVEL", "Level 2 (EDR)"),
+                row("title  r1", "HAS_PROCESSING_LEVEL", "Level 3 (RDR)"),     # the same subject, evened out
+                row("Title r1", "HAS_TARGET", "Vesta"),                        # one value: not flagged
+                row("Title r1", "FROM", "Aqua"),                               # not a rule-9 predicate
+                row("Title r1", "FROM", "Terra"),
+                row("Other", "HAS_TARGET", "Mars"),                            # another subject
+                row("Title r1", "HAS_TARGET", "")]                             # no object: skipped
+        expected = [[], ["several_qualifiers"], ["several_qualifiers"], [], [], [], [], []]
+        self.assertEqual([[p["code"] for p in found] for found in server.qualifier_problems(rows)], expected)
+        view = server.record_view(server.Data(), "r1", rows, False)
+        self.assertEqual([[p["code"] for p in r["problems"] if p["code"] == "several_qualifiers"] for r in view["rows"]],
+                         expected)
+        message = server.qualifier_problems(rows)[1][0]["message"]
+        self.assertIn('"Title r1" has 2 ground truth triples with HAS_PROCESSING_LEVEL: "Level 2 (EDR)", "Level 3 (RDR)".',
+                      message)
+        self.assertEqual(server.qualifier_problems(rows)[1][0]["type"], "flag")
+
     def test_record_links(self):
         """Suppose the stand-in record r1's batch file from the harvest of 2026-10-01 is on this computer, and r2's
         and r0's aren't (r2 names a batch file that isn't there; r0 names none). Then About this record gets, for r1,

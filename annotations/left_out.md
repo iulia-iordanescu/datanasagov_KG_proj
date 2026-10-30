@@ -161,7 +161,7 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** "per-pixel" (notes, "provides daily per-pixel Land Surface Temperature")
   - **Rule:** Writing a classed triple, rule 6: "Each fact once, even if the record states it twice or in other words." The ground truth triple HAS_SPATIAL_RESOLUTION "1 kilometer (km)" already says how much ground each value covers.
 - **Left out:** "(LST&E)" (notes, "Land Surface Temperature and Emissivity (LST&E)")
-  - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item, when each item alone is a complete object." The abbreviation names the pair, so it belongs to neither item after the split.
+  - **Rule:** Writing a classed triple, rule 12: "A list joined by "and": one ground truth triple per item." The abbreviation names the pair, so it belongs to neither item after the split.
 - **Left out:** "https://doi.org/10.5067/MODIS/MOD11A1.061" (notes, the address in "[MOD11A1 Version 6.1](https://doi.org/10.5067/MODIS/MOD11A1.061)"), the DOI of Version 6.1
   - **Rule:** Writing a classed triple, rule 11: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
   - **May matter because:** it is where the newer release is.

@@ -62,6 +62,7 @@ INCOMPLETE = "incomplete"
 # the annotation tool's own (helpers/annotator/server.py)
 EMPTY = "empty"
 NOT_CONNECTED = "not_connected"
+SEVERAL_QUALIFIERS = "several_qualifiers"
 
 #: check_triple_instance's errors: the triple instance is unverified.
 ERRORS = (NO_SOURCE_TEXT, SOURCE_NOT_IN_TEXT)
@@ -78,8 +79,13 @@ DESCRIBES_FLAGS = (DESCRIBES_CLASS_NOT_IN_SCHEMA,)
 ROWS_FLAGS = (CONFLICTING_CLASSES,)
 #: The errors only stage 4 of 050 raises (ground_truth.check_rows); its others are ERRORS and DESCRIBES_ERRORS.
 GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE)
-#: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED a flag.
-TOOL_CHECKS = (EMPTY, NOT_CONNECTED)
+#: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED and SEVERAL_QUALIFIERS flags.
+TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS)
+#: The predicates of the ground truth schema for the qualifiers rule 9 of "Writing a classed triple"
+#: (annotations/guidelines.md) takes out of an instance: a temporal resolution, an area the data cover, a processing
+#: level, a spatial resolution, a country, a time of day, a target body, in that order.
+QUALIFIER_PREDICATES = ("HAS_TEMPORAL_RESOLUTION", "HAS_SPATIAL_COVERAGE", "HAS_PROCESSING_LEVEL",
+                        "HAS_SPATIAL_RESOLUTION", "BASED_IN", "OBSERVED_AT_TIME_OF_DAY", "HAS_TARGET")
 #: Every check code, each once.
 ALL_CHECKS = (ERRORS + FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS + ROWS_FLAGS + GROUND_TRUTH_ERRORS
               + TOOL_CHECKS)

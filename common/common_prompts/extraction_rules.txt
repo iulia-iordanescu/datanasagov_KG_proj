@@ -77,13 +77,13 @@
   make this dataset; R covers 1990 to 1994" gives the record's dataset
   computed-from "R" and the triple that R covers "1990 to 1994", since the
   record's dataset is made from R.
-- A list joined by "and": one triple per item, when each item alone is a
-  complete object; copy the words the items share onto each, and write each
-  in the singular, since each is now one item ("derived from the 3 and 9
-  micron channels" gives "3 micron channel" and "9 micron channel").
-  When an item alone needs other words of the sentence ("to
-  monitor the health of lakes, rivers and wetlands": "lakes" alone is not a
-  purpose), keep the whole phrase as one object.
+- A list joined by "and": one triple per item. Take the qualifiers out first
+  (above); then copy the words the items share onto each item, and write
+  each in the singular, since each is now one item ("derived from the 3 and
+  9 micron channels" gives "3 micron channel" and "9 micron channel"; "to
+  monitor the health of the Earth lakes, rivers and wetlands" gives the
+  target body "Earth", then three purposes: "monitor the health of lakes",
+  "monitor the health of rivers", and "monitor the health of wetlands").
 - One thing, one wording: when the record names the same thing more than
   once, in different words: if one wording says more (contains the other, is
   more precise, or spells out its abbreviation), use it, in every triple

@@ -84,7 +84,9 @@ the first time it is used, for a look (a wrong entity class or direction),
 and never needs adding. One check is the tool's own (connection_problems): a
 ground truth triple that no chain of the record's ground truth triples links to
 the record's id is flagged (not_connected), so the fact that connects it is
-looked for. The component classes
+looked for. Another is too (qualifier_problems): a subject instance given two or
+more values by one of rule 9's predicates is flagged (several_qualifiers), since
+rule 9 may have lost which fact each value went with. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 ground truth (common/common_helpers/ground_truth.with_coined), so a coined
 component class is offered for reuse. A coined component class is an error
@@ -152,9 +154,10 @@ from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDEC
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
-                             PREDICATE_NOT_IN_SCHEMA, SOURCE_NOT_IN_TEXT, SUBJECT_CLASS_NOT_IN_SCHEMA,
-                             SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE, SUBJECT_NOT_IN_TEXT, SchemaEntries,
-                             check_against_schema, check_describes, check_triple_instance)
+                             PREDICATE_NOT_IN_SCHEMA, QUALIFIER_PREDICATES, SEVERAL_QUALIFIERS, SOURCE_NOT_IN_TEXT,
+                             SUBJECT_CLASS_NOT_IN_SCHEMA, SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE,
+                             SUBJECT_NOT_IN_TEXT, SchemaEntries, check_against_schema, check_describes,
+                             check_triple_instance)
 
 DRAFTS_DIR = RESULTS_DIR / "050_annotate"
 RECORDS = RESULTS_DIR / "020_clean" / "records.jsonl"
@@ -242,6 +245,15 @@ MESSAGES = {
     NOT_CONNECTED: "No chain of ground truth triples links this ground truth triple to the record's id (through "
                      "the describes triple). Look for the fact that connects it, and add it only if the "
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
+    # the tool's own check (qualifier_problems), on a record's rows together
+    SEVERAL_QUALIFIERS: "\"{subject}\" has {count} ground truth triples with {predicate}: {values}. Rule 9 of "
+                          "\"Writing a classed triple\" takes such a qualifier out of the instance it was in, so if "
+                          "each of these came from a different fact of the record (e.g. \"Level 2/3 (EDR/RDR) data\": "
+                          "Level 2 goes with the EDR data, Level 3 with the RDR data), the ground truth no longer says "
+                          "which goes with which. That loss is known and accepted (docs/improvements.md, Rule 9 can lose "
+                          "which fact a qualifier went with): nothing to fix, since rule 9 always applies. Read the "
+                          "record's text to see whether it happened here; if the values describe \"{subject}\" "
+                          "together (a dataset observed at daytime and at nighttime), nothing was lost.",
 }
 
 
@@ -406,6 +418,29 @@ ADDS = {SUBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "subject_class"),
         PREDICATE_NOT_IN_SCHEMA: ("predicate", "predicate")}
 
 
+def qualifier_problems(rows: list) -> list:
+    """For each of a record's rows, its several_qualifiers flag (a list of one), or []: a row whose predicate is one
+    of rule 9's (QUALIFIER_PREDICATES), when another row gives the same subject instance (evened out, as norm_text
+    does) the same predicate. Two values aren't always a loss (a dataset observed at daytime and at nighttime), so a
+    flag, for a person to read the record. Rows lacking a subject instance, predicate, or object instance are skipped."""
+    def key(row: dict):
+        predicate = str(row.get("predicate") or "").strip()
+        subject, obj = (str(row.get(c) or "").strip() for c in ("subject", "object"))
+        return (norm_text(subject), predicate) if predicate in QUALIFIER_PREDICATES and subject and obj else None
+    groups = collections.defaultdict(list)
+    for row in rows:
+        if (k := key(row)) is not None:
+            groups[k].append(row)
+    out = []
+    for row in rows:
+        same = groups.get(key(row), []) if key(row) is not None else []
+        out.append([] if len(same) < 2 else [{"code": SEVERAL_QUALIFIERS, "type": "flag", "add": None,
+                    "message": MESSAGES[SEVERAL_QUALIFIERS].format(
+                        subject=str(row["subject"]).strip(), count=len(same), predicate=str(row["predicate"]).strip(),
+                        values=", ".join(f'"{str(r["object"]).strip()}"' for r in same))}])
+    return out
+
+
 def _offer(code: str, row: dict, flags: list) -> dict | None:
     """What the page offers to add to the ground truth schema for one error, or None."""
     if code in ADDS:
@@ -440,8 +475,8 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title, uses) + extra}
-                 for r, extra in zip(rows, connection_problems(rid, rows))],
+        "rows": [{**r, "problems": check_row(data, r, title, uses) + extra + several}
+                 for r, extra, several in zip(rows, connection_problems(rid, rows), qualifier_problems(rows))],
     }
 
 
@@ -581,7 +616,8 @@ def save_batch(data: Data, n: int, records: list) -> list:
             found.append(check_row(data, row, title, uses))
             if not _is_blank(row):
                 written.append(row)
-        found = [f + extra for f, extra in zip(found, connection_problems(rec["id"], rec.get("rows", [])))]
+        found = [f + extra + several for f, extra, several in zip(found, connection_problems(rec["id"], rec.get("rows", [])),
+                                                                 qualifier_problems(rec.get("rows", [])))]
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
     # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone

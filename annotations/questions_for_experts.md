@@ -96,7 +96,7 @@ Option 1, as it was: Each record keeps its own words for its layout, as written 
 - Writing a classed triple, rule 6: Each fact once, even if the record states it twice or in other words. Rule 13 says which wording to keep. Suppose: the notes say "gridded" and the title says "Polar-Gridded". Then: one ground truth triple, with "Polar-Gridded", by rule 13.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item, when each item alone is a complete object.
+- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item.
 - Writing a classed triple, rule 13: One thing, one wording, within a record.
 
 ### Consequences
@@ -271,7 +271,10 @@ For the example, we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_ON "May 4, 2002" (Time)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft)
@@ -675,7 +678,10 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_ON "May 4, 2002" (Time)
 - classed triple of the record at pool position 4: "JPL" (Organization) OBTAINS_DATA_FROM "NASA Ocean Biology Processing Group (OBPG)" (Organization)
@@ -1097,7 +1103,7 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item, when each item alone is a complete object. Put one item alone after the predicate. Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: "long wave IR 11 micron wavelength channel" alone is a complete object, so two ground truth triples, each object with the words the items share copied onto it, in the singular, since each is now one item: "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
+- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone after the predicate, with the words the items share copied onto it, in the singular. Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 14: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
@@ -1325,9 +1331,9 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 
 ### The question
 
-Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined below), for what something is meant to achieve. In the example, we wrote two purposes: Aqua's, from "Aqua was launched ... to study the global dynamics of the Earth atmosphere, land and oceans", and an algorithm's, from "a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors". We are not sure how far a purpose should reach:
+Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined below), for what something is meant to achieve. In the example, we wrote the purposes of two things: Aqua's, from "Aqua was launched ... to study the global dynamics of the Earth atmosphere, land and oceans", and an algorithm's, from "a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors". We are not sure how far a purpose should reach:
 
-- (a) Is "to study the global dynamics of the Earth atmosphere, land and oceans" the purpose of Aqua, the spacecraft, as we wrote it, since the sentence is about Aqua? Or would you say it belongs to Aqua's mission, since a satellite mission usually has the science goals? (The record names no mission for Aqua, so we can't write the mission without adding what the record doesn't state.)
+- (a) Is "to study the global dynamics of the Earth atmosphere, land and oceans" the purpose of Aqua, the spacecraft, as we wrote it (as three purposes, one each for the atmosphere, the land and the oceans, and "Earth" as what Aqua is about), since the sentence is about Aqua? Or would you say it belongs to Aqua's mission, since a satellite mission usually has the science goals? (The record names no mission for Aqua, so we can't write the mission without adding what the record doesn't state.)
 - (b) Is what something is used to study a purpose, in your field, or a different relationship, better kept apart? For example "used to study ocean salinity", or a mission's "objective". And is what a method "allows for" its purpose? For example, the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" says its method, the structure function, "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived".
 
 ### Example record
@@ -1338,7 +1344,10 @@ Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans
 - source text: using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors
-- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose)
+- classed triple: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
+- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
 - classed triple: "modified nonlinear SST algorithm" (Algorithm) HAS_PURPOSE "provide continuity of SST derived from heritage and current NASA sensors" (Purpose)
 
 ### Ground truth schema
@@ -1350,19 +1359,15 @@ Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined
 
 #### Option 1: Keep it as it is
 
-The purpose stays with what the sentence is about (Aqua), the phrase stays whole, and what something is used to study, or its objective, counts as a purpose.
+The purposes stay with what the sentence is about (Aqua), and what something is used to study, or its objective, counts as a purpose.
 
-#### Option 2: Take the body studied out as its own fact
-
-"Earth" also becomes a fact of its own (Aqua is about the Earth), and the purpose keeps its words.
-
-#### Option 3: What something studies apart from its purpose
+#### Option 2: What something studies apart from its purpose
 
 A predicate of its own for what a mission, spacecraft or instrument studies (a quantity or a phenomenon), and HAS_PURPOSE kept for aims written as an action ("make it simpler to access…").
 
 ### My current reading
 
-Option 1, for now: it writes what each sentence says, about what it is about. We would choose option 3 if you tell us that what a mission studies and what it is meant to achieve are kept apart in your field.
+Option 1, for now: it writes what each sentence says, about what it is about. We would choose option 2 if you tell us that what a mission studies and what it is meant to achieve are kept apart in your field.
 
 ### My notes
 
@@ -1377,6 +1382,8 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 The question's context, as it was: The purposes we have written so far are a web tool's (the record "NASA Standards and and Technical Assistance Resource Tool"), those of a series of screens applied to data (the record "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061"), and those of Aqua and of an algorithm (the example below, whose purpose of Aqua the questions above are about).
 
+Changed on 2026-10-30, when rule 12 changed to split every list, after rule 9: rule 9 takes "Earth" out of the purpose (Aqua HAS_TARGET "Earth"), and rule 12 splits the rest into three purposes, so the old option 2 is no longer a choice and was taken out of the expert's view; the old option 3 is now option 2. Kept here as they were: option 1, "The purpose stays with what the sentence is about (Aqua), the phrase stays whole, and what something is used to study, or its objective, counts as a purpose."; option 2, ""Earth" also becomes a fact of its own (Aqua is about the Earth), and the purpose keeps its words.", with its consequences "HAS_TARGET so far joins a Dataset to a CelestialBody; it would join a Spacecraft too, a new pattern." and "The purpose's object instance keeps "Earth" (taking it out would leave "the atmosphere, land and oceans" of no body), so the body is written twice, once inside the purpose."; the Aqua classed triple, "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose).
+
 The options as they were worded before 2026-10-26: option 1, "The purpose stays with what the sentence is about (Aqua), the phrase stays whole with "Earth" in it, and "used to study" and "objective" both count as a purpose."; option 2, ""Earth" becomes a fact of its own, "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody), and the purpose keeps its words."; option 3, "A predicate of its own for what a mission, spacecraft or instrument studies (a PhysicalQuantity or a Phenomenon), and keep HAS_PURPOSE for aims written as an action ("make it simpler to access…")."
 
 ### Quoted for us
@@ -1390,8 +1397,8 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - Writing a classed triple, rule 2: The subject instance is what the sentence is about, which isn't always the title.
 - Writing a classed triple, rule 9: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 9: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item, when each item alone is a complete object. Put one item alone after the predicate.
-- Writing a classed triple, rule 12: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: "atmosphere" alone isn't a purpose (it needs "study the global dynamics of the Earth"), so one ground truth triple keeps the whole phrase.
+- Writing a classed triple, rule 12: A list joined by "and": one ground truth triple per item. Apply rule 9 first. Then put one item alone after the predicate, with the words the items share copied onto it, in the singular.
+- Writing a classed triple, rule 12: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 9 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
 
@@ -1400,12 +1407,7 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - Nothing changes in the ground truth triples listed under Affects, the annotation guidelines, or the translation table.
 - A search of the knowledge graph for what studies the Earth's atmosphere has to search inside the words of purposes.
 
-#### Option 2: Take the body studied out as its own fact
-
-- HAS_TARGET so far joins a Dataset to a CelestialBody; it would join a Spacecraft too, a new pattern.
-- The purpose's object instance keeps "Earth" (taking it out would leave "the atmosphere, land and oceans" of no body), so the body is written twice, once inside the purpose.
-
-#### Option 3: What something studies apart from its purpose
+#### Option 2: What something studies apart from its purpose
 
 - The translation table's [row](../docs/terminology.md#8-the-pipeline) for USED_TO_STUDY (current schema) changes to the new predicate.
 - An annotator, and the model, must tell an aim from a thing studied in each sentence; "to study the global dynamics of the Earth atmosphere" is both.
@@ -1419,7 +1421,9 @@ The options as they were worded before 2026-10-26: option 1, "The purpose stays 
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly and conveniently" (Purpose)
 - classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
 - classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
 - classed triple of the record at pool position 4: "modified nonlinear SST algorithm" (Algorithm) HAS_PURPOSE "provide continuity of SST derived from heritage and current NASA sensors" (Purpose)
 - translation table row: predicate USED_TO_STUDY
 - translation table row: predicate HAS_OBJECTIVE
@@ -2784,7 +2788,10 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_ON "May 4, 2002" (Time)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the Earth atmosphere, land and oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) FROM_MISSION "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission)
