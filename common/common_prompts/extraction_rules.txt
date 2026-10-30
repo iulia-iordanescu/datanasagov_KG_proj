@@ -89,6 +89,11 @@
   calibration" gives two triples, with the subjects "Maria Lopez" and
   "Ken Ito"). An item that names no specific thing ("her group", "his
   team") gives no triple.
+  A range is one item, not a list: "between A and B", "from A to B" and "A to
+  B" name one period or one range of values, so keep it whole, as written
+  ("observed between 1998-03-01 and 2001-07-31" gives one period,
+  "between 1998-03-01 and 2001-07-31"; "depths from 5 m to 40 m" gives one
+  range, "from 5 m to 40 m").
   Exception, a collective "and": keep the list whole, in one triple, when
   it is what one of these five nouns is about: "continuity", "ratio",
   "difference", "comparison", "correlation". Check it step by step: (1) find
@@ -99,7 +104,8 @@
   (distributive), and its list is split. Nothing else keeps a list whole: not
   a noun inside a name ("Relative Difference Vegetation Index and a cloud
   mask" splits), not an adjective ("merged Sentinel and Landsat" splits), not
-  "between" without one of the five nouns. ("designed to keep continuity of
+  "between" without one of the five nouns (a range is one item; see above).
+  ("designed to keep continuity of
   rainfall estimates from older and newer gauges" gives one purpose, "keep
   continuity of rainfall estimates from older and newer gauges".)
 - One thing, one wording: when the record names the same thing more than
