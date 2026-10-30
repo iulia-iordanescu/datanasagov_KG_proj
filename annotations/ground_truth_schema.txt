@@ -196,7 +196,7 @@ HAS_REDSHIFT_RANGE   its redshifts lie in this range
                      source: ground truth tuning #12
 HAS_LUMINOSITY_RANGE  its luminosities lie in this range
                       source: ground truth tuning #12
-HAS_SKY_AREA         covers this much of the sky
+HAS_SKY_AREA         covers this much of the sky, each part counted once
                      source: ground truth tuning #12
 HAS_NUMBER_OF        has this many
                      source: ground truth tuning #12
