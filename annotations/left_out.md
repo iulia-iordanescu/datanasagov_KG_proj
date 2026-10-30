@@ -21,11 +21,11 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
-  - **May matter because:** I read it as processing levels of a Planetary Data System scale, but the record does not say so; if it is, the dataset has three processing levels, and a search by level would find it.
+  - **May matter because:** checked on 2026-10-30, the record does not say so but the data set's own catalog does: "1/2/3 (Data set contains raw, edited and calibrated data)", CODMAC processing levels 1, 2 and 3 (the data set's DATASET.CAT, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/; the PDS3 Standards Reference, chapter 6, names the CODMAC level in this slot, https://pds.nasa.gov/datastandards/pds3/standards/sr/Chapter06.pdf). Still left out: the record's text does not explain it (rule 1). A search by level would find it.
   - **Question:** Q6 (b).
 - **Left out:** "1149" (title)
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
-  - **May matter because:** I do not know what it stands for; if it is a standard slot of such a title (an observation or sequence number), it identifies this dataset among its siblings.
+  - **May matter because:** checked on 2026-10-30: a running measurement number, "incremented measurement by measurement, independent what kind of measurement was conducted" (the data set's catalog, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/); it tells this dataset from its siblings and states no fact about the data.
   - **Question:** Q6 (b).
 - **Left out:** "comet" (notes, "at the comet 67P")
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
@@ -216,7 +216,7 @@ The dense record: its notes describe a whole family of products (several tempora
 
 - **Left out:** "CAL" (title, "67P/CAL")
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
-  - **May matter because:** my reading, not checked against a source: it may mark calibration data; if so, it says what kind of data the dataset holds.
+  - **May matter because:** checked on 2026-10-30: "CAL" is the PDS3 target "CALIBRATION" in the data set name (TARGET_NAME = "CALIBRATION"; the PDS3 Standards Reference lists "CAL Calibration" among target IDs, https://pds.nasa.gov/datastandards/pds3/standards/sr/Chapter06.pdf), so the data include observations of calibration targets. It does not mean "calibrated": the data set says its data are uncalibrated, CODMAC level 2 (https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/ALICE/RO-C-CAL-ALICE-2-ESC1-V1.0/CATALOG/DATASET.CAT). My earlier reading ("calibration data") was close but imprecise. Still left out: the record's text does not explain it (rule 1).
   - **Question:** Q6 (b).
 - **Left out:** "mission phase" (notes, "comet escort 1 mission phase")
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
@@ -316,7 +316,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 - **Left out:** "MTP020" (title, "ESC3-MTP020")
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
-  - **May matter because:** my reading, not checked against a source: it may name a planning period within the phase COMET ESCORT 3, which would tell this dataset from its siblings.
+  - **May matter because:** checked on 2026-10-30: planning period no. 20 (MTP, a numbered planning period), inside the phase COMET ESCORT 3; the Rosetta NAVCAM archive lists "COMET ESCORT 3 MTP020 ESC3-MTP020 2015-08-25 23:25:00" (https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/NAVCAM/RO-C-NAVCAM-2-ESC1-MTP010-V1.1/DOCUMENT/RO-SGS-IF-0001.ASC), and this data set covers 2015-08-25T23:25 to 2015-09-22T23:24:59 (https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/OSINAC/RO-C-OSINAC-4-ESC3-67P-M20-INFLDSTR-V1.0/CATALOG/DATASET.CAT). It tells this dataset from its siblings. Still left out: the record's text does not explain it (rule 1).
   - **Question:** Q6 (b).
 - **Left out:** "RDR" (title, "RDR-INFLDSTR")
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
