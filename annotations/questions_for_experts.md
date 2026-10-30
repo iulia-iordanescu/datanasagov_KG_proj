@@ -293,6 +293,8 @@ For the example, we wrote "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
+- translation table row: predicate SOURCED_FROM
+- translation table row: predicate OBSERVED_BY
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class Spacecraft
 - ground truth schema entry: predicate FROM_MISSION
@@ -723,6 +725,7 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - translation table row: entity class Aircraft
 - translation table row: entity class Campaign
 - translation table row: entity class Program
+- translation table row: predicate OBSERVED_BY
 - ground truth schema entry: entity class Spacecraft
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class MissionPhase
@@ -883,6 +886,7 @@ My current reading, as it was: Option 1 for now, because the definition of Tempo
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
 - translation table row: predicate COVERS
+- translation table row: predicate HAS_FREQUENCY
 - ground truth schema entry: entity class TemporalResolution
 - ground truth schema entry: predicate HAS_TEMPORAL_RESOLUTION
 - ground truth schema entry: predicate HAS_GRANULE_DURATION
@@ -1012,6 +1016,7 @@ The options as they were, before 2026-10-26: Option 1, Keep each record's own wo
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 4" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
 - translation table row: predicate HAS_PROCESSING_LEVEL
+- translation table row: predicate HAS_PROPERTY
 - ground truth schema entry: entity class ProcessingLevel
 - ground truth schema entry: predicate HAS_PROCESSING_LEVEL
 - rule: What counts as a fact, rule 1
@@ -1150,6 +1155,7 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "table1.dat" (Dataset)
 - translation table row: predicate DERIVED_FROM
+- translation table row: predicate USES
 - ground truth schema entry: predicate COMPUTED_FROM
 - ground truth schema entry: predicate PRODUCED_USING_ALGORITHM
 - rule: Writing a classed triple, rule 12
@@ -1666,6 +1672,7 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "Aerosol Optical Depth" (PhysicalQuantity)
 - translation table row: entity class SpatialCoverage
 - translation table row: predicate HAS_SPATIAL_COVERAGE
+- translation table row: predicate HAS_PROPERTY
 - ground truth schema entry: entity class SpatialExtent
 - ground truth schema entry: predicate HAS_SPATIAL_COVERAGE
 - rule: Writing a classed triple, rule 9
@@ -2943,6 +2950,7 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 - ground truth schema entry: predicate HAS_SPATIAL_RESOLUTION
 - translation table row: entity class SpatialResolution
 - translation table row: predicate HAS_RESOLUTION
+- translation table row: predicate HAS_PROPERTY
 - rule: Writing a classed triple, rule 11
 - rule: Writing a classed triple, rule 13
 

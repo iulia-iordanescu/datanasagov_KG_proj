@@ -105,13 +105,28 @@ def same_instance(a, b) -> bool:
 NO_TRANSLATION = " (current schema; translates to (none))"
 
 
+def predicate_rule(triple: dict, translation) -> tuple:
+    """(ground truth schema's predicate or None, reversed) for an extracted triple's predicate: through its conditional
+    row with the most conditions that hold for the triple's own entity classes (current schema), if any, else its
+    unconditional row (docs/terminology.md, *conditional row*; common.component_class_mapping.rule_for)."""
+    key = component_class_key(triple["predicate"])
+    have = (component_class_key(triple["subject_class"]), component_class_key(triple["object_class"]))
+    best = None
+    for subject, obj, mine, flipped in getattr(translation, "conditional", {}).get(key, []):
+        if all(c is None or c == h for c, h in zip((subject, obj), have)):
+            n = (subject is not None) + (obj is not None)
+            if best is None or n > best[0]:
+                best = (n, (mine, flipped))
+    return best[1] if best else translation.predicate.get(key, (None, False))
+
+
 def translate(triple: dict, translation) -> dict:
     """The triple in the ground truth schema. A component class whose row
     says (none) keeps its own spelling, marked NO_TRANSLATION, so it can never
     equal a component class of the ground truth schema. "crt" keeps the
     current schema's component classes, slot by slot as translated (swapped along with subject and
     object), for component_class_mismatches."""
-    p_mine, flipped = translation.predicate.get(component_class_key(triple["predicate"]), (None, False))
+    p_mine, flipped = predicate_rule(triple, translation)
     sc, oc = (translation.entity.get(component_class_key(triple[c])) for c in ("subject_class", "object_class"))
     t = {"subject": triple["subject"], "subject_class": sc or f"{triple['subject_class']}{NO_TRANSLATION}",
          "predicate": p_mine or f"{triple['predicate']}{NO_TRANSLATION}",
@@ -173,8 +188,15 @@ def classes_agree(g: dict, t: dict) -> bool:
 
 def _within_reach(g: dict, translation) -> bool:
     """Its predicate is something the current schema could say: all a pair needs
-    (a pair doesn't need the entity classes to agree)."""
-    return component_class_key(g["predicate"]) in translation.reachable["predicate"]
+    (a pair doesn't need the entity classes to agree). Through an unconditional row, its predicate alone decides;
+    through a conditional row, also its entity classes: each condition's entity class, translated, must be the ground
+    truth triple's in that slot (docs/terminology.md, *conditional row*; 070_evaluate/metrics/recall_upper_bound.md)."""
+    key = component_class_key(g["predicate"])
+    if key in translation.reachable["predicate"]:
+        return True
+    have = (component_class_key(g["subject_class"]), component_class_key(g["object_class"]))
+    return any(all(c is None or c == h for c, h in zip(ends, have))
+               for ends in getattr(translation, "reach_conditional", {}).get(key, []))
 
 
 def _within_strict_reach(g: dict, translation) -> bool:
@@ -355,7 +377,8 @@ def component_class_counts(record: dict, translation) -> dict:
         key = (table, component_class_key(name))
         labels.setdefault(key, name)
         reach.setdefault(key, None if str(name).endswith(NO_TRANSLATION)
-                         else key[1] in translation.reachable[kind[table]])
+                         else key[1] in translation.reachable[kind[table]]
+                         or (table == "predicate" and key[1] in getattr(translation, "reach_conditional", {})))
         counts[key][field] += 1
     for gi, g in enumerate(gt):
         for table, slot in PER_COMPONENT_CLASS:

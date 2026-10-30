@@ -41,7 +41,8 @@ import io
 import re
 from pathlib import Path
 
-from common.component_class_mapping import MAPPING_PATH, NONE, gtt_definition, gtt_definitions, is_stale_gtt, read_mapping
+from common.component_class_mapping import (MAPPING_PATH, NONE, condition_text, gtt_definition, gtt_definitions,
+                                            is_stale_gtt, read_mapping)
 from common.expert_questions import QUESTIONS_PATH, read_questions
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR
@@ -158,7 +159,8 @@ def mapping_entries(path: Path = MAPPING_PATH, schema_path: Path = SCHEMA_PATH) 
     gtt = gtt_definitions(read_ground_truth_schema(schema_path))
     rows, seen = [], set()
     for r in read_mapping(path):
-        entry = f"{r['kind']} {r['component_class_from_past_or_crt_schema']}"
+        cond = condition_text(r)                       # a conditional row: its condition is part of what it is
+        entry = f"{r['kind']} {r['component_class_from_past_or_crt_schema']}" + (f" ({cond})" if cond else "")
         if entry in seen:
             entry += f" (line {r['_line']})"
         seen.add(entry)
@@ -170,7 +172,7 @@ def mapping_entries(path: Path = MAPPING_PATH, schema_path: Path = SCHEMA_PATH) 
         rows.append({"kind": r["kind"], "entry": entry, "crt": r["component_class_from_past_or_crt_schema"],
                      "gtt": r["component_class_in_gtt"], "swap": r["swap_subject_and_object"], "checked": r["checked"],
                      "crt_def": r["definition_from_past_or_crt_schema"], "gtt_def": r["definition_in_gtt"],
-                     "gtt_now": gtt_definition(r, gtt), "line": r["_line"],
+                     "gtt_now": gtt_definition(r, gtt), "line": r["_line"], "condition": cond,
                      "stale_gtt": r["checked"] != "no" and r["component_class_in_gtt"] != NONE and is_stale_gtt(r, gtt),
                      "shown": shown})
     return rows

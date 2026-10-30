@@ -709,7 +709,8 @@ function mappingBox(r) {
   const [ck, cl] = CHECKED[r.checked] || ["todo", `checked: ${r.checked}`];
   return el("section", { class: "mapbox" + (has(r) ? " commented" : "") },
     el("div", { class: "mapgrid" },
-      el("div", { class: "mapname", title: `${r.crt} (current or past schema ${what})` }, r.crt),
+      el("div", { class: "mapname", title: `${r.crt} (current or past schema ${what})${r.condition ? ", " + r.condition : ""}` },
+         r.crt, r.condition ? el("div", { class: "mapdef" }, `only ${r.condition} (a conditional row)`) : null),
       mapArrow(),
       el("div", { class: "mapname" + (none ? " empty" : ""), title: none ? `${D.mapping.none}: nothing in the ground truth schema to translate this to`
                                                                          : `${r.gtt} (ground truth schema ${what})` }, r.gtt),
@@ -748,7 +749,7 @@ function drawMapping() {
     all: all.filter((e) => e.rowKind === k).length, mine: all.filter((e) => e.rowKind === k && has(e)).length }]));
   const shown = all.filter((r) => r.rowKind === st.kind && (!st.mine || has(r)) && (!st.changed || CHANGED.has(r.id) || NEW.has(r.id))
     && (st.counterpart === "any" || (st.counterpart === "none") === (r.gtt === D.mapping.none))
-    && matches(st.search, r.crt, r.gtt, r.crt_def, r.gtt_def));
+    && matches(st.search, r.crt, r.gtt, r.crt_def, r.gtt_def, r.condition || ""));
   const what = st.kind === "predicate" ? "predicate" : "entity class";
   const counterpart = el("select", { "aria-label": "Rows by what they translate to",
                                      onchange: (ev) => { st.counterpart = ev.target.value; redraw(); } },

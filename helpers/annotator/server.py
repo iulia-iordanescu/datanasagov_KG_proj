@@ -136,7 +136,7 @@ from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS,
                                             MISSING_TARGET, NONE, NOW_EXISTS, REPEATED, SHARED, STALE, SUGGESTED,
                                             VALUES as MAPPING_VALUES, crt_definitions, gtt_definition,
                                             gtt_definitions, is_checked, is_missing_target, is_stale_gtt,
-                                            read_mapping, repeats, row_states, sharing, stale_in)
+                                            read_mapping, repeats, row_states, sharing, stale_in, condition_text)
 from common.partial_reviews import (COLUMNS as REVIEW_COLUMNS, EXACT_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY, NOT_SAME,
                                     PARTIAL_PAIR, REVIEWS_PATH, SAME, row_key, verdict_of)
 from common.records_io import HARVEST_DIR, catalog_page_link, harvest_date, harvest_file, load_records, saved_copy
@@ -691,7 +691,7 @@ def mapping_view(data: Data) -> dict:
     for r in table:
         key = component_class_key(r["component_class_from_past_or_crt_schema"])
         same, hint = same_name.get(r["kind"], {}).get(key), suggested.get((r["kind"], key))
-        rows.append({**r, "same_component_class_in_gtt": same, "suggested_gtt": hint,
+        rows.append({**r, "same_component_class_in_gtt": same, "suggested_gtt": hint, "condition": condition_text(r),
                      "in_crt": crt is not None and key in crt.get(r["kind"], {}),
                      "crt_definition": (crt or {}).get(r["kind"], {}).get(key),
                      # its row states (common/common_helpers/component_class_mapping.row_states), whose definition

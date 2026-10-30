@@ -1523,7 +1523,7 @@ function mapShown(r) {
   if (!q) return true;
   const chosen = (mapping.gtt[r.kind] || []).find(v => v.component_class === r.component_class_in_gtt);
   return [r.component_class_from_past_or_crt_schema, r.component_class_in_gtt, r.crt_definition,
-          chosen && chosen.definition].some(s => (s || "").toLowerCase().includes(q));
+          chosen && chosen.definition, r.condition].some(s => (s || "").toLowerCase().includes(q));
 }
 
 function drawMapping() {
@@ -1602,7 +1602,7 @@ function mappingRow(r, i) {
   const whats = r.kind === "predicate" ? "predicates" : "entity classes";
   const crtName = r.component_class_from_past_or_crt_schema;
   const gttName = r.component_class_in_gtt;
-  const crtLabel = `${crtName} (${isCurrent(r) ? "current" : "past"} schema ${what})`;
+  const crtLabel = `${crtName} (${isCurrent(r) ? "current" : "past"} schema ${what})${r.condition ? ", only " + r.condition + " (a conditional row)" : ""}`;
   const gttLabel = none ? mapping.none : `${gttName} (ground truth schema ${what})`;
   const options = [el("option", { value: mapping.none, selected: none }, mapping.none)];
   if (!known && !none)

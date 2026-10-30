@@ -45,9 +45,10 @@ from pathlib import Path
 from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
-from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, KINDS, NONE, crt_definitions, gtt_definitions,
-                                            is_checked, is_missing_target, read_mapping, repeats, stale_in,
-                                            value_problems, values_text)
+from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, KINDS, NONE, condition, condition_text,
+                                            conflicts, crt_definitions, gtt_definitions, is_checked, is_conditional,
+                                            is_missing_target, read_mapping, repeats, stale_in, value_problems,
+                                            values_text)
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -69,6 +70,13 @@ class Translation:
     entity: dict = field(default_factory=dict)      # {component_class_key(current schema's component class): gtt component class or None}
     predicate: dict = field(default_factory=dict)   # {component_class_key(current schema's component class): (gtt component class or None, reversed)}
     reachable: dict = field(default_factory=dict)   # {"entity class": {component_class_key(gtt component class)}, "predicate": {...}}
+                                                    # (unconditional rows only)
+    conditional: dict = field(default_factory=dict)  # {component_class_key(current schema's predicate): [(subject class key
+                                                     # or None, object class key or None, gtt predicate or None, reversed)]}:
+                                                     # its checked conditional rows (docs/terminology.md, *conditional row*)
+    reach_conditional: dict = field(default_factory=dict)  # {component_class_key(gtt predicate): [(gtt subject class key or
+                                                           # None, gtt object class key or None)]}: what a conditional row
+                                                           # reaches, its condition translated (pairing.within_reach)
     gtt: dict = field(default_factory=dict)         # the ground truth schema: {kind: {component class: definition}}
     rows_used: int = 0
     to_none: dict = field(default_factory=dict)     # {kind: [060's component classes whose row says (none)]}
@@ -81,6 +89,7 @@ class Translation:
     suggest_calls: int = 0
     suggest_reused: int = 0                         # the suggestion call answered from the cache (0 or 1)
     reversed_used: int = 0
+    conditional_rows_used: int = 0
     calls: int = 0
     reused: int = 0                                 # the translation call answered from the cache (0 or 1)
 
@@ -147,9 +156,11 @@ def _propose(missing: list, gtt: dict, schema_used: dict, calls, gtt_defs: dict)
 
 
 def _row(name: str, r: dict) -> str:
-    """A row of the translation table, for messages: where each component class comes from."""
+    """A row of the translation table, for messages: where each component class comes from, and its condition."""
     to = r["component_class_in_gtt"]
-    return f"{name} (current schema) --> " + ("(none)" if to == NONE else f"{to} (ground truth schema)")
+    cond = condition_text(r)
+    return f"{name} (current schema){' ' + cond if cond else ''} --> " + \
+        ("(none)" if to == NONE else f"{to} (ground truth schema)")
 
 
 def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
@@ -164,7 +175,21 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                                   f"{', '.join(map(str, r['lines']))})" for r in repeated], 5, "; ")
                          + f". Keep one row per component class: delete the repeated ones ({TABLE}, shows a *Delete "
                            f"this row* button on each repeated row), {AGAIN}")
-    have = {(r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])): r for r in rows}
+    clash = conflicts(rows)
+    if clash:
+        raise Stop(f"{ref_path(path)} has {len(clash)} pair(s) of conditional rows of one predicate that would both "
+                   f"apply to the same extracted triple and translate it differently, so 070 can't tell which counts "
+                   f"(docs/terminology.md, *conditional row*): "
+                   + named([f"{c['component_class']} (a past or the current schema; lines "
+                            f"{', '.join(map(str, c['lines']))})" for c in clash], 5, "; ")
+                   + f". Add a row with both conditions (if_subject_class and if_object_class) to say what such a "
+                     f"triple translates to, or delete one of the two rows; {AGAIN}")
+    have = {(r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])): r
+            for r in rows if not is_conditional(r)}
+    conditional_rows = {}                   # {component_class_key(predicate): its conditional rows, in the file's order}
+    for r in rows:
+        if is_conditional(r):
+            conditional_rows.setdefault(component_class_key(r["component_class_from_past_or_crt_schema"]), []).append(r)
     bad = value_problems(rows)
     if bad:
         raise Stop(f"{ref_path(path)} has {len(bad)} value(s) outside those its columns take, so 070 can't tell what "
@@ -210,8 +235,17 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
     # each row of the current schema under the first of these that applies, in this order (a row may be several)
     unchecked, stale, unknown, stale_gtt = [], [], [], []
-    for kind, name in needed:
-        r = have[(kind, component_class_key(name))]
+    crt_entity = {component_class_key(e["component_class"]) for e in evaluated.schema_used["entity_classes"]}
+    strange = [_row(r["component_class_from_past_or_crt_schema"], r) for kind, name in needed if kind == "predicate"
+               for r in conditional_rows.get(component_class_key(name), []) if any(c and c not in crt_entity for c in condition(r))]
+    if strange:
+        raise Stop(f"{len(strange)} conditional row(s) of {ref_path(path)} name an entity class that the current "
+                   f"schema doesn't have, so they could never apply: {named(strange, 5, '; ')}. Correct the entity "
+                   f"class (columns if_subject_class, if_object_class; an entity class of the current schema) or "
+                   f"delete the row; {AGAIN}")
+    rows_to_check = [(name, have[(kind, component_class_key(name))]) for kind, name in needed] + \
+        [(name, r) for kind, name in needed if kind == "predicate" for r in conditional_rows.get(component_class_key(name), [])]
+    for name, r in rows_to_check:
         changed = stale_in(r, now, gtt_now)          # whose definition changed: the current schema's, the gtt's
         if not is_checked(r):
             unchecked.append(_row(name, r))
@@ -259,7 +293,25 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
             translation.reversed_used += flipped
         if mine:
             translation.reachable[kind].add(component_class_key(mine))
+    for kind, name in needed:
+        for r in conditional_rows.get(component_class_key(name), []) if kind == "predicate" else []:
+            mine = None if r["component_class_in_gtt"] == NONE else gtt_key[kind][component_class_key(r["component_class_in_gtt"])]
+            flipped = r["swap_subject_and_object"].lower() == "yes"
+            subject, obj = condition(r)
+            translation.conditional.setdefault(component_class_key(name), []).append((subject, obj, mine, flipped))
+            if not mine:
+                continue
+            # what it reaches: its condition's entity classes, translated, in the ground truth triple's slots (swapped
+            # along with subject and object); a condition whose entity class translates to (none) reaches nothing
+            ends = [None if c is None else translation.entity.get(c) or False for c in (subject, obj)]
+            if False in ends:
+                continue
+            ends = [component_class_key(e) if e else None for e in ends]
+            if flipped:
+                ends.reverse()
+            translation.reach_conditional.setdefault(component_class_key(mine), []).append(tuple(ends))
     translation.rows_used = len(needed)
+    translation.conditional_rows_used = sum(len(v) for v in translation.conditional.values())
     # A row checked as (none) before the same component class joined the ground
     # truth schema is almost surely out of date. Warned about (not a stop: (none)
     # may still be right if the ground truth's component class means something else).
@@ -291,7 +343,8 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 
     for kind in KINDS:
         translation.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))
-        translation.untranslated[kind] = sorted(n for n in translation.gtt[kind] if component_class_key(n) not in translation.reachable[kind])
+        translation.untranslated[kind] = sorted(n for n in translation.gtt[kind] if component_class_key(n) not in translation.reachable[kind]
+                                                and (kind != "predicate" or component_class_key(n) not in translation.reach_conditional))
     translation.suggested, translation.suggest_calls, translation.suggest_reused = _suggest(translation, evaluated.schema_used, calls)
     return translation
 

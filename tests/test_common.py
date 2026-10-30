@@ -713,9 +713,13 @@ class TranslationTable(unittest.TestCase):
         self.assertEqual([component_class_mapping.is_stale(r, definitions) for r in rows], [False, True, True])
         self.assertEqual(component_class_mapping.repeats(rows),
                          [{"kind": "entity class", "component_class": "Satellite", "lines": [2, 5]}])
-        write_csv(path, cols[:-1], [])
+        write_csv(path, [c for c in cols if c != "checked"], [])
         with self.assertRaisesRegex(ValueError, "lacks the column"):
             component_class_mapping.read_mapping(path)
+        # a table from before conditional rows has no condition columns: its rows read as unconditional
+        old = [c for c in cols if c not in component_class_mapping.CONDITIONS]
+        write_csv(path, old, [dict(zip(old, ["predicate", "MOUNTED_ON", "ABOARD", "no", "yes", "is on", "is carried on"]))])
+        self.assertEqual(component_class_mapping.condition(component_class_mapping.read_mapping(path)[0]), (None, None))
 
     def test_real_file_reads(self):
         component_class_mapping.read_mapping()

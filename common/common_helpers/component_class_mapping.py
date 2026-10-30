@@ -27,6 +27,25 @@ the current schema (the one step 060 used) means.
     definition_in_gtt        the ground truth schema's definition of
                              component_class_in_gtt when the row was written or
                              last checked (empty for (none))
+    if_subject_class         predicates only, optional: an entity class of the
+    if_object_class          same schema as the row's predicate. The row then
+                             applies only to an extracted triple whose subject
+                             (object) has that entity class, as extracted: a
+                             CONDITIONAL ROW. Empty: any entity class.
+
+A conditional row lets a predicate whose meaning splits between several of the ground truth schema translate case by
+case, when the entity class of its subject or object tells the meanings apart:
+
+    predicate,SOURCED_FROM,(none),no,yes,...,,,                 <- any other subject and object
+    predicate,SOURCED_FROM,FROM_MISSION,no,yes,...,,,Mission     <- an object of entity class Mission
+    predicate,SOURCED_FROM,FROM_SPACECRAFT,no,yes,...,,,Spacecraft
+
+Every predicate keeps its unconditional row (the one step 070 adds); conditional rows are added by hand and follow
+the same rule for a row and the same checking. For an extracted triple, the matching row with the most conditions
+wins (rule_for); two matching rows with as many conditions that translate differently are a CONFLICT (conflicts),
+and step 070 stops on it. The idea, a correspondence restricted to an entity class of its subject or object, is
+EDOAL's (the Alignment API's Expressive and Declarative Ontology Alignment Language: RelationDomainRestriction,
+RelationCoDomainRestriction); its home here is docs/terminology.md, *conditional row*.
 
 The three columns of fixed values (kind, swap_subject_and_object, checked) are read ignoring case and spaces at
 either end, here (read_mapping), so step 070, the annotation tool and the status read them alike; any other
@@ -48,8 +67,8 @@ ground truth schema file has a MISSING TARGET (is_missing_target): there is no
 definition to compare, so it is never stale_gtt; step 070 stops on it, and the
 annotation tool marks it. The full list of its causes: docs/terminology.md, *row state*.
 
-One component class, one row: two rows with the same kind and the same
-component_class_from_past_or_crt_schema (compared like every component class,
+One component class, one row (per condition): two rows with the same kind, the same
+component_class_from_past_or_crt_schema and the same condition (compared like every component class,
 ignoring case and punctuation) would leave it open which translation counts.
 Step 070 never writes such a pair; a hand edit can. repeats() finds them: step 070 stops
 until they're gone, and the annotation tool lets a person delete the extra
@@ -70,7 +89,8 @@ from common.triples_io import KIND_KEYS, component_class_key
 
 MAPPING_PATH = ANNOTATIONS_DIR / "component_class_mapping.csv"
 COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt", "swap_subject_and_object", "checked",
-           "definition_from_past_or_crt_schema", "definition_in_gtt"]
+           "definition_from_past_or_crt_schema", "definition_in_gtt", "if_subject_class", "if_object_class"]
+CONDITIONS = ("if_subject_class", "if_object_class")                     # the condition columns, subject first
 KINDS = KIND_KEYS                                                       # {kind: the schema's key}
 NONE = "(none)"
 CHECKED = ("yes", "same component class")                                          # what 070 accepts as checked
@@ -180,12 +200,66 @@ def row_states(row: dict, crt: dict | None, gtt: dict, repeated: bool = False, s
     return [state for state in ROW_STATES if found[state]]
 
 
+def condition(row: dict) -> tuple:
+    """(subject's entity class, object's entity class), each a component_class_key or None: the row's condition;
+    (None, None) for an unconditional row."""
+    return tuple(component_class_key(row.get(c) or "") or None for c in CONDITIONS)
+
+
+def is_conditional(row: dict) -> bool:
+    return condition(row) != (None, None)
+
+
+def condition_text(row: dict) -> str:
+    """The condition in words, for messages and pages; "" for an unconditional row."""
+    parts = [f"{slot} of entity class {row[c]}" for slot, c in zip(("subject", "object"), CONDITIONS) if row.get(c)]
+    return ("if its " + " and its ".join(parts)) if parts else ""
+
+
+def rule_for(rows: list, subject_class, object_class):
+    """Of one predicate's rows, the one that applies to an extracted triple whose subject and object have these entity
+    classes (as extracted): of the rows whose every condition holds, the one with the most conditions; None if none
+    holds. A conflict (conflicts) has stopped step 070 before this is asked."""
+    have = (component_class_key(subject_class or "") or None, component_class_key(object_class or "") or None)
+    best = None
+    for r in rows:
+        cond = condition(r)
+        if all(c is None or c == h for c, h in zip(cond, have)):
+            n = sum(c is not None for c in cond)
+            if best is None or n > best[0]:
+                best = (n, r)
+    return best[1] if best else None
+
+
+def conflicts(rows: list) -> list:
+    """Pairs of rows of one predicate that would both apply to some extracted triple with as many conditions each and
+    translate it differently (another component_class_in_gtt or swap_subject_and_object), with no row having both
+    their conditions to settle it: that happens only for one row with a condition on the subject only and another
+    with one on the object only. [{"component_class", "lines": [a, b]}], in the file's order."""
+    out, by_predicate = [], {}
+    for r in rows:
+        if r["kind"] == "predicate":
+            by_predicate.setdefault(component_class_key(r["component_class_from_past_or_crt_schema"]), []).append(r)
+    for same in by_predicate.values():
+        conditions = {condition(r) for r in same}
+        for i, a in enumerate(same):
+            for b in same[i + 1:]:
+                (sa, oa), (sb, ob) = condition(a), condition(b)
+                one_each = (sa and not oa and ob and not sb) or (oa and not sa and sb and not ob)
+                differ = (component_class_key(a["component_class_in_gtt"]), a["swap_subject_and_object"]) != \
+                    (component_class_key(b["component_class_in_gtt"]), b["swap_subject_and_object"])
+                if one_each and differ and (sa or sb, oa or ob) not in conditions:
+                    out.append({"component_class": a["component_class_from_past_or_crt_schema"],
+                                "lines": [a["_line"], b["_line"]]})
+    return out
+
+
 def repeats(rows: list) -> list:
-    """Component classes with more than one row: [{"kind", "component_class", "lines": [file line
-    numbers]}], in the order first met."""
+    """Component classes with more than one row with the same condition: [{"kind", "component_class", "lines": [file
+    line numbers]}], in the order first met. (One predicate's rows with different conditions are not repeats.)"""
     found = {}
     for r in rows:
-        key = (r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"]))
+        key = (r["kind"], component_class_key(r["component_class_from_past_or_crt_schema"])) + condition(r)
         found.setdefault(key, {"kind": r["kind"], "component_class": r["component_class_from_past_or_crt_schema"], "lines": []})
         found[key]["lines"].append(r["_line"])
     return [v for v in found.values() if len(v["lines"]) > 1]
@@ -197,7 +271,8 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
     never written back). Stops if a column is missing."""
     with open(path, encoding="utf-8-sig", newline="") as fh:
         reader = csv.DictReader(fh)
-        missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
+        missing = [c for c in COLUMNS if c not in (reader.fieldnames or []) and c not in CONDITIONS]   # a table
+        # from before conditional rows (2026-10-30) has no condition columns: read as unconditional rows
         if missing:
             raise Stop(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so the translation table can't "
                        f"be read. Restore its header line, which names the columns: {', '.join(COLUMNS)}.")
@@ -218,6 +293,8 @@ def value_problems(rows: list) -> list:
         bad = [c for c, allowed in VALUES.items() if r[c] not in allowed]
         if r["kind"] == "entity class" and r["swap_subject_and_object"] == "yes":
             bad.append("swap_subject_and_object")
+        if r["kind"] == "entity class":
+            bad += [c for c in CONDITIONS if r[c]]                       # a condition belongs to a predicate's row
         out += [f"line {r['_line']} ({r['component_class_from_past_or_crt_schema']}): {c} '{r[c]}'" for c in bad]
     return out
 
@@ -225,4 +302,4 @@ def value_problems(rows: list) -> list:
 def values_text() -> str:
     """The allowed values, for messages."""
     return ("kind: entity class or predicate; swap_subject_and_object: yes or no (no for an entity class); checked: "
-            "no, yes, or same component class")
+            "no, yes, or same component class; if_subject_class and if_object_class: empty for an entity class")

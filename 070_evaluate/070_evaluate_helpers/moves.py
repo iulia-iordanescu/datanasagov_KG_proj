@@ -346,8 +346,10 @@ def _ground_truth_rows(r: dict) -> list:
 
 
 def _translation_fingerprint(translation) -> str:
-    return _fingerprint({"entity class": sorted(translation.entity.items()),
-                         "predicate": sorted(translation.predicate.items())})
+    value = {"entity class": sorted(translation.entity.items()), "predicate": sorted(translation.predicate.items())}
+    if getattr(translation, "conditional", None):                   # unchanged fingerprint without conditional rows
+        value["conditional"] = sorted((k, sorted(v, key=str)) for k, v in translation.conditional.items())
+    return _fingerprint(value)
 
 
 def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
@@ -696,7 +698,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     lines = ["### What this run worked on", "",
              f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth schema "
              f"through `annotations/component_class_mapping.csv` "
-             f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed).", "",
+             f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed"
+             + (f"; {translation.conditional_rows_used} conditional row(s)" if getattr(translation, "conditional_rows_used", 0) else "")
+             + ").", "",
              "| Part | Records evaluated |", "|---|---:|"]
     for part in PARTS:
         count = sum(r["part"] == part for r in evaluated.records)
