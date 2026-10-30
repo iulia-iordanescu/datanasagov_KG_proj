@@ -1,8 +1,0 @@
-Before you answer, find every thing the record names: the dataset its title
-names, and every instrument, spacecraft, mission, algorithm, variable, input
-dataset, organization, or other thing it names. Then, for each of them in
-turn, state every fact the record gives about it that the schema can
-express: not only the facts about the dataset its title names. The rules
-below still hold, the rule on general facts among them: state the facts
-about another dataset only if the record's dataset is made from it or is
-part of it, and always state how the two datasets are connected.

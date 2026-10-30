@@ -285,17 +285,6 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(set(used["learned_from"]["ids"]), {x["id"] for x in evidence["texts"]})
         _, again = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(again, 0, "a rerun paid again")
-        # list_things_first on: another prompt, so every record is asked again; the report and the manifest show the
-        # setting (070's recipe takes 060's manifest settings); off again: the first run's answers, from the cache
-        out, things = self.run_step("060_extract", *NO_CONFIRM, "--list_things_first", "true")
-        self.assertEqual(things, 10)                                            # 9 records, 1 test call
-        report = (self.repo / re.search(r"report: (\S+\.md)", out).group(1)).read_text(encoding="utf-8")
-        self.assertIn("| `list_things_first` | True | changed on the command line |", report)
-        self.assertIn("060_extract/060_extract_prompts/list_things_first.txt", report)       # its fingerprint listed
-        self.assertIs(self.manifest("060_extract")["settings"]["list_things_first"], True)
-        _, back = self.run_step("060_extract", *NO_CONFIRM)
-        self.assertEqual(back, 0, "the run with list_things_first off paid again")
-        self.assertIs(self.manifest("060_extract")["settings"]["list_things_first"], False)
         self.assertEqual(read_csv(self.output("060_extract", "extracted_triples.csv")), kept)   # 070 reads these
 
     # ---------------------------------------------------------------- 070

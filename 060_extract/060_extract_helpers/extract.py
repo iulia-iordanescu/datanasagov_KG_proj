@@ -7,17 +7,15 @@ Stage 3, ask_model. One call per text piece (a long record is split:
 common/common_helpers/chunking.py). The prompt (060_extract/060_extract_prompts/extract.txt) asks for ONLY the
 facts the schema can express, with ONLY the schema's component classes; its rules and
 reply format are 050's (common/common_prompts/), so what 060 extracts and the
-ground truth 050 drafted are asked for the same way. With the setting
-list_things_first on, the prompt also asks the model to find every thing the
-record names first, then state the facts about each of them
-(060_extract/060_extract_prompts/list_things_first.txt, put in at
-$list_things_first; off, the default, puts in nothing, so the prompt is the one
-060 always sent). The idea is TRACE-KG's (Abolhasani, Ba, He & Pan, "Traceable
-Context-Enriched Knowledge Graph Generation with Induced Schemas",
-arXiv:2604.03496v3, sections 4.2 and 4.4), which first finds the things a text
-piece names and then, in a later stage, the facts among them; here both are
-asked for in one call, and the list isn't asked for in the reply, so the
-shared reply format is unchanged. The calls are made by
+ground truth 050 drafted are asked for the same way. The prompt asks the model
+to work in two passes: first find every thing the record names, then state
+the facts the record gives about each of them. This order of work is
+TRACE-KG's (Abolhasani, Ba, He & Pan, "Traceable Context-Enriched Knowledge
+Graph Generation with Induced Schemas", arXiv:2604.03496v3, sections 4.2 and
+4.4), which first finds the things a text piece names and then, in a later
+stage, the facts among them; here both passes are asked for in one call, and
+the list isn't asked for in the reply, so the shared reply format is
+unchanged. The calls are made by
 common/common_helpers/extraction.ask_model: every answer is cached, a rerun pays only for
 what it doesn't have, and a record with a failed call is left out whole.
 
@@ -59,14 +57,13 @@ from pathlib import Path
 
 from common import extraction
 from common.audit import log
-from common.prompt_files import load, text
+from common.prompt_files import load
 from common.triples_io import UNDECIDED, is_describes
 from common.validate import (DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_UNDECIDED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              PREDICATE_NOT_IN_SCHEMA, SOURCE_NOT_IN_TEXT, SUBJECT_CLASS_NOT_IN_SCHEMA)
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "060_extract_prompts"   # 060_extract/060_extract_prompts/
 PROMPT = load(PROMPTS_DIR / "extract.txt")
-LIST_THINGS_FIRST = load(PROMPTS_DIR / "list_things_first.txt")
 
 #: Checks that remove a row, and the reason written for it.
 REMOVE = {NO_SOURCE_TEXT: extraction.SOURCE_TEXT, SOURCE_NOT_IN_TEXT: extraction.SOURCE_TEXT,
@@ -99,18 +96,9 @@ def _in_schema_spelling(row: dict, schema_entries) -> dict:
     return fixed
 
 
-def list_things_first(settings: dict) -> str:
-    """What the prompt's $list_things_first becomes: with the setting on, the instruction of list_things_first.txt as
-    a paragraph of its own; off, nothing, so the prompt is, byte for byte, the one sent before the setting existed
-    (and the answers already cached for it are reused)."""
-    return "\n" + text(LIST_THINGS_FIRST).strip() + "\n" if settings["list_things_first"] else ""
-
-
 def ask_model(chosen, schema, calls, settings: dict) -> extraction.Replies:
-    things = list_things_first(settings)
-
     def prompt_for(item, piece):
-        return extraction.prompt(PROMPT, schema.text, chosen.records[item["id"]], piece, list_things_first=things)
+        return extraction.prompt(PROMPT, schema.text, chosen.records[item["id"]], piece)
     # Everything before the record (the instructions, the schema, the rules) is the same in every request, so it is
     # sent for prompt caching (common/common_helpers/llm.py, _messages).
     return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "extract",

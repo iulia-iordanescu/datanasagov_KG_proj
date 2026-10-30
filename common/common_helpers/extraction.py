@@ -108,7 +108,7 @@ def prompt(template, schema_text: str, record: dict, piece: str, with_classes: b
     """The prompt for one text piece: template (040's, 050's, or 060's) filled
     with the schema (none for 040), this record's rules, the shared reply
     format and the piece; own: the step's own $names, if its template has any
-    (060: $list_things_first)."""
+    (none has, as of 2026-10-30)."""
     return fill(template, schema=schema_text, rules=rules_for(record), reply=reply(with_classes),
                 text=wrap(piece), **own)
 

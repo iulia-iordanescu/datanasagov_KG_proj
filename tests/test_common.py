@@ -967,16 +967,12 @@ class ExtractWithoutGroundTruth(unittest.TestCase):
         self.assertIn("--extract_from all", str(stop.exception))
 
 
-class ListThingsFirst(unittest.TestCase):
-    """060's setting list_things_first (060_extract_helpers/extract.py, list_things_first): off by default, and then
-    the prompt is byte for byte the one 060 sent before the setting existed, so every answer cached for it is reused;
-    on, the instruction of list_things_first.txt is a paragraph of its own before the schema, inside the part sent for
-    prompt caching, and the prompt's fingerprint differs (a new model call)."""
+class TwoPasses(unittest.TestCase):
+    """060's prompt (060_extract_prompts/extract.txt) always asks for TRACE-KG's order of work: first find every thing
+    the record names, then state the facts about each. The instruction is a paragraph of its own before the schema,
+    inside the part sent for prompt caching; the list is not asked for in the reply, so the reply format is 050's.
+    It replaced the setting list_things_first (2026-10-30), which no longer exists."""
 
-    #: sha256 of 060_extract/060_extract_prompts/extract.txt before $list_things_first was added (commit 2607128). If
-    #: extract.txt is edited on purpose, every 060 answer is asked again anyway: then put its new text's fingerprint
-    #: here, without the line $list_things_first.
-    BEFORE = "c0d6f01ac0fe0af9c9f52ec4568979a129761e41e82f72913bbb76fb834a67cf"
     RECORD = {"id": "r1", "title": "Kestrel Lake Ice L2", "notes": "Made by the Tern algorithm."}
 
     def setUp(self):
@@ -985,61 +981,35 @@ class ListThingsFirst(unittest.TestCase):
         import extract                                                         # 060_extract_helpers/extract.py
         self.extract = extract
 
-    def run_py(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("run_060", ROOT / "060_extract" / "run.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def prompt(self, on: bool) -> str:
-        things = self.extract.list_things_first({"list_things_first": on})
+    def prompt(self) -> str:
         return extraction.prompt(self.extract.PROMPT, "ENTITY CLASSES\nInstrument  a device", self.RECORD,
-                                 "title: Kestrel Lake Ice L2", list_things_first=things)
+                                 "title: Kestrel Lake Ice L2")
 
-    def test_off_is_the_prompt_before(self):
-        import hashlib
-        from string import Template
-        template = self.extract.PROMPT.template
-        self.assertEqual(template.count("$list_things_first\n"), 1)
-        before = template.replace("$list_things_first\n", "\n")               # the blank line it stands on
-        self.assertEqual(hashlib.sha256(before.encode("utf-8")).hexdigest(), self.BEFORE)
-        old = Template(before).substitute(schema="ENTITY CLASSES\nInstrument  a device",
-                                          rules=extraction.rules_for(self.RECORD), reply=extraction.reply(True),
-                                          text=extraction.wrap("title: Kestrel Lake Ice L2"))
-        self.assertEqual(self.prompt(False), old)                              # byte for byte
-        from common.cache import key
-        self.assertEqual(key(self.prompt(False)), key(old))                    # so the cached answer is found
+    def test_always_two_passes(self):
+        prompt = self.prompt()
+        self.assertNotIn("$", self.extract.PROMPT.template.replace("$schema", "").replace("$rules", "")
+                         .replace("$reply", "").replace("$text", ""))           # no other placeholder left
+        first = prompt.index("Work in two passes")
+        self.assertIn("1. Find every thing the record names", prompt)
+        self.assertIn("2. Take the things one at a time.", prompt)
+        self.assertIn("this list in your answer.", prompt)
+        self.assertLess(prompt.index("leave describes_class empty."), first)
+        self.assertLess(first, prompt.index("\nSCHEMA\n"))                      # before the schema
+        self.assertLess(first, prompt.index(extraction.BEGIN_LINE))            # in the part sent for prompt caching
+        self.assertIn(extraction.reply(True), prompt)                          # the shared reply format, unchanged
 
-    def test_on_adds_the_instruction(self):
-        from common.cache import key
-        on, off = self.prompt(True), self.prompt(False)
-        paragraph = (ROOT / "060_extract" / "060_extract_prompts" / "list_things_first.txt").read_text(
-            encoding="utf-8").strip()
-        self.assertEqual(on.count(paragraph), 1)
-        self.assertIn("leave describes_class empty.\n\n" + paragraph + "\n\nSCHEMA\n", on)   # its own paragraph
-        self.assertLess(on.index(paragraph), on.index(extraction.BEGIN_LINE))   # in the part sent for prompt caching
-        self.assertEqual(on.replace(paragraph + "\n\n", ""), off)              # and nothing else differs
-        self.assertNotEqual(key(on), key(off))
-
-    def test_setting(self):
-        """Off by default; given on the command line as true or false (any form step._parse_bool reads), anything
-        else refused before the run starts."""
-        from common.step import _parse_command_line
-        run = self.run_py()
-        self.assertIs(run.SETTINGS["list_things_first"], False)
-        for given, wanted in (("true", True), ("Yes", True), ("on", True), ("false", False), ("0", False)):
-            _, chosen, changed = _parse_command_line("060_extract", run.INPUTS, run.SETTINGS,
-                                                     ["--list_things_first", given])
-            self.assertIs(chosen["list_things_first"], wanted, given)
-            self.assertEqual(changed, ["list_things_first"])
-        _, chosen, changed = _parse_command_line("060_extract", run.INPUTS, run.SETTINGS, [])
-        self.assertIs(chosen["list_things_first"], False)
+    def test_setting_is_gone(self):
         import contextlib
+        import importlib.util
         import io
-        for given in ("maybe", "tru", ""):
-            with self.assertRaises(SystemExit, msg=given), contextlib.redirect_stderr(io.StringIO()):
-                _parse_command_line("060_extract", run.INPUTS, run.SETTINGS, ["--list_things_first", given])
+        from common.step import _parse_command_line
+        spec = importlib.util.spec_from_file_location("run_060", ROOT / "060_extract" / "run.py")
+        run = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(run)
+        self.assertNotIn("list_things_first", run.SETTINGS)
+        self.assertFalse((ROOT / "060_extract" / "060_extract_prompts" / "list_things_first.txt").exists())
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            _parse_command_line("060_extract", run.INPUTS, run.SETTINGS, ["--list_things_first", "true"])
 
 
 class Confirm(unittest.TestCase):
