@@ -203,7 +203,8 @@ MESSAGES = {
     SUBJECT_NOT_IN_TEXT: "The subject instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
                            "reworded on purpose, nothing to do.",
     OBJECT_NOT_IN_TEXT: "The object instance isn't in the record's text: a typo, or reworded. Fix a typo; if it's "
-                          "reworded on purpose, nothing to do.",
+                          "reworded on purpose (e.g. a period or range written as its start and end joined by the record's "
+                          "linking words, rule 1 of \"Writing a classed triple\"), nothing to do.",
     SUBJECT_NOT_IN_SOURCE: "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
                              "passage, or too short. A source text contains words for the subject, the predicate and the object; "
                              "when the subject is named only in an earlier sentence, it runs from where it is named to the end of the "

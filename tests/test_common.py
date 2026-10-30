@@ -439,6 +439,22 @@ class Checks(unittest.TestCase):
         # comparing two component instances (pairing) keeps inner punctuation
         self.assertNotEqual(text_match.norm_text("MODIS, Aqua"), text_match.norm_text("MODIS Aqua"))
 
+    def test_source_text_in_passages(self):
+        """Suppose a fact's source text is two passages of the record joined by " … " (a fact a predicate's definition
+        derives from statements in two places). Then it is in the text when each passage is. Near misses: one passage
+        not in the text, passages joined by "..." or "…" without spaces (taken as one passage), and a lone passage."""
+        text = text_match.Text("The first is a skin SST (NSST). Other words here. The SST4 product has lower uncertainty.")
+        row = {"subject": "SST4", "object": "skin SST", "source_text": ""}
+        def errors(source):
+            return validate.check_triple_instance({**row, "source_text": source}, text)[0]
+        self.assertEqual(errors("The first is a skin SST … The SST4 product has lower uncertainty"), [])
+        self.assertEqual(errors("The first is a skin SST … The SST4 product has higher uncertainty"),
+                         ["source_not_in_text"])
+        self.assertEqual(errors("The first is a skin SST ... The SST4 product has lower uncertainty"), ["source_not_in_text"])
+        self.assertEqual(errors("The first is a skin SST…The SST4 product has lower uncertainty"), ["source_not_in_text"])
+        self.assertEqual(errors("The SST4 product has lower uncertainty"), [])
+        self.assertEqual(validate.PASSAGES_JOIN, " … ")
+
     def test_twin_kinds(self):
         # one kind each, the one sharing the most text: whole text, notes only, title only; empty fields never match
         import doctest

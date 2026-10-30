@@ -92,13 +92,27 @@ ALL_CHECKS = (ERRORS + FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS
               + TOOL_CHECKS)
 
 
+#: Joins the passages of a source text made of several (rule 1 of "What counts as a fact", annotations/guidelines.md:
+#: a fact that a test in a predicate's definition derives from the record's own statements, in more than one place).
+PASSAGES_JOIN = " … "
+
+
+def source_in_text(source: str, text: Text) -> bool:
+    """Whether a source text is in the record's text: as one passage, or as passages joined by PASSAGES_JOIN, each
+    in the text."""
+    if text.contains(source):
+        return True
+    parts = [p for p in source.split(PASSAGES_JOIN) if p.strip()]
+    return len(parts) > 1 and all(text.contains(p) for p in parts)
+
+
 def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
     """(errors, flags) for one triple instance, each a list of the names above."""
     errors, flags = [], []
     source = str(instance.get("source_text") or "")
     if not source.strip():
         errors.append(NO_SOURCE_TEXT)
-    elif not text.contains(source):
+    elif not source_in_text(source, text):
         errors.append(SOURCE_NOT_IN_TEXT)
 
     for k in ("subject", "object"):

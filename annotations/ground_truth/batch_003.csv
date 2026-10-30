@@ -37,14 +37,14 @@ dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,EDR (raw) sensor data,Dataset,HAS_PROCESSIN
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,HAS_PROCESSING_LEVEL,Level 3 (RDR),ProcessingLevel,This data set contains Level 2/3 (EDR/RDR) data,1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,FROM_MISSION,Stardust-NExT,Mission,during the Stardust-NExT mission,1,gemini-2.5-pro
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_VERSION,V1.0,Version,V1.0,1,
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_TIME_SPAN,"January, 2007 up to March, 2011",Time,"from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011",1,
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_TIME_SPAN,"from January, 2007 up to March, 2011",Time,"from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011",1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,cruise,MissionPhase,"through cruise, approach to and encounter with comet 9P/Tempel 1",1,gemini-2.5-pro
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,approach,MissionPhase,"through cruise, approach to and encounter with comet 9P/Tempel 1",1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,encounter,MissionPhase,"through cruise, approach to and encounter with comet 9P/Tempel 1",1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,Stardust-NExT,Mission,ENDED_ON,"March, 2011",Time,"during the Stardust-NExT mission from January, 2007, through cruise, approach to and encounter with comet 9P/Tempel 1, and up to end of mission in March, 2011",1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,The Tempel 1 encounter data,1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,HAS_TARGET,9P/Tempel 1,CelestialBody,The Tempel 1 encounter data,1,
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,HAS_DURATION,~40 minute period,Value,The Tempel 1 encounter data span a ~40 minute period,1,
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,HAS_DURATION,~40 minute,Value,The Tempel 1 encounter data span a ~40 minute period,1,
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,This data set contains Level 2/3 (EDR/RDR) data,1,gemini-2.5-pro
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,EDR (raw) sensor data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,This data set contains Level 2/3 (EDR/RDR) data,1,gemini-2.5-pro
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,COMPUTED_FROM,EDR (raw) sensor data,Dataset,The RDR data convert the EDR (raw) sensor data,1,gemini-2.5-pro

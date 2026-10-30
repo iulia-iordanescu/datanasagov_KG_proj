@@ -330,9 +330,10 @@ Our schema separates two things a dataset can hold: a PhysicalQuantity, a proper
 - source text: SST MID-IR
 - source text: The first is a skin SST produced for both day and night (NSST)
 - source text: the SST derived from these measurements is identified as SST4
+- source text: At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_MEASUREMENTS_OF "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VARIABLE "SST4" (Variable)
-- classed triple: "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
+- classed triple: "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
 
 ### Ground truth schema
@@ -465,20 +466,20 @@ Taken out of the expert's (b) on 2026-10-26, because it named five records in on
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_MEASUREMENTS_OF "snow cover" (PhysicalQuantity)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_MEASUREMENTS_OF "Sea Surface Salinity (SSS)" (PhysicalQuantity)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
+- classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
+- classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 4.05 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
-- classed triple of the record at pool position 4: "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST (NSST)" (Variable)
+- classed triple of the record at pool position 4: "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
+- classed triple of the record at pool position 4: "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST" (Variable)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_MEASUREMENTS_OF "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VARIABLE "SST4" (Variable)
 - classed triple of the record at pool position 4: "SST4" (Variable) LIMITED_BY "sun glint" (Phenomenon)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) OBSERVED_AT_TIME_OF_DAY "day" (TimeOfDay)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) OBSERVED_AT_TIME_OF_DAY "night" (TimeOfDay)
+- classed triple of the record at pool position 4: "skin SST" (Variable) OBSERVED_AT_TIME_OF_DAY "day" (TimeOfDay)
+- classed triple of the record at pool position 4: "skin SST" (Variable) OBSERVED_AT_TIME_OF_DAY "night" (TimeOfDay)
 - classed triple of the record at pool position 4: "SST4" (Variable) OBSERVED_AT_TIME_OF_DAY "night" (TimeOfDay)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) PRODUCED_USING_ALGORITHM "modified nonlinear SST algorithm" (Algorithm)
+- classed triple of the record at pool position 4: "skin SST" (Variable) PRODUCED_USING_ALGORITHM "modified nonlinear SST algorithm" (Algorithm)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "nominal fast neutron count rates" (Variable)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) HAS_VARIABLE "fast neutron residual count rates" (Variable)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) RELATED_TO "average atomic mass" (PhysicalQuantity)
@@ -879,7 +880,7 @@ My current reading, as it was: Option 1 for now, because the definition of Tempo
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
-- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "January, 2007 up to March, 2011" (Time)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "from January, 2007 up to March, 2011" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) HAS_TIME_SPAN "between 2000 February 3 and 2008 October 08" (Time)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TIME_SPAN "2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000" (Time)
@@ -1051,11 +1052,11 @@ When a record describes how its data were made, we write the step as output = me
 - source text: The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels
 - source text: At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4
 - source text: The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm
-- classed triple: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
-- classed triple: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
+- classed triple: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
+- classed triple: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
 - classed triple: "SST4" (Variable) COMPUTED_FROM "mid-infrared 4.05 micron wavelength channel" (Channel)
-- classed triple: "skin SST (NSST)" (Variable) PRODUCED_USING_ALGORITHM "modified nonlinear SST algorithm" (Algorithm)
+- classed triple: "skin SST" (Variable) PRODUCED_USING_ALGORITHM "modified nonlinear SST algorithm" (Algorithm)
 
 ### Ground truth schema
 
@@ -1068,7 +1069,7 @@ When a record describes how its data were made, we write the step as output = me
 
 #### Option 1: Keep the inputs as they are
 
-The channels stay inputs: "skin SST (NSST)" COMPUTED_FROM "long wave IR 11 micron wavelength channel".
+The channels stay inputs: "skin SST" COMPUTED_FROM "long wave IR 11 micron wavelength channel".
 
 #### Option 2: A predicate of its own for the channels a product uses
 
@@ -1133,12 +1134,12 @@ Option 2, as it was: Coin a predicate in the ground truth schema for "uses the m
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) PRODUCED_USING_ALGORITHM "a series of screens" (Algorithm)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
+- classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
+- classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 4.05 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) COMPUTED_FROM "pixels" (Dataset)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) PRODUCED_USING_ALGORITHM "modified nonlinear SST algorithm" (Algorithm)
+- classed triple of the record at pool position 4: "skin SST" (Variable) PRODUCED_USING_ALGORITHM "modified nonlinear SST algorithm" (Algorithm)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "nominal fast neutron count rates" (Variable)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "GRaND epithermal neutron map" (Dataset)
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
@@ -1856,8 +1857,8 @@ Our schema's Channel is "a range of wavelengths an Instrument measures separatel
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels
 - source text: At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4
-- classed triple: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
-- classed triple: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
+- classed triple: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
+- classed triple: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
 - classed triple: "SST4" (Variable) COMPUTED_FROM "mid-infrared 4.05 micron wavelength channel" (Channel)
 
@@ -1937,8 +1938,8 @@ The options as they were worded before 2026-10-26: option 1, ("Channel stays a r
 
 - record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
+- classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
+- classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 4.05 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "mid-infrared 3.95 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
@@ -2337,11 +2338,12 @@ Settled by checked sources, option 1. A review of this record on 2026-10-22 chec
 
 ### The question
 
-The example below, a MODIS sea surface temperature (SST) product, says "Two SST products can be present in these files": "a skin SST produced for both day and night (NSST)", and, at night, "a second SST product", "identified as SST4". From it we wrote that NSST gives approximate values of the "skin sea surface temperature (SST)", that SST4 gives approximate values of "SST", and that SST4 has lower uncertainty than NSST. We would like to know:
+The example below, a MODIS sea surface temperature (SST) product, says "Two SST products can be present in these files": "a skin SST produced for both day and night (NSST)", and, at night, "a second SST product", "identified as SST4". From it we wrote that the skin SST gives approximate values of the "skin sea surface temperature (SST)", that SST4 gives approximate values of "SST", and that SST4 has lower uncertainty than the skin SST. We would like to know:
 
 - (a) Is SST4 a skin SST too, so that both products estimate the same quantity, the skin sea surface temperature? We would then write the same words for both.
 - (b) The record says "The SST4 product has lower uncertainty", without saying than what. We read it as "lower uncertainty than NSST", the other product the record describes. Is that how you read it?
 - (c) From "SST MID-IR" in the example's title we wrote that the dataset holds SST4 (the product made from the mid-infrared channels), and wrote nothing about NSST, since "can be present" doesn't say that it is there. Does a "SST MID-IR ... Nighttime" product hold SST4 only, or NSST too?
+- (d) The record says "a skin SST produced for both day and night (NSST) observations". Does "NSST" name the skin SST product, or something else, such as the observations made at night? We write the product as "skin SST" and leave "NSST" out, since "(NSST)" follows "night", not "skin SST".
 
 ### Example record
 
@@ -2352,9 +2354,11 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 - source text: The first is a skin SST produced for both day and night (NSST)
 - source text: the SST derived from these measurements is identified as SST4
 - source text: The SST4 product has lower uncertainty
-- classed triple: "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
+- source text: Two SST products can be present in these files. The first is a skin SST
+- source text: identified as SST4. The SST4 product has lower uncertainty
+- classed triple: "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
-- classed triple: "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST (NSST)" (Variable)
+- classed triple: "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST" (Variable)
 
 ### Ground truth schema
 
@@ -2367,7 +2371,7 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 
 #### Option 1: Keep the ground truth as it is
 
-The facts stay as written: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity); "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity); and "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST (NSST)" (Variable).
+The facts stay as written: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity); "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity); and "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST" (Variable).
 
 #### Option 2: Both estimate the skin sea surface temperature
 
@@ -2375,7 +2379,7 @@ If SST4 is a skin SST: "SST4" (Variable) ESTIMATES "skin sea surface temperature
 
 #### Option 3: Leave out the comparison
 
-If "lower uncertainty" doesn't clearly mean "than NSST": no comparison is written, so there is no fact "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST (NSST)" (Variable).
+If "lower uncertainty" doesn't clearly mean "than NSST": no comparison is written, so there is no fact "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST" (Variable).
 
 ### My current reading
 
@@ -2384,6 +2388,8 @@ Option 1, because the record names SST4's quantity only "SST", and the compariso
 ### My notes
 
 The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". Until an expert answers, its ground truth keeps option 1, and HAS_VARIABLE "SST4" only. If experts say a "Nighttime" "SST MID-IR" product holds NSST too, we would still write it only if the record says so, and note the gap.
+
+Added on 2026-10-30, (d): the ground truth wrote the product as "skin SST (NSST)" until audit finding G7 (decided on 2026-10-30, docs/improvements.md): "(NSST)" follows "night", so it is not a name with its abbreviation in parentheses (rule 10 of *Writing a classed triple*), and the record does not say what NSST names (rule 1 of *What counts as a fact*). Its seven ground truth triples now use "skin SST", and "NSST" is in annotations/left_out.md. If the answer is that NSST names the skin SST product, the triples would use "skin SST" with "NSST" as another wording (ALSO_KNOWN_AS needs words of the record's own, rule 10, so probably no such triple); if it names the night observations, nothing changes.
 
 Changed on 2026-10-26, because the review page now shows a record's title only once, in its example: the expert's (c) began "The title is "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". From its "SST MID-IR" we wrote".
 
@@ -2424,9 +2430,9 @@ Option 2's text, as it was: If SST4 is a skin SST: "SST4" (Variable) ESTIMATES "
 ### Affects
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
+- classed triple of the record at pool position 4: "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
-- classed triple of the record at pool position 4: "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST (NSST)" (Variable)
+- classed triple of the record at pool position 4: "SST4" (Variable) HAS_LOWER_UNCERTAINTY_THAN "skin SST" (Variable)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VARIABLE "SST4" (Variable)
 - rule: What counts as a fact, rule 7
 - translation table row: predicate MORE_ACCURATE_THAN
@@ -2465,7 +2471,7 @@ Records name a dataset's version in several ways, and we are not sure some of th
 
 - entity class Version: a label that marks one release of something
 - predicate HAS_VERSION: carries this Version
-- predicate SUPERSEDES: replaces this earlier one
+- predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
 - predicate ALSO_KNOWN_AS: is the same thing under another name
 
 ### Options
@@ -2810,7 +2816,7 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_MEASUREMENTS_OF "snow cover" (PhysicalQuantity)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_MEASUREMENTS_OF "Sea Surface Salinity (SSS)" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_MEASUREMENTS_OF "skin sea surface temperature (SST)" (PhysicalQuantity)
-- classed triple of the record at pool position 4: "skin SST (NSST)" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
+- classed triple of the record at pool position 4: "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) RELATED_TO "average atomic mass" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument)
@@ -3090,7 +3096,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - predicate HAS_TEMPORAL_RESOLUTION: gives values this often, e.g. daily; weekly (8 day)
 - entity class SpatialResolution: the amount of ground each value of the data covers, e.g. 500 m; 4.63 km
 - predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground, e.g. 500 m
-- predicate SUPERSEDES: replaces this earlier one
+- predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
 - Writing a classed triple, rule 11: Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
 
 ### Consequences

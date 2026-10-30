@@ -3,7 +3,12 @@
   about what its title names, use the title as the subject. Exceptions,
   below: opinion words and words true only as of writing are left out; some
   qualifiers are taken out; a list's shared words are copied onto each item;
-  and a thing named twice uses one wording throughout.
+  and a thing named twice uses one wording throughout. A period of time or a
+  range of values whose start and end the record states with other words in between
+  is one subject or object: the start and the end joined by the record's own
+  linking words, the words in between left out ("from May 2004, through
+  calibration and the first survey, until its end in June 2009" gives "from
+  May 2004 until June 2009").
 - The subject of a fact is whatever the sentence is about, which is not
   always the title.
 - source_text: copied EXACTLY from the record: the shortest passage that
@@ -178,6 +183,18 @@
   states facts too: "Kestrel/Halden Lake Ice 20-Min L2 Swath 800m V027" says
   the record's dataset was collected by Kestrel and has a spatial resolution
   of 800m.
+  A fact the record does not state in one passage may be written when a
+  test in these rules or in a predicate's definition is met by the record's
+  own statements; never infer from outside knowledge. Two such tests: when
+  the record says an older version is discontinued or decommissioned and
+  directs users to a newer one, the newer one replaces the older one ("R3 was
+  retired in 2019. Please use R4." gives "R4" replacing "R3"); when the
+  record says one thing is lower, higher, better (or any other comparison)
+  without saying than what, and names exactly two things of that kind
+  together, the other one is what it is compared with ("Two products are
+  made, Q1 and Q2. Q2 has lower noise." gives Q2 lower noise than Q1); with
+  three or more, no fact. The source_text of such a fact is the passages
+  that meet the test, each copied exactly, joined by " … ".
 - Connect your triples: every triple should link, through the others, to the
   record's title. If one doesn't, look for the fact the record states that
   connects it; never invent one.

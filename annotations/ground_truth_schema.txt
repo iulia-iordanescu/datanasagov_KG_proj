@@ -166,7 +166,7 @@ OBTAINS_DATA_FROM    receives data from
                      source: ground truth tuning #4
 SERVES_AS            holds this Role
                      source: ground truth tuning #4
-SUPERSEDES           replaces this earlier one
+SUPERSEDES           replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
                      source: ground truth tuning #4
 FROM_SPACECRAFT      was collected from this Spacecraft
                      source: ground truth tuning #1

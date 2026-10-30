@@ -24,6 +24,7 @@ from common.ground_truth import GROUND_TRUTH_DIR, TUNING, read_ground_truth, rea
 from common.records_io import load_records
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
+from common.validate import PASSAGES_JOIN
 
 QUESTIONS_PATH = ANNOTATIONS_DIR / "questions_for_experts.md"
 GUIDELINES_PATH = ANNOTATIONS_DIR / "guidelines.md"
@@ -617,7 +618,9 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
                     if not same:
                         problems.append(f"{where(q, t['line'])}: the classed triple isn't one of record {rid}'s ground "
                                         f"truth triples (annotations/ground_truth/), word for word.")
-                    elif not any(squeeze(row["source_text"]) in sources for row in same):
+                    elif not any(squeeze(row["source_text"]) in sources
+                                 or all(squeeze(part) in sources for part in row["source_text"].split(PASSAGES_JOIN))
+                                 for row in same):          # a source text of several passages: each its own field
                         problems.append(f"{where(q, t['line'])}: its ground truth triple's source text, "
                                         f"\"{same[0]['source_text']}\", isn't among the record's \"source text\" "
                                         f"fields: add it.")
