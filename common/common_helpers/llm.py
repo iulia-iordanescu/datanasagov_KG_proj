@@ -133,6 +133,10 @@ DEFAULT_EFFORT = {"claude-opus-5.5": "medium", "claude-opus-5-5": "medium",
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
 REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0,
             "reasoning_tokens": 0}
+#: Replies asked once more by call_llm_json because they weren't usable, this run: not_json and wrong_shape count
+#: the first replies that weren't a JSON object or not of the shape asked for; fixed, those the second ask fixed;
+#: still_failed, those still unusable (their records are left out). Reported by common/common_helpers/dropped.py.
+REASKS = {"not_json": 0, "wrong_shape": 0, "fixed": 0, "still_failed": 0}
 _requests_lock = threading.Lock()
 
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
@@ -650,12 +654,20 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
             wrong = check(data) if check else None
             if wrong:
                 raise WrongShape(wrong)
+            if attempt:
+                with _requests_lock:
+                    REASKS["fixed"] += 1
             return data
         except (json.JSONDecodeError, BadReply) as e:
             # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see what broke it.
             log.debug(f"unusable answer from {MODEL} (attempt {attempt + 1} of {retries + 1}), "
                       f"{len(text):,} characters, {e}:\n{text}")
             shape = isinstance(e, WrongShape)
+            with _requests_lock:
+                if not attempt:
+                    REASKS["wrong_shape" if shape else "not_json"] += 1
+                if attempt == retries:
+                    REASKS["still_failed"] += 1
             if attempt == retries:
                 error = BadReply(f"the model's answer isn't "
                                  + ("a JSON object of the shape asked for" if shape else "a valid JSON object")
@@ -1052,6 +1064,8 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     SERVED.clear()
     for k in REQUESTS:
         REQUESTS[k] = 0
+    for k in REASKS:
+        REASKS[k] = 0
     OUTCOMES.update(failed=0, cut_off=0, not_sent=0, file=None)
     RUN_WARNINGS.clear()
     return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),

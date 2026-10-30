@@ -17,7 +17,7 @@ from __future__ import annotations
 import extract as extract_stage
 import records as records_stage
 import schema as schema_stage
-from common import audit, extraction, llm
+from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table
@@ -118,6 +118,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
                 ORIGIN_COLUMN: origin_of[rid]}
                for rid in rows.removed for x in rows.removed[rid]]
     new_component_classes, where = _new_component_classes(chosen, rows, settings)
+    left_out = dropped.left_out(replies, chosen.items)
 
     paths = {name: output / name for name in (KEPT_NAME, REMOVED_NAME, SCHEMA_NAME, DETAILS_NAME)}
     write_csv(paths[KEPT_NAME], KEPT_COLUMNS, kept)
@@ -132,6 +133,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
                      "kept": len(rows.kept.get(i["id"], [])), "removed": len(rows.removed.get(i["id"], []))}
                     for i in chosen.items],
         "skipped_while_choosing": chosen.skipped,
+        "left_out": dropped.details(left_out),
         "new_component_classes": {"counted_over": where, "component_classes": new_component_classes},
     })
     log.info(f"  wrote {KEPT_NAME}, {REMOVED_NAME}, {SCHEMA_NAME}, {DETAILS_NAME}")
@@ -162,6 +164,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
              + ("; skipped while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
                 if chosen.skipped else "") + ".",
              f"{only_describes} record(s) state no fact the schema can express (only their describes triple).", "",
+             *dropped.section(left_out, chosen.items, "the output", DETAILS_NAME),
              "### Schema", "",
              f"`{schema.files['schema']}` plus `{schema.files['additions']}`: {len(c['entity_classes'])} entity "
              f"classes, {len(c['predicates'])} predicates, {len(c['patterns'])} patterns, of which added: "
@@ -190,6 +193,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         if len(new_component_classes) > SHOW:
             lines.append(f"| … {len(new_component_classes) - SHOW} more, in `{DETAILS_NAME}` | | | |")
         lines.append("")
+    lines += dropped.reasks_lines(llm.REASKS)
     lines += model_calls([("stage 3: extract classed triples (one call per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.model_label())
 
@@ -197,7 +201,8 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
         files=list(paths.values()),
         headline={"records extracted": len(rows.kept),
                   **per_text_headline([("raw classed triples", per_text[0][1]),
-                                       ("extracted triples", per_text[1][1])])},
+                                       ("extracted triples", per_text[1][1])]),
+                  **dropped.reasks_headline(llm.REASKS)},
         details="\n".join(lines),
         warnings=warnings,
     )

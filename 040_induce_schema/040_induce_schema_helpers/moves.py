@@ -31,7 +31,7 @@ import label
 import merge
 import saturation
 import texts as texts_stage
-from common import audit, llm
+from common import audit, dropped, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.ground_truth import read_ground_truth, twin_kinds, twin_table, with_coined
@@ -115,6 +115,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         "made": made,
         "texts": [{**t, "pieces": pieces[t["id"]]} for t in triples.texts],
         "failed_texts": triples.failed,
+        "left_out": dropped.details(triples.left_out),
         "labels": labels.of, "vocabulary": labels.vocabulary, "label_batches": labels.batches,
         "unlabeled": labels.unlabeled, "merges": labels.merges, "merge_issues": labels.merge_issues,
         "spelling_folds": counts.spelling_folds, "unlabeled_slots": counts.unlabeled_slots,
@@ -197,6 +198,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         + (f"; {split} were split into text pieces" if split else "") + ".", "",
         "| Maintainer | Records | Texts used |", "|---|---:|---:|"]
     lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
+    lines += ["", *dropped.section(triples.left_out, texts.items, "the evidence the schema is induced from",
+                                   repo_path(evidence_path))]
     learned = [t["record"] for t in texts.items if t["id"] in {x["id"] for x in triples.texts}]
     lines += ["", "### Twins in the pool", "",
               f"A pool record with the same title, the same `notes`, or both as one of the {len(learned)} texts this run "
@@ -261,7 +264,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               "| Entity class | Support | Maintainers | Examples |", "|---|---:|---:|---|"]
     lines += [f"| {cell(c['component_class'])} | {c['support']} | {len(c['maintainers'])} | "
               f"{cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
-    lines += [""] + model_calls([("stage 2: extract triple instances (one call per text piece)", triples.calls, triples.reused),
+    lines += [""] + dropped.reasks_lines(llm.REASKS)
+    lines += model_calls([("stage 2: extract triple instances (one call per text piece)", triples.calls, triples.reused),
                                  (f"stage 3: label component instances ({label.LABEL_BATCH} per call)", labels.calls, labels.reused),
                                  ("stage 4: merge labels (one call per kind)", labels.merge_calls, labels.merge_reused),
                                  (f"stage 6: write definitions ({define.DEFINE_BATCH} per call)", definitions.calls,
@@ -273,7 +277,8 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         headline={"entity classes": len(schema.entity_classes), "predicates": len(schema.predicates),
                   "patterns": len(schema.patterns), "twins in the pool": f"{twins} of {len(texts.pool):,}",
                   **per_text_headline([("raw triple instances", per_text[0][1]),
-                                       ("verified triple instances", per_text[1][1])])},
+                                       ("verified triple instances", per_text[1][1])]),
+                  **dropped.reasks_headline(llm.REASKS)},
         details="\n".join(lines),
         warnings=warnings,
     )

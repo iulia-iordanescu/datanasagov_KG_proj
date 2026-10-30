@@ -35,7 +35,7 @@ NOT_FINISHED = "not finished in the ground truth"
 
 @dataclass
 class Chosen:
-    items: list = field(default_factory=list)      # {"id", "title", "text", "pieces"}
+    items: list = field(default_factory=list)      # {"id", "title", "maintainer", "text", "pieces"}
     records: dict = field(default_factory=dict)    # every record, {id: record}
     ground_truth: set = field(default_factory=set) # ids of every record in the ground truth
     how: str = ""                                  # the choice in words, for the report
@@ -88,7 +88,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
         elif not has_text(record):
             skipped[WITHOUT_TEXT].append(rid)
         else:
-            chosen.items.append({"id": rid, "title": record.get("title") or "", "text": full_text(record),
+            chosen.items.append({"id": rid, "title": record.get("title") or "", "maintainer": record.get("maintainer"),
+                                 "text": full_text(record),
                                  "pieces": pieces(record, settings["max_chars"])})
     chosen.skipped = {k: v for k, v in skipped.items() if v}
 

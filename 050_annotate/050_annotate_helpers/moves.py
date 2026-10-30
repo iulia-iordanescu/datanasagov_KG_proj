@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 import draft
 import records as records_stage
-from common import audit, extraction, llm
+from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
@@ -88,6 +88,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     n = chosen.batch
     batch_path = output / draft_name(n)
     details_path = batch_path.with_name(f"{batch_path.stem}_details.json")
+    left_out = dropped.left_out(replies, chosen.items)
     files, csv_rows = [], []
     for item in chosen.items:
         for r in drafts.rows.get(item["id"], []):
@@ -106,6 +107,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                          "rows": len(drafts.rows.get(i["id"], [])),
                          "removed": drafts.removed.get(i["id"], [])} for i in chosen.items],
             "skipped_while_choosing": chosen.skipped,
+            "left_out": dropped.details(left_out),
             "fair_sample": chosen.fair,
         }, new=True)
         files = [batch_path, details_path]
@@ -164,8 +166,10 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
               "tool), so everything the model listed is drafted: one row.",
               "", f"- Errors (must be fixed): {counted(drafts.errors)}.",
               f"- Flags (worth a look; a component class not in the ground truth schema is often a good new one): {counted(drafts.flags)}.",
-              f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).",
-              "", "### Fair sample", ""]
+              f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).", "",
+              *dropped.section(left_out, chosen.items, "the drafted batch",
+                               repo_path(details_path) if csv_rows else None),
+              "### Fair sample", ""]
     lines += [f"- {fair_words(fair, chosen.positions, part=name)}" for name, fair in chosen.fair.items()] + [""]
     if chosen.skipped:
         lines += ["Passed over while choosing: " + "; ".join(f"{len(v)} {k}" for k, v in chosen.skipped.items())
@@ -180,13 +184,15 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         if len(typos) > SHOW:
             lines.append(f"| … {len(typos) - SHOW} more | | |")
         lines.append("")
+    lines += dropped.reasks_lines(llm.REASKS)
     lines += model_calls([("stage 2: draft classed triples (one call per text piece)", replies.calls, replies.reused)],
                          calls.paid.test_calls, llm.model_label())
 
     return Results(
         files=files,
         headline={"records drafted": len(drafts.rows),
-                  **per_text_headline([("drafted triples", per_text[0][1])])},
+                  **per_text_headline([("drafted triples", per_text[0][1])]),
+                  **dropped.reasks_headline(llm.REASKS)},
         details="\n".join(lines),
         warnings=warnings,
     )

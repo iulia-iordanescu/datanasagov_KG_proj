@@ -54,11 +54,11 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import llm
+from common import dropped, llm
 from common.audit import log
 from common.cache import NOT_ASKED_AGAIN, Cache, key, needs
 from common.chunking import text_fields
-from common.prompt_files import fill, load
+from common.prompt_files import fill, load, text as prompt_text
 from common.report import named
 from common.text_match import Text
 from common.triples_io import (clean_triple, describes_triple, component_class_key, triple_key)
@@ -68,6 +68,8 @@ PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/
 RULES = load(PROMPTS / "extraction_rules.txt")
 REPLY = load(PROMPTS / "extraction_reply.txt")
 PASSES = load(PROMPTS / "extraction_passes.txt")
+EXAMPLES = load(PROMPTS / "extraction_examples.txt")
+CLOSING = load(PROMPTS / "extraction_closing.txt")
 #: What each step asks to be complete about, for its prompt's $passes (passes): 050 every fact, whatever the schema
 #: can express; 060 only the facts its schema can express.
 SCOPE_ALL = " (whether or not the schema below can express it)"
@@ -112,17 +114,26 @@ def passes(scope: str) -> str:
     return fill(PASSES, scope=scope)
 
 
+def task_parts(scope: str) -> dict:
+    """050's and 060's shared $passes, $examples and $closing (common/common_prompts/extraction_passes.txt,
+    extraction_examples.txt, extraction_closing.txt), for scope (SCOPE_ALL or SCOPE_SCHEMA). The layout they fill:
+    schema and rules first, then the worked examples, the task, the reply format, the record, and a closing line
+    after the record (prompt audit F5, F7, 2026-10-30)."""
+    return {"passes": passes(scope), "examples": prompt_text(EXAMPLES).strip(), "closing": fill(CLOSING, scope=scope).strip()}
+
+
 def reply(with_classes: bool = True) -> str:
-    """The reply format, each triple with its entity classes or without."""
+    """The reply format, each triple with its entity classes or without; each value a placeholder "<key>", so the
+    format is valid JSON as written (prompt audit F10)."""
     keys = ROW_KEYS if with_classes else ("subject", "predicate", "object", "source_text")
-    return fill(REPLY, fields=", ".join(f'"{k}": "..."' for k in keys)).strip()
+    return fill(REPLY, fields=", ".join(f'"{k}": "<{k}>"' for k in keys)).strip()
 
 
 def prompt(template, schema_text: str, record: dict, piece: str, with_classes: bool = True, **own) -> str:
     """The prompt for one text piece: template (040's, 050's, or 060's) filled
     with the schema (none for 040), this record's rules, the shared reply
     format and the piece; own: the step's own $names, if its template has any
-    (050 and 060: passes, as of 2026-10-30)."""
+    (050 and 060: passes, examples and closing, from task_parts)."""
     return fill(template, schema=schema_text, rules=rules_for(record), reply=reply(with_classes),
                 text=wrap(piece), **own)
 
@@ -207,6 +218,7 @@ class Replies:
     of: dict = field(default_factory=dict)        # {id: [reply per piece]} for records fully answered
     failed: dict = field(default_factory=dict)    # {id: why}
     cut_off: dict = field(default_factory=dict)   # {id: the service's usage} of the failed ones that were cut off
+    kinds: dict = field(default_factory=dict)     # {id: why it failed, a key of dropped.KINDS} of the failed ones
     calls: int = 0                                # model calls made
     reused: int = 0                               # pieces answered from the cache
     cut_reused: int = 0                           # pieces cut off in an earlier run, not asked again
@@ -245,6 +257,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     for (rid, i), (why, usage) in cut_before.items():
         result.failed[rid] = f"piece {i + 1}: {why} {NOT_ASKED_AGAIN}"
         result.cut_off[rid] = usage
+        result.kinds[rid] = "cut_off"
     if cut_before:
         log.info(f"  {len(cut_before)} text piece(s) were cut off at the answer length limit in an earlier run with "
                  f"the same settings, so they aren't asked again (the report's warnings say what to change)")
@@ -264,6 +277,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
             at = {"stage": stage, "record": where[0], "text_piece": where[1] + 1}
             if error is not None:
                 result.failed[where[0]] = f"piece {where[1] + 1}: {error}"
+                result.kinds[where[0]] = dropped.kind(error)
                 if isinstance(error, llm.CutOff):
                     cache.put_cut_off(todo[where][0], error)
                     result.cut_off[where[0]] = getattr(error, "usage", None) or {}

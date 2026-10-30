@@ -55,7 +55,7 @@ ALREADY_ANNOTATED, WAITING = "already in the ground truth", "waiting in a drafte
 
 @dataclass
 class Chosen:
-    items: list = field(default_factory=list)      # {"id", "position", "title", "text", "pieces"}
+    items: list = field(default_factory=list)      # {"id", "position", "title", "maintainer", "text", "pieces"}
     batch: int = 1                                 # this drafted batch's number
     notes: list = field(default_factory=list)      # shown before paying: where the drafted batch differs from what was asked
     records: dict = field(default_factory=dict)    # every record, {id: record}
@@ -212,6 +212,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     for rid in picked:
         record = chosen.records[rid]
         chosen.items.append({"id": rid, "position": chosen.positions.get(rid), "title": record.get("title") or "",
+                             "maintainer": record.get("maintainer"),
                              "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})
 
     taken_now, taken_after = chosen.done | set(chosen.waiting), chosen.done | set(chosen.waiting) | set(picked)

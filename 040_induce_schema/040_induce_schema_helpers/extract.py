@@ -37,7 +37,7 @@ import collections
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from common import extraction
+from common import dropped, extraction
 from common.audit import log
 from common.prompt_files import load
 from common.report import this_report
@@ -56,6 +56,7 @@ class TripleInstances:
                                                   #  "triple_instances", "unverified"}
     failed: dict = field(default_factory=dict)    # {text id: why}: left out whole, asked again on the next run
     failed_note: str | None = None                # the report's warning about them
+    left_out: list = field(default_factory=list)  # the same, with why and maintainer (common/common_helpers/dropped.py)
     malformed: int = 0                            # items in replies that weren't a triple instance
     errors: dict = field(default_factory=dict)    # {check: triple instances left out for it}
     flags: dict = field(default_factory=dict)     # {check: verified triple instances that raised it}
@@ -88,7 +89,8 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
                                    f"and define what it finds, all counted in {this_report()}, section *Results*, subsection "
                                    f"*Model calls*)", "extracting")
     result = TripleInstances(failed=dict(replies.failed), failed_note=extraction.failed_note(replies, "the evidence"),
-                             calls=replies.calls, reused=replies.reused)
+                             calls=replies.calls, reused=replies.reused,
+                             left_out=dropped.left_out(replies, texts.items))
 
     errors, flags = collections.Counter(), collections.Counter()
     for t in texts.items:

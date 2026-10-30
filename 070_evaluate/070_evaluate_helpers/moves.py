@@ -24,7 +24,7 @@ import readings
 import component_classes as component_classes_stage
 import records as records_stage
 import stats
-from common import audit, extraction, llm, text_match
+from common import audit, dropped, extraction, llm, text_match
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import append_csv, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, per_text_table, this_report
@@ -734,6 +734,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     if evaluated.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in evaluated.left_out.items())
                   + f". Not finished yet in the ground truth: {evaluated.unfinished}.", ""]
+    lines += dropped.section(evaluated.extraction_failed, evaluated.finished,
+                             "this evaluation (extraction had nothing for them)",
+                             "060_extract/extracted_triples_details.json")
 
     for part, v in metrics.items():
         if part == "kept_aside" or v["numbers"] is None:
@@ -806,6 +809,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
               f"pair, per occurrence left extracted only, and per ground truth triple left ground truth only: "
               f"`{COMPARED_NAME}`; "
               f"every number: `{METRICS_NAME}`.", ""]
+    lines += dropped.reasks_lines(llm.REASKS)
     lines += model_calls([("stage 2: propose component class translations (one call)", translation.calls,
                            translation.reused),
                           ("stage 2: suggest counterparts for (none) rows (one call)", translation.suggest_calls,
@@ -821,5 +825,6 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         twins = metrics[TUNING]["twins"]
         headline["twins (tuning)"] = ("not known" if twins is None else
                                       f"{len(twins['records'])} of {tuning['records']} evaluated")
+    headline.update(dropped.reasks_headline(llm.REASKS))
     return Results(files=[metrics_path, per_record_path, compared_path, kept_path], headline=headline,
                    details="\n".join(lines), warnings=warnings)
