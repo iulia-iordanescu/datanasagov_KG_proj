@@ -650,7 +650,7 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - predicate SOURCED_FROM -> (none): The subject (a dataset, file, objective or person) originates from the object, a source instrument, platform, observation set, data portion or institution.
 - predicate ACQUIRED_BY -> ACQUIRED_BY_INSTRUMENT: The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.
 - predicate COLLECTED_DURING -> HAS_MISSION_PHASE: The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.
-- predicate PROVIDED_BY -> (none): The subject (a product, campaign or responsibility) is supplied, conducted or overseen by the object, an organization, team or instrument mission.
+- predicate PROVIDED_BY -> PROVIDED_BY_PARTY: The subject (a product, campaign or responsibility) is supplied, conducted or overseen by the object, an organization, team or instrument mission.
 - entity class Spacecraft -> Spacecraft: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
 - entity class SpaceStation -> Spacecraft: A crewed orbiting space station, such as the International Space Station, used as a platform for research and observation.
 - entity class Aircraft -> (none): A crewed or research airplane used as a platform for airborne observations or measurements.
@@ -1317,7 +1317,7 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - predicate SPONSORED_BY_PARTY: is sponsored by this Person or Organization
 - predicate BASED_IN: is based in this Country
 - entity class Organization -> Organization: An institution, agency, center, or collaborative body, such as NASA, HEASARC, or CIESIN, responsible for producing, managing, or distributing data or research.
-- entity class Team -> (none): A group of people, such as investigators, specialists or institutional groups, working together on a mission, project or study.
+- entity class Team -> Organization: A group of people, such as investigators, specialists or institutional groups, working together on a mission, project or study.
 - entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
 - entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
