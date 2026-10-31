@@ -48,9 +48,22 @@ WHAT COUNTS AS A FACT
 8. Not the values inside a data table. For a table of values inside the
    record (rows of measurements, one per object), state what the table is
    about (what it measures, what it covers), not one triple per cell.
+   A record that tells the study its data come from: the study's aim and
+   method are facts of the record's dataset; its background, its findings,
+   and what it says about methods it did not use are not. "The authors
+   aimed to map the spread of lake algae, using a Kalman filter, and find
+   that the algae spread fastest in June" gives the record's dataset the
+   purpose "map the spread of lake algae" and produced using "Kalman
+   filter", and no triple for the finding.
 9. Not a fact without a specific thing. A triple needs a subject and an
    object the record names. "Kestrel records data at several wavelengths"
-   gives no triple, since "several wavelengths" names no wavelength.
+   gives no triple, since "several wavelengths" names no wavelength. A
+   word that only says how another fact holds gives no triple and is not
+   part of a subject or object, since its subject would be that fact, not a
+   thing the record names: "the main target is Halden-4" gives the record's
+   dataset's target "Halden-4", without "main"; "developed jointly by the
+   Kestrel Office and the Halden Office" gives the two developers, without
+   "jointly".
 10. Not words that are true only as of when the record was written. Leave
     out "latest", "current", "now", "then available", and words like them,
     and keep the rest of the fact. "The newest release, R4" gives the
@@ -62,8 +75,9 @@ WHAT COUNTS AS A FACT
 WRITING A TRIPLE
 
 11. Subject and object: the record's own words, as written. Don't
-    paraphrase them or expand abbreviations. Exceptions: rules 5 and 10
-    (opinion words, and words true only as of writing, are left out), and
+    paraphrase them or expand abbreviations. Exceptions: rules 5, 9 and 10
+    (opinion words, words that only say how another fact holds, and words
+    true only as of writing, are left out), and
     rules 19, 20, 22, 23 and 24 (rule 20: parentheses that hold the code of
     something else are not part of it; rule 24: the words for a processing
     step's input and method are not part of another subject or object). A
@@ -120,7 +134,8 @@ WRITING A TRIPLE
     "lake ice extent", and the record's dataset's temporal resolution
     "daily" and area the data cover "global"; "nighttime CTH" gives "CTH"
     and the time of day "nighttime"; "the U.K. Coastal Survey Bureau (CSB)"
-    gives "Coastal Survey Bureau (CSB)", and CSB based in "U.K.".
+    gives "Coastal Survey Bureau (CSB)", and "Coastal Survey Bureau (CSB)"
+    based in "U.K.".
     Whose fact it is: it depends only on the entity class of the subject or
     object the qualifier was in, not on the record's other facts. When that
     entity class is standalone (its instances exist on their own and have
@@ -213,6 +228,11 @@ WRITING A TRIPLE
     data" splits, since RAW and CAL are named separately; a title's "BAND
     4/5/6", with no band named alone anywhere in the record, stays whole.
     Lists joined by "and" or commas split as above.
+    A list with one abbreviation of its own is a name, kept whole, only when
+    the abbreviation stands for one thing; when it stands for several
+    things, it is a list, and the abbreviation belongs to no item: "Halden
+    Survey and Mapping Office (HSMO)" stays whole (one office); "Ice
+    Thickness and Albedo (IT&A)" gives "Ice Thickness" and "Ice Albedo".
     Describing words joined by "and" or a comma: keep them whole when the
     word they describe is singular, and split them when that word is
     plural. "A bright, narrow beam" is one beam, one object; "to reach the

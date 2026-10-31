@@ -123,7 +123,7 @@ ABOARD               is carried on
                      Instrument -> Spacecraft
 ACQUIRED_BY_INSTRUMENT  was collected by this Instrument
                      Dataset -> Instrument
-                     only: Dataset -> Instrument
+                     only: any -> Instrument
 ALSO_KNOWN_AS        is the same thing under another name
                      WebTool -> WebTool
 FROM_MISSION         was collected during this Mission
@@ -234,8 +234,9 @@ BINNED_INTO          its values were collected into the cells of this Grid
 MAPPED_INTO          its values were laid onto a map drawn with this MapProjection
                      source: ground truth tuning #4
                      only: any -> MapProjection
-DOCUMENTED_AT        more details about it are written at
+DOCUMENTED_AT        more details about it are written at this WebPage or in this Document
                      source: ground truth tuning #4
+                     only: any -> WebPage; any -> Document
 AFFILIATED_WITH      works at or belongs to this Organization
                      source: ground truth tuning #4
                      only: any -> Organization

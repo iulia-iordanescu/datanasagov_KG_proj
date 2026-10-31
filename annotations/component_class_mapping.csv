@@ -90,7 +90,7 @@ predicate,HAS_COUNT,(none),no,yes,"The subject (a platform, dataset or entity) h
 predicate,DESCRIBES,(none),no,yes,"The subject (a document, label or data item) provides information about or pertains to the object, a topic, content aspect or set of entities.",,,
 predicate,OBSERVES,(none),no,yes,"The subject (a survey, instrument, spacecraft or signal) observes, surveys or views the object, a field, region, target or medium.",,,
 predicate,IS_A,(none),no,yes,"The subject (an entity, dataset, mission or term) is an instance, classification or definition given by the object, a category or descriptive definition.",,,
-predicate,DESCRIBED_IN,DOCUMENTED_AT,no,yes,"The subject (a dataset, product, file or result) is documented, reported or accompanied by the object, a publication, document, label or website.",more details about it are written at,,
+predicate,DESCRIBED_IN,DOCUMENTED_AT,no,no,"The subject (a dataset, product, file or result) is documented, reported or accompanied by the object, a publication, document, label or website.",more details about it are written at this WebPage or in this Document,,
 predicate,HAS_DURATION,HAS_GRANULE_DURATION,no,yes,"The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.",each of its files covers this much time,,
 predicate,AFFECTS,(none),no,yes,"The subject (a factor, effect, flag or physical quantity) influences or impacts the object, a measurement, product, region or system.",,,
 predicate,CREATION_DATE,(none),no,yes,"The subject (a dataset, catalog or version) was created, published, released or ingested at the object, a date.",,,
