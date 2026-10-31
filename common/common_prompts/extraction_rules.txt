@@ -132,7 +132,7 @@ WRITING A TRIPLE
     fact about Q; "dataset R was used to make this dataset; R covers 1990 to
     1994" gives the record's dataset computed from "R", and R covers "1990
     to 1994", since the record's dataset is made from R.
-22. A list joined by "and": one triple per item. Take the qualifiers out
+22. A list: one triple per item. Take the qualifiers out
     first (rule 19); then put each item alone in the list's place (the
     subject or the object), with the words the items share copied onto it.
     Each item is now one thing, so shared words that agree with the number
@@ -162,21 +162,24 @@ WRITING A TRIPLE
     data" splits, since RAW and CAL are named separately; a title's "BAND
     4/5/6", with no band named alone anywhere in the record, stays whole.
     Lists joined by "and" or commas split as above.
-    Exception, a collective "and": keep the list whole, in one triple, when
-    it is what one of these five nouns is about: "continuity", "ratio",
-    "difference", "comparison", "correlation". Check it step by step: (1)
-    find one of the five nouns in the phrase that holds the list; (2) check
-    that the list follows it, as in "continuity of ... A and B" or
-    "difference between A and B"; (3) if both hold, keep the list whole.
-    Such an "and" means "A and B together" (collective); every other "and"
-    means "A, and also B" (distributive), and its list is split. Nothing
-    else keeps a list whole: not a noun inside a name ("Relative Difference
-    Vegetation Index and a cloud mask" splits), not an adjective ("merged
-    Sentinel and Landsat" splits), not "between" without one of the five
-    nouns (a period or a range is one item; see above). "Designed to keep
-    continuity of rainfall estimates from older and newer gauges" gives one
-    purpose, "keep continuity of rainfall estimates from older and newer
-    gauges".
+    Exception, a collective "and": a distributive "and" means "A, and also
+    B": what the record says holds for each item alone, so the list is
+    split. A collective "and" means "A and B together": what the record
+    says holds only for the items together (how they relate to each other,
+    or something they make jointly); keep such a list whole, in one triple.
+    Typical signs are a noun the list belongs to, such as "continuity of
+    ...", "ratio of ...", "difference between ...", "comparison of ...",
+    "correlation of ...", "average of ...", "merger of ...". A word that is
+    part of a name is not a sign ("Relative Difference Vegetation Index and
+    a cloud mask" splits), and an adjective or a preposition alone does not
+    make an "and" collective ("merged Sentinel and Landsat" splits, since
+    the data come from each; a period or a range is one item, see above).
+    Test: if what the record says is true of each item alone, the "and" is
+    distributive. "Designed to keep continuity of rainfall estimates from
+    older and newer gauges" gives one purpose, "keep continuity of rainfall
+    estimates from older and newer gauges"; "the mean of the morning and
+    evening passes" gives one object, "mean of the morning and evening
+    passes".
 23. One thing, one wording, within a record. When the record names the
     same thing more than once, in different words: if one wording says more
     (contains the other, is more precise, or spells out its abbreviation),
