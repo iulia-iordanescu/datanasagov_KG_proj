@@ -5,7 +5,6 @@ partial pair reviews. Nothing in the real annotations/ is touched."""
 import csv
 import json
 import shutil
-import sys
 import threading
 import unittest
 from pathlib import Path
@@ -14,10 +13,10 @@ import urllib.parse
 import urllib.request
 from unittest import mock
 
-from support import ROOT, temp_repo
+from support import ROOT, import_from_copy, temp_repo
 
 TMP = temp_repo(annotations=True)
-sys.path[:0] = [str(TMP), str(TMP / "helpers")]
+import_from_copy(TMP)          # the copy's code, so the tool writes into the copy, whichever test file ran first
 from annotator import server                      # noqa: E402
 from common import component_class_mapping, ground_truth, partial_reviews, schema_io   # noqa: E402
 
