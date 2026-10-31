@@ -145,7 +145,7 @@ Every change is saved at once, and the top right of the page says so (**✓ Save
 |---|---|
 | Change `left_out.md` | By hand, in the file (the tool only shows it). |
 | Change the [drafted batches](../docs/terminology.md#4-ground-truth-and-samples) in `outputs/` | Nothing: correct the copy in `ground_truth/` (the tool makes it). |
-| Delete an entry of the [ground truth schema](../docs/terminology.md#3-schemas) that nothing uses, or change its patterns | By hand, in `annotations/ground_truth_schema.txt` (an entry that something uses: merge it, in *Ground truth schema*). |
+| Delete an entry of the [ground truth schema](../docs/terminology.md#3-schemas) that nothing uses, or change its patterns or its `rule 19:` line (a new [entity class](../docs/terminology.md#3-schemas)'s `rule 19: thing` or `rule 19: property`, too) | By hand, in `annotations/ground_truth_schema.txt` (an entry that something uses: merge it, in *Ground truth schema*). |
 | Add rows to the [translation table](../docs/terminology.md#7-evaluating-extraction-step-070), reorder them, or delete one that isn't a repeat | Step 070 adds the rows it needs; a row only [past schemas](../docs/terminology.md#6-extracting-with-a-schema-step-060) use is kept on purpose. |
 | Review the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070)'s [partial pairs](../070_evaluate/metrics/pairs.md) | Nothing until the final evaluation: reviewing them would mean looking at held-out results. |
 | Change the pool (`ground_truth_candidates.csv`) | Never change it: its order is what makes the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) a [fair sample](../docs/terminology.md#4-ground-truth-and-samples). |

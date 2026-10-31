@@ -127,6 +127,77 @@ class Reading(unittest.TestCase):
         self.assertFalse([u for u in s["unread"] if "repeats" in u], s["unread"])
 
 
+class RuleNineteenMarks(unittest.TestCase):
+    """The "rule 19:" lines of a schema in the text shape: an entity class's mark (thing or property) and a qualifier
+    predicate's kind, read; a bad or second line is not read, and says why; a rename carries the mark along."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def test_read_and_near_misses(self):
+        pad, nl = " " * 18, chr(10)
+        marks = {"Spacecraft        a vehicle in space": ["rule 19: thing", "rule 19: property"],   # a second line
+                 "Dataset           a collection of data": ["rule 19: things"],                    # not a mark
+                 "HAS_PART          has as a part": ["rule 19: qualifier, a part"],
+                 "ABOARD            is carried on": ["rule 19: qualifier"]}                        # no kind
+        text = TEXT
+        for entry, added in marks.items():
+            text = text.replace(entry + nl, entry + nl + "".join(pad + a + nl for a in added))
+        path = self.tmp / "s.txt"
+        path.write_text(text, encoding="utf-8")
+        s = schema_io.read_schema(path)
+        self.assertEqual(s["rule_19_classes"], {"Spacecraft": "thing"})            # the second line isn't read
+        self.assertEqual(s["rule_19_predicates"], {"HAS_PART": "a part"})          # "qualifier" alone names no kind
+        self.assertEqual(schema_io.qualifier_predicates(s), ("HAS_PART",))
+        bad = [u for u in s["unread"] if "rule 19" in u]
+        self.assertEqual(len(bad), 3, bad)
+        self.assertTrue(any("a second rule 19 line" in u for u in bad))
+        path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "entity class", "Spacecraft", "Craft")[0])
+        self.assertEqual(schema_io.read_schema(path)["rule_19_classes"], {"Craft": "thing"})
+        path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "predicate", "HAS_PART", "HAS_PIECE")[0])
+        self.assertEqual(schema_io.read_schema(path)["rule_19_predicates"], {"HAS_PIECE": "a part"})
+        schema_io.add_to_ground_truth_schema(path, "entity class", "Probe", "a small craft")
+        self.assertNotIn("Probe", schema_io.read_schema(path)["rule_19_classes"])  # a new one has no mark yet
+
+    def test_ground_truth_schema(self):
+        """Every entity class of the ground truth schema has exactly one mark, thing or property; every qualifier
+        predicate is a predicate of it; and their kinds are exactly the kinds rule 19's first sentence lists
+        (annotations/guidelines.md), so the rule and the schema can't drift apart."""
+        import re
+        s = schema_io.read_ground_truth_schema(HAND)
+        missing = [n for n in s["entity_classes"] if n not in s["rule_19_classes"]]
+        self.assertEqual(missing, [], "add a line \"rule 19: thing\" or \"rule 19: property\" under each of these "
+                         "entity classes in annotations/ground_truth_schema.txt (rule 19 of Writing a classed triple, "
+                         "annotations/guidelines.md: Whose fact it is)")
+        self.assertEqual([u for u in s["unread"] if "rule 19 line" in u or "not a rule 19 mark" in u], [])
+        self.assertEqual(set(s["rule_19_classes"]), set(s["entity_classes"]))
+        self.assertTrue(set(s["rule_19_classes"].values()) <= {"thing", "property"})
+        for p in schema_io.qualifier_predicates(s):
+            self.assertIn(p, s["predicates"])
+        rule = re.search(r"^19\. \*\*A qualifier that is (.+?) is a ground truth triple of its own",
+                         (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8"), re.M).group(1)
+        kinds = [k.strip() for k in re.split(r", or |, ", rule)]
+        self.assertEqual(sorted(s["rule_19_predicates"].values()), sorted(kinds))
+
+    def test_no_code_keeps_its_own_list(self):
+        """No code outside the schema lists the qualifier predicates itself (one home: the schema's rule 19 lines).
+        A near miss, one or two of them on a line, is ordinary use and isn't flagged."""
+        s = schema_io.read_ground_truth_schema(HAND)
+        names = schema_io.qualifier_predicates(s)
+        found = []
+        for path in ROOT.rglob("*.py"):
+            rel = path.relative_to(ROOT).as_posix()
+            if rel.startswith(("archive/", "to_be_reshaped/", "tests/", "outputs/", ".myvenv/")) or "/." in rel:
+                continue
+            for n, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                if sum(f'"{q}"' in line for q in names) >= 3:
+                    found.append(f"{rel}:{n}")
+        self.assertEqual(found, [], "read the qualifier predicates with schema_io.qualifier_predicates instead")
+
+
 class Additions(unittest.TestCase):
 
     def test_round_trip(self):

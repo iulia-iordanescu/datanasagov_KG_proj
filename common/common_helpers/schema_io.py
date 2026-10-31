@@ -57,7 +57,13 @@ shapes:
    indented line starting "source:" under any entry (entity class,
    predicate or pattern) says where the idea for it came from (used by the
    additions file, and by the component classes and patterns the annotation
-   tool adds to the ground truth schema). Lines starting with # are comments.
+   tool adds to the ground truth schema). An indented line starting "rule 19:"
+   marks an entry for rule 19 of "Writing a classed triple" (annotations/
+   guidelines.md; only the ground truth schema has them): under an entity
+   class, "rule 19: thing" or "rule 19: property" (a thing entity class or a
+   property entity class, docs/terminology.md); under a predicate, "rule 19:
+   qualifier, <the kind of qualifier, in rule 19's words>" (a qualifier
+   predicate). Lines starting with # are comments.
 
 Several steps read it: 040 compares the induced schema with the ground truth
 schema; 050 shows the ground truth schema to the model and checks every drafted
@@ -75,6 +81,10 @@ translates the current schema into the ground truth schema.
     schema["pattern_entries"] the patterns of the PATTERNS section only (text shape only)
     schema["sources"]         {"entity_classes": {entity class: source}, "predicates": {…},
                               "patterns": {"Instrument ABOARD Mission": source}}  (text shape only)
+    schema["rule_19_classes"] {"Dataset": "thing", "Purpose": "property", …}: the entity classes' rule 19 marks
+    schema["rule_19_predicates"] {"BASED_IN": "a country", …}: the qualifier predicates, each with its kind of
+                              qualifier in rule 19's words (text shape only)
+    qualifier_predicates(schema)  the qualifier predicates, in the file's order
     schema["unread"]          ["line 12: …"]: lines of a section that are neither an entry, a
                               source nor patterns, e.g. prose, or a repeated entry (the first
                               is kept) and the lines under it (text shape only)
@@ -106,6 +116,11 @@ PATTERN_LINE = re.compile(r"^(\S+)\s+(\S+)\s+(\S+)$")   # "Instrument ABOARD Mis
 #: A pinned predicate's line under it: "only: Dataset -> Instrument; any -> Person". Its predicate joins only these
 #: entity classes ("any": any entity class); the checks flag any other pattern (pattern_not_pinned).
 PINNED = "only:"
+#: An entry's line for rule 19 of "Writing a classed triple": "rule 19: thing" / "rule 19: property" under an
+#: entity class, "rule 19: qualifier, a country" under a predicate.
+RULE_19 = "rule 19:"
+RULE_19_CLASS_MARKS = ("thing", "property")
+RULE_19_QUALIFIER = "qualifier,"
 ANY = "any"
 #: The text shape's section headings ("CLASSES" is the older heading of the
 #: entity classes, still read).
@@ -121,7 +136,24 @@ def _pins_of(line: str) -> list:
 
 def _empty() -> dict:
     return {"entity_classes": {}, "predicates": {}, "patterns": [], "pattern_entries": [],
-            "sources": {"entity_classes": {}, "predicates": {}, "patterns": {}}, "unread": [], "pinned": {}}
+            "sources": {"entity_classes": {}, "predicates": {}, "patterns": {}}, "unread": [], "pinned": {},
+            "rule_19_classes": {}, "rule_19_predicates": {}}
+
+
+def qualifier_predicates(schema: dict) -> tuple:
+    """The predicates marked "rule 19: qualifier, …": those of the qualifiers rule 19 of "Writing a classed triple"
+    takes out of an instance (annotations/guidelines.md), in the file's order."""
+    return tuple(schema.get("rule_19_predicates", {}))
+
+
+def _rule_19_mark(section: str, head: str):
+    """The value of a "rule 19:" line (without its "rule 19:"), or None if it isn't a valid one for the section."""
+    value = " ".join(head[len(RULE_19):].split())
+    if section == "entity_classes":
+        return value if value in RULE_19_CLASS_MARKS else None
+    if section == "predicates" and value.startswith(RULE_19_QUALIFIER) and value[len(RULE_19_QUALIFIER):].strip():
+        return value[len(RULE_19_QUALIFIER):].strip()
+    return None
 
 
 def pattern_key(pattern) -> str:
@@ -164,6 +196,18 @@ def _read_text(path) -> dict:
         if entry_name and line[:1].isspace():
             if head.lower().startswith("source:"):
                 schema["sources"][section][entry_name] = head[len("source:"):].strip()
+                continue
+            if head.lower().startswith(RULE_19) and section in ("entity_classes", "predicates"):
+                marks = schema["rule_19_" + ("classes" if section == "entity_classes" else "predicates")]
+                mark = _rule_19_mark(section, head)
+                if mark is not None and entry_name not in marks:
+                    marks[entry_name] = mark
+                    continue
+                schema["unread"].append(f"line {number}: {head} ("
+                                        + ("a second rule 19 line; the first is kept" if mark is not None else
+                                           "not a rule 19 mark: under an entity class, write rule 19: thing or "
+                                           "rule 19: property; under a predicate, rule 19: qualifier, <its kind>")
+                                        + ")")
                 continue
             if section == "predicates" and head.lower().startswith(PINNED):
                 pins = _pins_of(head)
@@ -326,7 +370,8 @@ def _comparable(schema: dict) -> tuple:
     """A schema as read from text, in a form to compare: unread lines lose
     their line numbers, which shift when a line is added above them."""
     return (schema["entity_classes"], schema["predicates"], sorted(schema["patterns"]), schema["sources"],
-            sorted(u.split(": ", 1)[-1] for u in schema["unread"]))
+            sorted(u.split(": ", 1)[-1] for u in schema["unread"]), schema.get("rule_19_classes", {}),
+            schema.get("rule_19_predicates", {}))
 
 
 def _edit_text(path, edit, expected: dict, what: str) -> None:
@@ -425,7 +470,8 @@ def _file_lines(path) -> tuple:
 def _as_read(schema: dict) -> tuple:
     return (schema["entity_classes"], schema["predicates"], set(schema["patterns"]), schema["sources"],
             sorted(u.split(": ", 1)[-1] for u in schema["unread"]),
-            {p: set(v) for p, v in schema.get("pinned", {}).items()})
+            {p: set(v) for p, v in schema.get("pinned", {}).items()}, schema.get("rule_19_classes", {}),
+            schema.get("rule_19_predicates", {}))
 
 
 def _checked(path, bom: str, newline: str, lines: list, expected: dict, what: str) -> bytes:
@@ -565,7 +611,9 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
     patterns = [trio(t) for t in before["patterns"]]
     pinned = ({p: [(swap(s), swap(o)) for s, o in v] for p, v in before["pinned"].items()} if key == "entity_classes"
               else renamed(before["pinned"]))
+    marks = "rule_19_classes" if key == "entity_classes" else "rule_19_predicates"
     expected = {**before, key: renamed(before[key]), "patterns": patterns, "pinned": pinned,
+                marks: renamed(before.get(marks, {})),
                 "sources": {**before["sources"], key: renamed(before["sources"][key]),
                             "patterns": {pattern_key(trio(tuple(n.split(" ")))): v
                                          for n, v in before["sources"]["patterns"].items()}}}

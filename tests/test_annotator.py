@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 from unittest import mock
 
-from support import temp_repo
+from support import ROOT, temp_repo
 
 TMP = temp_repo(annotations=True)
 sys.path[:0] = [str(TMP), str(TMP / "helpers")]
@@ -300,14 +300,20 @@ class B_Batch(unittest.TestCase):
                 row("Other", "HAS_TARGET", "Mars"),                            # another subject
                 row("Title r1", "HAS_TARGET", "")]                             # no object: skipped
         expected = [[], ["several_qualifiers"], ["several_qualifiers"], [], [], [], [], []]
-        self.assertEqual([[p["code"] for p in found] for found in server.qualifier_problems(rows)], expected)
-        view = server.record_view(server.Data(), "r1", rows, False)
+        # the qualifier predicates are the real ground truth schema's ("rule 19: qualifier, …" lines)
+        qualifiers = schema_io.qualifier_predicates(schema_io.read_ground_truth_schema(
+            ROOT / "annotations" / "ground_truth_schema.txt"))
+        self.assertIn("HAS_PROCESSING_LEVEL", qualifiers)
+        self.assertEqual([[p["code"] for p in found] for found in server.qualifier_problems(rows, qualifiers)], expected)
+        data = server.Data()
+        data.hand = {**data.hand, "rule_19_predicates": {q: "" for q in qualifiers}}   # the stand-in schema has none
+        view = server.record_view(data, "r1", rows, False)
         self.assertEqual([[p["code"] for p in r["problems"] if p["code"] == "several_qualifiers"] for r in view["rows"]],
                          expected)
-        message = server.qualifier_problems(rows)[1][0]["message"]
+        message = server.qualifier_problems(rows, qualifiers)[1][0]["message"]
         self.assertIn('"Title r1" has 2 ground truth triples with HAS_PROCESSING_LEVEL: "Level 2 (EDR)", "Level 3 (RDR)".',
                       message)
-        self.assertEqual(server.qualifier_problems(rows)[1][0]["type"], "flag")
+        self.assertEqual(server.qualifier_problems(rows, qualifiers)[1][0]["type"], "flag")
 
     def test_slash_list_split(self):
         """Suppose a record's text has "RSI 1/2/3", whose items it never names alone, and "Level 2/3 (EDR/RDR) data",

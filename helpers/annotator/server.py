@@ -148,7 +148,7 @@ from common.review_comments import (CHANGED, GONE, NOT_VERIFIED, TOPIC_HEADINGS,
 from common.expert_questions import OPEN, QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
-    pattern_key, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
+    pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
 from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text, norm_text
@@ -157,7 +157,7 @@ from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDEC
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
-                             PREDICATE_NOT_IN_SCHEMA, QUALIFIER_PREDICATES, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT, SOURCE_NOT_IN_TEXT,
+                             PREDICATE_NOT_IN_SCHEMA, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT, SOURCE_NOT_IN_TEXT,
                              SUBJECT_CLASS_NOT_IN_SCHEMA, SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE,
                              SUBJECT_NOT_IN_TEXT, SchemaEntries, check_against_schema, check_describes,
                              check_triple_instance)
@@ -434,15 +434,15 @@ ADDS = {SUBJECT_CLASS_NOT_IN_SCHEMA: ("entity class", "subject_class"),
         PREDICATE_NOT_IN_SCHEMA: ("predicate", "predicate")}
 
 
-def qualifier_problems(rows: list) -> list:
+def qualifier_problems(rows: list, qualifiers) -> list:
     """For each of a record's rows, its several_qualifiers flag (a list of one), or []: a row whose predicate is one
-    of rule 19's (QUALIFIER_PREDICATES), when another row gives the same subject instance (evened out, as norm_text
+    of rule 19's (qualifiers: the ground truth schema's qualifier predicates, schema_io.qualifier_predicates), when another row gives the same subject instance (evened out, as norm_text
     does) the same predicate. Two values aren't always a loss (a dataset observed at daytime and at nighttime), so a
     flag, for a person to read the record. Rows lacking a subject instance, predicate, or object instance are skipped."""
     def key(row: dict):
         predicate = str(row.get("predicate") or "").strip()
         subject, obj = (str(row.get(c) or "").strip() for c in ("subject", "object"))
-        return (norm_text(subject), predicate) if predicate in QUALIFIER_PREDICATES and subject and obj else None
+        return (norm_text(subject), predicate) if predicate in qualifiers and subject and obj else None
     groups = collections.defaultdict(list)
     for row in rows:
         if (k := key(row)) is not None:
@@ -563,7 +563,7 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "text": full_text(record) if record else None,
         "finished": finished,
         "rows": [{**r, "problems": check_row(data, r, title, uses) + extra + several + slash}
-                 for r, extra, several, slash in zip(rows, connection_problems(rid, rows), qualifier_problems(rows),
+                 for r, extra, several, slash in zip(rows, connection_problems(rid, rows), qualifier_problems(rows, qualifier_predicates(data.hand)),
                                                      slash_list_problems(full_text(record) if record else "", rows))],
     }
 
@@ -706,7 +706,7 @@ def save_batch(data: Data, n: int, records: list) -> list:
                 written.append(row)
         record = data.records.get(rec["id"])
         found = [f + extra + several + slash for f, extra, several, slash in zip(
-            found, connection_problems(rec["id"], rec.get("rows", [])), qualifier_problems(rec.get("rows", [])),
+            found, connection_problems(rec["id"], rec.get("rows", [])), qualifier_problems(rec.get("rows", []), qualifier_predicates(data.hand)),
             slash_list_problems(full_text(record) if record else "", rec.get("rows", [])))]
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)

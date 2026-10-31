@@ -320,7 +320,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Question:** Q6 (b).
 - **Left out:** "RDR" (title, "RDR-INFLDSTR")
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
-  - **May matter because:** another record explains it as "Level 3 (RDR)"; this one doesn't, and its level is "CODMAC level 4". Checked on 2026-10-30: "RDR" is the data set type "Reduced Data Record", not a level (PDS3 Standards Reference, chapter 6, https://pds.nasa.gov/datastandards/pds3/standards/sr/Chapter06.pdf); Rosetta's archive conventions pair RDR with CODMAC 3 (ESA, RO-EST-TN-3372), while this data set uses it at CODMAC 4.
+  - **May matter because:** another record uses it as a name of data ("The RDR data convert the EDR (raw) sensor data"); this one doesn't explain it, and its level is "CODMAC level 4". Checked on 2026-10-30: "RDR" is the data set type "Reduced Data Record", not a level (PDS3 Standards Reference, chapter 6, https://pds.nasa.gov/datastandards/pds3/standards/sr/Chapter06.pdf); Rosetta's archive conventions pair RDR with CODMAC 3 (ESA, RO-EST-TN-3372), while this data set uses it at CODMAC 4.
   - **Question:** Q6 (b).
 - **Left out:** "prime" (notes, "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". HAS_TARGET says the dataset is about the comet; "prime" adds that it is the main target, so other bodies may be in the images. Whether a word that only says how a fact holds is a fact waits on the experts' answer (Q27; decision of 2026-10-25).

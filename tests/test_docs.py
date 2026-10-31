@@ -594,7 +594,9 @@ class QualifierQuotesRule9(unittest.TestCase):
 
 #: A paper named by its authors: "Taillé et al." (any year, or none), or two or more surnames joined by & or "and"
 #: and followed by a year ("Zhang & Soh 2024", "Guest, Bunce & Johnson (2006)").
-CITE_NAME = r"[A-Z][\w'’-]*[a-zà-ÿ][\w'’-]*"
+#: (Written with a lookahead and a possessive * so that a long list of capitalized words joined by commas, such as a
+#: list of entity classes, can't make the search backtrack for ever: the same names match as before.)
+CITE_NAME = r"[A-Z](?=[\w'’-]*[a-zà-ÿ])[\w'’-]*+"
 CITE_MENTION = re.compile(rf"\b({CITE_NAME}) et al\.|\b({CITE_NAME})(?:, {CITE_NAME})*,? (?:&|and) {CITE_NAME},? \(?(?:1[89]|20)\d\d\b")
 #: The same authors anywhere in a full citation (year or not), so a later short mention of them is allowed.
 CITE_AUTHORS = re.compile(rf"\b({CITE_NAME})(?:, {CITE_NAME})*,? (?:&|and) {CITE_NAME}\b|\b({CITE_NAME}) et al\.")
