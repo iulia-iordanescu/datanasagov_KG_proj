@@ -193,8 +193,8 @@ WRITING A TRIPLE
     lowercase beside the name: write "Halden", not "Halden satellite", since
     its entity class, Spacecraft, already says what it is (rule 4). Keep a
     type word written as part of the name, capitalized: write "Hurricane
-    Katrina", not "Katrina". Keep it too when the words without it aren't a
-    name: "the Kestrel low gain sensor" stays whole.
+    Katrina", not "Katrina". Keep it too when the words left once the type
+    word is removed aren't a name: "the Kestrel low gain sensor" stays whole.
     To see that two wordings name the same thing, use clues anywhere in the
     record and what you know about the words (e.g. what an abbreviation
     stands for: VLF is very low frequency).
@@ -213,7 +213,7 @@ WRITING A TRIPLE
     record's dataset = a cloud mask(IWI): the record's dataset computed from
     "IWI", and produced using "a cloud mask". "The dataset's reflectances
     were corrected, then composited using the Tern algorithm" gives the
-    record's dataset produced using "the Tern algorithm"; "corrected" names
+    record's dataset produced using "Tern"; "corrected" names
     no method, so it gives no triple.
 
 ALSO
