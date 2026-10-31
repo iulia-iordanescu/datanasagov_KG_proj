@@ -105,6 +105,13 @@ TEMPERATURE = 0
 THINKING = "low"
 THINKING_LEVELS = ("low", "medium", "high", "model_default")
 
+#: Which repeat of the same recipe a run is (the setting `repeat` of every step that calls a model): 1, the default,
+#: reuses the answers saved so far; 2, 3, ... are asked again, each into cache entries of its own, so repeats of one
+#: recipe are independent answers of the model, and their spread is the model's own variation (the noise floor,
+#: helpers/compare_runs.py). Part of the cache key (cache_identity) only from 2 on, so repeat 1's key is the key
+#: answers were saved under before this setting existed, and they stay valid. Not sent to the model.
+REPEAT = 1
+
 #: The longest answer a call may get, in tokens, asked for explicitly so the service's own default doesn't apply: on
 #: 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000 characters, mid-JSON. With
 #: 16,000, one answer was still cut off, at 25,658 characters: fewer than 16,000 tokens usually hold, so tokens the
@@ -149,7 +156,7 @@ def describe() -> dict:
     for, the exact model the service said answered (when it says), and the settings every call is sent with, as
     sent (call_settings)."""
     return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings(),
-            "service_note": SERVICE_NOTES.get(SERVICE)}
+            "service_note": SERVICE_NOTES.get(SERVICE), "repeat": REPEAT}
 
 
 #: What a service may do to a request that the run record can't see (prompt audit F19, 2026-10-30).
@@ -234,9 +241,11 @@ def cache_identity() -> str:
     """The model as the cache key names it (common/common_helpers/cache.py). Ask Sage's is the model name alone, as
     it was before a second service existed, so answers already paid for stay valid; another service's names the
     service too, since two services may use one name for different models; and the thinking cap, when one is sent
-    (thinking_sent), since it changes the answer."""
+    (thinking_sent), since it changes the answer; and the repeat, from 2 on (REPEAT), so each repeat has answers of
+    its own."""
     sent = thinking_sent()
-    return (MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}") + (f"|thinking:{sent}" if sent else "")
+    return ((MODEL if SERVICE == "asksage" else f"{SERVICE}:{MODEL}") + (f"|thinking:{sent}" if sent else "")
+            + (f"|repeat:{REPEAT}" if REPEAT > 1 else ""))
 
 
 def _env(name: str, why: str) -> str:
@@ -1058,7 +1067,7 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
     names, with the thinking cap the setting `thinking` gives; asks before paying (setting confirm_paid_calls),
     showing notes first; answers kept in cache/ inside the step's output folder. A setting it can't use stops the
     step (Stop: `stopped`, a problem the person can fix)."""
-    global MODEL, SERVICE, THINKING
+    global MODEL, SERVICE, THINKING, REPEAT
     service = str(settings.get("service") or SERVICE).strip().lower()
     if service not in SERVICES:
         raise Stop(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
@@ -1073,7 +1082,12 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
         raise Stop(f"The setting thinking is {thinking!r}, which isn't a level the pipeline knows, so no model "
                    f"can be called. Give one of {', '.join(THINKING_LEVELS)} with --thinking <level>, then run "
                    f"`py {Path(output).name}/run.py` again.")
-    MODEL, SERVICE, THINKING = name, service, thinking
+    repeat = settings.get("repeat", 1)
+    if isinstance(repeat, bool) or not isinstance(repeat, int) or repeat < 1:
+        raise Stop(f"The setting repeat is {repeat!r}, but it must be a whole number from 1 on (1 reuses the answers "
+                   f"saved so far; 2, 3, ... ask again, each repeat into answers of its own), so no model can be "
+                   f"called. Give one with --repeat <n>, then run `py {Path(output).name}/run.py` again.")
+    MODEL, SERVICE, THINKING, REPEAT = name, service, thinking, repeat
     SERVED.clear()
     for k in REQUESTS:
         REQUESTS[k] = 0

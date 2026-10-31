@@ -5,8 +5,10 @@ Compares step 070's evaluations of two or more runs on the same tuning
 records: for each number (precision, recall, F1, ...), the difference from
 the first run (the baseline), with a 95% range from a paired bootstrap
 (Koehn 2004, "Statistical Significance Tests for Machine Translation
-Evaluation", EMNLP, https://aclanthology.org/W04-3250/). Free: no model
-calls. Writes a report and prints where it is.
+Evaluation", EMNLP, https://aclanthology.org/W04-3250/), and each number's
+spread across the runs (for repeats of one recipe, setting `repeat`: the
+model's own variation). Free: no model calls. Writes a report and prints
+where it is.
 
     py helpers/compare_runs.py                          list the evaluations kept so far
     py helpers/compare_runs.py <run id> <run id> ...    compare them; the first is the baseline
@@ -46,7 +48,9 @@ UNRECORDED = [
     "- **The partial-pair verdicts** (`annotations/partial_pair_reviews.csv`): review no partial pairs between the "
     "runs you compare.",
     "- **The model's own variation:** the same recipe can answer differently on another run (no setting makes a "
-    "model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree.",
+    "model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree; "
+    "repeats of one recipe (060's setting `repeat`: 2, 3, ...) are asked again, so their *Spread across the runs* "
+    "measures it.",
 ]
 LIMITS = [
     "- **Many comparisons:** about 1 in 20 ranges misses by chance, so among many rows, one *higher* or *lower* "
@@ -170,6 +174,28 @@ def points(v) -> str:
     return "–" if v is None else f"{100 * v:+.1f} points"
 
 
+def only_repeats(diffs: list) -> bool:
+    """True when the runs' recipes differ only in the repeat (060's setting repeat, and the same number in its model
+    calls' record): repeats of one recipe, whose spread is the model's own variation."""
+    return bool(diffs) and all(path.rsplit(" / ", 1)[-1] == "repeat" or path.endswith(" / run_id")
+                               for path, _ in diffs) and any(path.endswith(" / repeat") for path, _ in diffs)
+
+
+def spread(runs: list, ids: list) -> list:
+    """For each number of stats.WITH_MARGIN: {"label", "values" (one per run), "low", "high", "mean", "width"}: the
+    lowest, the highest and the mean across the runs, and the width, highest − lowest. None where a run lacks it."""
+    points = [stats.numbers(as_records(run, ids)) for run in runs]
+    rows = []
+    for path, label in stats.WITH_MARGIN:
+        values = [stats._get(p, path) for p in points]
+        have = [v for v in values if v is not None]
+        rows.append({"label": label, "values": values,
+                     "low": min(have) if have else None, "high": max(have) if have else None,
+                     "mean": sum(have) / len(have) if have else None,
+                     "width": max(have) - min(have) if len(have) == len(values) and have else None})
+    return rows
+
+
 # ------------------------------ the report ----------------------------------
 
 def report(runs: list, ids: list, left: dict) -> str:
@@ -202,6 +228,20 @@ def report(runs: list, ids: list, left: dict) -> str:
     if len(ids) < stats.MIN_RECORDS:
         lines += ["", f"**Fewer than {stats.MIN_RECORDS} records, so no difference gets a range: the numbers below "
                       f"could easily have come out the other way. Don't draw conclusions from them yet.**"]
+    rows = spread(runs, ids)
+    lines += ["", "## Spread across the runs", "",
+              ("These runs are repeats of one recipe: only the repeat differs (060's setting `repeat`), so each was "
+               "answered by the model anew, and this spread is the model's own variation on these records, the noise "
+               "floor. A later change shows a real difference only where it moves a number by more than this width."
+               if only_repeats(diffs) else
+               "Each number's lowest, highest and mean value across the runs, and the width (highest − lowest). "
+               "When the runs are repeats of one recipe (060's setting `repeat`), the width is the model's own "
+               "variation; these runs differ in more than the repeat (*What differs*), so it isn't."), "",
+              "| Number | " + " | ".join(names) + " | Lowest | Highest | Mean | Width |",
+              "|---|" + "---:|" * (len(names) + 4)]
+    lines += [f"| {r['label']} | " + " | ".join(pct(v) for v in r["values"])
+              + f" | {pct(r['low'])} | {pct(r['high'])} | {pct(r['mean'])} | "
+              + ("–" if r["width"] is None else f"{100 * r['width']:.1f} points") + " |" for r in rows]
     first = None
     base = as_records(runs[0], ids)
     for n, run in zip(names[1:], runs[1:]):

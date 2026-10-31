@@ -50,6 +50,7 @@ SETTINGS = {
     "service":            SERVICE, # the service that reaches the model: asksage or litellm
     "model":              MODEL,  # the AI model to ask (py helpers/models.py lists them)
     "thinking":           THINKING, # how much a model that thinks may think: low, medium, high, or model_default
+    "repeat":             1,      # which repeat of this recipe: 1 reuses saved answers; 2, 3, ... ask again, each into answers of its own
     "confirm_paid_calls": True,   # stop and ask before evaluating with warnings, and before the first model call; false for unattended runs
 }
 

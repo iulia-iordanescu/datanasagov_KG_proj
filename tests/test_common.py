@@ -1449,7 +1449,7 @@ class LiteLLM(unittest.TestCase):
                                           "thinking": f"not sent (the step's setting, {llm.THINKING}, isn't sent to "
                                                       "this model)",
                                           "thinking_sent": None, "effort": "not sent (model default)",
-                                          "service_note": llm.SERVICE_NOTES["litellm"]})
+                                          "service_note": llm.SERVICE_NOTES["litellm"], "repeat": 1})
         self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
         llm.MODEL = "claude-opus-5.5"                                            # its documented default effort
         self.assertEqual(llm.describe()["effort"], "not sent (model default, medium)")

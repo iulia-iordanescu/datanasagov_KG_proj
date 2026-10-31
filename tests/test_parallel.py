@@ -192,7 +192,7 @@ def settings_of(step_dir: Path) -> dict:
     return out
 
 
-SHARED_SETTINGS = ("max_chars", "workers", "service", "model", "thinking", "confirm_paid_calls")
+SHARED_SETTINGS = ("max_chars", "workers", "service", "model", "thinking", "repeat", "confirm_paid_calls")
 STEP_DIRS = {"040": "040_induce_schema", "050": "050_annotate", "060": "060_extract", "070": "070_evaluate"}
 
 

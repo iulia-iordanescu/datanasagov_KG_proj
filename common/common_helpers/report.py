@@ -250,7 +250,10 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
               + (f" Temperature: {llm.TEMPERATURE}." if llm.temperature_sent() else " Temperature: not sent.")
               + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else ""), "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
-              f"what isn't there yet.", ""]
+              f"what isn't there yet."
+              + (f" Repeat {llm.REPEAT} (setting `repeat`): answers saved by other repeats of this recipe were not "
+                 f"reused, so this run's answers are the model's own, independent of theirs." if llm.REPEAT > 1
+                 else ""), ""]
     return lines
 
 

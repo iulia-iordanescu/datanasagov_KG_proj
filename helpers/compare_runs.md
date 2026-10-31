@@ -19,6 +19,17 @@ Free: no model calls. It writes a report, `outputs/reports/compare_runs_<date>_<
 
 Change one thing at a time, so a difference has one cause.
 
+## Repeats of one recipe
+
+One run of a recipe isn't a baseline: the model can answer differently on another run, and a rerun reuses the saved answers, so it can't show how much. Every step that calls the model has the setting `repeat`: `1` (the default) reuses the saved answers, and `2`, `3`, ... ask again, each repeat into cached answers of its own (`common/common_helpers/llm.py`, `REPEAT`). So, for the noise floor of extraction:
+
+1. `py 060_extract/run.py --repeat 1`, then `py 070_evaluate/run.py`; note 070's run id.
+2. `py 060_extract/run.py --repeat 2`, then `py 070_evaluate/run.py`; note its run id.
+3. `py 060_extract/run.py --repeat 3`, then `py 070_evaluate/run.py`; note its run id.
+4. `py helpers/compare_runs.py <id 1> <id 2> <id 3>`.
+
+Evaluate each repeat before the next, since 070 reads 060's latest output, and keep 070's own `repeat` at 1, so the three evaluations use the same translation proposals. The report's *Spread across the runs* then gives each number's width across the repeats: a later change is a real improvement only where it moves a number by more than that width, and its comparison with one repeat should be read against it. A vote across repeats (keeping a triple most repeats extracted) isn't built yet (`docs/improvements.md`).
+
 ## What the report says
 
 - **The runs**, A, B, C, …, with 070's run id. A is the baseline; each other run is compared with it.
@@ -27,8 +38,9 @@ Change one thing at a time, so a difference has one cause.
   - **Code not committed:** the code version is the Git commit; a change not committed when a run was made is invisible.
   - **070's model call settings:** of 070's settings, only the service and the model are recorded (not its thinking cap); its translation is recorded by fingerprint, so a different translation shows anyway.
   - **The partial-pair verdicts** (`annotations/partial_pair_reviews.csv`): review no partial pairs between the runs you compare.
-  - **The model's own variation:** the same recipe can answer differently on another run (no setting makes a model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree.
+  - **The model's own variation:** the same recipe can answer differently on another run (no setting makes a model answer the same every time), and a cached answer is reused, so two runs of one recipe usually agree; repeats of one recipe (060's setting `repeat`: 2, 3, ...) are asked again, so their *Spread across the runs* measures it.
 - **The records compared:** the tuning records evaluated in every run, with the same ground truth in every run. A record whose ground truth changed between the runs (you corrected it in between) is left out and named, since a difference there could come from your correction rather than the recipe. Held-out records are never compared.
+- **Spread across the runs:** for each number, every run's value, the lowest, the highest, the mean, and the width (highest − lowest). When the runs are repeats of one recipe (only 060's `repeat` differs, besides 060's run id), the report says so: the width is then the model's own variation on these records, the noise floor (*Repeats of one recipe*, below).
 - **One table per run compared with the baseline:** for each number (precision, recall, F1, and the others 070 gives a margin of error), the baseline's value, the other run's, the difference in points, the 95% range of the difference, and a verdict, one of six, the first that applies in this order: *not comparable (a number is missing)* (one run has no value for it); *the same* (no difference, and a range of 0 or none); *no range (too few records)*; *<run> higher* or *<run> lower* (the whole range is above, or below, 0); *can't tell apart* (the range holds 0).
 
 ## How the range is computed

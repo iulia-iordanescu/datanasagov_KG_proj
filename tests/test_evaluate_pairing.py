@@ -880,6 +880,36 @@ class CompareRuns(unittest.TestCase):
                      "| exact: precision | 50.0% |", "B higher", "## How to read a row", "Left out, ground truth changed"):
             self.assertIn(part, text)
 
+    def test_spread_across_repeats(self):
+        """Repeats of one recipe (only 060's repeat, and 060's run id, differ): the report says the spread is the
+        model's own variation, with each number's lowest, highest, mean and width. Near-misses: runs that differ in
+        more than the repeat, or not in the repeat at all, are not called repeats."""
+        cr = self.cr
+        runs = []
+        for n, (run_id, m) in enumerate((("R1", 2), ("R2", 3), ("R3", 2)), 1):
+            run = self.kept(run_id, lambda i, m=m: m, "claude-opus-5.5")
+            run["recipe"]["extraction (060)"].update(run_id=f"060-{n}", model_calls={"repeat": n})
+            run["recipe"]["extraction (060)"]["settings"]["repeat"] = n
+            runs.append(run)
+        ids, _ = cr.common_records(runs)
+        self.assertTrue(cr.only_repeats(cr.differences(runs)))
+        rows = {r["label"]: r for r in cr.spread(runs, ids)}
+        p = rows["exact: precision"]
+        self.assertAlmostEqual(p["low"], 0.5)
+        self.assertAlmostEqual(p["high"], 0.75)
+        self.assertAlmostEqual(p["mean"], (0.5 + 0.75 + 0.5) / 3)
+        self.assertAlmostEqual(p["width"], 0.25)
+        text = cr.report(runs, ids, {})
+        self.assertIn("## Spread across the runs", text)
+        self.assertIn("These runs are repeats of one recipe", text)
+        self.assertIn("| exact: precision | 50.0% | 75.0% | 50.0% | 50.0% | 75.0% | 58.3% | 25.0 points |", text)
+        other = self.kept("O", lambda i: 2, "gemini-2.5-pro")                       # another model too: not repeats
+        other["recipe"]["extraction (060)"]["settings"]["repeat"] = 2
+        self.assertFalse(cr.only_repeats(cr.differences([runs[0], other])))
+        self.assertIn("differ in more than the repeat", cr.report([runs[0], other], ids, {}))
+        same = self.kept("S", lambda i: 2, "claude-opus-5.5")                       # nothing differs: not "repeats"
+        self.assertFalse(cr.only_repeats(cr.differences([same, same])))
+
     def test_one_text_for_the_report_and_the_guide(self):
         """What the recipe doesn't record, and what the comparison can't see: the report's lists are
         helpers/compare_runs.md's, word for word; the verdicts are tried in the guide's order."""

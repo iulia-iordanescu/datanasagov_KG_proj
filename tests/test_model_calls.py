@@ -2,6 +2,8 @@
 model behind LiteLLM's reply shape (tests/stand_ins.py, stand_in_post):
 
     the thinking cap      sent as reasoning_effort only to the models LiteLLM documents it for; part of the cache key
+    the repeat            part of the cache key from 2 on (repeat 1 keeps the answers saved before); 0, a negative, a
+                          fraction or a true/false value stops the step; recorded in the run's record and report
     the test call         its token counts in one line; cut off: the run stops; thinking that leaves too little
                           room: a warning, and a second question before paying for more
     the early stop        3 failed among the first 10 calls stop the run; calls under way are kept, the rest not made
@@ -40,7 +42,7 @@ class Guards(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
-        self.saved = (llm.MODEL, llm.SERVICE, llm.THINKING, llm.MAX_ANSWER_TOKENS)
+        self.saved = (llm.MODEL, llm.SERVICE, llm.THINKING, llm.MAX_ANSWER_TOKENS, llm.REPEAT)
         llm.MAX_ANSWER_TOKENS = 16000                       # the checks below are written for this limit, not the default
         self.patches = [mock.patch.object(llm, "_post", stand_ins.stand_in_post),
                         mock.patch.object(llm, "load_dotenv", lambda *a, **k: None),
@@ -59,7 +61,7 @@ class Guards(unittest.TestCase):
         audit.end_run()
         for p in reversed(self.patches):
             p.stop()
-        llm.MODEL, llm.SERVICE, llm.THINKING, llm.MAX_ANSWER_TOKENS = self.saved
+        llm.MODEL, llm.SERVICE, llm.THINKING, llm.MAX_ANSWER_TOKENS, llm.REPEAT = self.saved
         shutil.rmtree(self.tmp)
 
     def calls(self, **settings):
@@ -108,6 +110,40 @@ class Guards(unittest.TestCase):
         self.assertNotEqual(llm.cache_identity(), low)                                   # another cap asks again
         self.calls(model="gemini-2.5-pro", thinking="model_default")
         self.assertEqual(llm.cache_identity(), "litellm:gemini-2.5-pro")
+
+    # ---------------------------------------------------------------- the repeat
+
+    def test_repeat_in_the_cache_key_from_2_on(self):
+        """Repeat 1 (the default, or given) is the key answers were saved under before the setting existed; each later
+        repeat has a key of its own, so the same prompt is asked again, once per repeat."""
+        self.calls(model="claude-opus-5.5")
+        self.assertEqual(llm.cache_identity(), "litellm:claude-opus-5.5")
+        before = cache_module.key("p", "piece")
+        self.calls(model="claude-opus-5.5", repeat=1)
+        self.assertEqual(cache_module.key("p", "piece"), before)                        # repeat 1: answers stay valid
+        self.calls(model="claude-opus-5.5", repeat=2)
+        self.assertEqual(llm.cache_identity(), "litellm:claude-opus-5.5|repeat:2")
+        two = cache_module.key("p", "piece")
+        self.assertNotEqual(two, before)
+        self.calls(model="claude-opus-5.5", repeat=3)
+        self.assertNotIn(cache_module.key("p", "piece"), (before, two))                # each repeat its own answers
+        self.calls(model="gemini-2.5-pro", repeat=2)
+        self.assertEqual(llm.cache_identity(), "litellm:gemini-2.5-pro|thinking:low|repeat:2")
+        self.assertEqual(llm.describe()["repeat"], 2)                                   # in the run's record
+
+    def test_repeat_must_be_a_whole_number_from_1(self):
+        from common.stop import Stop
+        for bad in (0, -1, 1.5, "2", True, None):
+            with self.subTest(repeat=bad), self.assertRaisesRegex(Stop, "whole number from 1 on"):
+                self.calls(repeat=bad)
+        self.calls(repeat=5)                                                            # near-miss: any whole number
+        self.assertEqual(llm.REPEAT, 5)
+
+    def test_repeat_in_the_report_only_from_2_on(self):
+        self.calls(repeat=1)
+        self.assertNotIn("Repeat ", "\n".join(report.model_calls([("x", 1, 0)], 0, llm.model_label())))
+        self.calls(repeat=2)
+        self.assertIn("Repeat 2 (setting `repeat`)", "\n".join(report.model_calls([("x", 1, 0)], 0, llm.model_label())))
 
     def test_unknown_thinking_level(self):
         from common.stop import Stop

@@ -15,7 +15,9 @@ stored, so the next run asks it again, with one exception: an answer cut off at 
 (llm.CutOff) is stored as a cut-off marker, and while MAX_ANSWER_TOKENS (common/common_helpers/llm.py)
 is unchanged, a rerun reuses the failure instead of paying for the same cut again. Raising
 MAX_ANSWER_TOKENS asks again; so does a new thinking setting, for a model it is sent to (it is part
-of the key: llm.cache_identity).
+of the key: llm.cache_identity). So does the setting repeat from 2 on (llm.REPEAT): each repeat of a
+recipe has answers of its own, so repeats are independent answers of the model; repeat 1, the default,
+uses the answers saved before the setting existed.
 
 Only an answer of the shape the stage reads is stored: each stage passes its shape check (check(answer)
 -> what is wrong, or None), and an answer of the wrong shape is asked once more, then fails like one
