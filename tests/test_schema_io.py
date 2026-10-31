@@ -128,7 +128,7 @@ class Reading(unittest.TestCase):
 
 
 class RuleNineteenMarks(unittest.TestCase):
-    """The "rule 19:" lines of a schema in the text shape: an entity class's mark (thing or property) and a qualifier
+    """The "rule 19:" lines of a schema in the text shape: an entity class's mark (standalone or describing) and a qualifier
     predicate's kind, read; a bad or second line is not read, and says why; a rename carries the mark along."""
 
     def setUp(self):
@@ -139,8 +139,8 @@ class RuleNineteenMarks(unittest.TestCase):
 
     def test_read_and_near_misses(self):
         pad, nl = " " * 18, chr(10)
-        marks = {"Spacecraft        a vehicle in space": ["rule 19: thing", "rule 19: property"],   # a second line
-                 "Dataset           a collection of data": ["rule 19: things"],                    # not a mark
+        marks = {"Spacecraft        a vehicle in space": ["rule 19: standalone", "rule 19: describing"],   # a second line
+                 "Dataset           a collection of data": ["rule 19: standalones"],                    # not a mark
                  "HAS_PART          has as a part": ["rule 19: qualifier, a part"],
                  "ABOARD            is carried on": ["rule 19: qualifier"]}                        # no kind
         text = TEXT
@@ -149,32 +149,32 @@ class RuleNineteenMarks(unittest.TestCase):
         path = self.tmp / "s.txt"
         path.write_text(text, encoding="utf-8")
         s = schema_io.read_schema(path)
-        self.assertEqual(s["rule_19_classes"], {"Spacecraft": "thing"})            # the second line isn't read
+        self.assertEqual(s["rule_19_classes"], {"Spacecraft": "standalone"})            # the second line isn't read
         self.assertEqual(s["rule_19_predicates"], {"HAS_PART": "a part"})          # "qualifier" alone names no kind
         self.assertEqual(schema_io.qualifier_predicates(s), ("HAS_PART",))
         bad = [u for u in s["unread"] if "rule 19" in u]
         self.assertEqual(len(bad), 3, bad)
         self.assertTrue(any("a second rule 19 line" in u for u in bad))
         path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "entity class", "Spacecraft", "Craft")[0])
-        self.assertEqual(schema_io.read_schema(path)["rule_19_classes"], {"Craft": "thing"})
+        self.assertEqual(schema_io.read_schema(path)["rule_19_classes"], {"Craft": "standalone"})
         path.write_bytes(schema_io.rename_in_ground_truth_schema(path, "predicate", "HAS_PART", "HAS_PIECE")[0])
         self.assertEqual(schema_io.read_schema(path)["rule_19_predicates"], {"HAS_PIECE": "a part"})
         schema_io.add_to_ground_truth_schema(path, "entity class", "Probe", "a small craft")
         self.assertNotIn("Probe", schema_io.read_schema(path)["rule_19_classes"])  # a new one has no mark yet
 
     def test_ground_truth_schema(self):
-        """Every entity class of the ground truth schema has exactly one mark, thing or property; every qualifier
+        """Every entity class of the ground truth schema has exactly one mark, standalone or describing; every qualifier
         predicate is a predicate of it; and their kinds are exactly the kinds rule 19's first sentence lists
         (annotations/guidelines.md), so the rule and the schema can't drift apart."""
         import re
         s = schema_io.read_ground_truth_schema(HAND)
         missing = [n for n in s["entity_classes"] if n not in s["rule_19_classes"]]
-        self.assertEqual(missing, [], "add a line \"rule 19: thing\" or \"rule 19: property\" under each of these "
+        self.assertEqual(missing, [], "add a line \"rule 19: standalone\" or \"rule 19: describing\" under each of these "
                          "entity classes in annotations/ground_truth_schema.txt (rule 19 of Writing a classed triple, "
                          "annotations/guidelines.md: Whose fact it is)")
         self.assertEqual([u for u in s["unread"] if "rule 19 line" in u or "not a rule 19 mark" in u], [])
         self.assertEqual(set(s["rule_19_classes"]), set(s["entity_classes"]))
-        self.assertTrue(set(s["rule_19_classes"].values()) <= {"thing", "property"})
+        self.assertTrue(set(s["rule_19_classes"].values()) <= {"standalone", "describing"})
         for p in schema_io.qualifier_predicates(s):
             self.assertIn(p, s["predicates"])
         rule = re.search(r"^19\. \*\*A qualifier that is (.+?) is a ground truth triple of its own",

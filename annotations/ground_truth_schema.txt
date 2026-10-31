@@ -1,102 +1,110 @@
 ﻿ENTITY CLASSES
 --------------
 Each entry below is marked for rule 19 of Writing a classed triple (annotations/guidelines.md), on a line
-under it: "rule 19: thing" (a thing entity class: a qualifier taken out of its instance becomes that
-instance's ground truth triple) or "rule 19: property" (a property entity class: the qualifier becomes the
-ground truth triple of the subject of the triple whose object the instance was).
+under it: "rule 19: standalone" (a standalone entity class: its instances exist on their own and have facts
+of their own, so a qualifier taken out of its instance becomes that instance's ground truth triple) or
+"rule 19: describing" (a describing entity class: its instances only describe something else, so the
+qualifier becomes the ground truth triple of the subject of the triple whose object the instance was).
+# CatalogEntry, the subject class of the describes triple, is not listed: code writes it, never a person.
 
 Dataset           a set of observations, measurements, or samples
-                  rule 19: thing
+                  rule 19: standalone
 WebTool           a tool used over the web
-                  rule 19: thing
+                  rule 19: standalone
 Document          a written publication, or a set of them, named in words or by a reference key, e.g. NASA developed standards; LAWRENCEETAL2013
-                  rule 19: thing
+                  rule 19: standalone
                   source: ground truth tuning #0, #5
 Purpose           an aim something is meant to achieve
-                  rule 19: property
+                  rule 19: describing
 Mission           a named spaceflight effort
-                  rule 19: thing
+                  rule 19: standalone
 MissionPhase      a named phase of a Mission
-                  rule 19: thing
+                  rule 19: standalone
 Discipline        a field of science
-                  rule 19: property
+                  rule 19: describing
 Organization      a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
-                  rule 19: thing
+                  rule 19: standalone
 Instrument        a device that takes measurements
-                  rule 19: thing
+                  rule 19: standalone
 Spacecraft        a craft that operates in space
-                  rule 19: thing
+                  rule 19: standalone
 Time              a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; the first week of February 2003; 2015-10-22 to 2015-12-31
-                  rule 19: property
-PhysicalQuantity  a property that can be measured, in general, whatever method measures it, e.g. sea surface temperature; snow cover
-                  rule 19: property
-CelestialBody     a natural object in space
-                  rule 19: thing
+                  rule 19: describing
+PhysicalQuantity  a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
+                  rule 19: describing
+CelestialBody     a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
+                  rule 19: standalone
 Version           a label that marks one release of something
-                  rule 19: property
-SpatialExtent     the area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars)
-                  rule 19: property
-ProcessingLevel   how far data have been processed from what the Instrument recorded, e.g. Level 2
-                  rule 19: property
+                  rule 19: describing
+SpatialExtent     an area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars; a country, when the data cover it)
+                  rule 19: describing
+ProcessingLevel   a stage of processing: how far data have been processed from what the Instrument recorded, e.g. Level 2
+                  rule 19: describing
 Value             an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes
-                  rule 19: property
+                  rule 19: describing
 Algorithm         a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
-                  rule 19: thing
+                  rule 19: standalone
                   source: ground truth tuning #2
-Identifier        a code that names one thing permanently, e.g. a DOI
-                  rule 19: property
+Identifier        a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1
+                  rule 19: describing
                   source: ground truth tuning #2
-SpatialRepresentation  how data are laid out over the ground; for a satellite, this is typically either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
-                       rule 19: property
+SpatialRepresentation  a way data are laid out over the ground; for a satellite, this is typically either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
+                       rule 19: describing
                        source: ground truth tuning #2
-Country           a nation, e.g. U.S.; Argentina
-                  rule 19: thing
+Country           a nation, as where a Person or Organization is based, e.g. U.S.; Argentina
+                  rule 19: standalone
                   source: ground truth tuning #3
 TimeOfDay         a point or period in the day, which comes back every day, e.g. 2:39 PM; morning; nighttime
-                  rule 19: property
+                  rule 19: describing
                   source: ground truth tuning #4
-Orbit             the path a Spacecraft travels around a CelestialBody
-                  rule 19: property
+Orbit             a path a Spacecraft travels around a CelestialBody
+                  rule 19: describing
                   source: ground truth tuning #4
 SatelliteFormation  a group of Spacecraft flying together in formation in orbit, e.g. the A-train
-                    rule 19: thing
+                    rule 19: standalone
                     source: ground truth tuning #4
 Channel           a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel
-                  rule 19: thing
+                  rule 19: standalone
                   source: ground truth tuning #4
 Phenomenon        something that happens in nature and can be observed, e.g. sun glint
-                  rule 19: thing
+                  rule 19: standalone
                   source: ground truth tuning #4
 Grid              a fixed set of cells that data values are collected into, e.g. ISEAG
-                  rule 19: thing
+                  rule 19: standalone
                   source: ground truth tuning #4
 MapProjection     a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical
-                  rule 19: property
+                  rule 19: describing
                   source: ground truth tuning #4
 WebPage           a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
-                  rule 19: property
+                  rule 19: describing
                   source: ground truth tuning #4
 Task              a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
-                  rule 19: property
+                  rule 19: describing
                   source: ground truth tuning #4
-Role              a position a Person or Organization holds, what they are, e.g. the official archive for SST
-                  rule 19: property
+Role              a position only one Person or Organization holds (rule 4), e.g. the official archive for SST; Argentina's space agency
+                  rule 19: describing
                   source: ground truth tuning #4
-Variable          one named kind of value computed from an Instrument's measurements by one particular Algorithm, e.g. SST4; NDSI
-                  rule 19: thing
+Variable          a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
+                  rule 19: standalone
                   source: ground truth tuning #4
 Person            one named human being, e.g. Peter Minnett
-                  rule 19: thing
+                  rule 19: standalone
                   source: ground truth tuning #4
-SpatialResolution  the amount of ground each value of the data covers, e.g. 500 m; 4.63 km
-                   rule 19: property
+SpatialResolution  an amount of ground each value of the data covers, e.g. 500 m; 4.63 km
+                   rule 19: describing
                    source: ground truth tuning #2, #4
-TemporalResolution  the amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
-                    rule 19: property
+TemporalResolution  an amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
+                    rule 19: describing
                     source: ground truth tuning #2, #3, #4
-Issue             a problem that affects how data are made or used, e.g. significant loss of data retrieval
-                  rule 19: property
+Issue             a problem that affects how data are made or used, e.g. loss of data retrieval
+                  rule 19: describing
                   source: ground truth tuning #7
+Technique         a way of making measurements, e.g. radio science
+                  rule 19: describing
+                  source: ground truth tuning #1
+Latency           a measure of how soon data are released after observation, e.g. Near Real Time (NRT)
+                  rule 19: describing
+                  source: ground truth tuning #6
 
 PREDICATES
 ----------
@@ -106,6 +114,7 @@ ground truth files), so a new pattern is never added here. Use a predicate
 wherever its meaning fits.
 A line "only: Subject -> Object; ..." pins a predicate: it joins only those
 entity classes ("any": any entity class), and the checks flag any other pattern.
+A predicate whose definition names its object's entity class is pinned to it.
 A line "rule 19: qualifier, ..." marks a qualifier predicate: one of the qualifiers that rule 19 of
 Writing a classed triple takes out of an instance, named in the rule's words.
 
@@ -116,12 +125,18 @@ ACQUIRED_BY_INSTRUMENT  was collected by this Instrument
                      only: Dataset -> Instrument
 ALSO_KNOWN_AS        is the same thing under another name
                      WebTool -> WebTool
-FROM_MISSION         came from this Mission
+FROM_MISSION         was collected during this Mission
                      Dataset -> Mission
                      only: any -> Mission
+FROM_SPACECRAFT      was collected from this Spacecraft
+                     source: ground truth tuning #1
+                     only: any -> Spacecraft
 HAS_DISCIPLINE       belongs to this Discipline
                      Dataset -> Discipline
                      only: any -> Discipline
+USES_TECHNIQUE       was collected using this Technique
+                     source: ground truth tuning #1
+                     only: any -> Technique
 HAS_MEASUREMENTS_OF  holds measurements of
                      Dataset -> PhysicalQuantity
 HAS_MISSION_PHASE    was collected during this MissionPhase
@@ -130,11 +145,14 @@ HAS_MISSION_PHASE    was collected during this MissionPhase
 HAS_PURPOSE          is meant to achieve
                      WebTool -> Purpose
                      only: any -> Purpose
-HAS_TARGET           is about this CelestialBody
+HAS_TARGET           is about, or studies, this CelestialBody
                      rule 19: qualifier, a target body
                      Dataset -> CelestialBody
+                     only: any -> CelestialBody
 HAS_TIME_SPAN        covers this period
                      Dataset -> Time; MissionPhase -> Time
+HAS_DURATION         covers this much time, from its first value to its last
+                     source: ground truth tuning #9
 HAS_VERSION          carries this Version
                      Dataset -> Version
                      only: any -> Version
@@ -157,6 +175,10 @@ HAS_SPATIAL_RESOLUTION  each of its values covers this much ground, e.g. 500 m
                         rule 19: qualifier, a spatial resolution
                         Dataset -> SpatialResolution
                         only: any -> SpatialResolution
+HAS_TEMPORAL_RESOLUTION  its values are this far apart in time, e.g. daily
+                         rule 19: qualifier, a temporal resolution
+                         source: ground truth tuning #2, #3
+                         only: any -> TemporalResolution
 PRODUCED_USING_ALGORITHM  was made or detected by applying this Algorithm
                      source: ground truth tuning #2
                      only: any -> Algorithm
@@ -169,15 +191,15 @@ HAS_GRANULE_DURATION  each of its files covers this much time
 HAS_SPATIAL_REPRESENTATION  lays out its data as
                             source: ground truth tuning #2
                             only: any -> SpatialRepresentation
-HAS_TEMPORAL_RESOLUTION  gives values this often, e.g. daily; weekly (8 day)
-                         rule 19: qualifier, a temporal resolution
-                         source: ground truth tuning #2, #3
-                         only: any -> TemporalResolution
 BASED_IN             belongs to this Country
                      rule 19: qualifier, a country
                      source: ground truth tuning #3
+                     only: any -> Country
 DEVELOPED_BY_PARTY   was built or created by this Person or Organization
                      source: ground truth tuning #3
+                     only: any -> Organization; any -> Person
+PROVIDED_BY_PARTY    is provided to users, as a service or as data, by this Person or Organization
+                     source: ground truth tuning #12
                      only: any -> Organization; any -> Person
 OBSERVED_AT_TIME_OF_DAY  comes from observations made at or during this TimeOfDay
                          rule 19: qualifier, a time of day
@@ -193,8 +215,6 @@ HAS_ORBIT            travels in this Orbit
                      only: any -> Orbit
 FLIES_IN             flies in formation as part of
                      source: ground truth tuning #4
-HAS_SPECTRAL_BANDS   measures light in this many spectral bands
-                     source: ground truth tuning #4
 UNIQUE_TO_INSTRUMENT  is found only on this Instrument
                       source: ground truth tuning #4
                       only: any -> Instrument
@@ -204,23 +224,25 @@ LIMITED_BY           its use is restricted by
                      source: ground truth tuning #4
 BINNED_INTO          its values were collected into the cells of this Grid
                      source: ground truth tuning #4
+                     only: any -> Grid
 MAPPED_INTO          its values were laid onto a map drawn with this MapProjection
                      source: ground truth tuning #4
+                     only: any -> MapProjection
 DOCUMENTED_AT        more details about it are written at
                      source: ground truth tuning #4
 AFFILIATED_WITH      works at or belongs to this Organization
                      source: ground truth tuning #4
+                     only: any -> Organization
 RESPONSIBLE_FOR      is in charge of this Task
                      source: ground truth tuning #4
+                     only: any -> Task
 OBTAINS_DATA_FROM    receives data from
                      source: ground truth tuning #4
 SERVES_AS            holds this Role
                      source: ground truth tuning #4
+                     only: any -> Role
 SUPERSEDES           replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
                      source: ground truth tuning #4
-FROM_SPACECRAFT      was collected from this Spacecraft
-                     source: ground truth tuning #1
-                     only: any -> Spacecraft
 HAS_VARIABLE         holds this Variable in its files
                      source: ground truth tuning #4
                      only: any -> Variable
@@ -230,7 +252,10 @@ PART_OF              is one part of
                      source: ground truth tuning #5
 RELATED_TO           is related to
                      source: ground truth tuning #5
-HAS_IDENTIFIER       has this Identifier
+HAS_IDENTIFIER       has this Identifier, other than a DOI (HAS_DOI)
+                     source: ground truth tuning #6
+                     only: any -> Identifier
+HAS_LATENCY          is released this soon after observation
                      source: ground truth tuning #6
 DECOMMISSIONED_ON    was taken out of service on
                      source: ground truth tuning #7
@@ -240,21 +265,20 @@ PRODUCTION_DISCONTINUED_DUE_TO  stopped being produced because of
                                 source: ground truth tuning #7
 ENDED_ON             came to an end on
                      source: ground truth tuning #9
-HAS_DURATION         covers this much time, from its first value to its last
-                     source: ground truth tuning #9
 HAS_REDSHIFT_RANGE   its redshifts lie in this range
                      source: ground truth tuning #12
 HAS_LUMINOSITY_RANGE  its luminosities lie in this range
                       source: ground truth tuning #12
-HAS_SKY_AREA         covers this much of the sky, each part counted once
+HAS_SKY_AREA         covers this much of the sky, each part of the sky counted once
+                     source: ground truth tuning #12
+HAS_SUMMED_SKY_AREA  covers this much of the sky, each part of the sky counted as many times as it is covered
                      source: ground truth tuning #12
 HAS_NUMBER_OF        has this many
                      source: ground truth tuning #12
-CREATED_ON           was made on this date
+CREATED_ON           was made on
                      source: ground truth tuning #12
 AVAILABLE_AT         can be got from this WebPage
                      source: ground truth tuning #12
+                     only: any -> WebPage
 REVISED_AFTER        was corrected after this review
                      source: ground truth tuning #13
-HAS_TOTAL_FIELD_AREA  the areas of its parts add up to this, counting overlaps each time
-                      source: ground truth tuning #12

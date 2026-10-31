@@ -60,8 +60,8 @@ shapes:
    tool adds to the ground truth schema). An indented line starting "rule 19:"
    marks an entry for rule 19 of "Writing a classed triple" (annotations/
    guidelines.md; only the ground truth schema has them): under an entity
-   class, "rule 19: thing" or "rule 19: property" (a thing entity class or a
-   property entity class, docs/terminology.md); under a predicate, "rule 19:
+   class, "rule 19: standalone" or "rule 19: describing" (a standalone entity class
+   or a describing entity class, docs/terminology.md); under a predicate, "rule 19:
    qualifier, <the kind of qualifier, in rule 19's words>" (a qualifier
    predicate). Lines starting with # are comments.
 
@@ -81,7 +81,7 @@ translates the current schema into the ground truth schema.
     schema["pattern_entries"] the patterns of the PATTERNS section only (text shape only)
     schema["sources"]         {"entity_classes": {entity class: source}, "predicates": {…},
                               "patterns": {"Instrument ABOARD Mission": source}}  (text shape only)
-    schema["rule_19_classes"] {"Dataset": "thing", "Purpose": "property", …}: the entity classes' rule 19 marks
+    schema["rule_19_classes"] {"Dataset": "standalone", "Purpose": "describing", …}: the entity classes' rule 19 marks
     schema["rule_19_predicates"] {"BASED_IN": "a country", …}: the qualifier predicates, each with its kind of
                               qualifier in rule 19's words (text shape only)
     qualifier_predicates(schema)  the qualifier predicates, in the file's order
@@ -116,10 +116,10 @@ PATTERN_LINE = re.compile(r"^(\S+)\s+(\S+)\s+(\S+)$")   # "Instrument ABOARD Mis
 #: A pinned predicate's line under it: "only: Dataset -> Instrument; any -> Person". Its predicate joins only these
 #: entity classes ("any": any entity class); the checks flag any other pattern (pattern_not_pinned).
 PINNED = "only:"
-#: An entry's line for rule 19 of "Writing a classed triple": "rule 19: thing" / "rule 19: property" under an
+#: An entry's line for rule 19 of "Writing a classed triple": "rule 19: standalone" / "rule 19: describing" under an
 #: entity class, "rule 19: qualifier, a country" under a predicate.
 RULE_19 = "rule 19:"
-RULE_19_CLASS_MARKS = ("thing", "property")
+RULE_19_CLASS_MARKS = ("standalone", "describing")
 RULE_19_QUALIFIER = "qualifier,"
 ANY = "any"
 #: The text shape's section headings ("CLASSES" is the older heading of the
@@ -205,8 +205,8 @@ def _read_text(path) -> dict:
                     continue
                 schema["unread"].append(f"line {number}: {head} ("
                                         + ("a second rule 19 line; the first is kept" if mark is not None else
-                                           "not a rule 19 mark: under an entity class, write rule 19: thing or "
-                                           "rule 19: property; under a predicate, rule 19: qualifier, <its kind>")
+                                           "not a rule 19 mark: under an entity class, write rule 19: standalone or "
+                                           "rule 19: describing; under a predicate, rule 19: qualifier, <its kind>")
                                         + ")")
                 continue
             if section == "predicates" and head.lower().startswith(PINNED):

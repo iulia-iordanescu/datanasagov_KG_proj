@@ -17,7 +17,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 
 ## "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (pool position 1, id cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc)
 
-3 items, 2 that may matter.
+4 items, 3 that may matter.
 
 - **Left out:** "1/2/3" (title)
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
@@ -27,6 +27,10 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** checked on 2026-10-30: a running measurement number, "incremented measurement by measurement, independent what kind of measurement was conducted" (the data set's catalog, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/); it tells this dataset from its siblings and states no fact about the data.
   - **Question:** Q6 (b).
+- **Left out:** "RSI" (title), as the Instrument that collected the data
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for. This includes its entity class"
+  - **May matter because:** checked on 2026-10-30: the Planetary Data System files it as INSTRUMENT_ID = RSI, INSTRUMENT_TYPE = RADIO SCIENCE, the "ROSETTA RADIO SCIENCE INVESTIGATION" (the data set's catalog files, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/). Still left out: the record's text does not say what "RSI" stands for, so its entity class would rest on outside knowledge (rule 1). Decided on 2026-10-31 (audit finding G-2); until then, ACQUIRED_BY_INSTRUMENT "RSI" (Instrument) was a ground truth triple.
+  - **Question:** Q10 (its part on RSI, settled from this source: see Q10's My notes).
 - **Left out:** "comet" (notes, "at the comet 67P")
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
   - My ground truth triple has the target "67P".
@@ -43,23 +47,16 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 
 ## "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (pool position 3, id 2705e0d1-95e7-4588-813b-ca91a6da94ff)
 
-4 items, 3 that may matter.
+2 items, 2 that may matter.
 
 - **Left out:** "retrievals" (notes, "Sea Surface Salinity (SSS) retrievals")
   - **Rule:** Writing a classed triple, rule 24: "Each step gives up to two ground truth triples, each written only if the record names both of its ends" My reading: "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)".
   - **May matter because:** it says the salinity values are computed from what the instrument measured, not measured directly.
   - **Question:** Q3 (what is measured, and what is computed).
-- **Left out:** "Polar" as a fact of its own (title, "Polar-Gridded")
-  - **Rule:** Writing a classed triple, rule 23: "if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it" ("Polar-Gridded" says more than the notes' "gridded"), so the word stays whole in the spatial representation; whether "Polar" is also an area the data cover (rule 19) waits on the experts' answer.
-  - **May matter because:** "Polar" may name the grid used (a fact about which grid), or the area the data cover (the poles); I wrote neither.
-  - **Question:** Q1 (c), and Q11 for the area.
 - **Left out:** "collaboratively" (notes, "developed collaboratively between")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". The two developers are already ground truth triples (DEVELOPED_BY_PARTY: NASA and CONAE), and a query returns both; "collaboratively" adds only that they worked together, which no predicate of the ground truth schema expresses. Whether a word that only says how a fact holds is a fact waits on the experts' answer (Q27; decision of 2026-10-25).
   - **May matter because:** it says how NASA and CONAE worked on the mission: together.
   - **Question:** Q27.
-- **Left out:** "space agency" (notes, "Argentina's space agency")
-  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; "Argentina's" is its own ground truth triple (BASED_IN). I decided this on 2026-10-25.
-  - **Question:** Q8 (roles).
 
 ## "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (pool position 4, id 03a09af3-081e-4db6-9e3b-ea7c0e3138bd)
 
@@ -112,7 +109,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Rule:** Writing a classed triple, rule 22: "A list: one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object)," which splits the subject into "Peter Minnett" and "his team"; then What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "his team" names no team, so only "Peter Minnett" keeps the four ground truth triples (decided on 2026-10-30).
   - **May matter because:** the record gives the responsibilities and the affiliation to the team as well as to Peter Minnett; the team's share is lost.
 - **Left out:** "NSST" (notes, "The first is a skin SST produced for both day and night (NSST) observations"), as another wording of "skin SST"
-  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for." "(NSST)" follows "night", not "skin SST", so it is not a name with its abbreviation in parentheses (Writing a classed triple, rule 20: "A name with its abbreviation in parentheses is one instance, as written."), and the record does not say what NSST names. The ground truth triples use "skin SST" (decided on 2026-10-30, audit finding G7).
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for." "(NSST)" follows "night", not "skin SST", so it is not a name with its abbreviation in parentheses (Writing a classed triple, rule 20: "A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written."), and the record does not say what NSST names. The ground truth triples use "skin SST" (decided on 2026-10-30, audit finding G7).
   - **May matter because:** NSST may be the product's own name; other records of the family may use it. Checked on 2026-10-30: NSST names NASA's nighttime long-wave (11 µm) SST product, "Aqua MODIS Level-3 Global Mapped 11µm Nighttime Sea Surface Temperature (NSST) Data, version R2019.0" (https://data.nasa.gov/dataset/aqua-modis-level-3-global-mapped-11m-nighttime-sea-surface-temperature-nsst-data-version-r), so it is not another wording of this record's day-and-night "skin SST"; it stays left out (rule 1 of *What counts as a fact*: the record doesn't explain it).
   - **Question:** Q18, (d). Its meaning may later come from the model, checked against a source: docs/improvements.md, *Knowledge enrichment from the model, verified and labelled* (080).
 
@@ -127,28 +124,24 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (pool position 6, id 4c64f3ed-39b4-4f95-95a0-022898ba47a4)
 
-4 items, all 4 that may matter. The record's decisions are complete (its ground truth triples are in `annotations/ground_truth/batch_001.csv`, a demo batch): these items are the ones I decided or am waiting on.
+3 items, all 3 that may matter. The record's decisions are complete (its ground truth triples are in `annotations/ground_truth/batch_001.csv`, a demo batch): these items are the ones I decided or am waiting on.
 
-- **Left out:** "Near Real Time (NRT)" (notes)
-  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". What counts as a fact, rule 1 ("Only what the record states") does not tell whether it is a latency, a separate processing stream or a version, and the ground truth schema has no predicate for a latency.
-  - **May matter because:** NRT products are made available within hours of the observation, so they are different from the standard product; I checked this, the record says no number of hours.
-  - **Question:** Q20 (a); the pending fact is listed there.
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It would be a BINNED_INTO triple with a Grid, as in the record at pool position 4.
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
-- **Left out:** "MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), what the product MCD19A1N holds
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 21: "In every case, include the connection the record states (rule 1 of *What counts as a fact*: only what the record states)."). I decided this on 2026-10-25.
-  - **May matter because:** it says what the product this dataset feeds holds (a surface reflectance).
+- **Left out:** "surface reflectance" and "MCD19A1N" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), as other wordings of the product
+  - **Rule:** Writing a classed triple, rule 23: "if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)". The three wordings name one product, made from the record's dataset, each once; my ground truth triple "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" COMPUTED_FROM the record's dataset uses the first (decided on 2026-10-31, audit finding G-11; until then its subject instance was "MCD19A1N", and the first wording was left out as what that product holds, by rule 21).
+  - **May matter because:** "MCD19A1N" is the product's short name, by which a search would find it.
   - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
-  - **Rule:** none to quote: the ground truth schema's Purpose is "an aim something is meant to achieve", and the record says "used to calculate", not that the dataset is meant for it. I decided this on 2026-10-25.
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." "used to calculate" the product is the fact my ground truth triple "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" COMPUTED_FROM the record's dataset already states; and the ground truth schema's Purpose is "an aim something is meant to achieve", while the record says "used to calculate", not that the dataset is meant for it. I decided this on 2026-10-25; the rule was named on 2026-10-31.
   - **May matter because:** it is what the dataset is for.
   - **Question:** Q9 ("used to").
 
 ## "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (pool position 7, id d5477563-0415-4e65-ab7c-d4bc9ed809e5)
 
-14 items, 8 that may matter.
+15 items, 8 that may matter.
 
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". As for the record at pool position 6.
@@ -179,6 +172,8 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It says only that the assessments go with the temperature bands. Whether a word that only says how a fact holds is a fact waits on the experts' answer (Q27; decision of 2026-10-25).
   - **May matter because:** it says which values the quality control assessments go with: the temperature bands.
   - **Question:** Q27.
+- **Left out:** "significant" (notes, "due to [significant loss of data retrieval](https://landweb.modaps.eosdis.nasa.gov/displayissue?id=98) following the Constellation Exit Maneuvers")
+  - **Rule:** What counts as a fact, rule 5: "Leave out words such as "great"." "significant" is a judgement of how much was lost, as in the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"; my two ground truth triples write the issue as "loss of data retrieval following the Constellation Exit Maneuvers" (decided on 2026-10-31, audit finding G-4).
 - **Left out:** "Known Issues" (notes, the heading)
   - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts" (a heading, like a field name).
 - **Left out:** the other products in "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (notes)
@@ -224,7 +219,7 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 
-The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 25 items, 17 that may matter.
+The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 23 items, 17 that may matter.
 
 - **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." It is background about earlier studies in general, naming no study, dataset or other specific thing for a triple.
@@ -254,7 +249,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 - **Left out:** "but not all public observations are included in this catalog" (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
 - **Left out:** "taking account of the substantial overlaps between observations" (notes)
-  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It only explains why my ground truth triple HAS_TOTAL_FIELD_AREA "~ 814 deg^2" (the total area of the catalog's fields) is larger than my ground truth triple HAS_SKY_AREA "~ 504 deg^2". It waits with the study's aim, method and findings on the experts' answer (Q26; decision of 2026-10-25).
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It only explains why my ground truth triple HAS_SUMMED_SKY_AREA "~ 814 deg^2" (the total area of the catalog's fields) is larger than my ground truth triple HAS_SKY_AREA "~ 504 deg^2". It waits with the study's aim, method and findings on the experts' answer (Q26; decision of 2026-10-25).
   - **May matter because:** it says how the net sky area was computed from the catalog's fields.
   - **Question:** Q26.
 - **Left out:** "therefore a significant number of sources (41,979) have more than one record within the catalog" (notes)
@@ -267,8 +262,6 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 - **Left out:** "cross-correlated" as a method (notes, "The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog")
   - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
   - **Question:** Q7.
-- **Left out:** "This is a service" (notes, "This is a service provided by NASA HEASARC")
-  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who made the table is my ground truth triple DEVELOPED_BY_PARTY "NASA HEASARC".
 - **Left out:** "the authors" HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected AGN samples" (notes, "In their study, the authors aimed to determine the ensemble variability properties of two serendipitously selected AGN samples")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". Whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26).
   - **May matter because:** it says what the study set out to find.
@@ -298,17 +291,14 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it is a result of the study the table comes from.
   - **Question:** Q26.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" DEVELOPED_BY_PARTY "the authors" (notes, "The authors used a maximum distance of 1.5 arcseconds")
-  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". Whether a study's aim, method and findings are facts of the ground truth is the owner's decision of 2026-10-25, pending the experts' answer (Q26). The table's developer is the HEASARC ("This table was created by the HEASARC"); the authors made the selection described in the study.
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "the authors" names no specific people (the record never names them). The table's developer is the HEASARC ("This table was created by the HEASARC"); the authors made the selection described in the study. (Until 2026-10-31 this item cited rule 2, as waiting on Q26 with the study's aim, method and findings; audit finding G-9 (b).)
   - **May matter because:** it says who selected the table's sources.
-  - **Question:** Q26.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" HAS_MATCHING_DISTANCE "1.5 arcseconds" (notes, "The authors used a maximum distance of 1.5 arcseconds")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". The maximum distance is a detail of the study's method, so it goes with the method (decision of 2026-10-25, with the study's method, Q26).
   - **May matter because:** it says how the sources of the table were matched with the quasar catalog.
   - **Question:** Q26.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
-  - **Rule:** none to quote: "XMM-Newton sample" names the sources the table holds, not the table.
-- **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" PROVIDED_BY_PARTY "NASA HEASARC" (notes, "This is a service provided by NASA HEASARC")
-  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"; who provides the service adds nothing beyond my ground truth triple DEVELOPED_BY_PARTY "NASA HEASARC".
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "XMM-Newton sample" names the sources the table holds, not the table, and the record names those sources only by a count ("412 quasars", a Value), so there is no instance for them to be the subject of an ALSO_KNOWN_AS triple (the rule was named on 2026-10-31).
 
 ## "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13, id ab33f184-95f4-4f33-8f3d-c4a09ec525d3)
 

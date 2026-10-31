@@ -107,17 +107,17 @@ WRITING A TRIPLE
     gives "Coastal Survey Bureau (CSB)", and CSB based in "U.K.".
     Whose fact it is: it depends only on the entity class of the subject or
     object the qualifier was in, not on the record's other facts. When that
-    entity class names a thing that can have the fact itself (such as a
-    dataset, an organization, a person, an instrument, a spacecraft, a
-    mission phase, a variable or an algorithm), the new triple's subject is
-    that subject or object: "the Level-1B swaths are made from the raw
-    counts" gives the swaths' processing level "Level-1B" (swaths are data,
-    a thing). When it names a property, an aim or a value of something
-    (such as a measured quantity, a purpose, a task, a role or a time), the
-    new triple's subject is the subject of the triple whose object that
-    subject or object was: "the surface albedo of Halden-4" gives the
-    record's dataset's target "Halden-4" (surface albedo is a measured
-    quantity, a property).
+    entity class is standalone (its instances exist on their own and have
+    facts of their own, such as a dataset, an organization, a person, an
+    instrument, a spacecraft, a mission phase, a variable or an algorithm),
+    the new triple's subject is that subject or object: "the Level-1B swaths
+    are made from the raw counts" gives the swaths' processing level
+    "Level-1B" (swaths are data, standalone). When it is describing (its
+    instances only describe something else, such as a measured quantity, a
+    purpose, a task, a role or a time), the new triple's subject is the
+    subject of the triple whose object that subject or object was: "the
+    surface albedo of Halden-4" gives the record's dataset's target
+    "Halden-4" (surface albedo is a measured quantity, describing).
     A country: it is based in when it qualifies a person or an organization
     ("the U.K. Coastal Survey Bureau (CSB)" above), and an area the data
     cover when it qualifies what is measured: "U.K. rainfall" gives
@@ -193,6 +193,11 @@ WRITING A TRIPLE
     data" splits, since RAW and CAL are named separately; a title's "BAND
     4/5/6", with no band named alone anywhere in the record, stays whole.
     Lists joined by "and" or commas split as above.
+    Describing words joined by "and" or a comma: keep them whole when the
+    word they describe is singular, and split them when that word is
+    plural. "A bright, narrow beam" is one beam, one object; "to reach the
+    archive quickly and cheaply" is one purpose, kept whole; "the 3 and 9
+    micron channels" is two channels, two triples.
     Exception, a collective "and": a distributive "and" means "A, and also
     B": what the record says holds for each item alone, so the list is
     split. A collective "and" means "A and B together": what the record
