@@ -50,7 +50,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
   - **May matter because:** it says the salinity values are computed from what the instrument measured, not measured directly.
   - **Question:** Q3 (what is measured, and what is computed).
 - **Left out:** "Polar" as a fact of its own (title, "Polar-Gridded")
-  - **Rule:** Writing a classed triple, rule 16: "one ground truth triple, with "Polar-Gridded""; the word stays whole in the spatial representation.
+  - **Rule:** Writing a classed triple, rule 23: "if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it" ("Polar-Gridded" says more than the notes' "gridded"), so the word stays whole in the spatial representation; whether "Polar" is also an area the data cover (rule 19) waits on the experts' answer.
   - **May matter because:** "Polar" may name the grid used (a fact about which grid), or the area the data cover (the poles); I wrote neither.
   - **Question:** Q1 (c), and Q11 for the area.
 - **Left out:** "collaboratively" (notes, "developed collaboratively between")
@@ -66,15 +66,15 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 The dense record: its notes describe a whole family of products (several temporal resolutions, two spatial resolutions, day and night, two kinds of temperature) and the title names the one this record is. 14 items, 10 that may matter. The product family as a whole is asked in Q24.
 
 - **Left out:** "Day" (notes, "Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products")
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
   - **May matter because:** it says daytime products exist.
   - **Question:** Q24.
 - **Left out:** "daily", "monthly" and "annual" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Only "weekly (8 day)" is this dataset's (its title says "8 Day").
   - **May matter because:** they describe the product family: which temporal resolutions of this product exist.
   - **Question:** Q24.
 - **Left out:** "9.26 km" (notes, "available at both 4.63 and 9.26 km spatial resolution")
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." Only "4.63 km" is this dataset's.
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Only "4.63 km" is this dataset's.
   - **May matter because:** it is the other resolution of the product family.
   - **Question:** Q24; whether the title's "4km" is the 4.63 km was Q22, withdrawn on 2026-10-26: settled from PO.DAAC's page for this dataset, "4km" is the rounded 4.63 km grid (see Q22's My notes).
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
@@ -104,7 +104,7 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** "satellite" (notes, "the Aqua satellite")
   - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
 - **Left out:** "which can be found at https://doi.org/10.5067/MODAM-8D4N4" (notes), the DOI of the previous v2014.1 datasets
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
   - **May matter because:** it is where the superseded release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 
@@ -113,7 +113,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** the record gives the responsibilities and the affiliation to the team as well as to Peter Minnett; the team's share is lost.
 - **Left out:** "NSST" (notes, "The first is a skin SST produced for both day and night (NSST) observations"), as another wording of "skin SST"
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for." "(NSST)" follows "night", not "skin SST", so it is not a name with its abbreviation in parentheses (Writing a classed triple, rule 20: "A name with its abbreviation in parentheses is one instance, as written."), and the record does not say what NSST names. The ground truth triples use "skin SST" (decided on 2026-10-30, audit finding G7).
-  - **May matter because:** NSST may be the product's own name; other records of the family may use it.
+  - **May matter because:** NSST may be the product's own name; other records of the family may use it. Checked on 2026-10-30: NSST names NASA's nighttime long-wave (11 µm) SST product, "Aqua MODIS Level-3 Global Mapped 11µm Nighttime Sea Surface Temperature (NSST) Data, version R2019.0" (https://data.nasa.gov/dataset/aqua-modis-level-3-global-mapped-11m-nighttime-sea-surface-temperature-nsst-data-version-r), so it is not another wording of this record's day-and-night "skin SST"; it stays left out (rule 1 of *What counts as a fact*: the record doesn't explain it).
   - **Question:** Q18, (d). Its meaning may later come from the model, checked against a source: docs/improvements.md, *Knowledge enrichment from the model, verified and labelled* (080).
 
 ## "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (pool position 5, id 99dff022-24ac-48cb-bc83-09fec8b90ad7)
@@ -138,7 +138,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), what the product MCD19A1N holds
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 21: "In every case, include the connection the record states (rule 1 of *What counts as a fact*: only what the record states)."). I decided this on 2026-10-25.
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." MCD19A1N is made from the record's dataset, so what it holds is a fact about MCD19A1N. My ground truth triple "MCD19A1N" COMPUTED_FROM the record's dataset keeps how the two are connected (rule 21: "In every case, include the connection the record states (rule 1 of *What counts as a fact*: only what the record states)."). I decided this on 2026-10-25.
   - **May matter because:** it says what the product this dataset feeds holds (a surface reflectance).
   - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
@@ -156,14 +156,14 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "in a 1,200 by 1,200 km grid" (notes)
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It is a fact about the grid the data are laid on (its size), the same decision as "SIN Grid".
-  - **May matter because:** my reading, not checked against a source: it is the size of one tile of the MODIS sinusoidal grid, which may be how much ground each file covers.
+  - **May matter because:** it is the size of one tile of the MODIS sinusoidal grid, which is how much ground each file covers. Checked on 2026-10-30: "Each tile has fixed Earth-locations covering an area of approximately 1200 x 1200 km (10 x 10 degrees at the equator)" (NASA LAADS, "What are the Product Spatial Formats?", https://landweb.modaps.eosdis.nasa.gov/help/prod_format).
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "per-pixel" (notes, "provides daily per-pixel Land Surface Temperature")
   - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." The ground truth triple HAS_SPATIAL_RESOLUTION "1 kilometer (km)" already says how much ground each value covers.
 - **Left out:** "(LST&E)" (notes, "Land Surface Temperature and Emissivity (LST&E)")
   - **Rule:** Writing a classed triple, rule 22: "A list: one ground truth triple per item." The abbreviation names the pair, so it belongs to neither item after the split.
 - **Left out:** "https://doi.org/10.5067/MODIS/MOD11A1.061" (notes, the address in "[MOD11A1 Version 6.1](https://doi.org/10.5067/MODIS/MOD11A1.061)"), the DOI of Version 6.1
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The ground truth triple has only "Version 6.1" SUPERSEDES "Version 6".
   - **May matter because:** it is where the newer release is.
   - **Question:** Q19, and Q24 (the releases of a product family).
 - **Left out:** "Above 30 degrees latitude, some pixels may have multiple observations where the criteria for clear-sky are met." (notes)
@@ -182,7 +182,7 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** "Known Issues" (notes, the heading)
   - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts" (a heading, like a field name).
 - **Left out:** the other products in "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (notes)
-  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it; for example, leave them out if the other dataset is a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or is made from the record's dataset." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The sentence is about every Version 6 Terra MODIS land surface temperature and emissivity product; I wrote its two facts for this dataset only (PRODUCTION_DISCONTINUED_ON, PRODUCTION_DISCONTINUED_DUE_TO).
   - **May matter because:** the date and its cause hold for the whole family of these products.
   - **Question:** Q24.
 - **Left out:** "known issues" as what the page is about (notes, "For complete information about known issues please refer to")
@@ -231,7 +231,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says why the study was made.
   - **Question:** Q26.
 - **Left out:** "and Swift (the latter is not included in this table, notice)" (notes), the study's second sample
-  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 21: "Leave out facts about another dataset, unless the record's dataset is made from it or is part of it").
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." The Swift sample is another dataset, too (Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it.").
   - **May matter because:** the study's findings are about both samples.
   - **Question:** Q26 (c).
 - **Left out:** "serendipitously selected" (notes)
@@ -320,7 +320,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Question:** Q6 (b).
 - **Left out:** "RDR" (title, "RDR-INFLDSTR")
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
-  - **May matter because:** another record explains it as "Level 3 (RDR)"; this one doesn't, and its level is "CODMAC level 4".
+  - **May matter because:** another record explains it as "Level 3 (RDR)"; this one doesn't, and its level is "CODMAC level 4". Checked on 2026-10-30: "RDR" is the data set type "Reduced Data Record", not a level (PDS3 Standards Reference, chapter 6, https://pds.nasa.gov/datastandards/pds3/standards/sr/Chapter06.pdf); Rosetta's archive conventions pair RDR with CODMAC 3 (ESA, RO-EST-TN-3372), while this data set uses it at CODMAC 4.
   - **Question:** Q6 (b).
 - **Left out:** "prime" (notes, "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". HAS_TARGET says the dataset is about the comet; "prime" adds that it is the main target, so other bodies may be in the images. Whether a word that only says how a fact holds is a fact waits on the experts' answer (Q27; decision of 2026-10-25).
@@ -332,7 +332,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"; "the Rosetta spacecraft" is written as "ROSETTA-ORBITER", the wording that says more (rule 23).
   - **Question:** Q2 (b).
 - **Left out:** "Lien" (notes, "Lien corrected dataset after September 2019 PSA/PDS external peer review")
-  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". My ground truth triple REVISED_AFTER "September 2019 PSA/PDS external peer review" says the dataset was corrected after the review; "Lien" names what was corrected, the issues the review raised (my reading, not checked against a source). Whether this is a fact, with a predicate to coin, waits on the experts' answer (Q28; decision of 2026-10-25).
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". My ground truth triple REVISED_AFTER "September 2019 PSA/PDS external peer review" says the dataset was corrected after the review; "Lien" names what was corrected, the issues the review raised (checked on 2026-10-30: PDS defines a lien as "A formally expressed issue with one or more products in a collection", and ESA's procedure for this review says "Within ESA, issues raised are known as RIDs (Review Item Discrepancies), while PDS refer to these as liens", https://sbnreview.astro.umd.edu/201909_Rosetta/procedure_docs/RO-SGS-PR-1023-App5%20-%20RSI%20Rosetta%20CLS%20Science%20Archive%20Review.pdf). Whether this is a fact, with a predicate to coin, waits on the experts' answer (Q28; decision of 2026-10-25).
   - **May matter because:** it says what the correction was about.
   - **Question:** Q28 (c).
 - **Left out:** PRODUCED_USING_ALGORITHM "solar stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")

@@ -29,8 +29,9 @@ WHAT COUNTS AS A FACT
    copied exactly, joined by " … ".
 2. Every fact the record states (the task above says which), unless a rule
    here leaves it out. The title states facts too: "Kestrel/Halden Lake Ice
-   20-Min L2 Swath 800m V027" says the record's dataset was collected by
-   Kestrel and has a spatial resolution of 800m.
+   20-Min L2 Swath 800m V027", with notes that say "collected by Kestrel on
+   the Halden satellite", says the record's dataset was collected by Kestrel
+   and has a spatial resolution of 800m.
 3. Not the field names. The record is split into fields, each starting with
    its name: $field_names. The field names are formatting, not facts.
 4. Not "is a" facts. "Kestrel is an imager" says what kind of thing Kestrel
@@ -63,7 +64,9 @@ WRITING A TRIPLE
     paraphrase them or expand abbreviations. Exceptions: rules 5 and 10
     (opinion words, and words true only as of writing, are left out), and
     rules 19, 22 and 23. A period of time or a range of values is one
-    subject or object (rule 22).
+    subject or object (rule 22). A name stays whole: rules 19 and 22 never
+    split or shorten a name ("Kestrel and Halden Survey Office" keeps its
+    "and"; "Earth Imaging Satellites (EIS)" keeps "Earth").
 12. The subject is what the sentence is about, which is not always the
     title. A fact about the thing the record's title names has the title as
     its subject.
@@ -71,10 +74,11 @@ WRITING A TRIPLE
     collected by Kestrel", not "Kestrel collected by the record's dataset".
 14. Entity classes and predicates: use them as the task above says.
 15. One fact per triple. "The data were collected by Kestrel aboard Halden"
-    gives two triples: the record's dataset collected by Kestrel, and the
-    record's dataset from Halden.
+    gives two triples: the record's dataset collected by Kestrel, and
+    Kestrel aboard Halden.
 16. Each fact once, even if the record states it twice or in other words.
-    Rule 23 says which wording to keep: "Ocean-Masked" over "masked".
+    Rule 23 says which wording to keep: "the CTM" and "Cloud Top Mask
+    (CTM)" give "Cloud Top Mask (CTM)".
 17. source_text: the shortest passage that contains words for the subject,
     the predicate and the object; when the subject is named only in an
     earlier sentence, from where it is named to the end of the fact. Copy
@@ -114,18 +118,21 @@ WRITING A TRIPLE
     of its own; the other triples then use one of the two wordings (rule
     23). "Release 27, also called Build 2.7" gives the record's dataset's
     version "Release 27", and "Release 27" also known as "Build 2.7".
-21. General facts: include them, unless they're about another dataset that
-    the record's dataset isn't made from or part of.
+21. General facts: include them; about another dataset, only when the
+    record links it to the record's dataset by "part of" or "made from".
     Include a general fact (one true beyond this record) about something
     the record's dataset relates to, such as its instrument, spacecraft, or
     mission: "Kestrel is aboard the Halden satellite" gives Kestrel aboard
     "Halden".
-    Leave out facts about another dataset, unless the record's dataset is
-    made from it or is part of it; for example, leave them out if the other
-    dataset is a variant of the record's dataset (the same data at another
-    temporal resolution, spatial resolution, or version: "daily, biweekly
-    (14 day), and monthly products are available"), or is made from the
-    record's dataset.
+    Another dataset: include facts about it when the record states a chain
+    of "part of" or "made from" links that connects it to the record's
+    dataset: its parts, what it is part of, what it is made from, and so on
+    through further datasets the record names ("the archive holds swath
+    files and grid files" gives facts about the swath files, a part).
+    Leave out facts about other datasets, such as a variant of the record's
+    dataset (the same data at another temporal resolution, spatial
+    resolution, or version: "daily, biweekly (14 day), and monthly products
+    are available"), or a product made from it.
     In every case, state the connection the record gives, and only that:
     "this dataset is used to make dataset Q; Q covers 1990 to 1994" gives
     "Q" computed from the record's dataset, and leaves out "1990 to 1994", a
@@ -177,9 +184,9 @@ WRITING A TRIPLE
     Test: if what the record says is true of each item alone, the "and" is
     distributive. "Designed to keep continuity of rainfall estimates from
     older and newer gauges" gives one purpose, "keep continuity of rainfall
-    estimates from older and newer gauges"; "the mean of the morning and
-    evening passes" gives one object, "mean of the morning and evening
-    passes".
+    estimates from older and newer gauges"; "the ratio of the red and
+    near-infrared reflectances" gives one object, "ratio of the red and
+    near-infrared reflectances".
 23. One thing, one wording, within a record. When the record names the
     same thing more than once, in different words: if one wording says more
     (contains the other, is more precise, or spells out its abbreviation),
