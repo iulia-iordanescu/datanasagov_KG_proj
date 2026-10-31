@@ -12,9 +12,25 @@ The runs' own files (reports, logs, outputs) stay on the laptop that ran them, i
 - **Step 040 gives a differently worded schema each time it runs**, even with almost nothing changed: in two runs, about a third of the entity classes and half the predicates were spelled differently (e.g. FileFormat in one, DataFormat in the other). So a change to 040 itself can only be judged after running the same setup several times, to see how much it varies on its own. [Evidence](#the-schema-varies-from-run-to-run)
 - **150 texts are enough to find the entity classes, and nearly enough for the predicates** (the last 25 texts added 2.8), but not the patterns, which keep growing. The patterns are the part to trim before extraction runs on the whole catalog. [Evidence](#saturation)
 - **Tables of numbers inside the `notes` field** (about 2% of records) are described, not copied cell by cell (rule 8 of *What counts as a fact* in the annotation guidelines). [Evidence](#data-tables-in-the-notes-field)
+- **Whether LiteLLM passes an effort setting on to Claude isn't shown:** asked one easy question at low and high effort, the model spent the same tokens (40) and the service reported no thinking. The runs keep the default effort, medium. [Evidence](#2026-10-31--litellm--whether-an-effort-setting-reaches-claude-not-shown)
 - **Prompt caching** (paying a fraction for the part of a request that is the same every time) **works through NASA's LiteLLM for Claude**, the way 060 sends it. Extraction (060) uses it; nothing else repeats enough to be worth it. For Gemini it's unclear. [Evidence](#2026-10-12--litellm--prompt-caching-works-after-a-first-write-per-copy-of-the-model), [more](#2026-10-12--litellm--caching-inside-the-user-message-and-gemini)
 - **Gemini 2.5 Pro's hidden thinking can use up the answer limit:** in 050's run of 2026-10-21, 79% of a cut-off answer's tokens went to thinking. 050 now caps the thinking (`--thinking`, default `low`); whether that makes drafts worse isn't measured yet. [Evidence](#2026-10-21--step-050--why-a-drafted-answer-was-cut-off)
 - **The safety filter of the model's service** sometimes stops answers about space-biology phrases (e.g. "was more virulent than"). Step 040 works around it; extraction (060) on space-biology records may lose some facts, to be watched in its report. [Evidence](#2026-10-12--step-040--what-the-content-filter-stopped-on)
+
+## 2026-10-31 · LiteLLM · Whether an effort setting reaches Claude: not shown
+
+**The test.** On the NASA laptop, `py helpers/check_effort.py`: one small question to `claude-opus-5.5` through LiteLLM, asked four ways. The service accepted all four and every answer was "247":
+
+| Sent | Answer tokens | Thinking tokens reported |
+|---|---:|---:|
+| no effort | 40 | 0 |
+| `reasoning_effort` low | 39 | 0 |
+| `reasoning_effort` high | 40 | 0 |
+| `output_config` effort high | 40 | 0 |
+
+Prompt: 67 tokens each; no cache read or write.
+
+**What it means.** `high` spent no more tokens than `low`, so this test doesn't show that LiteLLM passes an effort setting on. It doesn't show the opposite either: the question is easy enough that the model may think as little at any effort, and a thinking count the service reports as 0 is unknown, not zero (the entry of 2026-10-12 on the content filter). A question that needs several steps of reasoning would tell the two apart. Until one does, the runs keep the model's default effort, medium, and their records say `effort: not sent (model default, medium)`.
 
 ## 2026-10-21 · Step 050 · Why a drafted answer was cut off
 
