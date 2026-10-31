@@ -47,6 +47,13 @@ WITHIN STRICT REACH when both its entity classes are too: all a strict pair
 needs. The describes triples are compared on their entity class only, apart from
 the triples, since code writes the rest of them.
 
+FACTS THAT WAIT ON AN EXPERT (annotations/pending_triples.csv: the would-be ground truth triples of facts left out
+only until an expert answers; common.left_out.read_pending): after both passes with the ground truth triples, the
+occurrences still unpaired are paired with the record's own facts that wait, by the same two passes (_pair). An
+occurrence paired there (record["compared"]["pending_pairs"]) is neither a pair nor extracted only: it is left out
+of precision's denominator at that level (counts "<level>_pending_pairs"), and recall doesn't change, since a fact
+that waits is not a ground truth triple (070_evaluate/metrics/precision.md).
+
 COMPONENT CLASS MISMATCHES (component_class_mismatches): a wrong or missing row of the
 translation table leaves a trace in the triples. Extraction stated the fact,
 but a component class differs:
@@ -263,20 +270,13 @@ def _max_pairs(can: dict, strict, turned=lambda gi, ei: False) -> dict:
             ei = before
 
 
-def compare_record(record: dict, translation, reviews: dict | None = None) -> dict:
-    """The record's pairs and counts: record["compared"]. reviews: a person's
-    verdicts on partial pairs ({pair_key: verdict}); a pair marked "not the
-    same fact" is never made."""
-    reviews = reviews or {}
-    gt = record["gt"]
-    ex = [translate(f, translation) for f in record["extracted"]]
-
-    def allowed(gi, ei) -> bool:
-        return reviews.get(pair_key(record["id"], gt[gi], ex[ei])) != NOT_SAME
-
-    pairs = []                                        # (gt index, extracted index, "exact" | "partial")
-    turned = set()                                    # pairs matched with subject and object swapped
-    free_g, free_e = set(range(len(gt))), set(range(len(ex)))
+def _pair(gt: list, ex: list, free_e: set, allowed) -> tuple:
+    """The two passes (LEVELS) between the triples gt and the occurrences ex still free (free_e): (pairs [(gt index,
+    extracted index, level)], turned {(gi, ei) matched with subject and object swapped}, the occurrences left free).
+    allowed(gi, ei): False for a pair a person's review ruled out. Used for the ground truth triples, then for the
+    facts that wait on an expert, with what is left."""
+    pairs, turned = [], set()
+    free_g, free_e = set(range(len(gt))), set(free_e)
     for level in LEVELS:
         way = {}                                      # (gi, ei): swapped?, as written when both work unless only swapped is strict
         for gi in sorted(free_g):
@@ -296,6 +296,29 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
                 turned.add((gi, ei))
             free_g.discard(gi)
             free_e.discard(ei)
+    return pairs, turned, free_e
+
+
+def compare_record(record: dict, translation, reviews: dict | None = None) -> dict:
+    """The record's pairs and counts: record["compared"]. reviews: a person's
+    verdicts on partial pairs ({pair_key: verdict}); a pair marked "not the
+    same fact" is never made."""
+    reviews = reviews or {}
+    gt = record["gt"]
+    ex = [translate(f, translation) for f in record["extracted"]]
+
+    def allowed(gi, ei) -> bool:
+        return reviews.get(pair_key(record["id"], gt[gi], ex[ei])) != NOT_SAME
+
+    pairs, turned, free_e = _pair(gt, ex, set(range(len(ex))), allowed)
+    # Then what is left of the occurrences, with the record's facts that wait on an expert (annotations/
+    # pending_triples.csv), by the same passes: an occurrence paired here is left out of precision's denominator
+    # (070_evaluate/metrics/precision.md), and never counts for recall (they aren't ground truth).
+    pending = [dict(p) for p in record.get("pending") or []]
+
+    def allowed_pending(pi, ei) -> bool:
+        return reviews.get(pair_key(record["id"], pending[pi], ex[ei])) != NOT_SAME
+    pending_pairs, pending_turned, _ = _pair(pending, ex, free_e, allowed_pending)
 
     def paired(gi, ei):                               # the occurrence the way round it was paired
         return swapped(ex[ei]) if (gi, ei) in turned else ex[ei]
@@ -316,6 +339,9 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
                                                   for gi, ei in used)
         counts[f"{level}_pairs_within_reach"] = sum(reach[gi] for gi, _ in used)
         counts[f"{level}_strict_pairs_within_strict_reach"] = sum(strict_reach[gi] for gi, _ in strict)
+        # occurrences paired, at this level, with a fact that waits on an expert: out of precision's denominator
+        counts[f"{level}_pending_pairs"] = sum(1 for _, _, lv in pending_pairs if level == "partial" or lv == "exact")
+    counts["pending"] = len(pending)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]
     truth = gd["object_class"] if gd and gd["object_class"] not in ("", UNDECIDED) else None
@@ -334,6 +360,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
         "translated": ex, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
+        "pending": pending, "pending_pairs": pending_pairs, "pending_swapped": pending_turned,
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed, "applied": len(applied),
                            "not_applying": stale_reviews},
         "describes": {"truth": truth, "said": said,
@@ -370,6 +397,7 @@ def component_class_counts(record: dict, translation) -> dict:
     c = record["compared"]
     gt, ex = record["gt"], c["translated"]
     partner = {ei: (gi, level) for gi, ei, level in c["pairs"]}
+    waiting = {ei: (pi, level) for pi, ei, level in c.get("pending_pairs", [])}
     counts, labels, reach = collections.defaultdict(collections.Counter), {}, {}
     kind = {"predicate": "predicate", "subject class": "entity class", "object class": "entity class"}
 
@@ -387,10 +415,18 @@ def component_class_counts(record: dict, translation) -> dict:
                 add(table, g[slot], "within_strict_reach")
     for ei in range(len(ex)):
         t = as_paired(c, partner[ei][0], ei) if ei in partner else ex[ei]
+        if ei in waiting:
+            pi, level = waiting[ei]
+            t = swapped(ex[ei]) if (pi, ei) in c.get("pending_swapped", ()) else ex[ei]
         for table, slot in PER_COMPONENT_CLASS:
             add(table, t[slot], "occurrences")
             if c["multiplicity"][ei] > 1:
                 add(table, t[slot], "occurrences_multiplicity_above_1")
+        if ei in waiting:                             # out of precision's denominator, for each of its rows
+            for table, slot in PER_COMPONENT_CLASS:
+                for counted in LEVELS:
+                    if counted == "partial" or level == "exact":
+                        counts[(table, component_class_key(t[slot]))][f"{counted}_pending_pairs"] += 1
         if ei not in partner:
             continue
         gi, level = partner[ei]
@@ -436,7 +472,7 @@ def component_class_mismatches(records: list) -> list:
                 if component_class_key(gt[gi][slot]) != component_class_key(t[slot]):
                     add(f"entity class, {slot.split('_')[0]}", t["crt"][slot], t[slot], gt[gi][slot])
         paired_g = {gi for gi, _, _ in c["pairs"]}
-        paired_e = {ei for _, ei, _ in c["pairs"]}
+        paired_e = {ei for _, ei, _ in c["pairs"]} | {ei for _, ei, _ in c.get("pending_pairs", [])}
         for gi, g in enumerate(gt):
             if gi in paired_g:
                 continue

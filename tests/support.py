@@ -97,11 +97,15 @@ def use_step(step: str) -> Path:
 #: their first line (a CSV file's header; for the additions file, see below).
 WHOLE = ("README.md", "ground_truth_schema.txt", "guidelines.md")
 HEADER_ONLY = ("component_class_mapping.csv", "partial_pair_reviews.csv", "held_out_looks.csv")
+#: annotations/pending_triples.csv's header (common/common_helpers/left_out.py, PENDING_COLUMNS), for a copy made
+#: before the file exists.
+PENDING_HEADER = "id,subject,subject_class,predicate,object,object_class,source_text,left_out,question"
 
 
 def temp_repo(annotations: bool = True) -> Path:
     """A temporary copy of the code. With annotations, annotations/ holds the
-    README, the ground truth schema, the person-made CSV files with no rows,
+    README, the ground truth schema, the person-made CSV files with no rows
+    (annotations/pending_triples.csv among them), left_out.md's introduction with no record's section,
     and the additions file's comments with no entries: never the ground
     truth, the pool, or anyone's rows. The caller removes it (shutil.rmtree).
     To import the copy's code, use import_from_copy(tmp)."""
@@ -119,6 +123,13 @@ def temp_repo(annotations: bool = True) -> Path:
         for name in HEADER_ONLY:
             header = (real / name).read_text(encoding="utf-8-sig").splitlines()[0]
             (tmp / "annotations" / name).write_text(header + "\n", encoding="utf-8")
+        # the facts that wait on an expert: none (the header only), and left_out.md's introduction with no section
+        pending = real / "pending_triples.csv"
+        (tmp / "annotations" / "pending_triples.csv").write_text(
+            (pending.read_text(encoding="utf-8-sig").splitlines()[0] if pending.exists() else PENDING_HEADER) + "\n",
+            encoding="utf-8")
+        intro = (real / "left_out.md").read_text(encoding="utf-8").split("\n## ", 1)[0]
+        (tmp / "annotations" / "left_out.md").write_text(intro.rstrip() + "\n", encoding="utf-8")
         comments = [line for line in (real / "schema_additions.txt").read_text(encoding="utf-8-sig").splitlines()
                     if line.startswith("#") or not line.strip()]
         (tmp / "annotations" / "schema_additions.txt").write_text("\n".join(comments).rstrip() + "\n", encoding="utf-8")

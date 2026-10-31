@@ -21,6 +21,19 @@ rule_ref(item) is the rule an item names, "What counts as a fact, rule 4", or NO
 
 A section is a dict: title, position (int), id, line, intro (the prose), items. An item: line, words, rule,
 may_matter (the text, or ""), question (the text, or ""), questions (the ids in it, "Q6", in order), notes.
+
+THE FACTS THAT WAIT ON AN EXPERT: annotations/pending_triples.csv, read by read_pending (step 070 reads it, so that
+an extracted triple matching such a fact isn't counted against precision: 070_evaluate/metrics/precision.md). An item
+whose Rule line quotes rule 2's "or it waits on an expert's answer" (WAITS) states a fact that is left out only until
+an expert answers; its would-be ground truth triple, when one is clear, is a row of that file:
+
+    id,subject,subject_class,predicate,object,object_class,source_text,left_out,question
+
+id is the record's id; the next six columns are as in a ground truth file; left_out is the item's words, exactly as
+on its "- **Left out:**" line, in that record's section; question is the question that waits ("Q9 (d)"). An item
+that waits but has no clear would-be triple says so in a note starting NO_TRIPLE ("No clear would-be triple: <why>").
+read_pending checks, naming the file and line: the header; each row's record has a section here, and its left_out is
+the words of an item of that section that waits; no row twice; every item that waits has a row or that note.
 """
 from __future__ import annotations
 
@@ -30,6 +43,13 @@ from pathlib import Path
 from common.step import ANNOTATIONS_DIR
 
 LEFT_OUT_PATH = ANNOTATIONS_DIR / "left_out.md"
+PENDING_PATH = ANNOTATIONS_DIR / "pending_triples.csv"
+PENDING_COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class", "source_text", "left_out",
+                   "question"]
+#: The words of rule 2 an item's Rule line quotes when its fact waits on an expert's answer.
+WAITS = "or it waits on an expert's answer"
+#: How a note of an item that waits starts when the item has no clear would-be ground truth triple.
+NO_TRIPLE = "No clear would-be triple:"
 _HEADING = re.compile(r'^## "(?P<title>.+)" \(pool position (?P<pos>\d+), id (?P<id>[0-9A-Za-z-]+)\)\s*$')
 _ITEM = re.compile(r"^- \*\*Left out:\*\* ?(?P<words>.*\S.*)$")
 _SUB = re.compile(r"^  - (?P<text>.*\S.*)$")
@@ -116,3 +136,58 @@ def _check_section(s: dict, bad) -> None:
     said = 0 if matter["none"] else int(matter["n_all"] or matter["n"])
     if said != sum(1 for it in items if it["may_matter"]):
         raise bad(s["line"], f"the section says {said} that may matter but {sum(1 for it in items if it['may_matter'])} items have a \"May matter because:\" line")
+
+
+def waits(item: dict) -> bool:
+    """Whether the item's fact is left out only until an expert answers (its Rule line quotes WAITS)."""
+    return WAITS in item["rule"]
+
+
+def read_pending(path: Path = PENDING_PATH, left_out_path: Path = LEFT_OUT_PATH) -> list:
+    """The would-be ground truth triples of the facts that wait on an expert (see the module): [row dict, with
+    "line"], in the file's order; ValueError naming the file and line of the first problem. Every row is checked
+    against left_out.md (read_left_out), and every item there that waits must have a row or a NO_TRIPLE note."""
+    import csv
+    name = f"annotations/{path.name}" if path == PENDING_PATH else str(path)
+    lo_name = f"annotations/{left_out_path.name}" if left_out_path == LEFT_OUT_PATH else str(left_out_path)
+    with open(path, encoding="utf-8-sig", newline="") as fh:
+        reader = csv.reader(fh)
+        header = next(reader, None)
+        if header != PENDING_COLUMNS:
+            raise ValueError(f"{name}, line 1: the header must be {','.join(PENDING_COLUMNS)}, not "
+                             f"{','.join(header or [])} (the format: common/common_helpers/left_out.py)")
+        raw = [(n, r) for n, r in enumerate(reader, 2) if any(c.strip() for c in r)]
+    sections = {s["id"]: s for s in read_left_out(left_out_path)}
+    rows, seen = [], {}
+    for n, r in raw:
+        if len(r) != len(PENDING_COLUMNS):
+            raise ValueError(f"{name}, line {n}: {len(r)} columns, not {len(PENDING_COLUMNS)} "
+                             f"({','.join(PENDING_COLUMNS)}); a value with a comma needs double quotes")
+        row = dict(zip(PENDING_COLUMNS, (c.strip() for c in r)))
+        empty = [c for c in PENDING_COLUMNS if not row[c]]
+        if empty:
+            raise ValueError(f"{name}, line {n}: no value in {', '.join(empty)}; every column needs one")
+        section = sections.get(row["id"])
+        if section is None:
+            raise ValueError(f"{name}, line {n}: the record {row['id']} has no section in {lo_name}; write its "
+                             f"left-out item there first, or fix the id")
+        item = next((it for it in section["items"] if it["words"] == row["left_out"]), None)
+        if item is None:
+            raise ValueError(f"{name}, line {n}: no item of the section of {row['id']} in {lo_name} has the words "
+                             f"{row['left_out']!r} on its \"- **Left out:**\" line; copy them exactly from there")
+        if not waits(item):
+            raise ValueError(f"{name}, line {n}: the item {row['left_out']!r} ({lo_name}, line {item['line']}) "
+                             f"doesn't wait on an expert (its Rule line doesn't quote {WAITS!r}); delete the row, or "
+                             f"fix the item's rule")
+        key = tuple(row[c] for c in PENDING_COLUMNS)
+        if key in seen:
+            raise ValueError(f"{name}, line {n}: the same row as line {seen[key]}; delete one")
+        seen[key] = n
+        rows.append({**row, "line": n})
+    having = {(r["id"], r["left_out"]) for r in rows}
+    for s in sections.values():
+        for it in s["items"]:
+            if waits(it) and (s["id"], it["words"]) not in having and not any(x.startswith(NO_TRIPLE) for x in it["notes"]):
+                raise ValueError(f"{lo_name}, line {it['line']}: the item {it['words']!r} waits on an expert but has "
+                                 f"no row in {name} and no note \"{NO_TRIPLE} <why>\"; add one of the two")
+    return rows

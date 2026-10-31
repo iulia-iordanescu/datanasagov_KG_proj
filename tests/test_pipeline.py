@@ -557,7 +557,7 @@ class Pipeline(unittest.TestCase):
         written = sorted(p.relative_to(self.annotations).as_posix() for p in self.annotations.rglob("*") if p.is_file())
         self.assertEqual(written, ["README.md", "component_class_mapping.csv", "ground_truth/batch_001.csv",
                                    "ground_truth_candidates.csv", "ground_truth_schema.txt", "guidelines.md", "held_out_looks.csv",
-                                   "partial_pair_reviews.csv", "schema_additions.txt"])
+                                   "left_out.md", "partial_pair_reviews.csv", "pending_triples.csv", "schema_additions.txt"])
 
 
 if __name__ == "__main__":

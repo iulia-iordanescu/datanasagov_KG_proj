@@ -31,7 +31,8 @@ from common.report import cell, model_calls, named, per_text_table, this_report
 from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
 from common.ground_truth import HELD_OUT, PARTS, TUNING
-from common.partial_reviews import EXTRACTED_ONLY, GROUND_TRUTH_ONLY, PAIR_STATUS
+from common.left_out import PENDING_COLUMNS
+from common.partial_reviews import EXTRACTED_ONLY, GROUND_TRUTH_ONLY, MATCHES_WAITING, PAIR_STATUS
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
@@ -48,7 +49,11 @@ TABLE = "`py helpers/annotate.py`, view *Translation table*"     # where a perso
 AGAIN = "then run `py 070_evaluate/run.py` again."
 COMPARED_COLUMNS = (["record_id", "position", "part", "stratum", "status", "entity_classes_right", "subject_and_object_swapped", "within_reach", "within_strict_reach"]
                  + [f"extracted_{c}" for c in TRIPLE] + [f"translated_{c}" for c in TRIPLE]
-                 + [f"ground_truth_{c}" for c in TRIPLE] + [ORIGIN_COLUMN])
+                 + [f"ground_truth_{c}" for c in TRIPLE]
+                 + [f"waiting_{c}" for c in TRIPLE] + ["waiting_level", "waiting_left_out", "waiting_question"]
+                 + [ORIGIN_COLUMN])
+#: The report's section on the occurrences that match a fact that waits on an expert (pairing.py), named once.
+WAITING_SECTION = "Extracted triples matching facts that wait on an expert"
 
 
 # --------------------------------------------------------------------------
@@ -364,8 +369,9 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     (code version, settings, how its model calls were sent (llm.describe(), from its details file: the exact model
     that answered, the answer limit, temperature, thinking, effort), prompts, and the schema files it read, by
     fingerprint) and this run (code version, the
-    translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), and the
-    model that proposed the translation)."""
+    translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), the facts
+    that wait on an expert (that occurrences matching them are left out of precision, how many there are, and their
+    rows by fingerprint), and the model that proposed the translation)."""
     extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
                   "git_commit": inputs_manifest.get("git_commit"), "settings": inputs_manifest.get("settings", {}),
                   "model_calls": {k: evaluated.extraction_made.get(k) for k in MODEL_CALL_FIELDS},
@@ -373,9 +379,14 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
                   "schema": evaluated.schema_used.get("made", {}).get("schema"),
                   "inputs": {i.get("name"): i.get("sha256") for i in inputs_manifest.get("inputs", [])
                              if i.get("name") in ("schema", "additions")}}
+    pending = [{k: row[k] for k in PENDING_COLUMNS} for row in evaluated.pending]
     return {"extraction (060)": extraction,
             "evaluation (070)": {"git_commit": git_commit(), "matching_version": text_match.MATCHING_VERSION,
                                  "translation_sha256": _translation_fingerprint(translation),
+                                 # an occurrence matching a fact that waits on an expert is left out of precision
+                                 "facts_waiting_on_an_expert": {"excluded_from_precision": True,
+                                                                "pending_triples": len(pending),
+                                                                "sha256": _fingerprint(pending)},
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
 
 
@@ -423,7 +434,8 @@ def _log_look(evaluated, translation, schema_file: str) -> dict:
 def _per_record(records: list, hidden: int) -> str:
     lines = ["# Per record", "",
              "Each evaluated record: its pairs (✓ exact / ≈ partial), each with its ground truth triple and its "
-             "occurrence; its occurrences left extracted only (each counts against precision); and its ground "
+             "occurrence; its occurrences matching a fact that waits on an expert (left out of precision); its "
+             "occurrences left extracted only (each counts against precision); and its ground "
              "truth triples left ground truth only (each counts against recall). Occurrences are shown translated "
              "into the ground truth schema. Terms: docs/terminology.md, section *Evaluating extraction*; "
              "pairs: 070_evaluate/metrics/pairs.md. Above each record's pairs, its own numbers, by the same formulas "
@@ -459,7 +471,16 @@ def _per_record(records: list, hidden: int) -> str:
                 if level == "partial" or not strict or turned:
                     lines.append(f"  - ground truth: {_triple(gt[gi])}")
             lines.append("")
-        extra = [i for i in range(len(ex)) if i not in paired_e]
+        waiting = {ei: (pi, level) for pi, ei, level in c.get("pending_pairs", [])}
+        if waiting:
+            lines += [f"**Matching a fact that waits on an expert** (occurrences left out of precision; section "
+                      f"*{WAITING_SECTION}* of the report)", ""]
+            for ei, (pi, level) in sorted(waiting.items()):
+                f = c["pending"][pi]
+                lines += [f"- {'✓ exact' if level == 'exact' else '≈ partial'}: {_triple(ex[ei])}{_multiplied(r, ei)}",
+                          f"  - waits on an expert ({f['question']}): {_triple(f)}"]
+            lines.append("")
+        extra = [i for i in range(len(ex)) if i not in paired_e and i not in waiting]
         if extra:
             lines += ["**Extracted only** (occurrences without a partner; against precision)", ""]
             lines += [f"- ✗ {_triple(ex[i])}{_multiplied(r, i)}" for i in extra] + [""]
@@ -500,9 +521,48 @@ def _compared_rows(records: list) -> list:
         paired_g = {gi for gi, _, _ in c["pairs"]}
         paired_e = {ei for _, ei, _ in c["pairs"]}
         rows += [row(PAIR_STATUS[level], gi, ei) for gi, ei, level in c["pairs"]]
+        for pi, ei, level in c.get("pending_pairs", []):
+            f = c["pending"][pi]
+            rows.append({**row(MATCHES_WAITING, ei=ei), **{f"waiting_{k}": f[k] for k in TRIPLE},
+                         "waiting_level": level, "waiting_left_out": f["left_out"], "waiting_question": f["question"],
+                         "subject_and_object_swapped": "yes" if (pi, ei) in c.get("pending_swapped", ()) else "no"})
+            paired_e.add(ei)
         rows += [row(EXTRACTED_ONLY, ei=i) for i in range(len(ex)) if i not in paired_e]
         rows += [row(GROUND_TRUTH_ONLY, gi=i) for i in range(len(gt)) if i not in paired_g]
     return rows
+
+
+#: The formulas the report states above its table of precision, recall and F1 (070_evaluate/metrics/precision.md).
+PRECISION_FORMULA = ("Precision = pairs ÷ (occurrences − occurrences paired with a fact that waits on an expert), at "
+                     "each pair level; recall = pairs ÷ ground truth triples; F1 = 2 × pairs ÷ (those occurrences + "
+                     "ground truth triples). The facts that wait on an expert (`annotations/pending_triples.csv`) "
+                     "are not ground truth triples, so recall doesn't count them "
+                     "(`070_evaluate/metrics/precision.md`).")
+
+
+def _waiting_lines(n: dict, recs: list) -> list:
+    """The report's section on the occurrences paired with a fact that waits on an expert (pairing.py), for one part."""
+    found = [(r, r["compared"]["pending"][pi], ei, level) for r in recs
+             for pi, ei, level in r["compared"].get("pending_pairs", [])]
+    lines = [f"#### {WAITING_SECTION}", "",
+             f"The facts left out of the ground truth only until an expert answers, each with its would-be ground "
+             f"truth triple in `annotations/pending_triples.csv` (its item in `annotations/left_out.md`, its "
+             f"question in `annotations/questions_for_experts.md`): {n['pending']} for these records. After the "
+             f"pairs with ground truth triples, the occurrences still without a partner are paired with them, by the "
+             f"same two passes; each occurrence paired here is left out of precision, and isn't extracted only. "
+             f"Occurrences left out of precision: {n['exact']['pending_pairs']} at the exact level, "
+             f"{n['partial']['pending_pairs']} at the partial level. Recall doesn't change.", ""]
+    if not found:
+        return lines + ["None." if n["pending"] else "None: no fact of these records waits on an expert.", ""]
+    lines += ["| Record | Pair level | Occurrence (translated) | Fact that waits (would-be ground truth triple) | "
+              "Left out (annotations/left_out.md) | Question |", "|---|---|---|---|---|---|"]
+    for r, f, ei, level in found[:SHOW]:
+        lines.append(f"| {cell(_short(r['title'] or r['id'], TITLE_SHOWN))} | {level} | "
+                     f"{cell(_triple(r['compared']['translated'][ei]))} | {cell(_triple(f))} | "
+                     f"{cell(_short(f['left_out'], TITLE_SHOWN))} | {cell(f['question'])} |")
+    if len(found) > SHOW:
+        lines.append(f"| … {len(found) - SHOW} more, in `{PER_RECORD_NAME}` and `{COMPARED_NAME}` | | | | | |")
+    return lines + [""]
 
 
 def _mismatch_lines(mismatches: list) -> list:
@@ -761,6 +821,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                              ("occurrences (translated extracted triples)",
                                               [len(r["compared"]["translated"]) for r in part_records])])
         lines += ["", "One text is one evaluated record's text; describes triples aren't counted.", ""]
+        lines += [PRECISION_FORMULA + " Here: "
+                  f"{n['exact']['pending_pairs']} occurrence(s) at the exact level and {n['partial']['pending_pairs']} "
+                  f"at the partial level are left out of precision (section *{WAITING_SECTION}*).", ""]
         lines += ["| Pair level | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
         for level in pairing.LEVELS:
             L = n[level]
@@ -807,6 +870,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                          f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
                          f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
         lines.append("")
+        lines += _waiting_lines(n, recs)
         lines += _per_component_class_lines(n, v["per_component_class"])
         lines += _per_record_lines(v["per_record"])
         lines += _removed_lines(n["records"], v["removed_by_060"])

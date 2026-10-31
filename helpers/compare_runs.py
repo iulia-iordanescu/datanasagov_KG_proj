@@ -212,8 +212,11 @@ def report(runs: list, ids: list, left: dict) -> str:
               "how its model calls were sent (the exact model that answered, the answer limit, temperature, thinking "
               "and effort), prompts by fingerprint, and the schema files it read, by fingerprint) and 070's run (its code version, "
               "its matching version (what counts as the same subject instance or object instance; `(not recorded)` "
-              "for a run before 2026-10-24, which compared words only), the translation, by fingerprint, and the "
-              "service and model it asked). A difference in numbers comes from one of these, or from what the "
+              "for a run before 2026-10-24, which compared words only), the translation, by fingerprint, the "
+              "facts that wait on an expert (`facts_waiting_on_an_expert`: that occurrences matching them were left "
+              "out of precision, how many there were, and their rows by fingerprint; `(not recorded)` for a run "
+              "before 2026-10-31, which counted those occurrences against precision), and the service and model it "
+              "asked). A difference in numbers comes from one of these, or from what the "
               "recipe doesn't record:", ""] + UNRECORDED + [""]
     if diffs:
         lines += ["| Part of the recipe | " + " | ".join(names) + " |", "|---|" + "---|" * len(names)]

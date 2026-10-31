@@ -2,7 +2,8 @@
 stats.py -- stage 4: the numbers, each with its margin of error. Code only, no model.
 
 Every number is a ratio of sums over the evaluated records (e.g. precision =
-pairs in all records / occurrences in all records), so a record with many
+pairs in all records / occurrences in all records, less the occurrences paired
+with a fact that waits on an expert: pairing.py), so a record with many
 triples weighs more than one with few, as each triple is one answer. What
 each number is, its formula and how to read it: 070_evaluate/metrics.md and
 the files it lists (precision, recall, F1, entity-class accuracy, the recall
@@ -52,16 +53,20 @@ def numbers(records: list) -> dict:
     for r in records:
         total.update(r["compared"]["counts"])
     out = {"records": len(records), "extracted": total["extracted"], "gt_triples": total["gt"],
+           "pending": total["pending"],
            "within_reach": total["within_reach"], "within_strict_reach": total["within_strict_reach"],
            "recall_upper_bound": _ratio(total["within_reach"], total["gt"]),
            "strict_recall_upper_bound": _ratio(total["within_strict_reach"], total["gt"])}
     for level in LEVELS:
         m, s = total[f"{level}_pairs"], total[f"{level}_strict_pairs"]
         sw = total[f"{level}_strict_pairs_within_strict_reach"]
-        out[level] = {"precision": _ratio(m, total["extracted"]), "recall": _ratio(m, total["gt"]),
-                      "f1": _ratio(2 * m, total["extracted"] + total["gt"]),
-                      "strict_precision": _ratio(s, total["extracted"]), "strict_recall": _ratio(s, total["gt"]),
-                      "strict_f1": _ratio(2 * s, total["extracted"] + total["gt"]),
+        waiting = total[f"{level}_pending_pairs"]
+        counted = total["extracted"] - waiting        # precision's denominator: occurrences less those matching a pending fact
+        out[level] = {"precision": _ratio(m, counted), "recall": _ratio(m, total["gt"]),
+                      "f1": _ratio(2 * m, counted + total["gt"]),
+                      "strict_precision": _ratio(s, counted), "strict_recall": _ratio(s, total["gt"]),
+                      "strict_f1": _ratio(2 * s, counted + total["gt"]),
+                      "pending_pairs": waiting, "counted_occurrences": counted,
                       "entity_class_accuracy": _ratio(s, m),
                       "subject_class_accuracy": _ratio(total[f"{level}_subject_class_pairs"], m),
                       "object_class_accuracy": _ratio(total[f"{level}_object_class_pairs"], m),
@@ -201,9 +206,10 @@ def _component_class_numbers(c) -> dict:
     strict pair)."""
     out = {"row": {"strict_recall_upper_bound": _ratio(c["within_strict_reach"], c["ground_truth_triples"])}}
     for level in LEVELS:
-        m, s, both = c[f"{level}_pairs"], c[f"{level}_strict_pairs"], c["occurrences"] + c["ground_truth_triples"]
-        out[level] = {"precision": _ratio(m, c["occurrences"]), "recall": _ratio(m, c["ground_truth_triples"]),
-                      "f1": _ratio(2 * m, both), "strict_precision": _ratio(s, c["occurrences"]),
+        counted = c["occurrences"] - c[f"{level}_pending_pairs"]     # less those matching a fact that waits on an expert
+        m, s, both = c[f"{level}_pairs"], c[f"{level}_strict_pairs"], counted + c["ground_truth_triples"]
+        out[level] = {"precision": _ratio(m, counted), "recall": _ratio(m, c["ground_truth_triples"]),
+                      "f1": _ratio(2 * m, both), "strict_precision": _ratio(s, counted),
                       "strict_recall": _ratio(s, c["ground_truth_triples"]), "strict_f1": _ratio(2 * s, both),
                       "strict_recall_within_reach": _ratio(s, c["within_strict_reach"])}
     return out
@@ -217,7 +223,9 @@ def per_component_class(records: list) -> dict:
     "within_reach" (whether some checked row translates to it; None for one whose row says (none)), "occurrences",
     "occurrences_multiplicity_above_1" (of those, the ones whose element has multiplicity above 1 in its record),
     "ground_truth_triples", "within_strict_reach" (of those ground truth triples), "strict_recall_upper_bound",
-    "counted_against" (occurrences and ground truth triples with no exact pair that counts for it), "<level>":
+    "pending_pairs" (occurrences paired exactly with a fact that waits on an expert, left out of precision),
+    "counted_against" (occurrences and ground truth triples with no exact pair that counts for it, less those
+    occurrences), "<level>":
     {"pairs", "strict_pairs", "precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
     "strict_recall_within_reach"}} (each number a {"value", "low", "high"}), sorted by
     counted_against, most first: what the component class costs at the exact level, so the frequent and badly
@@ -250,7 +258,8 @@ def per_component_class(records: list) -> dict:
         row = {"component_class": labels[key], "within_reach": reach[key], "occurrences": c["occurrences"],
                "occurrences_multiplicity_above_1": c["occurrences_multiplicity_above_1"],
                "ground_truth_triples": c["ground_truth_triples"], "within_strict_reach": c["within_strict_reach"],
-               "counted_against": c["occurrences"] + c["ground_truth_triples"] - 2 * c["exact_pairs"]}
+               "pending_pairs": c["exact_pending_pairs"],
+               "counted_against": c["occurrences"] - c["exact_pending_pairs"] + c["ground_truth_triples"] - 2 * c["exact_pairs"]}
         for level, m in _component_class_numbers(c).items():
             if level != "row":
                 row[level] = {"pairs": c[f"{level}_pairs"], "strict_pairs": c[f"{level}_strict_pairs"]}
@@ -277,8 +286,9 @@ def per_record(records: list) -> list:
     every record's counts (070_evaluate/metrics.md, *Pooled, not averaged*). [{"id", "position", "title",
     "occurrences", "occurrences_multiplicity_above_1" (of those, the ones whose element has multiplicity above 1 in
     the record's multiset of translated extracted triples), "ground_truth_triples", "within_reach",
-    "within_strict_reach" (of those ground truth triples), "counted_against" (occurrences and ground truth triples with no exact
-    pair), "recall_upper_bound", "strict_recall_upper_bound", "<level>": {"pairs", "strict_pairs", and each of
+    "within_strict_reach" (of those ground truth triples), "pending_pairs" (occurrences paired exactly with a fact that
+    waits on an expert), "counted_against" (occurrences and ground truth triples with no exact pair, less those
+    occurrences), "recall_upper_bound", "strict_recall_upper_bound", "<level>": {"pairs", "strict_pairs", and each of
     PER_RECORD_NUMBERS}}], sorted by counted_against, most first (as per_component_class), then by pool position."""
     rows = []
     for r in records:
@@ -286,7 +296,8 @@ def per_record(records: list) -> list:
         row = {"id": r["id"], "position": r["position"], "title": r["title"], "occurrences": c["extracted"],
                "occurrences_multiplicity_above_1": c["occurrences_multiplicity_above_1"],
                "ground_truth_triples": c["gt"], "within_reach": c["within_reach"],
-               "within_strict_reach": c["within_strict_reach"], "counted_against": c["extracted"] + c["gt"] - 2 * c["exact_pairs"],
+               "within_strict_reach": c["within_strict_reach"], "pending_pairs": c.get("exact_pending_pairs", 0),
+               "counted_against": c["extracted"] - c.get("exact_pending_pairs", 0) + c["gt"] - 2 * c["exact_pairs"],
                "recall_upper_bound": n["recall_upper_bound"], "strict_recall_upper_bound": n["strict_recall_upper_bound"]}
         for level in LEVELS:
             row[level] = {"pairs": n[level]["pairs"], "strict_pairs": n[level]["strict_pairs"],

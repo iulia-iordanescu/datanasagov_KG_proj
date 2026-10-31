@@ -17,7 +17,7 @@ Four versions.
 | strict exact recall | (forms an exact pair) ∧ (the pair is strict) | \|exact pairs ∩ [strict pairs](pairs.md)\| ÷ \|ground truth triples\| |
 | strict partial recall | (forms an exact or a partial pair) ∧ (the pair is strict) | \|(exact pairs ∪ partial pairs) ∩ strict pairs\| ÷ \|ground truth triples\| |
 
-Each version is a number from 0 to 1; with no ground truth triples across the [records](../../docs/terminology.md#1-records-and-their-text), it is undefined.
+Each version is a number from 0 to 1; with no ground truth triples across the [records](../../docs/terminology.md#1-records-and-their-text), it is undefined. A fact that waits on an expert (`annotations/pending_triples.csv`) is not a ground truth triple, so recall never counts it, and an occurrence matching one changes only precision ([Precision](precision.md), *Facts that wait on an expert*).
 
 ## <ins>Interpretations</ins>
 

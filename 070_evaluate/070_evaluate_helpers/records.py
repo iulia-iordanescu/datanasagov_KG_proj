@@ -28,7 +28,11 @@ truth triples and describes triple, 060's extracted triples and describes triple
 how many items 060's checks removed from it, per reason (extracted_triples_removed.csv),
 and its twin kind (docs/terminology.md, twin): what it shares with a record
 the current schema was learned from (060's schema_used.json, learned_from),
-"" when it isn't a twin, None when that isn't known.
+"" when it isn't a twin, None when that isn't known; and its facts that wait on
+an expert (annotations/pending_triples.csv, read and checked against
+annotations/left_out.md by common.left_out.read_pending): pairing.py pairs
+what is left of its occurrences with them, so that an occurrence matching one
+isn't counted against precision.
 """
 from __future__ import annotations
 
@@ -43,6 +47,7 @@ from common.audit import ref_path
 from common.files import read_csv
 from common.ground_truth import (HELD_OUT, coined_uses, fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds,
                                  with_coined)
+from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import load_records
@@ -75,6 +80,8 @@ class Evaluated:
     extraction_failed: list = field(default_factory=list)  # finished records 060's model calls failed for, with why and
                                                    # maintainer (common/common_helpers/dropped.py); left out of every number
     finished: list = field(default_factory=list)   # the finished ground truth records, {"id", "maintainer"}
+    pending: list = field(default_factory=list)    # every row of annotations/pending_triples.csv (read_pending): the
+                                                   # facts that wait on an expert, of every record, evaluated or not
 
 
 def _triples(rows: list) -> tuple:
@@ -175,6 +182,25 @@ def _first_gap(order: list, part: str, positions: dict, taken: set, finished: se
             f"`py 050_annotate/run.py` (set --part {part}), correct and finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
 
 
+def _read_pending(inputs: dict) -> list:
+    """annotations/pending_triples.csv, checked against annotations/left_out.md (common.left_out.read_pending); a
+    Stop naming the problem when either can't be read. No such input given (a caller other than run.py): none."""
+    if "pending_triples" not in inputs:
+        return []
+    path, left_out = Path(inputs["pending_triples"]), Path(inputs["left_out"])
+    for f in (path, left_out):
+        if not f.is_file():
+            raise Stop(f"{repo_path(f)} is missing, so 070 can't tell which extracted triples match facts that wait on "
+                       f"an expert (they are left out of precision's denominator: "
+                       f"070_evaluate/metrics/precision.md). Restore it from Git (`git checkout -- {repo_path(f)}`); "
+                       f"a file with only its header line means no fact waits; {AGAIN}")
+    try:
+        return read_pending(path, left_out)
+    except ValueError as e:
+        raise Stop(f"The facts that wait on an expert can't be read, so 070 can't tell which extracted triples "
+                   f"match them: {e}. Fix that line, {AGAIN}")
+
+
 def pick_records(inputs: dict, settings: dict) -> Evaluated:
     check_settings(settings, {})
     evaluated = Evaluated()
@@ -219,6 +245,10 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     removed = {}
     for row in read_csv(Path(inputs["extracted_triples_removed"])):
         removed.setdefault(row["id"], collections.Counter())[row["reason"]] += 1
+    evaluated.pending = _read_pending(inputs)
+    pending_of = {}
+    for row in evaluated.pending:
+        pending_of.setdefault(row["id"], []).append(row)
     extracted = {}
     for position, row in enumerate(read_csv(Path(inputs["extracted_triples"]))):
         extracted.setdefault(row["id"], []).append({**row, "_position": position})
@@ -294,7 +324,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "id": rid, "position": by_id[rid]["position"], "part": by_id[rid]["part"],
             "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
-            "removed": dict(removed.get(rid, {})),
+            "removed": dict(removed.get(rid, {})), "pending": pending_of.get(rid, []),
         })
     _mark_twins(evaluated, catalog, inputs)
     missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]

@@ -37,7 +37,10 @@ REVIEWS_PATH = ANNOTATIONS_DIR / "partial_pair_reviews.csv"
 #: pairing leaves without a partner: 070_evaluate/metrics/pairs.md), defined once for step 070, which writes them,
 #: and for the status and the annotation tool, which read them.
 EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY = "exact pair", "partial pair", "extracted only", "ground truth only"
-COMPARED_STATUSES = (EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY)
+#: An occurrence paired, after the ground truth triples, with a fact that waits on an expert (annotations/
+#: pending_triples.csv): neither a pair nor extracted only, and left out of precision (070_evaluate/metrics/precision.md).
+MATCHES_WAITING = "matches a fact that waits on an expert"
+COMPARED_STATUSES = (EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY, MATCHES_WAITING)
 #: A pair's status by its pair level (070_evaluate/070_evaluate_helpers/pairing.py, LEVELS).
 PAIR_STATUS = {"exact": EXACT_PAIR, "partial": PARTIAL_PAIR}
 SLOTS = REQUIRED                                  # subject, predicate, object

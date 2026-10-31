@@ -108,24 +108,31 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
 def readings(part: str, n: dict, recs: list, evaluated, translation, looks, confusion: dict) -> list:
     E, G = n["extracted"], n["gt_triples"]
     ex, pa = n["exact"], n["partial"]
+    # precision's denominators: the occurrences less those paired with a fact that waits on an expert (pairing.py)
+    Ee, Ep = ex.get("counted_occurrences", E), pa.get("counted_occurrences", E)
+    ex.setdefault("pending_pairs", 0)
+    pa.setdefault("pending_pairs", 0)
     out = [f"### Reading the metrics: {part} part", ""] + where_from(part, recs, evaluated, translation, looks)
 
     # precision
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
             f"(exact and partial pairs)", "",
             f"- Of the {E} occurrences of these records (one per extracted triple, translated into the ground "
-            f"truth schema), {_of(ex['pairs'], E)} are correct at the exact level, and {_of(pa['pairs'], E)} at "
-            f"the partial level.",
+            f"truth schema), {_of(ex['pairs'], Ee)} are correct at the exact level, and {_of(pa['pairs'], Ep)} at "
+            f"the partial level"
+            + (f", of the {Ee} and {Ep} counted: {ex['pending_pairs']} and {pa['pending_pairs']} match a fact that "
+               f"waits on an expert (exact, partial), and are left out of precision (section *Extracted triples "
+               f"matching facts that wait on an expert*)." if ex["pending_pairs"] or pa["pending_pairs"] else "."),
             f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
             f"{pct(ex['precision']['value']) if E else NO_VALUE} of those edges would be correct at the exact "
             f"level ({pct(pa['precision']['value']) if E else NO_VALUE} at the partial level): an estimate, since "
             f"precision is measured on the evaluated records only.",
-            f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], E)} of the occurrences form a partial pair: "
+            f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], Ep)} of the occurrences form a partial pair: "
             f"correct only at the partial level, where a subject instance or object instance may be inside the "
             f"other's as whole words (e.g. \"MODIS\" inside its full name).",
-            f"- Precision minus strict precision: {_of(ex['pairs'] - ex['strict_pairs'], E)} of the occurrences "
+            f"- Precision minus strict precision: {_of(ex['pairs'] - ex['strict_pairs'], Ee)} of the occurrences "
             f"state the right fact but with a wrong subject class or object class (exact level; "
-            f"{_of(pa['pairs'] - pa['strict_pairs'], E)} at the partial level).",
+            f"{_of(pa['pairs'] - pa['strict_pairs'], Ep)} at the partial level).",
             _sure(n, ex["precision"], "exact precision"),
             "- Assumes the ground truth lists every fact these records state: an occurrence stating a true "
             "fact the ground truth lacks counts as not correct.", ""]
@@ -147,7 +154,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     out += [f"#### F1: {pct(ex['f1']['value'])} (exact pairs), {pct(pa['f1']['value'])} (exact and partial pairs)",
             "",
             f"- Precision and recall in one number: 2 × precision × recall ÷ (precision + recall), here "
-            f"2 × {ex['pairs']} pairs ÷ ({E} occurrences + {G} ground truth triples). It's high only when both are.",
+            f"2 × {ex['pairs']} pairs ÷ ({Ee} occurrences counted + {G} ground truth triples). It's high only when both are.",
             "- The usual headline number for comparing runs or models, and with published results. It weighs "
             "precision and recall equally; read them too when one matters more (for a knowledge graph, a wrong "
             "edge is often worse than a missing one).",
@@ -159,7 +166,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"- The same, counting only strict pairs: pairs whose two entity classes also agree, after translation. "
             f"{ex['strict_pairs']} of the {ex['pairs']} exact pairs are strict ({pa['strict_pairs']} of the "
             f"{pa['pairs']} counting partial pairs).",
-            f"- Strict precision: {ex['strict_pairs']} of the {E} occurrences "
+            f"- Strict precision: {ex['strict_pairs']} of the {Ee} occurrences counted "
             f"({pct(ex['strict_precision']['value'])}); strict recall: {ex['strict_pairs']} of the {G} ground "
             f"truth triples ({pct(ex['strict_recall']['value'])}).",
             f"- Strict F1: {pct(ex['strict_f1']['value'])} (exact pairs).",
@@ -407,7 +414,9 @@ def record_reading(r: dict) -> str:
         return _end(s + "no occurrences and no ground truth triples: nothing to compare." + many)
     s += (f"{_n(O, 'occurrence')} and {_n(G, 'ground truth triple')} ({W} within reach, {Ws} within strict "
           f"reach); {_n(Pe, 'exact pair')}, {Se} of them strict; exact recall {_no_value(r['exact']['recall'])}, exact "
-          f"precision {_no_value(r['exact']['precision'])}")
+          f"precision {_no_value(r['exact']['precision'])}"
+          + (f" ({_n(r['pending_pairs'], 'occurrence')} matching a fact that waits on an expert, left out of its "
+             f"precision)" if r.get("pending_pairs") else ""))
     against = r["counted_against"]
     if (against or Pe - Se) and O + G <= TOO_FEW:
         what = (f"the {against} of them with no exact pair" if against

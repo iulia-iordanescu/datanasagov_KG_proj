@@ -16,7 +16,9 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          annotations/ground_truth_schema.txt, annotations/guidelines.md
          (not parsed: fingerprinted, so the report says which version the
          ground truth was scored against), annotations/ground_truth/, annotations/component_class_mapping.csv,
-         annotations/partial_pair_reviews.csv
+         annotations/partial_pair_reviews.csv, annotations/pending_triples.csv
+         and annotations/left_out.md (the facts that wait on an expert: an
+         extracted triple matching one isn't counted against precision)
 Writes:  metrics.json, per_record.md, compared_triples.csv; adds rows to
          annotations/component_class_mapping.csv and, with --evaluate_held_out true, a line
          to annotations/held_out_looks.csv (never changing an existing one)
@@ -43,6 +45,8 @@ INPUTS = {
     "ground_truth":              "./annotations/ground_truth/batch_*.csv",
     "component_class_mapping":   "./annotations/component_class_mapping.csv",
     "partial_reviews":           "./annotations/partial_pair_reviews.csv",
+    "pending_triples":           "./annotations/pending_triples.csv",
+    "left_out":                  "./annotations/left_out.md",
 }
 
 SETTINGS = {
@@ -61,7 +65,7 @@ def main(inputs, settings, output):
     evaluated   = evaluate.pick_records(inputs, settings)                      # code: finished, extracted, in the fair sample
     calls       = evaluate.paid_calls(evaluated, settings, output)             # code: asks before paying; keeps every answer in cache/
     translation = evaluate.translate_component_classes(inputs, evaluated, calls)  # LLM: Satellite → Spacecraft, new ones only; you check
-    evaluated   = evaluate.compare(evaluated, translation)                     # code: per record, exact pairs / partial pairs / extracted only / ground truth only
+    evaluated   = evaluate.compare(evaluated, translation)                     # code: per record, exact pairs / partial pairs / extracted only / ground truth only; then facts waiting on an expert
     metrics     = evaluate.compute_metrics(evaluated, settings)                # code: the numbers, with margins, per part and stratum
     # writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
     return evaluate.results(evaluated, translation, metrics, calls, settings, output)
