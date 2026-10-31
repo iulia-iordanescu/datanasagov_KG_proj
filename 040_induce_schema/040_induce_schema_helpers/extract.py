@@ -42,7 +42,7 @@ from common.audit import log
 from common.prompt_files import load
 from common.report import this_report
 from common.text_match import Text
-from common.triples_io import REQUIRED
+from common.triples_io import REQUIRED, _scalar
 from common.validate import check_triple_instance
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
@@ -66,14 +66,15 @@ class TripleInstances:
 
 def _from_reply(reply: dict) -> tuple:
     """The triple instances in a reply, how many items weren't one (all
-    three slots must hold non-empty text), and its describes_class ("" if
-    none). The source text is kept as given ("" if missing); the checks
-    judge it."""
+    three slots must hold a non-empty value: text, or a number read as text,
+    as 050 and 060 read them, triples_io._scalar), and its describes_class
+    ("" if none). The source text is kept as given ("" if missing); the
+    checks judge it."""
     items = reply["triples"] if isinstance(reply, dict) and not extraction.shape_error(reply) else []
     good = []
     for t in items:
-        if isinstance(t, dict) and all(isinstance(t.get(k), str) and t[k].strip() for k in SLOTS):
-            instance = {k: " ".join(t[k].split()) for k in SLOTS}
+        if isinstance(t, dict) and all(_scalar(t.get(k)) for k in SLOTS):
+            instance = {k: _scalar(t[k]) for k in SLOTS}
             instance["source_text"] = t["source_text"].strip() if isinstance(t.get("source_text"), str) else ""
             good.append(instance)
     describes = reply.get("describes_class") if isinstance(reply, dict) else None

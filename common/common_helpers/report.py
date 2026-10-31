@@ -70,6 +70,12 @@ def _number(value, decimals: bool = False) -> str:
     return f"{int(value):,}"
 
 
+def listed_label(parts: str) -> str:
+    """The per-text table's first row label, worded the same in every step: what the model listed, each well-formed
+    item once (a duplicate and an item that wasn't a triple instance aren't counted), split as parts says."""
+    return f"listed (each well-formed item once: {parts})"
+
+
 def per_text_table(what: str, rows: list) -> list:
     """The per-text count table every step that gets triple instances or classed triples from a model shows in its
     report's Results, worded the same everywhere. what: the first column's header ("Triple instances per text");
@@ -231,7 +237,10 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
               f"{llm.REQUESTS['reasoning_tokens']:,} |", "",
               "| Calls that failed | |", "|---|---:|",
               f"| failed (after the model client's own retries), cut-offs included | {llm.OUTCOMES['failed']:,} |",
-              f"| cut off at the answer length limit ({llm.MAX_ANSWER_TOKENS:,} tokens) | {llm.OUTCOMES['cut_off']:,} |",
+              (f"| cut off at the answer length limit ({llm.max_tokens_sent():,} tokens) | {llm.OUTCOMES['cut_off']:,} |"
+               if llm.max_tokens_sent() else
+               "| cut off at the answer length limit (no limit is sent through Ask Sage, which gives no reason an "
+               "answer ended, so a cut-off can't be detected) | – |"),
               "",
               "Token counts come only from LiteLLM, whose replies carry them; through Ask Sage they show 0. "
               "Thinking: the step's `thinking` setting was "

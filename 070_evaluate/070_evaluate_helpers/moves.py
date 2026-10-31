@@ -352,13 +352,22 @@ def _translation_fingerprint(translation) -> str:
     return _fingerprint(value)
 
 
+#: What 060's details file records about how its model calls were sent (llm.describe()), carried into the recipe so
+#: a new model version, answer limit or thinking setting shows in py helpers/compare_runs.py's *What differs*.
+MODEL_CALL_FIELDS = ("service", "model", "served_as", "temperature", "max_answer_tokens", "thinking", "thinking_sent",
+                     "effort")
+
+
 def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     """What made this run's numbers, for py helpers/compare_runs.py to show what differs between runs: 060's run
-    (code version, settings, prompts, and the schema files it read, by fingerprint) and this run (code version, the
+    (code version, settings, how its model calls were sent (llm.describe(), from its details file: the exact model
+    that answered, the answer limit, temperature, thinking, effort), prompts, and the schema files it read, by
+    fingerprint) and this run (code version, the
     translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), and the
     model that proposed the translation)."""
     extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
                   "git_commit": inputs_manifest.get("git_commit"), "settings": inputs_manifest.get("settings", {}),
+                  "model_calls": {k: evaluated.extraction_made.get(k) for k in MODEL_CALL_FIELDS},
                   "prompts": {p["file"]: p["sha256"] for p in inputs_manifest.get("prompts", [])},
                   "schema": evaluated.schema_used.get("made", {}).get("schema"),
                   "inputs": {i.get("name"): i.get("sha256") for i in inputs_manifest.get("inputs", [])
@@ -810,7 +819,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
               f"`{COMPARED_NAME}`; "
               f"every number: `{METRICS_NAME}`.", ""]
     lines += dropped.reasks_lines(llm.REASKS)
-    lines += model_calls([("stage 2: propose component class translations (one call)", translation.calls,
+    lines += model_calls([(f"stage 2: propose component class translations (batches of up to {component_classes_stage.TRANSLATE_BATCH})", translation.calls,
                            translation.reused),
                           ("stage 2: suggest counterparts for (none) rows (one call)", translation.suggest_calls,
                            translation.suggest_reused)],

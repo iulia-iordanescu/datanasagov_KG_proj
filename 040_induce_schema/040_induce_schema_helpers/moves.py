@@ -36,7 +36,7 @@ from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.ground_truth import read_ground_truth, twin_kinds, twin_table, with_coined
 from common.schema_io import read_ground_truth_schema
-from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table
+from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results, repo_path
 
 SCHEMA_NAME = "the_schema.json"
@@ -187,7 +187,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         if missing:
             warnings.append(missing)
 
-    per_text = [("raw (everything the model listed: verified + unverified)",
+    per_text = [(listed_label("verified + unverified"),
                  [len(t["triple_instances"]) + len(t["unverified"]) for t in triples.texts]),
                 ("verified (kept)", [len(t["triple_instances"]) for t in triples.texts])]
     split = sum(n > 1 for n in pieces.values())

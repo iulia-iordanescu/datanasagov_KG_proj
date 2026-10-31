@@ -11,6 +11,7 @@ hand: 8 tuning records, each with one fact extraction finds, plus one fact
 only the ground truth has."""
 import collections
 import csv
+import hashlib
 import json
 import os
 import re
@@ -22,6 +23,7 @@ from pathlib import Path
 
 from stand_ins import StandInCatalog
 from support import temp_repo
+from common.report import listed_label
 
 HERE = Path(__file__).resolve().parent
 COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_class", "source_text", "all_facts_extracted",
@@ -73,6 +75,16 @@ class Pipeline(unittest.TestCase):
 
     def manifest(self, step):
         return json.loads(self.output(step, "_manifest.json").read_text(encoding="utf-8"))
+
+    def prompts_recorded(self, step, expected: set):
+        """The step's latest manifest names, by fingerprint, exactly the prompt files it read: each listed file's sha256
+        is that of the file's text, and every expected file is listed (also after a rerun answered from the cache)."""
+        used = {p["file"]: p["sha256"] for p in self.manifest(step)["prompts"]}
+        self.assertTrue(expected <= set(used), f"{step} recorded {sorted(used)}")
+        for file, sha in used.items():
+            text = (self.repo / file).read_text(encoding="utf-8")
+            self.assertEqual(sha, hashlib.sha256(text.encode("utf-8")).hexdigest(), file)
+            self.assertTrue(file.startswith((step + "/", "common/common_prompts/")), file)
 
     def per_text(self, step, counts: dict):
         """The latest report of `step` shows, in its per-text count table (common/common_helpers/report.py), each
@@ -173,7 +185,7 @@ class Pipeline(unittest.TestCase):
         raw = [len(t["triple_instances"]) + len(t["unverified"]) for t in evidence["texts"]]
         verified = [len(t["triple_instances"]) for t in evidence["texts"]]
         self.assertGreater(sum(raw), sum(verified))                            # the stand-in's invented ones
-        self.per_text("040_induce_schema", {"raw (everything the model listed: verified + unverified)": raw,
+        self.per_text("040_induce_schema", {listed_label("verified + unverified"): raw,
                                             "verified (kept)": verified})
         headline = self.manifest("040_induce_schema")["headline"]
         self.assertEqual((headline["raw triple instances"], headline["verified triple instances"]),
@@ -191,6 +203,9 @@ class Pipeline(unittest.TestCase):
         _, again = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
                                  "--texts_per_maintainer", "4")
         self.assertEqual(again, 0, "a rerun paid again")
+        self.prompts_recorded("040_induce_schema", {f"040_induce_schema/040_induce_schema_prompts/{p.name}" for p in
+                                                    (self.repo / "040_induce_schema" / "040_induce_schema_prompts").glob("*.txt")}
+                              | {f"common/common_prompts/extraction_{n}.txt" for n in ("rules", "reply")})
         self.assertGreater(prompts, 0)
 
     # ---------------------------------------------------------------- 050
@@ -201,6 +216,9 @@ class Pipeline(unittest.TestCase):
         self.assertIn("stand-in model got reasoning_effort: medium]", out)     # gemini-2.5-pro: 050's thinking cap sent
         self.assertIn("test call: ok (answer ", out)
         self.assertIn("model calls: 9 of 9 done, 0 failed, took", out)          # the last progress line
+        self.prompts_recorded("050_annotate", {"050_annotate/050_annotate_prompts/draft.txt"}
+                              | {f"common/common_prompts/extraction_{n}.txt"
+                                 for n in ("rules", "reply", "passes", "examples", "closing")})
         self.assertNotIn("failed model calls:", out)                           # nothing failed: no failed-call record
         rows = read_csv(self.output("050_annotate", "drafted_triples_batch1.csv"))
         pool = [r["id"] for r in read_csv(self.annotations / "ground_truth_candidates.csv")]
@@ -218,7 +236,7 @@ class Pipeline(unittest.TestCase):
         self.assertTrue(satellite and all("object_class_not_in_schema" in f for f in satellite))
         self.assertTrue(any(r["object_class"] == "X" and "describes_undecided" in r["flags"] for r in rows))
         drafted = [sum(1 for r in rows if r["id"] == rid and r["predicate"] != "DESCRIBES") for rid in ids]
-        self.per_text("050_annotate", {"drafted (everything the model listed)": drafted})
+        self.per_text("050_annotate", {listed_label("all drafted"): drafted})
         self.assertEqual(self.manifest("050_annotate")["headline"]["drafted triples"], sum(drafted))
 
     def test_t06_person_corrects(self):
@@ -270,7 +288,7 @@ class Pipeline(unittest.TestCase):
         checked_out = [sum(1 for r in removed if r["id"] == rid and r["reason"] not in extraction.NOT_BY_A_CHECK)
                        for rid in ids]
         self.assertTrue(any(checked_out))
-        self.per_text("060_extract", {"raw (everything the model listed: kept + removed by a check)":
+        self.per_text("060_extract", {listed_label("kept + removed by a check"):
                                       [a + b for a, b in zip(facts, checked_out)],
                                       "kept (extracted triples)": facts})
         headline = self.manifest("060_extract")["headline"]
@@ -285,6 +303,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(set(used["learned_from"]["ids"]), {x["id"] for x in evidence["texts"]})
         _, again = self.run_step("060_extract", *NO_CONFIRM)
         self.assertEqual(again, 0, "a rerun paid again")
+        self.prompts_recorded("060_extract", {"060_extract/060_extract_prompts/extract.txt"} | {f"common/common_prompts/extraction_{n}.txt" for n in ("rules", "reply", "passes", "examples", "closing")})
         self.assertEqual(read_csv(self.output("060_extract", "extracted_triples.csv")), kept)   # 070 reads these
 
     # ---------------------------------------------------------------- 070

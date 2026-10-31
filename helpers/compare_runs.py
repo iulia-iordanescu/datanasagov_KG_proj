@@ -183,7 +183,8 @@ def report(runs: list, ids: list, left: dict) -> str:
     diffs = differences(runs)
     lines += ["", "## What differs between the runs", "",
               "Every part of each run's recipe that isn't the same in every run: 060's run (its code version, settings, "
-              "prompts by fingerprint, and the schema files it read, by fingerprint) and 070's run (its code version, "
+              "how its model calls were sent (the exact model that answered, the answer limit, temperature, thinking "
+              "and effort), prompts by fingerprint, and the schema files it read, by fingerprint) and 070's run (its code version, "
               "its matching version (what counts as the same subject instance or object instance; `(not recorded)` "
               "for a run before 2026-10-24, which compared words only), the translation, by fingerprint, and the "
               "service and model it asked). A difference in numbers comes from one of these, or from what the "

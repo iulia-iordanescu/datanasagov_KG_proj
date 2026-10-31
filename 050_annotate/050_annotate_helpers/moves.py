@@ -24,7 +24,7 @@ from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
                                  file_name)
-from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table, this_report
+from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table, this_report
 from common.step import Results, repo_path
 from common.triples_io import ENTRY_PREDICATE
 
@@ -138,7 +138,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     if missing:
         warnings.append(missing)
 
-    per_text = [("drafted (everything the model listed)",
+    per_text = [(listed_label("all drafted"),
                  [sum(1 for r in drafts.rows[i["id"]] if r["predicate"] != ENTRY_PREDICATE)
                   for i in chosen.items if i["id"] in drafts.rows])]
     gt = chosen.ground_truth
@@ -163,7 +163,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
               "One text is one record's text; its describes triple isn't counted. A classed triple two text pieces "
               "of a text both state counts once; items in the replies that weren't triple instances, and texts whose "
               "model call failed, aren't counted. Nothing is removed for a check (you decide, in the annotation "
-              "tool), so everything the model listed is drafted: one row.",
+              "tool), so every well-formed item the model listed is drafted, once: one row.",
               "", f"- Errors (must be fixed): {counted(drafts.errors)}.",
               f"- Flags (worth a look; a component class not in the ground truth schema is often a good new one): {counted(drafts.flags)}.",
               f"- Removed: {counted(removed)} (listed in `{repo_path(details_path)}`).", "",

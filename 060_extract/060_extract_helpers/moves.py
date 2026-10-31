@@ -20,7 +20,7 @@ import schema as schema_stage
 from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.report import cell, counted, model_calls, named, per_text_headline, per_text_table
+from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results
 from common.triples_io import COLUMNS as TRIPLE_COLUMNS, ENTRY_PREDICATE
 from common.ground_truth import HELD_OUT, TUNING
@@ -152,7 +152,7 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
                for rid in (i["id"] for i in chosen.items) if rid in rows.kept}
     checked_out = {rid: sum(1 for x in rows.removed.get(rid, []) if x["reason"] not in extraction.NOT_BY_A_CHECK)
                    for rid in kept_of}
-    per_text = [("raw (everything the model listed: kept + removed by a check)",
+    per_text = [(listed_label("kept + removed by a check"),
                  [kept_of[rid] + checked_out[rid] for rid in kept_of]),
                 ("kept (extracted triples)", list(kept_of.values()))]
     only_describes = sum(1 for rid, rs in rows.kept.items() if len(rs) == 1)

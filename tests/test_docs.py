@@ -484,7 +484,7 @@ class NoLinkInCode(unittest.TestCase):
 
 
 RULES_PROMPT = ROOT / "common" / "common_prompts" / "extraction_rules.txt"
-RULES_DIFFERENCES = ROOT / "tests" / "rules_differences.txt"
+ALLOWED_DIFFERENCES = ROOT / "tests" / "allowed_differences.txt"
 
 
 def rule_title(text: str) -> str:
@@ -514,11 +514,11 @@ def prompt_rules() -> dict:
 
 
 def rules_differences() -> list:
-    """[(rule, kind, difference, reason, decided)] from tests/rules_differences.txt."""
+    """[(rule, kind, difference, reason, decided)]: the rules family of tests/allowed_differences.txt."""
     rows = []
-    for line in RULES_DIFFERENCES.read_text(encoding="utf-8").splitlines():
-        if line.strip() and not line.startswith("#"):
-            rows.append(tuple(line.split("\t")))
+    for line in ALLOWED_DIFFERENCES.read_text(encoding="utf-8").splitlines():
+        if line.strip() and not line.startswith("#") and line.split("\t")[0] == "rules":
+            rows.append(tuple(line.split("\t")[1:]))
     return rows
 
 
@@ -526,7 +526,7 @@ class RulesInStep(unittest.TestCase):
     """The rules the model follows (common/common_prompts/extraction_rules.txt) and the annotation guidelines a person
     follows (annotations/guidelines.md) are the same rules, numbered and ordered alike, with the same titles, so a rule
     added to one copy without the other, or renumbered in one, fails here. Every other difference is listed, with its
-    reason, in tests/rules_differences.txt (prompt audit F8, 2026-10-30)."""
+    reason, in tests/allowed_differences.txt, family rules (prompt audit F8, 2026-10-30)."""
 
     def test_same_numbers_in_the_same_order(self):
         guidelines, prompt = list(guideline_rules()), list(prompt_rules())
@@ -543,7 +543,7 @@ class RulesInStep(unittest.TestCase):
                     self.assertTrue(prompt.get(number, "").startswith(title),
                                     f"rule {number}: the guidelines' title is \"{title}\", the model's copy starts "
                                     f"\"{prompt.get(number)}\"; make them say the same, or list the difference in "
-                                    f"tests/rules_differences.txt with its reason")
+                                    f"tests/allowed_differences.txt (family rules) with its reason")
 
     def test_every_model_only_item_is_listed(self):
         text = RULES_PROMPT.read_text(encoding="utf-8")
@@ -551,15 +551,15 @@ class RulesInStep(unittest.TestCase):
         items = [" ".join(i.split()) for i in re.findall(r"^- (.+?)(?=^- |\Z)", also, re.M | re.S)]
         listed = [row[2] for row in rules_differences() if row[1] == "model-only"]
         self.assertEqual(len(items), len(listed), "an item was added to or removed from the ALSO section of "
-                         "extraction_rules.txt: list it in tests/rules_differences.txt with its reason")
+                         "extraction_rules.txt: list it in tests/allowed_differences.txt (family rules) with its reason")
         for item, said in zip(items, listed):
             self.assertTrue(item.startswith(said.rstrip(".")), f"ALSO item \"{item[:60]}\" vs listed \"{said}\"")
 
     def test_every_difference_is_explained(self):
         for row in rules_differences():
             with self.subTest(row=row[:2]):
-                self.assertEqual(len(row), 5, "a line of tests/rules_differences.txt needs 5 tab-separated parts")
-                self.assertIn(row[1], ("title", "content", "model-only", "prompts"))
+                self.assertEqual(len(row), 5, "a rules line of tests/allowed_differences.txt needs 6 tab-separated parts")
+                self.assertIn(row[1], ("title", "content", "model-only"))
                 self.assertTrue(row[3].strip(), "a difference needs its reason")
                 self.assertRegex(row[4], r"^\d{4}-\d{2}-\d{2}$")
 
@@ -700,6 +700,60 @@ class PromptsQuoteNoGroundTruth(unittest.TestCase):
                  f"replace the passage with an invented example sharing no 5-word run with any record"
                  for path in prompts for r in sorted(runs(words(path.read_text(encoding="utf-8"))) & truth_runs)]
         self.assertFalse(found, "\n" + "\n".join(found))
+
+
+#: Docs that keep history (what a past run used) and so may name an old value: not checked against the code.
+HISTORY_DOCS = ("docs/findings.md", "docs/improvements.md", "docs/" + "WIP_")
+
+
+class DocsNameTheCodesNumbers(unittest.TestCase):
+    """A number the docs restate from the code (the answer limit, the read timeout, the attempts) is the code's: change
+    the constant and the docs must change with it (test audit, 2026-10-30)."""
+
+    def docs(self):
+        for path in sorted(ROOT.rglob("*.md")):
+            rel = path.relative_to(ROOT).as_posix()
+            if rel.startswith(EXCLUDED_DIRS + ("outputs/", ".myvenv/", "DONOTTRACK/")) or rel.startswith(HISTORY_DOCS):
+                continue
+            yield rel, path.read_text(encoding="utf-8")
+
+    def test_the_numbers(self):
+        import inspect
+        from common import llm
+        attempts = inspect.signature(llm.call_llm).parameters["attempts"].default
+        checks = [
+            (r"(\d{1,3}(?:,\d{3})+)[ -]tokens?", lambda line: "answer" in line.lower(), f"{llm.MAX_ANSWER_TOKENS:,}",
+             "MAX_ANSWER_TOKENS"),
+            (r"within (\d[\d,]*) s", lambda line: True, f"{llm.READ_TIMEOUT}", "READ_TIMEOUT"),
+            (r"tried up to (\d+) times", lambda line: "call" in line.lower() and "page" not in line.lower(), f"{attempts}", "call_llm's attempts"),
+        ]
+        for rel, text in self.docs():
+            for n, line in enumerate(text.splitlines(), 1):
+                for pattern, applies, value, name in checks:
+                    for m in re.finditer(pattern, line):
+                        if applies(line) and not re.search(r"(?:was|earlier|before|until 2026|from \d)", line[:m.start()][-60:]):
+                            with self.subTest(doc=rel, line=n, constant=name):
+                                self.assertEqual(m.group(1).replace(",", "") if name != "MAX_ANSWER_TOKENS"
+                                                 else m.group(1), value.replace(",", "") if name != "MAX_ANSWER_TOKENS"
+                                                 else value, f"{rel}:{n} says {m.group(0)}; {name} in the code is {value}")
+
+    def test_tests_readme_lists_every_test_file(self):
+        readme = (ROOT / "tests" / "README.md").read_text(encoding="utf-8")
+        listed = set(re.findall(r"^\| `(test_\w+\.py)` \|", readme, re.M))
+        self.assertEqual(listed, {p.name for p in (ROOT / "tests").glob("test_*.py")})
+
+
+class CompareRunsSeesHowCallsWereSent(unittest.TestCase):
+    """compare_runs' recipe carries every field of 060's call record (llm.describe()), so a new model version, answer
+    limit, temperature or thinking setting shows in *What differs*; what it can't carry is in UNRECORDED."""
+
+    def test_recipe_fields(self):
+        from common import llm
+        text = (ROOT / "070_evaluate" / "070_evaluate_helpers" / "moves.py").read_text(encoding="utf-8")
+        fields = re.search(r"MODEL_CALL_FIELDS = \(([^)]*)\)", text).group(1)
+        recorded = set(llm.describe()) - {"service_note"}
+        self.assertEqual(set(re.findall(r'"(\w+)"', fields)), recorded)
+
 
 
 if __name__ == "__main__":

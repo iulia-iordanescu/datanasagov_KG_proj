@@ -170,8 +170,15 @@ def call_settings(model: str | None = None, service: str | None = None) -> dict:
         thinking = f"not sent (the step's setting, {THINKING}, isn't sent to this model)"
     return {"temperature": TEMPERATURE if temperature_sent(model, service) else
             "not sent (the model does not accept it, or its maker advises against changing it)",
-            "max_answer_tokens": MAX_ANSWER_TOKENS, "thinking": thinking, "thinking_sent": sent,
-            "effort": effort_note(model)}
+            "max_answer_tokens": max_tokens_sent(service) or
+            "not sent (Ask Sage takes no answer limit, and gives no reason an answer ended, so a cut-off can't be "
+            "detected)", "thinking": thinking, "thinking_sent": sent, "effort": effort_note(model)}
+
+
+def max_tokens_sent(service: str | None = None) -> int | None:
+    """The answer limit a call sends (MAX_ANSWER_TOKENS), or None when it sends none: LiteLLM takes it; Ask Sage's
+    query has no such parameter (_ask_asksage)."""
+    return MAX_ANSWER_TOKENS if (service or SERVICE) == "litellm" else None
 
 
 def effort_note(model: str | None = None) -> str | None:
@@ -494,7 +501,7 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
     when the reply names it, goes into SERVED for the run's record."""
     url, headers = _litellm("/v1/chat/completions")
-    payload = {"model": model, "messages": _messages(prompt, model, cache_until), "max_tokens": MAX_ANSWER_TOKENS}
+    payload = {"model": model, "messages": _messages(prompt, model, cache_until), "max_tokens": max_tokens_sent("litellm")}
     if temperature_sent(model, "litellm"):
         payload["temperature"] = TEMPERATURE
     if thinking_sent(model, "litellm"):
