@@ -105,8 +105,8 @@ Option 1, as it was: Each record keeps its own words for its layout, as written:
 
 ### Quoted for us
 
-- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5 and 10 (opinion words, and words true only as of writing, are left out); and rules 19, 22, 23 and 24 below (rule 24: the words for a processing step's input and method are not part of another instance).
-- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 says which wording to keep. Suppose: the notes say "the NDSI is derived from radiance data" and earlier "Normalized Difference Snow Index (NDSI)". Then: one instance, "Normalized Difference Snow Index (NDSI)", by rule 23.
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5 and 10 (opinion words, and words true only as of writing, are left out); and rules 19, 20, 22, 23 and 24 below (rule 20: parentheses that hold the code of something else are not part of the instance; rule 24: the words for a processing step's input and method are not part of another instance).
+- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 says which wording to keep. Suppose: a record says "This dataset provides daily snow cover", and later "snow cover is given each day". Then: the two sentences state one fact, so one ground truth triple: the record's dataset HAS_TEMPORAL_RESOLUTION "daily", the wording the record gives first (rule 23).
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
 - Writing a classed triple, rule 22: A list: one ground truth triple per item.
@@ -303,7 +303,7 @@ Checked on 2026-10-31, from sources found on 2026-10-30: the question that ends 
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -346,7 +346,7 @@ Our schema separates two things a dataset can hold: a PhysicalQuantity, a bare p
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: global NASA skin sea surface temperature (SST) products
 - source text: SST MID-IR
-- source text: The first is a skin SST produced for both day and night (NSST)
+- source text: skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST
 - source text: the SST derived from these measurements is identified as SST4
 - source text: At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_MEASUREMENTS_OF "skin sea surface temperature (SST)" (PhysicalQuantity)
@@ -358,7 +358,7 @@ Our schema separates two things a dataset can hold: a PhysicalQuantity, a bare p
 
 - entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
-- predicate HAS_MEASUREMENTS_OF: holds measurements of
+- predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_VARIABLE: holds this Variable in its files
 - predicate ESTIMATES: gives approximate values for
 
@@ -429,12 +429,12 @@ The question's opening, as it was: "Our schema separates two things a dataset ca
 
 ### Quoted for us
 
-- entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
-- entity class SpatialExtent: an area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars; a country, when the data cover it)
+- entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
+- entity class SpatialExtent: an area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. Arctic; south pole of Mars; a country, when the data cover it)
 - entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
 - predicate COMPUTED_FROM: was made by processing this input
 - predicate PRODUCED_USING_ALGORITHM: was made or detected by applying this Algorithm
-- predicate HAS_SPATIAL_COVERAGE: covers this area
+- predicate HAS_SPATIAL_COVERAGE: covers this SpatialExtent
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - entity class PhysicalQuantity -> PhysicalQuantity: A measurable physical property or variable, such as temperature, wind speed, water vapor, or emission distribution, that is observed or derived in a dataset.
 - predicate MEASURES -> HAS_MEASUREMENTS_OF: The subject (an instrument, mission, dataset or product) measures or provides data on the object, a physical quantity, variable or phenomenon.
@@ -735,11 +735,11 @@ My current reading, as it was: Options 2 to 4 are about the predicates, options 
 - classed triple of the record at pool position 9: "encounter" (MissionPhase) HAS_TARGET "9P/Tempel 1" (CelestialBody)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_MISSION_PHASE "comet escort 1" (MissionPhase)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TARGET "67P/Churyumov-Gerasimenko" (CelestialBody)
-- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Rosetta Orbiter ALICE UV Spectrometer" (Instrument)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
@@ -804,8 +804,8 @@ Records state time in several ways, and our schema has a predicate for each kind
 ### Ground truth schema
 
 - entity class TemporalResolution: an amount of time between one value of the data and the next, e.g. daily; weekly (8 day)
-- entity class Time: a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; the first week of February 2003; 2015-10-22 to 2015-12-31
-- entity class Value: an amount, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes
+- entity class Time: a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; first week of February 2003; 2015-10-22 to 2015-12-31
+- entity class Value: an amount, or a range of amounts, as a number with its unit or in words, e.g. 36 spectral bands; 5 minutes
 - predicate HAS_TEMPORAL_RESOLUTION: its values are this far apart in time, e.g. daily
 - predicate HAS_GRANULE_DURATION: each of its files covers this much time
 - predicate HAS_DURATION: covers this much time, from its first value to its last
@@ -861,14 +861,14 @@ My current reading, as it was: Option 1 for now, because the definition of Tempo
 
 ### Quoted for us
 
-- predicate HAS_SPATIAL_COVERAGE: covers this area
+- predicate HAS_SPATIAL_COVERAGE: covers this SpatialExtent
 - entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
 - predicate HAS_TIME_RESOLUTION -> HAS_TEMPORAL_RESOLUTION: The subject (a dataset or measurement) has the object as its temporal resolution, averaging interval, cycle or file time-period.
 - predicate COVERS -> HAS_TIME_SPAN: The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.
 - predicate HAS_DURATION -> HAS_GRANULE_DURATION: The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
 - Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get none.
 
 ### Consequences
@@ -1096,8 +1096,8 @@ When a record describes how its data were made, we write the step as output = me
 
 - predicate COMPUTED_FROM: was made by processing this input
 - predicate PRODUCED_USING_ALGORITHM: was made or detected by applying this Algorithm
-- entity class Channel: a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel
-- entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
+- entity class Channel: a range of wavelengths an Instrument measures separately, e.g. 11 micron channel
+- entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 
 ### Options
 
@@ -1171,7 +1171,7 @@ Added to the expert's (c) on 2026-10-31, nothing taken out: "; the words stay in
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
-- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) PRODUCED_USING_ALGORITHM "a series of screens" (Algorithm)
+- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) PRODUCED_USING_ALGORITHM "series of screens" (Algorithm)
 - classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
@@ -1244,7 +1244,7 @@ The records name groups of people, offices, programs, sites and places, and we a
 
 - entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
 
-- entity class Role: a position only one Person or Organization holds (rule 4), e.g. the official archive for SST; Argentina's space agency
+- entity class Role: a position only one Person or Organization holds (rule 4), e.g. official archive for SST; Argentina's space agency
 - predicate SERVES_AS: holds this Role
 
 ### Options
@@ -1275,7 +1275,7 @@ The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" adds "NASA HEASARC" 
 
 The model extracts classed triples with the current schema. Before they are compared with the ground truth, each entity class and predicate of that schema is replaced by the one of the ground truth schema its [row](../docs/terminology.md#8-the-pipeline) of the translation table names; a row that names (none): a classed triple that uses it always counts as extracted only. We would choose option 4 with the answers to the old (d) to (f) (now the expert's (c)) telling us what to coin, once a tuning record states a fact about a place.
 
-Changed on 2026-10-31: the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" says "Argentina's space agency, Comisión Nacional de Actividades Espaciales (CONAE)". The ground truth no longer has "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country); it has "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) SERVES_AS "Argentina's space agency" (Role): a role only CONAE holds (rule 4 of *What counts as a fact*: "A sentence that names one specific role or thing is not an "is a" fact"), and "Argentina's" stays in the instance by rule 19 of *Writing a classed triple*, since taking it out would give a triple that isn't true ("space agency" alone is a type). The ground truth schema's Role now reads "a position only one Person or Organization holds (rule 4), e.g. the official archive for SST; Argentina's space agency", and Country "a nation, as where a Person or Organization is based, e.g. U.S.; Argentina". So the only fact about a country is now "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country). The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" also has, since 2026-10-31, "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PROVIDED_BY_PARTY "NASA HEASARC" (Organization) ("is provided to users, as a service or as data, by this Person or Organization").
+Changed on 2026-10-31: the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" says "Argentina's space agency, Comisión Nacional de Actividades Espaciales (CONAE)". The ground truth no longer has "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country); it has "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) SERVES_AS "Argentina's space agency" (Role): a role only CONAE holds (rule 4 of *What counts as a fact*: "A sentence that names one specific role or thing is not an "is a" fact"), and "Argentina's" stays in the instance by rule 19 of *Writing a classed triple*, since taking it out would give a triple that isn't true ("space agency" alone is a type). The ground truth schema's Role now reads "a position only one Person or Organization holds (rule 4), e.g. official archive for SST; Argentina's space agency", and Country "a nation, as where a Person or Organization is based, e.g. U.S.; Argentina". So the only fact about a country is now "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country). The record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" also has, since 2026-10-31, "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PROVIDED_BY_PARTY "NASA HEASARC" (Organization) ("is provided to users, as a service or as data, by this Person or Organization").
 
 Taken out of the expert's view on 2026-10-31, kept here word for word: the question's opening defined "Role (a position someone holds)"; it now follows the ground truth schema's new definition.
 
@@ -1286,7 +1286,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - (c) The record "NASA Standards and and Technical Assistance Resource Tool" names the "NASA Technical Standards Program", which provides access to standards and sponsors a web tool. We wrote it as an Organization. Is a NASA "program" like this one an organization (an office with staff), or something else, such as a funded effort? And is "NASA" part of the program's name, so that we keep "NASA Technical Standards Program" whole, as we do now, or does it say whose program it is, which would be a fact of its own (the program a part of NASA)?
 - (d) In this catalog, is a facility (e.g. a space center, an observatory, a ground station) best thought of as an Organization, as a place, or as both, depending on the sentence?
 - (e) Do the records of this catalog name places (a research station, a field of the sky, a site) often enough, and in [facts](../docs/terminology.md#2-triples) that matter enough, that the ground truth schema should have an entity class for them?
-- (f) Is "is located in" the same relationship as "belongs to this Country" when the place is a country (e.g. a center located in the U.S.)? When the place is not a country (a state, a city, a region), what should it be?
+- (f) Is "is located in" the same relationship as "is based in this Country" when the place is a country (e.g. a center located in the U.S.)? When the place is not a country (a state, a city, a region), what should it be?
 
 The question's context, as it was: The example below names an archive, a named group and a team. Which entity class each gets decides which predicates fit it (for example, SPONSORED_BY_PARTY joins only an Organization, a Person or a Team), and how a search of the knowledge graph finds it. The only facts about where something is that we have written so far are two of the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005", both about which country an organization belongs to: "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country), and "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country).
 
@@ -1299,7 +1299,7 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - entity class Country: a nation, as where a Person or Organization is based, e.g. U.S.; Argentina
 - predicate AFFILIATED_WITH: works at or belongs to this Organization
 - predicate SPONSORED_BY_PARTY: is sponsored by this Person or Organization
-- predicate BASED_IN: belongs to this Country
+- predicate BASED_IN: is based in this Country
 - entity class Organization -> Organization: An institution, agency, center, or collaborative body, such as NASA, HEASARC, or CIESIN, responsible for producing, managing, or distributing data or research.
 - entity class Team -> (none): A group of people, such as investigators, specialists or institutional groups, working together on a mission, project or study.
 - entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
@@ -1307,7 +1307,7 @@ The options as they were worded before 2026-10-26: option 1 also said "The trans
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
 - predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role or thing is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type.
+- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 
@@ -1474,8 +1474,8 @@ Changed on 2026-10-31, by rule 22's new "Describing words joined by "and" or a c
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly and conveniently" (Purpose)
-- classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
-- classed triple of the record at pool position 2: "a series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
+- classed triple of the record at pool position 2: "series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
+- classed triple of the record at pool position 2: "series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
 - classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
@@ -1570,7 +1570,7 @@ Taken out of the expert's view on 2026-10-31, as questions we can settle from so
 ### Quoted for us
 
 - entity class Instrument: a device that takes measurements
-- entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
+- entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - predicate ACQUIRED_BY_INSTRUMENT: was collected by this Instrument
 - predicate PRODUCED_USING_ALGORITHM: was made or detected by applying this Algorithm
 - entity class Method -> Algorithm: A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.
@@ -1637,8 +1637,8 @@ Our schema has an entity class SpatialExtent for the area the data cover, all of
 
 ### Ground truth schema
 
-- entity class SpatialExtent: an area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. the Arctic; the south pole of Mars; a country, when the data cover it)
-- predicate HAS_SPATIAL_COVERAGE: covers this area
+- entity class SpatialExtent: an area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. Arctic; south pole of Mars; a country, when the data cover it)
+- predicate HAS_SPATIAL_COVERAGE: covers this SpatialExtent
 
 ### Options
 
@@ -1686,7 +1686,7 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 
 - entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
 - entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
-- predicate HAS_MEASUREMENTS_OF: holds measurements of
+- predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - entity class SpatialCoverage -> SpatialExtent: The geographic or sky extent covered by a dataset or observation, such as global, a swath width, or a number of square degrees or areas.
 - predicate HAS_SPATIAL_COVERAGE -> HAS_SPATIAL_COVERAGE: The subject (a dataset or survey) covers the object, a geographic region, latitude range, area extent or coverage descriptor.
@@ -1821,14 +1821,14 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
 - entity class Identifier: a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1
-- predicate HAS_DOI: has the Digital Object Identifier
+- predicate HAS_DOI: has this Identifier, a Digital Object Identifier
 - entity class Dataset -> Dataset: A named collection of data compiled from observations, measurements, experiments, or statistics and distributed as a unit, such as an index, data collection, or instrument time series.
 - entity class DataProduct -> Dataset: A specific processed output of data, such as calibrated images, retrieval products, files, or data segments, generated from instrument or model data.
 - entity class Catalog -> Dataset: A published, organized list of astronomical sources or objects with their properties, typically derived from a survey or mission.
 - entity class Database -> Dataset: An organized collection or repository of data records, sources or proposals that can be stored, queried and accessed.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
 - Writing a classed triple, rule 24: A processing step: output = method(input).
 
 ### Consequences
@@ -1901,7 +1901,7 @@ The options and current reading as they were worded before 2026-10-26: option 1,
 
 ### The question
 
-Our schema's Channel is "a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel" (defined below). Every Channel we have written so far is in the example: four infrared wavelength channels that its two sea surface temperature products are computed from. Records also name radio frequency bands (such as L-, S-, X- or Ku-band), and we don't know where those belong. For example, the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" says "Aquarius L-band radiometer Sea Surface Salinity (SSS) retrievals", and we wrote its instrument as "Aquarius L-band radiometer", with the band kept inside the instrument's name. We would like to know:
+Our schema's Channel is "a range of wavelengths an Instrument measures separately, e.g. 11 micron channel" (defined below). Every Channel we have written so far is in the example: four infrared wavelength channels that its two sea surface temperature products are computed from. Records also name radio frequency bands (such as L-, S-, X- or Ku-band), and we don't know where those belong. For example, the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" says "Aquarius L-band radiometer Sea Surface Salinity (SSS) retrievals", and we wrote its instrument as "Aquarius L-band radiometer", with the band kept inside the instrument's name. We would like to know:
 
 - (a) Which radio frequency bands occur in the records of this catalog, and what do they describe there: the band an instrument measures in (e.g. a radar or a radiometer), the band a spacecraft sends its data down in, or something else?
 - (b) For a radio band that an instrument measures in, is Channel the right entity class, or does a radio band need one of its own? Should "L-band" stay inside the instrument's name, as now, or be a [fact](../docs/terminology.md#2-triples) of its own? And for wavelengths: is every band in which observations are made (e.g. an infrared filter band) a Channel, or only a band the instrument measures separately?
@@ -1921,7 +1921,7 @@ Our schema's Channel is "a range of wavelengths an Instrument measures separatel
 
 ### Ground truth schema
 
-- entity class Channel: a range of wavelengths an Instrument measures separately, e.g. the 11 micron channel
+- entity class Channel: a range of wavelengths an Instrument measures separately, e.g. 11 micron channel
 
 ### Options
 
@@ -2399,6 +2399,7 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 
 - (a) Is SST4 a skin SST too, so that both products estimate the same quantity, the skin sea surface temperature? We would then write the same words for both.
 - (b) The record says "The SST4 product has lower uncertainty", without saying than what. We read it as "lower uncertainty than NSST", the other product the record describes. Is that how you read it?
+- (e) The record says "The first is a skin SST". We read it as a fact: the first product gives approximate values of the skin sea surface temperature. Or does it only say what kind of product the first one is, which we would write as no fact of its own?
 
 ### Example record
 
@@ -2406,7 +2407,7 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 - pool position: 4
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
-- source text: The first is a skin SST produced for both day and night (NSST)
+- source text: skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST
 - source text: the SST derived from these measurements is identified as SST4
 - source text: The SST4 product has lower uncertainty
 - source text: Two SST products can be present in these files. The first is a skin SST
@@ -2448,6 +2449,8 @@ The example is the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V20
 
 Added on 2026-10-30, (d): the ground truth wrote the product as "skin SST (NSST)" until audit finding G7 (decided on 2026-10-30, docs/improvements.md): "(NSST)" follows "night", so it is not a name with its abbreviation in parentheses (rule 20 of *Writing a classed triple*), and the record does not say what NSST names (rule 1 of *What counts as a fact*). Its seven ground truth triples now use "skin SST", and "NSST" is in annotations/left_out.md. If the answer is that NSST names the skin SST product, the triples would use "skin SST" with "NSST" as another wording (ALSO_KNOWN_AS needs words of the record's own, rule 20, so probably no such triple); if it names the night observations, nothing changes.
 
+Added on 2026-10-31, (e), from the third audit (finding G-3, docs/improvements.md): the source text of "skin SST" ESTIMATES "skin sea surface temperature (SST)" was "The first is a skin SST produced for both day and night (NSST)", which has no words for the object; it now runs from the record's "skin sea surface temperature (SST) products" to "The first is a skin SST" (rule 17 of *Writing a classed triple*: words for the subject, the predicate and the object). Whether "The first is a skin SST" states a fact or only says what kind of product it is (rule 4 of *What counts as a fact*: "Not "is a" facts.") is what (e) asks.
+
 Changed on 2026-10-26, because the review page now shows a record's title only once, in its example: the expert's (c) began "The title is "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0". From its "SST MID-IR" we wrote".
 
 Taken out of the expert's view on 2026-10-26, so that the question can be read in a minute or two; kept here as it was. The sub-questions keep their letters; only the rule numbers and quotes of rules were taken out of them.
@@ -2473,7 +2476,7 @@ Settled from sources (checked on 2026-10-30). (c): a "SST MID-IR ... Nighttime" 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - What counts as a fact, rule 7: Not uncertain facts.
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other's words, each as a whole word, is more precise, or spells out its abbreviation), use it
 
 ### Consequences
 
@@ -2504,6 +2507,7 @@ Settled from sources (checked on 2026-10-30). (c): a "SST MID-IR ... Nighttime" 
 - ground truth schema entry: predicate HAS_LOWER_UNCERTAINTY_THAN
 - rule: What counts as a fact, rule 1
 - rule: Writing a classed triple, rule 23
+- rule: What counts as a fact, rule 4
 
 ## Q19: Versions: is a MODIS "Collection" a version?
 
@@ -2590,7 +2594,7 @@ Settled from sources, checked on 2026-10-30 (above). The old (a): "R2019.0" and 
 - What counts as a fact, rule 10: Not words that are true only as of when the record was written. Leave out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
 - What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Parentheses that hold the code of something else are not part of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it; if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other's words, each as a whole word, is more precise, or spells out its abbreviation), use it; if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)
 
 ### Consequences
 
@@ -2723,7 +2727,7 @@ Taken out of the expert's view on 2026-10-31, as questions we can settle from so
 
 ### Quoted for us
 
-- predicate HAS_DOI: has the Digital Object Identifier
+- predicate HAS_DOI: has this Identifier, a Digital Object Identifier
 - entity class Document: a written publication, or a set of them, named in words or by a reference key, e.g. NASA developed standards; LAWRENCEETAL2013
 - predicate DOCUMENTED_AT: more details about it are written at
 - entity class Version: a label that marks one release of something
@@ -2733,7 +2737,7 @@ Taken out of the expert's view on 2026-10-31, as questions we can settle from so
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
 - Writing a classed triple, rule 24: A processing step: output = method(input).
 
 ### Consequences
@@ -2932,8 +2936,8 @@ My current reading, as it was: Undecided, leaning towards option 3, because it k
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_VARIABLE "dust fluences at each of twelve mass thresholds" (Variable)
-- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "ALICE UV Spectrometer" (Instrument)
-- classed triple of the record at pool position 10: "ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Rosetta Orbiter ALICE UV Spectrometer" (Instrument)
+- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
@@ -3024,8 +3028,8 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 
 ### Quoted for us
 
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other, is more precise, or spells out its abbreviation), use it
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other's words, each as a whole word, is more precise, or spells out its abbreviation), use it
 
 ### Consequences
 
@@ -3079,7 +3083,7 @@ The example below says Aqua was launched into its orbit "formation flying in the
 
 ### Ground truth schema
 
-- entity class SatelliteFormation: a group of Spacecraft flying together in formation in orbit, e.g. the A-train
+- entity class SatelliteFormation: a group of Spacecraft flying together in formation in orbit, e.g. A-train
 - predicate FLIES_IN: flies in formation as part of
 
 ### My current reading
@@ -3193,7 +3197,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - entity class SpatialResolution: an amount of ground each value of the data covers, e.g. 500 m; 4.63 km
 - predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground, e.g. 500 m
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
 
 ### Consequences
 
@@ -3247,7 +3251,7 @@ Our schema is a flat list of kinds of things: none is a kind of another. So a li
 - pool position: 5
 - title: DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0
 - notes: These data are maps of fast neutron residual count rates from the GRaND plus Z boron loaded sensor. The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map to produced this residual map. The residual map is related to the average atomic mass on Vesta. Details of the map and data reduction are described in LAWRENCEETAL2013.
-- source text: the GRaND plus Z boron loaded sensor
+- source text: GRaND plus Z boron loaded sensor
 - classed triple: "GRaND plus Z boron loaded sensor" (Instrument) PART_OF "GRaND" (Instrument)
 
 ### Ground truth schema
@@ -3411,7 +3415,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 
 - entity class Purpose: an aim something is meant to achieve
-- entity class Algorithm: a method applied to data to compute a result, e.g. a series of screens; a modified nonlinear SST algorithm
+- entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - predicate HAS_PURPOSE: is meant to achieve
 - What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 - What counts as a fact, rule 6: Not negated facts.
@@ -3497,7 +3501,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
-- predicate HAS_MEASUREMENTS_OF: holds measurements of
+- predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 
 ### Consequences
@@ -3574,7 +3578,7 @@ Taken out of the expert's view on 2026-10-31, as a question we can settle from s
 
 - entity class Organization: a named institution or one of its named parts, not a Mission, e.g. NASA; OBPG
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
-- entity class WebPage: a web address, written as the address itself, e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
+- entity class WebPage: a web address, written as the address itself, other than a DOI written as an address (an Identifier), e.g. https://oceancolor.gsfc.nasa.gov/docs/format/
 - predicate DOCUMENTED_AT: more details about it are written at
 - entity class Task: a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
 - predicate REVISED_AFTER: was corrected after this review

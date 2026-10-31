@@ -50,7 +50,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 2 items, 2 that may matter.
 
 - **Left out:** "retrievals" (notes, "Sea Surface Salinity (SSS) retrievals")
-  - **Rule:** Writing a classed triple, rule 24: "Each step gives up to two ground truth triples, each written only if the record names both of its ends" My reading: "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)".
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". "retrievals" says a processing step made the values, but the record names neither its method nor its input, so no triple of a step; the object is "Sea Surface Salinity (SSS)". Whether "retrievals" stays in the instance (rule 24: "it stays in the instance, as written", for a word that names no method) or the values are the quantity itself waits on the experts' answer to Q3 (what is measured, and what is computed). (Until 2026-10-31 this item cited rule 24's "Each step gives up to two ground truth triples"; third audit, finding L-2.)
   - **May matter because:** it says the salinity values are computed from what the instrument measured, not measured directly.
   - **Question:** Q3 (what is measured, and what is computed).
 - **Left out:** "collaboratively" (notes, "developed collaboratively between")
@@ -75,10 +75,10 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** it is the other resolution of the product family.
   - **Question:** Q24; whether the title's "4km" is the 4.63 km was Q22, withdrawn on 2026-10-26: settled from PO.DAAC's page for this dataset, "4km" is the rounded 4.63 km grid (see Q22's My notes).
 - **Left out:** "Average" (notes, "Average daily, weekly (8 day), monthly and annual skin SST products")
-  - **Rule:** Writing a classed triple, rule 21, as for the list it belongs to.
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". "Average" describes "weekly (8 day)" too, which is this dataset's own temporal resolution, so rule 21 (facts about other datasets) does not cover it; whether the 8 days are the time each value averages over waits on the experts' answer to Q5 (b). (Until 2026-10-31 this item cited rule 21; third audit, finding L-3.)
   - **May matter because:** it says the products are averages over their temporal resolution, so the 8 days are the time each value averages over.
   - **Question:** Q5 (b), and Q24.
-- **Left out:** "can be present" (notes, "Two SST products can be present in these files"), and with it the dataset's variable NSST
+- **Left out:** "can be present" (notes, "Two SST products can be present in these files"), and with it the dataset's variable "skin SST"
   - **Rule:** What counts as a fact, rule 7: "the record doesn't state that it does. The same for "might", "possibly", "is expected to"" (I read "can be present" as the same kind). My ground truth triple has the variable SST4 only, from the title's "SST MID-IR".
   - **May matter because:** if the files hold both, the dataset has two variables, not one.
   - **Question:** Q18.
@@ -91,7 +91,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** it says whose products these are: NASA's.
   - **Question:** Q28 (a).
 - **Left out:** "with other Earth Observation Satellites (EOS)" (notes)
-  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The words name no satellite; "A-train" is the ground truth triple (FLIES_IN).
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". "Earth Observation Satellites (EOS)" is a name (rule 11 of *Writing a classed triple* keeps it whole), of a group Aqua flies with; "A-train" is the ground truth triple (FLIES_IN). Whether Aqua's formation flying is a fact about the spacecraft or its mission waits on the experts' answer to Q23, and with it a triple for the group. (Until 2026-10-31 this item cited rule 9, as naming no satellite; third audit, finding L-4.)
   - **Question:** Q23 (whether "Aqua" FLIES_IN "A-train" is about the spacecraft or its mission); its part on whether the A-train is a formation or a constellation was settled on 2026-10-26 from NASA's A-train fact sheet: see Q23's My notes.
 - **Left out:** "at a variety of spatial resolutions" (notes, "MODIS captures data in 36 spectral bands at a variety of spatial resolutions")
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The words name no value.
@@ -131,7 +131,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** the MODIS sinusoidal grid is the layout of the data (checked at NASA LAADS and MODAPS).
   - **Question:** Q1 (c); the pending fact is listed there.
 - **Left out:** "surface reflectance" and "MCD19A1N" (notes, "used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product"), as other wordings of the product
-  - **Rule:** Writing a classed triple, rule 23: "if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)". The three wordings name one product, made from the record's dataset, each once; my ground truth triple "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" COMPUTED_FROM the record's dataset uses the first (decided on 2026-10-31, audit finding G-11; until then its subject instance was "MCD19A1N", and the first wording was left out as what that product holds, by rule 21).
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The three wordings name one product, made from the record's dataset, each once; "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" ALSO_KNOWN_AS "surface reflectance" and HAS_IDENTIFIER "MCD19A1N" would be facts about that product, so they are left out. My ground truth triple "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" COMPUTED_FROM the record's dataset uses the first wording (rule 23: on a tie, the one the record gives first). Until 2026-10-31 this item cited rule 23 (third audit, finding L-5) (decided on 2026-10-31, audit finding G-11; until then its subject instance was "MCD19A1N", and the first wording was left out as what that product holds, by rule 21).
   - **May matter because:** "MCD19A1N" is the product's short name, by which a search would find it.
   - **Question:** Q20 (c).
 - **Left out:** the same words as a purpose of this dataset ("calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance")
@@ -141,7 +141,7 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (pool position 7, id d5477563-0415-4e65-ab7c-d4bc9ed809e5)
 
-15 items, 8 that may matter.
+15 items, 9 that may matter.
 
 - **Left out:** "SIN Grid" (title, "Global 1km SIN Grid"), the grid as a fact of its own
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". As for the record at pool position 6.
@@ -184,8 +184,9 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". DOCUMENTED_AT ("more details about it are written at") says only that the page has more about the dataset. Whether this is a fact, with a predicate to coin, waits on the experts' answer (Q28; decision of 2026-10-25).
   - **May matter because:** a search for a dataset's known issues would need it.
   - **Question:** Q28 (b).
-- **Left out:** "website" (notes, "MODIS/VIIRS Land Quality Assessment website")
-  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
+- **Left out:** "MODIS/VIIRS Land Quality Assessment website" (notes, "[MODIS/VIIRS Land Quality Assessment website](https://landweb.modaps.eosdis.nasa.gov/knownissue?sensor=MODIS&sat=Terra&as=6)"), as the name of the page
+  - **Rule:** Writing a classed triple, rule 20: "Write ALSO_KNOWN_AS only when the record gives the other name in words of its own". The words are the text of the page's link, not words of the record's own that give the page another name, and the ground truth schema's WebPage is "a web address, written as the address itself". My ground truth triple has the page as its address (DOCUMENTED_AT). Until 2026-10-31 the page had ALSO_KNOWN_AS "MODIS/VIIRS Land Quality Assessment", and this item left out only the type word "website" (third audit, finding G-1).
+  - **May matter because:** it is the page's name, by which a person would look for it.
 - **Left out:** "product" (notes, "[MOD11_L2](https://doi.org/10.5067/MODIS/MOD11_L2.006) swath product")
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"; "swath" is a ground truth triple of its own (HAS_SPATIAL_REPRESENTATION, as "gridded" for the record at pool position 6).
 
@@ -219,10 +220,10 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (pool position 12, id bb1fe4b0-6543-42e3-9386-acbab0b37ad4)
 
-The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 23 items, 17 that may matter.
+The notes are mostly the abstract of the study the table comes from; whether a study's aim, method and findings belong in the ground truth is asked in Q26, and until it is answered they are left out (decision of 2026-10-25). 24 items, 19 that may matter.
 
 - **Left out:** "The X-ray variability of active galactic nuclei (AGN) has been most often investigated with studies of individual, nearby sources, and only a few ensemble analyses have been applied to large samples in wide ranges of luminosity and redshift." (notes)
-  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." It is background about earlier studies in general, naming no study, dataset or other specific thing for a triple.
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It is background about earlier studies, and it names "active galactic nuclei (AGN)" and their X-ray variability, which are instances of my ground truth triples; it waits with the study's aim, method and findings on the experts' answer (Q26; decision of 2026-10-25). (Until 2026-10-31 this item cited rule 9, as naming no specific thing; third audit, finding L-6.)
   - **May matter because:** it says why the study was made.
   - **Question:** Q26.
 - **Left out:** "and Swift (the latter is not included in this table, notice)" (notes), the study's second sample
@@ -234,9 +235,11 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says how the study's samples were selected.
   - **Question:** Q26.
 - **Left out:** "which operates in the time domain" (notes, about the structure function)
-  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class" (it says what kind of method it is).
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer". It states a property of the structure function, the study's method, not its type; it waits with the study's aim, method and findings on the experts' answer (Q26; decision of 2026-10-25). (Until 2026-10-31 this item cited rule 4; third audit, finding L-7.)
+  - **May matter because:** it says how the method works: in the time domain.
+  - **Question:** Q26.
 - **Left out:** "The SF is also more appropriate than fractional variability and excess variance, because these parameters are biased by the duration of the monitoring time interval in the rest-frame, and therefore by cosmological time dilation." (notes)
-  - **Rule:** What counts as a fact, rule 5: "Leave out words such as "great"." ("more appropriate" is the authors' judgement); the biases are about two measures the dataset doesn't use.
+  - **Rule:** What counts as a fact, rule 5: "Leave out words such as "great"." ("more appropriate" is the authors' judgement). The second clause, that "these parameters are biased by the duration of the monitoring time interval", is a stated fact about two measures the dataset doesn't use; What counts as a fact, rule 2: "or it waits on an expert's answer": it waits with the study's method on the experts' answer (Q26). (Until 2026-10-31 this clause cited no rule; third audit, finding L-8.)
   - **May matter because:** it says why the method was chosen.
   - **Question:** Q26.
 - **Left out:** "They do not find evidence of the break in the SF, at variance with the case of lower luminosity AGNs." (notes)
@@ -299,6 +302,9 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Question:** Q26.
 - **Left out:** "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" ALSO_KNOWN_AS "XMM-Newton sample" (notes, "The authors refer to these sources as the XMM-Newton sample")
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "XMM-Newton sample" names the sources the table holds, not the table, and the record names those sources only by a count ("412 quasars", a Value), so there is no instance for them to be the subject of an ALSO_KNOWN_AS triple (the rule was named on 2026-10-31).
+- **Left out:** "from 2 to 25 epochs each" (notes, "resulting in 412 quasars that were observed by XMM-Newton from 2 to 25 epochs each"), as how many times each quasar was observed
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The count is each quasar's, not the dataset's, and the record names the quasars only by a count ("412 quasars", a Value), so there is no instance for them to be the subject (as for "XMM-Newton sample", above). Until 2026-10-31 the dataset had HAS_NUMBER_OF "from 2 to 25 epochs each" (third audit, finding G-8).
+  - **May matter because:** it says how often each source was observed, which the study's variability measure depends on.
 
 ## "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (pool position 13, id ab33f184-95f4-4f33-8f3d-c4a09ec525d3)
 

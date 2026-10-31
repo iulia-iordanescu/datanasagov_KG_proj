@@ -198,6 +198,66 @@ class RuleNineteenMarks(unittest.TestCase):
         self.assertEqual(found, [], "read the qualifier predicates with schema_io.qualifier_predicates instead")
 
 
+#: Where a predicate's definition names its object's entity class: "this Instrument", "this Person or Organization",
+#: or "(a Time)" after the words it explains ("on this date (a Time)").
+NAMED_CLASS = __import__("re").compile(r"\bthis ([A-Z][A-Za-z]*(?: or [A-Z][A-Za-z]*)*)|\(an? ([A-Z][A-Za-z]*)\)")
+
+
+def unpinned(schema: dict) -> list:
+    """The predicates whose definition names an entity class of the schema as its object without a pin to it
+    ("only: ... -> that entity class"), as "PREDICATE: EntityClass, ..."; a capitalized word that is no entity class is
+    ignored."""
+    out = []
+    for predicate, definition in schema["predicates"].items():
+        named = [w for m in NAMED_CLASS.finditer(definition) for w in (m.group(1) or m.group(2)).split(" or ")
+                 if w in schema["entity_classes"]]
+        pinned = {o for _, o in schema["pinned"].get(predicate, [])}
+        missing = [c for c in named if c not in pinned]
+        if missing:
+            out.append(f"{predicate}: {', '.join(missing)}")
+    return out
+
+
+class PinsFollowDefinitions(unittest.TestCase):
+    """The ground truth schema's rule "A predicate whose definition names its object's entity class is pinned to it"
+    (annotations/ground_truth_schema.txt, PREDICATES), checked: every such predicate has a pin to each entity class
+    its definition names, so a definition and its pin can't drift apart."""
+
+    def test_near_misses(self):
+        text = """ENTITY CLASSES
+--------------
+Grid              a fixed set of cells
+Time              a point or period on the calendar
+Person            one named human being
+Organization      a named institution
+
+PREDICATES
+----------
+IN_GRID           its values were collected into this Grid
+                  only: any -> Grid
+IN_GRID_2         its values were collected into this Grid
+STARTED_ON        started on this date (a Time)
+RUN_BY            is run by this Person or Organization
+                  only: any -> Person
+REPLACES          replaces this earlier one
+ABOUT             is about this Topic
+LIKE_A_GRID       looks like a Grid (IN_GRID)
+"""
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            path = tmp / "s.txt"
+            path.write_text(text, encoding="utf-8")
+            s = schema_io.read_schema(path)
+        finally:
+            shutil.rmtree(tmp)
+        self.assertEqual(unpinned(s), ["IN_GRID_2: Grid", "STARTED_ON: Time", "RUN_BY: Organization"])
+
+    def test_ground_truth_schema(self):
+        s = schema_io.read_ground_truth_schema(HAND)
+        self.assertEqual(unpinned(s), [], "add a line \"only: any -> <entity class>\" under each of these predicates "
+                         "in annotations/ground_truth_schema.txt, or reword its definition")
+
+
 class Additions(unittest.TestCase):
 
     def test_round_trip(self):

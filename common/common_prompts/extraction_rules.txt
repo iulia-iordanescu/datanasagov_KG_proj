@@ -18,15 +18,16 @@ WHAT COUNTS AS A FACT
    record's own statements meet one of these two tests:
    - Replacement: the record says an older version is discontinued or
      decommissioned and directs users to a newer one; then the newer one
-     replaces the older one ("R3 was retired in 2019. Please use R4." gives
-     "R4" replacing "R3").
+     replaces the older one ("Version 3 was decommissioned in 2019. Please
+     use Version 4." gives "Version 4" replacing "Version 3").
    - Comparison: the record says one thing is lower, higher, better (or any
      other comparison) without saying than what, and names exactly two
      things of that kind together; then the other one is what it is
      compared with ("Two products are made, Q1 and Q2. Q2 has lower noise."
      gives Q2 lower noise than Q1). With three or more, no fact.
    The source_text of such a fact is the passages that meet the test, each
-   copied exactly, joined by " … ".
+   copied exactly, joined by " … ". To see that two wordings name the same
+   thing, you may use what the words mean (rule 23).
 2. Every fact the record states (the task above says which), unless a rule
    here leaves it out. The title states facts too: "Kestrel/Halden Lake Ice
    20-Min L2 Swath 800m V027", with notes that say "collected by Kestrel on
@@ -63,12 +64,17 @@ WRITING A TRIPLE
 11. Subject and object: the record's own words, as written. Don't
     paraphrase them or expand abbreviations. Exceptions: rules 5 and 10
     (opinion words, and words true only as of writing, are left out), and
-    rules 19, 22, 23 and 24 (rule 24: the words for a processing step's
-    input and method are not part of another subject or object). A period
-    of time or a range of values is one subject or object (rule 22). A name
-    stays whole: rules 19 and 22 never split or shorten a name ("Kestrel and
-    Halden Survey Office" keeps its "and"; "Earth Imaging Satellites (EIS)"
-    keeps "Earth").
+    rules 19, 20, 22, 23 and 24 (rule 20: parentheses that hold the code of
+    something else are not part of it; rule 24: the words for a processing
+    step's input and method are not part of another subject or object). A
+    period of time or a range of values is one subject or object (rule 22).
+    A name stays whole: rules 19, 22 and 24 never split or shorten a name
+    ("Kestrel and Halden Survey Office" keeps its "and"; "Earth Imaging
+    Satellites (EIS)" keeps "Earth"). One exception: a name made of a
+    product's code and its version gives its parts as facts of their own,
+    and a version so named is written as the version alone: "the KX12
+    Version 3 product" gives the record's dataset's identifier "KX12" and
+    its version "Version 3".
 12. The subject is what the sentence is about, which is not always the
     title. A fact about the thing the record's title names has the title as
     its subject.
@@ -79,8 +85,10 @@ WRITING A TRIPLE
     gives two triples: the record's dataset collected by Kestrel, and
     Kestrel aboard Halden.
 16. Each fact once, even if the record states it twice or in other words.
-    Rule 23 says which wording to keep: "the CTM" and "Cloud Top Mask
-    (CTM)" give "Cloud Top Mask (CTM)".
+    Rule 23 says which wording to keep: "provides weekly lake ice extent"
+    and later "the extent is mapped every week" state one fact, so one
+    triple: the record's dataset's temporal resolution "weekly", the
+    wording the record gives first.
 17. source_text: the shortest passage that contains words for the subject,
     the predicate and the object; when the subject is named only in an
     earlier sentence, from where it is named to the end of the fact. Copy
@@ -89,10 +97,18 @@ WRITING A TRIPLE
     no words for the predicate, the source_text is the title's words for
     the object ("Halden" in the title "Kestrel/Halden Lake Ice 20-Min L2
     Swath 800m V027", for the record's dataset collected from Halden).
+    A name's facts: for a fact a name in the notes states by its words
+    alone, with no words for the predicate, the source_text is the name as
+    written ("Kestrel low gain sensor", for the low gain sensor as a part
+    of Kestrel).
+    The thing the title names: for a fact about it, the words for it may be
+    left out of the source_text ("provides daily lake ice extent", for the
+    record's dataset's temporal resolution "daily").
     Words in different places: when the words for the subject, the
-    predicate and the object are in different places (the title and the
-    notes, or the passages that meet a test of rule 1), the source_text is
-    those passages, each copied exactly, joined by " … ".
+    predicate and the object are in different places, in one of these two
+    cases only (the title and the notes, or the passages that meet a test
+    of rule 1), the source_text is those passages, each copied exactly,
+    joined by " … ".
 18. A number with a unit: the object is the number and its unit, as
     written; what the number measures goes in the predicate. "Kestrel has a
     swath width of 350 m" gives Kestrel's swath width "350 m".
@@ -115,8 +131,8 @@ WRITING A TRIPLE
     "Level-1B" (swaths are data, standalone). When it is describing (its
     instances only describe something else, such as a measured quantity, a
     purpose, a task, a role or a time), the new triple's subject is the
-    subject of the triple whose object that subject or object was: "the
-    surface albedo of Halden-4" gives the record's dataset's target
+    subject of the triple whose object that subject or object was, in the
+    sentence the qualifier is in: "the surface albedo of Halden-4" gives the record's dataset's target
     "Halden-4" (surface albedo is a measured quantity, describing).
     A country: it is based in when it qualifies a person or an organization
     ("the U.K. Coastal Survey Bureau (CSB)" above), and an area the data
@@ -151,7 +167,8 @@ WRITING A TRIPLE
     Another dataset: include facts about it when the record states a chain
     of "part of" or "made from" links that connects it to the record's
     dataset: its parts, what it is part of, what it is made from, and so on
-    through further datasets the record names ("the archive holds swath
+    through further datasets or variables the record names ("the archive
+    holds swath
     files and grid files" gives facts about the swath files, a part).
     Leave out facts about other datasets, such as a variant of the record's
     dataset (the same data at another temporal resolution, spatial
@@ -172,10 +189,13 @@ WRITING A TRIPLE
     item that names no specific thing ("her group", "his team") gives no
     triple (rule 9).
     Examples: "derived from the 3 and 9 micron channels" gives "3 micron
-    channel" and "9 micron channel"; "to monitor the health of the Earth
-    lakes, rivers and wetlands" gives the target body "Earth", then three
-    purposes: "monitor the health of lakes", "monitor the health of
-    rivers", and "monitor the health of wetlands"; "Maria Lopez and Ken Ito
+    channel" and "9 micron channel"; "Halden was launched to monitor the
+    global health of the Earth lakes, rivers and wetlands" gives Halden's
+    target body "Earth", then three purposes: "monitor the global health of
+    lakes", "monitor the global health of rivers", and "monitor the global
+    health of wetlands" ("global" stays: taken out, it would give Halden an
+    area the data cover, and Halden is a satellite, not data); "Maria Lopez
+    and Ken Ito
     lead the calibration" gives two triples, with the subjects "Maria Lopez"
     and "Ken Ito".
     A period of time or a range of values is one subject or object, not a
@@ -197,7 +217,9 @@ WRITING A TRIPLE
     word they describe is singular, and split them when that word is
     plural. "A bright, narrow beam" is one beam, one object; "to reach the
     archive quickly and cheaply" is one purpose, kept whole; "the 3 and 9
-    micron channels" is two channels, two triples.
+    micron channels" is two channels, two triples. A word such as "data" is
+    plural only when the record treats it so, with a plural verb or
+    determiner ("the data were taken"); otherwise it is singular.
     Exception, a collective "and": a distributive "and" means "A, and also
     B": what the record says holds for each item alone, so the list is
     split. A collective "and" means "A and B together": what the record
@@ -218,7 +240,8 @@ WRITING A TRIPLE
     near-infrared reflectances".
 23. One thing, one wording, within a record. When the record names the
     same thing more than once, in different words: if one wording says more
-    (contains the other, is more precise, or spells out its abbreviation),
+    (contains the other's words, each as a whole word, is more precise, or
+    spells out its abbreviation),
     use it, in every triple; if they are two equal wordings, use the one the
     record uses most often (on a tie, the one it gives first); the other
     appears only in an also-known-as triple, and only if the record states
@@ -229,8 +252,8 @@ WRITING A TRIPLE
     To see that two wordings name the same thing, use clues anywhere in the
     record and what you know about the words (e.g. what an abbreviation
     stands for: VLF is very low frequency).
-    The record's dataset: it is the exception, always written as its title
-    (rule 12).
+    The thing the record's title names: it is the exception, always
+    written as its title (rule 12).
     Type words: leave out a type word that only describes the thing,
     written in lowercase beside the name: write "Halden", not "Halden
     satellite", since its entity class, Spacecraft, already says what it is
@@ -244,15 +267,19 @@ WRITING A TRIPLE
     triples, each written only if the record names both of its ends: output
     computed from input, and output produced using the method. The words
     for the input and the method are then not part of another subject or
-    object (rule 11).
+    object (rule 11). They are taken out only of the words for what the
+    step made, not of a name that contains them: "this Tern Lake Ice Extent
+    product, used to make the Tern Lake Albedo product" gives the record's
+    dataset produced using "Tern", with measurements of "Lake Ice Extent";
+    "Tern Lake Albedo" stays whole, the name of another product.
     One step after another: one step's output can be the next step's
     input. A record says its dataset holds "ice cover detected from the IWI
-    using a cloud mask", and that "the IWI is derived from reflectance
+    using a threshold test", and that "the IWI is derived from reflectance
     data": two steps. Step 1: IWI = ?(reflectance data); the method isn't
     named, so only "IWI" computed from "reflectance data". Step 2: the
-    record's dataset = a cloud mask(IWI): the record's dataset computed from
-    "IWI", and produced using "a cloud mask"; its measurements are of "ice
-    cover", without the words for the input and the method.
+    record's dataset = threshold test(IWI): the record's dataset computed
+    from "IWI", and produced using "threshold test"; its measurements are of
+    "ice cover", without the words for the input and the method.
     Words that name no method: a word that says only that something was
     done ("corrected", "calibrated", "detrended") names no method. It gives
     no triple, and it stays in the subject or object, as written (rule 19:
