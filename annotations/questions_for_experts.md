@@ -1459,7 +1459,7 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
 - Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans").
-- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Keep them whole when the word they describe is singular; split them when that word is plural.
+- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask: can one of the things they describe have all the describing words at once? 1. Yes: keep them whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
 - Writing a classed triple, rule 22: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 19 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
@@ -2209,7 +2209,7 @@ Checked on 2026-10-31: the standard agrees with our reading. OGC's Abstract Spec
 - predicate HAS_COORDINATE_SYSTEM -> MAPPED_INTO: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
 - Writing a classed triple, rule 23: One thing, one wording, within a record.
-- Writing a classed triple, rule 23: the other appears only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
+- Writing a classed triple, rule 23: the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
 
 ### Consequences
 
@@ -2503,8 +2503,8 @@ Settled on 2026-10-31: SST4 is a skin SST, as the OBPG's SST4 document says ("Th
 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- What counts as a fact, rule 7: Not uncertain facts.
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other's words, each as a whole word, is more precise, or spells out its abbreviation), use it
+- What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the first wording this order picks; the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
 ### Consequences
 
@@ -2619,8 +2619,9 @@ Checked on 2026-10-31, the note left for us above on whether "V006", "Version 6"
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
 - What counts as a fact, rule 10: Not words that are true only as of when the record was written. Leave out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
 - What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
-- Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple. Parentheses that hold the code of something else are not part of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other's words, each as a whole word, is more precise, or spells out its abbreviation), use it; if they are two wordings that say the same, use the one the record uses most often (on a tie, the one it gives first)
+- Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
+- Writing a classed triple, rule 20: Parentheses that hold the code of something else are not part of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the first wording this order picks; the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. 2. Otherwise, the wording from a sentence that states a fact about the thing with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
 
 ### Consequences
 
@@ -3066,7 +3067,7 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 ### Quoted for us
 
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words: if one wording says more (it contains the other's words, each as a whole word, is more precise, or spells out its abbreviation), use it
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the first wording this order picks; the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
 ### Consequences
 
@@ -3472,7 +3473,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - predicate HAS_PURPOSE: is meant to achieve
 - What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
 - What counts as a fact, rule 6: Not negated facts.
-- What counts as a fact, rule 7: Not uncertain facts.
+- What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
 
 ### Consequences
