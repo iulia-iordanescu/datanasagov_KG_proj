@@ -35,15 +35,23 @@ def _of(k: int, n: int) -> str:
     return f"{k} ({pct(k / n) if n else NO_VALUE})"
 
 
-def _sure(n: dict, metric: dict, what: str) -> str:
-    """How sure a metric is: its margin of error, or why there is none."""
+#: The caveat after a range from fewer than stats.FEW_RECORDS records (070_evaluate/metrics/approximately.md).
+FEW_CAVEAT = ("From {n} records only: the design effect (how much the records' occurrences move together) is itself "
+              "estimated from {n} records, so the range may still be too narrow; read it as a rough width, not a bound.")
+
+
+def _sure(n: dict, metric: dict, what: str, items: str = "triples") -> str:
+    """How sure a metric is: its margin of error (stats.clustered_wilson), or why there is none."""
     if metric is None or metric.get("value") is None:
         return f"- Not computed: nothing to count it over."
     if metric.get("low") is None:
-        return (f"- Computed over {n['records']} record(s): too few for a margin of error (it needs "
-                f"{stats.MIN_RECORDS}), so {what} could easily be quite different over the whole catalog.")
-    return (f"- For the whole catalog, {what} is likely between {pct(metric['low'])} and {pct(metric['high'])} "
-            f"(the margin of error: the middle 95% of {stats.REDRAWS:,} redraws of these {n['records']} records).")
+        return "- Computed over 1 record: no range (nothing to measure spread from)."
+    out = (f"- For the whole catalog, {what} is likely between {pct(metric['low'])} and {pct(metric['high'])} "
+           f"(the margin of error: a 95% interval over these {n['records']} records' {items}, worth "
+           f"{metric['n_eff']:.0f} independent ones once the records' clustering is counted"
+           + ("; every one of them agreed, so each record counts as one trial" if metric.get("deff") is None else "")
+           + ").")
+    return out + (" " + FEW_CAVEAT.format(n=n["records"]) if n["records"] < stats.FEW_RECORDS else "")
 
 
 #: What a held-out look saw, besides its date and run (columns of annotations/held_out_looks.csv), as a message names

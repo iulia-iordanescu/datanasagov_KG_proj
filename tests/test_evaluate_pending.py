@@ -101,10 +101,13 @@ class Numbers(unittest.TestCase):
         self.assertIsNone(purpose["exact"]["precision"]["value"])          # 0 pairs ÷ (1 − 1): nothing to divide
 
     def test_margins_use_the_same_formula(self):
-        recs = [compared(rid=f"r{i}", pending=({**WAITING, "id": f"r{i}"},)) for i in range(stats.MIN_RECORDS)]
+        recs = [compared(rid=f"r{i}", pending=({**WAITING, "id": f"r{i}"},)) for i in range(20)]
         n = stats.with_margins(recs)
         self.assertAlmostEqual(n["exact"]["precision"]["value"], 1 / 2)
-        self.assertEqual((n["exact"]["precision"]["low"], n["exact"]["precision"]["high"]), (0.5, 0.5))
+        # the range divides by the same counted occurrences as the value (each record: 1 of 2, the waiting one out)
+        self.assertEqual(stats.record_parts(recs, ("exact", "precision")), [(1, 2)] * 20)
+        ci = stats.clustered_wilson([(1, 2)] * 20)
+        self.assertEqual((n["exact"]["precision"]["low"], n["exact"]["precision"]["high"]), (ci["low"], ci["high"]))
 
 
 class Report(unittest.TestCase):

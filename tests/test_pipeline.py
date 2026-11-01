@@ -394,7 +394,9 @@ class Pipeline(unittest.TestCase):
             self.assertAlmostEqual(m["f1"]["value"], 16 / 17)
             self.assertEqual(m["strict_precision"]["value"], 1.0)
             self.assertEqual(m["entity_class_accuracy"]["value"], 1.0)
-            self.assertIsNone(m["precision"]["low"])                            # fewer than 20 records: no margin
+            # 8 records, every one at 100%: a range all the same, each record one trial, with the few-records caveat
+            self.assertEqual((m["precision"]["high"], m["precision"]["few_records"]), (1.0, True))
+            self.assertLess(m["precision"]["low"], 1.0)
         self.assertEqual(n["recall_upper_bound"]["value"], 1.0)
         extracted = read_csv(self.output("060_extract", "extracted_triples.csv"))
         tuning = {r["record_id"] for r in read_csv(self.output("070_evaluate", "compared_triples.csv")) if r["part"] == "tuning"}
@@ -476,7 +478,8 @@ class Pipeline(unittest.TestCase):
         self.assertIn("Compared 2 runs on 8 tuning records", r.stdout)
         report = (self.repo / r.stdout.strip().rsplit(": ", 1)[1]).read_text(encoding="utf-8")
         self.assertIn("Nothing recorded differs.", report)
-        self.assertIn("| exact: precision | 100.0% | 100.0% | +0.0 points | – | the same |", report)
+        # the same run twice: every redraw's difference is 0, so the range is 0 to 0 (from 2 records on)
+        self.assertIn("| exact: precision | 100.0% | 100.0% | +0.0 points | +0.0 points to +0.0 points | the same |", report)
 
     def test_t10a_values_a_person_writes(self):
         """The translation table's fixed values are read case aside, and any other value stops 070, naming its line;

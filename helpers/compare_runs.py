@@ -5,10 +5,11 @@ Compares step 070's evaluations of two or more runs on the same tuning
 records: for each number (precision, recall, F1, ...), the difference from
 the first run (the baseline), with a 95% range from a paired bootstrap
 (Koehn 2004, "Statistical Significance Tests for Machine Translation
-Evaluation", EMNLP, https://aclanthology.org/W04-3250/), and each number's
-spread across the runs (for repeats of one recipe, setting `repeat`: the
-model's own variation). Free: no model calls. Writes a report and prints
-where it is.
+Evaluation", EMNLP, https://aclanthology.org/W04-3250/) with Hesterberg's
+expanded percentile quantiles, and each number's spread across the runs (for
+repeats of one recipe, setting `repeat`: the model's own variation, and the
+number pooled over the repeats with its clustered Wilson range). Free: no
+model calls. Writes a report and prints where it is.
 
     py helpers/compare_runs.py                          list the evaluations kept so far
     py helpers/compare_runs.py <run id> <run id> ...    compare them; the first is the baseline
@@ -19,6 +20,7 @@ import argparse
 import collections
 import datetime as dt
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -63,8 +65,14 @@ LIMITS = [
     "held-out part, at the end (`py 070_evaluate/run.py --evaluate_held_out true`).",
 ]
 #: The verdicts, in the order they are tried: the first that applies is the row's.
-VERDICTS = ("not comparable (a number is missing)", "the same", "no range (too few records)", "<run> higher",
+VERDICTS = ("not comparable (a number is missing)", "the same", "no range (one record)", "<run> higher",
             "<run> lower", "can't tell apart")
+#: The paired bootstrap of the differences: how many redraws (Hesterberg 2015, section 3.6: "r = 10000 for routine
+#: use"; it runs on kept counts, so it is cheap), and the seed, so a rerun gives the same ranges. A second method in a
+#: second place, on purpose: a difference of two ratios is not a proportion, so 070's clustered Wilson interval
+#: (stats.clustered_wilson) doesn't apply to it (helpers/compare_runs.md).
+REDRAWS = 10000
+SEED = 70
 
 
 # ------------------------------ reading -------------------------------------
@@ -184,16 +192,38 @@ def as_records(run: dict, ids: list) -> list:
 
 # ------------------------------ comparing -----------------------------------
 
+def expanded_alpha(n: int) -> float:
+    """Hesterberg's expanded percentile interval (2015, sections 1.1 and 5.3): the lower quantile α′/2 =
+    Φ(−√(n/(n − 1)) · t_{0.975, n − 1}) instead of 0.025, for n records, so the range makes up for the bootstrap's
+    narrowness in small samples (Φ: the standard normal distribution function, by math.erf)."""
+    x = -math.sqrt(n / (n - 1)) * stats.t_quantile(0.975, n - 1)
+    return 0.5 * (1 + math.erf(x / math.sqrt(2)))
+
+
+def interval(values: list, n: int, redraws: int = REDRAWS) -> dict:
+    """The bootstrap's expanded percentile range of the values: {"low", "high", "used", "skipped"}. The values are
+    sorted; low is the one at position α′/2 · (k − 1), rounded down, and high the one at (1 − α′/2) · (k − 1), rounded
+    up (expanded_alpha(n); k values), so as many values lie below the range as above it. used: how many redraws gave
+    a value; skipped: how many didn't (the number was undefined there) and so aren't in the range."""
+    vals = sorted(values)
+    k = len(vals)
+    if not k or n < 2:
+        return {"low": None, "high": None, "used": k, "skipped": redraws - k}
+    q = expanded_alpha(n)
+    return {"low": vals[math.floor(q * (k - 1))], "high": vals[math.ceil((1 - q) * (k - 1))],
+            "used": k, "skipped": redraws - k}
+
+
 def paired(base: list, other: list) -> list:
     """For each number of stats.WITH_MARGIN: {"label", "a", "b", "diff", "low", "high"}. The range is a paired
     bootstrap: the records are drawn at random with repeats, the SAME draw for both runs, REDRAWS times, and the
-    middle 95% of the differences is kept. Fewer than MIN_RECORDS records: no range."""
+    expanded percentile range of the differences is kept (interval). From 2 records on; one record: no range."""
     n = len(base)
     a_point, b_point = stats.numbers(base), stats.numbers(other)
     samples = {path: [] for path, _ in stats.WITH_MARGIN}
-    if n >= stats.MIN_RECORDS:
-        rng = random.Random(stats.SEED)
-        for _ in range(stats.REDRAWS):
+    if n >= 2:
+        rng = random.Random(SEED)
+        for _ in range(REDRAWS):
             draw = [rng.randrange(n) for _ in range(n)]
             na, nb = stats.numbers([base[i] for i in draw]), stats.numbers([other[i] for i in draw])
             for path, _ in stats.WITH_MARGIN:
@@ -203,7 +233,7 @@ def paired(base: list, other: list) -> list:
     rows = []
     for path, label in stats.WITH_MARGIN:
         va, vb = stats._get(a_point, path), stats._get(b_point, path)
-        r = stats.interval(samples[path]) if samples[path] else {"low": None, "high": None, "used": 0, "skipped": 0}
+        r = interval(samples[path], n) if samples[path] else {"low": None, "high": None, "used": 0, "skipped": 0}
         rows.append({"label": label, "a": va, "b": vb, "diff": None if va is None or vb is None else vb - va,
                      "low": r["low"], "high": r["high"], "redraws": r["used"]})
     return rows
@@ -227,6 +257,10 @@ def verdict(row: dict, name: str) -> str:
 
 def pct(v) -> str:
     return "–" if v is None else f"{100 * v:.1f}%"
+
+
+def _var(v) -> str:
+    return "–" if v is None else f"{v:.4f}"
 
 
 def points(v) -> str:
@@ -255,6 +289,37 @@ def spread(runs: list, ids: list) -> list:
     return rows
 
 
+def pooled(runs: list, ids: list) -> list:
+    """For repeats of one recipe (only_repeats), each number of stats.WITH_MARGIN pooled over the repeats, the record
+    staying the cluster (Miller 2024, sections 2.2 and 3.1: record × repeat is never taken as more clusters): {"label",
+    "value", "low", "high", "between", "within"}. Each record's parts are its means over the K runs, ā_r and b̄_r, and
+    the range is stats.clustered_wilson over them, so repeats narrow it as much as the answer-sampling variance they
+    average away, and no more. between: the variance, across the records, of each record's proportion ā_r / b̄_r;
+    within: the mean, over the records, of the variance across the runs of a_rk / b_rk (each record with a value in
+    every run). A between much larger than within means more records narrow the range more than more repeats would
+    (reasonable practice, no source gives a threshold)."""
+    per_run = [as_records(run, ids) for run in runs]
+    k = len(runs)
+    rows = []
+    for path, label in stats.WITH_MARGIN:
+        parts = [stats.record_parts(recs, path) for recs in per_run]
+        means = [(sum(p[i][0] for p in parts) / k, sum(p[i][1] for p in parts) / k) for i in range(len(ids))]
+        ci = stats.clustered_wilson(means)
+        props = [a / b for a, b in means if b > 0]
+        between = _variance(props) if len(props) > 1 else None
+        within = [_variance([p[i][0] / p[i][1] for p in parts]) for i in range(len(ids))
+                  if all(p[i][1] > 0 for p in parts)] if k > 1 else []
+        rows.append({"label": label, "value": ci["value"], "low": ci["low"], "high": ci["high"],
+                     "between": between, "within": sum(within) / len(within) if within else None})
+    return rows
+
+
+def _variance(xs: list) -> float:
+    """The sample variance (n − 1 in the denominator)."""
+    m = sum(xs) / len(xs)
+    return sum((x - m) ** 2 for x in xs) / (len(xs) - 1)
+
+
 # ------------------------------ the report ----------------------------------
 
 def _range(r: dict) -> str:
@@ -262,8 +327,8 @@ def _range(r: dict) -> str:
     if r["low"] is None:
         return "–"
     return (f"{points(r['low'])} to {points(r['high'])}"
-            + (f" (from {r['redraws']:,} of {stats.REDRAWS:,} redraws: the number was undefined in the others)"
-               if 0 < r.get("redraws", stats.REDRAWS) < stats.REDRAWS else ""))
+            + (f" (from {r['redraws']:,} of {REDRAWS:,} redraws: the number was undefined in the others)"
+               if 0 < r.get("redraws", REDRAWS) < REDRAWS else ""))
 
 
 def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
@@ -300,9 +365,13 @@ def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
                      f"{', …' if len(which) > 20 else ''}).")
     for note in notes:
         lines.append(f"Not checked: {note}")
-    if len(ids) < stats.MIN_RECORDS:
-        lines += ["", f"**Fewer than {stats.MIN_RECORDS} records, so no difference gets a range: the numbers below "
-                      f"could easily have come out the other way. Don't draw conclusions from them yet.**"]
+    if len(ids) < 2:
+        lines += ["", "**One record only, so no difference gets a range: the numbers below could easily have come "
+                      "out the other way. Don't draw conclusions from them yet.**"]
+    elif len(ids) < stats.FEW_RECORDS:
+        lines += ["", f"**From {len(ids)} records only (fewer than {stats.FEW_RECORDS}): each range is itself "
+                      f"estimated from few records, so it may still be too narrow; read it as a rough width, not a "
+                      f"bound.**"]
     rows = spread(runs, ids)
     lines += ["", "## Spread across the runs", "",
               ("These runs are repeats of one recipe: only the repeat differs (060's setting `repeat`), so each was "
@@ -317,6 +386,20 @@ def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
     lines += [f"| {r['label']} | " + " | ".join(pct(v) for v in r["values"])
               + f" | {pct(r['low'])} | {pct(r['high'])} | {pct(r['mean'])} | "
               + ("–" if r["width"] is None else f"{100 * r['width']:.1f} points") + " |" for r in rows]
+    if only_repeats(diffs):
+        lines += ["", "## Pooled over the repeats", "",
+                  f"Each number over all {len(runs)} repeats, each record's counts averaged over the runs, with a 95% "
+                  f"range by 070's clustered Wilson interval over these {len(ids)} records "
+                  f"(`070_evaluate/metrics/approximately.md`, *Sampling error*, *Repeats*): the record stays the "
+                  f"cluster, so the repeats narrow the range only as much as the model's own variation they average "
+                  f"away. *Between records*: the variance, across the records, of each record's own proportion; "
+                  f"*Within a record*: the mean variance of a record's proportion across the repeats. A between much "
+                  f"larger than within means more records would narrow the range more than more repeats.", "",
+                  "| Number | Pooled | 95% range | Between records | Within a record (repeats) |",
+                  "|---|---:|---|---:|---:|"]
+        lines += [f"| {r['label']} | {pct(r['value'])} | "
+                  + ("–" if r["low"] is None else f"{pct(r['low'])} to {pct(r['high'])}")
+                  + f" | {_var(r['between'])} | {_var(r['within'])} |" for r in pooled(runs, ids)]
     first = None
     base = as_records(runs[0], ids)
     for n, run in zip(names[1:], runs[1:]):
@@ -337,11 +420,14 @@ def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
                   + ("–" if r["low"] is None else f"{points(r['low'])} to {points(r['high'])}")
                   + f". *Then:* on the same {len(ids)} tuning records, run {names[0]} scored {pct(r['a'])} and run "
                     f"{n} {pct(r['b'])}, a difference of {points(r['diff'])}. The records were then drawn at random "
-                    f"{stats.REDRAWS:,} times, with repeats, the same draw for both runs, and the difference "
-                    f"recomputed each time; the 95% range holds the middle 95% of those differences (the values at "
-                    f"positions 0.025·(n − 1), rounded down, and 0.975·(n − 1), rounded up, of the sorted differences, "
-                    f"as 070's margins; a redraw where a number is undefined in either run is skipped, and the range "
-                    f"then says from how many it comes). A range all "
+                    f"{REDRAWS:,} times, with repeats, the same draw for both runs, and the difference "
+                    f"recomputed each time; the 95% range is the expanded percentile range of those differences "
+                    f"(Hesterberg 2015: the values at positions α′/2·(k − 1), rounded down, and (1 − α′/2)·(k − 1), "
+                    f"rounded up, of the k sorted differences, with α′/2 = Φ(−√(n/(n − 1))·t_{{0.975, n − 1}}) = "
+                    f"{expanded_alpha(len(ids)) if len(ids) > 1 else 0.025:.4f} for these {len(ids)} records, wider than "
+                    f"the plain 0.025 to make up for the bootstrap's narrowness in small samples; a redraw where a "
+                    f"number is undefined in either run is skipped, and the range then says from how many it comes). "
+                    f"A range all "
                     f"above 0 means {n} is higher by more than chance; all below 0, lower; a range that includes 0, "
                     f"the two runs can't be told apart on these records.",
                   "",

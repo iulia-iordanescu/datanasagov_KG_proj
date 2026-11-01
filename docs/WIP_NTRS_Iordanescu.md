@@ -38,7 +38,7 @@ When the schema is induced rather than given, a ground truth triple can be misse
 
 ### 2.4 Statistics for small evaluation sets
 
-Annotating by hand limits the ground truth to a small sample, so every metric is an estimate. I use the bootstrap with percentile intervals [11], redrawing whole records rather than single triples, since a record's triples come from one model call and succeed or fail together [12]. Two versions of the pipeline are compared on the same records with the paired bootstrap [13]. Part of the sample is held out until the end, since a test set used to choose between versions no longer gives an unbiased estimate [14].
+Annotating by hand limits the ground truth to a small sample, so every metric is an estimate. Each metric is a ratio of sums over records, so I treat it as a proportion estimated from a cluster sample, the records being the clusters, since a record's triples come from one model call and succeed or fail together [12]: a Wilson score interval [22] with the effective sample size and the degrees-of-freedom adjustment of survey statistics [23]. For small evaluation sets of language models, Wilson or Bayesian intervals are recommended over intervals of the normal approximation and the bootstrap, which "perform very poorly, usually dramatically underestimating uncertainty" [24]. Two versions of the pipeline are compared on the same records with the paired bootstrap [11, 13], with expanded percentile ranges [25]. Part of the sample is held out until the end, since a test set used to choose between versions no longer gives an unbiased estimate [14].
 
 ## 3. Data
 
@@ -143,7 +143,7 @@ Each is reported at the exact and partial levels, with and without the strict re
 
 ### 6.3 Margin of error
 
-Each metric has a 95% percentile interval from 1,000 bootstrap redraws of whole records with a fixed seed [11, 12]. Records are redrawn from all strata together, since the number of evaluated records per stratum is itself random in a prefix of the shuffled pool. No interval is given below 20 evaluated records, a rule of thumb. The report checks the interval's assumptions, such as whether one record holds most of the triples, and warns when the evaluated records' mix of strata differs from the pool's by more than 10 percentage points.
+Each metric has a 95% clustered Wilson interval [22, 23]: the variance of the ratio is taken over records, as the clusters, and the design effect it implies turns the triples into an effective sample size, adjusted for the degrees of freedom of the number of records. Records are taken from all strata together, since the number of evaluated records per stratum is itself random in a prefix of the shuffled pool. A range is given from 2 records on; below 10 records the report says that the design effect is itself estimated from few records. On synthetic records with an intracluster correlation of 0.2, the 95% interval held the true value in 94.3% of 3,000 samples of 20 records (95.3% at 10, 95.1% at 28). The report checks the interval's assumptions, such as whether one record holds most of the triples, and warns when the evaluated records' mix of strata differs from the pool's by more than 10 percentage points.
 
 ### 6.4 Tuning, held-out records, and twins
 
@@ -175,7 +175,7 @@ The baseline schema comes from step 040's run of 2026-10-12 with `claude-opus-5.
 
 A test suite runs in about 40 seconds without calling the model or the catalog and checks that each step does what its guide says.
 
-The first end-to-end evaluation has not been run. It needs steps 050 and 060 to run with the real model, and at least 20 finished records in the tuning part for a margin of error; there are four. No precision, recall, or other evaluation number exists yet.
+The first end-to-end evaluation has not been run. It needs steps 050 and 060 to run with the real model, and at least 10 finished records in the tuning part for a margin of error that is more than a rough width; there are four. No precision, recall, or other evaluation number exists yet.
 
 ## 8. Limitations
 
@@ -184,7 +184,7 @@ The first end-to-end evaluation has not been run. It needs steps 050 and 060 to 
 - Schema induction reads only the 10 largest maintainers. The other 412, holding 8.4% of the records, are never read, so an entity class or predicate used only there cannot enter the induced schema. The recall upper bound will show whether that matters.
 - Partial pairing can join different things that share words ("MODIS" and "MODIS Terra"); review limits this on the tuning part. No pairing catches the same fact in different words ("the satellite" for "Aqua"), which understates precision and recall [7].
 - A wrong row of the translation table looks like an extraction error, and two entity classes of the current schema that translate to one of the ground truth schema cannot be told apart.
-- The margins of error cover sampling error only, not the model's run-to-run variation, mistakes in the ground truth, or tuning. The thresholds of 20 records and 10 percentage points have no published source.
+- The margins of error cover sampling error only, not the model's run-to-run variation, mistakes in the ground truth, or tuning. The caveat below 10 records and the threshold of 10 percentage points have no published source, and the interval's coverage is measured on synthetic records only.
 - Twins are found only by identical titles or `notes` fields; near-identical texts are not measured.
 
 ## 9. Next steps
@@ -246,3 +246,11 @@ I thank my mentors, Jennifer Wei and Phillip Michael, for their guidance through
 [20] A. Negro, G. Futia, V. Kůs, and F. Montagna, *Knowledge Graphs and LLMs in Action*. Manning, 2026.
 
 [21] R. Albertoni, D. Browning, S. Cox, A. Gonzalez Beltran, A. Perego, and P. Winstanley (eds.), "Data Catalog Vocabulary (DCAT) - Version 3," W3C Recommendation, 22 August 2024. https://www.w3.org/TR/2024/REC-vocab-dcat-3-20240822/
+
+[22] E. B. Wilson, "Probable Inference, the Law of Succession, and Statistical Inference," *Journal of the American Statistical Association*, vol. 22, pp. 209–212, 1927.
+
+[23] C. Franco, R. J. A. Little, T. A. Louis, and E. V. Slud, "Comparative Study of Confidence Intervals for Proportions in Complex Sample Surveys," *Journal of Survey Statistics and Methodology*, vol. 7, no. 3, 2019. https://pmc.ncbi.nlm.nih.gov/articles/PMC6690503/
+
+[24] S. Bowyer, L. Aitchison, and D. R. Ivanova, "Position: Don't Use the CLT in LLM Evals With Fewer Than a Few Hundred Datapoints," in *Proceedings of ICML 2025*. arXiv:2503.01747.
+
+[25] T. C. Hesterberg, "What Teachers Should Know About the Bootstrap: Resampling in the Undergraduate Statistics Curriculum," *The American Statistician*, vol. 69, no. 4, 2015. arXiv:1411.5279.

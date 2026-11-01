@@ -718,63 +718,46 @@ class Formulas(unittest.TestCase):
 
 
 class Margins(unittest.TestCase):
+    """with_margins: every number gets its clustered Wilson range (stats.clustered_wilson) from 2 records on, none from
+    1; the ranges are the same on every run (no redraws, no seed); the records' strata don't enter."""
 
-    def test_too_few_records(self):
-        recs = [counts_record(2, 2, 1, 1) for _ in range(stats.MIN_RECORDS - 1)]
-        m = stats.with_margins(recs)
-        self.assertFalse(m["margins"])
-        self.assertEqual(m["exact"]["precision"], {"value": 0.5, "low": None, "high": None})
+    def test_one_record(self):
+        m = stats.with_margins([counts_record(2, 2, 1, 1)])
+        self.assertEqual(m["interval"], {"method": "clustered Wilson", "records": 1, "few_records": True})
+        p = m["exact"]["precision"]
+        self.assertEqual((p["value"], p["low"], p["high"]), (0.5, None, None))
+
+    def test_from_two_records(self):
+        m = stats.with_margins([counts_record(2, 2, 1, 1), counts_record(2, 2, 2, 2)])
+        p = m["exact"]["precision"]
+        self.assertEqual((p["value"], p["few_records"]), (0.75, True))
+        self.assertLess(p["low"], 0.75)
+        self.assertLessEqual(p["high"], 1.0)
 
     def test_margin_contains_spread(self):
         recs = [counts_record(2, 2, i % 3, 0, stratum=f"g{i % 2}") for i in range(40)]
         m = stats.with_margins(recs)
-        self.assertTrue(m["margins"])
         p = m["exact"]["precision"]
         self.assertLess(p["low"], p["value"])
         self.assertLess(p["value"], p["high"])
-        self.assertEqual(stats.with_margins(recs)["exact"]["precision"], p)    # fixed seed: same margins
+        self.assertFalse(p["few_records"])
+        self.assertEqual(stats.with_margins(recs)["exact"]["precision"], p)    # no redraws: the same every time
+        ci = stats.clustered_wilson(stats.record_parts(recs, ("exact", "precision")))      # the one formula
+        self.assertEqual((p["low"], p["high"], p["n_eff"]), (ci["low"], ci["high"], ci["n_eff"]))
 
-    def test_no_spread_no_margin(self):
-        m = stats.with_margins([counts_record(2, 2, 2, 2) for _ in range(stats.MIN_RECORDS)])
-        self.assertEqual(m["exact"]["precision"], {"value": 1.0, "low": 1.0, "high": 1.0})
+    def test_every_record_right(self):
+        """Every record at 100%: no spread, so each record counts as one trial (our choice): the range doesn't
+        shrink to 100%."""
+        m = stats.with_margins([counts_record(2, 2, 2, 2) for _ in range(20)])
+        p = m["exact"]["precision"]
+        self.assertEqual((p["value"], p["high"], p["deff"]), (1.0, 1.0, None))
+        self.assertLess(p["low"], 0.9)
 
-    def test_strata_drawn_together(self):
-        # One record of stratum "a" with precision 0, 39 of stratum "b" with 1. Redrawn within each stratum,
-        # every redraw would hold exactly one "a" record, and the range would be 39/40 to 39/40. Redrawn from
-        # all records together, a redraw can hold none, one, or several, as another sample of the pool could.
+    def test_strata_dont_enter(self):
+        """The records are the clusters, whatever their strata: relabelling the strata changes no range."""
         recs = [counts_record(1, 1, 0, 0, stratum="a")] + [counts_record(1, 1, 1, 1, stratum="b") for _ in range(39)]
-        p = stats.with_margins(recs)["exact"]["precision"]
-        self.assertLess(p["low"], 39 / 40)
-        self.assertEqual((p["value"], p["high"]), (39 / 40, 1.0))
-
-
-class Interval(unittest.TestCase):
-    """stats.interval: the one rule for the middle 95%, used by 070's margins and by py helpers/compare_runs.py."""
-
-    def test_symmetric(self):
-        r = stats.interval(list(range(1000)))
-        self.assertEqual((r["low"], r["high"], r["used"], r["skipped"]), (24, 975, 1000, 0))   # 24 values below, 24 above
-        r = stats.interval(list(range(999, -1, -1)))                                           # order doesn't matter
-        self.assertEqual((r["low"], r["high"]), (24, 975))
-        r = stats.interval(list(range(20)))
-        self.assertEqual((r["low"], r["high"]), (0, 19))                                       # positions 0.475 -> 0 and 18.525 -> 19
-        r = stats.interval([0.5])
-        self.assertEqual((r["low"], r["high"], r["used"], r["skipped"]), (0.5, 0.5, 1, 999))
-        r = stats.interval([])
-        self.assertEqual((r["low"], r["high"], r["used"], r["skipped"]), (None, None, 0, 1000))
-
-    def test_skipped_redraws_reported(self):
-        """A metric undefined in some redraws: its range comes from the others, and the report says so; a metric
-        defined in every redraw isn't listed."""
-        recs = [counts_record(0, 1, 0, 0) for _ in range(stats.MIN_RECORDS - 1)] + [counts_record(1, 1, 1, 1)]
-        m = stats.with_margins(recs)                      # a redraw without the one extracted record has no precision
-        self.assertIn("exact: precision", m["redraws_used"])
-        self.assertLess(m["redraws_used"]["exact: precision"], stats.REDRAWS)
-        self.assertNotIn("exact: recall", m["redraws_used"])
-        checks = stats.margin_checks(recs, m, catalog_records=10_000)
-        self.assertEqual(checks["fewer_redraws"], m["redraws_used"])
-        full = stats.with_margins([counts_record(2, 2, 1, 1) for _ in range(stats.MIN_RECORDS)])
-        self.assertEqual(full["redraws_used"], {})
+        same = [counts_record(1, 1, 0, 0, stratum="x")] + [counts_record(1, 1, 1, 1, stratum=f"y{i}") for i in range(39)]
+        self.assertEqual(stats.with_margins(recs)["exact"]["precision"], stats.with_margins(same)["exact"]["precision"])
 
 
 class MarginChecks(unittest.TestCase):
@@ -790,7 +773,8 @@ class MarginChecks(unittest.TestCase):
     def test_all_hold(self):
         recs = self.records(["a", "b"] * 20)
         checks = stats.margin_checks(recs, stats.with_margins(recs), catalog_records=10_000)
-        self.assertNotIn("exact: precision", checks["at_bound"])
+        self.assertGreaterEqual(checks["deff_range"]["low"], 1.0)              # floored at 1
+        self.assertLessEqual(checks["deff_range"]["low"], checks["deff_range"]["high"])
         self.assertAlmostEqual(checks["catalog_proportion"], 40 / 10_000)
         self.assertAlmostEqual(checks["largest_record"]["extracted triples"]["proportion"], 1 / 40)
 
@@ -799,12 +783,11 @@ class MarginChecks(unittest.TestCase):
         recs[0]["compared"]["counts"]["extracted"] = 41                    # one record with half the extracted triples
         point = stats.with_margins(recs)
         checks = stats.margin_checks(recs, point, catalog_records=200)
-        self.assertIn("exact: strict_precision", checks["at_bound"])        # 0 strict pairs: the range is 0% to 0%
         self.assertEqual(checks["largest_record"]["extracted triples"], {"record": "r0", "proportion": 41 / 119})
         self.assertGreater(checks["catalog_proportion"], stats.FINITE_NEGLIGIBLE)
         import moves
         text = "\n".join(moves._margin_check_lines(checks))
-        self.assertEqual(text.count("doesn't hold"), 2)
+        self.assertEqual(text.count("doesn't hold"), 1)                        # the proportion of the catalog
         self.assertNotIn("Every stratum adds spread", text)
 
 
@@ -816,6 +799,7 @@ class Parts(unittest.TestCase):
         e = Evaluated()
         e.records = [dict(counts_record(1, 1, 1, 1), part="tuning"), dict(counts_record(1, 1, 0, 0), part="held-out")]
         e.pool_strata = {"g": 10}
+        e.catalog_records = 10_000
         return e
 
     def test_held_out_kept_aside(self):
@@ -837,7 +821,8 @@ class Parts(unittest.TestCase):
         self.assertAlmostEqual(rows["a"]["share_evaluated"], 2 / 3)
         self.assertAlmostEqual(rows["a"]["share_pool"], 3 / 8)
         self.assertEqual(rows["c"]["records"], 0)
-        self.assertIsNone(rows["a"]["numbers"])                     # fewer than MIN_RECORDS
+        self.assertEqual(rows["a"]["numbers"]["exact"]["precision"]["few_records"], True)   # 2 records: a rough range
+        self.assertIsNone(rows["c"]["numbers"])                     # no record
 
 
 class Refusal(unittest.TestCase):
@@ -866,6 +851,7 @@ class CompareRuns(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("compare_runs", ROOT / "helpers" / "compare_runs.py")
         cls.cr = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cls.cr)
+        cls.cr.REDRAWS = 1000          # the tests' own: 10,000 redraws per comparison would make this file slow
 
     @staticmethod
     def kept(run_id, pairs_of, model, gt="g"):
@@ -933,11 +919,14 @@ class CompareRuns(unittest.TestCase):
         text = cr.report(runs, ids, {})
         self.assertIn("## Spread across the runs", text)
         self.assertIn("These runs are repeats of one recipe", text)
+        self.assertIn("## Pooled over the repeats", text)
+        self.assertIn("| exact: precision | 58.3% | ", text)                   # (2 + 3 + 2) pairs ÷ (3 × 4) per record
         self.assertIn("| exact: precision | 50.0% | 75.0% | 50.0% | 50.0% | 75.0% | 58.3% | 25.0 points |", text)
         other = self.kept("O", lambda i: 2, "gemini-2.5-pro")                       # another model too: not repeats
         other["recipe"]["extraction (060)"]["settings"]["repeat"] = 2
         self.assertFalse(cr.only_repeats(cr.differences([runs[0], other])))
         self.assertIn("differ in more than the repeat", cr.report([runs[0], other], ids, {}))
+        self.assertNotIn("## Pooled over the repeats", cr.report([runs[0], other], ids, {}))       # not repeats: none
         same = self.kept("S", lambda i: 2, "claude-opus-5.5")                       # nothing differs: not "repeats"
         self.assertFalse(cr.only_repeats(cr.differences([same, same])))
 
@@ -955,7 +944,7 @@ class CompareRuns(unittest.TestCase):
             self.assertIn(line, text)
         self.assertEqual(cr.verdict({"diff": None, "low": None, "high": None}, "B"), cr.VERDICTS[0])
         self.assertEqual(cr.verdict({"diff": 0, "low": None, "high": None}, "B"), "the same")   # before "no range"
-        self.assertEqual(cr.verdict({"diff": 0.1, "low": None, "high": None}, "B"), "no range (too few records)")
+        self.assertEqual(cr.verdict({"diff": 0.1, "low": None, "high": None}, "B"), "no range (one record)")
 
     def test_noise_cant_tell_apart(self):
         cr = self.cr
@@ -967,15 +956,35 @@ class CompareRuns(unittest.TestCase):
         self.assertGreater(row["high"], 0)
         self.assertEqual(cr.verdict(row, "B"), "can't tell apart")
 
-    def test_too_few_records(self):
+    def test_few_records(self):
+        """From 2 records on a difference gets a range, with the caveat below stats.FEW_RECORDS; one record: none."""
         cr = self.cr
         a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
         a["records"], b["records"] = a["records"][:5], b["records"][:5]
         ids, _, _ = cr.common_records([a, b])
         row = cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))[0]
+        self.assertIsNotNone(row["low"])
+        self.assertIn("From 5 records only", cr.report([a, b], ids, {}))
+        a["records"], b["records"] = a["records"][:1], b["records"][:1]
+        ids, _, _ = cr.common_records([a, b])
+        row = cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))[0]
         self.assertIsNone(row["low"])
-        self.assertEqual(cr.verdict(row, "B"), "no range (too few records)")
+        self.assertEqual(cr.verdict(row, "B"), "no range (one record)")
         self.assertIn("Don't draw conclusions from them yet", cr.report([a, b], ids, {}))
+
+    def test_expanded_percentile(self):
+        """Hesterberg's expanded percentile range: α′/2 = Φ(−√(n/(n − 1)) · t_{0.975, n − 1}), below 0.025 and
+        nearer it as n grows; the range of 10,000 sorted values sits at those positions."""
+        cr = self.cr
+        self.assertAlmostEqual(cr.expanded_alpha(20), 0.5 * (1 + __import__("math").erf(
+            -((20 / 19) ** 0.5) * 2.0930 / 2 ** 0.5)), places=4)
+        self.assertLess(cr.expanded_alpha(5), cr.expanded_alpha(20))
+        self.assertLess(cr.expanded_alpha(20), 0.025)
+        self.assertGreater(cr.expanded_alpha(500), 0.024)
+        r = cr.interval(list(range(10000)), 20)
+        q = cr.expanded_alpha(20)
+        self.assertEqual((r["low"], r["high"]), (int(q * 9999), 9999 - int(q * 9999)))
+        self.assertEqual(cr.interval(list(range(10)), 1)["low"], None)            # one record: no range
 
     def test_a_changed_record_cuts_the_fair_sample(self):
         """The records compared must still be the first records of the pool: a record left out in the middle ends
@@ -1048,17 +1057,25 @@ class CompareRuns(unittest.TestCase):
             cr.main()
         self.assertIn("given more than once (A)", str(caught.exception.code))
 
+    @staticmethod
+    def real_redraws() -> int:
+        from support import ROOT
+        import re
+        return int(re.search(r"^REDRAWS = (\d+)$", (ROOT / "helpers" / "compare_runs.py").read_text(encoding="utf-8"),
+                             re.M).group(1))
+
     def test_range_from_fewer_redraws_is_said(self):
         """A row whose number was undefined in some redraws says from how many the range comes; one with every
-        redraw doesn't; the rule is stats.interval, the same as 070's margins."""
+        redraw doesn't (compare_runs.interval)."""
         cr = self.cr
-        self.assertEqual(cr._range({"low": -0.1, "high": 0.2, "redraws": stats.REDRAWS}), "-10.0 points to +20.0 points")
-        self.assertIn("(from 900 of 1,000 redraws", cr._range({"low": -0.1, "high": 0.2, "redraws": 900}))
+        self.assertEqual(cr._range({"low": -0.1, "high": 0.2, "redraws": cr.REDRAWS}), "-10.0 points to +20.0 points")
+        self.assertIn(f"(from 900 of {cr.REDRAWS:,} redraws", cr._range({"low": -0.1, "high": 0.2, "redraws": 900}))
+        self.assertEqual(self.real_redraws(), 10000)                             # what a real comparison draws
         self.assertEqual(cr._range({"low": None, "high": None, "redraws": 0}), "–")
         a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
         ids, _, _ = cr.common_records([a, b])
         rows = cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))
-        self.assertTrue(all(r["redraws"] == stats.REDRAWS for r in rows if r["low"] is not None))
+        self.assertTrue(all(r["redraws"] == cr.REDRAWS for r in rows if r["low"] is not None))
 
 
 class TranslationBatches(unittest.TestCase):

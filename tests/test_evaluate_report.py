@@ -54,21 +54,22 @@ def strict_rows(tables, table):
 
 
 class MarginCheckLines(unittest.TestCase):
-    """The report's table of the margin of error's assumptions: a metric undefined in some redraws is named with how
-    many redraws its range comes from; none, when every redraw gave a value."""
+    """The report's table of the margin of error's assumptions: the design effects, for reading, and the proportion
+    of the catalog evaluated, which doesn't hold above 5%."""
 
-    def checks(self, fewer):
-        return {"at_bound": [], "fewer_redraws": fewer, "catalog_proportion": 0.001,
+    def checks(self, deff, share=0.001):
+        return {"deff_range": deff, "catalog_proportion": share,
                 "largest_record": {"extracted triples": {"record": "r1", "proportion": 0.1},
                                    "ground truth triples": {"record": "r1", "proportion": 0.1}}}
 
     def test_row(self):
-        text = "\n".join(moves._margin_check_lines(self.checks({"exact: precision": 940})))
-        self.assertIn("| Every redraw gives a value | metrics undefined in some redraws (their range comes from the "
-                      "redraws that gave a value): exact: precision (940 of 1,000) | **doesn't hold**", text)
-        text = "\n".join(moves._margin_check_lines(self.checks({})))
-        self.assertIn("| Every redraw gives a value | metrics undefined in some redraws (their range comes from the "
-                      "redraws that gave a value): none | holds |", text)
+        text = "\n".join(moves._margin_check_lines(self.checks({"low": 1.0, "high": 2.5})))
+        self.assertIn("the design effect across the numbers: 1.00 to 2.50; below 10 records each range says it may "
+                      "still be too narrow", text)
+        self.assertNotIn("doesn't hold", text)
+        text = "\n".join(moves._margin_check_lines(self.checks(None, share=0.2)))
+        self.assertIn("none (every number at 0% or 100%, or one record)", text)
+        self.assertEqual(text.count("doesn't hold"), 1)
 
 
 class HeldOutLook(unittest.TestCase):
@@ -149,7 +150,7 @@ class PerComponentClass(unittest.TestCase):
             "predicate": {"ACQUIRED_BY_INSTRUMENT": (False, 0, 1, 0.0, None), "ABOARD": (True, 2, 2, 1.0, 0.5)},
             "subject class": {"Dataset": (False, 0, 1, 0.0, None), "Instrument": (True, 2, 2, 1.0, 0.5)},
             "object class": {"Instrument": (True, 0, 1, 0.0, None), "Spacecraft": (True, 2, 2, 1.0, 0.5)}})
-        text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, tables))
+        text = "\n".join(moves._per_component_class_lines({"records": 1}, tables))
         self.assertIn("| ACQUIRED_BY_INSTRUMENT | out of reach; 0 of 1 ground truth triple within strict reach | 0% | 0 "
                       "| 0 | 0 | 1 | 1 | 0 | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by: no ground truth triple within strict reach) "
                       "| 0 |", text)
@@ -177,25 +178,34 @@ class PerComponentClass(unittest.TestCase):
         self.assertEqual(rows(tables, "subject class"), {"Spacecraft": (1, 1, 0, 1, 1, 1.0, 1.0, 1.0, 1.0)})
         self.assertEqual(rows(tables, "object class"), {"MissionName": (1, 1, 0, 1, 1, 1.0, 1.0, 1.0, 1.0)})
 
-    def test_margins_from_20_records(self):
-        few = stats.per_component_class([compared(rid=f"r{i}") for i in range(stats.MIN_RECORDS - 1)])
-        self.assertIsNone(few["predicate"][0]["exact"]["precision"]["low"])
+    def test_margins(self):
+        """Every row gets its range from 2 records on, by the part's formula; one record: none; fewer than
+        FEW_RECORDS records with something to divide by: marked few_records."""
+        one = stats.per_component_class([compared(rid="r0")])
+        self.assertIsNone(one["predicate"][0]["exact"]["precision"]["low"])
+        few = stats.per_component_class([compared(rid=f"r{i}") for i in range(3)])
+        row = next(r for r in few["predicate"] if r["component_class"] == "ABOARD")["exact"]["precision"]
+        self.assertEqual((row["few_records"], row["low"] is not None), (True, True))
         other = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
-        recs = [compared(rid=f"r{i}") if i % 2 else compared(other, other, rid=f"r{i}") for i in range(stats.MIN_RECORDS)]
+        recs = [compared(rid=f"r{i}") if i % 2 else compared(other, other, rid=f"r{i}") for i in range(20)]
         aboard = next(r for r in stats.per_component_class(recs)["predicate"] if r["component_class"] == "ABOARD")
         p = aboard["exact"]["precision"]
         self.assertAlmostEqual(p["value"], (10 * 2 + 10) / (10 * 3 + 10))
         self.assertLess(p["low"], p["value"])
         self.assertGreater(p["high"], p["value"])
-        f = aboard["exact"]["strict_f1"]                          # the strict versions get margins from the same redraws
+        self.assertFalse(p["few_records"])
+        f = aboard["exact"]["strict_f1"]                          # the strict versions get ranges by the same formula
         self.assertAlmostEqual(f["value"], 2 * (10 + 10) / (10 * 5 + 10 * 2))
         self.assertLess(f["low"], f["value"])
-        self.assertEqual(aboard["strict_recall_upper_bound"]["low"], 1.0)   # every redraw: all within strict reach
+        # every record has all its ground truth triples within strict reach: 100%, each record one trial (our choice)
+        u = aboard["strict_recall_upper_bound"]
+        self.assertEqual((u["value"], u["high"], u["deff"]), (1.0, 1.0, None))
+        self.assertLess(u["low"], 1.0)
 
     def test_report_tables(self):
-        n = {"records": 1, "margins": False}
+        n = {"records": 1}
         text = "\n".join(moves._per_component_class_lines(n, self.tables))
-        self.assertIn("**Too few records (1, fewer than 20) for a margin of error", text)
+        self.assertIn("**One record only, so no number has a margin of error", text)
         self.assertIn("| Predicate (ground truth schema) | Reach | Strict recall upper bound | Occurrences | Untranslatable | Occurrences with "
                       "multiplicity > 1 | Ground truth "
                       "triples | Counted against it (exact) | Exact pairs that count for it | Precision (exact) | Recall "
@@ -212,8 +222,12 @@ class PerComponentClass(unittest.TestCase):
         self.assertIn(f"| Gadget{NONE} | none: translates to (none), so not in the ground truth schema | {none} | 1 | 1 | 0 | 0 | 0 | 0 | "
                       f"{all_out} | {none} | {none} | {all_out} | {none} | {none} | {moves.NONE_WITHIN_STRICT_REACH} | 0 | "
                       f"{all_out} | {none} | {none} | {all_out} | {none} | {none} | {moves.NONE_WITHIN_STRICT_REACH} |", text)
-        n["margins"] = True
-        self.assertIn("about 1 in 20 of their margins of error misses the true value by chance (each is a 95% range)", "\n".join(moves._per_component_class_lines(n, self.tables)))
+        n["records"] = 5
+        self.assertIn("From 5 records only (fewer than 10)", "\n".join(moves._per_component_class_lines(n, self.tables)))
+        n["records"] = 30
+        text = "\n".join(moves._per_component_class_lines(n, self.tables))
+        self.assertIn("about 1 in 20 of their margins of error misses the true value by chance (each is a 95% range)", text)
+        self.assertNotIn("records only", text)
 
 
 class PerRecord(unittest.TestCase):
@@ -259,8 +273,9 @@ class PerRecord(unittest.TestCase):
     def test_report_table(self):
         text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
         self.assertIn("are never an average of these (why: `070_evaluate/metrics.md`, *Pooled, not averaged*)", text)
-        self.assertIn("No margin of error: it needs at least 20 records (`070_evaluate/metrics/approximately.md`), and "
-                      "each row is one record. *no value (0 to divide by)*: e.g. precision of a record with no occurrences", text)
+        self.assertIn("No margin of error: each row is one record, and a range needs at least 2 "
+                      "(`070_evaluate/metrics/approximately.md`). *no value (0 to divide by)*: e.g. precision of a record "
+                      "with no occurrences", text)
         self.assertIn("| Pool position | Record id (first 8 characters) | Title (first 50 characters) | Occurrences | "
                       "Untranslatable | Occurrences with multiplicity > 1 | Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
                       "bound | Pairs (exact) | Strict pairs (exact) | Precision (exact) | Recall (exact) | F1 (exact) | "
@@ -510,7 +525,7 @@ class RowReadings(unittest.TestCase):
                  "possible (the counts never rule out every other: each full list is in "
                  "`070_evaluate/metrics/recall.md` and `precision.md`). Every cause a line can name, the rule (numbers and conditions) that names it, "
                  "and the threshold for too few: `070_evaluate/070_evaluate.md`, *Reading each row*.")
-        text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, self.tables))
+        text = "\n".join(moves._per_component_class_lines({"records": 1}, self.tables))
         self.assertEqual(text.count(intro), 3)
         self.assertIn("\n1. ACQUIRED_BY_INSTRUMENT (predicate, ground truth schema): 1 occurrence", text)
         self.assertIn("\n2. ABOARD (predicate, ground truth schema): 3 occurrences", text)

@@ -81,12 +81,17 @@ def compute_metrics(evaluated, settings) -> dict:
 
 # --------------------------------------------------------------------------
 
+#: Beside a range from fewer than stats.FEW_RECORDS records with something to divide by (stats.clustered_wilson).
+FEW_MARK = " (few records)"
+
+
 def _with_margin(n: dict) -> str:
     if n is None or n.get("value") is None:
         return readings.NO_VALUE
     if n.get("low") is None:
         return readings.pct(n["value"])
-    return f"{readings.pct(n['value'])} ({readings.pct(n['low'])}–{readings.pct(n['high'])})"
+    return (f"{readings.pct(n['value'])} ({readings.pct(n['low'])}–{readings.pct(n['high'])})"
+            + (FEW_MARK if n.get("few_records") else ""))
 
 
 def _margin_check_lines(checks: dict | None) -> list:
@@ -94,24 +99,20 @@ def _margin_check_lines(checks: dict | None) -> list:
     if not checks:
         return []
     ok = lambda good: "holds" if good else "**doesn't hold**"           # noqa: E731
-    bound = checks["at_bound"]
-    fewer = checks.get("fewer_redraws") or {}
     big = checks["largest_record"]
     share = checks["catalog_proportion"] or 0
+    deff = checks.get("deff_range")
     return ["#### The margin of error's assumptions, checked", "",
             "| Assumption | Check | Result |", "|---|---|---|",
             "| The evaluated records are a random sample of the catalog | only the fair sample is evaluated | holds (by design) |",
-            "| Whole records vary, independently of each other | records are redrawn whole | holds (by design) |",
-            f"| Enough records | at least {stats.MIN_RECORDS} evaluated | holds |",
-            "| The redraws vary as other samples would | records are redrawn from all strata together, since "
-            "how many evaluated records come from each stratum is itself random | holds (by design) |",
-            f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
-            f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow"
-            f"{'; more evaluated records make this rarer' if bound else ''} |",
-            f"| Every redraw gives a value | metrics undefined in some redraws (their range comes from the redraws "
-            f"that gave a value): "
-            + (named([f"{label} ({used:,} of {stats.REDRAWS:,})" for label, used in fewer.items()], 5) if fewer else "none")
-            + f" | {ok(not fewer)}{': a range from fewer redraws is less steady' if fewer else ''} |",
+            "| Whole records vary, independently of each other | each record is one cluster: its triples' variance is "
+            "taken over records, never triple by triple | holds (by design) |",
+            "| The records' clustering is estimated from the records themselves | the design effect across the numbers: "
+            + (f"{deff['low']:.2f} to {deff['high']:.2f}" if deff else "none (every number at 0% or 100%, or one record)")
+            + f"; below {stats.FEW_RECORDS} records each range says it may still be too narrow | for reading: the "
+            "measured coverage on synthetic records is in `070_evaluate/metrics/approximately.md` |",
+            "| A ratio treated as a proportion | every number is a ratio of record sums with each record's numerator at "
+            "most its denominator (F1 and the accuracies included) | holds (by design) |",
             f"| No one record dominates | the largest record's proportion of the occurrences: "
             f"{readings.pct(big['extracted triples']['proportion'])} (`{big['extracted triples']['record']}`); of the "
             f"ground truth triples: {readings.pct(big['ground truth triples']['proportion'])} "
@@ -123,9 +124,16 @@ def _margin_check_lines(checks: dict | None) -> list:
 
 
 def _too_few(n: dict) -> str:
-    """The warning above a part's numbers when there are too few records for a margin of error."""
-    return (f"**Too few records ({n['records']}, fewer than {stats.MIN_RECORDS}) for a margin of error: these "
-            f"numbers could easily have come out very differently. Don't draw conclusions from them yet.**")
+    """The warning above a part's numbers with one record (no range) or fewer than stats.FEW_RECORDS (rough ranges);
+    "" otherwise."""
+    if n["records"] < 2:
+        return ("**One record only, so no number has a margin of error: these numbers could easily have come out very "
+                "differently. Don't draw conclusions from them yet.**")
+    if n["records"] < stats.FEW_RECORDS:
+        return (f"**From {n['records']} records only (fewer than {stats.FEW_RECORDS}): each margin of error's design "
+                f"effect (how much the records' occurrences move together) is itself estimated from {n['records']} "
+                f"records, so a range may still be too narrow; read each as a rough width, not a bound.**")
+    return ""
 
 
 def _removed_lines(records: int, removed: list) -> list:
@@ -213,8 +221,10 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
              "is that number ÷ the row's ground truth triples, and *Recall within reach* (strict) is the row's "
              "strict pairs ÷ that number. " + MULTIPLIED_NOTE + " Details: "
              "`070_evaluate/070_evaluate.md`, *Per predicate and per entity class*.", ""]
-    lines += [_too_few(n), ""] if not n["margins"] else         ["With many rows, about 1 in 20 of their margins of error misses the true value by chance (each is a "
-          "95% range), so one row that looks unusually good or bad is not, alone, a finding.", ""]
+    lines += ([_too_few(n), ""] if _too_few(n) else []) + [
+        "With many rows, about 1 in 20 of their margins of error misses the true value by chance (each is a 95% "
+        f"range), so one row that looks unusually good or bad is not, alone, a finding. A range marked{FEW_MARK} comes "
+        f"from fewer than {stats.FEW_RECORDS} records with something to divide by: it may still be too narrow.", ""]
     for table, head in (("predicate", "Predicate"), ("subject class", "Subject class"), ("object class", "Object class")):
         rows = tables[table]
         numbers = [f"{label} ({'strict ' if key.startswith('strict') else ''}{level})"
@@ -311,8 +321,8 @@ def _per_record_lines(rows: list) -> list:
              "Each evaluated record's own precision, recall, and F1, and their strict versions, recall upper bound, and "
              "recall within reach, by the same formulas as the part's numbers above, for finding the records "
              "extraction does worst on. The part's numbers above add up all its records' counts before dividing "
-             f"(pooled), and are never an average of these (why: {POOLED}). No margin of error: it needs at least "
-             f"{stats.MIN_RECORDS} records (`070_evaluate/metrics/approximately.md`), and each row is one record. "
+             f"(pooled), and are never an average of these (why: {POOLED}). No margin of error: each row is one "
+             f"record, and a range needs at least 2 (`070_evaluate/metrics/approximately.md`). "
              f"*{NO_VALUE}*: e.g. precision of a record with no occurrences. Rows are sorted by *Counted against it (exact)*: the record's occurrences with no "
              "exact pair (each against its precision) plus its ground truth triples with no exact pair (each against "
              "its recall), most first, then by pool position. " + MULTIPLIED_NOTE + " Each record's pairs: "
@@ -772,7 +782,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
     write_json(metrics_path, {
         "made": {"run_id": audit.current_run_id(), **llm.describe(), "schema": schema_file, "settings": settings,
-                 "min_records_for_margin": stats.MIN_RECORDS, "redraws": stats.REDRAWS, "seed": stats.SEED},
+                 "interval_method": "clustered Wilson", "few_records_caveat_below": stats.FEW_RECORDS},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in PARTS},
         "left_out": evaluated.left_out,
         "learned_from": evaluated.learned_from,
@@ -799,10 +809,12 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         n = v["numbers"]
         drifted = [g for g in v["strata"]
                    if g["share_evaluated"] is not None and abs(g["share_evaluated"] - g["share_pool"]) > stats.SHARE_GAP]
-        if not n["margins"]:
-            warnings.append(f"The {part} part: only {n['records']} record(s) evaluated, fewer than {stats.MIN_RECORDS}, "
-                            f"so its numbers are shown without a margin of error, and are too few to draw conclusions "
-                            f"from. Draft (`py 050_annotate/run.py`) and finish (`py helpers/annotate.py`) more "
+        if n["records"] < stats.FEW_RECORDS:
+            warnings.append(f"The {part} part: only {n['records']} record(s) evaluated, fewer than {stats.FEW_RECORDS}, "
+                            + ("so its numbers have no margin of error" if n["records"] < 2 else
+                               "so each margin of error is a rough width, not a bound (its design effect is itself "
+                               "estimated from these few records)")
+                            + f", and they are too few to draw conclusions from. Draft (`py 050_annotate/run.py`) and finish (`py helpers/annotate.py`) more "
                             f"records of the pool, in order, run "
                             f"`py 060_extract/run.py`, {AGAIN} Until then, read {repo_path(per_record_path)} rather "
                             f"than the numbers.")
@@ -816,16 +828,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                               f"evaluated; read the numbers with it in mind ({this_report()}, section *Results*, "
                               f"subsection *Metrics: {part} part*, table *Per stratum*).")
         checks = v["margin_checks"]
-        if checks and (checks["at_bound"] or checks.get("fewer_redraws")
-                       or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
+        if checks and (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE:
             share = checks["catalog_proportion"] or 0
             why = []
-            if checks["at_bound"]:
-                why.append(f"the range of {named(checks['at_bound'], 5)} reaches 0% or 100%, where a percentile range "
-                           f"is too narrow (more evaluated records make this rarer)")
-            if checks.get("fewer_redraws"):
-                why.append(f"the range of {named([f'{k} ({n:,} of {stats.REDRAWS:,} redraws)' for k, n in checks['fewer_redraws'].items()], 5)} "
-                           f"comes from the redraws where the number was defined only, so it is less steady")
             if share > stats.FINITE_NEGLIGIBLE:
                 why.append(f"{readings.pct(share)} of the catalog is evaluated, above "
                            f"{100 * stats.FINITE_NEGLIGIBLE:.0f}%, so the ranges come out somewhat too wide (nothing "
@@ -934,7 +939,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         n = v["numbers"]
         lines += [f"### Metrics: {part} part ({n['records']} records, {n['gt_triples']} ground truth triples, "
                   f"{n['extracted']} occurrences)", ""]
-        if not n["margins"]:
+        if _too_few(n):
             lines += [_too_few(n), ""]
         part_records = [r for r in evaluated.records if r["part"] == part]
         lines += per_text_table("Per text", [("ground truth triples", [len(r["gt"]) for r in part_records]),
@@ -984,15 +989,17 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             lines.append("")
         lines += _second_opinion_lines(n, evaluated.second_opinion_models)
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
-        lines += ["#### Per stratum", "", f"Numbers once a stratum has {stats.MIN_RECORDS} records; with many strata, "
-                  f"about 1 in 20 margins misses by chance, so one odd stratum is not a finding.", "",
+        lines += ["#### Per stratum", "", f"Each stratum's numbers with their margins of error, from 2 records on (one "
+                  f"record: no range; a range marked{FEW_MARK}: from fewer than {stats.FEW_RECORDS} records, so it may "
+                  f"still be too narrow); with many strata, about 1 in 20 margins misses by chance, so one odd stratum "
+                  f"is not a finding.", "",
                   "| Stratum | Records | Proportion of the evaluated records | Proportion of the pool | Precision (exact) | Recall (exact) |",
                   "|---|---:|---:|---:|---:|---:|"]
         for g in v["strata"]:
             gn = g["numbers"]
             lines.append(f"| {cell(g['stratum'])} | {g['records']} | {readings.pct(g['share_evaluated'])} | {readings.pct(g['share_pool'])} "
-                         f"| {_with_margin(gn['exact']['precision']) if gn else 'too few'} "
-                         f"| {_with_margin(gn['exact']['recall']) if gn else 'too few'} |")
+                         f"| {_with_margin(gn['exact']['precision']) if gn else 'no record'} "
+                         f"| {_with_margin(gn['exact']['recall']) if gn else 'no record'} |")
         lines.append("")
         lines += _waiting_lines(n, recs)
         lines += _per_component_class_lines(n, v["per_component_class"])

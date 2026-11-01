@@ -10,36 +10,38 @@ each number is, its formula and how to read it: 070_evaluate/metrics.md and
 the files it lists (precision, recall, F1, entity-class accuracy, the recall
 upper bound, recall within reach, schema fit, and the describes metrics).
 
-MARGIN OF ERROR, by the bootstrap (070_evaluate/metrics/approximately.md,
-Sampling error): the numbers are recomputed REDRAWS times, each time from as
-many records as were evaluated, drawn at random, with repeats, from all the
-evaluated ones together; the middle 95% of the results is the margin. It draws
-WHOLE RECORDS (a record's triples come from one text and one model call, so
-they succeed or fail together; drawing triples one by one would give margins
-too narrow). It draws from all strata together, NOT within each stratum: the
-evaluated records are the first records of the shuffled pool, so how many come
-from each stratum is itself random, and the redraws let it vary the same way
-(redrawing within strata of 1 or 2 records would give margins too narrow). It
-is valid only for a random sample (records.py evaluates only the fair sample)
-of enough records: below MIN_RECORDS, no margin is given, only a plain
-warning. The draws are seeded, so a rerun gives the same margins.
+MARGIN OF ERROR, by the clustered Wilson interval (070_evaluate/metrics/
+approximately.md, Sampling error): every number is a ratio A / B of sums over
+the evaluated records, a proportion estimated from a cluster sample with the
+RECORDS as clusters (a record's triples come from one text and one model call,
+so they succeed or fail together). The records' clustering is measured by the
+design effect (the linearized variance of the ratio over records, against the
+variance B independent triples would give), which turns the B triples into an
+effective sample size; that, adjusted for the degrees of freedom of n records,
+goes into the Wilson score interval (clustered_wilson). One formula for the
+part, each stratum, each component class: no redraws, no seed. It is valid only
+for a random sample (records.py evaluates only the fair sample). From 2 records
+on there is a range; below FEW_RECORDS the report adds that the design effect
+is itself estimated from few records. Every number's parts (what it divides by
+what, per record) have one home, RATIO_PARTS, which numbers() reads too, so a
+value and its range can never disagree.
 """
 from __future__ import annotations
 
 import collections
 import math
-import random
+from functools import lru_cache
 
 from pairing import LEVELS, PER_COMPONENT_CLASS, SECOND_OPINION_GROUPS
 from common.ground_truth import HELD_OUT, PARTS, TUNING
 from common.triples_io import component_class_key
 
-#: Fewer evaluated records than this: no margin of error (a bootstrap on very
-#: few records gives margins that are themselves unreliable, usually too
-#: narrow). A rule of thumb, not a law; the report says so.
-MIN_RECORDS = 20
-REDRAWS = 1000
-SEED = 70
+#: Fewer records than this (records with something to divide by): the report adds to a range that the design
+#: effect is itself estimated from few records, so the range may still be too narrow. Our choice: the nearest
+#: published line is the few-clusters literature's "fewer than eleven clusters" (070_evaluate/metrics/approximately.md).
+FEW_RECORDS = 10
+#: The standard normal quantile of a two-sided 95% interval.
+Z = 1.959963984540054
 #: A stratum whose proportion of the evaluated records differs from its proportion
 #: of the pool by more than this is pointed out (with enough records).
 SHARE_GAP = 0.10
@@ -57,37 +59,29 @@ def numbers(records: list) -> dict:
     translatable = total["extracted"] - total["untranslatable"]
     out = {"records": len(records), "extracted": total["extracted"], "gt_triples": total["gt"],
            "untranslatable": total["untranslatable"], "translatable": translatable,
-           "schema_fit": _ratio(translatable, total["extracted"]),
            "pending": total["pending"],
-           "within_reach": total["within_reach"], "within_strict_reach": total["within_strict_reach"],
-           "recall_upper_bound": _ratio(total["within_reach"], total["gt"]),
-           "strict_recall_upper_bound": _ratio(total["within_strict_reach"], total["gt"])}
+           "within_reach": total["within_reach"], "within_strict_reach": total["within_strict_reach"]}
     for level in LEVELS:
         m, s = total[f"{level}_pairs"], total[f"{level}_strict_pairs"]
         sw = total[f"{level}_strict_pairs_within_strict_reach"]
         waiting = total[f"{level}_pending_pairs"]
-        # precision's denominator: occurrences less the untranslatable ones and those matching a pending fact
-        counted = translatable - waiting
-        out[level] = {"precision": _ratio(m, counted), "recall": _ratio(m, total["gt"]),
-                      "f1": _ratio(2 * m, counted + total["gt"]),
-                      "strict_precision": _ratio(s, counted), "strict_recall": _ratio(s, total["gt"]),
-                      "strict_f1": _ratio(2 * s, counted + total["gt"]),
-                      "pending_pairs": waiting, "counted_occurrences": counted,
-                      "entity_class_accuracy": _ratio(s, m),
-                      "subject_class_accuracy": _ratio(total[f"{level}_subject_class_pairs"], m),
-                      "object_class_accuracy": _ratio(total[f"{level}_object_class_pairs"], m),
+        out[level] = {"pending_pairs": waiting, "counted_occurrences": _counted(total, level),
                       "subject_class_pairs": total[f"{level}_subject_class_pairs"],
                       "object_class_pairs": total[f"{level}_object_class_pairs"],
-                      "recall_within_reach": _ratio(total[f"{level}_pairs_within_reach"], total["within_reach"]),
-                      "strict_recall_within_reach": _ratio(sw, total["within_strict_reach"]),
                       "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"],
                       "strict_pairs_within_reach": sw}
+    for path, (a, b) in RATIO_PARTS.items():         # every number with a margin, from its one definition
+        if path[0] != "describes":
+            _put(out, path, _ratio(a(total), b(total)))
     out["second_opinion"] = _by_second_opinion(total)
     out["second_opinion_runs"] = _second_opinion_runs(records)
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     describes_classes = collections.Counter(component_class_key(d["truth"]) for d in known)
     per_describes_class = {k: _ratio(sum(d["right"] for d in known if component_class_key(d["truth"]) == k), n) for k, n in describes_classes.items()}
-    out["describes"] = {"records": len(known), "accuracy": _ratio(sum(d["right"] for d in known), len(known)),
+    a, b = RATIO_PARTS[("describes", "accuracy")]
+    out["describes"] = {"records": len(known),
+                        "accuracy": _ratio(sum(a(_describes_counts(r)) for r in records),
+                                           sum(b(_describes_counts(r)) for r in records)),
                         "majority_baseline": _ratio(max(describes_classes.values(), default=0), len(known)),
                         "per_entity_class_average": _ratio(sum(per_describes_class.values()), len(per_describes_class))}
     return out
@@ -143,56 +137,184 @@ WITH_MARGIN = [((level, key), f"{level}: {key}") for level in LEVELS
                (("describes", "accuracy"), "describes accuracy")]
 
 
+def _counted(c, level: str) -> int:
+    """Precision's denominator, from one record's counts or summed ones: the occurrences less the untranslatable ones
+    and those paired with a fact that waits on an expert (pairing.py)."""
+    return c["extracted"] - c["untranslatable"] - c[f"{level}_pending_pairs"]
+
+
+def _describes_counts(r: dict) -> collections.Counter:
+    """A record's describes result as counts: describes_known (its ground truth names a describes class) and
+    describes_right (extraction named the same one)."""
+    d = r["compared"]["describes"]
+    return collections.Counter({"describes_known": int(bool(d["truth"])),
+                                "describes_right": int(bool(d["truth"]) and bool(d["right"]))})
+
+
+def _level_parts(level: str) -> dict:
+    """The parts of each number of a pair level: {key: (numerator, denominator)}, each a function of counts."""
+    m = lambda c: c[f"{level}_pairs"]                                          # noqa: E731
+    s = lambda c: c[f"{level}_strict_pairs"]                                   # noqa: E731
+    counted = lambda c: _counted(c, level)                                     # noqa: E731
+    return {"precision": (m, counted), "recall": (m, lambda c: c["gt"]),
+            "f1": (lambda c: 2 * m(c), lambda c: counted(c) + c["gt"]),
+            "strict_precision": (s, counted), "strict_recall": (s, lambda c: c["gt"]),
+            "strict_f1": (lambda c: 2 * s(c), lambda c: counted(c) + c["gt"]),
+            "entity_class_accuracy": (s, m),
+            "subject_class_accuracy": (lambda c: c[f"{level}_subject_class_pairs"], m),
+            "object_class_accuracy": (lambda c: c[f"{level}_object_class_pairs"], m),
+            "recall_within_reach": (lambda c: c[f"{level}_pairs_within_reach"], lambda c: c["within_reach"]),
+            "strict_recall_within_reach": (lambda c: c[f"{level}_strict_pairs_within_strict_reach"],
+                                           lambda c: c["within_strict_reach"])}
+
+
+#: What each number with a margin divides by what: {path in numbers(): (numerator, denominator)}, each a function of
+#: one record's counts (record["compared"]["counts"], or for the describes accuracy _describes_counts), or of summed
+#: ones. The one home of every formula: numbers() computes the values from it, and with_margins the ranges, so a value
+#: and its range can never disagree. In every record the numerator is at most the denominator (F1: a pair uses one
+#: counted occurrence and one ground truth triple), so each is a proportion of record sums.
+RATIO_PARTS = {**{(level, key): parts for level in LEVELS for key, parts in _level_parts(level).items()},
+               ("recall_upper_bound",): (lambda c: c["within_reach"], lambda c: c["gt"]),
+               ("strict_recall_upper_bound",): (lambda c: c["within_strict_reach"], lambda c: c["gt"]),
+               ("schema_fit",): (lambda c: c["extracted"] - c["untranslatable"], lambda c: c["extracted"]),
+               ("describes", "accuracy"): (lambda c: c["describes_right"], lambda c: c["describes_known"])}
+assert [p for p, _ in WITH_MARGIN] == list(RATIO_PARTS), "WITH_MARGIN and RATIO_PARTS name the same numbers"
+
+
 def _get(d: dict, path: tuple):
     for p in path:
         d = d.get(p) if isinstance(d, dict) else None
     return d
 
 
-def interval(values: list, redraws: int = REDRAWS) -> dict:
-    """The middle 95% of the bootstrap's values: {"low", "high", "used", "skipped"}. The values are sorted; low is
-    the one at position 0.025·(n − 1), rounded down, and high the one at 0.975·(n − 1), rounded up, so as many values
-    lie below the range as above it (24 of 1,000 each). used: how many redraws gave a value; skipped: how many
-    didn't (the number was undefined there, e.g. no extracted triples in the redraw) and so aren't in the range;
-    the report says so when any were. The one home of the rule: py helpers/compare_runs.py uses it too."""
-    vals = sorted(values)
-    n = len(vals)
-    if not n:
-        return {"low": None, "high": None, "used": 0, "skipped": redraws}
-    return {"low": vals[math.floor(0.025 * (n - 1))], "high": vals[math.ceil(0.975 * (n - 1))],
-            "used": n, "skipped": redraws - n}
+def _put(d: dict, path: tuple, value) -> None:
+    for p in path[:-1]:
+        d = d.setdefault(p, {})
+    d[path[-1]] = value
+
+
+def _betacf(a: float, b: float, x: float) -> float:
+    """The continued fraction of the regularized incomplete beta function, by the modified Lentz method (Press,
+    Teukolsky, Vetterling & Flannery, Numerical Recipes, 3rd ed., 2007, section 6.4, betacf)."""
+    tiny, eps = 1e-300, 3e-16
+    qab, qap, qam = a + b, a + 1, a - 1
+    c, d = 1.0, 1 - qab * x / qap
+    d = 1 / (d if abs(d) > tiny else tiny)
+    h = d
+    for m in range(1, 300):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1 + aa * d
+        d = 1 / (d if abs(d) > tiny else tiny)
+        c = 1 + aa / c
+        c = c if abs(c) > tiny else tiny
+        h *= d * c
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1 + aa * d
+        d = 1 / (d if abs(d) > tiny else tiny)
+        c = 1 + aa / c
+        c = c if abs(c) > tiny else tiny
+        h *= d * c
+        if abs(d * c - 1) < eps:
+            break
+    return h
+
+
+def _betainc(a: float, b: float, x: float) -> float:
+    """The regularized incomplete beta function I_x(a, b)."""
+    if x <= 0:
+        return 0.0
+    if x >= 1:
+        return 1.0
+    front = math.exp(math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b) + a * math.log(x) + b * math.log(1 - x))
+    if x < (a + 1) / (a + b + 2):
+        return front * _betacf(a, b, x) / a
+    return 1 - front * _betacf(b, a, 1 - x) / b
+
+
+def _t_cdf(t: float, df: int) -> float:
+    tail = 0.5 * _betainc(df / 2, 0.5, df / (df + t * t))
+    return 1 - tail if t > 0 else tail
+
+
+@lru_cache(maxsize=None)
+def t_quantile(p: float, df: int) -> float:
+    """The Student t distribution's quantile (p above 0.5, df degrees of freedom), by bisection on its CDF: in plain
+    Python, since the project has no scipy (requirements.txt). t_quantile(0.975, 19) = 2.0930."""
+    lo, hi = 0.0, 1e4
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if _t_cdf(mid, df) < p else (lo, mid)
+    return (lo + hi) / 2
+
+
+def clustered_wilson(parts: list) -> dict:
+    """The 95% clustered Wilson interval of A / B (070_evaluate/metrics/approximately.md, Sampling error): parts is
+    one (a_r, b_r) per evaluated record (means over the repeats for py helpers/compare_runs.py), A = Σ a_r, B = Σ b_r.
+    Only the records with b_r > 0 count as clusters (n): a record with nothing to divide by adds nothing.
+      1. B = 0: no value. p̂ = A / B.
+      2. n = 1: the value, no range.
+      3. The linearized (Taylor) variance of the ratio over the records, with the small-sample factor n / (n − 1):
+         v̂ = n / (n − 1) · Σ (a_r − p̂·b_r)² / B² (Cochran 1977, chapter 6).
+      4. The design effect deff = v̂ ÷ (p̂(1 − p̂) / B), at least 1; effective sample size n_eff = B / deff, kept
+         between n and B. When p̂ is 0 or 1 the variance is 0 and the ratio undefined: every record counts as one
+         trial, n_eff = n (our choice, the conservative side).
+      5. The degrees-of-freedom adjustment (Korn & Graubard 1998, as Dean & Pagano 2015 apply it):
+         n′ = n_eff · (z / t_{0.975, n − 1})².
+      6. The Wilson score interval with n′ and p̂.
+    Returns {"value", "low", "high", "n_records", "n_items" (B), "n_eff" (n′), "deff"} (low, high None below 2
+    records; deff None at 0 and 1)."""
+    used = [(a, b) for a, b in parts if b > 0]
+    n, A, B = len(used), sum(a for a, _ in used), sum(b for _, b in used)
+    out = {"value": None, "low": None, "high": None, "n_records": n, "n_items": B, "n_eff": None, "deff": None}
+    if B <= 0:
+        return out
+    p = A / B
+    out["value"] = p
+    if n < 2:
+        return out
+    if 0 < p < 1:
+        v = n / (n - 1) * sum((a - p * b) ** 2 for a, b in used) / B ** 2
+        deff = max(1.0, v / (p * (1 - p) / B))
+        n_eff = min(max(B / deff, n), B)
+        out["deff"] = deff
+    else:
+        n_eff = n
+    n_eff *= (Z / t_quantile(0.975, n - 1)) ** 2
+    z2 = Z * Z
+    centre = (p + z2 / (2 * n_eff)) / (1 + z2 / n_eff)
+    half = Z * math.sqrt(p * (1 - p) / n_eff + z2 / (4 * n_eff * n_eff)) / (1 + z2 / n_eff)
+    # at 0% (100%) the Wilson bound is 0 (1) exactly; rounding error would leave it a hair above (below)
+    out.update(low=0.0 if p == 0 else max(0.0, centre - half), high=1.0 if p == 1 else min(1.0, centre + half),
+               n_eff=n_eff)
+    return out
+
+
+def record_parts(records: list, path: tuple) -> list:
+    """[(a_r, b_r)] of one number (RATIO_PARTS) for each record."""
+    a, b = RATIO_PARTS[path]
+    counts = (_describes_counts(r) if path[0] == "describes" else _with_zeros(r["compared"]["counts"])
+              for r in records)
+    return [(a(c), b(c)) for c in counts]
+
+
+def _with_zeros(c) -> collections.Counter:
+    """A record's counts as a Counter, so a count it lacks (a kept evaluation of an older version) reads 0."""
+    return c if isinstance(c, collections.Counter) else collections.Counter(c)
 
 
 def with_margins(records: list) -> dict:
-    """numbers(records), each number in WITH_MARGIN turned into
-    {"value", "low", "high"} (low/high None below MIN_RECORDS)."""
+    """numbers(records), each number in WITH_MARGIN turned into {"value", "low", "high", "n_eff", "deff",
+    "few_records"} by clustered_wilson over the records; point["interval"] says how ({"method", "records",
+    "few_records": fewer than FEW_RECORDS records})."""
     point = numbers(records)
-    enough = len(records) >= MIN_RECORDS
-    samples = {path: [] for path, _ in WITH_MARGIN}
-    if enough:
-        rng = random.Random(SEED)
-        for _ in range(REDRAWS):
-            drawn = [rng.choice(records) for _ in records]
-            n = numbers(drawn)
-            for path, _ in WITH_MARGIN:
-                v = _get(n, path)
-                if v is not None:
-                    samples[path].append(v)
-    fewer = {}
-    for path, label in WITH_MARGIN:
-        value = _get(point, path)
-        low = high = None
-        if enough and samples[path]:
-            r = interval(samples[path])
-            low, high = r["low"], r["high"]
-            if r["skipped"]:
-                fewer[label] = r["used"]
-        target = point
-        for p in path[:-1]:
-            target = target[p]
-        target[path[-1]] = {"value": value, "low": low, "high": high}
-    point["margins"] = enough
-    point["redraws_used"] = fewer                     # {label: redraws that gave a value}, only where fewer than REDRAWS
+    for path, _ in WITH_MARGIN:
+        ci = clustered_wilson(record_parts(records, path))
+        assert ci["value"] == _get(point, path) or (ci["value"] is not None and _get(point, path) is not None
+                                                    and abs(ci["value"] - _get(point, path)) < 1e-12), path
+        _put(point, path, {"value": _get(point, path), "low": ci["low"], "high": ci["high"], "n_eff": ci["n_eff"],
+                           "deff": ci["deff"], "few_records": ci["n_records"] < FEW_RECORDS})
+    point["interval"] = {"method": "clustered Wilson", "records": len(records), "few_records": len(records) < FEW_RECORDS}
     return point
 
 
@@ -203,21 +325,18 @@ FINITE_NEGLIGIBLE = 0.05
 
 
 def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
-    """The margin of error's assumptions that can be checked on the evaluated
-    records (070_evaluate/metrics/approximately.md, Sampling error): metrics
-    whose range reaches 0% or 100% (where a percentile range is unreliable),
-    the largest record's proportion of the triples, and the proportion of the
-    catalog evaluated."""
-    at_bound = [label for path, label in WITH_MARGIN
-                if (m := _get(point, path)) and m.get("low") is not None and (m["low"] <= 0 or m["high"] >= 1)]
-    fewer_redraws = dict(point.get("redraws_used") or {})
+    """The margin of error's assumptions that can be checked on the evaluated records (070_evaluate/metrics/
+    approximately.md, Sampling error): the largest record's proportion of the triples, the proportion of the catalog
+    evaluated, and, for reading, the lowest and highest design effect across the numbers (how much the records'
+    triples move together)."""
     largest = {}
     for key, what in (("extracted", "extracted triples"), ("gt", "ground truth triples")):
         total = sum(r["compared"]["counts"][key] for r in records)
         top = max(records, key=lambda r: r["compared"]["counts"][key])
         largest[what] = {"record": top["id"], "proportion": _ratio(top["compared"]["counts"][key], total)}
-    return {"at_bound": at_bound, "largest_record": largest, "fewer_redraws": fewer_redraws,
-            "catalog_proportion": _ratio(len(records), catalog_records)}
+    deffs = [m["deff"] for path, _ in WITH_MARGIN if (m := _get(point, path)) and m.get("deff") is not None]
+    return {"largest_record": largest, "catalog_proportion": _ratio(len(records), catalog_records),
+            "deff_range": {"low": min(deffs), "high": max(deffs)} if deffs else None}
 
 
 def by_part(evaluated) -> dict:
@@ -226,7 +345,7 @@ def by_part(evaluated) -> dict:
 
 def strata_table(records: list, pool_strata: dict) -> list:
     """Per stratum: records evaluated, proportion of the evaluated records vs proportion of the
-    pool, and its numbers when it has enough records."""
+    pool, and its numbers with their ranges (with_margins; the caveat below FEW_RECORDS), None with no record."""
     total_pool = sum(pool_strata.values())
     by_stratum = collections.defaultdict(list)
     for r in records:
@@ -237,7 +356,7 @@ def strata_table(records: list, pool_strata: dict) -> list:
         rows.append({"stratum": g or "(no stratum)", "records": len(recs),
                      "share_evaluated": _ratio(len(recs), len(records)),
                      "share_pool": _ratio(pool_strata.get(g, 0), total_pool),
-                     "numbers": with_margins(recs) if len(recs) >= MIN_RECORDS else None})
+                     "numbers": with_margins(recs) if recs else None})
     return rows
 
 
@@ -262,28 +381,45 @@ def twins(records: list) -> dict | None:
     return {"records": twin, "without": with_margins(rest) if twin and rest else None}
 
 
+def _component_class_parts() -> dict:
+    """What each number of a row per component class divides by what: {(level or "row", key): (numerator,
+    denominator)}, each a function of one record's (or summed) counts for the row (pairing.component_class_counts).
+    The same formulas as numbers(); a strict pair's ground truth triple is always within strict reach, so strict
+    recall within reach counts every strict pair."""
+    out = {("row", "strict_recall_upper_bound"): (lambda c: c["within_strict_reach"], lambda c: c["ground_truth_triples"])}
+    for level in LEVELS:
+        m = lambda c, level=level: c[f"{level}_pairs"]                                          # noqa: E731
+        s = lambda c, level=level: c[f"{level}_strict_pairs"]                                   # noqa: E731
+        # less the untranslatable occurrences and those matching a fact that waits on an expert
+        counted = lambda c, level=level: c["occurrences"] - c["untranslatable"] - c[f"{level}_pending_pairs"]  # noqa: E731
+        gt = lambda c: c["ground_truth_triples"]                                                  # noqa: E731
+        out.update({(level, "precision"): (m, counted), (level, "recall"): (m, gt),
+                    (level, "f1"): (lambda c, m=m: 2 * m(c), lambda c, counted=counted: counted(c) + gt(c)),
+                    (level, "strict_precision"): (s, counted), (level, "strict_recall"): (s, gt),
+                    (level, "strict_f1"): (lambda c, s=s: 2 * s(c), lambda c, counted=counted: counted(c) + gt(c)),
+                    (level, "strict_recall_within_reach"): (s, lambda c: c["within_strict_reach"])})
+    return out
+
+
+#: The one home of a row's formulas (per_component_class): its value and its range both come from here.
+COMPONENT_CLASS_PARTS = _component_class_parts()
+
+
 def _component_class_numbers(c) -> dict:
     """Precision, recall, and F1, their strict versions, and strict recall within reach, at each level, and the
-    strict recall upper bound ("row": the same at both levels), from summed counts (the same formulas as numbers;
-    a strict pair's ground truth triple is always within strict reach, so strict recall within reach counts every
-    strict pair)."""
-    out = {"row": {"strict_recall_upper_bound": _ratio(c["within_strict_reach"], c["ground_truth_triples"])}}
-    for level in LEVELS:
-        # less the untranslatable occurrences and those matching a fact that waits on an expert
-        counted = c["occurrences"] - c["untranslatable"] - c[f"{level}_pending_pairs"]
-        m, s, both = c[f"{level}_pairs"], c[f"{level}_strict_pairs"], counted + c["ground_truth_triples"]
-        out[level] = {"precision": _ratio(m, counted), "recall": _ratio(m, c["ground_truth_triples"]),
-                      "f1": _ratio(2 * m, both), "strict_precision": _ratio(s, counted),
-                      "strict_recall": _ratio(s, c["ground_truth_triples"]), "strict_f1": _ratio(2 * s, both),
-                      "strict_recall_within_reach": _ratio(s, c["within_strict_reach"])}
+    strict recall upper bound ("row": the same at both levels), from summed counts (COMPONENT_CLASS_PARTS)."""
+    out = {}
+    for (level, key), (a, b) in COMPONENT_CLASS_PARTS.items():
+        out.setdefault(level, {})[key] = _ratio(a(c), b(c))
     return out
 
 
 def per_component_class(records: list) -> dict:
     """Precision, recall, and F1, and their strict versions, per predicate, per subject class, and per object class
     (each of the ground truth schema, or of the current schema marked as translating to (none)), at each pair level,
-    over records' counts (pairing.component_class_counts), each with its margin of error from the same redraws of
-    whole records as the other numbers (none below MIN_RECORDS). {table: [row]}, each row {"component_class",
+    over records' counts (pairing.component_class_counts), each with its margin of error by clustered_wilson over
+    the records, as the part's numbers ("few_records": the row's numbers come from fewer than FEW_RECORDS records
+    with something to divide by). {table: [row]}, each row {"component_class",
     "within_reach" (whether some checked row translates to it; None for one whose row says (none)), "occurrences",
     "occurrences_multiplicity_above_1" (of those, the ones whose element has multiplicity above 1 in its record),
     "untranslatable" (of those, the untranslatable ones, left out of precision), "ground_truth_triples",
@@ -292,7 +428,7 @@ def per_component_class(records: list) -> dict:
     "counted_against" (occurrences and ground truth triples with no exact pair that counts for it, less the
     untranslatable occurrences and those paired with a fact that waits), "<level>":
     {"pairs", "strict_pairs", "precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
-    "strict_recall_within_reach"}} (each number a {"value", "low", "high"}), sorted by
+    "strict_recall_within_reach"}} (each number a {"value", "low", "high", "n_eff", "deff", "few_records"}), sorted by
     counted_against, most first: what the component class costs at the exact level, so the frequent and badly
     extracted ones come first, and one seen once can cost at most two."""
     per_record = [r["compared"]["component_class_counts"] for r in records]
@@ -304,20 +440,6 @@ def per_component_class(records: list) -> dict:
     for x in per_record:
         for key, c in x["counts"].items():
             total[key].update(c)
-    enough = len(records) >= MIN_RECORDS
-    samples = collections.defaultdict(list)
-    if enough:
-        rng = random.Random(SEED)
-        for _ in range(REDRAWS):
-            drawn = collections.defaultdict(collections.Counter)
-            for x in (rng.choice(per_record) for _ in records):
-                for key, c in x["counts"].items():
-                    drawn[key].update(c)
-            for key in total:
-                for level, m in _component_class_numbers(drawn.get(key, collections.Counter())).items():
-                    for what, v in m.items():
-                        if v is not None:
-                            samples[(key, level, what)].append(v)
     out = {table: [] for table, _ in PER_COMPONENT_CLASS}
     for key, c in total.items():
         row = {"component_class": labels[key], "within_reach": reach[key], "occurrences": c["occurrences"],
@@ -327,16 +449,15 @@ def per_component_class(records: list) -> dict:
                "pending_pairs": c["exact_pending_pairs"],
                "counted_against": c["occurrences"] - c["untranslatable"] - c["exact_pending_pairs"]
                + c["ground_truth_triples"] - 2 * c["exact_pairs"]}
-        for level, m in _component_class_numbers(c).items():
-            if level != "row":
-                row[level] = {"pairs": c[f"{level}_pairs"], "strict_pairs": c[f"{level}_strict_pairs"]}
-            for what, v in m.items():
-                vals = samples.get((key, level, what), [])
-                low = high = None
-                if enough and vals:
-                    r = interval(vals)
-                    low, high = r["low"], r["high"]
-                (row if level == "row" else row[level])[what] = {"value": v, "low": low, "high": high}
+        for level in LEVELS:
+            row[level] = {"pairs": c[f"{level}_pairs"], "strict_pairs": c[f"{level}_strict_pairs"]}
+        empty = collections.Counter()
+        for (level, what), (a, b) in COMPONENT_CLASS_PARTS.items():
+            ci = clustered_wilson([(a(x["counts"].get(key, empty)), b(x["counts"].get(key, empty))) for x in per_record])
+            assert ci["value"] == _ratio(a(c), b(c)) or abs(ci["value"] - _ratio(a(c), b(c))) < 1e-12, (key, what)
+            (row if level == "row" else row[level])[what] = {
+                "value": _ratio(a(c), b(c)), "low": ci["low"], "high": ci["high"], "n_eff": ci["n_eff"],
+                "deff": ci["deff"], "few_records": ci["n_records"] < FEW_RECORDS}
         out[key[0]].append(row)
     for rows in out.values():
         rows.sort(key=lambda r: (-r["counted_against"], component_class_key(r["component_class"])))
@@ -405,7 +526,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
                         "per_record": per_record(recs),
                         "removed_by_060": removed_by_reason(recs),
                         "margin_checks": margin_checks(recs, numbers, evaluated.catalog_records)
-                        if numbers and numbers["margins"] else None,
+                        if numbers else None,
                         "twins": twins(recs)}
     result["kept_aside"] = {p: len(parts[p]) for p in PARTS if p not in shown}
     return result
