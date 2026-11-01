@@ -23,6 +23,7 @@ def error(cls, message="x", finish_reason=None):
 class Kind(unittest.TestCase):
     def test_each_kind(self):
         self.assertEqual(dropped.kind(error(llm.ApiError, finish_reason="content_filter")), "refused")
+        self.assertEqual(dropped.kind(llm.Refused("the model refused to answer: prose")), "refused")   # llm.classify_reply
         self.assertEqual(dropped.kind(error(llm.CutOff, finish_reason="length")), "cut_off")
         self.assertEqual(dropped.kind(llm.WrongShape("no triples list")), "malformed")
         self.assertEqual(dropped.kind(llm.ApiError("HTTP 403")), "service_error")
@@ -43,6 +44,9 @@ class Kind(unittest.TestCase):
         self.assertEqual(dropped.kind_from_text("piece 1: the model gave no usable answer (finish_reason "
                                                 "'content_filter', 0 characters)"), "refused")
         self.assertEqual(dropped.kind_from_text("piece 2: prompt safety check failed"), "other")   # the word alone
+        self.assertEqual(dropped.kind_from_text("piece 1: the model refused to answer: the model declined to answer, "
+                                                "in prose (finish_reason 'stop', 38 characters)"), "refused")
+        self.assertEqual(dropped.kind_from_text("piece 1: the service refused this request (HTTP 400)"), "other")
         self.assertEqual(dropped.kind_from_text(""), "other")
 
 

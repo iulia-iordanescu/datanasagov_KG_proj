@@ -19,6 +19,9 @@ It holds, in this order:
         call_llm          send a prompt, get the reply text; retries rate
                           limits and server errors with backoff
         try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
+        classify_reply    what a reply is (complete, cut off, refused, empty, malformed), judged by
+                          the service's finish reason AND the answer's content, the same for both
+                          services: the one place that decides it
         call_llm_json     the same, parsed as a JSON object; re-asks once if
                           the reply is not one, or not of the shape the caller checks for
     PROMPT SAFETY
@@ -392,9 +395,159 @@ def _retry_after(resp) -> float | None:
 
 
 class CutOff(ApiError):
-    """The answer reached the longest length allowed (MAX_ANSWER_TOKENS) and was cut off. Not retried: asking again
-    with the same limit gets the same cut. Carries what the service sent (answer, usage, finish_reason), for the
-    failed-call record."""
+    """The answer was cut off: at the longest length allowed (MAX_ANSWER_TOKENS, which LiteLLM takes), or, where the
+    service takes no limit and reports no finish reason (Ask Sage), at the model's own limit, seen in the answer
+    stopping inside an unfinished JSON object (classify_reply). Not retried: asking again with the same settings
+    gets the same cut. Carries what the service sent (answer, usage, finish_reason), for the failed-call record."""
+
+
+class Refused(ApiError):
+    """The model, or its service, declined to answer: a filter's finish reason (REFUSAL_REASONS), or an answer in
+    prose declining the task (REFUSAL_WORDS) with no JSON object in it, sent as HTTP 200. Not retried: asking again
+    gets the same answer; never stored as an answer (common/common_helpers/cache.py). Carries what the service sent."""
+
+
+# ------------------------------ what a reply is -----------------------------
+
+#: finish_reason values (the service's, or the model maker's own, compared lower-cased) that say the answer is
+#: complete, was cut off at a length limit, or was withheld by a filter. A reason outside the three sets is judged by
+#: the answer's content (classify_reply). One home: common/common_helpers/dropped.py reads these too.
+COMPLETE_REASONS = {"stop", "end_turn", "eos", "stop_sequence", "completed"}
+CUT_OFF_REASONS = {"length", "max_tokens", "max_output_tokens", "max_completion_tokens"}
+REFUSAL_REASONS = {"content_filter", "refusal", "safety", "prohibited_content", "blocklist", "spii", "recitation"}
+#: How an answer in prose declines the task, at its start (after fences or blank space): "I'm sorry, but …",
+#: "I cannot …", "I can't help …", "As an AI …", "Unfortunately, I am unable …". Only an answer with NO JSON object in
+#: it is read this way, so a preamble before the JSON object never counts.
+REFUSAL_WORDS = re.compile(r"^\W*(?:(?:i['\u2019]?m|i am) (?:sorry|unable|not able|afraid i)|i apologi[sz]e|sorry[,.]|"
+                           r"as an ai\b|i (?:can(?:no|')t|cannot|won['\u2019]t|will not|must decline|"
+                           r"(?:do not|don['\u2019]t) feel comfortable)|unfortunately,? i (?:can|am))", re.I)
+#: What classify_reply can say a reply is.
+REPLY_KINDS = ("complete", "cut_off", "refused", "empty", "malformed")
+#: A fence around the whole answer: ```json … ``` (the tag in any case, or none), only at the answer's start and end,
+#: never inside a value.
+_FENCE = re.compile(r"\A\s*```[A-Za-z]*[ \t]*\r?\n(.*?)\r?\n?[ \t]*```\s*\Z", re.S)
+
+
+def find_json(text: str) -> tuple:
+    """(data, state): the JSON the answer holds. state is "object" (data is the parsed value: the whole answer, with
+    its fence removed, or the first {…} object in prose around it), "none" (no { at all), "unterminated" (an object
+    begins and the answer ends inside it: a cut), "several" (more than one object, so which one was meant can't be
+    told; data is None), or "invalid" (an object begins and ends but isn't JSON; data is None)."""
+    cleaned = text or ""
+    m = _FENCE.match(cleaned)
+    if m:
+        cleaned = m.group(1)
+    cleaned = cleaned.strip()
+    try:
+        return json.loads(cleaned), "object"
+    except json.JSONDecodeError:
+        pass
+    start = cleaned.find("{")
+    if start == -1:
+        return None, "none"
+    decoder = json.JSONDecoder()
+    try:
+        data, end = decoder.raw_decode(cleaned, start)
+    except json.JSONDecodeError:
+        return None, "unterminated" if _open_at_end(cleaned, start) else "invalid"
+    rest = cleaned[end:]
+    nxt = rest.find("{")
+    if nxt != -1:
+        try:
+            decoder.raw_decode(rest, nxt)
+            return None, "several"
+        except json.JSONDecodeError:
+            pass
+    return data, "object"
+
+
+def _open_at_end(text: str, start: int) -> bool:
+    """Whether the object beginning at start is still open (a brace, bracket or string not closed) when text ends."""
+    depth, in_string, escaped = 0, False, False
+    for ch in text[start:]:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+        elif ch == '"':
+            in_string = True
+        elif ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+            if depth <= 0:
+                return False
+    return True
+
+
+def classify_reply(text, finish_reason=None, native_finish_reason=None, service: str | None = None) -> tuple:
+    """(kind, detail): what a reply is, one of REPLY_KINDS, judged by the finish reason AND the content, the same
+    way for every service (every prompt of the pipeline asks for a JSON object):
+
+      cut_off    the service says so (CUT_OFF_REASONS), or the answer stops inside an unfinished JSON object and no
+                 finish reason says the model stopped on its own (Ask Sage sends none)
+      refused    a filter's finish reason (REFUSAL_REASONS), or prose declining the task (REFUSAL_WORDS) with no
+                 JSON object in it, whatever the finish reason
+      empty      nothing but blank space
+      complete   a JSON value (a reason outside the known sets doesn't fail an answer whose content is complete)
+      malformed  anything else: prose, a JSON object that isn't valid, several objects, or an unfinished object the
+                 model stopped on its own (finish reason in COMPLETE_REASONS); worth asking once more
+    """
+    reasons = {str(r).strip().lower() for r in (finish_reason, native_finish_reason) if r not in (None, "")}
+    text = text or ""
+    chars = f"{len(text):,} characters"
+    reason_words = f"finish_reason {finish_reason!r}" + (f", the model maker's {native_finish_reason!r}"
+                                                         if native_finish_reason else "")
+    if reasons & CUT_OFF_REASONS:
+        return "cut_off", f"the service reports the answer was cut off ({reason_words}), after {chars}"
+    if reasons & REFUSAL_REASONS:
+        return "refused", f"the service's content filter withheld the answer ({reason_words}), {chars}"
+    if not text.strip():
+        return "empty", f"the model gave no usable answer ({reason_words}, 0 characters)"
+    data, state = find_json(text)
+    if state == "none" and REFUSAL_WORDS.match(text.strip().strip("`").strip()):
+        first = " ".join(text.strip().split())[:160]
+        return "refused", f"the model declined to answer, in prose ({reason_words}, {chars}): {first!r}"
+    if state == "object":
+        return "complete", ("" if reasons <= COMPLETE_REASONS else
+                            f"complete answer under a finish reason the pipeline doesn't know ({reason_words})")
+    if state == "unterminated" and not (reasons & COMPLETE_REASONS):
+        where = ("Ask Sage takes no answer limit and reports no finish reason, so the model's own limit cut it"
+                 if (service or SERVICE) == "asksage" and not reasons else
+                 f"no finish reason says the model stopped on its own ({reason_words})")
+        return "cut_off", f"the answer stops inside an unfinished JSON object after {chars}; {where}"
+    what = {"none": "no JSON object in the answer", "unterminated": "a JSON object the model left unfinished",
+            "several": "several JSON objects in one answer", "invalid": "a JSON object that isn't valid JSON"}[state]
+    return "malformed", f"{what} ({reason_words}, {chars})"
+
+
+def _raise_unless_complete(text, body: dict, service: str, reason=None, native=None) -> str:
+    """text, when classify_reply finds it complete or malformed (call_llm_json then parses it, and asks once more
+    for a malformed one); else the error for the kind, carrying what the service sent: CutOff, Refused, or ApiError
+    (empty). Both service clients end here, so a reply is judged the same way whichever service sent it."""
+    kind, detail = classify_reply(text, reason, native, service)
+    _last.reply["reply_kind"] = kind
+    if kind in ("complete", "malformed"):
+        return text
+    # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see why it ran long, or
+    # what the model wrote instead of the answer.
+    log.debug(f"{kind.replace('_', '-')} answer ({detail}), usage {body.get('usage')}:\n{text}")
+    if kind == "cut_off":
+        thought = reasoning_tokens(body.get("usage"))
+        at_limit = max_tokens_sent(service) is not None and \
+            {str(reason).lower(), str(native).lower()} & CUT_OFF_REASONS
+        error = CutOff((f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, "
+                        f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py), after {len(text or ''):,} characters"
+                        if at_limit else f"the answer was cut off: {detail}")
+                       + (f"; the model spent {thought:,} of those tokens thinking" if thought else ""))
+    elif kind == "refused":
+        error = Refused(f"the model refused to answer: {detail}")
+    else:
+        error = ApiError(detail)
+    raise _with_reply(error, text, body, reason, native)
 
 
 def reasoning_tokens(usage) -> int:
@@ -482,8 +635,10 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
         raise RuntimeError(f"API status {status}: "
                            f"{str(body.get('message'))[:200]}")
     # .get("message") can be absent OR present-and-null; either way
-    # callers must never receive None and call .strip() on it.
-    return (body or {}).get("message") or ""
+    # callers must never receive None and call .strip() on it. Ask Sage sends no finish reason and takes no answer
+    # limit, so the answer is judged by its content alone (classify_reply): one stopping inside an unfinished JSON
+    # object was cut off at the model's own limit; prose declining the task is a refusal.
+    return _raise_unless_complete((body or {}).get("message") or "", body or {}, "asksage")
 
 
 # ------------------------------ the LiteLLM client --------------------------
@@ -589,29 +744,14 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     # top level, or among its provider_specific_fields.
     extra = choice.get("provider_specific_fields") if isinstance(choice.get("provider_specific_fields"), dict) else {}
     _last.reply["native_finish_reason"] = choice.get("native_finish_reason") or extra.get("native_finish_reason")
-    if reason == "length":
-        # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see why it ran long:
-        # many facts, or the model repeating itself.
-        log.debug(f"cut-off answer from {model}, {len(text or ''):,} characters, usage {body.get('usage')}:\n{text}")
-        thought = reasoning_tokens(body.get("usage"))
-        raise _with_reply(CutOff(
-            f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, MAX_ANSWER_TOKENS "
-            f"in common/common_helpers/llm.py), after {len(text or ''):,} characters"
-            + (f"; the model spent {thought:,} of those tokens thinking" if thought else "")), text, body, reason)
-    if reason not in (None, "stop") or not (text or "").strip():
-        # e.g. "content_filter": a safety or recitation filter withheld the answer. Asking again gets the same. What
-        # came before the stop goes to the log file (DEBUG), so a person can see where it stopped.
-        log.debug(f"answer stopped by the service from {model} (finish_reason {reason!r}), {len(text or ''):,} "
-                  f"characters, usage {body.get('usage')}:\n{text}")
-        raise _with_reply(ApiError(f"the model gave no usable answer (finish_reason {reason!r}, {len(text or ''):,} "
-                                   f"characters" + (": the service's content filter withheld it"
-                                                    if reason == "content_filter" else "") + ")"), text, body, reason)
-    return text
+    return _raise_unless_complete(text, body, "litellm", reason, _last.reply["native_finish_reason"])
 
 
-def _with_reply(error: Exception, text, body: dict, reason) -> Exception:
-    """error, carrying what the service sent (the answer, usage, finish_reason), for the failed-call record."""
+def _with_reply(error: Exception, text, body: dict, reason, native=None) -> Exception:
+    """error, carrying what the service sent (the answer, usage, finish_reason, the maker's own reason), for the
+    failed-call record."""
     error.answer, error.usage, error.finish_reason = text or "", body.get("usage") or {}, reason
+    error.native_finish_reason = native
     return error
 
 
@@ -681,20 +821,6 @@ def try_model(name: str, service: str | None = None) -> tuple:
         return False, str(e)
 
 
-def _best_effort_json(text):
-    """Parse JSON from model output: strip fences, else take the largest
-    {...} substring (models sometimes wrap JSON in prose)."""
-    cleaned = re.sub(r"^```(json)?|```$", "", text.strip(),
-                     flags=re.MULTILINE).strip()
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        start, end = cleaned.find("{"), cleaned.rfind("}")
-        if start != -1 and end > start:
-            return json.loads(cleaned[start:end + 1])   # may raise; caller handles
-        raise
-
-
 def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None, check=None):
     """Return the JSON OBJECT the prompt asked for, or raise.
 
@@ -718,7 +844,21 @@ def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None
             raise
         seconds += (getattr(_last, "timing", None) or {}).get("seconds", 0)
         try:
-            data = _best_effort_json(text)
+            data, state = find_json(text)
+            if state != "object":
+                # One rule for both services (classify_reply): an unfinished object with no finish reason saying
+                # the model stopped on its own is a cut-off (CutOff: kept in the cache as cut off, never asked again
+                # with the same settings); prose declining the task is a refusal (Refused: never asked again, never
+                # stored). The service clients raise these before the text gets here; this is the same rule, kept
+                # here for an answer that reaches the parser another way (a cached or edited one).
+                reply = getattr(_last, "reply", None) or {}
+                kind, detail = classify_reply(text, reply.get("finish_reason"), reply.get("native_finish_reason"))
+                if kind == "cut_off":
+                    raise _with_reply(CutOff(f"the answer was cut off: {detail}"), text, reply, reply.get("finish_reason"))
+                if kind == "refused":
+                    raise _with_reply(Refused(f"the model refused to answer: {detail}"), text, reply,
+                                      reply.get("finish_reason"))
+                raise BadReply(detail)
             if not isinstance(data, dict):
                 raise BadReply(f"expected a JSON object, got "
                                f"{type(data).__name__}")
@@ -831,6 +971,10 @@ def cut_off_advice(usage=None) -> str:
     token counts the service reported, not from the settings: thinking took most of the tokens, the answer itself is
     long, or the service didn't say how many were thinking."""
     usage = usage if isinstance(usage, dict) else {}
+    if max_tokens_sent() is None:
+        return ("Ask Sage takes no answer limit (MAX_ANSWER_TOKENS isn't sent), so the model's own limit cut the "
+                "answer: lower the step's max_chars so each text piece asks for fewer facts, choose another model "
+                "(`--model`), or run through LiteLLM (`--service litellm`), which takes the limit")
     details = usage.get("completion_tokens_details")
     reported = isinstance(details, dict) and details.get("reasoning_tokens") is not None
     thought, total = reasoning_tokens(usage), usage.get("completion_tokens")
@@ -863,9 +1007,9 @@ def advice(error) -> str:
     """What to do about one failed call, in words: the same advice the messages and the failed-call record give."""
     if isinstance(error, CutOff):
         return cut_off_advice(getattr(error, "usage", None))
-    if getattr(error, "finish_reason", None) == "content_filter":
-        return ("Look at the record's text; if the service's filter withholds answers often with this model, choose "
-                "another (`--model`)")
+    if isinstance(error, Refused):
+        return ("Asking again gets the same answer. Look at the record's text; if refusals (the service's filter, or "
+                "the model declining in prose) come often with this model, choose another (`--model`)")
     if "no answer within" in str(error):
         return "Run the step again later; if it keeps happening, lower the step's max_chars"
     if isinstance(error, BadReply):

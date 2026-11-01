@@ -633,5 +633,206 @@ class CtrlC(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+class ReplyKinds(Guards):
+    """One rule says what a reply is (llm.classify_reply), from the finish reason AND the content, for both services:
+    complete, cut off, refused, empty, malformed. Every variant below, near-misses included; the kinds then drive the
+    cache (a cut-off kept, a refusal never stored), the re-ask (never for a cut-off or a refusal) and the reason a
+    record is left out for (dropped.kind)."""
+
+    OBJECT = '{"triples": [{"subject": "MODIS", "predicate": "ABOARD", "object": "Aqua"}]}'
+    UNFINISHED = '{"triples": [{"subject": "MODIS", "predicate": "ABOARD", "obj'
+    REFUSALS = ("I'm sorry, but I can't help with that.", "I cannot extract facts from this text.",
+                "Sorry, I am unable to assist with this request.", "As an AI, I can't do that.",
+                "Unfortunately, I am not able to process this record.", "I apologize, but I won't do that.",
+                "I\u2019m unable to help.", "```\nI'm sorry, I can't help with that.\n```")
+
+    def kinds(self, cases, service=None):
+        for text, reason, native, expected in cases:
+            with self.subTest(text=str(text)[:40], reason=reason, native=native):
+                self.assertEqual(llm.classify_reply(text, reason, native, service)[0], expected)
+
+    def test_complete(self):
+        o = self.OBJECT
+        self.kinds([(o, "stop", None, "complete"), (o, None, None, "complete"),
+                    (o, "end_turn", None, "complete"), (o, "eos", None, "complete"),
+                    (o, "STOP", None, "complete"), (o, "tool_calls", None, "complete"),   # unknown reason: the content decides
+                    (f"```json\n{o}\n```", "stop", None, "complete"),                      # fenced
+                    (f"```JSON\n{o}\n```", "stop", None, "complete"),                      # the tag in capitals
+                    (f"```\n{o}\n```", "stop", None, "complete"),                          # no tag
+                    (f"Here is the JSON you asked for:\n{o}\nI hope this helps.", "stop", None, "complete"),
+                    (f"I can't say more than this: {o}", "stop", None, "complete"),        # refusal words before an object: not a refusal
+                    ('{"triples": []}', "stop", None, "complete"),                         # no facts (a refusal sent this way can't be told apart)
+                    ('{"notes": "line\n```\nmore"}'.replace("\n", "\\n"), "stop", None, "complete"),   # a fence inside a value
+                    ])
+        data, state = llm.find_json(f"```json\n{o}\n```")
+        self.assertEqual((state, data["triples"][0]["object"]), ("object", "Aqua"))
+        data, state = llm.find_json('{"a": "x\n```\ny"}'.replace("\n", "\\n"))             # the value's fence is kept
+        self.assertEqual(data["a"], "x\n```\ny")
+
+    def test_cut_off(self):
+        u = self.UNFINISHED
+        self.kinds([(u, "length", None, "cut_off"), (self.OBJECT, "length", None, "cut_off"),   # the service says so
+                    (u, "stop", "MAX_TOKENS", "cut_off"), (u, None, "max_output_tokens", "cut_off"),
+                    (u, None, None, "cut_off"),                 # no finish reason at all (Ask Sage): the content says so
+                    (u, "tool_calls", None, "cut_off"),         # an unknown reason doesn't say the model stopped itself
+                    ('```json\n' + u, None, None, "cut_off"),   # cut inside a fence
+                    ("Here it is: " + u, None, None, "cut_off"),
+                    ('{"triples": [{"subject": "a string left open', None, None, "cut_off"),
+                    ])
+        self.kinds([(u, None, None, "cut_off")], service="asksage")
+        self.assertIn("Ask Sage takes no answer limit", llm.classify_reply(u, None, None, "asksage")[1])
+
+    def test_refused(self):
+        self.kinds([(t, "stop", None, "refused") for t in self.REFUSALS]
+                   + [(t, None, None, "refused") for t in self.REFUSALS]           # Ask Sage: no finish reason
+                   + [("", "content_filter", None, "refused"), ("", "stop", "SAFETY", "refused"),
+                      (self.OBJECT, "content_filter", None, "refused"),            # a filter's reason wins over content
+                      ("x", "stop", "recitation", "refused"), ("", "refusal", None, "refused")])
+
+    def test_empty(self):
+        self.kinds([("", "stop", None, "empty"), ("   \n", None, None, "empty"), (None, "stop", None, "empty")])
+
+    def test_malformed(self):
+        u = self.UNFINISHED
+        self.kinds([(u, "stop", None, "malformed"),                     # the model stopped itself mid-object: ask again
+                    (u, "end_turn", None, "malformed"),
+                    ('{"a": 1} {"b": 2}', "stop", None, "malformed"),  # two objects: which one was meant can't be told
+                    ('{"a": 1}\n{"b": 2}', None, None, "malformed"),
+                    ('{"a": 1,}', "stop", None, "malformed"),          # closed, but not valid JSON
+                    ("Here are the facts: MODIS is aboard Aqua.", "stop", None, "malformed"),   # prose, no refusal
+                    ("I can help with that! The facts are below.", "stop", None, "malformed"),  # "I can", not "I can't"
+                    ("The record is sorry about the data gaps.", "stop", None, "malformed"),    # "sorry" not at the start
+                    ("[1, 2]", "stop", None, "complete"),               # a JSON value that isn't an object: call_llm_json refuses it
+                    ])
+
+    def test_find_json_states(self):
+        for text, state in ((self.OBJECT, "object"), (self.UNFINISHED, "unterminated"), ("no braces", "none"),
+                            ('{"a": 1} {"b": 2}', "several"), ('{"a": 1,}', "invalid"),
+                            ('{"a": "}"}', "object"), ('{"a": "{"', "unterminated"), ('{"a": "\\"}', "unterminated")):
+            self.assertEqual(llm.find_json(text)[1], state, text)
+
+    # ---------------------------------------------------------------- through LiteLLM
+
+    def test_litellm_prose_refusal_not_reasked_not_stored(self):
+        """A refusal in prose with finish_reason "stop" (HTTP 200) is a refusal: one call (never asked once more), the
+        record left out as refused (not malformed), nothing stored, the failed-call record naming it."""
+        calls = self.calls()
+        os.environ["KG_STAND_IN_REFUSE"] = "#r01#"
+        replies = self.ask(calls, ["r00", "r01"])
+        self.assertEqual((sorted(replies.of), list(replies.failed), replies.kinds), (["r00"], ["r01"], {"r01": "refused"}))
+        self.assertEqual(len([p for p in stand_ins.PAYLOADS if "#r01#" in str(p)]), 1)   # not asked again
+        self.assertIn("the model refused to answer", replies.failed["r01"])
+        self.assertEqual(llm.REASKS["not_json"], 0)
+        cache = cache_module.Cache(self.tmp / "050_annotate" / "cache", "draft")
+        self.assertEqual(len(cache.answers), 1)                                           # r00's answer only
+        (entry,) = self.entries()
+        self.assertEqual((entry["outcome"], entry["error_type"], entry["finish_reason"]), ("failed", "Refused", "stop"))
+        self.assertIn("Asking again gets the same answer", entry["what_to_do"])
+        again = self.ask(self.calls(), ["r00", "r01"])                                    # a rerun asks it again (not a cut-off)
+        self.assertEqual(again.kinds, {"r01": "refused"})
+
+    def test_litellm_unknown_finish_reason_with_complete_answer(self):
+        def post(url, headers=None, json=None, timeout=None, **_):
+            reply = stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+            reply._body["choices"][0]["finish_reason"] = "end_turn"
+            return reply
+        with mock.patch.object(llm, "_post", post):
+            replies = self.ask(self.calls(), ["r00"])
+        self.assertEqual(list(replies.of), ["r00"])
+
+    def test_litellm_unfinished_object_with_stop_is_malformed(self):
+        """The model stopped itself inside an object (finish_reason "stop"): asked once more, then malformed."""
+        def post(url, headers=None, json=None, timeout=None, **_):
+            reply = stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+            reply._body["choices"][0]["message"]["content"] = self.UNFINISHED
+            return reply
+        with mock.patch.object(llm, "_post", post):
+            replies = self.ask(self.calls(), ["r00"])
+        self.assertEqual(replies.kinds, {"r00": "malformed"})
+        self.assertEqual(len(stand_ins.PAYLOADS), 3)                                      # test call, the call, asked once more
+
+    # ---------------------------------------------------------------- through Ask Sage
+
+    def asksage(self, answers: dict):
+        """requests.post standing in for Ask Sage: the answer is answers[word] for the word in the prompt."""
+        sent = []
+
+        class Reply:
+            status_code, text, headers = 200, "", {}
+
+            def __init__(self, message):
+                self.message = message
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"status": 200, "message": self.message}
+
+        def post(url, json=None, **k):
+            sent.append(json)
+            if url.endswith("/query"):
+                word = next(w for w in answers if w in json["message"])
+                return Reply(answers[word])
+            return Reply(llm.TEST_PROMPT and '{"ok": true}')
+        return sent, post
+
+    def test_asksage_cut_off_recognized_and_not_paid_twice(self):
+        """Through Ask Sage (no finish reason, no answer limit) an answer stopping inside an unfinished JSON object
+        is a cut-off: not asked once more, kept in the cache as cut off, and a rerun reports it without a call."""
+        llm.SERVICE = "asksage"
+        sent, post = self.asksage({"#r00#": self.OBJECT, "#r01#": self.UNFINISHED, "ok": '{"ok": true}'})
+        with mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "_asksage_token", lambda: "t"):
+            calls = self.calls(service="asksage", model="google-claude-sonnet-5")
+            replies = self.ask(calls, ["r00", "r01"])
+            self.assertEqual((sorted(replies.of), replies.kinds), (["r00"], {"r01": "cut_off"}))
+            self.assertEqual(len([p for p in sent if "#r01#" in p["message"]]), 1)       # not asked once more
+            self.assertIn("Ask Sage takes no answer limit", replies.failed["r01"])
+            note = extraction.failed_note(replies, "the drafted batch")
+            self.assertIn("lower the step's max_chars", note)                             # the advice for Ask Sage
+            self.assertNotIn("MAX_ANSWER_TOKENS in", note)                                # no limit to raise there
+            sent.clear()
+            again = self.ask(self.calls(service="asksage", model="google-claude-sonnet-5"), ["r00", "r01"])
+            self.assertEqual(sent, [])                                                    # nothing paid
+            self.assertIn("not asked again", again.failed["r01"])
+            self.assertEqual(again.kinds, {"r01": "cut_off"})
+        (entry,) = [e for e in self.entries() if e["outcome"] == "cut_off"]
+        self.assertEqual((entry["error_type"], entry["finish_reason"], entry["record"]), ("CutOff", None, "r01"))
+        self.assertTrue(entry["answer"].startswith('{"triples"'))
+
+    def test_asksage_prose_refusal(self):
+        llm.SERVICE = "asksage"
+        sent, post = self.asksage({"#r00#": self.OBJECT, "#r01#": self.REFUSALS[0], "ok": '{"ok": true}'})
+        with mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "_asksage_token", lambda: "t"):
+            replies = self.ask(self.calls(service="asksage", model="google-claude-sonnet-5"), ["r00", "r01"])
+        self.assertEqual(replies.kinds, {"r01": "refused"})
+        self.assertEqual(len([p for p in sent if "#r01#" in p["message"]]), 1)
+        cache = cache_module.Cache(self.tmp / "050_annotate" / "cache", "draft")
+        self.assertEqual(len(cache.answers), 1)                                           # never stored
+
+    def test_asksage_malformed_asked_once_more(self):
+        llm.SERVICE = "asksage"
+        sent, post = self.asksage({"#r00#": "Here are the facts: MODIS is aboard Aqua.", "ok": '{"ok": true}'})
+        with mock.patch.object(llm.requests, "post", post), mock.patch.object(llm, "_asksage_token", lambda: "t"):
+            replies = self.ask(self.calls(service="asksage", model="google-claude-sonnet-5"), ["r00"])
+        self.assertEqual(replies.kinds, {"r00": "malformed"})
+        self.assertEqual(len([p for p in sent if "#r00#" in p["message"]]), 2)           # asked once more
+
+    def test_cut_off_marker_valid_per_service_limit(self):
+        """The cut-off marker records the answer limit the service was sent: through LiteLLM MAX_ANSWER_TOKENS (an
+        old marker, written as 16000 by a run before, still counts), through Ask Sage none."""
+        cache = cache_module.Cache(self.tmp / "cache", "draft")
+        cache.put_cut_off("k", llm.CutOff("cut"))
+        self.assertEqual(cache.answers["k"][cache_module.CUT_OFF]["max_answer_tokens"], 16000)
+        self.assertTrue(cache.cut_off("k"))
+        llm.MAX_ANSWER_TOKENS = 32000
+        self.assertIsNone(cache.cut_off("k"))                                             # a higher limit: asked again
+        llm.SERVICE = "asksage"
+        cache.put_cut_off("a", llm.CutOff("cut"))
+        self.assertIsNone(cache.answers["a"][cache_module.CUT_OFF]["max_answer_tokens"])
+        self.assertTrue(cache.cut_off("a"))
+        self.assertIsNone(cache.cut_off("k"))                                             # LiteLLM's marker isn't Ask Sage's
+
+
 if __name__ == "__main__":
     unittest.main()

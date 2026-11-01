@@ -73,16 +73,29 @@ STEP_A = (("reasoning_effort " + INVALID, {"reasoning_effort": INVALID}),
 STEP_A_QUESTION = "Reply with the word OK only."
 
 
-def step_a_verdict(status: int, text: str) -> str:
+#: The HTTP statuses a service answers an invalid request value with (OpenAI and LiteLLM: 400 invalid_request_error;
+#: some proxies: 422). A 401, 403, 404 or 429 is about the key, the model name or the rate limit, never the setting.
+INVALID_VALUE_STATUSES = (400, 422)
+
+
+def step_a_verdict(status: int, text: str, setting: str = "") -> str:
     """What one step A reply shows, in words. status: the HTTP status; text: the service's error text, or the
-    answer."""
-    if 400 <= status < 500:
-        return (f"refused (HTTP {status}), so the setting is read, not dropped. The error text, which says whose "
-                f"check refused it: {text}")
+    answer; setting: the request field the invalid value was sent in (reasoning_effort, output_config). Only a 400
+    or 422 whose error text names that field shows the setting was read: any other refusal is about something else
+    (the key, the model name, the rate limit), and says nothing about the setting."""
+    if status in INVALID_VALUE_STATUSES and (not setting or setting in (text or "")):
+        return (f"refused (HTTP {status}, naming {setting or 'the setting'}), so the setting is read, not dropped. "
+                f"The error text, which says whose check refused it: {text}")
+    if status in INVALID_VALUE_STATUSES:
+        return (f"no verdict: refused (HTTP {status}) without naming {setting}, so the refusal may be about something "
+                f"else in the request; read the error text, then run the check again. {text}")
     if status == 200:
         return ("answered (HTTP 200), so the setting was dropped or ignored on the way: an invalid value that "
                 f"reached a check would have been refused. The answer: {text!r}")
-    return f"no verdict: HTTP {status}, which says nothing about the setting; run the check again. {text}"
+    about = {401: "the key", 403: "your access", 404: "the model name", 429: "the rate limit"}.get(status)
+    return (f"no verdict: HTTP {status}" + (f" is about {about}, not the setting" if about else
+                                           ", which says nothing about the setting")
+            + f"; fix that, then run the check again. {text}")
 
 
 # ------------------------------ step B ------------------------------------
@@ -155,7 +168,8 @@ def step_a(model: str) -> None:
     print("\nStep A: an invalid effort value. Refused (4xx) = the setting is read; answered (200) = dropped or ignored.")
     for name, extra in STEP_A:
         status, text, usage = ask(model, STEP_A_QUESTION, extra)
-        print(f"  {name}: {step_a_verdict(status, text)}" + (f" Usage: {json.dumps(usage)}" if usage else ""))
+        print(f"  {name}: {step_a_verdict(status, text, next(iter(extra)))}"
+              + (f" Usage: {json.dumps(usage)}" if usage else ""))
 
 
 def step_b(model: str) -> None:

@@ -11,11 +11,13 @@ that decides the answer: the model, the exact prompt text, and what was sent
 (a text piece, a batch of component instances, and the labels in use before
 it, ...). Change any of them, e.g. edit a prompt file, and the key changes,
 so that answer is asked again; everything else is still reused. A call that failed is not
-stored, so the next run asks it again, with one exception: an answer cut off at the length limit
-(llm.CutOff) is stored as a cut-off marker, and while MAX_ANSWER_TOKENS (common/common_helpers/llm.py)
-is unchanged, a rerun reuses the failure instead of paying for the same cut again. Raising
-MAX_ANSWER_TOKENS asks again; so does a new thinking setting, for a model it is sent to (it is part
-of the key: llm.cache_identity). So does the setting repeat from 2 on (llm.REPEAT): each repeat of a
+stored, so the next run asks it again, with one exception: an answer cut off (llm.CutOff: at
+MAX_ANSWER_TOKENS through LiteLLM, or at the model's own limit through Ask Sage, which takes no limit;
+llm.classify_reply) is stored as a cut-off marker, and while the answer limit the service is sent
+(llm.max_tokens_sent: MAX_ANSWER_TOKENS, or none through Ask Sage) is unchanged, a rerun reuses the
+failure instead of paying for the same cut again. Raising MAX_ANSWER_TOKENS asks again; so does a new
+thinking setting, for a model it is sent to (it is part of the key: llm.cache_identity). A refusal
+(llm.Refused) is never stored: like any other failure, it is asked again on the next run. So does the setting repeat from 2 on (llm.REPEAT): each repeat of a
 recipe has answers of its own, so repeats are independent answers of the model; repeat 1, the default,
 uses the answers saved before the setting existed.
 
@@ -117,10 +119,11 @@ class Cache:
                 f"answers replace them in that file. Nothing to do.")
 
     def cut_off(self, k: str) -> str | None:
-        """Why the answer under k was cut off in an earlier run, when it was cut off with the MAX_ANSWER_TOKENS of
-        this run (asking again would get the same cut); else None."""
+        """Why the answer under k was cut off in an earlier run, when it was cut off with the answer limit this run
+        sends (llm.max_tokens_sent: MAX_ANSWER_TOKENS through LiteLLM, none through Ask Sage; asking again would get
+        the same cut); else None."""
         stored = self.answers.get(k)
-        if _is_cut_off(stored) and stored[CUT_OFF].get("max_answer_tokens") == llm.MAX_ANSWER_TOKENS:
+        if _is_cut_off(stored) and stored[CUT_OFF].get("max_answer_tokens") == llm.max_tokens_sent():
             return stored[CUT_OFF].get("why") or "the answer was cut off at the longest length allowed"
         return None
 
@@ -131,7 +134,7 @@ class Cache:
 
     def put_cut_off(self, k: str, error) -> None:
         """Keep that the answer under k was cut off (llm.CutOff), so a rerun with the same limit doesn't pay again."""
-        self.put(k, {CUT_OFF: {"why": str(error), "max_answer_tokens": llm.MAX_ANSWER_TOKENS,
+        self.put(k, {CUT_OFF: {"why": str(error), "max_answer_tokens": llm.max_tokens_sent(),
                                "thinking": llm.THINKING, "usage": getattr(error, "usage", None) or {}}})
 
     def put(self, k: str, answer) -> None:

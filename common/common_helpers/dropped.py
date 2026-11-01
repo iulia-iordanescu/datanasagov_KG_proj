@@ -26,7 +26,8 @@ from common.report import cell
 
 #: Why a record was left out, in the order reports list them.
 KINDS = {
-    "refused": "refused: the model's service withheld the answer (a safety filter)",
+    "refused": "refused: the model or its service declined to answer (a filter's finish reason, or prose declining "
+               "the task)",
     "cut_off": "cut off: the answer reached the answer length limit",
     "malformed": "malformed: the reply wasn't in the required shape, even when asked again",
     "service_error": "service error: the model's service returned an error",
@@ -42,16 +43,17 @@ TO_DO = {
                      "above gives the service's error.",
     "other": "Run the step again; if it keeps failing, the log gives the error.",
 }
-#: finish_reason values (the service's, or the model maker's own) that mean a filter withheld the answer.
-REFUSAL_REASONS = {"content_filter", "refusal", "safety", "prohibited_content", "blocklist", "spii"}
+#: finish_reason values that mean a filter withheld the answer: llm.REFUSAL_REASONS, the one home (llm.classify_reply
+#: judges every reply with it).
+REFUSAL_REASONS = llm.REFUSAL_REASONS
 UNDEFINED = "undefined"                  # a record without a maintainer (docs/terminology.md, *maintainer*)
 
 
 def kind(error) -> str:
     """Why a model call failed, as a key of KINDS."""
     reasons = {str(getattr(error, a, "") or "").lower() for a in ("finish_reason", "native_finish_reason")}
-    if reasons & REFUSAL_REASONS:
-        return "refused"
+    if isinstance(error, llm.Refused) or reasons & REFUSAL_REASONS:
+        return "refused"                 # a filter's finish reason, or prose declining the task (llm.classify_reply)
     if isinstance(error, llm.CutOff):
         return "cut_off"
     if isinstance(error, llm.BadReply):
@@ -63,8 +65,12 @@ def kind(error) -> str:
 
 def kind_from_text(why: str) -> str:
     """The kind of a failure known only by its message (an older run's details file): refused when the message names a
-    filter's finish_reason (llm.py words it "finish_reason 'content_filter'"), else other."""
-    return "refused" if any(f"finish_reason {r!r}" in (why or "") for r in REFUSAL_REASONS) else "other"
+    filter's finish_reason (llm.py words it "finish_reason 'content_filter'") or says the model refused (llm.Refused's
+    words), else other."""
+    why = why or ""
+    if "the model refused to answer" in why or any(f"finish_reason {r!r}" in why for r in REFUSAL_REASONS):
+        return "refused"
+    return "other"
 
 
 def left_out(replies, items: list) -> list:

@@ -1310,12 +1310,21 @@ class CheckEffort(unittest.TestCase):
 
     def test_step_a_verdict(self):
         v = self.ce.step_a_verdict
-        for status in (400, 422, 499):
-            self.assertIn("refused", v(status, "Invalid reasoning_effort"))
-            self.assertIn("Invalid reasoning_effort", v(status, "Invalid reasoning_effort"))   # the error text, quoted
-        self.assertIn("dropped or ignored", v(200, "OK"))
-        for status in (399, 500, 503, 302):                                     # near misses: no verdict
-            self.assertIn("no verdict", v(status, "x"))
+        for status in (400, 422):
+            got = v(status, "Invalid reasoning_effort", "reasoning_effort")
+            self.assertTrue(got.startswith("refused"), got)
+            self.assertIn("Invalid reasoning_effort", got)                      # the error text, quoted
+            # a refusal that doesn't name the setting says nothing about it
+            self.assertTrue(v(status, "model not found", "reasoning_effort").startswith("no verdict"))
+        self.assertIn("dropped or ignored", v(200, "OK", "reasoning_effort"))
+        # a 401, 403, 404 or 429 is about the key, the access, the model name or the rate limit: no verdict, and it
+        # says what it is about
+        for status, about in ((401, "the key"), (403, "your access"), (404, "the model name"), (429, "the rate limit")):
+            got = v(status, "Invalid reasoning_effort", "reasoning_effort")     # even when the text names the setting
+            self.assertTrue(got.startswith("no verdict"), got)
+            self.assertIn(about, got)
+        for status in (399, 499, 500, 503, 302):                                # near misses: no verdict
+            self.assertTrue(v(status, "x", "reasoning_effort").startswith("no verdict"))
             self.assertNotIn("dropped", v(status, "x"))
 
     def test_answer_number(self):
@@ -1382,10 +1391,18 @@ class CheckEffort(unittest.TestCase):
                                     self.answered("OK", 2)], only="a")
         self.assertEqual(sent[0]["reasoning_effort"], "not_a_level")
         self.assertEqual(sent[1]["output_config"], {"effort": "not_a_level"})
-        self.assertIn("refused (HTTP 400)", out)
+        self.assertIn("refused (HTTP 400, naming reasoning_effort)", out)
         self.assertIn("Invalid reasoning_effort: not_a_level", out)
         self.assertIn("answered (HTTP 200), so the setting was dropped or ignored", out)
         self.assertNotIn("Step B", out)
+
+    def test_step_a_other_refusals_give_no_verdict(self):
+        """A 404 (the model name) or a 400 that doesn't name the setting says nothing about the setting."""
+        out, _ = self.run_steps([(404, {"error": {"message": "model not found"}}),
+                                 (400, {"error": {"message": "max_tokens too large"}})], only="a")
+        self.assertIn("no verdict: HTTP 404 is about the model name", out)
+        self.assertIn("no verdict: refused (HTTP 400) without naming output_config", out)
+        self.assertNotIn("so the setting is read", out)
 
     def test_step_b_requests(self):
         replies = [self.answered("...\n168", 900)] * 3 + [self.answered("...\n168", 300)] * 3 \

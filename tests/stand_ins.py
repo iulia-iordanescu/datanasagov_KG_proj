@@ -21,6 +21,8 @@ gets the fault):
 
     KG_STAND_IN_CUT_OFF      the answer is cut off (finish_reason "length")
     KG_STAND_IN_FAIL         the service refuses the call (HTTP 400)
+    KG_STAND_IN_REFUSE       the model declines in prose ("I'm sorry, but I can't help with that."), sent as a
+                             complete answer (HTTP 200, finish_reason "stop"): a refusal only the content shows
     KG_STAND_IN_REASONING    the thinking tokens every reply reports (a number; default 0; on a
                              cut-off answer, thinking takes all the tokens the answer didn't when
                              no number is given); "unreported": the usage holds no thinking count
@@ -295,6 +297,8 @@ def stand_in_post(url, headers=None, json=None, timeout=None, **_):
         CALLS.append(prompt)
         return StandInReply(400, {"error": {"message": "stand-in: the service refuses this request"}})
     answer = stand_in_model(prompt, model=json["model"])
+    if _fault("KG_STAND_IN_REFUSE", prompt):
+        answer = "I'm sorry, but I can't help with that request."
     given = os.environ.get("KG_STAND_IN_REASONING") or ""
     thought = int(given) if given.isdigit() else 0
     answer_tokens, reason = len(answer) // 4, "stop"
