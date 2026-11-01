@@ -981,12 +981,37 @@ class SameModel(unittest.TestCase):
         from common.llm import maker
         self.assertEqual(maker("google-claude-sonnet-5"), "Anthropic")      # the host first, the family decides
         self.assertEqual(maker("claude-opus-4"), "Anthropic")
+        self.assertEqual(maker("claude-opus-5-5"), "Anthropic")              # the default, as LiteLLM lists it
+        self.assertEqual(maker("claude-opus-5.5"), "Anthropic")              # the spelling LiteLLM also accepts
         self.assertEqual(maker("gpt-4o"), "OpenAI")
         self.assertEqual(maker("o3-mini"), "OpenAI")
         self.assertEqual(maker("google-gemini-2.5-pro"), "Google")
         self.assertEqual(maker("llama-3.1-70b"), "Meta")
         self.assertIsNone(maker("some-new-model"))
         self.assertIsNone(maker(""))
+
+    def test_default_model_is_the_listed_spelling(self):
+        """Since 2026-11-01 the default of 040, 060 and 070 is the name LiteLLM lists, claude-opus-5-5, not the
+        spelling it accepts without listing, claude-opus-5.5; the drafting default is unchanged."""
+        from common import llm
+        self.assertEqual(llm.MODEL, "claude-opus-5-5")
+        self.assertEqual(llm.DRAFTING_MODEL, "gemini-2.5-pro")
+        self.assertIn(llm.MODEL, llm.DEFAULT_EFFORT)                           # its documented default effort is known
+
+    def test_same_model_name(self):
+        """Two spellings of one name are the same model; another version, host or date is not."""
+        from common.llm import same_model_name
+        self.assertTrue(same_model_name("claude-opus-5.5", "claude-opus-5-5"))
+        self.assertTrue(same_model_name("claude-opus-5-5", "claude-opus-5.5"))
+        self.assertTrue(same_model_name("Claude-Opus-5-5", "claude-opus-5-5"))  # case
+        self.assertTrue(same_model_name("gemini-2.5-pro", "gemini-2.5-pro"))
+        self.assertFalse(same_model_name("claude-opus-5-5", "claude-opus-5"))   # near misses: other versions
+        self.assertFalse(same_model_name("claude-opus-5-5", "claude-opus-4-5"))
+        self.assertFalse(same_model_name("claude-opus-5-5", "claude-opus-5-5-20260101"))
+        self.assertFalse(same_model_name("claude-opus-5-5", "google-claude-opus-5-5"))   # another host's name
+        self.assertFalse(same_model_name("claude-opus-5-5", "claude-haiku-5-5"))
+        self.assertFalse(same_model_name("", "claude-opus-5-5"))
+        self.assertFalse(same_model_name("", ""))
 
     def test_guide_lists_every_maker(self):
         """060's guide lists the makers and their words exactly as llm.MAKERS has them."""
@@ -1024,6 +1049,23 @@ class SameModel(unittest.TestCase):
         self.assertEqual(same_model_notes(gt, {"c", "d"}, "google-claude-sonnet-5"), [])   # other maker; written by a person
         self.assertEqual(same_model_notes(gt, {"a"}, "gpt-4o"), [])
         self.assertEqual(len(same_model_notes(gt, {"b"}, "some-new-model")), 0)            # unknown maker: only the same name
+
+    def test_note_for_the_other_spelling(self):
+        """The ground truth drafted by claude-opus-5.5 (as recorded in 2026-10) against the default since 2026-11-01,
+        claude-opus-5-5: the same model, spelled as the service also accepts it; not merely the same maker."""
+        from support import use_step
+        use_step("060_extract")
+        from records import same_model_notes
+        from common import llm
+        rows = [{"id": "a", "drafted_by": "claude-opus-5.5"}, {"id": "b", "drafted_by": "claude-opus-5"},
+                {"id": "c", "drafted_by": "gemini-2.5-pro"}]
+        gt = ground_truth.Selection(ground_truth.ANNOTATED, tuple(rows), ("a", "b", "c"))
+        same = same_model_notes(gt, {"a", "b", "c"}, llm.MODEL)
+        self.assertEqual(len(same), 2)                                         # a: same model; b: same maker; c: no
+        self.assertIn("drafted (step 050) by claude-opus-5, a model from the same maker (Anthropic)", same[0])
+        self.assertIn("drafted (step 050) by claude-opus-5.5, the same model as this run's (claude-opus-5-5), "
+                      "spelled as the service also accepts it", same[1])
+        self.assertIn("recall would look better than it is", same[1])
 
 
 class ExtractWithoutGroundTruth(unittest.TestCase):
@@ -1359,6 +1401,31 @@ class TryModels(unittest.TestCase):
         with mock.patch.object(llm, "call_llm", fake), mock.patch("builtins.input", lambda q: "n"),                 redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
             models.try_models(["all"], ["good", "refuser"])                     # declined: nothing paid
         self.assertEqual(len(asked), 3)
+
+    def test_default_is_listed(self):
+        """py helpers/models.py marks the default in LiteLLM's list and doesn't warn, since the default is spelled as
+        LiteLLM lists it (claude-opus-5-5); a list without it gets the warning (the near miss)."""
+        import importlib.util
+        import io
+        import sys
+        from contextlib import redirect_stdout
+        from unittest import mock
+        from common import llm
+        spec = importlib.util.spec_from_file_location("models_helper", support.ROOT / "helpers" / "models.py")
+        models = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(models)
+
+        def listing(names):
+            out = io.StringIO()
+            with mock.patch.object(llm, "list_models", lambda service: list(names)),                     mock.patch.object(sys, "argv", ["models.py"]), redirect_stdout(out):
+                models.main()
+            return out.getvalue()
+        shown = listing(["claude-opus-5-5", "gemini-2.5-pro"])
+        self.assertIn("  claude-opus-5-5   <- the default", shown)
+        self.assertNotIn("isn't in the list", shown)
+        shown = listing(["claude-opus-5.5", "gemini-2.5-pro"])                 # the other spelling isn't the listed one
+        self.assertIn("The default, claude-opus-5-5 (common/common_helpers/llm.py), isn't in the list", shown)
+        self.assertNotIn("<- the default", shown)
 
 
 class CheckEffort(unittest.TestCase):

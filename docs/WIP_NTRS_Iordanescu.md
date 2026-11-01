@@ -63,7 +63,7 @@ Table 1. The pipeline's steps.
 | 070 evaluate | Compares the extracted triples with the ground truth | only to propose translations |
 | 080 build graph | Will build the graph from the metadata fields and the extracted triples | not built |
 
-The model is reached through one of two NASA services, LiteLLM or Ask Sage. The defaults in the code are `claude-opus-5.5` through LiteLLM for steps 040, 060, and 070, and `gemini-2.5-pro` for step 050, so that the drafting model and the extraction model come from different makers. Every call uses temperature 0 and allows answers of up to 16,000 tokens.
+The model is reached through one of two NASA services, LiteLLM or Ask Sage. The defaults in the code are `claude-opus-5-5` through LiteLLM for steps 040, 060, and 070, and `gemini-2.5-pro` for step 050, so that the drafting model and the extraction model come from different makers. Every call uses temperature 0 and allows answers of up to 16,000 tokens.
 
 ### 4.1 Harvest and cleaning (010, 020)
 
@@ -165,7 +165,7 @@ Table 2. Status of each step as of this draft.
 | 070 evaluate | Tested on a hand-made extraction output whose 16 expected numbers were worked out in advance (all matched), and on synthetic records for the margins |
 | 080 build graph | Not built |
 
-The baseline schema comes from step 040's run of 2026-10-12 with `claude-opus-5.5` through LiteLLM on 150 texts. It found 2,767 verified triple instances and has 60 entity classes, 104 predicates, and 1,233 patterns. All extraction and evaluation experiments will use this file unchanged. Four further measurements come from step 040:
+The baseline schema comes from step 040's run of 2026-10-12 with `claude-opus-5.5` through LiteLLM on 150 texts (the same model name as the default `claude-opus-5-5`, in the spelling LiteLLM accepted at the time without listing it). It found 2,767 verified triple instances and has 60 entity classes, 104 predicates, and 1,233 patterns. All extraction and evaluation experiments will use this file unchanged. Four further measurements come from step 040:
 
 - Saturation. The last 25 of the 150 texts added an expected 0.01 entity classes, 2.8 predicates, and 158 patterns. For these ten maintainers, entity classes are saturated and predicates nearly so; patterns are still growing.
 - Breadth. 49 of the 60 entity classes were found in the texts of three or more maintainers, while 1,067 of 1,264 counted patterns came from one maintainer only. (These counts precede the removal of vague entries.)

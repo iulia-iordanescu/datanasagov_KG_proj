@@ -21,7 +21,7 @@ from pathlib import Path
 
 from common.chunking import full_text, pieces
 from common.ground_truth import ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENCE, TO_FIX, read_ground_truth, read_pool
-from common.llm import maker
+from common.llm import maker, same_model_name
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
 from common.step import Spec, check_settings, input_files, repo_path
@@ -137,6 +137,8 @@ def same_model_notes(selection, ids: set, model: str) -> list:
     for drafter, rids in sorted(by_drafter.items()):
         if drafter == model:
             how = f"the same model as this run's ({model})"
+        elif same_model_name(drafter, model):                # claude-opus-5.5 and claude-opus-5-5 (llm.MODEL)
+            how = f"the same model as this run's ({model}), spelled as the service also accepts it"
         elif mine and maker(drafter) == mine:
             how = f"a model from the same maker ({mine}) as this run's {model}"
         else:

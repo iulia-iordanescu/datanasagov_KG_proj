@@ -13,7 +13,7 @@ Free: no model calls. It writes a report, `outputs/reports/compare_runs_<date>_<
 
 *Suppose* you want to know whether extracting with another model helps. *Then:*
 
-1. Extract and evaluate with the first model: `py 060_extract/run.py --service litellm --model claude-opus-5.5`, then `py 070_evaluate/run.py`. Note 070's run id (top of its report, or the newest file in `outputs/intermediate_results/070_evaluate/evaluations/`).
+1. Extract and evaluate with the first model: `py 060_extract/run.py --service litellm --model claude-opus-5-5`, then `py 070_evaluate/run.py`. Note 070's run id (top of its report, or the newest file in `outputs/intermediate_results/070_evaluate/evaluations/`).
 2. The same with the other model: `py 060_extract/run.py --service litellm --model gemini-3.1-pro-preview` (not `gemini-2.5-pro`, the model step 050 drafts with: step 060 warns about it, since it inflates recall), then `py 070_evaluate/run.py`.
 3. Compare: `py helpers/compare_runs.py <first run id> <second run id>`.
 

@@ -1,7 +1,7 @@
 """
 helpers/check_effort.py -- does NASA's LiteLLM pass an effort setting on to Claude?
 
-    py helpers/check_effort.py                           both steps, claude-opus-5.5 (the default model)
+    py helpers/check_effort.py                           both steps, claude-opus-5-5 (the default model)
     py helpers/check_effort.py --only a                  step A only (an invalid value)
     py helpers/check_effort.py --only b                  step B only (a question that needs reasoning)
     py helpers/check_effort.py --model <name>            another Claude model

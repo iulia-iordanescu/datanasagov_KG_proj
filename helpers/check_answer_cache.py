@@ -1,7 +1,7 @@
 """
 helpers/check_answer_cache.py -- does NASA's LiteLLM answer repeated requests from its own cache?
 
-    py helpers/check_answer_cache.py                    claude-opus-5.5 (the default model)
+    py helpers/check_answer_cache.py                    claude-opus-5-5 (the default model)
     py helpers/check_answer_cache.py --model <name>     another model
 
 Why: on 2026-10-31, py helpers/check_effort.py sent each of its three settings

@@ -78,8 +78,12 @@ from common.stop import Stop
 #: the service shows your account (a listed model may still refuse you: the
 #: run's first call, a one-line test, finds out for the price of that call).
 #: It is part of every cache key (common/common_helpers/cache.py), so changing it asks again.
-#: The default of 040, 060, and 070 (a LiteLLM name: the default service is LiteLLM).
-MODEL = "claude-opus-5.5"
+#: The default of 040, 060, and 070 (a LiteLLM name: the default service is LiteLLM), spelled as LiteLLM lists it.
+#: LiteLLM also accepts the spelling "claude-opus-5.5", the default until 2026-11-01, without listing it; both
+#: answered on 2026-11-01, and whether they reach the same deployment is a question for LiteLLM's administrators
+#: (docs/findings.md, 2026-11-01). The two are compared as the same model (same_model_name), but as a different
+#: cache key: answers saved under one spelling aren't reused under the other.
+MODEL = "claude-opus-5-5"
 
 #: The default model of step 050, which drafts the classed triples a person corrects into ground truth: from another maker than MODEL, so the facts one
 #: model misses aren't missing from both the ground truth and the extraction (060 warns when they're the same maker).
@@ -282,7 +286,7 @@ def takes_thinking_cap(model: str | None = None, service: str | None = None) -> 
 
 
 def model_label() -> str:
-    """The model in words, for a report: "`claude-opus-5.5` through LiteLLM (answered as `…`)"."""
+    """The model in words, for a report: "`claude-opus-5-5` through LiteLLM (answered as `…`)"."""
     served = [s for s in sorted(SERVED) if s != MODEL]
     return (f"`{MODEL}` through {SERVICES.get(SERVICE, SERVICE)}"
             + (f" (answered as {', '.join(f'`{s}`' for s in served)})" if served else ""))
@@ -1356,11 +1360,25 @@ MAKERS = (("Anthropic", ("claude",)), ("OpenAI", ("gpt", "o1", "o3", "o4")), ("G
 def maker(model: str) -> str | None:
     """The maker of a model, from its name ("google-claude-sonnet-5" -> "Anthropic"); None when the name says no
     family this table knows."""
-    words = re.split(r"[-_./: ]+", (model or "").lower())
+    words = _name_words(model)
     for name, families in MAKERS:
         if any(w.startswith(f) for w in words for f in families):
             return name
     return None
+
+
+def same_model_name(a: str, b: str) -> bool:
+    """Whether two model names name the same model, spelling aside: the same words in the same order, in any case,
+    whatever separates them ("claude-opus-5.5" and "claude-opus-5-5": LiteLLM lists the second and accepts both,
+    MODEL). Not the same: another version ("claude-opus-5", "claude-opus-4-5"), another host's name for it
+    ("google-claude-opus-5-5"), or a dated version ("claude-opus-5-5-20260101"). Says nothing about whether the
+    service runs both names on one deployment."""
+    return bool(a) and bool(b) and _name_words(a) == _name_words(b)
+
+
+def _name_words(model: str) -> list:
+    """The words of a model name: cut at - _ . / : and spaces, lowercased, empty words dropped."""
+    return [w for w in re.split(r"[-_./: ]+", (model or "").lower()) if w]
 
 
 class Interrupted(KeyboardInterrupt):
