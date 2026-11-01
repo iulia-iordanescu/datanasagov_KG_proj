@@ -214,8 +214,9 @@ MESSAGES = {
                           "linking words, rule 22 of \"Writing a classed triple\"), nothing to do.",
     SUBJECT_NOT_IN_SOURCE: "The subject instance isn't in this ground truth triple's source text: the source text may be the wrong "
                              "passage, or too short. A source text contains words for the subject, the predicate and the object; "
-                             "when the subject is named only in an earlier sentence, it runs from where it is named to the end of the "
-                             "fact (rule 17 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
+                             "when the words for the subject are only in another sentence, it runs from the first of the two "
+                             "sentences to the end of the fact, or, when a whole sentence lies between them, joins the two passages "
+                             "with \" … \" (rule 17 of \"Writing a classed triple\"). Select such a passage, then press \"Use selection\"; "
                              "if the passage has words for the subject that differ from the instance (a list split, a qualifier "
                              "taken out, one wording within a record), nothing to do.",
     OBJECT_NOT_IN_SOURCE: "The object instance isn't in this ground truth triple's source text: the source text may be the wrong "

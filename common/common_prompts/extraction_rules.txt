@@ -158,10 +158,27 @@ WRITING A TRIPLE
     and later "the extent is mapped every week" state one fact, so one
     triple: the record's dataset's temporal resolution "weekly", the
     wording the record gives first.
-17. source_text: the shortest passage that contains words for the subject,
-    the predicate and the object; when the subject is named only in an
-    earlier sentence, from where it is named to the end of the fact. Copy
-    it exactly from the record.
+17. source_text, copied exactly from the record. 1. The shortest passage that
+    contains words for the subject, the predicate and the object. 2. When
+    the words for one of the three are only in another sentence, and no
+    whole sentence lies between the two sentences, one passage from the
+    earlier of the two (the fact, or the words for the missing one) to the
+    end of the later. 3. Otherwise, the passages joined by " … ", in the
+    record's order: the shortest passage with words for the missing one
+    (and, when the fact's sentence names it in other words, the words that
+    show the two wordings name one thing, rule 23), and the shortest
+    passage with words for the rest. The title and the notes, and the
+    passages that meet a test of rule 1, are joined the same way (words in
+    different places, below). "TERN is a lake survey run by the Halden
+    Office. Its aim is to map ice thickness every week" gives the purpose
+    the source_text from "TERN" to "week" (case 2: the subject is named
+    only in the sentence before the fact's, and no sentence lies between
+    them); "The TERN product holds the whole survey (~2 years) of Kestrel
+    data", and three sentences later "Each file holds the whole survey",
+    give each file's period "~2 years" the source_text "the whole survey
+    (~2 years) … Each file holds the whole survey" (case 3: the first
+    passage has the words for the object, and the words that show "the
+    whole survey" means "~2 years"; the second states the fact).
     A title's facts: for a fact the title states by its words alone, with
     no words for the predicate, the source_text is the title's words for
     the object ("Halden" in the title "Kestrel/Halden Lake Ice 20-Min L2
@@ -175,14 +192,33 @@ WRITING A TRIPLE
     reflectances" gives "band 4 reflectance" for the channel "band 4", and
     "band 7 reflectance" for "band 7", each with the source_text "bands 4
     and 7 reflectances".
+    A platform in an instrument's name: in the notes, a noun phrase that
+    names an instrument and begins with a platform's name states that the
+    instrument is aboard the platform, with the phrase as source_text; the
+    instrument's subject or object follows rule 23 (the wording the record
+    uses for the instrument alone, when it does; the whole name when it
+    never does, rule 11). 1. The platform must be one by the record's words
+    or by rule 1 (names you recognize). 2. A title's words are a list of
+    facts of the record's dataset, not a name ("Kestrel/Halden", "Kestrel
+    Halden"): collected by the instrument and from the platform, and no
+    aboard (a title's facts). 3. A "/" or "+" between the two names, in the
+    title or the notes, is a list (rule 22), not a name: no aboard. 4. The
+    instrument's name first and the platform's after it ("Kestrel Halden
+    data") is such a list too. "Production of the Halden Kestrel ice
+    products ended in 2019", in a record that names "Kestrel" alone
+    elsewhere, gives Kestrel aboard Halden, with the source_text "Halden
+    Kestrel"; "acquired by the Halden Orbiter Lake Ice Radiometer", with
+    the instrument never named otherwise, gives "Halden Orbiter Lake Ice
+    Radiometer" aboard "Halden Orbiter", the name kept whole (rule 11).
     The thing the title names: for a fact about it, the words for it may be
     left out of the source_text ("provides daily lake ice extent", for the
     record's dataset's temporal resolution "daily").
     Words in different places: when the words for the subject, the
-    predicate and the object are in different places, in one of these two
-    cases only (the title and the notes, or the passages that meet a test
-    of rule 1), the source_text is those passages, each copied exactly,
-    joined by " … ".
+    predicate and the object are in different places, the source_text is
+    those passages, each copied exactly, joined by " … ", in one of these
+    three cases: 1. the title and the notes; 2. the passages that meet a
+    test of rule 1; 3. two passages of the notes with a whole sentence
+    between them (case 3 above).
 18. A number with a unit: the object is the number and its unit, as
     written; what the number measures goes in the predicate. "Kestrel has a
     swath width of 350 m" gives Kestrel's swath width "350 m".
@@ -264,6 +300,38 @@ WRITING A TRIPLE
     of its own; the other triples then use one of the two wordings (rule
     23). "Release 27, also called Build 2.7" gives the record's dataset's
     version "Release 27", and "Release 27" also known as "Build 2.7".
+    One exception, for the thing the title names (rule 23): it is always
+    written as its title, so an abbreviation the notes give it in
+    parentheses would be lost. 1. When the parenthesised short name passes
+    the abbreviation test above, write the thing the title names also known
+    as the short name, as written and with the same entity class, with the
+    name and its parentheses as source_text: a record titled "Halden Lake
+    Ice Thickness from Kestrel (Version 2)" whose notes say "This dataset
+    contains the Lake Ice Thickness from Kestrel (LIT-K) product" gives the
+    record's dataset also known as "LIT-K" (L, I, T and K are letters of
+    "Lake", "Ice", "Thickness" and "Kestrel", in that order), with the
+    source_text "Lake Ice Thickness from Kestrel (LIT-K)"; every later fact
+    of "LIT-K" is the record's dataset's (rule 23). 2. When it fails the
+    test, it is a code: "the Halden Lake Ice product (HL3LIT)" gives the
+    record's dataset's identifier "HL3LIT", as in rule 11.
+    A page named, or given as an address: 1. A page or site the record
+    gives only as an address is a web page, the address as written. 2. A
+    page or site the record names in words, without a web address, is a
+    document, named as written (rule 23 leaves out lowercase type words
+    such as "project web site"). 3. A link that gives both a name and an
+    address ("[name](address)"): the address, a web page, when it is a web
+    address; the name, a document, when the address is a DOI (a DOI is an
+    identifier of what it names; parentheses that hold the code of
+    something else are not part of it, above). "compiled from the TERN at
+    Halden project web site" gives the record's dataset documented at
+    "TERN at Halden" (a document); "see the
+    [KX11](https://doi.org/10.1234/KX11) product page" gives documented at
+    "KX11 product page" (a document), and the DOI, another product's, is
+    not written (rule 21); "see the
+    [Halden Lake Ice Quality site](https://lakes.example/quality)" gives
+    documented at "https://lakes.example/quality" (a web page), and the
+    name gives no also-known-as (the record gives it in no words of its
+    own).
 21. General facts: include them; about another dataset, only when the
     record links it to the record's dataset by "part of" or "made from".
     Include a general fact (one true beyond this record) about something
@@ -427,13 +495,27 @@ WRITING A TRIPLE
     record's dataset = threshold test(IWI): the record's dataset computed
     from "IWI", and produced using "threshold test"; its measurements are of
     "ice cover", without the words for the input and the method.
-    Words that name no method: a word that says only that something was
-    done ("corrected", "calibrated", "detrended") names no method. Such a
-    word gives no triple, and stays in the subject or object, as written
-    (rule 19: any other kind). "The dataset's reflectances were corrected, then
-    composited using the Tern algorithm" gives the record's dataset
-    produced using "Tern"; "corrected" names no method, so it gives no
-    triple. "Corrected reflectances" stays "corrected reflectances".
+    Words that name no method: a method is named by a noun or a name in
+    the method's place of output = method(input): the record says the
+    output was made by it, is stored as it, or is given by it ("stored as
+    10 s sums of counts", "Mean weekly ... products", "given by the
+    standard deviation of the differences", "using a modified two-band ice
+    algorithm"). 1. Such a noun or name gives the output produced using
+    the method, as written. 2. A verb or participle that says only that
+    something was done to the data ("corrected", "calibrated",
+    "detrended", "binned", "mapped", "edited", "convert", "weighted")
+    names no method: it gives no triple, and stays in the subject or
+    object, as written (rule 19: any other kind). 3. A noun for a
+    statistic that names a stored field, not how the output was made
+    ("given as a mean and three harmonics"), is a variable, not a method.
+    "The count totals are kept as 10 s sums of counts" gives the
+    record's dataset produced using "sums" (and the compositing period
+    "10 s", rule 18); "the counts were detrended using the TERN background
+    map" gives "detrended" no triple, and the counts computed from the
+    map. "The dataset's reflectances were corrected, then composited using
+    the Tern algorithm" gives the record's dataset produced using "Tern";
+    "corrected" names no method, so it gives no triple. "Corrected
+    reflectances" stays "corrected reflectances".
     What a step removed from the data, or corrected in them, is neither its
     input nor its method: the step's output is cleaned of it, when the
     record names it, and the record's words also stay, as written: "stray
@@ -446,7 +528,10 @@ WRITING A TRIPLE
     data the step was applied to, which its output is made from. "The IWI
     is derived from reflectance data" makes "reflectance data" an input:
     "IWI" computed from "reflectance data". "Tern", above, is a method: it
-    is applied again to other data.
+    is applied again to other data. The statistics the CF Conventions'
+    cell_methods name (sum or accumulation, mean, maximum, minimum, median,
+    mode, range, standard deviation, variance, root mean square) are
+    methods in this sense.
     An amount of data ("10 days of data", "3 years of observations") says
     how much data, not which: the amount is a number with its unit (rule
     18), and the rest is an input only if it names data beyond the word

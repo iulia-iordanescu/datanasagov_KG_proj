@@ -76,7 +76,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** if the files hold both, the dataset has two variables, not one.
   - **Question:** Q18.
 - **Left out:** "binned" and "mapped" as methods (notes, "the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO (renamed ON_GRID on 2026-10-31) and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO (renamed ON_GRID on 2026-10-31) and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the dataset was made, step by step.
   - **Question:** Q7.
 - **Left out:** "NASA" (notes, "global NASA skin sea surface temperature (SST) products")
@@ -108,7 +108,7 @@ The dense record: its notes describe a whole family of products (several tempora
 1 item, 1 that may matter.
 
 - **Left out:** "detrended" as a method (notes, "The nominal fast neutron count rates were detrended using the GRaND epithermal neutron map")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the rates "were detrended", only a verb; I wrote the two COMPUTED_FROM triples (the rates, the epithermal map) and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". The record says the rates "were detrended", only a verb; I wrote the two COMPUTED_FROM triples (the rates, the epithermal map) and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is the method that made the residual map.
   - **Question:** Q7 (settled for now, not asked), Q12 (c) for the map as an input.
 
@@ -184,7 +184,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
   - My ground truth triple has the target "9P/Tempel 1", and the phase "encounter".
 - **Left out:** "convert" as a method (notes, "The RDR data convert the EDR (raw) sensor data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". The record says the RDR data "convert" the EDR data, only a verb; I wrote "RDR data" COMPUTED_FROM "EDR (raw) sensor data" and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the RDR data are made from the raw data.
   - **Question:** Q7.
 - **Left out:** "entire" (notes, "from the entire comet encounter")
@@ -245,7 +245,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says how precise the X-ray positions are.
   - **Question:** Q26 (settled on 2026-10-31: see Q26's My notes).
 - **Left out:** "cross-correlated" as a method (notes, "The selected sources were cross-correlated with the DR7 edition of the SDSS Quasar Catalog")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". Only a verb; I wrote COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" and no PRODUCED_USING_ALGORITHM.
   - **Question:** Q7.
 - **Left out:** "structure function (SF)" HAS_PURPOSE "ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived" (notes, "allows for an ensemble analysis even when only a few observations are available for individual sources and the power spectral density (PSD) cannot be derived")
   - **Rule:** What counts as a fact, rule 8: "When a record tells the study its dataset comes from, the study's aim and its method are facts of the record's dataset (HAS_PURPOSE; PRODUCED_USING_ALGORITHM, rule 24 of *Writing a classed triple*). The rest of the study is not". What the structure function "allows for" is a use the study gives for its method, not a purpose: HAS_PURPOSE is "is meant to achieve", Wikidata's "has goal" (P3712), which Wikidata keeps apart from "has use" (P366, "can be used for"); coining a predicate for a use for this one record would tailor the schema to it. Decided on 2026-10-31 (Q9 (b), settled); until then it waited on the experts' answer to Q9 (b) (rule 2 of *What counts as a fact*, its part on waiting for an expert), and its would-be ground truth triple was in `annotations/pending_triples.csv`, now deleted. (Until 2026-10-31 it waited on Q26 too.)
@@ -306,19 +306,19 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says what the correction was about.
   - **Question:** Q28 (c) (settled on 2026-10-31: see Q28's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "solar stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "solar stray-light corrected" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "solar stray-light" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". "solar stray-light corrected" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "solar stray-light" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "in-field stray-light corrected" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "in-field stray-light" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". "in-field stray-light corrected" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "in-field stray-light" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "radiometric calibrated" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "radiometric calibrated" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". "radiometric calibrated" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "geometric distortion corrected (resampled)" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "geometric distortion" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". "geometric distortion corrected (resampled)" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "geometric distortion" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 
@@ -373,7 +373,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"; even spelled out, "full resolution" names no value (rule 9: "a variety of spatial resolutions" names no resolution).
   - **May matter because:** it says these are the analyzer's full-resolution data, not averages.
 - **Left out:** "EDITED" (title), and "edited" (notes, "Some noise lines during the planetary encounters have been edited from the data set.") as a method
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." What was removed is written: the record's dataset CLEANED_OF "noise lines during the planetary encounters" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method").
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". What was removed is written: the record's dataset CLEANED_OF "noise lines during the planetary encounters" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method").
 - **Left out:** "during the planetary encounters" as a mission phase of the dataset (notes)
   - **Rule:** What counts as a fact, rule 1: "Only what the record states." That the data include the encounters follows from the sentence (noise lines during them were in the data set) but is not stated.
   - **May matter because:** it says the data include the planetary encounters.
@@ -397,7 +397,7 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 - **Left out:** "NASA/NOAA" as a fact of its own (notes)
   - **Rule:** Writing a classed triple, rule 19: "A qualifier stays in the instance, as written, if it is any other kind" (an organization is not on its list); it stays in the platform's instance, "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)".
 - **Left out:** "Data are temporally weighted to the ninth day, which is reflected in the file name." (notes)
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "the file name" names no particular file (rule 9).
+  - **Rule:** Writing a classed triple, rule 24: "A verb or participle that says only that something was done to the data ("corrected", "calibrated", "detrended", "binned", "mapped", "edited", "convert", "weighted") names no method". "the file name" names no particular file (rule 9).
   - **May matter because:** it says which day of the 16 each value stands for.
   - **Question:** Q7.
 - **Left out:** "VNP43D product suite" and its facts as such (notes: "The VNP43D product suite is provided in a Climate Modeling Grid (CMG)"; "this product suite includes model parameters for the VIIRS Day/Night Band (DNB) as VNP43D37 through VNP43D39")
@@ -583,12 +583,8 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 ## "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (pool position 25, id ed2cea26-ed6c-4138-be69-3d32d4ce4858)
 
-8 items, 5 that may matter.
+7 items, 4 that may matter.
 
-- **Left out:** "(DSWx-S1)" (notes, "Dynamic OPERA Surface Water Extent from Sentinel-1 (DSWx-S1)") as an Identifier
-  - **Rule:** Writing a classed triple, rule 20: "A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written." By the rule's test ("It is an abbreviation only when each of its letters is a letter of those words, in the same order, and its first letter starts the first of them"), D, S, W, x, S and 1 are letters of "Dynamic", "Surface", "Water", "Extent" and "Sentinel-1", in that order, so "DSWx-S1" is the abbreviation of the dataset's name, not a code like "(VNP43D12)" and "(H3ZFCGPH)" (records at pool positions 18 and 24), which fail the test and are Identifiers. The thing the title names is always written as its title (rule 23), and ALSO_KNOWN_AS needs the record's own words (rule 20). Until 2026-11-01 the ground truth had HAS_IDENTIFIER "DSWx-S1" (the double check of batches 4 and 5, finding F25.1).
-  - **May matter because:** "DSWx-S1" is the product's short name, which the record then uses alone ("DSWx-S1 provides"); a search would want it.
-  - **Question:** Q20.
 - **Left out:** "irrespective of cloud conditions and daylight illumination" (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." ("irrespective of" means "not affected by").
   - **May matter because:** all-weather, day-and-night mapping is a reason to choose a radar product.

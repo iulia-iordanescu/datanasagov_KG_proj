@@ -18,7 +18,7 @@ Software          a computer program, e.g. example C-language program
 FileFormat        a way data are encoded in files, e.g. GeoTIFF; zip
                   rule 19: standalone
                   source: ground truth tuning #22, #24, #25
-Document          a written publication, or a set of them, named in words or by a reference key, e.g. NASA developed standards; LAWRENCEETAL2013
+Document          a written publication, or a web page or site, or a set of them, named in words or by a reference key (a web address written as itself is a WebPage), e.g. NASA developed standards; LAWRENCEETAL2013; BARREL at Dartmouth
                   rule 19: standalone
                   source: ground truth tuning #0, #5
 Purpose           an aim something is meant to achieve
