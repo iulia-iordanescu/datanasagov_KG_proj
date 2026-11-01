@@ -34,7 +34,6 @@ id,subject,subject_class,predicate,object,object_class,source_text,all_facts_ext
 -units
 -parameter description
 -parameter ID",1,gemini-2.5-pro
-967275c7-aa2d-4b08-a9db-aff5cf6b7802,Flight Data For Tail 655,Dataset,FROM_PLATFORM,Tail 655,Platform,Tail 655,1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,CatalogEntry,DESCRIBES,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,(record structure),1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_PROCESSING_LEVEL,Level 3,ProcessingLevel,Level 3,1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,Geopotential Height Zonal Fourier Coefficients,Variable,Geopotential Height Zonal Fourier Coefficients,1,gemini-2.5-pro
@@ -43,6 +42,7 @@ id,subject,subject_class,predicate,object,object_class,source_text,all_facts_ext
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,FROM_PLATFORM,Aura,Platform,Aura,1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,ACQUIRED_BY_INSTRUMENT,HIRDLS,Instrument,HIRDLS,1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_DURATION,~3 years,Value,contains the entire mission (~3 years),1,gemini-2.5-pro
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_GRANULE_DURATION,~3 years,Value,Each file contains a zonal object with data for the entire mission,1,claude-opus-5.5
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_SPATIAL_RESOLUTION,1 degree latitude,SpatialResolution,in 1 degree latitude bands,1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_SPATIAL_COVERAGE,from -64 to 80 degrees,SpatialExtent,from -64 to 80 degrees,1,gemini-2.5-pro
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_NUMBER_OF,121 pressure levels,Value,at 121 pressure levels,1,gemini-2.5-pro
@@ -74,7 +74,6 @@ ed2cea26-ed6c-4138-be69-3d32d4ce4858,ed2cea26-ed6c-4138-be69-3d32d4ce4858,Catalo
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,FROM_PLATFORM,Sentinel-1,Platform,from Sentinel-1,1,gemini-2.5-pro
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_VERSION,Version 1,Version,Version 1,1,gemini-2.5-pro
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_PROCESSING_LEVEL,Level-3,ProcessingLevel,Level-3,1,gemini-2.5-pro
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_IDENTIFIER,DSWx-S1,Identifier,Dynamic OPERA Surface Water Extent from Sentinel-1 (DSWx-S1),1,gemini-2.5-pro
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_SPATIAL_COVERAGE,near-global,SpatialExtent,DSWx-S1 provides near-global,1,gemini-2.5-pro
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_MEASUREMENTS_OF,surface water extent over land,PhysicalQuantity,DSWx-S1 provides near-global geographical mapping of surface water extent over land,1,gemini-2.5-pro
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_SPATIAL_REPRESENTATION,geographical mapping,SpatialRepresentation,DSWx-S1 provides near-global geographical mapping,1,claude-opus-5.5

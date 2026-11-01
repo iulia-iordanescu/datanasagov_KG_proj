@@ -370,10 +370,14 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
 - classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
-- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) FROM_PLATFORM "Tail 655" (Platform)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
+- classed triple of the record at pool position 7: "MODIS" (Instrument) ABOARD "Terra" (Platform)
+- classed triple of the record at pool position 18: "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument) ABOARD "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -860,7 +864,6 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
 - classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
-- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) FROM_PLATFORM "Tail 655" (Platform)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
@@ -890,6 +893,12 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moon Mineralogy Mapper (M3)" (Instrument)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
 - classed triple of the record at pool position 24: "HIRDLS profiles" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
+- classed triple of the record at pool position 7: "MODIS" (Instrument) ABOARD "Terra" (Platform)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Plasma Wave Spectrometer (PWS)" (Instrument)
+- classed triple of the record at pool position 18: "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument) ABOARD "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -1058,6 +1067,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
 - record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -1083,6 +1093,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
 - classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) HAS_TIME_SPAN "from November 2008 through August 2009" (Time)
 - classed triple of the record at pool position 25: "Copernicus Sentinel data" (Dataset) HAS_TIME_SPAN "2024-2025" (Time)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_GRANULE_DURATION "~3 years" (Value)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -1539,7 +1550,6 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
 - classed triple of the record at pool position 19: "Robyn Millan" (Person) AFFILIATED_WITH "BARREL team" (Organization)
 - classed triple of the record at pool position 19: "South African National Antarctic Expedition" (Organization) ALSO_KNOWN_AS "SANAE" (Organization)
-- classed triple of the record at pool position 19: "South African National Antarctic Expedition" (Organization) BASED_IN "South African" (Country)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) DEVELOPED_BY_PARTY "OPERA" (Organization)
 - classed triple of the record at pool position 25: "OPERA" (Organization) INFORMED_BY "Satellite Needs Working Group (SNWG)" (Organization)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) PART_OF "U.S. Government" (Organization)
@@ -1547,6 +1557,7 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "addressing observation needs across U.S. civilian federal agencies" (Purpose)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_TARGET "Earth" (CelestialBody)
 - classed triple of the record at pool position 19: "Robyn Millan" (Person) SERVES_AS "BARREL PI" (Role)
+- classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
 - translation table row: entity class Program
 - translation table row: entity class Location
 - translation table row: entity class Organization
@@ -3021,7 +3032,6 @@ Withdrawn on 2026-10-31: settled from sources, so it is no longer asked of the e
 - classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier)
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_IDENTIFIER "VNP43D12" (Identifier)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_IDENTIFIER "H3ZFCGPH" (Identifier)
-- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_IDENTIFIER "DSWx-S1" (Identifier)
 - ground truth schema entry: entity class Identifier
 - ground truth schema entry: predicate HAS_DOI
 - ground truth schema entry: entity class Latency
@@ -3237,7 +3247,6 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) FROM_PLATFORM "Voyager 1" (Platform)
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
-- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) FROM_PLATFORM "Tail 655" (Platform)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
@@ -3263,6 +3272,12 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric trajectories" (PhysicalQuantity)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_MEASUREMENTS_OF "counts" (PhysicalQuantity)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_MEASUREMENTS_OF "surface water extent over land" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "MODIS" (Instrument) ABOARD "Terra" (Platform)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Plasma Wave Spectrometer (PWS)" (Instrument)
+- classed triple of the record at pool position 18: "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument) ABOARD "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -3680,6 +3695,9 @@ Checked on 2026-10-31, for the expert's (b): the standards have one general part
 - classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 24: "mean" (Variable) PART_OF "Geopotential Height Zonal Fourier Coefficients" (Variable)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) PART_OF "U.S. Government" (Organization)
+- classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
 - ground truth schema entry: predicate PART_OF
 - translation table row: predicate PART_OF
 - translation table row: predicate CONTAINS

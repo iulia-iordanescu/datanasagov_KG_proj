@@ -2,6 +2,7 @@ id,subject,subject_class,predicate,object,object_class,source_text,all_facts_ext
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,d5477563-0415-4e65-ab7c-d4bc9ed809e5,CatalogEntry,DESCRIBES,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,(record structure),1,gemini-2.5-pro
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,ACQUIRED_BY_INSTRUMENT,MODIS,Instrument,MODIS,1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,FROM_PLATFORM,Terra,Platform,Terra,1,
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS,Instrument,ABOARD,Terra,Platform,Terra MODIS,1,claude-opus-5.5
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_MEASUREMENTS_OF,Land Surface Temperature,PhysicalQuantity,provides daily per-pixel Land Surface Temperature and Emissivity (LST&E),1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_MEASUREMENTS_OF,Land Surface Emissivity,PhysicalQuantity,provides daily per-pixel Land Surface Temperature and Emissivity (LST&E),1,
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,provides daily per-pixel,1,

@@ -14,17 +14,13 @@ WHAT COUNTS AS A FACT
    level ("L2"). Any other code needs the record's own explanation. The
    record may be one part of a longer record ("part 1 of 2"); state only
    what this part states.
-   Names on an official NASA list: a name the record doesn't explain gets
-   its entity class, and nothing else, when you know that one of these
-   official NASA lists names it, for the record's own mission or platform,
-   as an instance of that entity class: the Global Change Master
-   Directory's (GCMD) Instruments or Platforms keywords, or the Planetary
-   Data System's PDS4 context products. Write the name as the record writes
-   it, never expanded, and add no other fact from what you know: a title
-   "KX12/Halden Lake Ice L3",
-   whose notes never say what KX12 is, where you know KX12 as an instrument
-   of the Halden satellite, gives the record's dataset collected by "KX12"
-   (an instrument), and not what KX12 stands for.
+   Names you recognize: if a record names something without saying what it
+   is, and you know what kind of thing it is, give it that entity class: a
+   title "KX12/Halden Lake Ice L3", whose notes never say what KX12 is,
+   where you know KX12 as an instrument, gives the record's dataset
+   collected by "KX12" (an instrument). Never write out what a short name
+   stands for, and add no other fact from your own knowledge. If you don't
+   know what kind of thing it is, leave it out.
    A fact the record does not state in one passage may be written when the
    record's own statements meet one of these three tests:
    - Replacement: the record says an older version is discontinued or

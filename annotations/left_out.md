@@ -435,13 +435,17 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 ## "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (pool position 19, id 6f63dd10-376e-4d17-9156-f2155637e74d)
 
-35 items, 15 that may matter.
+34 items, 15 that may matter.
 
 - **Left out:** the launch stations and their places (notes, "with launches from two stations located in Antarctica: the British base located at Halley Bay on the Brunt Ice Shelf and the South African SANAE IV base", and "Later campaigns were undertaken in 2015 and 2016 from the Esrange Space Center located in Kiruna, Sweden")
   - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer" (Q8 (c): whether a station or a space center is an Organization or a place).
   - **May matter because:** a search by launch site or region (Antarctica, Sweden) would need them.
   - **Question:** Q8 (c).
   - No clear would-be triple: whether a station is an Organization or a place decides its entity class and its predicates (LAUNCHED_FROM and LOCATED_IN for a place, none of them in the ground truth schema; BASED_IN "British", "South African" and "Sweden" for an Organization), so no row can be written in annotations/pending_triples.csv until Q8 (c) is answered.
+- **Left out:** "South African" (notes, inside the name "South African National Antarctic Expedition") as a Country of its own
+  - **Rule:** Writing a classed triple, rule 11: "A name stays whole: rules 19, 22 and 24 never split or shorten a name". The words are the S and A of SANAE, and the ground truth schema's Country is "a nation": "South African" is an adjective, and the record never writes "South Africa". Rule 19's example takes "U.S." from outside the name ("the U.S. National Aeronautics and Space Administration (NASA)"), and the record at pool position 25 keeps "U.S. Government" whole. Until 2026-11-01 the ground truth had "South African National Antarctic Expedition" BASED_IN "South African" (the double check of batches 4 and 5, finding F19.1).
+  - **May matter because:** it says where the expedition is based, which a search by country would need.
+  - **Question:** Q8 (c), with the launch stations.
 - **Left out:** "4G" (title)
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** my reading, not checked: the balloon payload's code (campaign 4, payload G), which tells this dataset from its siblings and gives its campaign.
@@ -451,8 +455,6 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it is the file format (NASA's Common Data Format, my knowledge).
 - **Left out:** "diagnostic fields" as a thing of its own (notes)
   - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." HAS_VARIABLE "NaI Scintillator Diagnostics" says it (rule 23).
-- **Left out:** "4 s" of "4 s accumulations" as a fact of its own (notes)
-  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." HAS_TEMPORAL_RESOLUTION "4 s" says it.
 - **Left out:** "was a multiple-balloon investigation" (notes)
   - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"
   - **May matter because:** it says the mission used many balloons at once.
@@ -484,9 +486,6 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says the balloons formed a moving array, which is how the mission measured spatial scales.
 - **Left out:** "and other ground and space based instruments" (notes)
   - **Rule:** Writing a classed triple, rule 22: "An item that names no specific thing ("his team") gives no ground truth triple"
-- **Left out:** "A total of eight flights occurred during August 2016." (notes)
-  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The sentence names no campaign; that these are the 2016 campaign's flights follows from the paragraph, but no test of rule 1 allows it.
-  - **May matter because:** it is the 2016 campaign's number of flights.
 - **Left out:** "successively" (notes)
   - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
 - **Left out:** "The website creeated and hosted by A.J. Halford (see Information URL below) reports that: "By the end of the campaigns, there were over 90 researchers coordinating on a daily basis with the BARREL team working on 7 different satellite missions, 1 other balloon mission, and way too many ground based instruments to count."" (notes)
@@ -545,8 +544,11 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 ## "Flight Data For Tail 655" (pool position 22, id 967275c7-aa2d-4b08-a9db-aff5cf6b7802)
 
-4 items, 1 that may matter.
+5 items, 2 that may matter.
 
+- **Left out:** "Tail 655" (title)
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for, its entity class included". The record never says what Tail 655 is, and it is on no list rule 1's *Names on an official NASA list* names: the GCMD Platforms keywords (version 25.1, checked on 2026-11-01) have no entry for it. Until 2026-11-01 the ground truth had FROM_PLATFORM "Tail 655" (Platform), read from the title; the record now names no platform, as the record at pool position 15 names none for "HelioWeb" (the double check of batches 4 and 5, finding F22.1).
+  - **May matter because:** my reading, not checked: an aircraft's tail number, so the aircraft the data were recorded on; a search by aircraft would need it.
 - **Left out:** "individual flight" (notes, "individual flight recorded data"), that each file holds one flight
   - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." No flight is named.
   - **May matter because:** it says how the files are cut.
@@ -581,8 +583,12 @@ The notes are mostly the abstract of the study the table comes from; whether a s
 
 ## "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (pool position 25, id ed2cea26-ed6c-4138-be69-3d32d4ce4858)
 
-7 items, 4 that may matter.
+8 items, 5 that may matter.
 
+- **Left out:** "(DSWx-S1)" (notes, "Dynamic OPERA Surface Water Extent from Sentinel-1 (DSWx-S1)") as an Identifier
+  - **Rule:** Writing a classed triple, rule 20: "A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written." By the rule's test ("It is an abbreviation only when each of its letters is a letter of those words, in the same order, and its first letter starts the first of them"), D, S, W, x, S and 1 are letters of "Dynamic", "Surface", "Water", "Extent" and "Sentinel-1", in that order, so "DSWx-S1" is the abbreviation of the dataset's name, not a code like "(VNP43D12)" and "(H3ZFCGPH)" (records at pool positions 18 and 24), which fail the test and are Identifiers. The thing the title names is always written as its title (rule 23), and ALSO_KNOWN_AS needs the record's own words (rule 20). Until 2026-11-01 the ground truth had HAS_IDENTIFIER "DSWx-S1" (the double check of batches 4 and 5, finding F25.1).
+  - **May matter because:** "DSWx-S1" is the product's short name, which the record then uses alone ("DSWx-S1 provides"); a search would want it.
+  - **Question:** Q20.
 - **Left out:** "irrespective of cloud conditions and daylight illumination" (notes)
   - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." ("irrespective of" means "not affected by").
   - **May matter because:** all-weather, day-and-night mapping is a reason to choose a radar product.
