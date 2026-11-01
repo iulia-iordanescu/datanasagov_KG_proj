@@ -6,9 +6,10 @@ Is one [recipe](../docs/terminology.md#8-the-pipeline) better than another? To f
 py helpers/compare_runs.py                                      the evaluations kept so far, with each one's run id
 py helpers/compare_runs.py <run id A> <run id B> [<run id C> ...]   compare them; A is the baseline
 py helpers/compare_runs.py --across_schemas true <run id A> <run id B> ...   the same, for runs translated differently
+py helpers/compare_runs.py --baseline <run id> ... --changed <run id> ...   did the change help? (the decision rule)
 ```
 
-Free: no model calls. It writes a report, `outputs/reports/compare_runs_<date>_<time>.md`, and prints where it is.
+Free: no model calls. It writes a report, `outputs/reports/compare_runs_<date>_<time>.md` (`compare_runs_decision_<date>_<time>.md` for the decision rule), and prints where it is.
 
 ## Making two recipes to compare
 
@@ -29,7 +30,51 @@ One run of a recipe isn't a baseline: the model can answer differently on anothe
 3. `py 060_extract/run.py --repeat 3`, then `py 070_evaluate/run.py`; note its run id.
 4. `py helpers/compare_runs.py <id 1> <id 2> <id 3>`.
 
-Evaluate each repeat before the next, since 070 reads 060's latest output, and keep 070's own `repeat` at 1, so the three evaluations use the same translation proposals. The report's *Spread across the runs* then gives each number's width across the repeats: a later change is a real improvement only where it moves a number by more than that width, and its comparison with one repeat should be read against it. A vote across repeats (keeping a triple most repeats extracted) isn't built yet (`docs/improvements.md`).
+Evaluate each repeat before the next, since 070 reads 060's latest output, and keep 070's own `repeat` at 1, so the three evaluations use the same translation proposals. The report's *Spread across the runs* then gives each number's width across the repeats, the model's own variation on these records. Whether a later change helped is decided by the rule fixed before the runs, on these repeats and the change's (*Did a change help?*, below), not by that width. A vote across repeats (keeping a triple most repeats extracted) isn't built yet (`docs/improvements.md`).
+
+## Did a change help?
+
+Decided on 2026-10-31 and 2026-11-01, before any run it is applied to (`docs/improvements.md`, *The decision rule for "did a change help"*). Run the baseline's repeats and the changed recipe's repeats on the same finished tuning records (each as in *Repeats of one recipe*, above), then:
+
+```
+py helpers/compare_runs.py --baseline <070 run id of each baseline repeat> --changed <070 run id of each repeat of the change>
+```
+
+*Suppose* the baseline's 3 repeats have the 070 run ids `2026-11-01_1010`, `2026-11-01_1105` and `2026-11-01_1150`, and the change's 3 repeats `2026-11-02_0930`, `2026-11-02_1015` and `2026-11-02_1100`. *Then:* `py helpers/compare_runs.py --baseline 2026-11-01_1010 2026-11-01_1105 2026-11-01_1150 --changed 2026-11-02_0930 2026-11-02_1015 2026-11-02_1100`. It prints the verdict and where the report is.
+
+**The rule** (the report prints the same, from `RULE` in `helpers/compare_runs.py`):
+
+- **The deciding number:** partial F1, chosen before the runs; every other number is shown, not tested.
+- **Formula:** for each record *i* and each recipe, the record's counts are averaged over that recipe's runs: *P*(*i*) = 2 × its exact and partial pairs; *Q*(*i*) = its occurrences, less the untranslatable ones and those matching a fact that waits on an expert, + its ground truth triples. A recipe's partial F1 = Σ *P*(*i*) ÷ Σ *Q*(*i*) over the *n* records, and *D* = the changed recipe's partial F1 − the baseline's.
+- **The test:** an exact paired permutation (sign-flip) test over records. Each of the 2^*n* ways of swapping the two recipes' (*P*(*i*), *Q*(*i*)) on some of the records gives a *D*\*; *p* = (the number of them with |*D*\*| ≥ |*D*|) ÷ 2^*n*, two-sided. Above 20 records, 100,000 random swaps from a fixed seed instead, and *p* = (that number + 1) ÷ 100,001.
+- **The verdict:** *helped* when *D* > 0 and *p* ≤ 0.05; *worse* when *D* < 0 and *p* ≤ 0.05; *can't tell apart* otherwise.
+- **The smallest p:** swapping every record gives −*D*, so *p* is never below 2 ÷ 2^*n* = 1 ÷ 2^(*n* − 1); with 5 records or fewer that is above 0.05, so the verdict can only be *can't tell apart*.
+
+**How to read *p*.** If the change made no difference on any record, each record's two results (the baseline's and the change's) would be equally likely either way round, so each of the 2^*n* swaps would be as likely as the one observed. *p* is then the share of them that give a difference at least as large as *D*, in either direction: a small *p* means a difference this large rarely comes from which recipe's label each record's results happened to carry. The model's own variation is inside each record's counts, and the record is what is swapped, so the test needs no assumption about how the numbers are distributed and is exact for any number of records (a property of permutation tests; Dror et al., below, advise a randomization test for a small test set). It says whether the two recipes differ on these records, not by how much on the whole catalog.
+
+**The smallest p, by the number of records.** Swapping every record turns *D* into −*D*, so at least 2 of the 2^*n* swaps always reach |*D*|, and *p* ≥ 1 ÷ 2^(*n* − 1), the case where every record moved the same way and none could be swapped to give a larger difference:
+
+| Records *n* | 1 | 2 | 3 | 4 | 5 | 6 | 10 | 12 | 20 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Smallest *p* | 1 | 0.5 | 0.25 | 0.125 | 0.0625 | 0.03125 | 0.00195 | 0.00049 | 0.0000019 |
+
+So with 5 records or fewer the verdict is always *can't tell apart*, and the report says so. A record with the same counts in both recipes can't move *D*: with *m* records that differ, the smallest reachable *p* is 1 ÷ 2^(*m* − 1), and the report gives it when *m* < *n*. A record with nothing to divide by in either recipe (no occurrence counted and no ground truth triple) is left out of the test and named.
+
+*Suppose* 6 records, and the change raised every record's partial F1, with the same counted occurrences and ground truth triples in both recipes. *Then* only the observed assignment and the one swapping all 6 reach |*D*|: *p* = 2 ÷ 64 = 0.03125, and the verdict is *helped*. *Suppose* the same on 5 records. *Then* *p* = 2 ÷ 32 = 0.0625: *can't tell apart*, though every record went up.
+
+**Repeats of different numbers.** Each record's counts are averaged over its recipe's runs, so a baseline of 5 repeats and a change of 3 compare their means (in the code, each record's sums times the other recipe's number of runs: whole numbers, compared exactly, `paired_parts`). Up to 20 records every swap is counted (2^20 = 1,048,576, a few seconds); above, 100,000 random swaps from the seed `SEED`, and *p* = (the swaps reaching |*D*| + 1) ÷ 100,001, so a sampled *p* is never 0 (Phipson & Smyth, below); the report says which.
+
+**What it checks first, and stops on.** Every run of both recipes must have been evaluated under the same version of what 070 counts (as above), translated the same way (`--across_schemas true` can't go with the rule), and on the same tuning records: a record not evaluated in every run stops it, naming the records, since the rule needs one fair sample in every run. A record whose ground truth, facts waiting on an expert or translation changed between the runs is left out, and the compared set ends before it, as in every comparison (*The records compared*, below). A run given twice, or in both recipes, is refused. A recipe whose runs differ in more than the repeat is said in the report, under *The runs*.
+
+**The report:** the rule; the answer (the verdict, both recipes' partial F1, *D*, *p* and how it was computed, the number of records and the smallest *p* for them); how many records went up, down or stayed the same; each record's partial F1 in both recipes; every other number 070 gives a margin of error, pooled the same way, shown but not tested; the runs; what differs between them (and what the recipe doesn't record, as above); the records compared; and what it can't see:
+
+- **Only these records:** *p* says whether the two recipes differ on these records by more than the model's own variation across each recipe's runs and the records' differences explain; it is not a range for the whole catalog, and it doesn't see mistakes in the ground truth.
+- **One change, one number, named before the runs:** the rule's 1-in-20 chance of a wrong *helped* or *worse* holds only then; deciding after looking at several numbers, or trying several changes and keeping the best, raises it.
+- **Tuning records only:** compare and choose on the tuning part; evaluate the recipe you report once on the held-out part, at the end (`py 070_evaluate/run.py --evaluate_held_out true`).
+
+**Why only one number.** With about 30 numbers per comparison, some differ by chance (*What it can't see*, below, *Many comparisons*), so the decision rests on one number named before the runs, partial F1 ([F1](../070_evaluate/metrics/f1.md)), and the others are shown only (my choice, decided on 2026-10-31).
+
+**Sources.** Dror, Baumer, Shlomov & Reichart, "The Hitchhiker's Guide to Testing Statistical Significance in Natural Language Processing", ACL 2018, pp. 1383–1392 ([paper](https://aclanthology.org/P18-1128/)): for a statistic whose distribution is unknown (F1) on a small test set, "Use bootstrap or randomization test"; "The (two-sided) p-value of the test is calculated as the proportion of these permutations where the absolute difference was greater than or equal to the absolute value of the difference". Miller, "Adding Error Bars to Evals: A Statistical Approach to Language Model Evaluations", 2024 ([arXiv:2411.00640](https://arxiv.org/abs/2411.00640)), sections 2.2, 3.1 and 4.2: the record is the unit (the cluster), repeats are averaged within it, and two versions are compared paired, on the same records ("We therefore recommend using the paired version of the standard error estimate wherever practicable"). Phipson & Smyth, "Permutation P-values Should Never Be Zero: Calculating Exact P-values When Permutations Are Randomly Drawn", *Statistical Applications in Genetics and Molecular Biology* 9(1), 2010 ([doi:10.2202/1544-6115.1585](https://doi.org/10.2202/1544-6115.1585)), for the + 1 of a sampled *p*.
 
 ## What the report says
 

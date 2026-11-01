@@ -8,8 +8,12 @@ the first run (the baseline), with a 95% range from a paired bootstrap
 Evaluation", EMNLP, https://aclanthology.org/W04-3250/) with Hesterberg's
 expanded percentile quantiles, and each number's spread across the runs (for
 repeats of one recipe, setting `repeat`: the model's own variation, and the
-number pooled over the repeats with its clustered Wilson range). Free: no
-model calls. Writes a report and prints where it is.
+number pooled over the repeats with its clustered Wilson range). Given the
+baseline's repeats and a changed recipe's repeats, it applies the decision
+rule fixed before the runs instead: partial F1 alone decides, by an exact
+paired permutation (sign-flip) test over records (Dror et al. 2018), and the
+verdict is helped, worse or can't tell apart. Free: no model calls. Writes a
+report and prints where it is.
 
     py helpers/compare_runs.py                          list the evaluations kept so far
     py helpers/compare_runs.py <run id> <run id> ...    compare them; the first is the baseline
@@ -17,6 +21,8 @@ model calls. Writes a report and prints where it is.
                                                         the same, for runs whose current schemas differ
                                                         (the ground truth schema, by identity, against an
                                                         induced schema, through the translation table)
+    py helpers/compare_runs.py --baseline <run id> ... --changed <run id> ...
+                                                        did the change help? (the decision rule)
 
 Details: helpers/compare_runs.md
 """
@@ -27,6 +33,7 @@ import json
 import math
 import random
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -418,7 +425,9 @@ def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: 
     lines += ["", "## Spread across the runs", "",
               ("These runs are repeats of one recipe: only the repeat differs (060's setting `repeat`), so each was "
                "answered by the model anew, and this spread is the model's own variation on these records, the noise "
-               "floor. A later change shows a real difference only where it moves a number by more than this width."
+               "floor. Whether a later change helped is decided by the rule fixed before the runs, on these repeats "
+               "and the change's (`--baseline … --changed …`, helpers/compare_runs.md, *Did a change help?*), not by "
+               "this width."
                if only_repeats(diffs) else
                "Each number's lowest, highest and mean value across the runs, and the width (highest − lowest). "
                "When the runs are repeats of one recipe (060's setting `repeat`), the width is the model's own "
@@ -477,6 +486,291 @@ def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: 
     return "\n".join(lines) + "\n"
 
 
+# ------------------------------ did a change help? --------------------------
+
+#: The decision rule fixed before the runs (decided on 2026-10-31 and 2026-11-01: docs/improvements.md, *The decision
+#: rule for "did a change help"*): one number decides and the others are shown only, so thirty numbers don't give
+#: thirty chances of a lucky "higher" (helpers/compare_runs.md, *Did a change help?*). Its path in stats.numbers().
+DECIDING = ("partial", "f1")
+DECIDING_LABEL = "partial F1"
+#: The threshold of p, as a fraction, so p is compared with it without rounding.
+ALPHA = Fraction(1, 20)
+#: Up to this many records every assignment is enumerated (2^20 = 1,048,576, a few seconds); above it, FLIPS random
+#: assignments from SEED.
+EXACT_UP_TO = 20
+FLIPS = 100000
+DECISIONS = ("helped", "worse", "can't tell apart")
+#: What the decision can't see: one text, the report's and helpers/compare_runs.md's (a test keeps them equal).
+DECISION_LIMITS = [
+    "- **Only these records:** *p* says whether the two recipes differ on these records by more than the model's own "
+    "variation across each recipe's runs and the records' differences explain; it is not a range for the whole "
+    "catalog, and it doesn't see mistakes in the ground truth.",
+    "- **One change, one number, named before the runs:** the rule's 1-in-20 chance of a wrong *helped* or *worse* "
+    "holds only then; deciding after looking at several numbers, or trying several changes and keeping the best, "
+    "raises it.",
+    LIMITS[2],
+]
+#: The rule as the report prints it: one text, the report's and helpers/compare_runs.md's (a test keeps them equal).
+RULE = [
+    "- **The deciding number:** partial F1, chosen before the runs; every other number is shown, not tested.",
+    "- **Formula:** for each record *i* and each recipe, the record's counts are averaged over that recipe's runs: "
+    "*P*(*i*) = 2 × its exact and partial pairs; *Q*(*i*) = its occurrences, less the untranslatable ones and those "
+    "matching a fact that waits on an expert, + its ground truth triples. A recipe's partial F1 = Σ *P*(*i*) ÷ Σ *Q*(*i*) over the *n* records, and *D* = the changed recipe's "
+    "partial F1 − the baseline's.",
+    "- **The test:** an exact paired permutation (sign-flip) test over records. Each of the 2^*n* ways of swapping the "
+    "two recipes' (*P*(*i*), *Q*(*i*)) on some of the records gives a *D*\\*; *p* = (the number of them with "
+    "|*D*\\*| ≥ |*D*|) ÷ 2^*n*, two-sided. Above 20 records, 100,000 random swaps from a fixed seed instead, and *p* = "
+    "(that number + 1) ÷ 100,001.",
+    "- **The verdict:** *helped* when *D* > 0 and *p* ≤ 0.05; *worse* when *D* < 0 and *p* ≤ 0.05; *can't tell apart* "
+    "otherwise.",
+    "- **The smallest p:** swapping every record gives −*D*, so *p* is never below 2 ÷ 2^*n* = 1 ÷ 2^(*n* − 1); with 5 "
+    "records or fewer that is above 0.05, so the verdict can only be *can't tell apart*.",
+]
+
+
+def group_parts(group: list, ids: list, path: tuple = DECIDING) -> list:
+    """[(numerator, denominator)] of one number (stats.RATIO_PARTS) for each record, summed over the group's runs."""
+    per_run = [stats.record_parts(as_records(run, ids), path) for run in group]
+    return [(sum(p[i][0] for p in per_run), sum(p[i][1] for p in per_run)) for i in range(len(ids))]
+
+
+def paired_parts(baseline: list, changed: list, ids: list, path: tuple = DECIDING) -> tuple:
+    """(baseline's parts, changed's parts) per record: each record's sums over its group's runs, multiplied by the
+    OTHER group's number of runs. Both are then the means over the runs times one constant (k_baseline × k_changed),
+    and integers, so swapping a record between the groups swaps like with like even when the groups have different
+    numbers of runs, and every comparison in sign_flip is exact."""
+    a, b = group_parts(baseline, ids, path), group_parts(changed, ids, path)
+    ka, kb = len(baseline), len(changed)
+    return [(x * kb, y * kb) for x, y in a], [(x * ka, y * ka) for x, y in b]
+
+
+def _pooled(parts: list):
+    """Σ numerators ÷ Σ denominators, as a Fraction, or None with nothing to divide by."""
+    num, den = sum(x for x, _ in parts), sum(y for _, y in parts)
+    return Fraction(num, den) if den else None
+
+
+def sign_flip(base: list, changed: list, flips: int | None = None, seed: int = SEED) -> dict:
+    """The paired permutation (sign-flip) test over records of D = pooled(changed) − pooled(base), each argument
+    [(numerator, denominator)] per record (paired_parts). Each assignment swaps the two groups' parts on some records
+    and recomputes D*; p = #{|D*| ≥ |D|} ÷ 2^n, two-sided (Dror et al. 2018, on the permutation test: "the
+    proportion of these permutations where the absolute difference was greater than or equal to the absolute value
+    of the difference"), every assignment enumerated by Gray code (one record swapped per step) for n ≤ EXACT_UP_TO;
+    above, `flips` random
+    assignments (FLIPS) from the seed, and p = (# + 1) ÷ (flips + 1), so a sampled p is never 0 (Phipson & Smyth
+    2010). Records with nothing to divide by in either group are left out (swapping them changes nothing). An
+    assignment under which a group has nothing to divide by counts as at least as far as D (the cautious side).
+    Returns {"n", "nothing_to_divide", "moving" (records whose parts differ between the groups), "base", "changed",
+    "diff" (Fractions, or None), "sign" (−1, 0, 1), "p" (a Fraction, or None when there is no test), "exact",
+    "assignments", "as_far", "smallest_p" (1 ÷ 2^(n − 1)), "smallest_reachable" (1 ÷ 2^(moving − 1))}."""
+    keep = [i for i in range(len(base)) if base[i][1] or changed[i][1]]
+    a, b = [base[i] for i in keep], [changed[i] for i in keep]
+    n = len(a)
+    moving = sum(1 for x, y in zip(a, b) if x != y)
+    out = {"n": n, "nothing_to_divide": len(base) - n, "moving": moving, "base": _pooled(a), "changed": _pooled(b),
+           "diff": None, "sign": 0, "p": None, "exact": n <= EXACT_UP_TO, "assignments": 0, "as_far": 0,
+           "smallest_p": Fraction(1, 2 ** (n - 1)) if n else None,
+           "smallest_reachable": Fraction(1, 2 ** (moving - 1)) if moving else Fraction(1)}
+    na, da = sum(x for x, _ in a), sum(y for _, y in a)
+    nb, db = sum(x for x, _ in b), sum(y for _, y in b)
+    if not n or not da or not db:
+        return out
+    x0, y0 = nb * da - na * db, da * db                      # D = x0 ÷ y0, exactly
+    out.update(diff=Fraction(x0, y0), sign=(x0 > 0) - (x0 < 0))
+    far = abs(x0)
+
+    def as_far(na, da, nb, db) -> bool:                      # |D*| ≥ |D|, by cross-multiplying integers
+        return not da or not db or abs(nb * da - na * db) * y0 >= far * da * db
+
+    if n <= EXACT_UP_TO:
+        dn = [y[0] - x[0] for x, y in zip(a, b)]             # what swapping record j moves from the change to the base
+        dd = [y[1] - x[1] for x, y in zip(a, b)]
+        swapped = [False] * n
+        count = int(as_far(na, da, nb, db))                  # the assignment as observed
+        for g in range(1, 2 ** n):
+            j = (g & -g).bit_length() - 1                    # Gray code: the one record whose swap changes
+            s = -1 if swapped[j] else 1
+            swapped[j] = not swapped[j]
+            na, nb, da, db = na + s * dn[j], nb - s * dn[j], da + s * dd[j], db - s * dd[j]
+            count += as_far(na, da, nb, db)
+        out.update(p=Fraction(count, 2 ** n), assignments=2 ** n, as_far=count)
+        return out
+    flips = FLIPS if flips is None else flips
+    rng = random.Random(seed)
+    count = 0
+    for _ in range(flips):
+        swap = [rng.random() < 0.5 for _ in range(n)]
+        pa = [y if s else x for s, x, y in zip(swap, a, b)]
+        pb = [x if s else y for s, x, y in zip(swap, a, b)]
+        count += as_far(sum(x for x, _ in pa), sum(y for _, y in pa), sum(x for x, _ in pb), sum(y for _, y in pb))
+    out.update(p=Fraction(count + 1, flips + 1), assignments=flips, as_far=count)
+    return out
+
+
+def decide(test: dict) -> str:
+    """The verdict of the decision rule (DECISIONS): helped when D > 0 and p ≤ ALPHA, worse when D < 0 and p ≤ ALPHA,
+    can't tell apart otherwise (no test at all included)."""
+    helped, worse, apart = DECISIONS
+    if test["p"] is None or test["p"] > ALPHA or not test["sign"]:
+        return apart
+    return helped if test["sign"] > 0 else worse
+
+
+def fewest_records() -> int:
+    """The fewest records with which the test can reach p ≤ ALPHA at all: the smallest n with 1 ÷ 2^(n − 1) ≤ ALPHA."""
+    n = 1
+    while Fraction(1, 2 ** (n - 1)) > ALPHA:
+        n += 1
+    return n
+
+
+def per_record_values(base: list, changed: list, ids: list) -> list:
+    """[(id, baseline's value, changed's value, difference)] per record, each a Fraction, or None with nothing to
+    divide by."""
+    rows = []
+    for i, x, y in zip(ids, base, changed):
+        va = Fraction(x[0], x[1]) if x[1] else None
+        vb = Fraction(y[0], y[1]) if y[1] else None
+        rows.append((i, va, vb, None if va is None or vb is None else vb - va))
+    return rows
+
+
+def _f(v):
+    """A Fraction as a float, for showing; None stays None."""
+    return None if v is None else float(v)
+
+
+def p_text(v) -> str:
+    return "–" if v is None else f"{float(v):.4g}"
+
+
+def decision_report(baseline: list, changed: list, ids: list, left: dict, notes: list = ()) -> str:
+    """The report of the decision rule: the verdict on partial F1 first, then the records one by one, the other numbers
+    (shown, not tested), the runs, what differs, the records compared and what this can't see."""
+    base, other = paired_parts(baseline, changed, ids)
+    test = sign_flip(base, other)
+    n, k_a, k_b = test["n"], len(baseline), len(changed)
+    lines = ["# Did the change help?", "",
+             f"Made {dt.datetime.now():%Y-%m-%d %H:%M} by `py helpers/compare_runs.py --baseline … --changed …` "
+             f"(helpers/compare_runs.md, *Did a change help?*): the baseline's {k_a} run(s) against the changed "
+             f"recipe's {k_b} run(s), on the same {len(ids)} tuning records. Held-out records are never compared.", "",
+             "## The rule, fixed before the runs", ""] + RULE + ["", "## The answer", ""]
+    if test["diff"] is None:
+        lines.append(f"**Verdict: {decide(test)}.** No test: {DECIDING_LABEL} is undefined for a recipe on these "
+                     f"records (no occurrence counted and no ground truth triple).")
+    else:
+        how = (f"exact, from all {test['assignments']:,} assignments" if test["exact"] else
+               f"from {test['assignments']:,} random assignments with seed {SEED}, since the {n} records have more "
+               f"than 2^{EXACT_UP_TO} assignments; *p* = ({test['as_far']:,} + 1) ÷ ({test['assignments']:,} + 1), "
+               f"so it is never below {p_text(Fraction(1, test['assignments'] + 1))}")
+        lines += [f"**Verdict: {decide(test)}.** {DECIDING_LABEL}: baseline {pct(_f(test['base']))}, changed "
+                  f"{pct(_f(test['changed']))}, *D* = {points(_f(test['diff']))}; *p* = {p_text(test['p'])} ({how}), "
+                  f"on {n} records.", ""]
+        smallest = (f"With {n} records, the smallest *p* this test can give is 1 ÷ 2^{n - 1} = "
+                    f"{p_text(test['smallest_p'])} (two-sided)")
+        if test["smallest_p"] > ALPHA:
+            smallest += (f", above {float(ALPHA)}: on so few records no verdict but *can't tell apart* is possible, "
+                         f"whatever the numbers; a verdict needs at least {fewest_records()} records.")
+        else:
+            smallest += "."
+        if test["moving"] < n:
+            smallest += (f" Of them, {n - test['moving']} have the same counts in both recipes, so they can't move "
+                         f"*D*, and the smallest *p* reachable here is {p_text(test['smallest_reachable'])}.")
+        lines.append(smallest)
+    if test["nothing_to_divide"]:
+        lines.append(f"Left out of the test: {test['nothing_to_divide']} record(s) with nothing to divide by in "
+                     f"either recipe (no occurrence counted and no ground truth triple): swapping them changes nothing.")
+    rows = per_record_values(base, other, ids)
+    up = sum(1 for *_, d in rows if d is not None and d > 0)
+    down = sum(1 for *_, d in rows if d is not None and d < 0)
+    same = sum(1 for *_, d in rows if d == 0)
+    undefined = len(rows) - up - down - same
+    lines += ["", f"Records whose {DECIDING_LABEL} went up: {up}; down: {down}; stayed the same: {same}"
+              + (f"; undefined in a recipe: {undefined}" if undefined else "") + ".", "",
+              f"## The records, one by one ({DECIDING_LABEL})", "",
+              "Each record's own value, from its counts averaged over each recipe's runs.", "",
+              "| Record | Baseline | Changed | Changed − baseline |", "|---|---:|---:|---:|"]
+    lines += [f"| `{i}` | {pct(_f(va))} | {pct(_f(vb))} | {points(_f(d))} |" for i, va, vb, d in rows]
+    lines += ["", "## The other numbers (shown, not tested)", "",
+              f"Each pooled over the records and over each recipe's runs, as {DECIDING_LABEL} is. Not part of the "
+              f"verdict: among this many numbers, some differ by chance.", "",
+              "| Number | Baseline | Changed | Changed − baseline |", "|---|---:|---:|---:|"]
+    for path, label in stats.WITH_MARGIN:
+        if path == DECIDING:
+            continue
+        va, vb = (_pooled(p) for p in paired_parts(baseline, changed, ids, path))
+        lines.append(f"| {label} | {pct(_f(va))} | {pct(_f(vb))} | "
+                     f"{points(None if va is None or vb is None else float(vb - va))} |")
+    lines += ["", "## The runs", "", "| Recipe | 070's run id | Tuning records it evaluated | Translation |",
+              "|---|---|---:|---|"]
+    lines += [f"| {g} | `{r['run_id']}` | {len(r['records'])} | {translation_of(r)} |"
+              for g, group in (("baseline", baseline), ("changed", changed)) for r in group]
+    for g, group in (("baseline", baseline), ("changed", changed)):
+        if len(group) > 1 and not only_repeats(differences(group)):
+            lines += ["", f"**The {g}'s runs differ in more than the repeat** (060's setting `repeat`): they aren't "
+                          f"repeats of one recipe, so a difference may come from that too (*What differs between the "
+                          f"runs*)."]
+    names = [f"baseline {i + 1}" for i in range(k_a)] + [f"changed {i + 1}" for i in range(k_b)]
+    diffs = differences(baseline + changed)
+    lines += ["", "## What differs between the runs", "",
+              "Every part of the runs' recipes that isn't the same in every run, the baseline's runs first. A "
+              "difference in the numbers comes from one of these, or from what the recipe doesn't record:", ""]
+    lines += UNRECORDED + [""]
+    if diffs:
+        lines += ["| Part of the recipe | " + " | ".join(names) + " |", "|---|" + "---|" * len(names)]
+        lines += [f"| {k} | " + " | ".join(f"`{v}`" for v in vals) + " |" for k, vals in diffs]
+    else:
+        lines.append("Nothing recorded differs.")
+    lines += ["", "## The records compared", "",
+              f"{len(ids)} tuning records, evaluated in every run, with the same ground truth, the same facts waiting "
+              f"on an expert and the same translation of their classed triples' shapes in every run, and still the "
+              f"first records of the pool (a fair sample: the set ends before the first record left out)."]
+    for why, which in left.items():
+        lines.append(f"Left out, {why}: {len(which)} ({', '.join(f'`{i}`' for i in which[:20])}"
+                     f"{', …' if len(which) > 20 else ''}).")
+    for note in notes:
+        lines.append(f"Not checked: {note}")
+    lines += ["", "## What this can't see", ""] + DECISION_LIMITS
+    return "\n".join(lines) + "\n"
+
+
+def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
+    """--baseline … --changed …: check the runs, apply the decision rule, write its report."""
+    if across:
+        sys.exit("The decision rule compares runs translated the same way, so `--across_schemas true` can't go with "
+                 "`--baseline` and `--changed`. To compare across schemas, give the runs without them: "
+                 "`py helpers/compare_runs.py --across_schemas true <run id> <run id> ...`.")
+    given = baseline_ids + changed_ids
+    twice = sorted({r for r in given if given.count(r) > 1})
+    if twice:
+        sys.exit(f"A run is given more than once ({', '.join(twice)}), in one recipe or in both, and a run can't be "
+                 f"both the baseline and the change. Give each run once: `py helpers/compare_runs.py` lists them.")
+    baseline, changed = [load(r) for r in baseline_ids], [load(r) for r in changed_ids]
+    runs = baseline + changed
+    problem = evaluation_versions_differ(runs) or translations_mixed(runs, False)
+    if problem:
+        sys.exit(problem)
+    ids, left, notes = common_records(runs)
+    if left.get("not evaluated in every run"):
+        missing = left["not evaluated in every run"]
+        sys.exit(f"These runs didn't all evaluate the same tuning records ({', '.join(missing[:10])}"
+                 f"{', …' if len(missing) > 10 else ''} not in every run), and the decision rule needs the same "
+                 f"records, one fair sample, in every run of both recipes. Run each recipe on the same finished "
+                 f"records (`py 060_extract/run.py`, then `py 070_evaluate/run.py`), or compare the runs without the "
+                 f"rule: `py helpers/compare_runs.py <run id> <run id> ...`.")
+    if not ids:
+        sys.exit("No tuning record was evaluated in every one of these runs with the same ground truth, the same facts "
+                 "waiting on an expert and the same translation, so there is nothing to compare."
+                 + "".join(f"\nLeft out, {why}: {len(which)} ({', '.join(which[:10])})." for why, which in left.items()))
+    path = REPORTS_DIR / f"compare_runs_decision_{dt.datetime.now():%Y-%m-%d_%H%M%S}.md"
+    text = decision_report(baseline, changed, ids, left, notes)
+    write_text(path, text)
+    verdict_line = next(line for line in text.splitlines() if line.startswith("**Verdict:"))
+    print(f"{verdict_line.replace('**', '').replace('*', '')}\nReport: {repo_path(path)}"
+          + "".join(f"\n  left out, {why}: {len(which)}" for why, which in left.items()))
+    return 0
+
+
 def main() -> int:
     console.setup()                                   # what the console can't show is replaced, never a crash
     ap = argparse.ArgumentParser(prog="py helpers/compare_runs.py", description=__doc__.split("\n\n")[1])
@@ -484,8 +778,18 @@ def main() -> int:
     ap.add_argument("--across_schemas", choices=("true", "false"), default="false",
                     help="true: compare runs translated differently (the ground truth schema, by identity, against "
                          "another schema), labelled as a comparison across schemas")
+    ap.add_argument("--baseline", nargs="+", metavar="RUN_ID",
+                    help="the baseline's runs (its repeats), with --changed: apply the decision rule")
+    ap.add_argument("--changed", nargs="+", metavar="RUN_ID",
+                    help="the changed recipe's runs (its repeats), with --baseline: apply the decision rule")
     args = ap.parse_args()
     across = args.across_schemas == "true"
+    if args.baseline or args.changed:
+        if not (args.baseline and args.changed) or args.runs:
+            sys.exit("To decide whether a change helped, give the baseline's runs and the changed recipe's runs, and "
+                     "no others: `py helpers/compare_runs.py --baseline <run id> ... --changed <run id> ...` "
+                     "(`py helpers/compare_runs.py` lists the run ids).")
+        return decide_groups(args.baseline, args.changed, across)
     if not args.runs:
         kept = available()
         if not kept:

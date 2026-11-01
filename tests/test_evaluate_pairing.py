@@ -1349,6 +1349,197 @@ class EvaluationVersions(unittest.TestCase):
         self.assertEqual(pairing.EVALUATION_VERSION, 3)
 
 
+class DecisionRule(unittest.TestCase):
+    """py helpers/compare_runs.py --baseline … --changed …: the decision rule fixed before the runs. Partial F1 alone
+    decides, by the exact paired permutation (sign-flip) test over records; each p below is counted by hand from the
+    2^n assignments (a record's swap turns its difference δ into −δ when every denominator is the same)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        from support import ROOT
+        spec = importlib.util.spec_from_file_location("compare_runs", ROOT / "helpers" / "compare_runs.py")
+        cls.cr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.cr)
+
+    @staticmethod
+    def parts(deltas, base=10, den=40):
+        """Equal denominators: the baseline has `base` of `den` on every record, the change base + δ."""
+        return [(base, den) for _ in deltas], [(base + d, den) for d in deltas]
+
+    def p(self, deltas):
+        return self.cr.sign_flip(*self.parts(deltas))
+
+    def test_all_records_the_same_way(self):
+        """n = 1 to 6 records all moving up: only the observed assignment and the one swapping every record reach |D|,
+        so p = 2 ÷ 2^n = 1 ÷ 2^(n − 1): 1, 1/2, 1/4, 1/8, 1/16, then 1/32, the first at or below 0.05."""
+        from fractions import Fraction
+        cr = self.cr
+        for n in range(1, 7):
+            test = self.p([1] * n)
+            self.assertEqual((test["p"], test["assignments"], test["as_far"]), (Fraction(1, 2 ** (n - 1)), 2 ** n, 2))
+            self.assertEqual(test["smallest_p"], Fraction(1, 2 ** (n - 1)))
+            self.assertEqual(cr.decide(test), "helped" if n == 6 else "can't tell apart")
+            down = self.p([-1] * n)
+            self.assertEqual(down["p"], test["p"])
+            self.assertEqual(cr.decide(down), "worse" if n == 6 else "can't tell apart")
+        self.assertEqual(cr.fewest_records(), 6)
+
+    def test_mixed_records_by_hand(self):
+        """Hand-counted p for records moving by different amounts, or different ways."""
+        from fractions import Fraction
+        cr = self.cr
+        # n = 3, δ = (3, 1, 1): the signed sums are ±5, ±3, ±3, ±1; |sum| ≥ 5 only for +++ and −−−: 2 of 8
+        self.assertEqual(self.p([3, 1, 1])["p"], Fraction(1, 4))
+        # n = 3, δ = (1, 1, −1): every signed sum is ±1 or ±3, so all 8 reach |1|
+        self.assertEqual(self.p([1, 1, -1])["p"], 1)
+        # n = 4, δ = (2, 1, 1, 1): |sum| ≥ 5 only all + or all −: 2 of 16
+        self.assertEqual(self.p([2, 1, 1, 1])["p"], Fraction(1, 8))
+        # n = 5, δ = (3, 1, 1, 1, −1): with the 3 kept, the four ±1 terms must sum to ≥ 2 (5 of 16 ways); swapped,
+        # to ≤ −2 (5 more): 10 of 32
+        self.assertEqual(self.p([3, 1, 1, 1, -1])["p"], Fraction(5, 16))
+        # n = 6, δ = (1, 1, 1, 1, 1, −1): D = 4 of 6; six ±1 terms sum to ±6 in 2 ways and ±4 in 12: 14 of 64
+        test = self.p([1, 1, 1, 1, 1, -1])
+        self.assertEqual((test["p"], cr.decide(test)), (Fraction(7, 32), "can't tell apart"))
+        # n = 2, different denominators (the pooled statistic, not a sum of per-record differences): baseline
+        # (1 of 4, 2 of 10), change (3 of 6, 2 of 8); D = 5/14 − 3/14 = 1/7; swapping record 1 gives 3/12 − 5/16 =
+        # −1/16, record 2, +1/16, both, −1/7: 2 of 4 reach 1/7
+        test = cr.sign_flip([(1, 4), (2, 10)], [(3, 6), (2, 8)])
+        self.assertEqual((test["diff"], test["p"]), (Fraction(1, 7), Fraction(1, 2)))
+
+    def test_ties_and_zero_differences(self):
+        """A record with the same counts in both recipes can't move D: with one among 6, p = 4 of 64 = 1/16 > 0.05,
+        and the report's smallest reachable p says so. No difference at all: p = 1, can't tell apart."""
+        from fractions import Fraction
+        cr = self.cr
+        test = self.p([1, 1, 1, 1, 1, 0])
+        self.assertEqual((test["p"], test["moving"], test["smallest_reachable"]), (Fraction(1, 16), 5, Fraction(1, 16)))
+        self.assertEqual(cr.decide(test), "can't tell apart")
+        same = self.p([0, 0, 0, 0, 0, 0, 0])
+        self.assertEqual((same["p"], same["sign"], same["moving"], cr.decide(same)), (1, 0, 0, "can't tell apart"))
+        # a record with nothing to divide by in either recipe is left out of n (swapping it changes nothing)
+        base, other = self.parts([1] * 6)
+        test = cr.sign_flip(base + [(0, 0)], other + [(0, 0)])
+        self.assertEqual((test["n"], test["nothing_to_divide"], test["p"]), (6, 1, Fraction(1, 32)))
+        # nothing to divide by at all: no test
+        empty = cr.sign_flip([(0, 0)], [(0, 0)])
+        self.assertEqual((empty["p"], empty["diff"], cr.decide(empty)), (None, None, "can't tell apart"))
+
+    def test_near_misses_of_the_threshold(self):
+        """p ≤ 0.05 and the sign of D both decide: exactly 1/20 helps, a hair above doesn't, and no difference never
+        helps whatever p."""
+        from fractions import Fraction
+        cr = self.cr
+        self.assertEqual(cr.decide({"p": Fraction(1, 20), "sign": 1}), "helped")
+        self.assertEqual(cr.decide({"p": Fraction(1, 20), "sign": -1}), "worse")
+        self.assertEqual(cr.decide({"p": Fraction(1, 20) + Fraction(1, 10 ** 9), "sign": 1}), "can't tell apart")
+        self.assertEqual(cr.decide({"p": Fraction(1, 64), "sign": 0}), "can't tell apart")
+        self.assertEqual(cr.decide({"p": None, "sign": 1}), "can't tell apart")
+
+    def test_above_twenty_records_sampled(self):
+        """Above EXACT_UP_TO records, random assignments from the seed, p = (# + 1) ÷ (flips + 1), never 0; at 20,
+        still exact (near miss)."""
+        from fractions import Fraction
+        cr = self.cr
+        self.assertEqual((cr.EXACT_UP_TO, cr.FLIPS), (20, 100000))
+        test = cr.sign_flip(*self.parts([1] * 21), flips=500)
+        self.assertFalse(test["exact"])
+        self.assertEqual(test["assignments"], 500)
+        self.assertEqual(test["p"], Fraction(test["as_far"] + 1, 501))
+        self.assertLessEqual(test["as_far"], 2)                      # only all-up or all-down reach |D|
+        self.assertEqual(test["p"], cr.sign_flip(*self.parts([1] * 21), flips=500)["p"])   # the seed: the same p
+        mixed = cr.sign_flip(*self.parts([1, -1] * 11), flips=500)
+        self.assertEqual(mixed["p"], 1)                              # D = 0: every assignment reaches it
+
+    def test_groups_of_repeats(self):
+        """Each record's counts are summed over its recipe's runs and scaled by the other recipe's number of runs, so
+        a baseline of 2 runs and a change of 1 compare their means over the runs."""
+        from fractions import Fraction
+        cr = self.cr
+        kept = CompareRuns.kept
+        b1, b2 = kept("B1", lambda i: 1, "m"), kept("B2", lambda i: 3, "m")            # mean 2 pairs of 4
+        c1 = kept("C1", lambda i: 3, "m")
+        ids = [r["id"] for r in b1["records"]][:6]
+        base, other = cr.paired_parts([b1, b2], [c1], ids)
+        self.assertEqual(base[0], ((2 + 6) * 1, (8 + 8) * 1))                           # 2·pairs, occurrences + gt
+        self.assertEqual(other[0], (6 * 2, 8 * 2))
+        test = cr.sign_flip(base, other)
+        self.assertEqual((test["base"], test["changed"], test["p"]), (Fraction(1, 2), Fraction(3, 4), Fraction(1, 32)))
+        self.assertEqual(cr.decide(test), "helped")
+
+    def test_report(self):
+        """The report: the rule as helpers/compare_runs.md states it, the verdict first, the smallest-p line, the
+        records one by one, the other numbers shown but not tested."""
+        from support import ROOT
+        cr = self.cr
+        kept = CompareRuns.kept
+        guide = (ROOT / "helpers" / "compare_runs.md").read_text(encoding="utf-8")
+        for line in cr.RULE + cr.DECISION_LIMITS:
+            self.assertIn(line, guide)
+
+        def runs(prefix, m, k, n):
+            out = []
+            for r in range(1, k + 1):
+                run = kept(f"{prefix}{r}", lambda i: m, "m")
+                run["records"] = run["records"][:n]
+                out.append(run)
+            return out
+        six = cr.decision_report(runs("A", 2, 3, 6), runs("B", 3, 3, 6), [f"r{i:02d}" for i in range(6)], {})
+        for part in ["## The rule, fixed before the runs", *cr.RULE, "**Verdict: helped.** partial F1: baseline 50.0%, "
+                     "changed 75.0%, *D* = +25.0 points; *p* = 0.03125 (exact, from all 64 assignments), on 6 records.",
+                     "the smallest *p* this test can give is 1 ÷ 2^5 = 0.03125 (two-sided).",
+                     "went up: 6; down: 0; stayed the same: 0.", "| `r00` | 50.0% | 75.0% | +25.0 points |",
+                     "## The other numbers (shown, not tested)", "| exact: precision | 50.0% | 75.0% | +25.0 points |"]:
+            self.assertIn(part, six)
+        for line in cr.DECISION_LIMITS:
+            self.assertIn(line, six)
+        self.assertNotIn("| partial: f1 |", six)                       # the deciding number isn't shown twice
+        self.assertLess(six.index("## The answer"), six.index("## The records, one by one"))
+        five = cr.decision_report(runs("A", 2, 3, 5), runs("B", 3, 3, 5), [f"r{i:02d}" for i in range(5)], {})
+        self.assertIn("**Verdict: can't tell apart.**", five)
+        self.assertIn("1 ÷ 2^4 = 0.0625 (two-sided), above 0.05: on so few records no verdict but *can't tell apart* "
+                      "is possible, whatever the numbers; a verdict needs at least 6 records.", five)
+
+    def test_stops(self):
+        """The runs must share the evaluation version, the records and the kind of translation; a run given twice, or
+        in both recipes, one recipe alone, and --across_schemas true with the rule are refused."""
+        import sys
+        from unittest import mock
+        cr = self.cr
+        kept = CompareRuns.kept
+        runs = {r: kept(r, lambda i: 2, "m") for r in ("A1", "A2", "B1", "B2")}
+
+        def stop(argv, change=None):
+            data = {k: __import__("copy").deepcopy(v) for k, v in runs.items()}
+            if change:
+                change(data)
+            with mock.patch.object(cr, "load", lambda r: data[r]), mock.patch.object(sys, "argv", ["x", *argv]), \
+                    self.assertRaises(SystemExit) as caught:
+                cr.main()
+            return str(caught.exception.code)
+
+        self.assertIn("more than once (A1)", stop(["--baseline", "A1", "A2", "--changed", "A1"]))
+        self.assertIn("give the baseline's runs and the changed recipe's runs", stop(["--baseline", "A1", "A2"]))
+        self.assertIn("give the baseline's runs and the changed recipe's runs", stop(["B1", "--baseline", "A1",
+                                                                                     "--changed", "B2"]))
+        self.assertIn("can't go with `--baseline`", stop(["--across_schemas", "true", "--baseline", "A1",
+                                                          "--changed", "B1"]))
+
+        def version(d):
+            d["B1"]["recipe"]["evaluation (070)"]["evaluation_version"] = 2
+            d["A1"]["recipe"]["evaluation (070)"]["evaluation_version"] = 3
+        self.assertIn("different versions of what 070 counts", stop(["--baseline", "A1", "--changed", "B1"], version))
+
+        def identity(d):
+            d["B1"]["recipe"]["evaluation (070)"]["translation"] = cr.IDENTITY
+        self.assertIn("translated differently", stop(["--baseline", "A1", "--changed", "B1"], identity))
+
+        def fewer(d):
+            d["B2"]["records"].pop()
+        self.assertIn("didn't all evaluate the same tuning records (r24 not in every run)",
+                      stop(["--baseline", "A1", "A2", "--changed", "B1", "B2"], fewer))
+
+
 class HeldOutSources(unittest.TestCase):
     """070 notes an entry of the ground truth schema without the held-out only mark whose source line names a
     held-out record: it reaches every model and check (annotations/guidelines.md, Before you start)."""
