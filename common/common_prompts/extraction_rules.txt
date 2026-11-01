@@ -307,6 +307,12 @@ WRITING A TRIPLE
     composited using the Tern algorithm" gives the record's dataset
     produced using "Tern"; "corrected" names no method, so it gives no
     triple. "Corrected reflectances" stays "corrected reflectances".
+    Input or method: a method is what could be applied again to other
+    data (an algorithm, a procedure, and its settings); an input is the
+    data the step was applied to, which its output is made from. "The IWI
+    is derived from reflectance data" makes "reflectance data" an input:
+    "IWI" computed from "reflectance data". "Tern", above, is a method: it
+    is applied again to other data.
 
 ALSO
 

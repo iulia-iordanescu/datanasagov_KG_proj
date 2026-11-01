@@ -253,6 +253,9 @@ SUPERSEDES           replaces this earlier one. A record states this when it say
 HAS_VARIABLE         holds this Variable in its files
                      source: ground truth tuning #4
                      only: any -> Variable
+HAS_ANCILLARY_DATA   holds this supporting information about its values, such as quality flags or viewing geometry
+                     source: ground truth tuning #6, #7
+                     only: any -> Variable
 ESTIMATES            gives approximate values for
                      source: ground truth tuning #4
 PART_OF              is one part of

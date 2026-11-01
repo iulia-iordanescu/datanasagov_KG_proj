@@ -136,7 +136,7 @@ def with_margins(records: list) -> dict:
 
 #: Below this proportion of the catalog evaluated, drawing with repeats from a
 #: finite catalog changes the margin negligibly (a rule of survey sampling:
-#: Cochran, Sampling Techniques, 1977, chapter 2).
+#: Cochran, Sampling Techniques, 1977, chapter 2; not verified in the book).
 FINITE_NEGLIGIBLE = 0.05
 
 

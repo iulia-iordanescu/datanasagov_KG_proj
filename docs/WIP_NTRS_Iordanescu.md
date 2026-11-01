@@ -232,7 +232,7 @@ I thank my mentors, Jennifer Wei and Phillip Michael, for their guidance through
 
 [14] T. Hastie, R. Tibshirani, and J. Friedman, *The Elements of Statistical Learning*, 2nd ed., section 7.2. Springer, 2009.
 
-[15] W. G. Cochran, *Sampling Techniques*, 3rd ed., ch. 5. John Wiley & Sons, 1977.
+[15] W. G. Cochran, *Sampling Techniques*, 3rd ed., ch. 5, sec. 5.3, p. 91 (proportional allocation "gives a self-weighting sample" [every record drawn with the same chance]). John Wiley & Sons, 1977.
 
 [16] N. J. Gotelli and R. K. Colwell, "Estimating species richness," in A. E. Magurran and B. J. McGill (eds.), *Biological Diversity: Frontiers in Measurement and Assessment*, ch. 4. Oxford University Press, 2011.
 

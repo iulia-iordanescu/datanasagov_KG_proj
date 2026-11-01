@@ -875,6 +875,18 @@ class Questions(unittest.TestCase):
                     questions_of(question_world(Path(t), text))
                 self.assertIn(words, str(stop.exception))
 
+    def test_affects_need_not_name_a_draft(self):
+        """An entry's triples are required in Affects only for finished records: a record not finished yet holds
+        drafted triples, not checked. The near miss, the same record finished, is the case above that refuses it."""
+        line = ("- classed triple of the record at pool position 0: \"Snow V1\" (Dataset) HAS_SPATIAL_REPRESENTATION "
+                "\"swath\" (SpatialRepresentation)\n")
+        self.assertIn(line, QUESTION)
+        with tempfile.TemporaryDirectory() as t:
+            paths = question_world(Path(t), QUESTION.replace(line, "", 1))
+            gt = paths["ground_truth_dir"] / "batch_000.csv"
+            gt.write_text(gt.read_text(encoding="utf-8").replace("swath data,1\n", "swath data,0\n"), encoding="utf-8")
+            self.assertEqual(len(questions_of(paths)), 1)
+
     def test_a_link_to_a_term_not_shown(self):
         with tempfile.TemporaryDirectory() as t:
             text = QUESTION.replace("Is a [record]", "Is a [stand-in catalog](../docs/terminology.md#8-the-pipeline) [record]")

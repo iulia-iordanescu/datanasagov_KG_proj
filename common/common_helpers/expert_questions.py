@@ -719,7 +719,8 @@ def _check_affects(q: dict, where, pool: dict, gt, schema: dict, mapping: list, 
             continue
         field = ("predicate",) if e["kind"] == "predicate" else ("subject_class", "object_class")
         for row in gt.rows:
-            if row["id"] in tuning and any(row[f] == e["entry"] for f in field) and row["predicate"]:
+            # a record not finished yet holds drafted triples, not checked: Affects need not name them until it is
+            if row["id"] in tuning and gt.records.get(row["id"], {}).get("finished")                     and any(row[f] == e["entry"] for f in field) and row["predicate"]:
                 k = (positions[row["id"]],) + tuple(row[x] for x in keys)
                 if k not in listed:
                     problems.append(f"{where(q, e['line'])}: {e['kind']} {e['entry']} (ground truth schema) is used by "
