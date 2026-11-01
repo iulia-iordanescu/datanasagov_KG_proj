@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import extract as extract_stage
 import records as records_stage
+from records import SPECS                               # noqa: F401  (the control panel passes it to run_step)
 import schema as schema_stage
 from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log

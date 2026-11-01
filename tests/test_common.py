@@ -326,9 +326,11 @@ class FairSampleByPart(unittest.TestCase):
 
     def test_050_refuses_an_unknown_part(self):
         from common.stop import Stop
-        for bad in ("tunning", "", "Both"):
-            with self.assertRaises(Stop):
+        for bad in ("tunning", "", "held_out", "all"):
+            with self.subTest(part=bad), self.assertRaises(Stop):
                 self.chosen(part=bad)
+        for ok in ("Both", " tuning "):                       # read without case or surrounding spaces (common.step.Spec)
+            self.chosen(part=ok)
 
     def test_050_ids_ignore_part_with_a_note(self):
         c = self.chosen(part="held-out", ids="r0")
@@ -900,14 +902,76 @@ class Reviews(unittest.TestCase):
                      "ground_truth_object": "Aqua", "translated_subject": "MODIS Terra", "translated_predicate": "ABOARD",
                      "translated_object": "Aqua", "verdict": "same fact"}]
             write_csv(path, partial_reviews.COLUMNS, rows + [{**rows[0], "verdict": " not the same fact "}])
-            got = partial_reviews.read_reviews(path)
             key = partial_reviews.pair_key("a", {"subject": "modis", "predicate": "aboard", "object": "aqua"},
                                            {"subject": "MODIS terra", "predicate": "ABOARD", "object": "Aqua."})
-            self.assertEqual(got, {key: partial_reviews.NOT_SAME})                  # the last row wins
+            # two different verdicts for one pair: a conflict, neither counts, both rows named (common.latest)
+            self.assertEqual(partial_reviews.read_reviews(path), {})
+            problems = partial_reviews.review_problems(path)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("conflict: line 2 (a) ('same fact') and line 3 (a) ('not the same fact')", problems[0])
+            self.assertIn("neither counts", problems[0])
+            # the same verdict twice, in another spelling: one verdict, no problem
+            write_csv(path, partial_reviews.COLUMNS, rows + [{**rows[0], "verdict": " Same  Fact "}])
+            self.assertEqual(partial_reviews.read_reviews(path), {key: partial_reviews.SAME})
+            self.assertEqual(partial_reviews.review_problems(path), [])
+            # a verdict that isn't one is ignored and listed, and doesn't make a conflict with the good row
+            write_csv(path, partial_reviews.COLUMNS, rows + [{**rows[0], "verdict": "maybe"}])
+            self.assertEqual(partial_reviews.read_reviews(path), {key: partial_reviews.SAME})
+            self.assertEqual(partial_reviews.review_problems(path), ["line 3 (a): 'maybe'"])
             self.assertEqual(partial_reviews.read_reviews(tmp / "missing.csv"), {})
             self.assertEqual(len(read_csv(path)), 2)
         finally:
             shutil.rmtree(tmp)
+
+
+class LatestByKey(unittest.TestCase):
+    """common.latest.latest_by_key: the one rule for several rows about one thing. With timestamps the latest wins,
+    a withdrawal (an empty value) too; without, or at one moment, the rows must agree, else a conflict is reported
+    and nothing is chosen."""
+
+    def rows(self, *specs):
+        return [{"k": k, "v": v, "t": t, "n": i + 1} for i, (k, v, t) in enumerate(specs)]
+
+    def run_it(self, rows, when=True):
+        from common.latest import latest_by_key
+        return latest_by_key(rows, lambda r: r["k"], lambda r: r["v"], when=(lambda r: r["t"]) if when else None,
+                             where=lambda r: f"row {r['n']}")
+
+    def test_latest_wins_and_withdrawal(self):
+        chosen, problems = self.run_it(self.rows(("a", "first", "2026-10-24T10:00:00Z"),
+                                                 ("a", "second", "2026-10-24T11:00:00Z"),
+                                                 ("b", "kept", "2026-10-24T10:00:00Z"),
+                                                 ("b", "", "2026-10-24T12:00:00Z"),          # withdrawn later
+                                                 ("c", "", "2026-10-24T09:00:00Z"),
+                                                 ("c", "back", "2026-10-24T10:00:00Z")))    # withdrawn, then said again
+        self.assertEqual({k: r["v"] for k, r in chosen.items()}, {"a": "second", "c": "back"})
+        self.assertEqual(problems, [])
+
+    def test_timestamps_read_as_moments(self):
+        """Two spellings of one moment are equal (so no spelling sorts above another); an offset counts; a timestamp
+        that can't be read is a problem and its row is skipped."""
+        chosen, problems = self.run_it(self.rows(("a", "utc", "2026-10-24T14:00:00Z"),
+                                                 ("a", "local", "2026-10-24 11:00:00-04:00"),   # 15:00 UTC: later
+                                                 ("b", "x", "yesterday"),
+                                                 ("b", "y", "2026-10-24T10:00:00+00:00")))
+        self.assertEqual({k: r["v"] for k, r in chosen.items()}, {"a": "local", "b": "y"})
+        self.assertEqual(len(problems), 1)
+        self.assertIn("row 3: its timestamp 'yesterday' can't be read", problems[0])
+        same = self.run_it(self.rows(("a", "one", "2026-10-24T14:00:00Z"), ("a", "one", "2026-10-24 14:00:00+00:00")))
+        self.assertEqual(({k: r["v"] for k, r in same[0].items()}, same[1]), ({"a": "one"}, []))
+
+    def test_conflict_reported(self):
+        chosen, problems = self.run_it(self.rows(("a", "yes", "2026-10-24T10:00:00Z"), ("a", "no", "2026-10-24T10:00:00Z")))
+        self.assertEqual(chosen, {})
+        self.assertIn("conflict: row 1 ('yes') and row 2 ('no') are about the same thing with the same timestamp", problems[0])
+        chosen, problems = self.run_it(self.rows(("a", "yes", None), ("a", "no", None), ("b", "k", None)), when=False)
+        self.assertEqual(list(chosen), ["b"])
+        self.assertIn("conflict: row 1 ('yes') and row 2 ('no') are about the same thing, and differ", problems[0])
+        # the same value twice, spelled otherwise, is no conflict; an earlier different value loses to a later one
+        chosen, problems = self.run_it(self.rows(("a", "Same  fact", None), ("a", "same fact", None)), when=False)
+        self.assertEqual((list(chosen), problems), (["a"], []))
+        chosen, problems = self.run_it(self.rows(("a", "yes", "2026-10-24T10:00:00Z"), ("a", "no", "2026-10-24T10:00:01Z")))
+        self.assertEqual(({k: r["v"] for k, r in chosen.items()}, problems), ({"a": "no"}, []))
 
 
 class SameModel(unittest.TestCase):
@@ -1778,6 +1842,141 @@ def _helper(step: str, name: str = "records"):
     return module
 
 
+class HasText(unittest.TestCase):
+    """One definition of "has text" (common.records_io.has_text): the same fields as the text a model reads
+    (full_text: title, notes and the extra text fields 020 kept), blank once evened out."""
+
+    def test_variants(self):
+        from common.records_io import full_text, has_text, text_fields
+        for record, expected in (({"title": "MODIS", "notes": ""}, True),
+                                 ({"title": "", "notes": "x"}, True),
+                                 ({"title": "", "notes": ""}, False),
+                                 ({}, False),
+                                 ({"title": None, "notes": None}, False),
+                                 ({"notes": "\u200b"}, False),                         # a zero-width space only
+                                 ({"notes": "\ufeff "}, False),                        # a byte-order mark and a space
+                                 ({"notes": "\u00a0\t\n"}, False),                    # a no-break space, blank space
+                                 ({"notes": "\u00ad"}, False),                         # a soft hyphen
+                                 ({"notes": "\u200bx"}, True),                         # near miss: a letter too
+                                 ({"_cleaning": {"title": "a", "notes": "a", "author": "a"}, "author": "Smith"}, True),
+                                 ({"author": "Smith"}, False),                        # not a text field of this record
+                                 ({"_cleaning": {"title": "a", "notes": "a"}, "author": "Smith"}, False)):
+            with self.subTest(record=record):
+                self.assertEqual(has_text(record), expected)
+                self.assertEqual(has_text(record), bool(full_text(record).strip()) and expected)
+        r = {"_cleaning": {"title": "a", "notes": "a", "author": "a"}, "title": "T", "notes": "", "author": "Smith"}
+        self.assertEqual(text_fields(r), ["title", "notes", "author"])
+        self.assertEqual(full_text(r), "title: T\n\nauthor: Smith")
+        from common import chunking
+        self.assertIs(chunking.full_text, full_text)                              # one home, imported from chunking too
+
+    def test_every_consumer_uses_it(self):
+        """020's count, 030's induction candidates, 050, 060 and 070 take has_text from common.records_io: no other
+        definition of "has text" (a strip() over the text fields) in the steps."""
+        from support import ROOT
+        for rel in ("020_clean/020_clean_helpers/moves.py", "030_split/030_split_helpers/moves.py",
+                    "050_annotate/050_annotate_helpers/records.py", "060_extract/060_extract_helpers/records.py",
+                    "070_evaluate/070_evaluate_helpers/records.py"):
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            self.assertIn("has_text", text, rel)
+            self.assertNotRegex(text, r"any\(.*\.strip\(\) for name in", rel)
+
+
+class SettingsCheck(unittest.TestCase):
+    """One validator (common.step.check_settings, with each step's Spec table) for every setting: kind, lowest and
+    highest value, allowed values. Every step's settings at the bound, just outside it, as true/false, as a fraction,
+    and an allowed-values setting with a near miss."""
+
+    #: Run in a process of its own per step (two steps' helpers can't be imported into one process: tests/run_all.py).
+    PER_STEP = """
+import json, sys
+sys.path.insert(0, sys.argv[1])
+from common.step import Spec, check_settings, load_moves, shared_specs
+from common.stop import Stop
+step, defaults = sys.argv[2], json.loads(sys.argv[3])
+own = load_moves(step).SPECS
+specs = {**{k: v for k, v in shared_specs().items() if k in defaults}, **own}
+assert set(specs) == set(defaults), (step, set(specs) ^ set(defaults))     # every setting has a Spec
+check_settings(defaults, specs)                                             # the defaults pass
+for name, spec in specs.items():
+    assert not spec.problem(defaults[name]), (name, defaults[name])
+    if spec.kind in (int, float):
+        if spec.low is not None:
+            assert not spec.problem(spec.low) and spec.problem(spec.low - 1), name
+        if spec.high is not None:
+            assert not spec.problem(spec.high) and spec.problem(spec.high + 1), name
+        assert spec.problem(True) and spec.problem("3"), name                 # never a number
+        assert spec.problem(2.5) == (spec.kind is int), name
+    elif spec.kind is bool:
+        assert spec.problem("true") and spec.problem(1), name
+    elif spec.choices:
+        for near in (spec.choices[0] + "s", spec.choices[0][:-1], "", None):
+            assert spec.problem(near), (name, near)
+        assert not spec.problem(spec.choices[0].upper()) and not spec.problem(f" {spec.choices[0]} "), name
+    else:
+        assert spec.problem(3) and spec.problem("") == (not spec.empty), name
+    try:
+        check_settings({**defaults, name: object()}, specs)
+    except Stop as e:
+        assert f"The setting {name} must be {spec.allows()}, but is" in str(e), str(e)
+    else:
+        raise AssertionError(name)
+print("ok", step, sorted(specs))
+"""
+
+    def test_every_step(self):
+        import json
+        import subprocess
+        import sys
+        from support import ROOT
+        from test_docs import panel
+        for step in ("010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate", "060_extract", "070_evaluate"):
+            with self.subTest(step=step):
+                run = subprocess.run([sys.executable, "-c", self.PER_STEP, str(ROOT), step, json.dumps(panel(step)["SETTINGS"])],
+                                     capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertTrue(run.stdout.startswith(f"ok {step}"), run.stdout)
+
+    def test_message_names_what_to_give(self):
+        from common.step import Spec, check_settings
+        from common.stop import Stop
+        specs = {"n": Spec(int, 1, 64), "part": Spec(str, choices=("tuning", "held-out")), "m": Spec(str, empty=False)}
+        for settings, words in (({"n": 0}, "The setting n must be a whole number from 1 to 64, but is 0, so the step can't run. Give --n 1,"),
+                                ({"n": 65}, "but is 65, so the step can't run. Give --n 64,"),
+                                ({"n": True}, "but is True, so the step can't run. Give --n <a whole number from 1 to 64>,"),
+                                ({"part": "Tuning "}, None),
+                                ({"part": "tunings"}, "The setting part must be one of tuning, held-out, but is 'tunings'"),
+                                ({"m": "  "}, "The setting m must be a text (not empty), but is '  '")):
+            if words is None:
+                check_settings(settings, specs)
+                continue
+            with self.subTest(settings=settings), self.assertRaises(Stop) as stop:
+                check_settings(settings, specs)
+            self.assertIn(words, str(stop.exception))
+        check_settings({"other": -5}, specs)                                           # a setting without a Spec: not checked
+
+    def test_run_step_checks_before_reading_inputs(self):
+        """run_step stops on a bad setting before any input is looked at: a missing input file isn't what stops it."""
+        import tempfile
+        from unittest import mock
+        from common import step
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            with mock.patch.object(step, "RESULTS_DIR", tmp / "results"), mock.patch.object(step, "REPORTS_DIR", tmp / "reports"), \
+                    mock.patch.object(step, "LOGS_DIR", tmp / "logs"), self.assertRaises(SystemExit) as caught:
+                step.run_step("999_stand_in", {"records": str(tmp / "missing.jsonl")}, {"workers": 4}, lambda *a: None,
+                              argv=["--workers", "0"], specs={})
+            self.assertEqual(caught.exception.code, 2)
+            report = max((tmp / "reports").glob("999_stand_in_*.md")).read_text(encoding="utf-8")
+            self.assertIn("The setting workers must be a whole number from 1 to 64, but is 0", report)
+            self.assertNotIn("missing.jsonl", report.split("The setting workers")[1][:200])
+        finally:
+            import logging
+            import shutil
+            logging.shutdown()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class OneSelection(unittest.TestCase):
     """common/common_helpers/ground_truth.py: every record has one state, every consumer takes its rows by purpose
     (GroundTruth.select), and nothing but finished tuning records shapes the ground truth schema a model or a check
@@ -1870,6 +2069,8 @@ class OneSelection(unittest.TestCase):
         self.assertIn("not finished in the ground truth", gap(["draft_t"]))
         self.assertIn("in batch_000.csv and batch_001.csv, annotated twice", gap(["twice"]))
         self.assertIn("neither 0 nor 1", gap(["bad"]))
+        self.assertIn("has no text (no title, notes or other text field), so 050 and 060 skip it",
+                      records_070._first_gap(["mute"], "tuning", {"mute": 3}, set(), self.gt, {"mute"}))
         self.assertIn("not in the ground truth yet. Draft it", records_070._first_gap(["new"], "tuning", {"new": 9},
                                                                                        set(), self.gt))
 

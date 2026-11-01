@@ -153,7 +153,7 @@ class Pipeline(unittest.TestCase):
         """A setting out of range is something the person can fix: the run is stopped (exit code 2), with the
         message, not failed with a traceback; its report says stopped."""
         out, prompts = self.run_step("040_induce_schema", "--workers", "0", expect=2)
-        self.assertIn("workers must be at least 1", out)
+        self.assertIn("The setting workers must be a whole number from 1 to 64, but is 0", out)
         self.assertEqual(prompts, 0)
         report = max(self.repo.glob("outputs/reports/040_induce_schema_*.md"), key=lambda p: p.stat().st_mtime)
         self.assertIn("| Status | stopped |", report.read_text(encoding="utf-8"))

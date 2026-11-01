@@ -89,19 +89,77 @@ class Results:
                                                     # catalog has, --max_records); later steps inherit it
 
 
-#: The lowest allowed value of settings several steps share, so a setting
-#: with one name is checked the same way everywhere.
-SHARED_MINIMUMS = {"workers": 1, "max_chars": 1000}
+@dataclass(frozen=True)
+class Spec:
+    """One setting's rule: its kind (int, float, str or bool), the lowest and highest value allowed (int and float;
+    None: no bound), the values allowed (str: compared without case or surrounding spaces), and whether an empty
+    text is allowed. A true/false value never passes as a number."""
+    kind: type
+    low: float | None = None
+    high: float | None = None
+    choices: tuple = ()
+    empty: bool = True
+
+    def allows(self) -> str:
+        """What the setting must be, in words (the message's)."""
+        if self.kind is bool:
+            return "true or false"
+        if self.kind in (int, float):
+            what = "a whole number" if self.kind is int else "a number"
+            if self.low is not None and self.high is not None:
+                return f"{what} from {self.low:,} to {self.high:,}"
+            if self.low is not None:
+                return f"{what} from {self.low:,} on"
+            if self.high is not None:
+                return f"{what} of at most {self.high:,}"
+            return what
+        if self.choices:
+            return f"one of {', '.join(self.choices)}"
+        return "a text" + ("" if self.empty else " (not empty)")
+
+    def problem(self, value) -> bool:
+        """Whether value is outside what the setting allows."""
+        if self.kind is bool:
+            return not isinstance(value, bool)
+        if self.kind in (int, float):
+            kinds = (int,) if self.kind is int else (int, float)
+            if isinstance(value, bool) or not isinstance(value, kinds):
+                return True
+            return (self.low is not None and value < self.low) or (self.high is not None and value > self.high)
+        if not isinstance(value, str):
+            return True
+        if self.choices:
+            return value.strip().lower() not in self.choices
+        return not self.empty and not value.strip()
 
 
-def check_settings(settings: dict, minimums: dict) -> None:
-    """Stop with a plain message if a setting is below its minimum: the
-    step's own minimums, plus SHARED_MINIMUMS for the shared settings it has."""
-    wanted = {**{k: v for k, v in SHARED_MINIMUMS.items() if k in settings}, **minimums}
-    for name, lowest in wanted.items():
-        if settings[name] < lowest:
-            raise Stop(f"The setting {name} must be at least {lowest}, but is {settings[name]}, so the step can't "
-                       f"run. Give --{name} {lowest} or more, then run the step again.")
+def shared_specs() -> dict:
+    """The rules of the settings several steps share, so a setting with one name is checked the same way everywhere
+    (docs/running_on_nasa_laptop.md, *Settings several steps share*). The model settings' values come from
+    common/common_helpers/llm.py, which paid_calls checks with the same rules."""
+    from common import llm
+    return {"workers": Spec(int, 1, 64), "max_chars": Spec(int, 1000, 1_000_000), "repeat": Spec(int, 1),
+            "confirm_paid_calls": Spec(bool), "ids": Spec(str), "service": Spec(str, choices=tuple(llm.SERVICES)),
+            "model": Spec(str, empty=False), "thinking": Spec(str, choices=tuple(llm.THINKING_LEVELS))}
+
+
+def check_settings(settings: dict, specs: dict) -> None:
+    """The one check of a step's settings, run by run_step before any input is read (and by the stage that uses them,
+    with the same table): each setting in settings that has a Spec, in specs (the step's own table, SPECS in its
+    helpers) or in shared_specs(), must be of its kind, within its bounds and among its values. The first that isn't
+    stops the step with one message shape: what the setting must be, what it is, and what to give."""
+    wanted = {**{k: v for k, v in shared_specs().items() if k in settings}, **specs}
+    for name, spec in wanted.items():
+        if name not in settings or not spec.problem(settings[name]):
+            continue
+        value = settings[name]
+        give = (f"{spec.low:,}" if spec.kind in (int, float) and spec.low is not None and not isinstance(value, bool)
+                and isinstance(value, (int, float)) and value < spec.low else
+                f"{spec.high:,}" if spec.kind in (int, float) and spec.high is not None and not isinstance(value, bool)
+                and isinstance(value, (int, float)) and value > spec.high else
+                f"<{spec.allows()}>")
+        raise Stop(f"The setting {name} must be {spec.allows()}, but is {value!r}, so the step can't run. "
+                   f"Give --{name} {give}, then run the step again.")
 
 
 class InputMissing(Exception):
@@ -464,7 +522,9 @@ EXIT_CODES = {RAN: 0, STOPPED: 2, INTERRUPTED: 130, FAILED: 1}
 NOT_FINISHED = (FAILED, STOPPED, INTERRUPTED)
 
 
-def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=()) -> None:
+def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=(), specs=None) -> None:
+    """Run a step: parse the command line, check the settings (specs: the step's own Spec table; the shared settings'
+    rules come with it), describe the inputs, run main, write the manifest and the report."""
     from common.report import write_step_report
 
     argv = sys.argv[1:] if argv is None else argv
@@ -495,6 +555,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     old_manifest = None                  # nothing to restore if the run stops before taking it
     previous = (None, [])                # the previous run's files given a second name (_keep_previous)
     try:
+        check_settings(chosen_settings, specs or {})          # before any input is read: one check for every step
         _check_inputs(chosen_inputs, inputs, may_be_empty)
         input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs)
         run["harvest_partial"] = harvest_partial              # what the inputs say (010 replaces it below)

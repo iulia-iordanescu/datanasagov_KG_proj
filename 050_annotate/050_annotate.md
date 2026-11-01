@@ -189,7 +189,7 @@ Messages several steps share are in [`docs/running_on_nasa_laptop.md`, section 7
 |---|---|---|
 | *Nothing to draft: none of the records chosen can be drafted …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
 | *missing input files, so the step can't run:*, then one line per missing file, e.g. *records: … (run `py 020_clean/run.py` first, or give another file with --records)*, or *ground_truth_schema: … (give the file with --ground_truth_schema)* | An input file isn't there: usually an earlier step hasn't run. | Run the steps in order, or pass the file with `--<input>`. |
-| *… must be at least N* | A setting is out of range: `records_per_batch` or `workers` under 1, `start_position` under 0, or `max_chars` under 1,000. | Fix the setting. |
+| *The setting … must be …, but is …* | A setting is outside its rule (`SPECS` in `050_annotate_helpers/records.py`): `records_per_batch` a whole number from 1 to 1,000; `start_position` from 0 to 10,000,000; `part` one of tuning, held-out, both (read without case); `workers` from 1 to 64; `max_chars` from 1,000 to 1,000,000; `repeat` from 1 on; `service`, `thinking` one of their values; `model` not empty; `confirm_paid_calls` true or false (`docs/running_on_nasa_laptop.md`, section 4). Checked before any input is read. | Give the value the message names. |
 
 ## Audit trail
 

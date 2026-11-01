@@ -70,11 +70,12 @@ def record(i: int) -> dict:
 
 class StandInCatalog:
     """with StandInCatalog(count=40) as cat: ... cat.url is package_search's URL.
-    cat.count, cat.fail_starts, cat.busy_once, cat.not_json_starts can be
-    changed between requests; cat.requests lists every start asked for."""
+    cat.count, cat.fail_starts, cat.busy_once, cat.not_json_starts and cat.cap (the server's cap on records per
+    request, as CKAN's rows_max; None: none) can be changed between requests; cat.requests lists every start asked
+    for."""
 
-    def __init__(self, count: int):
-        self.count, self.fail_starts, self.busy_once, self.not_json_starts = count, set(), set(), set()
+    def __init__(self, count: int, cap: int | None = None):
+        self.count, self.fail_starts, self.busy_once, self.not_json_starts, self.cap = count, set(), set(), set(), cap
         self.requests, self._busy_done = [], set()
         cat = self
 
@@ -93,6 +94,7 @@ class StandInCatalog:
                     return self._send(404, b"not found", "text/plain")
                 if start in cat.not_json_starts:
                     return self._send(200, b"<html>maintenance</html>", "text/html")
+                rows = min(rows, cat.cap) if cat.cap else rows
                 body = {"success": True, "result": {"count": cat.count, "results":
                         [record(i) for i in range(start, min(start + rows, cat.count))]}}
                 self._send(200, json.dumps(body).encode(), "application/json")

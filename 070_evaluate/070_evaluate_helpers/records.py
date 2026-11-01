@@ -51,11 +51,11 @@ from common.ground_truth import (BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO
 from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
-from common.records_io import load_records
+from common.records_io import has_text, load_records
 from common import dropped
 from common.report import named
 from common.schema_io import parse_source, read_ground_truth_schema
-from common.step import MANIFEST_NAME, check_settings, input_files, repo_path
+from common.step import MANIFEST_NAME, Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.triples_io import canonical_row, is_describes
 
@@ -164,14 +164,19 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
         r["twin"] = kind[r["id"]]
 
 
-def _first_gap(order: list, part: str, positions: dict, taken: set, gt) -> str:
+def _first_gap(order: list, part: str, positions: dict, taken: set, gt, without_text=frozenset()) -> str:
     """The first record of one part (`order`: that part's ids in pool order) that is not taken, why (its state in the
-    ground truth, gt.state), and what brings it in (for messages); "" if none."""
+    ground truth, gt.state; or no text: without_text, the pool records common.records_io.has_text is false for, which
+    050 and 060 skip, so it can never be finished or extracted), and what brings it in (for messages); "" if none."""
     gap = next((rid for rid in order if rid not in taken), None)
     if gap is None:
         return ""
     where = f"pool position #{positions[gap]} (`{gap}`)"
     head = f"The first {part} record missing from the fair sample of the {part} part is {where}"
+    if gap in without_text:
+        return (f"{head}: it has no text (no title, notes or other text field), so 050 and 060 skip it and it can "
+                f"never be finished or extracted: it ends the fair sample of the {part} part for good, and the {part} "
+                f"records after it can't be evaluated. Nothing to do here; 020's report counts such records")
     state = gt.state(gap)
     if gt.records.get(gap, {}).get("finished"):
         return f"{head}: finished, but not extracted by 060's last run. Run `py 060_extract/run.py`"
@@ -206,8 +211,13 @@ def _read_pending(inputs: dict) -> list:
                    f"match them: {e}. Fix that line, {AGAIN}")
 
 
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
+#: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
+SPECS = {"evaluate_held_out": Spec(bool)}
+
+
 def pick_records(inputs: dict, settings: dict) -> Evaluated:
-    check_settings(settings, {})
+    check_settings(settings, SPECS)
     evaluated = Evaluated()
     gt_files = input_files(Path(inputs["ground_truth"]))
     pool_rows = read_pool(inputs["splits"])
@@ -288,9 +298,10 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     }.items() if v}
     positions = {r["id"]: r["position"] for r in pool_rows}
     part_of = {r["id"]: r["part"] for r in pool_rows}
+    without_text = {rid for rid in by_id if rid in catalog and not has_text(catalog[rid])}
 
     def gaps_of(only=None) -> str:      # the first gap of each part (of those with a record in `only`, if given), as sentences
-        found = [_first_gap(order, name, positions, taken, gt) for name, order in parts.items()
+        found = [_first_gap(order, name, positions, taken, gt, without_text) for name, order in parts.items()
                  if only is None or any(part_of.get(rid) == name for rid in only)]
         return "; ".join(g for g in found if g)
 

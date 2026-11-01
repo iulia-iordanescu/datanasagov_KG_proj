@@ -201,8 +201,31 @@ class Harvest(unittest.TestCase):
         self.assertEqual(batches.leftover_parts(self.out), [])
 
     def test_bad_setting(self):
-        with self.assertRaises(ValueError):
-            moves.download_catalog({"page_size": 0, "max_records": 0, "pause_seconds": 0, "new_harvest": False}, self.out)
+        for bad in ({"page_size": 0}, {"page_size": 1001}, {"page_size": True}, {"page_size": 2.5}, {"max_records": -1},
+                    {"pause_seconds": -0.1}, {"new_harvest": "yes"}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                moves.download_catalog({"page_size": 10, "max_records": 0, "pause_seconds": 0, "new_harvest": False, **bad},
+                                       self.out)
+        with StandInCatalog(count=3) as cat:                                 # the bounds themselves pass
+            ckan_client.URL = cat.url
+            for ok in ({"page_size": 1}, {"page_size": 1000}, {"max_records": 0}, {"pause_seconds": 0}):
+                moves.download_catalog({"page_size": 10, "max_records": 0, "pause_seconds": 0, "new_harvest": False, **ok},
+                                       self.out)
+
+    def test_server_cap_below_page_size_stops(self):
+        """A page shorter than asked for, with more records in the catalog, means the server caps records per request
+        below page_size: going on would skip records on every page, so the step stops, naming the cap to give. The
+        last page, short because the catalog ends, is not that (near miss)."""
+        from common.stop import Stop
+        self.cat.cap = 7
+        with self.assertRaises(Stop) as stop:
+            self.harvest(page_size=10)
+        self.assertIn("returned 7 records for the page starting at 0, though 10 were asked for", str(stop.exception))
+        self.assertIn("--page_size 7", str(stop.exception))
+        self.assertEqual(self.names(), [])                                   # nothing saved from the short page
+        self.cat.cap = None
+        h, c = self.harvest(page_size=10)                                    # 25 records: the last page holds 5
+        self.assertEqual(h.new, 3)
 
 
 class SamePage(unittest.TestCase):

@@ -72,4 +72,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("070_evaluate", INPUTS, SETTINGS, main)
+    run_step("070_evaluate", INPUTS, SETTINGS, main, specs=evaluate.SPECS)

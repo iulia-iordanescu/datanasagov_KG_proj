@@ -35,13 +35,12 @@ import note_cleaning
 from ftfy import fix_encoding
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import write_jsonl
-from common.records_io import TEXT_FIELDS
+from common.records_io import CLEANING_FIELD, TEXT_FIELDS, has_text
 from common.report import cell, named, this_report
-from common.step import Results, input_files, repo_path
+from common.step import Results, Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 
 OUTPUT_NAME = "records.jsonl"
-CLEANING_FIELD = "_cleaning"         # which method cleaned each text field
 SHOW = 20                            # items listed in the report before "…"
 #: Text fields that are one line by nature: every run of line breaks and
 #: spaces inside becomes one space. (notes keeps its line breaks: they
@@ -86,6 +85,9 @@ class Catalog:
 
 
 # --------------------------------------------------------------------------
+
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read.
+SPECS = {"extra_text_fields": Spec(str), "join_maintainers": Spec(bool)}
 
 def _text_fields(settings: dict) -> tuple:
     """TEXT_FIELDS plus the extra_text_fields setting. Checked before any file
@@ -200,7 +202,7 @@ def clean_text(catalog: Catalog) -> Catalog:
                 catalog.fallbacks.append({"id": record["id"], "field": name, "method": note.tier})
                 log.debug(f"{record['id']}: {name} cleaned by the {note.tier} method")
         record[CLEANING_FIELD] = methods
-        if not any(record[name].strip() for name in catalog.text_fields):
+        if not has_text(record):                             # the one definition (common.records_io), 050's and 060's
             catalog.no_text += 1
     return catalog
 

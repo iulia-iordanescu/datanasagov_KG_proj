@@ -256,7 +256,7 @@ Messages several steps share are in [`docs/running_on_nasa_laptop.md`, section 7
 | *extract_from must be one of ground_truth, all* | A typo in the [setting](../docs/terminology.md#8-the-pipeline). | Use `ground_truth` or `all`. |
 | *No ground truth files at …, so 060 has no finished records to extract from (extract_from is ground_truth)* | No record is annotated yet. | Annotate records first (`py 050_annotate/run.py`, then `py helpers/annotate.py`), or give `--extract_from all`, or name the records with `--ids`. |
 | *Nothing to extract: none of the records chosen can be extracted from …* | No record could be chosen; the reasons follow. | Change the settings: the reasons are listed. |
-| *… must be at least N* | A setting is out of range: `workers` under 1, or `max_chars` under 1,000. | Fix the setting. |
+| *The setting … must be …, but is …* | A setting is outside its rule (`SPECS` in `060_extract_helpers/records.py`): `extract_from` one of ground_truth, all (read without case); `workers` a whole number from 1 to 64; `max_chars` from 1,000 to 1,000,000; `repeat` from 1 on; `service`, `thinking` one of their values; `model` not empty; `confirm_paid_calls` true or false (`docs/running_on_nasa_laptop.md`, section 4). Checked before any input is read. | Give the value the message names. |
 
 ## Audit trail
 

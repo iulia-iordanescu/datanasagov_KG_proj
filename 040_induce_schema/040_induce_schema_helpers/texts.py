@@ -19,7 +19,7 @@ from common.audit import log
 from common.chunking import full_text, pieces
 from common.records_io import load_records
 from common.report import named
-from common.step import check_settings
+from common.step import Spec, check_settings
 from common.step import repo_path
 from common.stop import Stop
 
@@ -33,8 +33,14 @@ class Texts:
     candidates: list = field(default_factory=list)   # every induction candidate's record, for the twin table
 
 
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
+#: pick_texts, with the same table (the shared settings' rules: common.step.shared_specs).
+SPECS = {"induction_maintainers": Spec(int, 1, 10_000), "texts_per_maintainer": Spec(int, 1, 10_000),
+         "min_support": Spec(int, 1, 10_000)}
+
+
 def pick_texts(inputs: dict, settings: dict) -> Texts:
-    check_settings(settings, {"induction_maintainers": 1, "texts_per_maintainer": 1, "min_support": 1})
+    check_settings(settings, SPECS)
     records = load_records(inputs["records"])
     splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
     induction = splits["induction_candidates"]

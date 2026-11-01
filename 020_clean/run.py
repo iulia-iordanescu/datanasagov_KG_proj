@@ -42,4 +42,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("020_clean", INPUTS, SETTINGS, main)
+    run_step("020_clean", INPUTS, SETTINGS, main, specs=clean.SPECS)

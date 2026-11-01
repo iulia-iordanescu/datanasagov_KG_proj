@@ -7,7 +7,7 @@ Every step after 020 reads that file; this is the one place that does, so
 they all read it the same way. The record format is described in
 020_clean/020_clean.md.
 
-    from common.records_io import load_records, has_text, read_ids
+    from common.records_io import load_records, text_fields, full_text, has_text, read_ids
     records = load_records(inputs["records"])      # {id: record}, in file order
     ids = read_ids(settings["ids"])                # a step's "ids" setting (050, 060)
 
@@ -24,6 +24,7 @@ from pathlib import Path
 
 from common.step import MANIFEST_NAME, RESULTS_DIR, repo_path
 from common.stop import Stop
+from common.text_match import even
 
 #: Why 050 or 060 skips a record it was asked for, the two reasons both steps share (each step adds its own), and
 #: what to do about a record without text.
@@ -32,6 +33,9 @@ WITHOUT_TEXT_TO_DO = "Nothing to do: a record without text has nothing for the m
 
 #: The free-text fields every record has (020 always writes them).
 TEXT_FIELDS = ("title", "notes")
+#: The field 020 writes with which method cleaned each text field: its keys are the record's text fields (TEXT_FIELDS,
+#: then the extra_text_fields setting's), in the order 020 wrote them.
+CLEANING_FIELD = "_cleaning"
 
 #: A record's web page in the live catalog, by its id (the catalog also
 #: answers /dataset/<name>, but the name can change and the id doesn't).
@@ -102,9 +106,25 @@ def load_records(path) -> dict:
     return records
 
 
+def text_fields(record: dict) -> list:
+    """The record's text fields, in the order 020 wrote them: the ones its CLEANING_FIELD lists (title, notes, then
+    the extra ones), else title and notes."""
+    return list(record.get(CLEANING_FIELD) or TEXT_FIELDS)
+
+
+def full_text(record: dict) -> str:
+    """The record's whole text, what a model reads (common/common_helpers/chunking.py cuts it into text pieces):
+    each non-empty text field, preceded by its field name."""
+    return "\n\n".join(f"{name}: {record[name].strip()}" for name in text_fields(record)
+                       if (record.get(name) or "").strip())
+
+
 def has_text(record: dict) -> bool:
-    """Whether the record has any title or notes text for a model to read."""
-    return any((record.get(name) or "").strip() for name in TEXT_FIELDS)
+    """Whether the record has any text for a model to read: the same fields as full_text (so a record whose only text
+    is in an extra text field has text), and blank once evened out (common.text_match.even: an invisible format
+    character such as a zero-width space or a byte-order mark, or a no-break space, is no text). The one
+    definition: 020's count, 030's induction candidates, 050, 060 and 070 use it."""
+    return bool(even(" ".join((record.get(name) or "") for name in text_fields(record))).strip())
 
 
 def read_ids(value: str) -> list:

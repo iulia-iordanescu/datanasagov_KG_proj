@@ -61,4 +61,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("060_extract", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY)
+    run_step("060_extract", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY, specs=extract.SPECS)

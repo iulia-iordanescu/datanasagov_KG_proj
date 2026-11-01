@@ -24,7 +24,7 @@ from common.ground_truth import ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENC
 from common.llm import maker
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
-from common.step import check_settings, input_files, repo_path
+from common.step import Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 
 MODES = ("ground_truth", "all")
@@ -46,12 +46,14 @@ class Chosen:
     pool: dict = field(default_factory=dict)       # {id: (pool position, "tuning" | "held-out")} (030's splits.json)
 
 
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
+#: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
+SPECS = {"extract_from": Spec(str, choices=tuple(MODES))}
+
+
 def pick_records(inputs: dict, settings: dict) -> Chosen:
-    check_settings(settings, {})
-    if settings["extract_from"] not in MODES:
-        raise Stop(f"extract_from must be one of {', '.join(MODES)} (got {settings['extract_from']!r}), so 060 "
-                   f"can't choose records. Set --extract_from to {' or '.join(MODES)} (or name the records with "
-                   f"--ids), then run `py 060_extract/run.py` again.")
+    check_settings(settings, SPECS)
+    settings = {**settings, "extract_from": settings["extract_from"].strip().lower()}
     chosen = Chosen(records=load_records(inputs["records"]))
     pool_rows = read_pool(inputs["splits"])
     chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in pool_rows}

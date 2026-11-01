@@ -1262,25 +1262,17 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
     step (Stop: `stopped`, a problem the person can fix). session_id: sent with each LiteLLM request of the run
     (SESSION_ID); None sends none."""
     global MODEL, SERVICE, THINKING, REPEAT, SESSION_ID
-    service = str(settings.get("service") or SERVICE).strip().lower()
-    if service not in SERVICES:
-        raise Stop(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
-                   f"model can be called. Give one of {', '.join(SERVICES)} with --service <name>, then run "
-                   f"`py {Path(output).name}/run.py` again.")
-    name = str(settings.get("model") or "").strip()
+    from common.step import check_settings                  # the one check of every setting (common.step.shared_specs)
+    given = {"service": settings.get("service") if settings.get("service") is not None else SERVICE,
+             "model": settings.get("model"), "thinking": settings.get("thinking") if settings.get("thinking") is not None else THINKING,
+             "repeat": settings.get("repeat", 1)}
+    check_settings({k: v for k, v in given.items() if k != "model" or v is not None}, {})
+    service, thinking = str(given["service"]).strip().lower(), str(given["thinking"]).strip().lower()
+    name = str(given["model"] or "").strip()
     if not name:
-        raise Stop(f"The setting model is empty, so no model can be called. Give one with --model <name> "
-                   f"(`py helpers/models.py` lists them), then run `py {Path(output).name}/run.py` again.")
-    thinking = str(settings.get("thinking") or THINKING).strip().lower()
-    if thinking not in THINKING_LEVELS:
-        raise Stop(f"The setting thinking is {thinking!r}, which isn't a level the pipeline knows, so no model "
-                   f"can be called. Give one of {', '.join(THINKING_LEVELS)} with --thinking <level>, then run "
-                   f"`py {Path(output).name}/run.py` again.")
-    repeat = settings.get("repeat", 1)
-    if isinstance(repeat, bool) or not isinstance(repeat, int) or repeat < 1:
-        raise Stop(f"The setting repeat is {repeat!r}, but it must be a whole number from 1 on (1 reuses the answers "
-                   f"saved so far; 2, 3, ... ask again, each repeat into answers of its own), so no model can be "
-                   f"called. Give one with --repeat <n>, then run `py {Path(output).name}/run.py` again.")
+        raise Stop(f"The setting model must be a text (not empty), but is {given['model']!r}, so the step can't run. "
+                   f"Give --model <name> (`py helpers/models.py` lists them), then run the step again.")
+    repeat = given["repeat"]
     MODEL, SERVICE, THINKING, REPEAT, SESSION_ID = name, service, thinking, repeat, session_id
     SERVED.clear()
     for k in REQUESTS:

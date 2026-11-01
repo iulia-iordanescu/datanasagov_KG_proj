@@ -38,4 +38,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("010_harvest", INPUTS, SETTINGS, main)
+    run_step("010_harvest", INPUTS, SETTINGS, main, specs=harvest.SPECS)

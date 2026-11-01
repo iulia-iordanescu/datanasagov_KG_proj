@@ -31,6 +31,7 @@ import label
 import merge
 import saturation
 import texts as texts_stage
+from texts import SPECS                                 # noqa: F401  (the control panel passes it to run_step)
 from common import audit, dropped, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json

@@ -23,6 +23,7 @@ import pairing
 import readings
 import component_classes as component_classes_stage
 import records as records_stage
+from records import SPECS                               # noqa: F401  (the control panel passes it to run_step)
 import stats
 from common import audit, dropped, extraction, llm, text_match
 from common.audit import ORIGIN_COLUMN, check_origins, log
@@ -428,8 +429,8 @@ def _translation_of(r: dict, translation) -> dict:
     out = {}
     for f in r["extracted"]:
         t = pairing.translate(f, translation)
-        swapped = t["crt"]["subject_class"] != f["subject_class"] and t["crt"]["object_class"] != f["object_class"] \
-            and f["subject_class"] != f["object_class"]
+        p_mine, flipped = pairing.predicate_rule(f, translation)          # as translate turns subject and object
+        swapped = bool(flipped and p_mine)
         out[" | ".join(f[k] for k in ("subject_class", "predicate", "object_class"))] = \
             " | ".join(t[k] for k in ("subject_class", "predicate", "object_class")) + (" (swapped)" if swapped else "")
     return out

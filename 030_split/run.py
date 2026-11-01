@@ -49,4 +49,4 @@ def main(inputs, settings, output):
 
 
 if __name__ == "__main__":
-    run_step("030_split", INPUTS, SETTINGS, main)
+    run_step("030_split", INPUTS, SETTINGS, main, specs=split.SPECS)

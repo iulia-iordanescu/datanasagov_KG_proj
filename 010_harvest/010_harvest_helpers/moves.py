@@ -34,7 +34,8 @@ import batches
 import ckan_client
 from common.audit import current_run_id, log
 from common.report import named, this_report
-from common.step import ROOT, Results, check_settings
+from common.stop import Stop
+from common.step import ROOT, Results, Spec, check_settings
 
 # Written by versions of this step that kept a separate lineage file. The
 # request block in each batch file replaces it.
@@ -109,8 +110,17 @@ def _set_aside(saved: Harvest) -> str:
     return target.name
 
 
+#: CKAN's usual cap on records per request (its rows_max, 1000 by default): more are never returned, and a page
+#: shorter than asked for would skip the records between pages.
+PAGE_SIZE_MAX = 1000
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
+#: download_catalog, with the same table.
+SPECS = {"page_size": Spec(int, 1, PAGE_SIZE_MAX), "max_records": Spec(int, 0, 10_000_000),
+         "pause_seconds": Spec(float, 0, 3600), "new_harvest": Spec(bool)}
+
+
 def download_catalog(settings: dict, output: Path) -> Harvest:
-    check_settings(settings, {"page_size": 1, "max_records": 0, "pause_seconds": 0})
+    check_settings(settings, SPECS)
     page_size = settings["page_size"]
     max_records = settings["max_records"]
     pause = settings["pause_seconds"]
@@ -167,6 +177,16 @@ def download_catalog(settings: dict, output: Path) -> Harvest:
         else:
             page, request = ckan_client.fetch_page(session, start, page_size)
         records = page["results"][:expected]
+        if 0 < len(records) < expected and page["count"] > start + len(records):
+            # The server gave fewer than asked for, though the catalog has more: its cap on records per request is
+            # below page_size. Saving this page and asking for the next from start + page_size would skip the
+            # records in between, every page, with nothing saying so.
+            raise Stop(f"data.nasa.gov returned {len(records)} records for the page starting at {start}, though "
+                       f"{expected} were asked for and the catalog has {page['count']:,}: the server's cap on "
+                       f"records per request is below page_size ({page_size}), and going on would skip "
+                       f"{expected - len(records)} records on every page. Give --page_size {len(records)} (or lower), "
+                       f"then run `py 010_harvest/run.py` again (the pages saved with another page size are "
+                       f"downloaded again).")
         if not records:
             harvest.ran_dry = True
             log.warning(f"empty page at start={start}, before the {target} records aimed for; the harvest "

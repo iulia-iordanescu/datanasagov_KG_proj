@@ -133,6 +133,7 @@ Messages several steps share are in [`docs/running_on_nasa_laptop.md`, section 7
 
 | Message | Meaning | What to do |
 |---|---|---|
+| *The setting extra_text_fields must be a text, but is …* / *The setting join_maintainers must be true or false, but is …* | A setting is outside its rule (`SPECS` in `020_clean_helpers/moves.py`; `docs/running_on_nasa_laptop.md`, section 4), checked before any input is read. | Give the value the message names, then run `py 020_clean/run.py` again. |
 | *… is in the old batch format* | 010's files were saved by an older version, without a [request block](../docs/terminology.md#1-records-and-their-text). | Rerun `py 010_harvest/run.py`, which downloads them again. |
 | *extra_text_fields names …, which 020 already writes as a field of its own* | An extra text [field](../docs/terminology.md#1-records-and-their-text) was given the name of a field 020 already writes (they are listed under *Settings*, `extra_text_fields`). | Remove that name from `extra_text_fields`. |
 | *AssertionError: N failure(s)* | A self-test failed: the cleaning library's (in `clean_text`) or the joining rules' (in `join_maintainers`). The report (`outputs/reports/020_clean_<date>_<time>.md`), section *Timeline*, shows which [move](../docs/terminology.md#8-the-pipeline) failed. | Don't use the output. Read the listed failures; usually a changed Python version, or an edit to `note_cleaning.py` or `maintainers.py`. |

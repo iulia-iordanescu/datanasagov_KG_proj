@@ -67,7 +67,7 @@ from common.files import write_json
 from common.ground_truth import GROUND_TRUTH_SCHEMA_FROM, HELD_OUT, TUNING, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
-from common.step import repo_path
+from common.step import Spec, check_settings, repo_path
 from common.step import MANIFEST_NAME, Results, input_files
 from common.stop import Stop
 
@@ -146,6 +146,9 @@ def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
     log.info(f"  {len(pool.records):,} of {pool.in_file:,} ground truth candidates are in the records")
     return pool
 
+
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read.
+SPECS = {"induction_seed": Spec(int, 0, 2**32 - 1)}
 
 def induction_candidates(records: dict, pool: Candidates, settings: dict) -> Induction:
     # Maintainers ranked by their records in the catalog; ties broken by name,

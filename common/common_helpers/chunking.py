@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import re
 
-from common.records_io import TEXT_FIELDS
+from common.records_io import full_text, text_fields     # noqa: F401  (their home; imported from here too)
 
 #: Characters per model call. Few records are longer (45 of 36,375 on
 #: 2026-09-27).
@@ -42,18 +42,6 @@ MAX_CHARS = 8000
 
 #: The field repeated at the top of every piece.
 CONTEXT_FIELD = "title"
-
-
-def text_fields(record: dict) -> list:
-    """The record's text fields, in the order 020 wrote them: the ones its
-    _cleaning lists (title, notes, then extra ones), else title and notes."""
-    return list(record.get("_cleaning") or TEXT_FIELDS)
-
-
-def full_text(record: dict) -> str:
-    """The record's whole text: each non-empty field, preceded by its field name."""
-    return "\n\n".join(f"{name}: {record[name].strip()}" for name in text_fields(record)
-                       if (record.get(name) or "").strip())
 
 
 def _split_paragraph(par: str, budget: int) -> list:

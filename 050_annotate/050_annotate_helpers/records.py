@@ -50,7 +50,7 @@ from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, HELD_
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_ground_truth_schema
-from common.step import check_settings, input_files, repo_path
+from common.step import Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.validate import SchemaEntries
 
@@ -117,12 +117,15 @@ def _waiting(output: Path) -> tuple:
     return waiting, highest
 
 
+#: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
+#: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
+SPECS = {"records_per_batch": Spec(int, 1, 1000), "start_position": Spec(int, 0, 10_000_000),
+         "part": Spec(str, choices=(*PARTS, "both"))}
+
+
 def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
-    check_settings(settings, {"records_per_batch": 1, "start_position": 0})
-    part = settings["part"]
-    if part not in (*PARTS, "both"):
-        raise Stop(f"The setting part is {part!r}, but it must be tuning, held-out, or both. Set --part to one of "
-                   f"them, then run `py 050_annotate/run.py` again.")
+    check_settings(settings, SPECS)
+    part = settings["part"].strip().lower()
     chosen = Chosen()
     chosen.records = load_records(inputs["records"])
     pool_rows = read_pool(inputs["splits"])

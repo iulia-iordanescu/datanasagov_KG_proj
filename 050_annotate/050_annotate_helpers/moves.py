@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 
 import draft
 import records as records_stage
+from records import SPECS                               # noqa: F401  (the control panel passes it to run_step)
 from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
