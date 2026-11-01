@@ -259,6 +259,9 @@ FLIES_IN             flies in formation as part of
 UNIQUE_TO_INSTRUMENT  is found only on this Instrument
                       source: ground truth tuning #4
                       only: any -> Instrument
+CHANNEL_OF           is one of the Channels this Instrument measures in
+                     source: ground truth tuning #18
+                     only: Channel -> Instrument
 FOR_CHANNEL          its values are for this Channel's wavelengths
                      source: ground truth tuning #7, #18
                      only: any -> Channel

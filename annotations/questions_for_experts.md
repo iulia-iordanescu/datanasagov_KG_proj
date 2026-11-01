@@ -2253,9 +2253,11 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 7: "band 31 emissivity" (Variable) FOR_CHANNEL "band 31" (Channel)
 - classed triple of the record at pool position 7: "band 32 emissivity" (Variable) FOR_CHANNEL "band 32" (Channel)
 - classed triple of the record at pool position 18: "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable) FOR_CHANNEL "VIIRS band M4 (0.555 μm)" (Channel)
+- classed triple of the record at pool position 18: "VIIRS band M4 (0.555 μm)" (Channel) CHANNEL_OF "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument)
 - translation table row: entity class Wavelength
 - translation table row: entity class Frequency
 - ground truth schema entry: entity class Channel
+- ground truth schema entry: predicate CHANNEL_OF
 - rule: Writing a classed triple, rule 19
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules (the list of qualifiers taken out, rule 19 of *Writing a classed triple*)
 
@@ -3281,6 +3283,7 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 7: "MODIS" (Instrument) ABOARD "Terra" (Platform)
 - classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Plasma Wave Spectrometer (PWS)" (Instrument)
 - classed triple of the record at pool position 18: "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument) ABOARD "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 18: "VIIRS band M4 (0.555 μm)" (Channel) CHANNEL_OF "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument)
 - classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)

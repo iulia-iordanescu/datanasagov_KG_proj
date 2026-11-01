@@ -210,6 +210,18 @@ WRITING A TRIPLE
     Kestrel"; "acquired by the Halden Orbiter Lake Ice Radiometer", with
     the instrument never named otherwise, gives "Halden Orbiter Lake Ice
     Radiometer" aboard "Halden Orbiter", the name kept whole (rule 11).
+    An instrument in a channel's name: in the notes, a channel whose words
+    begin with an instrument's name states that the channel is one of the
+    instrument's channels, with the channel's words as source_text; the
+    channel stays whole (rule 11), and the instrument's subject or object
+    follows rule 23. The instrument must be one by the record's words or by
+    rule 1 (names you recognize). A title's words are a list of facts of
+    the record's dataset, not a name (a title's facts): no channel of an
+    instrument from a title. "the ice thickness parameter for Kestrel band
+    K4 (0.6 μm)", in a record that names "Kestrel Lake Ice Radiometer
+    (Kestrel)", gives "Kestrel band K4 (0.6 μm)" a channel of "Kestrel Lake
+    Ice Radiometer (Kestrel)", with the source_text "Kestrel band K4 (0.6
+    μm)".
     The thing the title names: for a fact about it, the words for it may be
     left out of the source_text ("provides daily lake ice extent", for the
     record's dataset's temporal resolution "daily").

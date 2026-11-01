@@ -115,7 +115,7 @@ NOT_FINISHED = "not finished in the ground truth (only finished records get a se
 
 @dataclass
 class Matched:
-    per_record: dict = field(default_factory=dict)  # {id: {"gt": [(row, level or None, classes agree)], "draft_only": [rows]}}
+    per_record: dict = field(default_factory=dict)  # {id: {"gt": [(row, level or None, entity classes agree)], "draft_only": [rows]}}
     rows: list = field(default_factory=list)        # second_opinion_matches.csv's rows
     not_drafted: list = field(default_factory=list)  # ids whose model call failed
 
