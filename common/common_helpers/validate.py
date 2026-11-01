@@ -56,9 +56,11 @@ DESCRIBES_SUBJECT_NOT_ID = "describes_subject_not_id"
 DESCRIBES_CLASS_NOT_IN_SCHEMA = "describes_class_not_in_schema"
 # on rows together (common/common_helpers/extraction.py, 050 and 060)
 CONFLICTING_CLASSES = "conflicting_classes"
+DESCRIBES_CLASSES_DIFFER = "describes_classes_differ"
 # stage 4 of 050, on the ground truth's files (common/common_helpers/ground_truth.check_rows)
 ID_NOT_IN_RECORDS = "id_not_in_records"
 INCOMPLETE = "incomplete"
+SEVERAL_DESCRIBES = "several_describes"
 # the annotation tool's own (helpers/annotator/server.py)
 EMPTY = "empty"
 NOT_CONNECTED = "not_connected"
@@ -77,9 +79,10 @@ SCHEMA_FLAGS = (SUBJECT_CLASS_NOT_IN_SCHEMA, OBJECT_CLASS_NOT_IN_SCHEMA, PREDICA
 DESCRIBES_ERRORS = (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED)
 DESCRIBES_FLAGS = (DESCRIBES_CLASS_NOT_IN_SCHEMA,)
 #: Flags raised on rows together, not on one row.
-ROWS_FLAGS = (CONFLICTING_CLASSES,)
-#: The errors only stage 4 of 050 raises (ground_truth.check_rows); its others are ERRORS and DESCRIBES_ERRORS.
-GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE)
+ROWS_FLAGS = (CONFLICTING_CLASSES, DESCRIBES_CLASSES_DIFFER)
+#: The errors only stage 4 of 050 raises (ground_truth.check_rows; SEVERAL_DESCRIBES the annotation tool too); its
+#: others are ERRORS and DESCRIBES_ERRORS.
+GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE, SEVERAL_DESCRIBES)
 #: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED, SEVERAL_QUALIFIERS and SLASH_LIST_SPLIT flags.
 TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT)
 # The qualifier predicates of rule 19 of "Writing a classed triple" (annotations/guidelines.md) have one home: their

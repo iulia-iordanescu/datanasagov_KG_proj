@@ -773,7 +773,14 @@ async function save() {
     if (data.patterns) batch.patterns = data.patterns;
     if (data.definitions) { batch.definitions = data.definitions; batch.coined = data.coined; refreshDefinitions(); }
     data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
-    status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
+    // a record ticked finished while a row has an error is saved as not finished (the server's save_batch)
+    const unticked = (data.unfinished || []).filter((u) => sent[u.index]);
+    unticked.forEach((u) => { sent[u.index].finished = false; });
+    if (unticked.length && $("finishedbox") && unticked.some((u) => u.index === current)) $("finishedbox").checked = false;
+    if (unticked.length)
+      status(`Saved, but not as finished: ${unticked.map((u) => sent[u.index].title || u.id).join("; ")} still ${unticked.length === 1 ? "has" : "have"} a ✖ to fix (step 070 won't evaluate a record with one). Fix each, then tick All facts extracted again.`, "failed");
+    else
+      status(`Saved to annotations/ground_truth/${batch.file} at ${new Date().toLocaleTimeString()}`, "saved");
     refreshProblems();
     api("/api/gaps").then(drawGaps).catch(() => {});  // a component class just coined joins the list above
   } catch (e) {
@@ -860,9 +867,15 @@ function show(i) {
         el("button", { class: "bigarrow", onclick: () => show(stepRecord(1)), disabled: batch.records.length < 2,
                        title: "Next record; from the last, the first (or the → key, when not typing in a field)" }, arrow("right"))),
       el("div", { class: "rightstack" },
-        el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple." },
-          el("input", { type: "checkbox", checked: rec.finished,
-                        onchange: (e) => { rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
+        el("label", { class: "finished", title: "Tick this box once every fact the record's text states has a ground truth triple (only when no ✖ is left: step 070 won't evaluate a record with one)." },
+          el("input", { type: "checkbox", checked: rec.finished, id: "finishedbox",
+                        onchange: (e) => {
+                          if (e.target.checked && errorsIn(rec)) {            // the server refuses it too (save_batch)
+                            e.target.checked = false;
+                            status(`Not finished: this record has ${errorsIn(rec)} ✖ to fix first (step 070 won't evaluate a record with one). Fix each, then tick All facts extracted.`, "failed");
+                            return;
+                          }
+                          rec.finished = e.target.checked; drawList(); drawProgress(); changed(); } }),
           "All facts extracted"),
         toolsMenu(TOOL_GUIDELINES, TOOL_SCHEMA))));
 

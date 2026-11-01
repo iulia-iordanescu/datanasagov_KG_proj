@@ -127,10 +127,11 @@ class A_Paths(unittest.TestCase):
             self.assertTrue(path.resolve().is_relative_to(TMP.resolve()), path)
 
     def test_every_check_has_a_message(self):
-        """Every check the tool shows has a message: all of them but stage 4's own and those on rows together."""
+        """Every check the tool shows has a message: all of them but stage 4's own (save several_describes, which the
+        tool shows too) and those on rows together."""
         from common import validate
-        self.assertEqual(set(validate.ALL_CHECKS) - set(validate.GROUND_TRUTH_ERRORS) - set(validate.ROWS_FLAGS),
-                         set(server.MESSAGES))
+        self.assertEqual((set(validate.ALL_CHECKS) - set(validate.GROUND_TRUTH_ERRORS) - set(validate.ROWS_FLAGS))
+                         | {validate.SEVERAL_DESCRIBES}, set(server.MESSAGES))
         self.assertEqual(len(validate.ALL_CHECKS), len(set(validate.ALL_CHECKS)))     # each code once
 
     def test_050_checks_table_lists_every_check(self):
@@ -235,12 +236,15 @@ class B_Batch(unittest.TestCase):
         saved = post("/api/save", {"n": 0, "records": recs})
         problems = saved["problems"]
         self.assertTrue(all(len(p) == 3 for p in saved["patterns"]))          # the pattern buttons' list, as saved
-        # the definitions under the fields, refreshed after each save: r1 (tuning) is finished now, so what it coins
-        # is offered from now on (r3, held-out and unfinished, adds nothing)
-        self.assertEqual(b["coined"], {"entity_classes": [], "predicates": []})
-        self.assertEqual(saved["coined"], {"entity_classes": ["Planet"], "predicates": ["ORBITS"]})
-        self.assertEqual(saved["definitions"]["predicates"], {**b["definitions"]["predicates"], "ORBITS": ""})
-        self.assertIn(["Spacecraft", "ORBITS", "Planet"], saved["patterns"])
+        # r1 was ticked finished, but its rows still have a ✖ (ORBITS and Planet aren't in the ground truth schema):
+        # saved as not finished, and said so (r0's row not filled in, and its describes triple's subject, which the
+        # save puts back, don't count)
+        self.assertEqual(saved["unfinished"], [{"index": 1, "id": "r1",
+                                                "errors": ["object_class_not_in_schema", "predicate_not_in_schema"]}])
+        # the definitions under the fields, refreshed after each save: only finished tuning records' coined ones are
+        # offered, and r1 isn't finished (r3, held-out and unfinished, adds nothing)
+        self.assertEqual((saved["coined"], b["coined"]), ({"entity_classes": [], "predicates": []},) * 2)
+        self.assertNotIn(["Spacecraft", "ORBITS", "Planet"], saved["patterns"])
         self.assertEqual([len(p) for p in problems], [3, 2, 0, 1])               # one list per row sent
         # MODIS aboard Aqua: no chain links it to the catalog entry (r0, Title r0)
         self.assertEqual([[p["code"] for p in row] for row in problems[0]], [[], ["not_connected"], ["empty"]])
@@ -251,7 +255,7 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(rows[4], {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r2", "all_facts_extracted": "1"})
         self.assertEqual([r["drafted_by"] for r in rows], ["test-model"] * 4 + ["", "test-model"])  # kept; empty on r2's
                                                                                                 # row the tool wrote
-        self.assertEqual([r["all_facts_extracted"] for r in rows], ["1", "1", "1", "1", "1", "0"])
+        self.assertEqual([r["all_facts_extracted"] for r in rows], ["1", "1", "0", "0", "1", "0"])
         gt = ground_truth.read_ground_truth(TMP / "annotations" / "ground_truth")
         self.assertEqual(gt.problems, [])
         self.assertTrue(gt.records["r2"]["finished"])
@@ -262,7 +266,38 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(path.stat().st_mtime_ns, stamp)
         listed = get("/api/batches")["batches"]
         self.assertEqual(listed, [{"n": 0, "draft": "drafted_triples_batch0.csv", "ground_truth": "batch_000.csv",
-                                   "records": 4, "finished": 3}])
+                                   "records": 4, "finished": 2}])
+
+    def test_2b_finished_only_without_an_error(self):
+        """All facts extracted sticks only on a record whose written rows have no ✖: a second describes triple is one
+        (several_describes, on the second); a flag (⚑) never blocks, and nor does a row not filled in."""
+        recs = get("/api/batch?n=0")["records"]
+        r2 = recs[2]
+        twice = {"subject": "r2", "subject_class": "CatalogEntry", "predicate": "DESCRIBES", "object": "Title r2",
+                 "object_class": "Dataset", "source_text": "(record structure)"}
+        try:
+            r2.update(finished=True, rows=[dict(twice), {**twice, "object_class": "Instrument"}])
+            saved = post("/api/save", {"n": 0, "records": recs})
+            self.assertEqual(saved["unfinished"], [{"index": 2, "id": "r2", "errors": ["several_describes"]}])
+            self.assertEqual([[p["code"] for p in row if p["type"] == "error"] for row in saved["problems"][2]],
+                             [[], ["several_describes"]])
+            self.assertEqual({r["all_facts_extracted"] for r in gt_rows() if r["id"] == "r2"}, {"0"})
+            view = get("/api/batch?n=0")["records"][2]
+            self.assertEqual([[p["code"] for p in row["problems"] if p["code"] == "several_describes"] for row in view["rows"]],
+                             [[], ["several_describes"]])
+            # near misses: one describes triple and a flagged ground truth triple, plus a row not filled in: finished
+            r2.update(finished=True, rows=[dict(twice), {"subject": "AIRS", "subject_class": "Instrument", "predicate": "ABOARD",
+                                                         "object": "Moon", "object_class": "Spacecraft",
+                                                         "source_text": "No facts here."},
+                                           {"subject": "", "predicate": "", "object": ""}])
+            saved = post("/api/save", {"n": 0, "records": recs})
+            self.assertEqual(saved["unfinished"], [])
+            self.assertTrue(any(p["type"] == "flag" for p in saved["problems"][2][1]))
+            self.assertEqual({r["all_facts_extracted"] for r in gt_rows() if r["id"] == "r2"}, {"1"})
+        finally:
+            r2.update(finished=True, rows=[])
+            post("/api/save", {"n": 0, "records": recs})
+        self.assertEqual([r for r in gt_rows() if r["id"] == "r2"][0]["all_facts_extracted"], "1")
 
     def test_3_missing_batch(self):
         self.assertIn("error", get("/api/batch?n=7"))
@@ -405,9 +440,9 @@ class C_HandSchema(unittest.TestCase):
 
     def test_adds(self):
         hand = TMP / "annotations" / "ground_truth_schema.txt"
-        gaps = get("/api/gaps")
-        self.assertEqual({(g["entry_type"], g["component_class"], g["uses"]) for g in gaps["component_classes"]},
-                         {("entity class", "Planet", 1), ("predicate", "ORBITS", 1)})
+        # the list of what finished records coin (step 070 stops on it): none, since r1 can't be ticked finished
+        # while its ORBITS and Planet are ✖
+        self.assertEqual(get("/api/gaps")["component_classes"], [])
         before = hand.read_bytes()
         self.assertIn("error", post("/api/hand/add", {"entry_type": "entity class", "component_class": "spacecraft",
                                                       "definition": "again"}))
@@ -415,9 +450,17 @@ class C_HandSchema(unittest.TestCase):
                                                       "definition": " "}))
         self.assertIn("error", post("/api/hand/add", {"entry_type": "nonsense"}))
         self.assertEqual(hand.read_bytes(), before)
-        added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Planet", "definition": "a planet"})
+        # added from r1's ✖ (the record shown, a tuning record using it): its source names r1, though not finished
+        added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Planet", "definition": "a planet",
+                                       "record": "r1"})
         self.assertIn("source: ground truth tuning #1", added["added"])
-        post("/api/hand/add", {"entry_type": "predicate", "component_class": "ORBITS", "definition": "goes around"})
+        post("/api/hand/add", {"entry_type": "predicate", "component_class": "ORBITS", "definition": "goes around",
+                               "record": "r1"})
+        # no ✖ left on r1: it can be ticked finished now
+        recs = get("/api/batch?n=0")["records"]
+        recs[1]["finished"] = True
+        self.assertEqual(post("/api/save", {"n": 0, "records": recs})["unfinished"], [])
+        self.assertEqual([r["all_facts_extracted"] for r in gt_rows() if r["id"] == "r1"], ["1", "1"])
         gaps = get("/api/gaps")
         self.assertEqual(gaps, {"file": gaps["file"], "component_classes": []})
         s = schema_io.read_ground_truth_schema(hand)
@@ -521,11 +564,15 @@ class C_HandSchema(unittest.TestCase):
                                 "subject_class": "Comet", "predicate": "ABOARD", "object": "Aqua",
                                 "object_class": "Spacecraft", "source_text": "x", "all_facts_extracted": mark})
         try:
-            for chosen, source in ((uses, "ground truth tuning #7"), (uses[:3], None)):
+            # the record shown counts too when it is a tuning record using it (the person adds it from there), not
+            # when it doesn't use it
+            for chosen, source, shown in ((uses, "ground truth tuning #7", ""), (uses[:3], None, ""),
+                                          (uses[:3], "ground truth tuning #5", "p5"), (uses, "ground truth tuning #5, #7", "p5"),
+                                          (uses[:3], None, "p4")):
                 hand.write_bytes(before)
                 write(chosen)
                 added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Comet",
-                                               "definition": "a comet"})
+                                               "definition": "a comet", "record": shown})
                 self.assertNotIn("error", added, added)
                 s = schema_io.read_ground_truth_schema(hand)
                 self.assertEqual(s["sources"]["entity_classes"].get("Comet"), source, chosen)

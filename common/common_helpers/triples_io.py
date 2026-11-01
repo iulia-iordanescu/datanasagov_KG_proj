@@ -170,12 +170,13 @@ def _scalar(v, text: str = ""):
     return None
 
 
-def canonical_row(raw: dict, text: str = "", keys=REQUIRED + OPTIONAL) -> dict:
-    """The row tidied, before any check: each of keys a string on one line, spaces evened out (None where it can't be
-    one: a list, a dict, true or false, or nothing); a JSON number written as the record's text (text) writes it. The
-    one tidying step every row goes through: a model's (clean_triple) and the ground truth's (as read). Other keys are
-    kept as they are."""
-    return {**raw, **{k: _scalar(raw.get(k), text) for k in keys if k in raw}}
+def canonical_row(raw: dict, text: str = "", keys=REQUIRED + OPTIONAL, blank=None) -> dict:
+    """The row tidied, before any check: each of keys a string on one line, spaces evened out (blank where it can't be
+    one: empty, a list, a dict, true or false, or nothing; a file's row passes blank="" to keep its empty cells
+    empty); a JSON number written as the record's text (text) writes it. The one tidying step every row goes through:
+    a model's (clean_triple), the ground truth's (as read) and 060's extracted triples (as 070 reads them). Other keys
+    are kept as they are."""
+    return {**raw, **{k: (lambda v: blank if v is None else v)(_scalar(raw.get(k), text)) for k in keys if k in raw}}
 
 
 def clean_triple(raw, text: str = "") -> dict | None:

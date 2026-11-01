@@ -241,9 +241,10 @@ class Pairing(unittest.TestCase):
         # place of E2, which states G1's fact; a "not the same fact" verdict on E1-G1 lets E2 pair instead
         g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         e1 = triple("MODIS Terra", "Instrument", "ABOARD", "Aqua", "Spacecraft")
-        e2 = triple("the MODIS instrument", "Instrument", "ABOARD", "Aqua", "Spacecraft")
+        e2 = triple("the MODIS unit", "Instrument", "ABOARD", "Aqua", "Spacecraft")
         self.assertEqual(self.pairs(g, [e1])["pairs"], [(0, 0, "partial")])                      # case 1
         self.assertEqual(self.pairs(g, [e1, e2])["pairs"], [(0, 0, "partial")])                  # case 2
+        self.assertEqual(self.pairs(g, [e2, e1])["pairs"], [(0, 1, "partial")])                  # either row order
         verdict = {pair_key("r1", g[0], pairing.translate(e1, translation())): NOT_SAME}
         self.assertEqual(self.pairs(g, [e1], reviews=verdict)["pairs"], [])
         self.assertEqual(self.pairs(g, [e1, e2], reviews=verdict)["pairs"], [(0, 1, "partial")])
@@ -264,7 +265,7 @@ class Pairing(unittest.TestCase):
         # one wins, and the wrong pair is picked: plain numbers unchanged, strict ones too high
         g = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
         e = [triple("MODIS Terra", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
-             triple("the MODIS instrument", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
+             triple("the MODIS unit", "Dataset", "ABOARD", "Aqua", "Spacecraft")]
         c = self.pairs(g, e)
         self.assertEqual(c["pairs"], [(0, 0, "partial")])
         self.assertEqual(c["counts"]["partial_strict_pairs"], 1)
@@ -1145,6 +1146,72 @@ class HeldOutSources(unittest.TestCase):
             path.write_text(schema.replace("held-out #8, #11", "tuning #3").replace("held-out #8", "tuning #4"),
                             encoding="utf-8")
             self.assertEqual(records.held_out_sources(path, pool), [])
+
+
+class OrderFree(unittest.TestCase):
+    """The pairing, and every count of it, depends on what the triples say, never on the order of the rows: every
+    record below, evaluated with its ground truth triples and its extracted triples each shuffled (every order of a
+    small one, 60 random orders of the larger), gives the same counts, describes result and component class counts."""
+
+    def records(self):
+        aqua = triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")
+        return {
+            # the audit's case: two equally good partners, one with the wrong object class, one with the wrong subject
+            # class (subject-class and object-class accuracy used to follow the extraction's row order)
+            "two half-right partners": record([aqua], [{**aqua, "object_class": "Mission"}, {**aqua, "subject_class": "Dataset"}]),
+            # one right in one slot, one right in none: the one with an entity class right is kept
+            "one entity class right beats none": record([aqua], [{**aqua, "subject_class": "Dataset", "object_class": "Mission"},
+                                                         {**aqua, "object_class": "Mission"}]),
+            # two ground truth triples, one extracted: which ground truth triple pairs mustn't depend on order
+            "two truths, one occurrence": record([aqua, {**aqua, "object_class": "Mission"}], [{**aqua, "subject_class": "Dataset"}]),
+            # repeats and partial pairs
+            "repeats and partials": record(
+                [aqua, triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+                 triple("MODIS Snow Cover", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")],
+                [aqua, dict(aqua), triple("Moderate Resolution Imaging Spectroradiometer (MODIS)", "Instrument", "ABOARD", "Aqua", "Mission"),
+                 triple("MODIS Snow Cover 5-Min", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Dataset"),
+                 triple("AIRS", "Dataset", "ABOARD", "Aqua", "Spacecraft")]),
+            # the metrics/pairs.md example, with its seven occurrences
+            "the pairs.md example": record(list(G), list(E)),
+        }
+
+    def evaluate(self, rec, t):
+        out = pairing.compare_record({**rec, "gt": list(rec["gt"]), "extracted": list(rec["extracted"])}, t)["compared"]
+        component = {k: dict(v) for k, v in out["component_class_counts"]["counts"].items()}
+        return dict(out["counts"]), out["describes"], component
+
+    def test_shuffled_rows_give_the_same_numbers(self):
+        import itertools
+        import random
+        t = translation(**EXAMPLE_TRANSLATION)
+        for name, rec in self.records().items():
+            want = self.evaluate(rec, t)
+            small = len(rec["gt"]) <= 3 and len(rec["extracted"]) <= 5
+            orders = ([(g, e) for g in itertools.permutations(rec["gt"]) for e in itertools.permutations(rec["extracted"])]
+                      if small else [])
+            rng = random.Random(20261031)
+            for _ in range(60):
+                g, e = list(rec["gt"]), list(rec["extracted"])
+                rng.shuffle(g)
+                rng.shuffle(e)
+                orders.append((g, e))
+            for g, e in orders:
+                self.assertEqual(self.evaluate({**rec, "gt": list(g), "extracted": list(e)}, t), want, name)
+
+    def test_the_rule_for_a_tie(self):
+        """Of two equally good partners, the one whose contents sort first (instances by instance_key, then component
+        classes by loose match, then as written) is paired: here the one with subject class Dataset."""
+        t = translation()
+        aqua = triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")
+        for ex in ([{**aqua, "object_class": "Mission"}, {**aqua, "subject_class": "Dataset"}],
+                   [{**aqua, "subject_class": "Dataset"}, {**aqua, "object_class": "Mission"}]):
+            c = pairing.compare_record(record([aqua], ex), t)["compared"]["counts"]
+            self.assertEqual((c["exact_subject_class_pairs"], c["exact_object_class_pairs"]), (0, 1))
+        # one entity class right beats none, whatever the order
+        for ex in ([{**aqua, "subject_class": "Dataset", "object_class": "Mission"}, {**aqua, "object_class": "Mission"}],
+                   [{**aqua, "object_class": "Mission"}, {**aqua, "subject_class": "Dataset", "object_class": "Mission"}]):
+            c = pairing.compare_record(record([aqua], ex), t)["compared"]["counts"]
+            self.assertEqual((c["exact_subject_class_pairs"], c["exact_object_class_pairs"]), (1, 0))
 
 
 if __name__ == "__main__":

@@ -101,6 +101,8 @@ class Keys(unittest.TestCase):
         row = triples_io.canonical_row({"subject": "  MODIS \n aboard ", "object": "", "flags": ["x"], "id": "r1"})
         self.assertEqual(row, {"subject": "MODIS aboard", "object": None, "flags": ["x"], "id": "r1"})
         self.assertEqual(triples_io.canonical_row(row), row)                  # tidying twice changes nothing
+        # a file's row keeps its empty cells empty (blank=""), so its fingerprint and its columns stay strings
+        self.assertEqual(triples_io.canonical_row({"subject": " a  b ", "object": ""}, blank=""), {"subject": "a b", "object": ""})
 
 
 @unittest.skipUnless(CHROME, "no Chrome or Edge on this computer to run the page's script")

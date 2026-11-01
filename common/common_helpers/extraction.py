@@ -50,6 +50,7 @@ the step (060) to decide. Terms: docs/terminology.md.
 """
 from __future__ import annotations
 
+import collections
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -61,8 +62,9 @@ from common.chunking import text_fields
 from common.prompt_files import fill, load, text as prompt_text
 from common.report import named
 from common.text_match import Text
-from common.triples_io import (classed_key, clean_triple, describes_triple, is_describes, triple_key)
-from common.validate import CONFLICTING_CLASSES, SchemaEntries, check_against_schema, check_describes, check_triple_instance
+from common.triples_io import (classed_key, clean_triple, component_class_key, describes_triple, is_describes, triple_key)
+from common.validate import (CONFLICTING_CLASSES, DESCRIBES_CLASSES_DIFFER, SchemaEntries, check_against_schema,
+                             check_describes, check_triple_instance)
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
 RULES = load(PROMPTS / "extraction_rules.txt")
@@ -173,6 +175,19 @@ def best_copies(items: list, key, failed) -> tuple:
     return [best[k] for k in order], copies
 
 
+def describes_class(named: list) -> tuple:
+    """(the describes class, whether the text pieces disagree) from the describes classes each piece's reply named
+    (empty: none). The one named by the most pieces (by loose match, component_class_key), on a tie the first named,
+    in its first spelling; the pieces disagree when they name two or more different ones, which a flag says
+    (DESCRIBES_CLASSES_DIFFER) so it is never resolved without a word."""
+    keys = [component_class_key(n) for n in named if component_class_key(n)]
+    if not keys:
+        return "", False
+    count = collections.Counter(keys)
+    best = max(count, key=lambda k: (count[k], -keys.index(k)))
+    return next(n for n in named if component_class_key(n) == best), len(count) > 1
+
+
 def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
     """(rows, removed). rows: the describes triple, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
@@ -182,9 +197,10 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
     since code writes the record's one describes triple."""
     removed = []
     named = [str(r.get("describes_class") or "").strip() for r in replies if isinstance(r, dict)]
-    head = describes_triple(record_id, title, next((c for c in named if c), ""))
+    chosen, differ = describes_class(named)
+    head = describes_triple(record_id, title, chosen)
     errors, flags = check_describes(head, record_id, schema_entries)
-    rows = [{**head, "errors": errors, "flags": flags}]
+    rows = [{**head, "errors": errors, "flags": flags + ([DESCRIBES_CLASSES_DIFFER] if differ else [])}]
 
     whole = Text(text)
     checked = []

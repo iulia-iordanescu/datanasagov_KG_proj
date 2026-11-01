@@ -369,7 +369,8 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     (code version, settings, how its model calls were sent (llm.describe(), from its details file: the exact model
     that answered, the answer limit, temperature, thinking, effort), prompts, and the schema files it read, by
     fingerprint) and this run (code version, the
-    translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), the facts
+    translation, the version of what counts as the same component instance (text_match.MATCHING_VERSION), the version
+    of what 070 counts (pairing.EVALUATION_VERSION: the gate, the keys, the tie rule), the facts
     that wait on an expert (that occurrences matching them are left out of precision, how many there are, and their
     rows by fingerprint), and the model that proposed the translation)."""
     extraction = {"run_id": evaluated.extraction_made.get("run_id") or inputs_manifest.get("run_id"),
@@ -382,6 +383,7 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     pending = [{k: row[k] for k in PENDING_COLUMNS} for row in evaluated.pending]
     return {"extraction (060)": extraction,
             "evaluation (070)": {"git_commit": git_commit(), "matching_version": text_match.MATCHING_VERSION,
+                                 "evaluation_version": pairing.EVALUATION_VERSION,
                                  "translation_sha256": _translation_fingerprint(translation),
                                  # an occurrence matching a fact that waits on an expert is left out of precision
                                  "facts_waiting_on_an_expert": {"excluded_from_precision": True,

@@ -596,7 +596,7 @@ class BuildRows(unittest.TestCase):
                                                               dict(good, object="Moon", source_text="aboard the Moon")]},
                    "not a dict", {"triples": "not a list"}]
         rows, removed = extraction.build_rows("r1", "T", "title: T\n\nnotes: MODIS aboard Aqua.", replies, entries)
-        self.assertEqual(rows[0]["object_class"], "Dataset")                         # the first entity class named
+        self.assertEqual(rows[0]["object_class"], "Dataset")                         # the only entity class named
         self.assertEqual(rows[0]["flags"], ["describes_class_not_in_schema"])
         self.assertEqual([r["object"] for r in rows[1:]], ["Aqua", "Aqua", "Moon"])
         self.assertEqual(rows[1]["flags"], ["conflicting_classes"])
@@ -1678,10 +1678,11 @@ class OneSelection(unittest.TestCase):
         schema.write_text("ENTITY CLASSES\n--------------\nInstrument  d\nSpacecraft  d\nDataset  d\n\nPREDICATES\n"
                           "----------\nABOARD  d\n", encoding="utf-8")
         from common.stop import Stop
+        catalog = {rid: {"id": rid, "title": "T", "notes": "s"} for rid in ("fin_t", "draft_t", "fin_h", "draft_h", "twice", "bad")}
         with self.assertRaises(Stop) as stop:
-            records_070.check_coined(self.gt, schema)
-        self.assertIn("Gauge (entity class): batch_000.csv line 2", str(stop.exception))
-        self.assertIn("HeldThing (entity class): batch_000.csv line 6", str(stop.exception))
+            records_070.check_evaluable(self.gt, catalog, schema)
+        self.assertIn("Gauge (entity class): batch_000.csv line 2: not in the ground truth schema", str(stop.exception))
+        self.assertIn("HeldThing (entity class): batch_000.csv line 6: not in the ground truth schema", str(stop.exception))
         for absent in ("DRAFTED", "HeldDraft", "TwiceThing", "BadThing"):
             self.assertNotIn(absent, str(stop.exception))
         # the advice for the first gap of each part names the state of the record there
@@ -1771,6 +1772,124 @@ class OneSelection(unittest.TestCase):
         gt_file(self.tmp, "batch_1000.csv", [row("other", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "s")])
         self.assertEqual(ground_truth.read_ground_truth(self.tmp, self.pool).state("other"), ground_truth.FINISHED)
 
+
+
+class Evaluable(unittest.TestCase):
+    """common.ground_truth.evaluable_problems: step 070's one gate. A finished record with any row error, a second
+    describes triple, a component class the ground truth schema lacks, or a fact that waits on an expert whose
+    entity classes or predicate the ground truth schema lacks, is named with its file, line, problem and what to do;
+    the same rows in a record not finished are not (they aren't evaluated)."""
+
+    HAND = {"entity_classes": {"Instrument": "d", "Spacecraft": "d", "Dataset": "d"}, "predicates": {"ABOARD": "d"},
+            "patterns": []}
+    RECORDS = {"r1": {"id": "r1", "title": "Title one", "notes": "MODIS aboard Aqua."},
+               "r2": {"id": "r2", "title": "Title two", "notes": "MODIS aboard Aqua."}}
+
+    def problems(self, rows, pending=()):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        gt_file(tmp, "batch_000.csv", rows)
+        gt = ground_truth.read_ground_truth(tmp, [{"id": "r1", "position": 0, "part": "tuning"},
+                                                  {"id": "r2", "position": 1, "part": "held-out"}])
+        return ground_truth.evaluable_problems(gt, self.RECORDS, self.HAND, "annotations/ground_truth_schema.txt",
+                                               list(pending))
+
+    def describes(self, rid="r1", cls="Dataset", done="1"):
+        return row(rid, rid, "CatalogEntry", "DESCRIBES", f"Title {'one' if rid == 'r1' else 'two'}", cls,
+                   "(record structure)", done)
+
+    def test_each_problem_and_its_near_miss(self):
+        good = row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua")
+        self.assertEqual(self.problems([self.describes(), good]), [])
+        cases = [   # (rows of record r1, the words the problem must have)
+            ([self.describes(), row("r1", "MODIS", "Instrument", "ABOARD", "", "Spacecraft", "x")], "but not all three"),
+            ([self.describes(), row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "")], "no source text"),
+            ([self.describes(), row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "aboard Terra")],
+             "isn't in the record's text"),
+            ([self.describes(cls="X"), good], "has no describes class"),
+            ([self.describes(cls="x"), good], "has no describes class"),             # X in any spelling
+            ([row("r1", "other", "CatalogEntry", "DESCRIBES", "Title one", "Dataset", "(record structure)"), good],
+             "subject isn't the record's id"),
+            ([self.describes(), self.describes(cls="Instrument"), good], "another describes triple before this one"),
+            ([self.describes(), row("r1", "MODIS", "Instrument", "aboard", "Aqua", "Spacecraft", "MODIS aboard Aqua"),
+              row("r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua")], "Gizmo (entity class)"),
+        ]
+        for rows, words in cases:
+            found = self.problems(rows)
+            self.assertEqual(len(found), 1, (words, found))
+            self.assertIn(words, found[0])
+            self.assertTrue(found[0].startswith("batch_000.csv line ") or found[0].startswith("Gizmo"), found[0])
+            # the near miss: the same rows in a record not finished are not evaluated, so not named
+            self.assertEqual(self.problems([r[:-1] + ["0"] for r in rows]), [], words)
+        # a held-out finished record is evaluated too
+        self.assertIn("isn't in the record's text", self.problems(
+            [self.describes("r2"), row("r2", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "Terra")])[0])
+        # an id not in the catalog
+        self.assertIn("isn't a record of the catalog", self.problems([row("zz", "a", "Instrument", "ABOARD", "b",
+                                                                           "Spacecraft", "s")])[0])
+
+    def test_pending_rows(self):
+        good = [self.describes(), row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua")]
+        wait = {"id": "r1", "subject": "MODIS", "subject_class": "instrument", "predicate": "aboard", "object": "Aqua",
+                "object_class": "SPACECRAFT", "source_text": "MODIS aboard Aqua", "left_out": "x", "question": "Q1",
+                "line": 2}
+        self.assertEqual(self.problems(good, [wait]), [])                   # the schema's, in another spelling
+        for slot, value in (("predicate", "CARRIED_ON"), ("subject_class", "Sensor"), ("object_class", "Satelite")):
+            found = self.problems(good, [{**wait, slot: value}])
+            self.assertEqual(len(found), 1, slot)
+            self.assertTrue(found[0].startswith("annotations/pending_triples.csv line 2 (record r1): its "), found[0])
+            self.assertIn(value, found[0])
+            self.assertIn("No clear would-be triple:", found[0])
+
+    def test_070_stops_on_them(self):
+        records_070 = _helper("070_evaluate")
+        from common.stop import Stop
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        gt_file(tmp, "batch_000.csv", [self.describes(), self.describes(cls="Instrument"),
+                                       row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "Terra")])
+        schema = tmp / "ground_truth_schema.txt"
+        schema.write_text("ENTITY CLASSES\n--------------\nInstrument  d\nSpacecraft  d\nDataset  d\n\nPREDICATES\n"
+                          "----------\nABOARD  d\n", encoding="utf-8")
+        gt = ground_truth.read_ground_truth(tmp, [{"id": "r1", "position": 0, "part": "tuning"}])
+        with self.assertRaises(Stop) as stop:
+            records_070.check_evaluable(gt, self.RECORDS, schema)
+        said = str(stop.exception)
+        self.assertIn("Step 070 can't evaluate", said)
+        self.assertIn("batch_000.csv line 3 (record r1): the record has another describes triple", said)
+        self.assertIn("batch_000.csv line 4 (record r1): its source text isn't in the record's text", said)
+        self.assertIn("then run `py 070_evaluate/run.py` again", said)
+
+
+class DescribesClassOfThePieces(unittest.TestCase):
+    """common.extraction.describes_class: the text pieces of one record each name a describes class (or none). The
+    one named by the most pieces is kept (by loose match; on a tie, the first named), and when they disagree the
+    describes triple is flagged describes_classes_differ, never resolved without a word."""
+
+    def test_cases(self):
+        cases = [(["Dataset"], ("Dataset", False)), (["", "Dataset", ""], ("Dataset", False)),
+                 (["Dataset", "dataset", "DATA_SET"], ("Dataset", False)),           # one entity class, three spellings
+                 (["Dataset", "Instrument"], ("Dataset", True)),                     # a tie: the first named
+                 (["Instrument", "Dataset", "Dataset"], ("Dataset", True)),          # the most pieces
+                 ([], ("", False)), (["", ""], ("", False))]
+        for named, want in cases:
+            self.assertEqual(extraction.describes_class(named), want, named)
+        entries = validate.SchemaEntries({"entity_classes": {"Dataset": "", "Instrument": ""}, "predicates": {}})
+        replies = [{"describes_class": "Instrument", "triples": []}, {"describes_class": "Dataset", "triples": []},
+                   {"describes_class": "dataset", "triples": []}]
+        rows, _ = extraction.build_rows("r1", "T", "title: T", replies, entries)
+        self.assertEqual((rows[0]["object_class"], rows[0]["flags"]), ("Dataset", ["describes_classes_differ"]))
+        rows, _ = extraction.build_rows("r1", "T", "title: T", replies[1:], entries)
+        self.assertEqual((rows[0]["object_class"], rows[0]["flags"]), ("Dataset", []))
+
+    def test_a_describes_triple_of_the_models_own_is_removed(self):
+        entries = validate.SchemaEntries({"entity_classes": {"Dataset": ""}, "predicates": {}})
+        own = {"subject": "r1", "subject_class": "catalog_entry", "predicate": "Describes", "object": "T",
+               "object_class": "Dataset", "source_text": "T"}
+        rows, removed = extraction.build_rows("r1", "T", "title: T", [{"describes_class": "Dataset", "triples": [own]}],
+                                              entries)
+        self.assertEqual(len(rows), 1)                                       # the code's describes triple only
+        self.assertEqual([r["reason"] for r in removed], ["describes_triple"])
 
 class AnnotationsReadCleanly(unittest.TestCase):
     """The real annotations/ files read without problems (read only)."""

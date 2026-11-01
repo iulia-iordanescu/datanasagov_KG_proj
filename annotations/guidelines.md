@@ -82,7 +82,7 @@ Every record has one [classed triple](../docs/terminology.md#2-triples) that no 
 
 ## Finishing a record
 
-- **Tick *All facts extracted*** only when every fact the record states is there. Only [finished records](../docs/terminology.md#4-ground-truth-and-samples) are extracted (step 060) and evaluated (step 070).
+- **Tick *All facts extracted*** only when every fact the record states is there. Only [finished records](../docs/terminology.md#4-ground-truth-and-samples) are extracted (step 060) and evaluated (step 070). The tool lets it be ticked only once no row of the record has a ✖ (step 070 won't evaluate a finished record with one).
 - **A record that states no facts:** delete every [ground truth triple](../docs/terminology.md#4-ground-truth-and-samples) of the record; the tool then keeps one row of the file with only the record's id, which means "annotated, states no facts". Still tick *All facts extracted*.
 - **Fix what the tool marks:** ✖ must be fixed (e.g. a [source text](../docs/terminology.md#1-records-and-their-text) that isn't in the record's text); ⚑ is worth a look (e.g. a [subject instance](../docs/terminology.md#2-triples) that isn't in the text, which may be a typo or a deliberate rewording).
 - **If a ground truth triple isn't connected to the record's id through the others,** look for the fact that connects it; add it only if the record states it. The tool marks such triples ⚑.

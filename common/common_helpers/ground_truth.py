@@ -55,9 +55,11 @@ Problems, each listed, none silently resolved:
     which is right (its state is "in two files": only ANNOTATED and TO_FIX take it, until fixed);
   - a record whose rows disagree on all_facts_extracted (some 1, some 0);
   - the same classed triple twice in a record: the same subject instance,
-    predicate and object instance (compared as
-    common/common_helpers/triples_io.triple_key does) and the same subject
-    class and object class (as triples_io.component_class_key does). Only
+    predicate and object instance and the same subject class and object class,
+    compared by the key step 070's exact pairs use (common/common_helpers/
+    triples_io.classed_key: instances by text_match.instance_key, so "1 km" and
+    "1000 m" are the same; component classes by component_class_key; a
+    symmetric predicate's subject and object either way round). Only
     one copy can be paired, so 070 would count the other as ground truth only. Also in
     gt.repeats: 070 refuses to run while there is one;
   - a record with an all_facts_extracted value other than 0 and 1 (FINISHED_MARKS) on some row (reported
@@ -90,9 +92,9 @@ from pathlib import Path
 
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
-from common.triples_io import KIND_KEYS, canonical_row, component_class_key, is_describes, triple_key
+from common.triples_io import KIND_KEYS, canonical_row, classed_key, component_class_key, is_describes
 from common.validate import (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED, ID_NOT_IN_RECORDS, INCOMPLETE, NO_SOURCE_TEXT,
-                             SOURCE_NOT_IN_TEXT)
+                             SEVERAL_DESCRIBES, SOURCE_NOT_IN_TEXT)
 
 GROUND_TRUTH_DIR = ANNOTATIONS_DIR / "ground_truth"
 PATTERN = "batch_*.csv"
@@ -284,8 +286,7 @@ def _as_read(raw: dict, ref: str, position: int, line: int | None = None) -> dic
     """A row as read_ground_truth keeps it: every column of FILE_COLUMNS, tidied as every row is
     (common.triples_io.canonical_row: one line, spaces evened out; "" for an empty one), with its origin and its line
     in the file (the line it ends on; without one, as a file written from these rows would have it)."""
-    tidy = canonical_row({c: str(raw.get(c) or "") for c in FILE_COLUMNS}, keys=FILE_COLUMNS)
-    row = {c: tidy[c] or "" for c in FILE_COLUMNS}
+    row = canonical_row({c: str(raw.get(c) or "") for c in FILE_COLUMNS}, keys=FILE_COLUMNS, blank="")
     row[ORIGIN_FIELD] = [f"{ref}#{position}"]
     row[LINE_FIELD] = line if line is not None else position + 2          # the header is line 1
     return row
@@ -369,8 +370,8 @@ def _build(files_rows: list, files: list, file_problems: list, pool) -> GroundTr
         for row in rows:
             if not (row["subject"] and row["predicate"] and row["object"]) or is_describes(row):
                 continue
-            entity_classes = (component_class_key(row["subject_class"]), component_class_key(row["object_class"]))
-            groups.setdefault(triple_key(row), {}).setdefault(entity_classes, []).append(row)
+            fact, subject_class, object_class = classed_key(row)       # the key 070's exact pairs use
+            groups.setdefault(fact, {}).setdefault((subject_class, object_class), []).append(row)
         where = f"record {rid} ({in_files[rid][0]})"
         for by_classes in groups.values():
             for same in by_classes.values():
@@ -418,6 +419,8 @@ ROW_ERRORS = {
                           "press \"Use selection\" to copy it exactly",
     DESCRIBES_SUBJECT_NOT_ID: "the describes triple's subject isn't the record's id: write the record's id there",
     DESCRIBES_UNDECIDED: "the describes triple has no describes class (X): choose its object class, the entity class of its object instance",
+    SEVERAL_DESCRIBES: "the record has another describes triple before this one, and a record has one: delete this one "
+                       "(or the other, if this one's describes class is the right one)",
 }
 
 
@@ -430,7 +433,7 @@ def check_rows(selection: Selection, records: dict) -> list:
     from common.triples_io import is_describes
     from common.validate import check_describes, check_triple_instance
 
-    texts, out = {}, []
+    texts, out, described = {}, [], set()
     for row in _rows_of(selection):
         rid = row["id"]
         filled = [bool(row[k]) for k in ("subject", "predicate", "object")]
@@ -441,7 +444,8 @@ def check_rows(selection: Selection, records: dict) -> list:
         elif not all(filled):
             errors = [INCOMPLETE]
         elif is_describes(row):
-            errors = check_describes(row, rid)[0]
+            errors = check_describes(row, rid)[0] + ([SEVERAL_DESCRIBES] if rid in described else [])
+            described.add(rid)
         else:
             if rid not in texts:
                 texts[rid] = Text(full_text(records[rid]))
@@ -450,6 +454,50 @@ def check_rows(selection: Selection, records: dict) -> list:
             file = row[ORIGIN_FIELD][0].rsplit("/", 1)[-1].split("#")[0]
             out.append({"where": f"{file} line {row[LINE_FIELD]}", "id": rid, "errors": errors})
     return out
+
+
+# --------------------------------------------------------------------------
+# what step 070 evaluates against must be clean (070, the status)
+# --------------------------------------------------------------------------
+
+def evaluable_problems(gt: GroundTruth, records: dict, ground_truth_schema: dict, schema_path: str = "",
+                       pending: list = (), pending_path: str = "annotations/pending_triples.csv") -> list:
+    """Every reason the finished records (EVALUABLE, every part), or the facts that wait on an expert (pending:
+    common.left_out.read_pending's rows), aren't fit to evaluate against, each one line naming the file and line, the
+    record, the problem, and what to do. Step 070 stops while there is one (a finished record says every fact is
+    there, but nobody checked its rows: the annotation tool lets a record be ticked finished only without an error,
+    and a hand edit can still leave one); the status lists them. Checked, in this order:
+      - every row error of check_rows (ROW_ERRORS: an id not in the catalog, an incomplete row, no source text or one
+        not in the record's text, the describes triple's subject not the record's id, an undecided describes class,
+        a second describes triple);
+      - every entity class or predicate the finished records use that the ground truth schema lacks (a coined one:
+        step 070 translates only into the ground truth schema);
+      - each pending row's entity classes and predicate, which must be the ground truth schema's too: one it lacks
+        could never equal a translated extracted triple's, so the occurrence it waits for would count against
+        precision instead of being left out.
+    records: 020's records.jsonl by id; schema_path: the ground truth schema's file, for messages."""
+    finished = gt.select(EVALUABLE)
+    lines = [f"{r['where']} (record {r['id']}): " + "; ".join(ROW_ERRORS[e] for e in r["errors"])
+             for r in check_rows(finished, records)]
+    coined = with_coined(ground_truth_schema, finished)["coined"]
+    where = f" ({schema_path})" if schema_path else ""
+    lines += [f"{use}: not in the ground truth schema{where}, so step 070 can't translate into it: add it with a one-line "
+              f"definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a button), or fix the "
+              f"typo where it's used" for use in coined_uses(finished, coined)]
+    from common.left_out import NO_TRIPLE
+    known = {kind: {component_class_key(n) for n in ground_truth_schema[kind]} for kind in ("entity_classes", "predicates")}
+    for row in pending:
+        missing = [f"its {slot.replace('_', ' ')} {row[slot]}" for slot, kind in (
+                       ("subject_class", "entity_classes"), ("predicate", "predicates"), ("object_class", "entity_classes"))
+                   if component_class_key(row[slot]) not in known[kind]]
+        if missing:
+            lines.append(f"{pending_path} line {row.get('line', '?')} (record {row['id']}): {' and '.join(missing)} "
+                         f"{'is' if len(missing) == 1 else 'are'}n't in the ground truth schema{where}, so no "
+                         f"extracted triple could ever match the fact that waits, and it would count against "
+                         f"precision: write the ground truth schema's entity class or predicate the fact would have "
+                         f"(or fix the typo); if none fits, delete the row and write \"{NO_TRIPLE} <why>\" under its "
+                         f"item in annotations/left_out.md")
+    return lines
 
 
 # --------------------------------------------------------------------------

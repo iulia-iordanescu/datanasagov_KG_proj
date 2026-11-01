@@ -80,6 +80,11 @@ LEVELS = ("exact", "partial")
 # SYMMETRIC_PREDICATES (the ground truth schema's predicates that say the same fact either way round, so subject and
 # object may be swapped when pairing) live in common/common_helpers/triples_io.py, with the key of the same fact.
 MISMATCH_WARN = 2                 # a component class mismatch seen this often is a warning: a row to look at
+#: Bump when what step 070 counts changes (what is evaluated, how rows are tidied and keyed, how pairs are chosen),
+#: so its recipe says so and py helpers/compare_runs.py shows two runs as different (its *What differs*).
+#: 2 (2026-10-31): the evaluability gate, the keys and the row tidying of the edge-case audit, and ties broken by the
+#: triples' contents, not their order; 1: before.
+EVALUATION_VERSION = 2
 
 
 def _words(s) -> list:
@@ -210,55 +215,70 @@ def _within_strict_reach(g: dict, translation) -> bool:
         component_class_key(g["object_class"]) in translation.reachable["entity class"]
 
 
-def _max_pairs(can: dict, strict, turned=lambda gi, ei: False) -> dict:
+def _max_pairs(can: dict, strict, turned=lambda gi, ei: False, agree=lambda gi, ei: 0, g_rank=None, e_rank=None) -> dict:
     """The largest pairing {gt index: extracted index}, each triple in either
     list with zero or one partner from the other, each gt triple paired with
     one of the extracted triples it can pair with (can[gi]); among the
     largest pairings, one with the most strict pairs (strict(gi, ei)), and
     among those, one with the fewest pairs matched with subject and object
-    swapped (turned(gi, ei)), so an occurrence as written is preferred.
+    swapped (turned(gi, ei)), so an occurrence as written is preferred; among
+    those, one whose pairs agree on the most entity classes, slot by slot
+    (agree(gi, ei): 0, 1 or 2 of subject class and object class), so a pair
+    with one entity class right is kept over one with none.
     Taking each gt triple's first free partner instead can leave a triple
     unpaired that another choice would have paired, or pair a triple with a
     partner whose entity classes differ while another partner's agree.
 
     The standard method for this: a minimum-cost maximum matching by
-    successive shortest augmenting paths (a pair costs 0 if strict, BIG if
-    not, plus 1 if turned, BIG being more than all the turned pairs together;
-    Bellman-Ford finds each path, since swapping partners along a path
-    can lower the cost). Each augmentation adds one pair at the lowest cost
-    possible, so the result has the most pairs and, among those, the fewest
-    non-strict ones, then the fewest turned ones. Deterministic: triples are
-    tried in order."""
+    successive shortest augmenting paths (each pair's cost: BIG² if not
+    strict, plus BIG if turned, plus one for each entity class that differs,
+    each weight more than all the lighter ones together; Bellman-Ford finds
+    each path, since swapping partners along a path can lower the cost). Each
+    augmentation adds one pair at the lowest cost possible, so the result has
+    the most pairs and, among those, the fewest non-strict ones, then the
+    fewest turned ones, then the most entity classes agreeing.
+
+    Order-free: the triples are tried in the order of g_rank and e_rank (each
+    index's place when the triples are sorted by their contents: _ranks), and
+    a tie between equally good paths goes to the one that reaches the triple
+    first in that order. So the pairing depends on what the triples say, never
+    on the order of the rows in the files; two triples that say exactly the
+    same are interchangeable, so which of them is paired changes no count."""
+    g_rank = g_rank or {gi: gi for gi in can}
     edges = [(gi, ei) for gi in can for ei in can[gi]]
-    big = len(edges) + 1
-    cost = {(gi, ei): (0 if strict(gi, ei) else big) + (1 if turned(gi, ei) else 0) for gi, ei in edges}
+    e_rank = e_rank or {ei: ei for _, ei in edges}
+    big = 2 * len(edges) + 1
+    cost = {(gi, ei): (0 if strict(gi, ei) else big * big) + (big if turned(gi, ei) else 0) + (2 - agree(gi, ei))
+            for gi, ei in edges}
+    order_g = sorted(can, key=lambda gi: g_rank[gi])
+    order_e = {gi: sorted(can[gi], key=lambda ei: e_rank[ei]) for gi in can}
     partner_of_g, partner_of_e = {}, {}               # the pairing so far, both ways
     while True:
         # shortest path from any unpaired gt triple, alternating "pair with
         # ei" (cost +c) and "ei leaves its partner" (cost -c), to an unpaired ei
-        dist = {("g", gi): 0 for gi in can if gi not in partner_of_g}
+        dist = {("g", gi): 0 for gi in order_g if gi not in partner_of_g}
         came = {}
         changed = True
         while changed:
             changed = False
-            for gi in can:
+            for gi in order_g:
                 if ("g", gi) not in dist:
                     continue
-                for ei in can[gi]:
+                for ei in order_e[gi]:
                     if partner_of_g.get(gi) == ei:
                         continue
                     d = dist[("g", gi)] + cost[(gi, ei)]
                     if d < dist.get(("e", ei), float("inf")):
                         dist[("e", ei)], came[("e", ei)], changed = d, gi, True
-            for ei, gi in partner_of_e.items():
+            for ei, gi in sorted(partner_of_e.items(), key=lambda x: e_rank[x[0]]):
                 if ("e", ei) in dist:
                     d = dist[("e", ei)] - cost[(gi, ei)]
                     if d < dist.get(("g", gi), float("inf")):
                         dist[("g", gi)], came[("g", gi)], changed = d, ei, True
-        ends = sorted((d, k[1]) for k, d in dist.items() if k[0] == "e" and k[1] not in partner_of_e)
+        ends = sorted((d, e_rank[k[1]], k[1]) for k, d in dist.items() if k[0] == "e" and k[1] not in partner_of_e)
         if not ends:
             return dict(partner_of_g)
-        ei = ends[0][1]
+        ei = ends[0][2]
         while True:                                   # walk the path back, swapping partners
             gi = came[("e", ei)]
             before = partner_of_g.get(gi)
@@ -268,13 +288,36 @@ def _max_pairs(can: dict, strict, turned=lambda gi, ei: False) -> dict:
             ei = before
 
 
+#: What a triple's place among the others is sorted by (_ranks): everything pairing compares, then every field as
+#: written, so only triples that say exactly the same tie.
+RANK_FIELDS = ("subject", "subject_class", "predicate", "object", "object_class", "source_text")
+
+
+def _ranks(triples: list) -> dict:
+    """{index: place} of the triples sorted by their contents (instances by instance_key, component classes by
+    component_class_key, then each field as written: RANK_FIELDS), so the order of the rows never decides a tie."""
+    def content(i):
+        t = triples[i]
+        return (tuple(instance_key(t.get(f)) if f in ("subject", "object") else component_class_key(t.get(f))
+                      if f != "source_text" else "" for f in RANK_FIELDS)
+                + tuple(str(t.get(f) or "") for f in RANK_FIELDS))
+    return {i: place for place, i in enumerate(sorted(range(len(triples)), key=lambda i: (content(i), i)))}
+
+
+def slots_agree(g: dict, t: dict) -> int:
+    """How many of the two entity classes (subject class, object class) the two triples share: 0, 1 or 2."""
+    return sum(component_class_key(g[s]) == component_class_key(t[s]) for s in ("subject_class", "object_class"))
+
+
 def _pair(gt: list, ex: list, free_e: set, allowed) -> tuple:
     """The two passes (LEVELS) between the triples gt and the occurrences ex still free (free_e): (pairs [(gt index,
     extracted index, level)], turned {(gi, ei) matched with subject and object swapped}, the occurrences left free).
     allowed(gi, ei): False for a pair a person's review ruled out. Used for the ground truth triples, then for the
-    facts that wait on an expert, with what is left."""
+    facts that wait on an expert, with what is left. Every tie is broken by the triples' contents (_ranks), never by
+    their order in the files."""
     pairs, turned = [], set()
     free_g, free_e = set(range(len(gt))), set(free_e)
+    g_rank, e_rank = _ranks(gt), _ranks(ex)
     for level in LEVELS:
         way = {}                                      # (gi, ei): swapped?, as written when both work unless only swapped is strict
         for gi in sorted(free_g):
@@ -288,7 +331,8 @@ def _pair(gt: list, ex: list, free_e: set, allowed) -> tuple:
         def oriented(gi, ei):
             return swapped(ex[ei]) if way[(gi, ei)] else ex[ei]
         for gi, ei in sorted(_max_pairs(can, lambda gi, ei: classes_agree(gt[gi], oriented(gi, ei)),
-                                        lambda gi, ei: way[(gi, ei)]).items()):
+                                        lambda gi, ei: way[(gi, ei)], lambda gi, ei: slots_agree(gt[gi], oriented(gi, ei)),
+                                        g_rank, e_rank).items()):
             pairs.append((gi, ei, level))
             if way[(gi, ei)]:
                 turned.add((gi, ei))

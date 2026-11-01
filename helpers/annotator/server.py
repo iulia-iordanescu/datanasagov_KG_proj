@@ -106,10 +106,12 @@ truth schema), of what the finished records use that the ground truth schema lac
 (ground_truth_schema_gaps). The file is changed by
 common/common_helpers/schema_io.add_to_ground_truth_schema, which adds one entry,
 checks that nothing else changed, and otherwise puts the file back. A component
-class gets a "source:" line naming the FINISHED TUNING records using it ("ground
-truth tuning #3, #8"; common/common_helpers/schema_io.source_line), none when
-none does: a model's uncorrected draft or a held-out record is never named as
-what it was learned from.
+class gets a "source:" line naming the FINISHED TUNING records using it, and the
+tuning record shown when its rows use it, since the person adding it from there has
+read that use ("ground truth tuning #3, #8"; common/common_helpers/schema_io.source_line);
+none when none does: a model's uncorrected draft no person is looking at, or a
+held-out record, is never named as what it was learned from. A record can be ticked
+finished only without a ✖ (save_batch), so its component classes are added before.
 
 The ground truth schema is frozen for held-out records (annotations/guidelines.md,
 Before you start): in a held-out record, an entity class or predicate the ground truth
@@ -161,7 +163,8 @@ from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDEC
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
-                             PREDICATE_NOT_IN_SCHEMA, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT, SOURCE_NOT_IN_TEXT,
+                             PREDICATE_NOT_IN_SCHEMA, SEVERAL_DESCRIBES, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT,
+                             SOURCE_NOT_IN_TEXT,
                              SUBJECT_CLASS_NOT_IN_SCHEMA, SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE,
                              SUBJECT_NOT_IN_TEXT, SchemaEntries, check_against_schema, check_describes,
                              check_triple_instance)
@@ -255,6 +258,9 @@ MESSAGES = {
     DESCRIBES_SUBJECT_NOT_ID: "The describes triple's subject should be the record's id.",
     # the tool's own check (connection_problems), on a record's rows together: {piece} is filled with the component
     # instances this ground truth triple is connected to
+    SEVERAL_DESCRIBES: "The record has another describes triple before this one, and a record has one: step 070 "
+                       "won't evaluate the record while it has two. Delete this one (or the other, if this one's "
+                       "describes class is the right one).",
     NOT_CONNECTED: "No chain of ground truth triples links this ground truth triple to the record's id (through "
                      "the describes triple). Look for the fact that connects it, and add it only if the "
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
@@ -410,6 +416,18 @@ def _message(code: str, row: dict, every: list, title: str = "") -> str:
 #: Each "not in the source text" flag: its "not in the text" flag, and its slot.
 NOT_IN_SOURCE = {SUBJECT_NOT_IN_SOURCE: (SUBJECT_NOT_IN_TEXT, "subject"),
                  OBJECT_NOT_IN_SOURCE: (OBJECT_NOT_IN_TEXT, "object")}
+
+
+def describes_problems(rows: list) -> list:
+    """For each of a record's rows, its several_describes error (a list of one), or []: every describes triple after
+    the record's first (as common/common_helpers/ground_truth.check_rows finds it in the files)."""
+    out, seen = [], False
+    for row in rows:
+        second = is_describes(row) and seen
+        seen = seen or is_describes(row)
+        out.append([{"code": SEVERAL_DESCRIBES, "type": "error", "add": None, "message": MESSAGES[SEVERAL_DESCRIBES]}]
+                   if second else [])
+    return out
 
 
 def connection_problems(rid: str, rows: list) -> list:
@@ -574,9 +592,10 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title, uses, counted) + extra + several + slash}
-                 for r, extra, several, slash in zip(rows, connection_problems(rid, rows), qualifier_problems(rows, qualifier_predicates(data.hand)),
-                                                     slash_list_problems(full_text(record) if record else "", rows))],
+        "rows": [{**r, "problems": check_row(data, r, title, uses, counted) + twice + extra + several + slash}
+                 for r, twice, extra, several, slash in zip(rows, describes_problems(rows), connection_problems(rid, rows),
+                                                            qualifier_problems(rows, qualifier_predicates(data.hand)),
+                                                            slash_list_problems(full_text(record) if record else "", rows))],
     }
 
 
@@ -616,12 +635,19 @@ def patterns_view(data: Data, gt=None) -> list:
 # adding to the ground truth schema
 # --------------------------------------------------------------------------
 
-def _learned_from(data: Data, evidence, kind: str, name: str) -> str:
+def _learned_from(data: Data, gt, kind: str, name: str, shown: str = "") -> str:
     """Where a component class was learned, as a "source:" line the source check
-    (common/common_helpers/schema_io.parse_source) reads: the finished tuning records using it (evidence: the ground
-    truth's SCHEMA_EVIDENCE), by pool position; "" when none does (a model's uncorrected draft, a record still in
-    progress, or a held-out record is never named)."""
-    return source_line(data.positions[r["id"]] for r in uses_of(evidence, kind, name) if r["id"] in data.positions)
+    (common/common_helpers/schema_io.parse_source) reads, by pool position: the finished tuning records using it (the
+    ground truth's SCHEMA_EVIDENCE), and the record shown when it is a tuning record whose rows use it (the person
+    adding it from there has read that use; a record can be ticked finished only once its component classes are in
+    the ground truth schema, so the one being annotated is never finished yet). "" when none: a model's uncorrected
+    draft no person is looking at, or a held-out record, is never named."""
+    positions = [data.positions[r["id"]] for r in uses_of(gt.select(SCHEMA_EVIDENCE), kind, name)
+                 if r["id"] in data.positions]
+    if data.parts.get(shown) == TUNING and shown in data.positions \
+            and any(r["id"] == shown for r in uses_of(gt.select(ANNOTATED), kind, name)):
+        positions.append(data.positions[shown])
+    return source_line(positions)
 
 
 def ground_truth_schema_gaps(data: Data, gt) -> dict:
@@ -635,8 +661,8 @@ HAND_LOCK = threading.Lock()
 def add_to_hand(data: Data, item: dict) -> str:
     """Add one component class (with its definition) to the ground truth
     schema; say what was added. It is written as the page sent it, with
-    a "source:" line naming the ground truth records using it (in any
-    spelling, compared as component_class_key does). One add at a time (HAND_LOCK):
+    a "source:" line naming the finished tuning records using it, and the tuning record shown if it uses
+    it (_learned_from; uses in any spelling, compared as component_class_key does). One add at a time (HAND_LOCK):
     the server answers requests in parallel, and two adds at once could
     undo each other."""
     with HAND_LOCK:
@@ -654,7 +680,7 @@ def add_to_hand(data: Data, item: dict) -> str:
                              + ". The ground truth schema is frozen for held-out records, so it can't be added from them. "
                              f"In those records, " + INSTEAD.format(kind=kind)
                              + f". If a tuning record needs {name}, add it once no held-out record uses it.")
-        source = _learned_from(data, gt.select(SCHEMA_EVIDENCE), kind, name)
+        source = _learned_from(data, gt, kind, name, str(item.get("record") or ""))
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
         return f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else "")
@@ -690,24 +716,34 @@ def open_batch(n: int) -> Path:
     return gt
 
 
-def save_batch(data: Data, n: int, records: list) -> list:
+def save_batch(data: Data, n: int, records: list) -> dict:
     """Write the page's records to batch n's ground truth file, in the page's
-    order, and return each row's problems (as the page sent them, so they
-    line up with its rows). "finished" sets all_facts_extracted on every row
-    of the record. Rows not filled in aren't written; a record left with no
-    rows is written as one row holding only its id ("states no facts")."""
-    out, problems, page_rows = [], [], []
-    for rec in records:
-        mark = "1" if rec.get("finished") else "0"
-        rows, written = [], []
+    order, and return {"problems": each row's problems (as the page sent them, so they
+    line up with its rows), "unfinished": [{"index", "id", "errors"}]}. "finished" sets
+    all_facts_extracted on every row of the record, unless a row written has an error
+    (✖): a record with one is saved as not finished, and listed in "unfinished" (step 070
+    evaluates only finished records, and stops on one with an error:
+    common/common_helpers/ground_truth.evaluable_problems). Rows not filled in aren't written; a
+    record left with no rows is written as one row holding only its id ("states no facts")."""
+    out, problems, page_rows, unfinished = [], [], [], []
+    for index, rec in enumerate(records):
+        title = (data.records.get(rec["id"]) or {}).get("title") or ""
+        rows = []
         for r in rec.get("rows", []):
             row = {c: str(r.get(c) or "").strip() for c in FILE_COLUMNS}      # drafted_by: kept; empty on a row you add
-            row["id"], row["all_facts_extracted"] = rec["id"], mark
+            row["id"] = rec["id"]
             if is_describes(row):
                 row["subject"], row["source_text"] = rec["id"], ENTRY_SOURCE
             rows.append(row)
-            if not _is_blank(row):
-                written.append(row)
+        # ticked finished with an error on a row it writes: saved as not finished (a row not filled in isn't written)
+        errors = sorted({p["code"] for row, twice in zip(rows, describes_problems(rows)) if not _is_blank(row)
+                         for p in check_row(data, row, title) + twice if p["type"] == "error"})
+        if rec.get("finished") and errors:
+            unfinished.append({"index": index, "id": rec["id"], "errors": errors})
+        mark = "1" if rec.get("finished") and not errors else "0"
+        for row in rows:
+            row["all_facts_extracted"] = mark
+        written = [row for row in rows if not _is_blank(row)]
         page_rows.append(rows)
         out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
     # the patterns as they will be once this file is written (the ground truth with this file's rows from the page):
@@ -718,8 +754,9 @@ def save_batch(data: Data, n: int, records: list) -> list:
         title = (data.records.get(rec["id"]) or {}).get("title") or ""
         found = [check_row(data, row, title, uses, rec["id"] in counted) for row in rows]
         record = data.records.get(rec["id"])
-        found = [f + extra + several + slash for f, extra, several, slash in zip(
-            found, connection_problems(rec["id"], rec.get("rows", [])), qualifier_problems(rec.get("rows", []), qualifier_predicates(data.hand)),
+        found = [f + twice + extra + several + slash for f, twice, extra, several, slash in zip(
+            found, describes_problems(rows), connection_problems(rec["id"], rec.get("rows", [])),
+            qualifier_problems(rec.get("rows", []), qualifier_predicates(data.hand)),
             slash_list_problems(full_text(record) if record else "", rec.get("rows", [])))]
         problems.append(found)
     # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone
@@ -727,7 +764,7 @@ def save_batch(data: Data, n: int, records: list) -> list:
     now = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n") if path.exists() else None
     if now != _csv_bytes(FILE_COLUMNS, out).decode("utf-8"):
         write_csv(path, FILE_COLUMNS, out)
-    return problems
+    return {"problems": problems, "unfinished": unfinished}
 
 
 # --------------------------------------------------------------------------
@@ -1476,9 +1513,9 @@ def make_handler(data: Data):
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if url.path == "/api/save":
-                    problems = save_batch(data, int(body["n"]), body["records"])
+                    saved = save_batch(data, int(body["n"]), body["records"])
                     gt = data.ground_truth()
-                    self._json({"problems": problems, "patterns": patterns_view(data, gt), **definitions_view(data, gt)})
+                    self._json({**saved, "patterns": patterns_view(data, gt), **definitions_view(data, gt)})
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])
                     # each row's states as saved, by line, for the page to show (it computes none itself)
