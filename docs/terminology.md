@@ -25,7 +25,7 @@ The words this project uses, and exactly what each one means. It is expected to 
 | **record** | The metadata of one catalog entry. The catalog we work with is typically data.nasa.gov. |
 | **the record's dataset** | The [describes triple](#2-triples)'s object instance, when its object class is `Dataset`. Every other dataset the record names is **another dataset**. |
 | **metadata field** | A record's key, e.g. `title`, `notes`, `maintainer`. Also called: *field*, *metadata field name*, *field name*. |
-| **text field** | A metadata field whose value goes into a record's text: `title`, `notes`, and any named in step 020's setting `extra_text_fields`. |
+| **text field** | A metadata field whose value goes into a record's text: `title`, `notes`, and any named in step 020's setting `extra_text_fields`. The free text of `notes` is called the notes, never the description (decided on 2026-10-31), though data.nasa.gov's page shows it as one. |
 | **populated content of a metadata field** | The value associated with a record's key. |
 | **maintainer** | A record's `maintainer` field, with its spellings joined by step 020: "KRISTAN MORGAN" and "Kristan Morgan" are one maintainer. `undefined` when the record has none. |
 | **text** (of a record) | What a model is given to read for one record: the record's text fields, joined in order, each preceded by its field name so the model can tell which part came from which field (example below). |
