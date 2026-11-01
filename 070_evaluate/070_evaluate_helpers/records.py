@@ -52,7 +52,7 @@ from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import has_text, load_records
-from common.second_opinion import groups_of, key_of, read_table as read_second_opinion
+from common.second_opinion import groups_of, key_of, read_table as read_second_opinion, runs_of
 from common import dropped
 from common.report import named
 from common.schema_io import parse_source, read_ground_truth_schema
@@ -85,7 +85,7 @@ class Evaluated:
     pending: list = field(default_factory=list)    # every row of annotations/pending_triples.csv (read_pending): the
                                                    # facts that wait on an expert, of every record, evaluated or not
     second_opinion_models: list = field(default_factory=list)  # the models whose second opinion checked an evaluated
-                                                   # record (annotations/second_opinion.csv, column checked_by)
+                                                   # record (annotations/second_opinion.csv, column model)
 
 
 def _triples(rows: list) -> tuple:
@@ -237,7 +237,7 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
     live = {key_of(r["id"], g) for r in evaluated.records for g in r["gt"]}
     stale = [row for k, row in table.items() if row["id"] in evaluated_ids and k not in live]
     evaluated.second_opinion_models = sorted({m for k, row in table.items() if row["id"] in evaluated_ids
-                                              for m in row["checked_by"]})
+                                              for m in row["by"]})
     if stale:
         path = repo_path(Path(inputs["second_opinion"]))
         evaluated.notes.append(f"{len(stale)} row(s) of {path} name a classed triple that is no longer a ground truth "
@@ -380,6 +380,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
             "removed": dict(removed.get(rid, {})), "pending": pending_of.get(rid, []),
             "second_opinion": groups_of(rid, gt_triples, second_opinion),
+            "second_opinion_runs": runs_of(rid, gt_triples, second_opinion),
         })
     _note_second_opinion(evaluated, second_opinion, inputs)
     _mark_twins(evaluated, catalog, inputs)

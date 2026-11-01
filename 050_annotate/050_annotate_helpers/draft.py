@@ -26,12 +26,21 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "050_annotate_prompts"   # 0
 PROMPT = load(PROMPTS_DIR / "draft.txt")
 
 
+#: The stage's name: its answers are kept in cache/draft.json.
+STAGE = "draft"
+
+
+def prompt_for(chosen):
+    """The prompt of each text piece of a chosen record: prompt_for(chosen)(item, piece)."""
+    def prompt(item, piece):
+        return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece,
+                                 **extraction.task_parts(extraction.SCOPE_ALL))
+    return prompt
+
+
 def ask_model(chosen, calls, settings: dict, plan: str | None = None) -> extraction.Replies:
     """plan: the confirmation's first words; 050's own by default (the second opinion, py helpers/second_opinion.py,
     drafts with this same prompt and gives its own)."""
-    def prompt_for(item, piece):
-        return extraction.prompt(PROMPT, chosen.schema_text, chosen.records[item["id"]], piece,
-                                 **extraction.task_parts(extraction.SCOPE_ALL))
-    return extraction.ask_model(chosen.items, prompt_for, calls, settings["workers"], "draft",
+    return extraction.ask_model(chosen.items, prompt_for(chosen), calls, settings["workers"], STAGE,
                                 plan or f"050 will draft {len(chosen.items)} record(s) into drafted batch {chosen.batch}",
                                 "drafting")

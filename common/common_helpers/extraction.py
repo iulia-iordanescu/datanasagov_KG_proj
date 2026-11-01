@@ -250,6 +250,33 @@ class Replies:
     cut_reused: int = 0                           # pieces cut off in an earlier run, not asked again
 
 
+def _sort_pieces(items: list, prompt_for, cache: Cache) -> tuple:
+    """Each text piece of each item, by what the cache holds for it (under the key of this run's model, settings and
+    repeat: llm.cache_identity): ({(id, piece): stored answer}, {(id, piece): (key, prompt)} to ask,
+    {(id, piece): (why, usage)} cut off in an earlier run, not asked again)."""
+    answers, todo, cut_before = {}, {}, {}
+    for item in items:
+        for i, piece in enumerate(item["pieces"]):
+            prompt = prompt_for(item, piece)
+            k = key(prompt)
+            stored = cache.get(k, shape_error)
+            cut = cache.cut_off(k) if stored is None else None
+            if stored is not None:
+                answers[(item["id"], i)] = stored
+            elif cut:
+                cut_before[(item["id"], i)] = (cut, cache.cut_off_usage(k))
+            else:
+                todo[(item["id"], i)] = (k, prompt)
+    return answers, todo, cut_before
+
+
+def pieces_to_ask(items: list, prompt_for, cache_dir: Path, stage: str) -> int:
+    """How many text pieces ask_model would ask the model for now (the rest are answered from the cache, or were cut
+    off in an earlier run): what a run that calls ask_model several times (the second opinion's runs, one per
+    repeat) shows before it asks to pay for all of them at once."""
+    return len(_sort_pieces(items, prompt_for, Cache(cache_dir, stage))[1])
+
+
 def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: str, verb: str,
               cache_until: str | None = None) -> Replies:
     """One model call per text piece of each item ({"id", "pieces", …}),
@@ -265,19 +292,7 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     plan is the confirmation's first words ("050 will draft 10 record(s)
     into drafted batch 3"); verb names the work in the log ("drafting")."""
     cache = Cache(calls.cache_dir, stage)
-    answers, todo, cut_before = {}, {}, {}
-    for item in items:
-        for i, piece in enumerate(item["pieces"]):
-            prompt = prompt_for(item, piece)
-            k = key(prompt)
-            stored = cache.get(k, shape_error)
-            cut = cache.cut_off(k) if stored is None else None
-            if stored is not None:
-                answers[(item["id"], i)] = stored
-            elif cut:
-                cut_before[(item["id"], i)] = (cut, cache.cut_off_usage(k))
-            else:
-                todo[(item["id"], i)] = (k, prompt)
+    answers, todo, cut_before = _sort_pieces(items, prompt_for, cache)
 
     result = Replies(reused=len(answers), cut_reused=len(cut_before))
     for (rid, i), (why, usage) in cut_before.items():

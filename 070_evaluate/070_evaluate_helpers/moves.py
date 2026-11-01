@@ -273,24 +273,35 @@ SECOND_OPINION_FORMULA = ("For a group: recall = its pairs ÷ its ground truth t
 
 def _second_opinion_lines(n: dict, models: list) -> list:
     """The table of recall and partial F1 for the ground truth triples found, not found, and not checked by the second
-    opinion (stats._by_second_opinion), when any was checked; else nothing."""
+    opinion (stats._by_second_opinion), when any was checked, and how many were found in 0, 1, ..., N runs
+    (stats._second_opinion_runs); else nothing."""
     by = n.get("second_opinion")
     if not by:
         return []
     who = ", ".join(f"`{m}`" for m in models) or "the second opinion"
     lines = [f"#### {SECOND_OPINION_SECTION}", "",
-             f"A second, independent draft of each finished record ({who}; `py helpers/second_opinion.py`, "
-             f"`helpers/second_opinion.md`) was matched against the ground truth with the pairing above. A ground "
-             f"truth triple it also stated is *found*; one it didn't is *not found* (stated by one annotator only: "
-             f"possibly a fact a model misses, or a rule the ground truth applies and the draft doesn't); a record it "
-             f"didn't draft is *not checked*. {SECOND_OPINION_FORMULA} No margin of error: the groups split the same "
-             f"records, so the whole part's margins apply to neither alone.", "",
+             f"Fresh, independent drafts of each finished record ({who}, several runs, each a repeat with answers of "
+             f"its own; `py helpers/second_opinion.py`, `helpers/second_opinion.md`) were matched against the ground "
+             f"truth with the pairing above. A ground truth triple a draft also stated in at least one run is *found*; "
+             f"one no run stated is *not found* (stated by one annotator only: possibly a fact a model misses, or a "
+             f"rule the ground truth applies and the draft doesn't); a record no run drafted is *not checked*. "
+             f"{SECOND_OPINION_FORMULA} No margin of error: the groups split the same records, so the whole part's "
+             f"margins apply to neither alone.", "",
              "| Ground truth triples | Count | Recall (exact) | Recall (partial) | Pairs (partial) | Precision (partial) | F1 (partial) |",
              "|---|---:|---:|---:|---:|---:|---:|"]
     for group, e in by.items():
         lines.append(f"| {group} by the second opinion | {e['gt_triples']} | {readings.pct(e['exact']['recall'])} | "
                      f"{readings.pct(e['partial']['recall'])} | {e['partial']['pairs']} | "
                      f"{readings.pct(e['partial']['precision'])} | {readings.pct(e['partial']['f1'])} |")
+    spread = n.get("second_opinion_runs") or []
+    if spread:
+        most = max(s["runs"] for s in spread)
+        lines += ["", "How many runs found each checked ground truth triple: a triple found in only some runs is one "
+                      "the model states on some answers and not on others.", "",
+                  "| Model | Runs | Ground truth triples | " + " | ".join(f"Found in {k}" for k in range(most + 1)) + " |",
+                  "|---|---:|---:|" + "---:|" * (most + 1)]
+        lines += [f"| `{s['model']}` | {s['runs']} | {s['gt_triples']} | "
+                  + " | ".join(str(c) for c in s["found_in_runs"]) + " |" * (most - s["runs"] + 1) for s in spread]
     return lines + [""]
 
 

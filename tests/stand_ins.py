@@ -27,6 +27,11 @@ gets the fault):
                              cut-off answer, thinking takes all the tokens the answer didn't when
                              no number is given); "unreported": the usage holds no thinking count
     KG_STAND_IN_DELAY        seconds each call takes (default 0), so calls overlap as real ones do
+
+KG_STAND_IN_VARY=1 makes the answers of steps 050 and 060 differ by repeat (common.llm.REPEAT, which is never sent,
+so the stand-in reads it where it runs), as a model's answers differ from one asking to the next: an even repeat
+leaves out every triple about the first fact's subject and object; a repeat divisible by 3 adds that subject aboard
+Terra, with the first fact's source text.
 """
 import hashlib
 import json
@@ -159,14 +164,27 @@ def _record_reply(prompt: str) -> dict:
                         "object": m.group(2), "object_class": spacecraft, "source_text": m.group(0)})
     if triples:
         first = triples[0]
+        repeat = _repeat()
         triples += [dict(first),                                                          # a repeat
                     {**first, "object": "Moon", "source_text": "aboard the Moon"},        # not in the text
                     {**first, "object_class": "Satellite"},                               # outside the schema
                     {"subject": ["MODIS"], "predicate": aboard, "object": "Aqua"},        # malformed
                     {"subject": "this record", "subject_class": "catalog_entry", "predicate": "Describes",
                      "object": "its title", "object_class": "Dataset", "source_text": "x"}]   # its own describes triple
+        if repeat % 2 == 0:                                                                   # this repeat misses the first fact
+            triples = [t for t in triples if (t.get("subject"), t.get("object")) != (first["subject"], first["object"])]
+        if repeat % 3 == 0:                                                                   # this repeat finds one more
+            triples.append({**first, "object": "Terra"})
     h = _h(text)
     return {"describes_class": "" if h % 4 == 0 else "Dataset", "triples": triples}
+
+
+def _repeat() -> int:
+    """The repeat the answer varies by (KG_STAND_IN_VARY): common.llm.REPEAT, or 1 when the variation is off."""
+    if os.environ.get("KG_STAND_IN_VARY") != "1":
+        return 1
+    from common import llm
+    return llm.REPEAT
 
 
 def _induce_texts(prompt: str) -> dict:
