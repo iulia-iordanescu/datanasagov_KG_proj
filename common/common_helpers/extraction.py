@@ -272,7 +272,7 @@ def _sort_pieces(items: list, prompt_for, cache: Cache) -> tuple:
 
 def pieces_to_ask(items: list, prompt_for, cache_dir: Path, stage: str) -> int:
     """How many text pieces ask_model would ask the model for now (the rest are answered from the cache, or were cut
-    off in an earlier run): what a run that calls ask_model several times (the second opinion's runs, one per
+    off in an earlier run): what a run that calls ask_model several times (the second opinion, once per
     repeat) shows before it asks to pay for all of them at once."""
     return len(_sort_pieces(items, prompt_for, Cache(cache_dir, stage))[1])
 

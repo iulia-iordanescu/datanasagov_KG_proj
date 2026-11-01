@@ -52,7 +52,7 @@ from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import has_text, load_records
-from common.second_opinion import groups_of, key_of, read_table as read_second_opinion, runs_of
+from common.second_opinion import groups_of, key_of, read_table as read_second_opinion, repeats_of
 from common import dropped
 from common.report import named
 from common.schema_io import parse_source, read_ground_truth_schema
@@ -391,7 +391,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
             "removed": dict(removed.get(rid, {})), "pending": pending_of.get(rid, []),
             "second_opinion": groups_of(rid, gt_triples, second_opinion),
-            "second_opinion_runs": runs_of(rid, gt_triples, second_opinion),
+            "second_opinion_repeats": repeats_of(rid, gt_triples, second_opinion),
         })
     _note_second_opinion(evaluated, second_opinion, inputs)
     _mark_twins(evaluated, catalog, inputs)

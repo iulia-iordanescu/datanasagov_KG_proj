@@ -1,1 +1,1 @@
-id,subject,subject_class,predicate,object,object_class,model,runs,found_in_runs,found_exact_in_runs
+id,subject,subject_class,predicate,object,object_class,model,repeats,found_in_repeats,found_exact_in_repeats

@@ -74,7 +74,7 @@ def numbers(records: list) -> dict:
         if path[0] != "describes":
             _put(out, path, _ratio(a(total), b(total)))
     out["second_opinion"] = _by_second_opinion(total)
-    out["second_opinion_runs"] = _second_opinion_runs(records)
+    out["second_opinion_repeats"] = _second_opinion_repeats(records)
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     describes_classes = collections.Counter(component_class_key(d["truth"]) for d in known)
     per_describes_class = {k: _ratio(sum(d["right"] for d in known if component_class_key(d["truth"]) == k), n) for k, n in describes_classes.items()}
@@ -112,19 +112,19 @@ def _by_second_opinion(total: collections.Counter) -> dict | None:
     return out
 
 
-def _second_opinion_runs(records: list) -> list:
-    """How many of the records' ground truth triples each second opinion found in 0, 1, ..., N of its N runs
-    (record["second_opinion_runs"], from annotations/second_opinion.csv: common.second_opinion.runs_of):
-    [{"model", "runs": N, "gt_triples", "found_in_runs": [triples found in k runs, for k = 0 .. N]}], one entry per
-    model and number of runs (a record drafted in fewer runs than the others, its runs having failed, counts under
+def _second_opinion_repeats(records: list) -> list:
+    """How many of the records' ground truth triples each second opinion found in 0, 1, ..., N of its N repeats
+    (record["second_opinion_repeats"], from annotations/second_opinion.csv: common.second_opinion.repeats_of):
+    [{"model", "repeats": N, "gt_triples", "found_in_repeats": [triples found in k repeats, for k = 0 .. N]}], one entry per
+    model and number of repeats (a record drafted in fewer repeats than the others, its repeats having failed, counts under
     its own N), sorted; [] when none was checked."""
     tally = {}
     for r in records:
-        for by in r.get("second_opinion_runs") or []:
-            for model, (found, runs) in by.items():
-                tally.setdefault((model, runs), collections.Counter())[found] += 1
-    return [{"model": model, "runs": runs, "gt_triples": sum(c.values()),
-             "found_in_runs": [c[k] for k in range(runs + 1)]} for (model, runs), c in sorted(tally.items())]
+        for by in r.get("second_opinion_repeats") or []:
+            for model, (found, repeats) in by.items():
+                tally.setdefault((model, repeats), collections.Counter())[found] += 1
+    return [{"model": model, "repeats": repeats, "gt_triples": sum(c.values()),
+             "found_in_repeats": [c[k] for k in range(repeats + 1)]} for (model, repeats), c in sorted(tally.items())]
 
 
 #: The numbers that get a margin: (path in numbers(), label).

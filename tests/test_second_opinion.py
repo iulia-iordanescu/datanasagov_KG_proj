@@ -1,11 +1,11 @@
 """The second opinion (helpers/second_opinion.py): which finished records it drafts again (every part; held-out ones
 too, their draft's facts the ground truth lacks never listed), each ground truth triple found (exact, partial) or not
-by 070's pairing without translation, with the near misses; several runs combined (each ground truth triple found in k
-of the runs, exactly in j; the draft-only facts the union over the runs, with the runs that proposed each; a failed
-run counted on the others); what --apply true writes into annotations/second_opinion.csv (two models merged, the same
+by 070's pairing without translation, with the near misses; several repeats combined (each ground truth triple found in k
+of the repeats, exactly in j; the draft-only facts the union over the repeats, with the repeats that proposed each; a failed
+repeat counted on the others); what --apply true writes into annotations/second_opinion.csv (two models merged, the same
 model again replaced, a reworded triple dropped, other records kept, the reader's near misses); the whole helper run
-with the stand-in model in a temporary copy, its answers differing by repeat: 1 run, then 3 runs paying only for
-repeats 2 and 3 and asking once, then the same 3 runs paying nothing; and the settings sent to gemini-4-argon. Step
+with the stand-in model in a temporary copy, its answers differing by repeat: 1 repeat, then 3 repeats paying only for
+repeats 2 and 3 and asking once, then the same 3 repeats paying nothing; and the settings sent to gemini-4-argon. Step
 070's side: tests/test_evaluate_second_opinion.py."""
 import importlib.util
 import json
@@ -24,7 +24,7 @@ from common import llm                                                        # 
 from common.files import read_csv, write_csv                                  # noqa: E402
 from common.ground_truth import FILE_COLUMNS, read_ground_truth              # noqa: E402
 from common.second_opinion import (COLUMNS, FOUND, NOT_CHECKED, NOT_FOUND, TRIPLE, groups_of, key_of,  # noqa: E402
-                                   read_table, runs_of, stale_rows, write_table)
+                                   read_table, repeats_of, stale_rows, write_table)
 from common.stop import Stop                                                  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -101,12 +101,12 @@ class Fixture(unittest.TestCase):
     def matched(self, rows: dict, ids=("t0", "h1", "t2")):
         return self.helper.match(self.chosen(ids), self.drafts(rows))
 
-    def combined(self, runs: list, ids=("t0", "h1", "t2")):
-        """runs: one {id: draft triples} per run (a record missing from a run: its call failed in that run)."""
+    def combined(self, repeats: list, ids=("t0", "h1", "t2")):
+        """repeats: one {id: draft triples} per repeat (a record missing from a repeat: its call failed in that repeat)."""
         chosen = self.chosen(ids)
-        made = [self.helper.Run(r, None, self.drafts(rows), self.helper.match(chosen, self.drafts(rows)))
-                for r, rows in enumerate(runs, 1)]
-        return self.helper.combine(chosen, made, len(runs))
+        made = [self.helper.Repeat(r, None, self.drafts(rows), self.helper.match(chosen, self.drafts(rows)))
+                for r, rows in enumerate(repeats, 1)]
+        return self.helper.combine(chosen, made, len(repeats))
 
 
 class Matching(Fixture):
@@ -121,12 +121,12 @@ class Matching(Fixture):
         self.assertEqual([level for _, level, _ in m.per_record["t0"]["gt"]], ["exact", "partial", None])
         self.assertEqual([t["object"] for t in m.per_record["t0"]["draft_only"]], ["Aqua"])
         c = self.combined([draft])
-        statuses = [(r["status"], r.get("found_in_runs", r.get("proposed_in_runs")), r.get("found_exact_in_runs"))
+        statuses = [(r["status"], r.get("found_in_repeats", r.get("proposed_in_repeats")), r.get("found_exact_in_repeats"))
                     for r in c.rows if r["record_id"] == "t0"]
         self.assertEqual(statuses, [(FOUND, 1, 1), (FOUND, 1, 0), (NOT_FOUND, 0, 0), (self.helper.DRAFT_ONLY, 1, None)])
         found = next(r for r in c.rows if r["status"] == FOUND)
-        self.assertEqual((found["draft_subject"], found["ground_truth_drafted_by"], found["entity_classes_agree_in_runs"],
-                          found["draft_run"], found["runs"]), ("the MODIS", "gemini-2.5-pro", 1, 1, 1))
+        self.assertEqual((found["draft_subject"], found["ground_truth_drafted_by"], found["entity_classes_agree_in_repeats"],
+                          found["draft_repeat"], found["repeats"]), ("the MODIS", "gemini-2.5-pro", 1, 1, 1))
         self.assertTrue(all(r["origin"] for r in c.rows))
 
     def test_near_misses(self):
@@ -155,7 +155,7 @@ class Matching(Fixture):
         c = self.combined([draft, draft], ids=("h1", "t2"))
         self.assertEqual(len(c.per_record["h1"]["draft_only"]), 1)     # counted
         listed = [r for r in c.rows if r["status"] == self.helper.DRAFT_ONLY]
-        self.assertEqual([(r["record_id"], r["proposed_in_runs"]) for r in listed], [("t2", 2)])   # the tuning record's only
+        self.assertEqual([(r["record_id"], r["proposed_in_repeats"]) for r in listed], [("t2", 2)])   # the tuning record's only
         self.assertEqual([r["status"] for r in c.rows if r["record_id"] == "h1"], [FOUND])
 
     def test_order_free_and_one_partner_each(self):
@@ -175,36 +175,36 @@ class Matching(Fixture):
 
 
 class Combining(Fixture):
-    """Several runs combined: each ground truth triple found in k of the runs, exactly in j; the draft-only facts the
-    union over the runs, each with the runs that proposed it; a record a run failed for counted on the others."""
+    """Several repeats combined: each ground truth triple found in k of the repeats, exactly in j; the draft-only facts the
+    union over the repeats, each with the repeats that proposed it; a record a repeat failed for counted on the others."""
 
-    def test_three_runs(self):
+    def test_three_repeats(self):
         partial = triple("MODIS Snow Cover 5-Min L2", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")
         other = triple("CERES", "Instrument", "ABOARD", "Aqua", "Spacecraft")                    # not the ground truth's
         moon = triple("MODIS", "Instrument", "ABOARD", "Moon", "Spacecraft")
-        runs = [{"t0": [GT_T0[0], partial, other]},                                          # run 1
-                {"t0": [GT_T0[0], GT_T0[1], moon, moon]},                                   # run 2: the Moon stated twice
-                {"t0": [triple("the MODIS", "instrument", "aboard", "Aqua", "spacecraft"),     # run 3: evened out, exact
-                        triple("CERES", "instrument", "ABOARD", "Aqua", "Spacecraft")]}]      # the same draft-only fact as run 1's
-        c = self.combined(runs, ids=("t0",))
+        repeats = [{"t0": [GT_T0[0], partial, other]},                                          # repeat 1
+                {"t0": [GT_T0[0], GT_T0[1], moon, moon]},                                   # repeat 2: the Moon stated twice
+                {"t0": [triple("the MODIS", "instrument", "aboard", "Aqua", "spacecraft"),     # repeat 3: evened out, exact
+                        triple("CERES", "instrument", "ABOARD", "Aqua", "Spacecraft")]}]      # the same draft-only fact as repeat 1's
+        c = self.combined(repeats, ids=("t0",))
         gt = c.per_record["t0"]["gt"]
         self.assertEqual([(g["found"], g["exact"]) for g in gt], [(3, 3), (2, 1), (0, 0)])
-        self.assertEqual(gt[1]["partner"][0], 2)                        # the partner from the first run that paired it exactly
+        self.assertEqual(gt[1]["partner"][0], 2)                        # the partner from the first repeat that paired it exactly
         self.assertIsNone(gt[2]["partner"])
-        union = {u["triple"]["object"]: u["runs"] for u in c.per_record["t0"]["draft_only"]}
-        self.assertEqual(union, {"Aqua": [1, 3], "Moon": [2]})          # once per run, however often a run states it
-        self.assertEqual(c.per_record["t0"]["runs"], [1, 2, 3])
+        union = {u["triple"]["object"]: u["repeats"] for u in c.per_record["t0"]["draft_only"]}
+        self.assertEqual(union, {"Aqua": [1, 3], "Moon": [2]})          # once per repeat, however often a repeat states it
+        self.assertEqual(c.per_record["t0"]["repeats"], [1, 2, 3])
         rows = [r for r in c.rows if r["status"] == self.helper.DRAFT_ONLY]
-        self.assertEqual(sorted((r["draft_object"], r["proposed_in_runs"], r["draft_run"]) for r in rows),
+        self.assertEqual(sorted((r["draft_object"], r["proposed_in_repeats"], r["draft_repeat"]) for r in rows),
                          [("Aqua", 2, 1), ("Moon", 1, 2)])
 
     def test_a_failed_run_counts_on_the_others(self):
         c = self.combined([{"t0": GT_T0}, {}, {"t0": GT_T0[:1]}], ids=("t0",))
         e = c.per_record["t0"]
-        self.assertEqual((e["runs"], e["failed"]), ([1, 3], [2]))
+        self.assertEqual((e["repeats"], e["failed"]), ([1, 3], [2]))
         self.assertEqual([g["found"] for g in e["gt"]], [2, 1, 1])
-        self.assertTrue(all(r["runs"] == 2 for r in c.rows))
-        self.assertEqual(self.combined([{}, {}], ids=("t0",)).per_record, {})                 # every run failed: nothing
+        self.assertTrue(all(r["repeats"] == 2 for r in c.rows))
+        self.assertEqual(self.combined([{}, {}], ids=("t0",)).per_record, {})                 # every repeat failed: nothing
 
 
 class Apply(Fixture):
@@ -212,13 +212,13 @@ class Apply(Fixture):
     def setUp(self):
         self.path = self.tmp / f"second_opinion_{self._testMethodName}.csv"
 
-    def apply(self, runs, model, ids=("t0", "h1", "t2")):
+    def apply(self, repeats, model, ids=("t0", "h1", "t2")):
         llm.MODEL = model
-        c = self.combined(runs, ids)
+        c = self.combined(repeats, ids)
         return self.helper.apply(self.chosen(ids), c, {"apply": True}, self.path), read_table(self.path)
 
     def by(self, table, rid, t):
-        return {m: (c["runs"], c["found_in_runs"], c["found_exact_in_runs"]) for m, c in table[key_of(rid, t)]["by"].items()}
+        return {m: (c["repeats"], c["found_in_repeats"], c["found_exact_in_repeats"]) for m, c in table[key_of(rid, t)]["by"].items()}
 
     def test_nothing_without_the_setting(self):
         self.assertIsNone(self.helper.apply(self.chosen(), self.combined([{"t2": GT_T2}], ("t2",)), {"apply": False}, self.path))
@@ -232,18 +232,18 @@ class Apply(Fixture):
         self.assertEqual(self.by(table, "t0", GT_T0[0]), {"model-a": (3, 2, 2)})
         self.assertEqual(self.by(table, "t0", GT_T0[1]), {"model-a": (3, 1, 1)})
         self.assertEqual(self.by(table, "h1", GT_H1[0]), {"model-a": (3, 1, 1)})
-        self.assertEqual(groups_of("t0", GT_T0, table), [FOUND, FOUND, NOT_FOUND])          # found in at least one run
+        self.assertEqual(groups_of("t0", GT_T0, table), [FOUND, FOUND, NOT_FOUND])          # found in at least one repeat
         self.assertEqual(groups_of("t2", GT_T2, table), [NOT_FOUND])
-        self.assertEqual(runs_of("t0", GT_T0, table), [{"model-a": (2, 3)}, {"model-a": (1, 3)}, {"model-a": (0, 3)}])
-        self.assertEqual(runs_of("t9", GT_T0[:1], table), [{}])
-        # a second model, one run, on t0 only: t0's triples gain it, the others keep model-a's alone
+        self.assertEqual(repeats_of("t0", GT_T0, table), [{"model-a": (2, 3)}, {"model-a": (1, 3)}, {"model-a": (0, 3)}])
+        self.assertEqual(repeats_of("t9", GT_T0[:1], table), [{}])
+        # a second model, one repeat, on t0 only: t0's triples gain it, the others keep model-a's alone
         partial = triple("MODIS Snow Cover 5-Min L2", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument")
         applied, table = self.apply([{"t0": [partial]}], "model-b", ids=("t0",))
         self.assertEqual((applied["rows"], applied["triples"]), (8, 5))
         self.assertEqual(self.by(table, "t0", GT_T0[1]), {"model-a": (3, 1, 1), "model-b": (1, 1, 0)})   # a partial pair isn't exact
         self.assertEqual(self.by(table, "t0", GT_T0[2]), {"model-a": (3, 0, 0), "model-b": (1, 0, 0)})
         self.assertEqual(self.by(table, "t2", GT_T2[0]), {"model-a": (3, 0, 0)})                          # kept as it was
-        # model-a again, 2 runs finding nothing of t0: its earlier counts on t0 are replaced, not kept beside
+        # model-a again, 2 repeats finding nothing of t0: its earlier counts on t0 are replaced, not kept beside
         _, table = self.apply([{"t0": []}, {"t0": []}], "model-a", ids=("t0",))
         self.assertEqual(self.by(table, "t0", GT_T0[0]), {"model-b": (1, 0, 0), "model-a": (2, 0, 0)})
         self.assertEqual(groups_of("t0", GT_T0, table), [NOT_FOUND, FOUND, NOT_FOUND])      # model-b's partial pair
@@ -271,13 +271,20 @@ class Apply(Fixture):
             read_table(self.tmp / "bad.csv")
         (self.tmp / "old.csv").write_text("id,subject,subject_class,predicate,object,object_class,checked_by,found_by,"
                                           "found_exact_by\n", encoding="utf-8")
-        with self.assertRaises(ValueError) as e:                                            # the file's header before runs
+        with self.assertRaises(ValueError) as e:                                            # the header before the model column
             read_table(self.tmp / "old.csv")
         self.assertIn("model", str(e.exception))
+        (self.tmp / "runs.csv").write_text("id,subject,subject_class,predicate,object,object_class,model,runs,"
+                                           "found_in_runs,found_exact_in_runs\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as e:                                            # the counts' old names
+            read_table(self.tmp / "runs.csv")
+        self.assertIn("line 1", str(e.exception))
+        self.assertIn("runs, found_in_runs, found_exact_in_runs", str(e.exception))
+        self.assertIn("repeats, found_in_repeats, found_exact_in_repeats", str(e.exception))
         row = {"id": "t0", **{c: GT_T0[0][c] for c in TRIPLE}}
 
         def rows(*models):
-            write_csv(self.path, COLUMNS, [{**row, "model": m, "runs": n, "found_in_runs": k, "found_exact_in_runs": j}
+            write_csv(self.path, COLUMNS, [{**row, "model": m, "repeats": n, "found_in_repeats": k, "found_exact_in_repeats": j}
                                            for m, n, k, j in models])
         rows(("m1", "3", " 0 ", "0"), ("m2", 1, 1, 0))
         entry = read_table(self.path)[key_of("t0", GT_T0[0])]
@@ -314,7 +321,7 @@ class Picking(Fixture):
         chosen = self.helper.pick_records(self.inputs(), self.settings(), self.tmp)
         self.assertEqual([i["id"] for i in chosen.items], ["t0", "h1", "t2"])
         self.assertTrue(any("1 record(s) of the ground truth aren't finished" in n for n in chosen.notes))
-        self.assertTrue(any("drafts 3 finished record(s) again (1 held-out, 2 tuning)" in n and "in 3 run(s)" in n
+        self.assertTrue(any("drafts 3 finished record(s) again (1 held-out, 2 tuning)" in n and "in 3 repeat(s)" in n
                             for n in chosen.notes))
         self.assertEqual(chosen.skipped, {})
 
@@ -335,30 +342,30 @@ class Picking(Fixture):
         chosen = self.helper.pick_records(self.inputs(), self.settings(), self.tmp)
         self.assertFalse(any("itself" in n for n in chosen.notes))
 
-    def test_answer_cache_noted_for_several_runs(self):
-        """Several runs through LiteLLM without its answer cache bypassed may be copies of one run: noted before paying;
-        not for one run, nor through Ask Sage, nor with the cache bypassed."""
+    def test_answer_cache_noted_for_several_repeats(self):
+        """Several repeats through LiteLLM without its answer cache bypassed may be copies of one repeat: noted before paying;
+        not for one repeat, nor through Ask Sage, nor with the cache bypassed."""
         def noted(**more):
             return any(llm.ANSWER_CACHE_SWITCH in n for n in self.helper.pick_records(self.inputs(), self.settings(**more), self.tmp).notes)
         saved = os.environ.pop(llm.ANSWER_CACHE_SWITCH, None)
         load = llm.load_dotenv
         llm.load_dotenv = lambda *a, **k: None
         try:
-            self.assertTrue(noted(service="litellm", runs=3))
-            self.assertFalse(noted(service="litellm", runs=1))
-            self.assertFalse(noted(service="asksage", runs=3))
+            self.assertTrue(noted(service="litellm", repeats=3))
+            self.assertFalse(noted(service="litellm", repeats=1))
+            self.assertFalse(noted(service="asksage", repeats=3))
             os.environ[llm.ANSWER_CACHE_SWITCH] = "1"
-            self.assertFalse(noted(service="litellm", runs=3))
+            self.assertFalse(noted(service="litellm", repeats=3))
         finally:
             llm.load_dotenv = load
             os.environ.pop(llm.ANSWER_CACHE_SWITCH, None)
             if saved is not None:
                 os.environ[llm.ANSWER_CACHE_SWITCH] = saved
 
-    def test_runs_out_of_bounds_stop(self):
-        for runs in (0, 21, "3", True):
-            with self.subTest(runs=runs), self.assertRaises(Stop):
-                self.helper.pick_records(self.inputs(), self.settings(runs=runs), self.tmp)
+    def test_repeats_out_of_bounds_stop(self):
+        for repeats in (0, 21, "3", True):
+            with self.subTest(repeats=repeats), self.assertRaises(Stop):
+                self.helper.pick_records(self.inputs(), self.settings(repeats=repeats), self.tmp)
 
     def test_nothing_to_draft_stops(self):
         with self.assertRaises(Stop):
@@ -367,8 +374,8 @@ class Picking(Fixture):
 
 class WholeRun(unittest.TestCase):
     """The helper run as a person runs it, with the stand-in model (its answers differing by repeat:
-    tests/stand_ins.py, KG_STAND_IN_VARY), in a temporary copy: 1 run; then 3 runs, paying for repeats 2 and 3 only
-    and asking once for both; then the same 3 runs with --apply true, paying nothing and writing only
+    tests/stand_ins.py, KG_STAND_IN_VARY), in a temporary copy: 1 repeat; then 3 repeats, paying for repeats 2 and 3 only
+    and asking once for both; then the same 3 repeats with --apply true, paying nothing and writing only
     annotations/second_opinion.csv."""
 
     @classmethod
@@ -424,23 +431,23 @@ class WholeRun(unittest.TestCase):
         return max(reports, key=lambda p: p.stat().st_mtime_ns).read_text(encoding="utf-8")       # this run's
 
     def test_one_run_then_three_then_apply(self):
-        # 1 run
-        out, prompts = self.run_helper("--runs", "1")
+        # 1 repeat
+        out, prompts = self.run_helper("--repeats", "1")
         self.assertEqual(prompts, 3)                                   # the test call, then one call per finished record
         draft = read_csv(self.folder / "second_opinion_triples.csv")
-        self.assertEqual({(r["id"], r["run"]) for r in draft}, {("rec-1", "1"), ("rec-2", "1")})
+        self.assertEqual({(r["id"], r["repeat"]) for r in draft}, {("rec-1", "1"), ("rec-2", "1")})
         self.assertTrue(all(r["drafted_by"] == "gemini-4-argon" for r in draft))
         m = self.matches()
-        self.assertEqual(m[("rec-1", "found", "Aqua", "")]["found_in_runs"], "1")
-        self.assertEqual(m[("rec-1", "not found", "Terra", "")]["found_in_runs"], "0")
+        self.assertEqual(m[("rec-1", "found", "Aqua", "")]["found_in_repeats"], "1")
+        self.assertEqual(m[("rec-1", "not found", "Terra", "")]["found_in_repeats"], "0")
         self.assertEqual(sum(1 for k in m if k[1] == "draft only"), 2)           # rec-1's Moon and Satellite rows
         self.assertFalse(any(k[0] == "rec-2" and k[1] == "draft only" for k in m))   # held-out: never listed
         details = json.loads((self.folder / "second_opinion_details.json").read_text(encoding="utf-8"))
-        self.assertEqual((details["made"]["model"], details["runs"], details["made"]["repeats"]), ("gemini-4-argon", 1, [1]))
+        self.assertEqual((details["made"]["model"], details["repeats"], details["made"]["repeats"]), ("gemini-4-argon", 1, [1]))
         self.assertIsNone(details["applied"])
-        self.assertEqual({r["id"]: r["runs_drafted"] for r in details["records"]}, {"rec-1": [1], "rec-2": [1]})
+        self.assertEqual({r["id"]: r["repeats_drafted"] for r in details["records"]}, {"rec-1": [1], "rec-2": [1]})
         self.assertEqual((self.repo / "annotations" / "second_opinion.csv").read_text(encoding="utf-8").count("\n"), 1)  # header only
-        self.assertNotIn(llm.ANSWER_CACHE_SWITCH + "=1 isn't set", out)            # one run: nothing to copy
+        self.assertNotIn(llm.ANSWER_CACHE_SWITCH + "=1 isn't set", out)            # one repeat: nothing to copy
         manifest = json.loads((self.folder / "_manifest.json").read_text(encoding="utf-8"))
         self.assertTrue(any(p["file"].endswith("draft.txt") for p in manifest["prompts"]))     # 050's prompt, by fingerprint
         report = self.report()
@@ -450,32 +457,32 @@ class WholeRun(unittest.TestCase):
         self.assertNotIn("AIRS (Instrument) ABOARD Terra", report)
         self.assertIn("py helpers/second_opinion.py --apply", report)
 
-        # 3 runs (the default): repeat 1 is in the cache, so it pays for repeats 2 and 3 only, asking once for both
+        # 3 repeats (the default): repeat 1 is in the cache, so it pays for repeats 2 and 3 only, asking once for both
         out, prompts = self.run_helper()
         self.assertEqual(prompts, 1 + 4)
-        self.assertIn("3 run(s) × 2 text piece(s) = 6 model call(s), 2 of them already in the cache, so 4 to pay for "
-                      "(run 1: 0, run 2: 2, run 3: 2)", out)
+        self.assertIn("3 repeat(s) × 2 text piece(s) = 6 model call(s), 2 of them already in the cache, so 4 to pay for "
+                      "(repeat 1: 0, repeat 2: 2, repeat 3: 2)", out)
         self.assertEqual(out.count("test call: ok"), 1)
         self.assertIn(llm.ANSWER_CACHE_SWITCH + "=1 isn't set", out)               # noted before paying
         draft = read_csv(self.folder / "second_opinion_triples.csv")
-        self.assertEqual(sorted({r["run"] for r in draft}), ["1", "2", "3"])
+        self.assertEqual(sorted({r["repeat"] for r in draft}), ["1", "2", "3"])
         m = self.matches()
         aqua = m[("rec-1", "found", "Aqua", "")]
-        self.assertEqual((aqua["runs"], aqua["found_in_runs"], aqua["found_exact_in_runs"], aqua["draft_run"]),
+        self.assertEqual((aqua["repeats"], aqua["found_in_repeats"], aqua["found_exact_in_repeats"], aqua["draft_repeat"]),
                          ("3", "2", "2", "1"))                         # repeat 2 leaves it out
         terra = m[("rec-1", "found", "Terra", "")]
-        self.assertEqual((terra["found_in_runs"], terra["draft_run"]), ("1", "3"))      # only repeat 3 states it
-        self.assertEqual(m[("rec-2", "found", "Aqua", "")]["found_in_runs"], "2")
-        self.assertEqual(m[("rec-1", "draft only", "Moon", "Spacecraft")]["proposed_in_runs"], "3")
-        self.assertEqual(m[("rec-1", "draft only", "Aqua", "Satellite")]["proposed_in_runs"], "2")
+        self.assertEqual((terra["found_in_repeats"], terra["draft_repeat"]), ("1", "3"))      # only repeat 3 states it
+        self.assertEqual(m[("rec-2", "found", "Aqua", "")]["found_in_repeats"], "2")
+        self.assertEqual(m[("rec-1", "draft only", "Moon", "Spacecraft")]["proposed_in_repeats"], "3")
+        self.assertEqual(m[("rec-1", "draft only", "Aqua", "Satellite")]["proposed_in_repeats"], "2")
         self.assertEqual(sum(1 for k in m if k[1] == "draft only"), 2)           # the union: each fact once
         report = self.report()
         self.assertIn("| Found in | 0 of 3 | 1 of 3 | 2 of 3 | 3 of 3 |", report)
         self.assertIn("| Ground truth triples | 0 | 1 | 2 | 0 |", report)
-        self.assertIn("in 3 of 3 run(s)", report)
-        self.assertIn("draft classed triples, run 3 of 3", report)
+        self.assertIn("in 3 of 3 repeat(s)", report)
+        self.assertIn("draft classed triples, repeat 3 of 3", report)
 
-        # the same 3 runs again, applied: nothing paid; the only file of annotations/ it writes is second_opinion.csv
+        # the same 3 repeats again, applied: nothing paid; the only file of annotations/ it writes is second_opinion.csv
         before = {p.name: p.read_bytes() for p in (self.repo / "annotations").rglob("*") if p.is_file()}
         out, prompts = self.run_helper("--apply", "true")
         after = {p.name: p.read_bytes() for p in (self.repo / "annotations").rglob("*") if p.is_file()}
@@ -488,7 +495,7 @@ class WholeRun(unittest.TestCase):
         def by(rid, o):
             c = table[key_of(rid, triple(rid.replace("rec-1", "MODIS").replace("rec-2", "AIRS"), "Instrument", "ABOARD", o,
                                          "Spacecraft"))]["by"]["gemini-4-argon"]
-            return c["runs"], c["found_in_runs"], c["found_exact_in_runs"]
+            return c["repeats"], c["found_in_repeats"], c["found_exact_in_repeats"]
         self.assertEqual((by("rec-1", "Aqua"), by("rec-1", "Terra"), by("rec-2", "Aqua")), ((3, 2, 2), (3, 1, 1), (3, 2, 2)))
         self.assertEqual(list((self.repo / "outputs").rglob("drafted_triples_batch*")), [])   # never a drafted batch
 
@@ -502,8 +509,8 @@ class ModelSettings(unittest.TestCase):
         self.assertEqual(llm.maker("gemini-4-argon"), "Google")
         self.assertIsNone(llm.effort_note("gemini-4-argon"))
         helper = load_helper()
-        self.assertEqual((helper.SETTINGS["model"], helper.SETTINGS["runs"]), ("gemini-4-argon", 3))
-        self.assertNotIn("repeat", helper.SETTINGS)                    # the runs are the repeats
+        self.assertEqual((helper.SETTINGS["model"], helper.SETTINGS["repeats"]), ("gemini-4-argon", 3))
+        self.assertNotIn("repeat", helper.SETTINGS)                    # its repeats are the setting repeats
 
 
 if __name__ == "__main__":
