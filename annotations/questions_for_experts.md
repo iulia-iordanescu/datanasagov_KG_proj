@@ -40,8 +40,8 @@ How a dataset's data are laid out over the ground, its spatial representation, i
 
 - entity class SpatialRepresentation: a way data are laid out over the ground; for a satellite, this is typically either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
 - predicate HAS_SPATIAL_REPRESENTATION: lays out its data as
-- entity class Grid: a fixed set of cells that data values are collected into, e.g. ISEAG
-- predicate BINNED_INTO: its values were collected into the cells of this Grid
+- entity class Grid: a fixed set of cells or points that data values are given on, e.g. ISEAG; pressure grid with 24 levels per decade
+- predicate ON_GRID: its values are given on the cells or points of this Grid
 
 ### Options
 
@@ -150,8 +150,8 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "map" (SpatialRepresentation)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) BINNED_INTO "SIN Grid" (Grid)
-- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) BINNED_INTO "SIN Grid" (Grid)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ON_GRID "SIN Grid" (Grid)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ON_GRID "SIN Grid" (Grid)
 - ground truth schema entry: entity class SpatialRepresentation
 - ground truth schema entry: predicate HAS_SPATIAL_REPRESENTATION
 - rule: Writing a classed triple, rule 11
@@ -184,14 +184,14 @@ NASA's own lists call Aqua "a NASA Earth Science satellite mission", one entry f
 - source text: This is a Rosetta Radio Science data set
 - source text: ROSETTA-ORBITER
 - classed triple: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
-- classed triple: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
+- classed triple: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 
 ### Ground truth schema
 
 - entity class Mission: a named spaceflight effort
-- entity class Spacecraft: a craft that operates in space
+- entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 - predicate FROM_MISSION: was collected during this Mission
-- predicate FROM_SPACECRAFT: was collected from this Spacecraft
+- predicate FROM_PLATFORM: was collected from this Platform
 
 ### Annotation guidelines
 
@@ -256,7 +256,7 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - entity class Instrument: a device that takes measurements
 - predicate ABOARD: is carried on
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
-- entity class Spacecraft -> Spacecraft: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
+- entity class Spacecraft -> Platform: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 23: One thing, one wording, within a record.
@@ -300,45 +300,45 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
-- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
-- classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
-- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
+- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
+- classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
+- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) FROM_PLATFORM "Aqua" (Platform)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) FROM_MISSION "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission)
-- classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
-- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_ON "May 4, 2002" (Time)
-- classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
-- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
+- classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_PLATFORM "Aqua" (Platform)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_BY_PARTY "NASA" (Organization)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_ON "May 4, 2002" (Time)
+- classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_PLATFORM "DAWN" (Platform)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Terra" (Platform)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Aqua" (Platform)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_PLATFORM "Terra" (Platform)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
-- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
-- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
-- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
-- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_PLATFORM "STARDUST" (Platform)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_PLATFORM "Rosetta Orbiter" (Platform)
+- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Platform)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: predicate SOURCED_FROM
 - translation table row: predicate OBSERVED_BY
 - ground truth schema entry: entity class Mission
-- ground truth schema entry: entity class Spacecraft
+- ground truth schema entry: entity class Platform
 - ground truth schema entry: predicate FROM_MISSION
-- ground truth schema entry: predicate FROM_SPACECRAFT
+- ground truth schema entry: predicate FROM_PLATFORM
 - rule: What counts as a fact, rule 1
 - rule: Writing a classed triple, rule 11
 - rule: Writing a classed triple, rule 14
@@ -569,17 +569,17 @@ A record often says where its data came from: an instrument, the craft that carr
 - source text: JPL acquires MODIS ocean L3 SST data from the OBPG
 - source text: The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
+- classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_PLATFORM "Aqua" (Platform)
 - classed triple: "JPL" (Organization) OBTAINS_DATA_FROM "NASA Ocean Biology Processing Group (OBPG)" (Organization)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
 
 ### Ground truth schema
 
-- entity class Spacecraft: a craft that operates in space
+- entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 - entity class Mission: a named spaceflight effort
 - entity class MissionPhase: a named phase of a Mission
 - predicate FROM_MISSION: was collected during this Mission
-- predicate FROM_SPACECRAFT: was collected from this Spacecraft
+- predicate FROM_PLATFORM: was collected from this Platform
 - predicate ACQUIRED_BY_INSTRUMENT: was collected by this Instrument
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
 - predicate OBTAINS_DATA_FROM: receives data from
@@ -604,7 +604,7 @@ An entity class for a field campaign (for example, Campaign) and a predicate for
 
 ### My current reading
 
-Keep the separate predicates (option 1 for them), unless your answer to (a) says some can be one (option 2): they follow what the records state. For the entity classes, undecided: option 3 is how the field describes them (one "platform" for anything that carries instruments), but no record we have annotated needs it, nor option 4; your answer to (c) decides option 4.
+Keep the separate predicates (option 1 for them), unless your answer to (a) says some can be one (option 2): they follow what the records state. For the entity classes, option 3, decided on 2026-10-31: the ground truth schema's Platform now takes the place of Spacecraft, and FROM_PLATFORM of FROM_SPACECRAFT, since two records of batches 4 and 5 need it (a balloon, an aircraft) and the field has one "platform" for anything that carries instruments. Option 4 too, decided the same day: Campaign is an entity class of its own; your answer to (c) can still change both.
 
 ### My notes
 
@@ -658,8 +658,8 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - predicate ACQUIRED_BY -> ACQUIRED_BY_INSTRUMENT: The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.
 - predicate COLLECTED_DURING -> HAS_MISSION_PHASE: The subject (a dataset, campaign, mission activity or event) took place or was gathered during the object, a time period or named field campaign.
 - predicate PROVIDED_BY -> PROVIDED_BY_PARTY: The subject (a product, campaign or responsibility) is supplied, conducted or overseen by the object, an organization, team or instrument mission.
-- entity class Spacecraft -> Spacecraft: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
-- entity class SpaceStation -> Spacecraft: A crewed orbiting space station, such as the International Space Station, used as a platform for research and observation.
+- entity class Spacecraft -> Platform: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
+- entity class SpaceStation -> Platform: A crewed orbiting space station, such as the International Space Station, used as a platform for research and observation.
 - entity class Aircraft -> (none): A crewed or research airplane used as a platform for airborne observations or measurements.
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
 - entity class Campaign -> (none): A coordinated period of field or flight measurement activity, such as an aircraft or balloon campaign, conducted to collect data.
@@ -705,39 +705,39 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
-- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 4" (MissionPhase)
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
-- classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
+- classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
+- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) FROM_PLATFORM "Aqua" (Platform)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) ACQUIRED_BY_INSTRUMENT "Aquarius L-band radiometer" (Instrument)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) FROM_MISSION "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission)
-- classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
+- classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
-- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_ON "May 4, 2002" (Time)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_PLATFORM "Aqua" (Platform)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_BY_PARTY "NASA" (Organization)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_ON "May 4, 2002" (Time)
 - classed triple of the record at pool position 4: "JPL" (Organization) OBTAINS_DATA_FROM "NASA Ocean Biology Processing Group (OBPG)" (Organization)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND" (Instrument)
 - classed triple of the record at pool position 5: "GRaND epithermal neutron map" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND" (Instrument)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND plus Z boron loaded sensor" (Instrument)
-- classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
+- classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_PLATFORM "DAWN" (Platform)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Terra" (Platform)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Aqua" (Platform)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_PLATFORM "Terra" (Platform)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument)
-- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_PLATFORM "STARDUST" (Platform)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_MISSION_PHASE "cruise" (MissionPhase)
@@ -747,19 +747,19 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 9: "approach" (MissionPhase) HAS_TARGET "9P/Tempel 1" (CelestialBody)
 - classed triple of the record at pool position 9: "encounter" (MissionPhase) HAS_TARGET "9P/Tempel 1" (CelestialBody)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
-- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_PLATFORM "Rosetta Orbiter" (Platform)
+- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Platform)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_MISSION_PHASE "comet escort 1" (MissionPhase)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TARGET "67P/Churyumov-Gerasimenko" (CelestialBody)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Rosetta Orbiter ALICE UV Spectrometer" (Instrument)
-- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
-- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
-- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 3" (MissionPhase)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -771,11 +771,11 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - translation table row: entity class Campaign
 - translation table row: entity class Program
 - translation table row: predicate OBSERVED_BY
-- ground truth schema entry: entity class Spacecraft
+- ground truth schema entry: entity class Platform
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class MissionPhase
 - ground truth schema entry: predicate FROM_MISSION
-- ground truth schema entry: predicate FROM_SPACECRAFT
+- ground truth schema entry: predicate FROM_PLATFORM
 - ground truth schema entry: predicate ACQUIRED_BY_INSTRUMENT
 - ground truth schema entry: predicate HAS_MISSION_PHASE
 - ground truth schema entry: predicate OBTAINS_DATA_FROM
@@ -1350,7 +1350,7 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - classed triple of the record at pool position 3: "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization)
 - classed triple of the record at pool position 3: "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) SERVES_AS "Argentina's space agency" (Role)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_BY_PARTY "NASA" (Organization)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
 - classed triple of the record at pool position 4: "Peter Minnett" (Person) AFFILIATED_WITH "Rosenstiel School of Marine and Atmospheric Science (RSMAS)" (Organization)
 - classed triple of the record at pool position 4: "JPL" (Organization) OBTAINS_DATA_FROM "NASA Ocean Biology Processing Group (OBPG)" (Organization)
@@ -1397,10 +1397,10 @@ Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans
 - source text: using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors
-- classed triple: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
-- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
-- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
-- classed triple: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple: "Aqua" (Platform) HAS_TARGET "Earth" (CelestialBody)
+- classed triple: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
 - classed triple: "modified nonlinear SST algorithm" (Algorithm) HAS_PURPOSE "provide continuity of SST derived from heritage and current NASA sensors" (Purpose)
 
 ### Ground truth schema
@@ -1452,7 +1452,7 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - entity class Mission: a named spaceflight effort
-- entity class Spacecraft: a craft that operates in space
+- entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 - predicate USED_TO_STUDY -> HAS_PURPOSE: The subject (a mission, instrument, program or dataset) is designed or used to investigate, characterize or trace the object, a scientific phenomenon or process.
 - predicate HAS_OBJECTIVE -> HAS_PURPOSE: The subject (a mission, campaign, project or set of researchers) aims to achieve, study or address the object, a scientific goal, question or problem.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
@@ -1483,9 +1483,9 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly and conveniently" (Purpose)
 - classed triple of the record at pool position 2: "series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
 - classed triple of the record at pool position 2: "series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
 - classed triple of the record at pool position 4: "modified nonlinear SST algorithm" (Algorithm) HAS_PURPOSE "provide continuity of SST derived from heritage and current NASA sensors" (Purpose)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected samples" (Purpose)
 - translation table row: predicate USED_TO_STUDY
@@ -1889,7 +1889,7 @@ Checked on 2026-10-31, for the expert's (b): DCAT's notion of a dataset "is broa
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD021KM.061" (Identifier)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) COMPUTED_FROM "pixels" (Dataset)
 - classed triple of the record at pool position 4: "pixels" (Dataset) HAS_PROCESSING_LEVEL "L2" (ProcessingLevel)
-- classed triple of the record at pool position 4: "pixels" (Dataset) BINNED_INTO "integerized sinusoidal area grid (ISEAG)" (Grid)
+- classed triple of the record at pool position 4: "pixels" (Dataset) ON_GRID "integerized sinusoidal area grid (ISEAG)" (Grid)
 - classed triple of the record at pool position 4: "pixels" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "GRaND epithermal neutron map" (Dataset)
 - classed triple of the record at pool position 5: "GRaND epithermal neutron map" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND" (Instrument)
@@ -2158,7 +2158,7 @@ Our schema has an entity class MapProjection, "a way of drawing the curved Earth
 ### Ground truth schema
 
 - entity class MapProjection: a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical
-- entity class Grid: a fixed set of cells that data values are collected into, e.g. ISEAG
+- entity class Grid: a fixed set of cells or points that data values are given on, e.g. ISEAG; pressure grid with 24 levels per decade
 
 ### Translation table
 
@@ -2260,7 +2260,7 @@ The example below says that Aqua was launched "into a sun synchronous, polar orb
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30
-- classed triple: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
+- classed triple: "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
 
 ### Ground truth schema
 
@@ -2333,7 +2333,7 @@ Checked on 2026-10-31, the rest of (a): NASA's own search uses the equator cross
 ### Affects
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
 - ground truth schema entry: entity class Orbit
 - ground truth schema entry: predicate HAS_ORBIT
 - rule: Writing a classed triple, rule 15
@@ -2915,17 +2915,17 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Terra" (Platform)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Aqua" (Platform)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "Aerosol Optical Depth" (PhysicalQuantity)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "atmospheric properties" (PhysicalQuantity)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_ANCILLARY_DATA "view geometry" (Variable)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
+- classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) ACQUIRED_BY_INSTRUMENT "Aquarius L-band radiometer" (Instrument)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
-- classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Spacecraft)
+- classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
 - classed triple of the record at pool position 4: "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument) HAS_NUMBER_OF "36 spectral bands" (Value)
 - classed triple of the record at pool position 4: "mid-infrared 3.95 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 4: "mid-infrared 4.05 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
@@ -2933,18 +2933,18 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND plus Z boron loaded sensor" (Instrument)
 - classed triple of the record at pool position 5: "GRaND plus Z boron loaded sensor" (Instrument) PART_OF "GRaND" (Instrument)
 - classed triple of the record at pool position 5: "GRaND epithermal neutron map" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND" (Instrument)
-- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
-- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
-- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_SPACECRAFT "Aqua" (Spacecraft)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_BY_PARTY "NASA" (Organization)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) LAUNCHED_ON "May 4, 2002" (Time)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) HAS_TARGET "Earth" (CelestialBody)
-- classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_SPACECRAFT "DAWN" (Spacecraft)
+- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
+- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) FROM_PLATFORM "Aqua" (Platform)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_PLATFORM "Aqua" (Platform)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_BY_PARTY "NASA" (Organization)
+- classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_ON "May 4, 2002" (Time)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the land" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
+- classed triple of the record at pool position 4: "Aqua" (Platform) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) FROM_PLATFORM "DAWN" (Platform)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) FROM_MISSION "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization)
@@ -2957,7 +2957,7 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 4: "SST4" (Variable) ESTIMATES "SST" (PhysicalQuantity)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) RELATED_TO "average atomic mass" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ACQUIRED_BY_INSTRUMENT "MODIS" (Instrument)
-- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_SPACECRAFT "Terra" (Spacecraft)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) FROM_PLATFORM "Terra" (Platform)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "Land Surface Temperature" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_MEASUREMENTS_OF "Land Surface Emissivity" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_ANCILLARY_DATA "quality control assessments" (Variable)
@@ -2969,30 +2969,30 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 7: "band 31 emissivity" (Variable) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "band 32 emissivity" (Variable) COMPUTED_FROM "land cover types" (PhysicalQuantity)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
-- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_SPACECRAFT "STARDUST" (Spacecraft)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_PLATFORM "STARDUST" (Platform)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_MISSION "Stardust-NExT" (Mission)
 - classed triple of the record at pool position 9: "Stardust-NExT" (Mission) ENDED_ON "March, 2011" (Time)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_VARIABLE "dust fluences at each of twelve mass thresholds" (Variable)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Rosetta Orbiter ALICE UV Spectrometer" (Instrument)
-- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_SPACECRAFT "Rosetta Orbiter" (Spacecraft)
-- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
-- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_SPACECRAFT "XMM-Newton" (Spacecraft)
+- classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Platform)
+- classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_PLATFORM "Rosetta Orbiter" (Platform)
+- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
+- classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_VARIABLE "Ensemble X-Ray Variability" (Variable)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
-- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Spacecraft)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_SPACECRAFT "ROSETTA-ORBITER" (Spacecraft)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm" (PhysicalQuantity)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
 - translation table row: entity class PhysicalQuantity
 - ground truth schema entry: entity class Instrument
-- ground truth schema entry: entity class Spacecraft
+- ground truth schema entry: entity class Platform
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class PhysicalQuantity
 - rule: Writing a classed triple, rule 11
@@ -3117,7 +3117,7 @@ The example below says Aqua was launched into its orbit "formation flying in the
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS)
-- classed triple: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
+- classed triple: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
 
 ### Ground truth schema
 
@@ -3154,13 +3154,13 @@ Withdrawn on 2026-10-31: settled from the field's practice, so it is no longer a
 
 ### Quoted for us
 
-- entity class Spacecraft: a craft that operates in space
+- entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 
 ### Affects
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "A-train" (SatelliteFormation)
-- classed triple of the record at pool position 4: "Aqua" (Spacecraft) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
+- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - ground truth schema entry: entity class SatelliteFormation
 - ground truth schema entry: predicate FLIES_IN
 
@@ -3352,7 +3352,7 @@ Checked on 2026-10-31, for the expert's (b): the standards have one general part
 ### Quoted for us
 
 - entity class Instrument: a device that takes measurements
-- entity class Spacecraft: a craft that operates in space
+- entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 
 ### Consequences
 

@@ -27,7 +27,7 @@ Organization      a named institution or one of its named parts, not a Mission, 
                   rule 19: standalone
 Instrument        a device that takes measurements
                   rule 19: standalone
-Spacecraft        a craft that operates in space
+Platform          a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
                   rule 19: standalone
 Time              a point or period on the calendar, which happens once, e.g. March 11, 2016 19:08:03; May 4, 2002; first week of February 2003; 2015-10-22 to 2015-12-31
                   rule 19: describing
@@ -70,7 +70,7 @@ Channel           a range of wavelengths an Instrument measures separately, e.g.
 Phenomenon        something that happens in nature and can be observed, e.g. sun glint
                   rule 19: standalone
                   source: ground truth tuning #4
-Grid              a fixed set of cells that data values are collected into, e.g. ISEAG
+Grid              a fixed set of cells or points that data values are given on, e.g. ISEAG; pressure grid with 24 levels per decade
                   rule 19: standalone
                   source: ground truth tuning #4
 MapProjection     a way of drawing the curved Earth on a flat map, e.g. equidistant cylindrical
@@ -120,7 +120,7 @@ A line "rule 19: qualifier, ..." marks a qualifier predicate: one of the qualifi
 Writing a classed triple takes out of an instance, named in the rule's words.
 
 ABOARD               is carried on
-                     Instrument -> Spacecraft
+                     Instrument -> Platform
 ACQUIRED_BY_INSTRUMENT  was collected by this Instrument
                      Dataset -> Instrument
                      only: any -> Instrument
@@ -129,9 +129,9 @@ ALSO_KNOWN_AS        is the same thing under another name
 FROM_MISSION         was collected during this Mission
                      Dataset -> Mission
                      only: any -> Mission
-FROM_SPACECRAFT      was collected from this Spacecraft
+FROM_PLATFORM        was collected from this Platform
                      source: ground truth tuning #1
-                     only: any -> Spacecraft
+                     only: any -> Platform
 HAS_DISCIPLINE       belongs to this Discipline
                      Dataset -> Discipline
                      only: any -> Discipline
@@ -228,7 +228,7 @@ HAS_LOWER_UNCERTAINTY_THAN  its values are more certain than those of
                             source: ground truth tuning #4
 LIMITED_BY           its use is restricted by
                      source: ground truth tuning #4
-BINNED_INTO          its values were collected into the cells of this Grid
+ON_GRID              its values are given on the cells or points of this Grid
                      source: ground truth tuning #4
                      only: any -> Grid
 MAPPED_INTO          its values were laid onto a map drawn with this MapProjection

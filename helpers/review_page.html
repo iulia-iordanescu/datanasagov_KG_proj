@@ -605,7 +605,7 @@ function wordsBox() {
     ["Predicate", "A type of relationship between two things, e.g. ABOARD."],
     ["Triple instance", "One fact, written in three pieces: a subject, a predicate and an object, e.g. “MODIS” – “is aboard” – “Aqua”."],
     ["Classed triple", "The same fact with an entity class for its subject and its object, and a predicate of a schema: " +
-      "“MODIS” (Instrument) ABOARD “Aqua” (Spacecraft). The facts on this page are written this way."],
+      "“MODIS” (Instrument) ABOARD “Aqua” (Platform). The facts on this page are written this way."],
     ["Ground truth", "The classed triples of a sample of records, written down and checked by a person: the answers we " +
       "measure the model against."],
     ["Schema", "A list of entity classes and predicates, each with a definition, and the pairs of entity classes each predicate " +
@@ -673,7 +673,7 @@ function drawSchema() {
        "Is a type of thing or relationship that NASA records often state missing?",
        "Does a predicate join entity classes it shouldn’t, or is it limited (“only:”) where it shouldn’t be?"],
       ["Under each predicate, “Patterns listed” are the pairs of entity classes it has joined, read subject → object: " +
-       "Instrument → Spacecraft under ABOARD says that an instrument is aboard a spacecraft. Our facts may use more patterns " +
+       "Instrument → Platform under ABOARD says that an instrument is aboard a platform. Our facts may use more patterns " +
        "than the list shows: a predicate may join whatever entity classes its meaning fits.",
        "An “only:” line limits a predicate: it may join only the entity classes listed there (“any”: any entity class).",
        "A “source:” line says which records first suggested the entry: “ground truth tuning #2” is the record numbered 2 in " +
@@ -763,8 +763,8 @@ function drawMapping() {
        "its facts with ours, each of its entity classes and predicates is translated into one of ours of the same kind, by this " +
        "rule. It translates to the one of ours with the same meaning. If we have none, it translates to the one for its main " +
        "meaning, when one meaning clearly dominates; one of ours that is broader counts (SpaceStation translates to " +
-       "Spacecraft). It translates to (none) when its meaning splits between several of ours (SOURCED_FROM, split between " +
-       "FROM_MISSION and FROM_SPACECRAFT). Several of the model’s may translate to the same one of ours. " +
+       "Platform). It translates to (none) when its meaning splits between several of ours (SOURCED_FROM, split between " +
+       "FROM_MISSION and FROM_PLATFORM). Several of the model’s may translate to the same one of ours. " +
        "Each box is one row: the model’s entity class or predicate on the left, ours on the right, each with its definition. " +
        "We ask: does each row follow this rule?"],
       ["Does the right side have the same meaning as the left, for NASA data, or else the left side’s main meaning?",

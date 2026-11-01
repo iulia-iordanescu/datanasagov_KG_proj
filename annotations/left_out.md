@@ -40,7 +40,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 2 items, none that may matter. The record has no list of other temporal resolutions or spatial resolutions of its product ("daily" is its own, in "provides daily snow cover"), so nothing of a product family is left out here.
 
 - **Left out:** "satellite" (notes, "the Aqua satellite")
-  - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
+  - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Platform, already says what it is"
 - **Left out:** "Each data granule contains" (notes), that the data come in granules
   - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words."
   - My ground truth triple HAS_GRANULE_DURATION "5 minutes" already says each granule covers 5 minutes, which only makes sense if the data come in granules.
@@ -75,7 +75,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **May matter because:** if the files hold both, the dataset has two variables, not one.
   - **Question:** Q18.
 - **Left out:** "binned" and "mapped" as methods (notes, "the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." The record names the grid and the projection but only says the pixels "are binned" and "mapped", so I wrote BINNED_INTO (renamed ON_GRID on 2026-10-31) and MAPPED_INTO and no PRODUCED_USING_ALGORITHM.
   - **May matter because:** it is how the dataset was made, step by step.
   - **Question:** Q7.
 - **Left out:** "NASA" (notes, "global NASA skin sea surface temperature (SST) products")
@@ -88,7 +88,7 @@ The dense record: its notes describe a whole family of products (several tempora
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
   - **Question:** Q15 (whether a coordinate system is a map projection); its part on "Platte Carre" was settled on 2026-10-26: it is the record's spelling of "Plate Carrée", the equidistant cylindrical projection on the equator (see Q15's My notes).
 - **Left out:** "satellite" (notes, "the Aqua satellite")
-  - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Spacecraft, already says what it is"
+  - **Rule:** Writing a classed triple, rule 23: "write "Aqua", not "Aqua satellite", since its entity class, Platform, already says what it is"
 - **Left out:** "which can be found at https://doi.org/10.5067/MODAM-8D4N4" (notes), the DOI of the previous v2014.1 datasets
   - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The DOI is the address of the older datasets, not of this one; the ground truth triple has only "V2019.0" SUPERSEDES "v2014.1".
   - **May matter because:** it is where the superseded release is.

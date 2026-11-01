@@ -101,7 +101,7 @@ class Status(unittest.TestCase):
     def test_draft_waiting_and_records_not_finished(self):
         self.splits([("r0", "tuning"), ("r1", "tuning"), ("r2", "held-out")])
         self.output("050_annotate", "drafted_triples_batch1.csv", "id\n")
-        self.ground_truth(0, [["r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "0"],
+        self.ground_truth(0, [["r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "0"],
                               ["r2", "", "", "", "", "", "", "0"]])
         gt = self.texts(self.status(), "Ground truth")
         self.assertTrue(any("Drafted batch 1 from step 050 isn't opened yet" in t for t in gt), gt)
@@ -115,7 +115,7 @@ class Status(unittest.TestCase):
         self.splits([("r0", "tuning"), ("r1", "tuning"), ("r2", "held-out"), ("r3", "tuning")])
         coined = lambda: [t for t in self.texts(self.status(), "Ground truth")             # noqa: E731
                           if "aren't in the ground truth schema" in t]
-        self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
+        self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "1"]])
         found = coined()
         self.assertEqual(len(found), 1, found)
         self.assertIn("1 entity class(es) or predicate(s) that finished records use aren't in the ground truth schema: "
@@ -127,24 +127,24 @@ class Status(unittest.TestCase):
         self.assertIn("Gadgetry (entity class)", coined()[0])
         # near misses: the same name in an unfinished record (0), with a bad mark (2), or in a record in two files
         for mark in ("0", "2"):
-            self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", mark]])
+            self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", mark]])
             self.assertEqual(coined(), [], mark)
-        self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
-        self.ground_truth(1, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
+        self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "1"]])
+        self.ground_truth(1, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "1"]])
         texts = self.texts(self.status(), "Ground truth")                 # no crash (it used to raise KeyError)
         self.assertEqual([t for t in texts if "aren't in the ground truth schema" in t], [])
         self.assertTrue(any("record r1 is in batch_000.csv and batch_001.csv" in t for t in texts), texts)
         (self.tmp / "annotations" / "ground_truth" / "batch_001.csv").unlink()
         # a finished held-out record's: listed, and it can't be added (frozen)
-        self.ground_truth(0, [["r2", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
+        self.ground_truth(0, [["r2", "MODIS", "Gizmo", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "1"]])
         found = coined()
         self.assertIn("Gizmo (entity class, used in a held-out record)", found[0])
         self.assertIn("can't be added (the ground truth schema is frozen for held-out records)", found[0])
 
     def test_rows_with_an_error_point_to_the_checks(self):
         self.output("020_clean", "records.jsonl", json.dumps({"id": "r1", "title": "MODIS", "notes": "MODIS aboard Aqua"}))
-        self.ground_truth(0, [["r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "0"],
-                              ["zz", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "0"]])
+        self.ground_truth(0, [["r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "0"],
+                              ["zz", "MODIS", "Instrument", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "0"]])
         errors = [t for t in self.texts(self.status(), "Ground truth") if "have an error to fix" in t]
         self.assertEqual(len(errors), 1, errors)
         self.assertIn("1 ground truth triple(s) or describes triple(s) have an error to fix (each kind: "
