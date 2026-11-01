@@ -35,6 +35,17 @@ the ground truth schema or (none).
 Every message names where each component class comes from: the current schema, the
 ground truth schema, or a row of the table (a past or the current
 schema).
+
+When 060 extracted with the ground truth schema itself (the comparison run:
+schema_used.json's made.ground_truth_schema, and the same entity classes and
+predicates with the same definitions as annotations/ground_truth_schema.txt
+now, held-out-only entries left out), every component class translates to
+itself (IDENTITY), built in memory: the table is not read, no row is added
+or checked, and nothing is asked. Both sides are one schema, so there is
+nothing for a person to check, and the baseline's table can't be changed by
+the comparison. When 060 used the ground truth schema but it differs now
+(redefined, renamed, added or deleted since, or schema additions merged in),
+the step stops: rerun 060 first.
 """
 from __future__ import annotations
 
@@ -47,8 +58,8 @@ from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
 from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, KINDS, NONE, condition, condition_text,
                                             conflicts, crt_definitions, gtt_definitions, is_checked, is_conditional,
-                                            is_missing_target, read_mapping, repeats, stale_in, value_problems,
-                                            values_text)
+                                            is_missing_target, is_now_exists, read_mapping, repeats, stale_in,
+                                            value_problems, values_text)
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_ground_truth_schema, without_held_out_only
@@ -65,8 +76,14 @@ AGAIN = "then run `py 070_evaluate/run.py` again."
 SUGGEST_PROMPT = load(PROMPTS_DIR / "suggest_component_classes.txt")
 
 
+#: How 070 translated, as the report, metrics.json and the recipe say it (helpers/compare_runs.py reads the recipe's).
+IDENTITY = "identity (060 used the ground truth schema)"
+TABLE_TRANSLATION = "the translation table (annotations/component_class_mapping.csv)"
+
+
 @dataclass
 class Translation:
+    how: str = TABLE_TRANSLATION                    # IDENTITY or TABLE_TRANSLATION
     entity: dict = field(default_factory=dict)      # {component_class_key(current schema's component class): gtt component class or None}
     predicate: dict = field(default_factory=dict)   # {component_class_key(current schema's component class): (gtt component class or None, reversed)}
     reachable: dict = field(default_factory=dict)   # {"entity class": {component_class_key(gtt component class)}, "predicate": {...}}
@@ -82,8 +99,6 @@ class Translation:
     to_none: dict = field(default_factory=dict)     # {kind: [060's component classes whose row says (none)]}
     untranslated: dict = field(default_factory=dict)  # {kind: [ground truth schema's component classes nothing translates to]}
     merged: dict = field(default_factory=dict)      # {kind: {gtt component class: [current schema's component classes that translate to it]}}, 2+ only
-    outdated: list = field(default_factory=list)    # current schema's component classes whose row says (none), though the
-                                                    # ground truth schema has the same component class
     suggested: list = field(default_factory=list)   # {"kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt"}: the
                                                     # model thinks a (none) row may now have a counterpart
     suggest_calls: int = 0
@@ -165,9 +180,66 @@ def _row(name: str, r: dict) -> str:
         ("(none)" if to == NONE else f"{to} (ground truth schema)")
 
 
+def _definitions(entries: list) -> dict:
+    """{component class: its definition, spacing evened out}, of a list of schema_used.json's entries."""
+    return {e["component_class"]: " ".join((e.get("definition") or "").split()) for e in entries}
+
+
+def identity_problem(schema_used: dict, gtt: dict) -> tuple:
+    """(whether the current schema is the ground truth schema, why it no longer is, or ""). It is when its entity
+    classes and predicates, with their definitions (spacing aside), are the ground truth schema's now (gtt:
+    gtt_schema), and none came from the schema additions. 060 marks a run that used the ground truth schema file
+    (made.ground_truth_schema); such a run that no longer matches gets the reason, for a stop."""
+    differ = []
+    for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates")):
+        mine = _definitions(schema_used.get(key, []))
+        theirs = {n: " ".join((d or "").split()) for n, d in gtt[kind].items()}
+        differ += [f"{n} ({kind}, only in the current schema)" for n in mine if n not in theirs]
+        differ += [f"{n} ({kind}, only in the ground truth schema)" for n in theirs if n not in mine]
+        differ += [f"{n} ({kind}, defined differently in the ground truth schema now)" for n in mine
+                   if n in theirs and mine[n] != theirs[n]]
+    added = [e["component_class"] for key in ("entity_classes", "predicates") for e in schema_used.get(key, [])
+             if e.get("from") == "additions"]
+    flagged = bool(schema_used.get("made", {}).get("ground_truth_schema"))
+    if not differ and not added:
+        return True, ""
+    if not flagged:
+        return False, ""
+    return False, ((f"{len(differ)} component class(es) differ: {named(differ, 5, '; ')}" if differ else "")
+                   + ("; " if differ and added else "")
+                   + (f"{len(added)} came from the schema additions: {named(added, 5)}" if added else ""))
+
+
+def identity(translation: Translation) -> Translation:
+    """Every component class of the current schema translates to itself (IDENTITY): the current schema is the
+    ground truth schema."""
+    translation.how = IDENTITY
+    for kind in KINDS:
+        names = list(translation.gtt[kind])
+        keys = {component_class_key(n) for n in names}
+        if kind == "entity class":
+            translation.entity = {component_class_key(n): n for n in names}
+        else:
+            translation.predicate = {component_class_key(n): (n, False) for n in names}
+        translation.reachable[kind] = keys
+        translation.to_none[kind], translation.untranslated[kind], translation.merged[kind] = [], [], {}
+    translation.rows_used = sum(len(v) for v in translation.gtt.values())
+    return translation
+
+
 def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     path = Path(inputs["component_class_mapping"])
     translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]))
+    same_schema, why = identity_problem(evaluated.schema_used, translation.gtt)
+    if same_schema:
+        return identity(translation)
+    if why:
+        raise Stop(f"Step 060's last run extracted with the ground truth schema, but "
+                   f"{ref_path(inputs['ground_truth_schema'])} no longer matches the schema it used "
+                   f"({ref_path(inputs['schema_used'])}): {why}. So 070 can't translate every component class to "
+                   f"itself, and the translation table is for other schemas. Extract again with the ground truth "
+                   f"schema as it is now (`py 060_extract/run.py --schema annotations/ground_truth_schema.txt`, with "
+                   f"annotations/schema_additions.txt holding no entries), {AGAIN}")
     rows = read_mapping(path)
     repeated = repeats(rows)
     if repeated:
@@ -236,7 +308,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          + " ".join(notes))
 
     # each row of the current schema under the first of these that applies, in this order (a row may be several)
-    unchecked, stale, unknown, stale_gtt = [], [], [], []
+    unchecked, stale, unknown, exists, stale_gtt = [], [], [], [], []
     crt_entity = {component_class_key(e["component_class"]) for e in evaluated.schema_used["entity_classes"]}
     strange = [_row(r["component_class_from_past_or_crt_schema"], r) for kind, name in needed if kind == "predicate"
                for r in conditional_rows.get(component_class_key(name), []) if any(c and c not in crt_entity for c in condition(r))]
@@ -255,6 +327,10 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
             stale.append(_row(name, r))
         elif is_missing_target(r, gtt_now):
             unknown.append(f"{name} (current schema) --> {r['component_class_in_gtt']} (not in the ground truth schema)")
+        elif is_now_exists(r, gtt_now):
+            cond = condition_text(r)
+            exists.append(f"line {r['_line']}: {name} (current schema){' ' + cond if cond else ''} --> (none), but "
+                          f"{gtt_key[r['kind']][component_class_key(name)]} (ground truth schema) now exists")
         elif IN_GTT in changed:
             stale_gtt.append(_row(name, r))
     if unchecked:
@@ -278,6 +354,15 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"missing one to the ground truth schema; a component class marked held-out only there is "
                          f"never a target (docs/terminology.md, *held-out-only entry*): choose another, or (none); "
                          f"{AGAIN}")
+    if exists:
+        raise Stop(f"{len(exists)} checked row(s) of {ref_path(path)} translate to (none), though the ground truth "
+                   f"schema ({ref_path(inputs['ground_truth_schema'])}) now has an entry spelled like their component "
+                   f"class (now exists: the row was checked before that entry existed), so they are probably out of "
+                   f"date, and 070 can't evaluate with them: {named(exists, 5, '; ')}. For each, in {TABLE}: if the "
+                   f"two mean the same, pick that entry and tick Checked; if they mean different things, or a "
+                   f"conditional row of the same component class already translates the cases they share, keep "
+                   f"(none) and tick Checked again (the row then keeps that entry's definition, and asks again if it "
+                   f"changes; docs/terminology.md, *row state*). Then {AGAIN[5:]}")
     if stale_gtt:
         raise Stop(f"{len(stale_gtt)} checked row(s) of {ref_path(path)} were checked when the ground truth schema "
                          f"({ref_path(inputs['ground_truth_schema'])}) defined the component class they translate "
@@ -316,12 +401,6 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
             translation.reach_conditional.setdefault(component_class_key(mine), []).append(tuple(ends))
     translation.rows_used = len(needed)
     translation.conditional_rows_used = sum(len(v) for v in translation.conditional.values())
-    # A row checked as (none) before the same component class joined the ground
-    # truth schema is almost surely out of date. Warned about (not a stop: (none)
-    # may still be right if the ground truth's component class means something else).
-    translation.outdated = [f"{name} (current schema) --> (none), but {gtt_key[kind][component_class_key(name)]} (ground truth "
-                      f"schema) now exists" for kind, name in needed
-                      if have[(kind, component_class_key(name))]["component_class_in_gtt"] == NONE and component_class_key(name) in gtt_key[kind]]
     # The ground truth schema grows as you annotate: a row checked as (none) may since have
     # gained a counterpart. Both lists go in the report, so such a row can be
     # spotted and fixed (rows are never changed by the step).
@@ -356,7 +435,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
 def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
     """Rows that say (none) whose component class may since have gained a
     counterpart in the ground truth schema: a DIFFERENT component class
-    (the same one is caught by `outdated`, free). One model call, only when
+    (the same one is a row that now exists, which stopped the step before this, free). One model call, only when
     there are both (none) rows of the current schema and component classes of
     the ground truth schema nothing translates
     to; the answer is cached by the lists asked about, so the same lists are

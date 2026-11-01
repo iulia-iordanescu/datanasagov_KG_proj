@@ -58,7 +58,7 @@ from pathlib import Path
 
 from common.files import read_json
 from common.audit import log, ref_path
-from common.ground_truth import (GROUND_TRUTH_DIR, GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, ground_truth_schema_view,
+from common.ground_truth import (GROUND_TRUTH_DIR, GROUND_TRUTH_SCHEMA, SCHEMA_EVIDENCE, ground_truth_schema_view,
                                  read_ground_truth, read_pool)
 from common.report import named
 from common.schema_io import ANY, ground_truth_source_problem, parse_source, pattern_key, read_schema, schema_text, without_held_out_only
@@ -84,6 +84,7 @@ class Schema:
     left_out: list = field(default_factory=list)   # {"kind", "component_class", "kept"}: additions already there
     not_tuning: list = field(default_factory=list) # {"entry_type", "schema_entry", "source", "why"}: from ground truth, not tuning only
     learned_from: dict = field(default_factory=dict)  # the records the schema was learned from (learned_from, below)
+    ground_truth: bool = False                     # the schema file is the ground truth schema (is_ground_truth_schema)
 
 #: 040's file of the texts it learned from, written beside its schema (040_induce_schema/040_induce_schema_helpers/moves.py).
 EVIDENCE_NAME = "induction_evidence.json"
@@ -112,12 +113,13 @@ def is_ground_truth_schema(path: Path) -> bool:
     return all(mine.get(k) == theirs.get(k) for k in SCHEMA_CONTENT)
 
 
-def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
+def learned_from(inputs: dict, base: dict, result: Schema, pool: list, evidence: set = frozenset()) -> dict:
     """The records the schema was learned from, for 070's twins (docs/terminology.md): {"known", "ids", "how":
     [sentences]}.
       - the induced schema: the texts the same run of 040 learned from, in its induction_evidence.json, beside the schema;
-      - the ground truth schema (is_ground_truth_schema: by content, so a copy counts too): pool positions 0 to
-        GROUND_TRUTH_SCHEMA_FROM - 1, which it was written while annotating;
+      - the ground truth schema (is_ground_truth_schema: by content, so a copy counts too): evidence, the ids of the
+        ground truth's finished tuning records (common.ground_truth.SCHEMA_EVIDENCE), the records whose annotation
+        shaped it (its component classes coined and patterns used there);
       - either way, also the pool records an entry's source line names ("source: ground truth tuning #12"), read by
         common.schema_io.parse_source: tuning and held-out ones alike, since both shaped the schema (a held-out one
         is also a note of step 070's).
@@ -126,9 +128,10 @@ def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
     by_position = {r["position"]: r["id"] for r in pool}
     parts = {r["position"]: r.get("part") for r in pool}
     ids, how = set(), []
-    if is_ground_truth_schema(path):
-        ids |= {by_position[p] for p in range(GROUND_TRUTH_SCHEMA_FROM) if p in by_position}
-        how.append(f"the ground truth schema was written while annotating pool positions 0 to {GROUND_TRUTH_SCHEMA_FROM - 1}")
+    if result.ground_truth:
+        ids |= set(evidence)
+        how.append(f"the ground truth schema was shaped while annotating the {len(evidence)} finished tuning records "
+                   f"of the ground truth")
     else:
         evidence = path.with_name(EVIDENCE_NAME)
         run = _made(path).get("run_id")
@@ -169,12 +172,16 @@ def load_schema(inputs: dict) -> Schema:
 
     pool = read_pool(inputs["splits"])
     parts = {r["position"]: r.get("part") for r in pool}
-    if is_ground_truth_schema(inputs["schema"]):
+    evidence = set()
+    result.ground_truth = is_ground_truth_schema(inputs["schema"])
+    if result.ground_truth:
         # the ground truth schema as every step sees it: its file without the held-out-only entries (their pins,
         # rule 19 marks and sources too), and its file's patterns, then every one the finished tuning records use
         # (common/common_helpers/ground_truth.ground_truth_schema_view), as 050 and the annotation tool check them
         folder = Path(inputs["ground_truth"]).parent if inputs.get("ground_truth") else GROUND_TRUTH_DIR
-        view = ground_truth_schema_view(base, read_ground_truth(folder, pool))
+        gt = read_ground_truth(folder, pool)
+        evidence = set(gt.select(SCHEMA_EVIDENCE).ids)
+        view = ground_truth_schema_view(base, gt)
         base = {**without_held_out_only(base), "patterns": view["patterns"]}
 
     merged = {kind: dict(base[kind]) for kind in KINDS}
@@ -250,7 +257,7 @@ def load_schema(inputs: dict) -> Schema:
     result.content = merged
     result.text = schema_text(merged)
     result.schema_entries = SchemaEntries(merged)
-    result.learned_from = learned_from(inputs, base, result, pool)
+    result.learned_from = learned_from(inputs, base, result, pool, evidence)
 
     schema_file, additions_file = repo_path(inputs["schema"]), repo_path(inputs["additions"])
     from_held_out = [f"{name} (schema file; {why})" for kind in KINDS + ("patterns",)

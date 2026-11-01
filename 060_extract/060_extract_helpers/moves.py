@@ -82,7 +82,9 @@ def _schema_used(schema) -> dict:
             "left_out_not_tuning": schema.not_tuning,
             "learned_from": schema.learned_from,
             "made": {"run_id": audit.current_run_id(), "schema": schema.files["schema"],
-                     "additions": schema.files["additions"]}}
+                     "additions": schema.files["additions"],
+                     # the schema file is the ground truth schema (by content): 070 then translates by identity
+                     "ground_truth_schema": schema.ground_truth}}
 
 
 def _new_component_classes(chosen, rows, settings) -> tuple:

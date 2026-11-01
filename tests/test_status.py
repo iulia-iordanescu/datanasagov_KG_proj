@@ -195,6 +195,28 @@ class Status(unittest.TestCase):
                             "doesn't have): choose the right one, or add it to the ground truth schema: Probe (current schema)"
                             in t for t in texts), texts)
 
+    def test_translation_row_that_now_exists(self):
+        """A checked (none) row whose component class the ground truth schema has since gained is listed to check;
+        the same row kept (none) on purpose (checked against that entry's definition) isn't; near miss: another kind."""
+        from common import schema_io
+        platform = schema_io.read_ground_truth_schema(self.tmp / "annotations" / "ground_truth_schema.txt")["entity_classes"]["Platform"]
+        self.output("060_extract", "schema_used.json", json.dumps({
+            "entity_classes": [{"component_class": "Platform", "definition": "a carrier"}],
+            "predicates": [{"component_class": "Platform", "definition": "is carried by"}]}))
+        mapping = self.tmp / "annotations" / "component_class_mapping.csv"
+        header = mapping.read_text(encoding="utf-8")
+        listed = lambda: [t for t in self.texts(self.status(), "Translation table") if "(now exists)" in t]   # noqa: E731
+        mapping.write_text(header + "entity class,Platform,(none),no,yes,a carrier,\n"
+                                    "predicate,Platform,(none),no,yes,is carried by,\n", encoding="utf-8")
+        found = listed()
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("1 row(s) of the translation table that say (none) though the ground truth schema now has an "
+                      "entry spelled the same (now exists)", found[0])
+        self.assertIn("Platform (current schema)", found[0])
+        mapping.write_text(header + f"entity class,Platform,(none),no,yes,a carrier,\"{platform}\"\n"
+                                    "predicate,Platform,(none),no,yes,is carried by,\n", encoding="utf-8")
+        self.assertEqual(listed(), [])
+
     def test_partial_pairs_waiting_tuning_only(self):
         self.splits([("r0", "tuning"), ("r1", "held-out")])
         self.manifest("070_evaluate")

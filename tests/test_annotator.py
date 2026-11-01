@@ -783,6 +783,26 @@ class D_Mapping(unittest.TestCase):
         self.assertEqual(self.read()[0]["definition_in_gtt"], "a vehicle in space")          # ticked: stores it
         self.assertNotIn(GTT, get("/api/mapping")["rows"][0]["stale_in"])
 
+    def test_now_exists_kept_on_purpose(self):
+        """A (none) row of Spacecraft, checked before the ground truth schema had Spacecraft, now exists (a row to
+        check); saved untouched it stays so; ticked again it stores Spacecraft's definition, and no longer is."""
+        cols = component_class_mapping.COLUMNS
+        with open(self.path, "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(cols)
+            w.writerow(["entity class", "Spacecraft", "(none)", "no", "yes", "a craft", ""])
+            w.writerow(["entity class", "Satellite", "(none)", "no", "yes", "an orbiting craft", ""])   # near miss
+        states = [r["states"] for r in get("/api/mapping")["rows"]]
+        self.assertEqual(states, [[component_class_mapping.NOW_EXISTS], []])
+        sent = [{"kind": "entity class", "component_class_from_past_or_crt_schema": n, "component_class_in_gtt": "(none)",
+                 "checked": "yes", "keep_definition": True} for n in ("Spacecraft", "Satellite")]
+        post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
+        self.assertEqual(self.read()[0]["definition_in_gtt"], "")                            # not ticked: still to check
+        sent[0].pop("keep_definition")
+        post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
+        self.assertEqual(self.read()[0]["definition_in_gtt"], "a vehicle in space")          # kept (none) against it
+        self.assertEqual(get("/api/mapping")["rows"][0]["states"], [])
+
     def test_refusals(self):
         before = self.path.read_bytes()
         bad_name = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite",

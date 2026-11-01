@@ -109,9 +109,6 @@ NUMBERED = re.compile(r"batch_(\d{3,})\.csv")
 DRAFT_PATTERN = "drafted_triples_batch*.csv"
 DRAFT_NUMBERED = re.compile(r"drafted_triples_batch(\d+)\.csv")
 GROUND_TRUTH_SCHEMA = ANNOTATIONS_DIR / "ground_truth_schema.txt"
-#: The ground truth schema was written while annotating the pool's first records, positions 0 to GROUND_TRUTH_SCHEMA_FROM - 1:
-#: so they are always tuning (030), and they are the records it was learned from (060's learned_from).
-GROUND_TRUTH_SCHEMA_FROM = 6
 
 
 #: The twin kinds (docs/terminology.md, twin): what a twin shares with one record the schema was learned from, the kind
@@ -119,30 +116,42 @@ GROUND_TRUTH_SCHEMA_FROM = 6
 TWIN_KINDS = ("whole text", "notes only", "title only")
 
 
-def twin_kinds(records: dict, learned: list) -> dict:
+def twin_kinds(records: dict, learned: dict) -> dict:
     """{id: its twin kind (TWIN_KINDS), or "" when it isn't a twin} for each of records ({id: record}), against
-    learned (the records the schema was learned from). Title and `notes` are compared evened out
-    (common/common_helpers/text_match.py); an empty one is never the same as another.
+    learned ({id: record}: the records the schema was learned from). A record is never its own twin: a record that
+    is also among those learned from is compared with the others only (with the ground truth schema, the evaluated
+    records are among them). Title and `notes` are compared evened out (common/common_helpers/text_match.py); an
+    empty one is never the same as another.
 
-    >>> learned = [{"title": "Snow, Aqua", "notes": "Daily snow."}, {"title": "Fire", "notes": "Burned area."}]
+    >>> learned = {"x": {"title": "Snow, Aqua", "notes": "Daily snow."}, "y": {"title": "Fire", "notes": "Burned area."}}
     >>> twin_kinds({"a": {"title": "snow,  AQUA", "notes": "Daily snow."}, "b": {"title": "Snow, Terra", "notes": "Daily snow."},
     ...              "c": {"title": "Fire", "notes": "Fire counts."}, "d": {"title": "Fire", "notes": "Daily snow."},
-    ...              "e": {"title": "Ice", "notes": ""}}, learned)
-    {'a': 'whole text', 'b': 'notes only', 'c': 'title only', 'd': 'notes only', 'e': ''}
+    ...              "e": {"title": "Ice", "notes": ""}, "y": {"title": "Fire", "notes": "Burned area."}}, learned)
+    {'a': 'whole text', 'b': 'notes only', 'c': 'title only', 'd': 'notes only', 'e': '', 'y': ''}
     """
     from common.text_match import even
 
     def keys(r):
         return even(r.get("title") or "").strip(), even(r.get("notes") or "").strip()
 
-    pairs = {keys(r) for r in learned}
-    titles = {t for t, _ in pairs} - {""}
-    descriptions = {d for _, d in pairs} - {""}
+    pairs, titles, descriptions = {}, {}, {}           # each key: the ids of the learned-from records that have it
+    for lid, r in learned.items():
+        t, d = keys(r)
+        pairs.setdefault((t, d), set()).add(lid)
+        if t:
+            titles.setdefault(t, set()).add(lid)
+        if d:
+            descriptions.setdefault(d, set()).add(lid)
+
+    def shared(index: dict, key, rid) -> bool:
+        return bool(index.get(key, set()) - {rid})     # another record than itself has it
+
     out = {}
     for rid, r in records.items():
         t, d = keys(r)
-        out[rid] = ("whole text" if t and d and (t, d) in pairs else "notes only" if d in descriptions
-                    else "title only" if t in titles else "")
+        out[rid] = ("whole text" if t and d and shared(pairs, (t, d), rid) else
+                    "notes only" if d and shared(descriptions, d, rid) else
+                    "title only" if t and shared(titles, t, rid) else "")
     return out
 
 
@@ -154,7 +163,7 @@ TWIN_ROWS = {"whole text": "whole text (same title and same `notes`)",
 
 def twin_table(pool: dict, columns: list) -> list:
     """Report lines: how many pool records are twins of each kind (twin_kinds), against the records of each column.
-    pool: {id: record}; columns: [(heading, what, [records])], e.g. ("the 150 texts this run learned from",
+    pool: {id: record}; columns: [(heading, what, {id: record})], e.g. ("the 150 texts this run learned from",
     "the 150 texts this run of step 040 learned from", [...]). Shared by 030, 040, and 070, so the table reads the
     same in every report."""
     counts = [collections.Counter(twin_kinds(pool, learned).values()) for _, _, learned in columns]

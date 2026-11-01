@@ -463,6 +463,8 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
     return {"extraction (060)": extraction,
             "evaluation (070)": {"git_commit": git_commit(), "matching_version": text_match.MATCHING_VERSION,
                                  "evaluation_version": pairing.EVALUATION_VERSION,
+                                 # IDENTITY or TABLE_TRANSLATION: helpers/compare_runs.py won't mix them unlabelled
+                                 "translation": translation.how,
                                  "translation_sha256": _translation_fingerprint(translation),
                                  # an occurrence matching a fact that waits on an expert is left out of precision
                                  "facts_waiting_on_an_expert": {"excluded_from_precision": True,
@@ -782,6 +784,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     write_csv(compared_path, COMPARED_COLUMNS, compared_rows)
     write_json(metrics_path, {
         "made": {"run_id": audit.current_run_id(), **llm.describe(), "schema": schema_file, "settings": settings,
+                 "translation": translation.how,
                  "interval_method": "clustered Wilson", "few_records_caveat_below": stats.FEW_RECORDS},
         "evaluated": {p: [r["id"] for r in evaluated.records if r["part"] == p] for p in PARTS},
         "left_out": evaluated.left_out,
@@ -846,12 +849,6 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                         + f". While a row says (none), the occurrences of extracted triples that use its component class can't form "
                           f"pairs (a predicate) or strict pairs (an entity class). Rows aren't changed: check them "
                           f"({TABLE}, shows the suggestion), take the suggestion if right, else keep (none); {AGAIN}")
-    if translation.outdated:
-        warnings.append(f"{len(translation.outdated)} row(s) of annotations/component_class_mapping.csv translate to (none) though the ground "
-                        f"truth schema now has the same component class: {named(translation.outdated, 5, '; ')}. Probably out of "
-                        f"date, and the occurrences of extracted triples that use those component classes can't form pairs (a predicate) "
-                        f"or strict pairs (an entity class). Check them ({TABLE}, marked *now exists*); keep (none) "
-                        f"only if the ground truth schema's component class means something else; {AGAIN}")
     if unreviewed:
         waiting = [r["id"] for r in tuning if r["compared"]["partial_review"]["unreviewed"]]
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, in {len(waiting)} "
@@ -890,12 +887,19 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     if missing:
         warnings.append(missing)
 
+    identity = translation.how == component_classes_stage.IDENTITY
     lines = ["### What this run worked on", "",
-             f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth schema "
-             f"through `annotations/component_class_mapping.csv` "
-             f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed"
-             + (f"; {translation.conditional_rows_used} conditional row(s)" if getattr(translation, "conditional_rows_used", 0) else "")
-             + ").", "",
+             (f"Current schema (the one 060 used): `{schema_file}`. Translation: {translation.how}: each of its "
+              f"{translation.rows_used} component classes translates to itself, built in memory; the translation "
+              f"table (`annotations/component_class_mapping.csv`) was not read. The ground truth schema was shaped "
+              f"while annotating these very tuning records, so read these numbers as a reference for the induced "
+              f"schema's, not as a held-out result (070_evaluate/070_evaluate.md, *Comparing with the ground truth "
+              f"schema*)." if identity else
+              f"Current schema (the one 060 used): `{schema_file}`, translated to the ground truth schema "
+              f"through `annotations/component_class_mapping.csv` "
+              f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed"
+              + (f"; {translation.conditional_rows_used} conditional row(s)" if getattr(translation, "conditional_rows_used", 0) else "")
+              + ")."), "",
              "| Part | Records evaluated |", "|---|---:|"]
     for part in PARTS:
         count = sum(r["part"] == part for r in evaluated.records)
@@ -904,16 +908,16 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     if metrics["kept_aside"]:
         lines += ["The held-out part's numbers are not shown: they are kept for the end, so the pipeline isn't "
                   "tuned on them. `--evaluate_held_out true` shows them (and logs the look).", ""]
-    lines += ["### The translation table", "",
+    lines += [] if identity else ["### The translation table", "",
               "Rows of `annotations/component_class_mapping.csv` that say `(none)`, and component classes of the ground truth schema "
               "that no row translates to. The ground truth schema grows as you annotate: if a `(none)` row "
               "should now point to one of its component classes, fix that row (`py helpers/annotate.py`, view "
               "*Translation table*).", "",
               "| Kind | Current schema's component classes translated to (none) | Ground truth schema's component classes nothing "
               "translates to |", "|---|---|---|"]
-    lines += [f"| {kind} | {cell(named(translation.to_none[kind], 20)) or '–'} | {cell(named(translation.untranslated[kind], 20)) or '–'} |"
-              for kind in ("entity class", "predicate")]
-    lines.append("")
+    lines += [] if identity else [
+        f"| {kind} | {cell(named(translation.to_none[kind], 20)) or '–'} | {cell(named(translation.untranslated[kind], 20)) or '–'} |"
+        for kind in ("entity class", "predicate")] + [""]
     merged = [(kind, mine, theirs) for kind in ("entity class", "predicate")
               for mine, theirs in translation.merged[kind].items()]
     if merged:

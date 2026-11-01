@@ -31,7 +31,7 @@ class Texts:
     maintainers: list = field(default_factory=list)  # {"maintainer", "rank", "records", "eligible", "taken"}
     notes: list = field(default_factory=list)        # where the texts differ from what the settings ask for
     pool: dict = field(default_factory=dict)         # {id: record}: the ground truth candidates pool, for the twin table
-    candidates: list = field(default_factory=list)   # every induction candidate's record, for the twin table
+    candidates: dict = field(default_factory=dict)   # {id: record}: every induction candidate, for the twin table
 
 
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
@@ -51,7 +51,7 @@ def pick_texts(inputs: dict, settings: dict) -> Texts:
 
     texts = Texts()
     texts.pool = {r["id"]: records[r["id"]] for r in splits["ground_truth_candidates"]["records"] if r["id"] in records}
-    texts.candidates = [records[r["id"]] for r in induction["records"] if r["id"] in records]
+    texts.candidates = {r["id"]: records[r["id"]] for r in induction["records"] if r["id"] in records}
     taken = {m: 0 for m in wanted}
     for row in induction["records"]:                  # grouped by maintainer, each in its order
         m = row["maintainer"]

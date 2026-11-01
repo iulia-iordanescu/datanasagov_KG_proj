@@ -47,7 +47,7 @@ from pathlib import Path
 
 from common.files import read_csv, read_json
 from common import audit
-from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, STALE, crt_definitions, gtt_definitions, \
+from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, NOW_EXISTS, STALE, crt_definitions, gtt_definitions, \
     is_checked, read_mapping, repeats, row_states
 from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALUABLE, GROUND_TRUTH_DIR, HELD_OUT, KIND_KEYS,
                                  NUMBERED, PATTERN, TO_FIX, TUNING, check_rows, ground_truth_schema_gaps,
@@ -335,8 +335,12 @@ def _translation_items(schema: dict, gt) -> list:
     unchecked = [r for r in current if not is_checked(r)]
     stale = [r for r in current if STALE in states[r["_line"]]]
     unknown = [r for r in current if is_checked(r) and MISSING_TARGET in states[r["_line"]]]
+    exists = [r for r in current if is_checked(r) and NOW_EXISTS in states[r["_line"]]]
     repeated = repeats(table)
     for rows, what in ((unchecked, "still to check"),
+                       (exists, "that say (none) though the ground truth schema now has an entry spelled the same "
+                                "(now exists): pick that entry if it means the same, else tick Checked again to keep "
+                                "(none) on purpose"),
                        (stale, "stale (a definition changed since the row was checked): check them again"),
                        (unknown, "with a missing target (translating to an entity class or predicate the ground "
                                  "truth schema doesn't have): choose the right one, or add it to the ground truth "

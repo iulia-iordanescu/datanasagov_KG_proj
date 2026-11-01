@@ -438,7 +438,13 @@ class ExtractionWithTheGroundTruthSchema(unittest.TestCase):
         self.assertNotIn(new[1], s.content["patterns"])
         self.assertNotIn(new[2], s.content["patterns"])
         self.assertTrue(s.learned_from["known"])
-        self.assertTrue({f"r{i}" for i in range(6)} <= set(s.learned_from["ids"]))
+        # learned from: the finished tuning records (r1 here; not r2, unfinished, nor r8, held-out), plus the pool
+        # positions the file's source lines name
+        parts = {r["position"]: r["part"] for r in pool}
+        named = {f"r{n}" for of_kind in hand["sources"].values() for source in of_kind.values()
+                 for key in ("tuning", "held_out") for n in schema_io.parse_source(source, parts)[key] if n in parts}
+        self.assertEqual(set(s.learned_from["ids"]), {"r1"} | named)
+        self.assertTrue(any("finished tuning records" in h for h in s.learned_from["how"]))
         # the near miss: one definition changed, so it is another schema (the patterns its own, learned from unknown)
         copy.write_text(copy.read_text(encoding="utf-8-sig").replace(hand["predicates"][p], "something else", 1),
                         encoding="utf-8")

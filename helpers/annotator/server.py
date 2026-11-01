@@ -148,7 +148,7 @@ from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTE
                                  pattern_of, pattern_uses, read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH,
                                             MISSING_TARGET, NONE, NOW_EXISTS, REPEATED, SHARED, STALE, SUGGESTED,
-                                            VALUES as MAPPING_VALUES, crt_definitions, gtt_definition,
+                                            VALUES as MAPPING_VALUES, checked_against, crt_definitions,
                                             gtt_definitions, is_checked, is_missing_target, is_stale_gtt,
                                             read_mapping, repeats, row_states, sharing, stale_in, condition_text)
 from common.partial_reviews import (COLUMNS as REVIEW_COLUMNS, EXACT_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY, NOT_SAME,
@@ -940,8 +940,8 @@ def mapping_view(data: Data) -> dict:
                      "crt_definition": (crt or {}).get(r["kind"], {}).get(key),
                      # its row states (common/common_helpers/component_class_mapping.row_states), whose definition
                      # changed if it is stale, and what it shares its translation with
-                     "states": row_states(r, crt, gtt_now, repeated=r["_line"] in extra, same_in_gtt=same,
-                                          suggested=hint, shared=shared.get(r["_line"], [])),
+                     "states": row_states(r, crt, gtt_now, repeated=r["_line"] in extra, suggested=hint,
+                                          shared=shared.get(r["_line"], [])),
                      "stale_in": stale_in(r, crt, gtt_now), "sharing": shared.get(r["_line"], []),
                      "example": examples.get(key) if r["kind"] == "predicate" else None})
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
@@ -963,8 +963,9 @@ def save_mapping(data: Data, sent: list, loaded: str | None = None) -> str:
     in order; rows added after them (by step 070) are kept as they are. A row saved as checked stores the current schema's definition
     of its component class and the ground truth schema's definition of its
     component class of the ground truth schema, unless the page says
-    keep_definition: a stale row the person hasn't ticked again keeps its
-    checked value and its old definitions, so it stays stale."""
+    keep_definition: a stale row, or a (none) row that now exists, the person hasn't ticked again keeps its
+    checked value and its old definitions, so it stays stale (or now exists). Ticking a (none) row that now exists
+    stores the definition of the entry spelled like it (checked_against): (none) kept on purpose."""
     loaded = _loaded(loaded)
     rows = read_mapping(MAPPING_PATH)
     crt = _crt()
@@ -1006,7 +1007,8 @@ def save_mapping(data: Data, sent: list, loaded: str | None = None) -> str:
             if crt is not None:
                 row["definition_from_past_or_crt_schema"] = \
                     crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
-            row["definition_in_gtt"] = gtt_definition(row, gtt_now)
+            # for a (none) row: the definition of the entry spelled like it, which the person kept (none) against
+            row["definition_in_gtt"] = checked_against(row, gtt_now)
     return write_if_unchanged(MAPPING_PATH, _csv_bytes(MAPPING_COLUMNS, rows).decode("utf-8"), loaded)
 
 

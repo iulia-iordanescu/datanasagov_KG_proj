@@ -1443,7 +1443,9 @@ const isCurrent = (r) => !mapping.schema_found || r.in_crt;
 // mapping.stale_in_names: common/common_helpers/component_class_mapping.py), as do the values that count as checked.
 const has = (r, state) => r.states.includes(mapping.state_names[state]);
 const staleIn = (r, whose) => r.stale_in.includes(mapping.stale_in_names[whose]);
-const toCheck = (r) => has(r, "STALE") || has(r, "MISSING_TARGET") || !mapping.checked_values.includes(r.checked);
+// A (none) row that now exists needs checking too: keeping (none) on purpose is ticking it again.
+const toCheck = (r) => has(r, "STALE") || has(r, "MISSING_TARGET") || has(r, "NOW_EXISTS")
+  || !mapping.checked_values.includes(r.checked);
 
 async function openMapping() {
   await flush();
@@ -1656,8 +1658,11 @@ function mappingRow(r, i) {
     `this box's dropdown; otherwise keep ${mapping.none}.`]);
   if (nowExists) notes.push(["flag", `${nowExists.component_class} (ground truth schema ${what}) now exists`,
     `⚑ The ground truth schema now has ${nowExists.component_class} (ground truth schema ${what}), spelled like ` +
-    `${crtLabel}, which this row translates to ${mapping.none}. If the two mean the same, pick ` +
-    `${nowExists.component_class} in this box's dropdown; keep ${mapping.none} only if they mean different things.`]);
+    `${crtLabel}, which this row translates to ${mapping.none}, checked before it existed; step 070 stops on this row ` +
+    `until you check it. If the two mean the same, pick ${nowExists.component_class} in this box's dropdown and tick ` +
+    `“Checked”. Keep ${mapping.none} only if they mean different things, or if a conditional row of ${crtName} already ` +
+    `translates the cases they share: then tick “Checked: this translation is right” again, which records that you ` +
+    `kept ${mapping.none} against ${nowExists.component_class}'s definition (if that definition changes, the row asks again).`]);
   if (sharing.length) notes.push(["flag",
     `Also translated to ${gttLabel}: ${sharing.join(", ")} (current schema ${sharing.length === 1 ? what : whats})`,
     `⚑ ${andList([crtName, ...sharing])} (current schema ${whats}) ${sharing.length === 1 ? "both" : "all"} translate to ` +
@@ -1679,7 +1684,7 @@ function mappingRow(r, i) {
   const open = mapOpen.has(r._line);
   const toggle = () => { if (mapOpen.has(r._line)) mapOpen.delete(r._line); else mapOpen.add(r._line); drawMapping(); };
   const autoAccepted = same && !has(r, "STALE");
-  const isChecked = r.checked === "yes" && !has(r, "STALE");
+  const isChecked = r.checked === "yes" && !has(r, "STALE") && !has(r, "NOW_EXISTS");
   const definition = (text, missing) => text ? el("div", { class: "mapdef" }, text) : el("div", { class: "mapdef empty" }, missing);
 
   return el("section", { class: "mapbox" + (toCheck(r) || has(r, "REPEATED") ? " todo" : "") },
@@ -1716,7 +1721,8 @@ function mappingRow(r, i) {
             "✓ Accepted: spelled the same in both schemas")
         : el("label", { class: "mapflag" + (isChecked ? " ok" : "") },
             el("input", { type: "checkbox", checked: isChecked,
-                          onchange: (e) => { r.states = r.states.filter(x => x !== mapping.state_names.STALE);
+                          onchange: (e) => { r.states = r.states.filter(x => x !== mapping.state_names.STALE
+                                                                         && x !== mapping.state_names.NOW_EXISTS);
                                              r.stale_in = [];
                                              update("checked", e.target.checked ? "yes" : "no"); } }),
             " Checked: this translation is right"),
@@ -1755,7 +1761,7 @@ async function saveMapping() {
   try {
     const done = await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
       component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
-      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: has(r, "STALE") })),
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: has(r, "STALE") || has(r, "NOW_EXISTS") })),
       fingerprint: mapping.fingerprint });
     if (done.fingerprint && mapping) mapping.fingerprint = done.fingerprint;
     // the rows' states as saved, unless the page changed again meanwhile (the next save brings those)

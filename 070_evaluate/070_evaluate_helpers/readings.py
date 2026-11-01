@@ -16,6 +16,7 @@ import collections
 import re
 
 import stats
+from component_classes import IDENTITY
 from common.ground_truth import HELD_OUT, TUNING
 from common.triples_io import component_class_key
 
@@ -120,8 +121,12 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
             + "; ".join(f"{e.get('component_class') or ' '.join(e['pattern'])} ({e.get('source')})" for e in from_tuning) + ". They come from the very records "
             "being evaluated, so they help here more surely than on records the pipeline hasn't seen."
             if from_tuning else "- **Schema entries of the schema additions learned from tuning records:** none."),
-           "- **Component classes:** extraction's component classes translated into the ground truth schema through "
-           "`annotations/component_class_mapping.csv`.",
+           ("- **Component classes:** translation: identity (060 used the ground truth schema): each of extraction's "
+            "component classes is itself, the translation table not read. The ground truth schema was shaped while "
+            "annotating the tuning records, so these numbers are a reference, not a held-out result."
+            if getattr(translation, "how", "") == IDENTITY else
+            "- **Component classes:** extraction's component classes translated into the ground truth schema through "
+            "`annotations/component_class_mapping.csv`."),
            f"- **Ground truth:** `annotations/ground_truth/`, the {len(recs)} finished {part} record(s) of the fair "
            f"sample (pool positions {', '.join(f'#{p}' for p in positions) or '–'}). Drafted by a model (step 050) and "
            f"corrected by a person, not written from scratch, so recall is likely overstated "

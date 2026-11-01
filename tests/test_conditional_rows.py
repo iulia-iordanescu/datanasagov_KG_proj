@@ -139,5 +139,89 @@ class Stage(unittest.TestCase):
         self.assertFalse(pairing._within_reach(triple("Rosetta", "Mission", "FROM_MISSION", "D", "Dataset"), t))
 
 
+class IdentityAndNowExists(unittest.TestCase):
+    """The comparison run: 060 extracted with the ground truth schema itself, so 070 translates every component class
+    to itself without reading the table (which needn't even exist); a schema that differs in one definition, or one
+    merged with an addition, is not it (and stops, if 060 marked it as the ground truth schema). And a (none) row
+    whose own component class the ground truth schema has since gained (now exists) stops 070, unless it was kept
+    (none) on purpose, against that entry's definition."""
+
+    GT_USED = {"entity_classes": [{"component_class": c, "definition": d} for c, d in ENTITY_DEF.items()],
+               "predicates": [{"component_class": p, "definition": d} for p, d in GTT_PRED_DEF.items() if p != "(none)"],
+               "made": {"ground_truth_schema": True}}
+
+    def run_stage(self, schema_used, rows=None):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            if rows is not None:
+                write_csv(tmp / "map.csv", m.COLUMNS, rows)
+            (tmp / "gts.txt").write_text(GTS, encoding="utf-8")
+            evaluated = type("E", (), {"schema_used": schema_used})()
+            return component_classes.translate_component_classes(
+                {"component_class_mapping": str(tmp / "map.csv"), "ground_truth_schema": str(tmp / "gts.txt"),
+                 "schema_used": str(tmp / "schema_used.json")}, evaluated, None)
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_identity_without_a_table(self):
+        for flagged in (True, False):                        # recognized by content too (an older 060 run)
+            with self.subTest(flagged=flagged):
+                used = {**self.GT_USED, "made": {"ground_truth_schema": flagged}}
+                t = self.run_stage(used)                     # no table file at all: it isn't read
+                self.assertEqual(t.how, component_classes.IDENTITY)
+                ex = pairing.translate(triple("D", "Dataset", "FROM_MISSION", "Rosetta", "Mission"), t)
+                self.assertEqual((ex["subject_class"], ex["predicate"], ex["object_class"]),
+                                 ("Dataset", "FROM_MISSION", "Mission"))
+                self.assertEqual((t.calls, t.suggest_calls, t.rows_used), (0, 0, 5))
+                self.assertTrue(pairing._within_reach(triple("D", "Dataset", "FROM_SPACECRAFT", "A", "Spacecraft"), t))
+        # spacing aside, a definition is the same
+        used = {**self.GT_USED, "entity_classes": [dict(e, definition=e["definition"].replace(" ", "  "))
+                                                   for e in self.GT_USED["entity_classes"]]}
+        self.assertEqual(self.run_stage(used).how, component_classes.IDENTITY)
+
+    def test_near_misses_stop_when_marked(self):
+        redefined = {**self.GT_USED, "predicates": [{"component_class": "FROM_MISSION", "definition": "was sent by"},
+                                                    {"component_class": "FROM_SPACECRAFT",
+                                                     "definition": "comes from this spacecraft"}]}
+        dropped = {**self.GT_USED, "entity_classes": self.GT_USED["entity_classes"][:2]}
+        added = {**self.GT_USED, "entity_classes": self.GT_USED["entity_classes"]
+                 + [{"component_class": "Probe", "definition": "x", "from": "additions"}]}
+        for used, says in ((redefined, "FROM_MISSION (predicate, defined differently in the ground truth schema now)"),
+                           (dropped, "Spacecraft (entity class, only in the ground truth schema)"),
+                           (added, "1 came from the schema additions: Probe")):
+            with self.subTest(says=says):
+                with self.assertRaises(Stop) as stop:
+                    self.run_stage(used, rows=[])
+                self.assertIn("extracted with the ground truth schema, but", str(stop.exception))
+                self.assertIn(says, str(stop.exception))
+                self.assertIn("--schema annotations/ground_truth_schema.txt", str(stop.exception))
+        # not marked by 060: another schema, translated through the table (here: rows added, and a stop to check)
+        with self.assertRaises(Stop) as stop:
+            self.run_stage({**redefined, "made": {}}, rows=[])
+        self.assertIn("Added", str(stop.exception))
+
+    def test_now_exists_stops_unless_kept_on_purpose(self):
+        used = {"entity_classes": [{"component_class": c, "definition": "d"} for c in ENTITY_DEF],
+                "predicates": [{"component_class": "FROM_MISSION", "definition": "d"}], "made": {}}
+        coined = dict(row("predicate", "FROM_MISSION", "(none)"), _line=5)      # checked before FROM_MISSION existed
+        with self.assertRaises(Stop) as stop:
+            self.run_stage(used, ENTITY_ROWS + [coined])
+        self.assertIn("line 5: FROM_MISSION (current schema) --> (none), but FROM_MISSION (ground truth schema) now "
+                      "exists", str(stop.exception))
+        self.assertIn("tick Checked again", str(stop.exception))
+        # kept (none) on purpose: checked against FROM_MISSION's definition, so it translates to nothing, no stop
+        kept = dict(coined, definition_in_gtt=GTT_PRED_DEF["FROM_MISSION"])
+        t = self.run_stage(used, ENTITY_ROWS + [kept])
+        self.assertEqual(list(t.predicate.values()), [(None, False)])
+        # the entry redefined since: stale (the ground truth schema's definition), so checked again
+        with self.assertRaises(Stop) as stop:
+            self.run_stage(used, ENTITY_ROWS + [dict(coined, definition_in_gtt="came from a mission")])
+        self.assertIn("were checked when the ground truth schema", str(stop.exception))
+        # not checked at all: asked first as an unchecked row
+        with self.assertRaises(Stop) as stop:
+            self.run_stage(used, ENTITY_ROWS + [dict(coined, checked="no")])
+        self.assertIn("still need checking", str(stop.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

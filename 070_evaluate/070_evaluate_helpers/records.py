@@ -173,7 +173,7 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
             r["twin"] = None
         return
     kind = twin_kinds({r["id"]: catalog.get(r["id"], {}) for r in evaluated.records},
-                       [catalog[i] for i in learned["ids"] if i in catalog])
+                       {i: catalog[i] for i in learned["ids"] if i in catalog})
     for r in evaluated.records:
         r["twin"] = kind[r["id"]]
 

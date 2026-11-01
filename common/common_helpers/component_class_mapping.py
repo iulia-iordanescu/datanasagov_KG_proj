@@ -26,7 +26,10 @@ the current schema (the one step 060 used) means.
                              when the row was written or last checked
     definition_in_gtt        the ground truth schema's definition of
                              component_class_in_gtt when the row was written or
-                             last checked (empty for (none))
+                             last checked; for (none), the definition of the
+                             ground truth schema's entry spelled like the row's
+                             component class, if it had one then (checked_against),
+                             else empty
     if_subject_class         predicates only, optional: an entity class of the
     if_object_class          same schema as the row's predicate. The row then
                              applies only to an extracted triple whose subject
@@ -61,6 +64,18 @@ ground truth schema's definition now), spacing aside. Step
 070 won't evaluate until a person checks a stale row again, and the annotation
 tool shows the old and new definitions. Checking it again stores both
 definitions as they are then.
+
+A (none) row whose own component class the ground truth schema has since
+gained, spelled the same (compared like every component class), NOW EXISTS
+(is_now_exists): the row was checked before that entry was there, so it is
+probably out of date. It needs checking like an unchecked row: step 070 stops
+on it, the annotation tool counts it as to check, and the status lists it.
+Keeping (none) on purpose (the two mean different things, or a conditional row
+of the same component class already routes the cases they share, e.g.
+AVAILABLE_AT --> (none) beside AVAILABLE_AT if its object is of entity class
+URL) is checking it again: the tool then stores the entry's definition in
+definition_in_gtt (checked_against), so the row is settled, and becomes stale
+(IN_GTT) if that entry is later redefined or deleted.
 
 A row whose component_class_in_gtt (not (none)) is no longer, or never was, in the
 ground truth schema file has a MISSING TARGET (is_missing_target): there is no
@@ -131,6 +146,32 @@ def gtt_definition(row: dict, gtt: dict) -> str:
     return gtt.get(row["kind"], {}).get(component_class_key(row["component_class_in_gtt"]), "")
 
 
+def same_named(row: dict, gtt: dict) -> str | None:
+    """The ground truth schema's definition now of the entry spelled like the row's own component class
+    (component_class_key; "" when it has none), or None when the ground truth schema (gtt: gtt_definitions' result)
+    has no such entry."""
+    return gtt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]))
+
+
+def checked_against(row: dict, gtt: dict) -> str:
+    """What definition_in_gtt stores when a person checks the row now: the definition of the component class it
+    translates to (gtt_definition); for a (none) row, that of the ground truth schema's entry spelled like the row's
+    own component class (same_named), which the person kept (none) against, else ""."""
+    if row["component_class_in_gtt"] == NONE:
+        return same_named(row, gtt) or ""
+    return gtt_definition(row, gtt)
+
+
+def is_now_exists(row: dict, gtt: dict) -> bool:
+    """True if the row says (none) though the ground truth schema now has an entry spelled like its own component
+    class (same_named), and the row was not checked against that entry (its definition_in_gtt is empty: written or
+    checked before the entry existed). A (none) kept on purpose stores the entry's definition when checked again
+    (checked_against), so it is no longer now exists. An entry without a definition can't be kept against: give it
+    one first."""
+    return (row["component_class_in_gtt"] == NONE and same_named(row, gtt) is not None
+            and not row["definition_in_gtt"].strip())
+
+
 def is_missing_target(row: dict, gtt: dict) -> bool:
     """True if the row translates to a component class (not (none)) that the ground truth schema (gtt:
     gtt_definitions' result) doesn't have: a missing target."""
@@ -142,8 +183,10 @@ def is_stale_gtt(row: dict, gtt: dict) -> bool:
     """True if the row's stored definition_in_gtt differs from the ground truth
     schema's definition now of the component class the row translates to
     (spacing aside). Never for a missing target (is_missing_target): it has no
-    definition now to compare with."""
-    return not is_missing_target(row, gtt) and not _same(row["definition_in_gtt"], gtt_definition(row, gtt))
+    definition now to compare with), nor for a row that now exists (is_now_exists: never checked against the entry).
+    A (none) row is compared with checked_against: stale once the entry it was kept against is redefined or deleted."""
+    return (not is_missing_target(row, gtt) and not is_now_exists(row, gtt)
+            and not _same(row["definition_in_gtt"], checked_against(row, gtt)))
 
 
 #: The row states, in the order of their home, docs/terminology.md, *row state* (what each means, how they relate,
@@ -189,15 +232,16 @@ def sharing(rows: list, crt: dict | None) -> dict:
     return out
 
 
-def row_states(row: dict, crt: dict | None, gtt: dict, repeated: bool = False, same_in_gtt: str | None = None,
-               suggested: str | None = None, shared: list = ()) -> list:
+def row_states(row: dict, crt: dict | None, gtt: dict, repeated: bool = False, suggested: str | None = None,
+               shared: list = ()) -> list:
     """The row's states, in ROW_STATES' order (docs/terminology.md, *row state*). crt: crt_definitions' result (None
-    without one); gtt: gtt_definitions' result; repeated: the row is one of repeats(); same_in_gtt: the ground truth
-    schema's component class spelled like the row's, if any; suggested: the model's suggestion for a (none) row, if
-    any; shared: sharing()'s list for the row. now exists replaces suggested."""
+    without one); gtt: gtt_definitions' result; repeated: the row is one of repeats(); suggested: the model's
+    suggestion for a (none) row, if any; shared: sharing()'s list for the row. A (none) row with an entry spelled like
+    it in the ground truth schema is never suggested (now exists, or kept against that entry)."""
     none = row["component_class_in_gtt"] == NONE
     found = {REPEATED: repeated, STALE: bool(stale_in(row, crt, gtt)), MISSING_TARGET: is_missing_target(row, gtt),
-             NOW_EXISTS: none and bool(same_in_gtt), SUGGESTED: none and bool(suggested) and not same_in_gtt,
+             NOW_EXISTS: is_now_exists(row, gtt),
+             SUGGESTED: none and bool(suggested) and same_named(row, gtt) is None,
              SHARED: bool(shared)}
     return [state for state in ROW_STATES if found[state]]
 

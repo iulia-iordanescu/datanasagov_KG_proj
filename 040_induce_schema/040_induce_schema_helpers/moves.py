@@ -203,7 +203,7 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
     lines += ["", *dropped.section(triples.left_out, texts.items, "the evidence the schema is induced from",
                                    repo_path(evidence_path))]
-    learned = [t["record"] for t in texts.items if t["id"] in {x["id"] for x in triples.texts}]
+    learned = {t["id"]: t["record"] for t in texts.items if t["id"] in {x["id"] for x in triples.texts}}
     lines += ["", "### Twins in the pool", "",
               f"A pool record with the same title, the same `notes`, or both as one of the {len(learned)} texts this run "
               f"learned from is a twin (docs/terminology.md, section *Evaluating extraction*): the schema has seen "

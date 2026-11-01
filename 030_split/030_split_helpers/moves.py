@@ -64,7 +64,7 @@ from pathlib import Path
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
 from common.files import read_csv, read_json, write_json
-from common.ground_truth import GROUND_TRUTH_SCHEMA_FROM, HELD_OUT, TUNING, twin_table
+from common.ground_truth import HELD_OUT, TUNING, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
 from common.step import Spec, check_settings, repo_path
@@ -77,7 +77,7 @@ INDUCTION = "induction_candidates"
 SHOW = 20                                   # rows listed in the report before "…"
 #: The tuning / held-out rule (see above). Fixed, not settings: changing them
 #: after metrics have been looked at would defeat the held-out part.
-ALL_TUNING_BEFORE = GROUND_TRUTH_SCHEMA_FROM        # positions 0-5: tuning (the ground truth schema was written from them)
+ALL_TUNING_BEFORE = 6                       # positions 0-5: tuning (the ground truth schema was first drafted from them)
 HELD_OUT_EVERY = 3                          # from there on, every third position is held-out
 
 
@@ -327,7 +327,7 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
     lines += twin_table({r["id"]: records[r["id"]] for r in pool.records if r["id"] in records},
                         [(f"all {len(induction.records):,} induction candidates",
                           f"the {len(induction.records):,} induction candidates",
-                          [records[r["id"]] for r in induction.records])])
+                          {r["id"]: records[r["id"]] for r in induction.records})])
 
     return Results(
         files=[path],

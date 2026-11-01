@@ -340,23 +340,24 @@ class Pipeline(unittest.TestCase):
         return n
 
     def test_t09b_redefined_ground_truth_component_class(self):
-        """A row checked against one definition in the ground truth schema stops evaluation once that definition changes."""
+        """060 extracted with the ground truth schema: 070 translates by identity, never touching the table; once a
+        definition of the ground truth schema changes after 060 ran, 070 stops and says to extract again."""
         self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "ground_truth_schema.txt"))
         table = self.repo / "redefined_table.csv"
         table.write_text((self.annotations / "component_class_mapping.csv").read_text(encoding="utf-8").splitlines()[0] + "\n",
                          encoding="utf-8")
+        before = table.read_bytes()
         hand = self.repo / "redefined_ground_truth_schema.txt"
         hand.write_text((self.annotations / "ground_truth_schema.txt").read_text(encoding="utf-8-sig"),
                         encoding="utf-8")
         args = [*NO_CONFIRM, "--component_class_mapping", str(table), "--ground_truth_schema", str(hand)]
-        self.run_step("070_evaluate", *args, expect=2)                          # rows added, each with both definitions
-        aboard = [r for r in read_csv(table) if r["component_class_in_gtt"] == "ABOARD"]
-        self.assertEqual([r["definition_in_gtt"] for r in aboard], ["is carried on"])
-        self.run_step("070_evaluate", *args)                                   # evaluates
+        self.run_step("070_evaluate", *args)                                   # evaluates at once: identity
+        self.assertEqual(table.read_bytes(), before)                           # no row added
         hand.write_text(hand.read_text(encoding="utf-8").replace("is carried on", "is anywhere on"), encoding="utf-8")
         out, _ = self.run_step("070_evaluate", *args, expect=2)
-        self.assertIn("ground truth schema", out)
-        self.assertIn("ABOARD (ground truth schema)", out)
+        self.assertIn("Step 060's last run extracted with the ground truth schema, but", out)
+        self.assertIn("ABOARD (predicate, defined differently in the ground truth schema now)", out)
+        self.assertEqual(table.read_bytes(), before)
 
     def test_t09_known_numbers(self):
         """Extraction with the ground truth schema, evaluated with a table of
@@ -380,11 +381,11 @@ class Pipeline(unittest.TestCase):
         table.write_text((self.annotations / "component_class_mapping.csv").read_text(encoding="utf-8").splitlines()[0] + "\n",
                            encoding="utf-8")
         args = [*NO_CONFIRM, "--component_class_mapping", str(table)]
-        _, prompts = self.run_step("070_evaluate", *args, expect=2)             # every row: the same component class
+        _, prompts = self.run_step("070_evaluate", *args)                       # identity: no row, no stop
         self.assertEqual(prompts, 0)                                            # nothing to ask the model
-        self.assertTrue(all(r["checked"] == "same component class" for r in read_csv(table)))
-        self.run_step("070_evaluate", *args)
+        self.assertEqual(read_csv(table), [])                                   # the table isn't touched
         metrics = json.loads(self.output("070_evaluate", "metrics.json").read_text(encoding="utf-8"))
+        self.assertEqual(metrics["made"]["translation"], "identity (060 used the ground truth schema)")
         n = self.check_counts(metrics)
         self.assertEqual((n["records"], n["extracted"], n["gt_triples"]), (8, 8, 9))
         for level in ("exact", "partial"):
@@ -436,17 +437,19 @@ class Pipeline(unittest.TestCase):
         self.assertIn("#### Removed by 060", report)
         from common import extraction
         self.assertEqual(set(removed), set(extraction.REMOVAL_REASONS))     # the stand-in's mistakes
-        # the ground truth schema was learned from pool positions 0-5: those evaluated are twins (of themselves)
-        compared = read_csv(self.output("070_evaluate", "compared_triples.csv"))
-        first = {r["record_id"] for r in compared if int(r["position"]) < 6 and r["part"] == "tuning"}
+        # the ground truth schema was learned from the finished tuning records, the evaluated ones among them; a
+        # record is never its own twin, so a twin here shares its title or notes with another learned-from record
         twins = metrics["parts"]["tuning"]["twins"]
-        self.assertTrue(first and first <= {x["id"] for x in twins["records"] if x["kind"] == "whole text"})
-        # the numbers without twins: None once every evaluated record is a twin (the ground truth schema's source lines
-        # name more pool positions as ground truth grows)
-        if len(twins["records"]) < 8:
-            self.assertEqual(twins["without"]["records"], 8 - len(twins["records"]))
-        else:
-            self.assertIsNone(twins["without"])
+        learned = set(metrics["learned_from"]["ids"])
+        self.assertTrue(set(metrics["evaluated"]["tuning"]) <= learned)
+        from common.ground_truth import twin_kinds
+        catalog = {r["id"]: r for r in (json.loads(x) for x in self.output("020_clean", "records.jsonl")
+                                        .read_text(encoding="utf-8").splitlines())}
+        expected = {i: k for i, k in twin_kinds({i: catalog[i] for i in metrics["evaluated"]["tuning"]},
+                                                {i: catalog[i] for i in learned if i in catalog}).items() if k}
+        self.assertEqual({x["id"]: x["kind"] for x in twins["records"]}, expected)
+        self.assertIn("translation: identity (060 used the ground truth schema)", report)
+        self.assertNotIn("### The translation table", report)
         self.assertIn("#### Twins", report)
 
     def test_t10_held_out_look_logged(self):
@@ -480,16 +483,37 @@ class Pipeline(unittest.TestCase):
         self.assertIn("Nothing recorded differs.", report)
         # the same run twice: every redraw's difference is 0, so the range is 0 to 0 (from 2 records on)
         self.assertIn("| exact: precision | 100.0% | 100.0% | +0.0 points | +0.0 points to +0.0 points | the same |", report)
+        # an evaluation through the translation table (t08's, the induced schema) beside one by identity: refused,
+        # unless asked for as a comparison across schemas, which the report labels
+        through_table = next(f for f in kept if json.loads(f.read_text(encoding="utf-8"))["recipe"]["evaluation (070)"]
+                             ["translation"].startswith("the translation table"))
+        compare = [sys.executable, str(self.repo / "helpers" / "compare_runs.py")]
+        r = subprocess.run(compare + [through_table.stem, kept[-1].stem], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", cwd=self.repo)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("These runs were translated differently", r.stderr)
+        self.assertIn("--across_schemas true", r.stderr)
+        r = subprocess.run(compare + ["--across_schemas", "true", through_table.stem, kept[-1].stem], capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", cwd=self.repo)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        report = (self.repo / r.stdout.strip().splitlines()[0].rsplit(": ", 1)[1]).read_text(encoding="utf-8")
+        self.assertIn("# Comparing evaluations across schemas", report)
+        self.assertIn("**A comparison across schemas.**", report)
+        self.assertIn("| identity (060 used the ground truth schema) |", report)
 
     def test_t10a_values_a_person_writes(self):
         """The translation table's fixed values are read case aside, and any other value stops 070, naming its line;
         a mistyped verdict of the partial pair reviews only warns; an edited header of held_out_looks.csv stops a
-        look."""
-        table = self.repo / "own_table.csv"
+        look. The table is read only for a schema other than the ground truth schema: extract with the induced schema
+        again (saved answers, nothing paid) and use t08's checked table; the ground truth schema's extraction is
+        restored at the end, for the tests after this one."""
+        table = self.annotations / "component_class_mapping.csv"
         reviews = self.annotations / "partial_pair_reviews.csv"
         looks = self.annotations / "held_out_looks.csv"
         saved = {p: p.read_bytes() for p in (table, reviews, looks)}
         args = [*NO_CONFIRM, "--component_class_mapping", str(table)]
+        _, paid = self.run_step("060_extract", *NO_CONFIRM)
+        self.assertEqual(paid, 0)
         try:
             rows = read_csv(table)
             write_csv(table, [{**rows[0], "checked": "Checked"}] + rows[1:], list(rows[0]))
@@ -508,6 +532,7 @@ class Pipeline(unittest.TestCase):
         finally:
             for p, b in saved.items():
                 p.write_bytes(b)
+            self.run_step("060_extract", *NO_CONFIRM, "--schema", str(self.annotations / "ground_truth_schema.txt"))
 
     def test_t10b_evaluate_refuses_a_repeat(self):
         """A classed triple twice in a record stops evaluation; the same subject

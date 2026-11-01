@@ -473,9 +473,15 @@ class Checks(unittest.TestCase):
         for test in doctest.DocTestFinder().find(ground_truth.twin_kinds, globs={"twin_kinds": ground_truth.twin_kinds}):
             runner.run(test)
         self.assertEqual(runner.summarize(verbose=False), (0, 2))
-        learned = [{"title": "Snow, Aqua", "notes": ""}, {"title": "", "notes": ""}]
+        learned = {"x": {"title": "Snow, Aqua", "notes": ""}, "y": {"title": "", "notes": ""}}
         self.assertEqual(ground_truth.twin_kinds({"a": {"title": "Snow, Aqua", "notes": ""}, "b": {"title": "", "notes": ""}},
                                                   learned), {"a": "title only", "b": ""})
+        # a record is never its own twin, but still a twin of another learned-from record with its text
+        both = {"a": {"title": "Fire", "notes": "Burned."}, "b": {"title": "Fire", "notes": "Burned."},
+                "c": {"title": "Fire", "notes": "Other."}}
+        self.assertEqual(ground_truth.twin_kinds(both, {"a": both["a"]}), {"a": "", "b": "whole text", "c": "title only"})
+        self.assertEqual(ground_truth.twin_kinds(both, both), {"a": "whole text", "b": "whole text", "c": "title only"})
+        self.assertEqual(ground_truth.twin_kinds({"c": both["c"]}, {"c": both["c"]}), {"c": ""})
 
     def test_whole_words_in_a_lookup(self):
         # a match may not cut a word or a number in two; a plural ending may follow; a letter next to a digit is a break
@@ -702,7 +708,8 @@ class TranslationTable(unittest.TestCase):
         gtt = component_class_mapping.gtt_definitions(
             {"entity_classes": {"Spacecraft": "a vehicle  in space", "Probe": ""}, "predicates": {"ABOARD": "is on"}})
         row = lambda kind, gtt_name, stored: {"kind": kind, "component_class_in_gtt": gtt_name,   # noqa: E731
-                                              "definition_in_gtt": stored}
+                                              "definition_in_gtt": stored,
+                                              "component_class_from_past_or_crt_schema": "Satellite"}
         cases = [(row("entity class", "Spacecraft", "a vehicle in space"), False),        # spacing aside
                  (row("entity class", "spacecraft", "a vehicle in space"), False),        # loose match
                  (row("entity class", "Spacecraft", "a craft"), True),                    # redefined
@@ -713,6 +720,38 @@ class TranslationTable(unittest.TestCase):
         for r, stale in cases:
             with self.subTest(r=r):
                 self.assertEqual(component_class_mapping.is_stale_gtt(r, gtt), stale)
+
+    def test_now_exists(self):
+        """A (none) row whose own component class the ground truth schema now has, spelled the same, and that wasn't
+        checked against it, now exists; one kept (none) on purpose stored that entry's definition, so it doesn't, and
+        is stale once that entry is redefined. Near misses: another kind, another spelling the loose match doesn't
+        find, a row that isn't (none)."""
+        gtt = component_class_mapping.gtt_definitions(
+            {"entity_classes": {"Spacecraft": "a vehicle  in space", "Probe": ""}, "predicates": {"AVAILABLE_AT": "is at"}})
+        row = lambda kind, name, to, stored: {"kind": kind, "component_class_from_past_or_crt_schema": name,  # noqa: E731
+                                             "component_class_in_gtt": to, "definition_in_gtt": stored}
+        NONE = component_class_mapping.NONE
+        cases = [  # row, now exists, stale (ground truth side), what checking it now stores
+            (row("entity class", "Spacecraft", NONE, ""), True, False, "a vehicle  in space"),   # coined since
+            (row("entity class", "space-craft", NONE, ""), True, False, "a vehicle  in space"),  # loose match
+            (row("predicate", "AVAILABLE_AT", NONE, "is  at"), False, False, "is at"),            # kept on purpose
+            (row("predicate", "AVAILABLE_AT", NONE, "was at"), False, True, "is at"),             # redefined since
+            (row("entity class", "Probe", NONE, ""), True, False, ""),            # no definition: can't be kept yet
+            (row("entity class", "AVAILABLE_AT", NONE, ""), False, False, ""),    # another kind
+            (row("entity class", "Spacecrafts", NONE, ""), False, False, ""),     # another spelling
+            (row("entity class", "Rocket", NONE, ""), False, False, ""),          # nothing spelled like it
+            (row("entity class", "Spacecraft", "Spacecraft", ""), False, True, "a vehicle  in space"),  # not (none)
+        ]
+        for r, exists, stale, stored in cases:
+            with self.subTest(r=r):
+                self.assertEqual(component_class_mapping.is_now_exists(r, gtt), exists)
+                self.assertEqual(component_class_mapping.is_stale_gtt(r, gtt), stale)
+                self.assertEqual(component_class_mapping.checked_against(r, gtt), stored)
+                states = component_class_mapping.row_states({**r, "checked": "yes"}, None, gtt, suggested="Probe")
+                self.assertEqual(component_class_mapping.NOW_EXISTS in states, exists)
+                # a suggestion is shown only on a (none) row with nothing spelled like it in the ground truth schema
+                self.assertEqual(component_class_mapping.SUGGESTED in states,
+                                 r["component_class_in_gtt"] == NONE and component_class_mapping.same_named(r, gtt) is None)
 
     def test_missing_target(self):
         """A row translating to a component class the ground truth schema doesn't have (not (none)) has a missing

@@ -13,6 +13,10 @@ model calls. Writes a report and prints where it is.
 
     py helpers/compare_runs.py                          list the evaluations kept so far
     py helpers/compare_runs.py <run id> <run id> ...    compare them; the first is the baseline
+    py helpers/compare_runs.py --across_schemas true <run id> <run id> ...
+                                                        the same, for runs whose current schemas differ
+                                                        (the ground truth schema, by identity, against an
+                                                        induced schema, through the translation table)
 
 Details: helpers/compare_runs.md
 """
@@ -30,6 +34,7 @@ sys.path.insert(0, str(ROOT))                                                  #
 sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 070's numbers, computed as 070 does
 
 import pairing                                                                 # noqa: E402
+from component_classes import IDENTITY, TABLE_TRANSLATION                      # noqa: E402
 import stats                                                                   # noqa: E402
 from moves import EVALUATIONS_DIR                                              # noqa: E402
 from common import console  # noqa: E402
@@ -128,19 +133,22 @@ def _same(key: str, values: list) -> bool:
     return all(len({v[s] for v in values}) == 1 for s in shared)
 
 
-def common_records(runs: list) -> tuple:
+def common_records(runs: list, across_schemas: bool = False) -> tuple:
     """(ids compared, {why left out: [ids]}, notes): the tuning records evaluated in every run, with the same ground
     truth, the same facts waiting on an expert and the same translation of their classed triples' shapes in every
     run (PER_RECORD); a record differing in any of them is left out, since a difference there could come from it
     rather than from the pipeline. The records kept must still be each part's fair sample, the first records of the
     pool: the compared set ends before the first record left out (in pool order), and the records after it are left
-    out too (NOT_A_PREFIX). notes: what couldn't be checked (a run before 2026-11-01 records the ground truth only)."""
+    out too (NOT_A_PREFIX). notes: what couldn't be checked (a run before 2026-11-01 records the ground truth only).
+    across_schemas: the translation is not compared (ACROSS_SCHEMAS: it differs by design)."""
     by_run = [{r["id"]: r for r in run["records"]} for run in runs]
     everywhere = set(by_run[0]).intersection(*by_run[1:])
     every_id = set().union(*by_run)
     left, notes = {"not evaluated in every run": sorted(every_id - everywhere)}, []
     changed = set()
     for key, why in PER_RECORD.items():
+        if across_schemas and key == "translation":
+            continue
         lacking = [run["run_id"] for run, b in zip(runs, by_run) if any(key not in r for r in b.values())]
         if lacking:
             notes.append(f"{why.split(' changed')[0]}: not recorded per record by {', '.join(f'`{r}`' for r in lacking)} "
@@ -181,6 +189,37 @@ def evaluation_versions_differ(runs: list) -> str | None:
             f"their numbers aren't comparable: a kept evaluation holds counts, and version 3 subtracts a count "
             f"(untranslatable occurrences) that version 2 never recorded. Re-run `py 070_evaluate/run.py` on the same "
             f"060 output to get a version-{pairing.EVALUATION_VERSION} evaluation, then compare.")
+
+
+def translation_of(run: dict) -> str:
+    """How 070 translated the run (component_classes.IDENTITY or TABLE_TRANSLATION); a run before 2026-11-01 records
+    nothing, and always used the translation table."""
+    return run.get("recipe", {}).get("evaluation (070)", {}).get("translation") or TABLE_TRANSLATION
+
+
+def translations_mixed(runs: list, across_schemas: bool) -> str | None:
+    """Why the runs can't be compared as they are: some were evaluated by identity (060 used the ground truth schema)
+    and some through the translation table (another current schema), and --across_schemas true wasn't given; else
+    None. Such a difference measures the schema and its translation together, not extraction alone, so it is
+    compared only when asked for, and labelled so (ACROSS_SCHEMAS)."""
+    if across_schemas or len({translation_of(r) for r in runs}) == 1:
+        return None
+    named = "; ".join(f"`{r['run_id']}`: {translation_of(r)}" for r in runs)
+    return (f"These runs were translated differently ({named}): a run of 060 with the ground truth schema is "
+            f"evaluated by identity, the others through the translation table, so a difference between them comes "
+            f"from the schema and its translation together, not from extraction alone. To compare them anyway, as "
+            f"a comparison across schemas (labelled so in the report), add `--across_schemas true`; to compare "
+            f"repeats or versions of one recipe, give runs translated the same way.")
+
+
+#: The label of a comparison across schemas, at the top of its report.
+ACROSS_SCHEMAS = ("**A comparison across schemas.** Some of these runs extracted with the ground truth schema and "
+                  "were evaluated by identity (translation: identity (060 used the ground truth schema)); the others "
+                  "extracted with another schema, translated through the translation table. So each difference "
+                  "below measures the schema and its translation together, not extraction alone; the ground truth "
+                  "schema was shaped while annotating these very tuning records, so its run is a reference, not a "
+                  "competitor. Records are not left out for a different translation here: that difference is what "
+                  "is compared.")
 
 
 def as_records(run: dict, ids: list) -> list:
@@ -331,14 +370,17 @@ def _range(r: dict) -> str:
                if 0 < r.get("redraws", REDRAWS) < REDRAWS else ""))
 
 
-def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
+def report(runs: list, ids: list, left: dict, notes: list = (), across_schemas: bool = False) -> str:
     names = [LABELS[i] for i in range(len(runs))]
-    lines = ["# Comparing evaluations", "",
+    across = across_schemas and len({translation_of(r) for r in runs}) > 1
+    lines = ["# Comparing evaluations" + (" across schemas" if across else ""), "",
              f"Made {dt.datetime.now():%Y-%m-%d %H:%M} by `py helpers/compare_runs.py` (helpers/compare_runs.md). "
              f"Step 070's numbers of each run, on the same {len(ids)} tuning records; {names[0]} is the baseline, and "
-             f"each other run is compared with it. Held-out records are never compared.", "",
-             "## The runs", "", "| Run | 070's run id | Tuning records it evaluated |", "|---|---|---:|"]
-    lines += [f"| {n} | `{r['run_id']}` | {len(r['records'])} |" for n, r in zip(names, runs)]
+             f"each other run is compared with it. Held-out records are never compared.", ""]
+    if across:
+        lines += [ACROSS_SCHEMAS, ""]
+    lines += ["## The runs", "", "| Run | 070's run id | Tuning records it evaluated | Translation |", "|---|---|---:|---|"]
+    lines += [f"| {n} | `{r['run_id']}` | {len(r['records'])} | {translation_of(r)} |" for n, r in zip(names, runs)]
     diffs = differences(runs)
     lines += ["", "## What differs between the runs", "",
               "Every part of each run's recipe that isn't the same in every run: 060's run (its code version, settings, "
@@ -439,7 +481,11 @@ def main() -> int:
     console.setup()                                   # what the console can't show is replaced, never a crash
     ap = argparse.ArgumentParser(prog="py helpers/compare_runs.py", description=__doc__.split("\n\n")[1])
     ap.add_argument("runs", nargs="*", help="070's run ids (or evaluation files), the baseline first")
+    ap.add_argument("--across_schemas", choices=("true", "false"), default="false",
+                    help="true: compare runs translated differently (the ground truth schema, by identity, against "
+                         "another schema), labelled as a comparison across schemas")
     args = ap.parse_args()
+    across = args.across_schemas == "true"
     if not args.runs:
         kept = available()
         if not kept:
@@ -451,7 +497,7 @@ def main() -> int:
             run = read_json(p)
             ex = run.get("recipe", {}).get("extraction (060)", {}).get("settings", {})
             print(f"  {run['run_id']}   {len(run['records'])} tuning records   060: "
-                  f"{ex.get('service', '?')} {ex.get('model', '?')}")
+                  f"{ex.get('service', '?')} {ex.get('model', '?')}   translation: {translation_of(run)}")
         print("\nCompare two or more: `py helpers/compare_runs.py <run id> <run id> ...` (the first is the baseline).")
         return 0
     if len(args.runs) < 2:
@@ -462,17 +508,17 @@ def main() -> int:
     if twice:
         sys.exit(f"The same run is given more than once ({', '.join(twice)}), and a run compared with itself shows "
                  f"nothing (every row would be \"the same\"). Give each run once: `py helpers/compare_runs.py` lists them.")
-    problem = evaluation_versions_differ(runs)
+    problem = evaluation_versions_differ(runs) or translations_mixed(runs, across)
     if problem:
         sys.exit(problem)
-    ids, left, notes = common_records(runs)
+    ids, left, notes = common_records(runs, across)
     if not ids:
         sys.exit("No tuning record was evaluated in every one of these runs with the same ground truth, the same facts "
                  "waiting on an expert and the same translation, so there is nothing to compare. Compare runs made on "
                  "the same finished records (`py 060_extract/run.py`, then `py 070_evaluate/run.py`, for each version)."
                  + "".join(f"\nLeft out, {why}: {len(which)} ({', '.join(which[:10])})." for why, which in left.items()))
     path = REPORTS_DIR / f"compare_runs_{dt.datetime.now():%Y-%m-%d_%H%M%S}.md"
-    write_text(path, report(runs, ids, left, notes))
+    write_text(path, report(runs, ids, left, notes, across))
     print(f"Compared {len(runs)} runs on {len(ids)} tuning records: {repo_path(path)}"
           + "".join(f"\n  left out, {why}: {len(which)}" for why, which in left.items()))
     return 0
