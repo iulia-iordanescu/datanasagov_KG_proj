@@ -19,7 +19,10 @@ The extracted triple is written as translated into the ground truth
 schema (as compared_triples.csv shows it), so a verdict stops applying if the
 translation table changes that triple. Step 070 never pairs two triples a
 person marked "not the same fact"; it counts every partial pair not yet
-reviewed. The annotation tool writes the file (Partial pairs), for TUNING
+reviewed. Two rows for one pair (a hand edit: the annotation tool replaces an
+earlier verdict) must agree: two different verdicts are a conflict, neither
+counts, and review_problems names both rows (common/common_helpers/latest.py,
+the one rule). The annotation tool writes the file (Partial pairs), for TUNING
 records only: reviewing held-out pairs would mean looking at held-out
 results. Triples are compared as common/common_helpers/text_match.norm_text evens them out.
 """
@@ -28,6 +31,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from common.latest import latest_by_key
 from common.step import ANNOTATIONS_DIR
 from common.text_match import instance_key
 from common.triples_io import component_class_key
@@ -81,14 +85,26 @@ def _rows(path: Path) -> list:
         return [{**r, "_line": reader.line_num} for r in reader]
 
 
+def _where(r: dict) -> str:
+    return f"line {r['_line']} ({(r.get('record_id') or '').strip() or 'no record id'})"
+
+
+def _chosen(path: Path) -> tuple:
+    """(chosen rows by pair_key, conflict problems): common.latest.latest_by_key over the rows with a readable
+    verdict (the file carries no timestamps, so two rows for one pair must agree)."""
+    rows = [r for r in _rows(path) if verdict_of(r) in (SAME, NOT_SAME)]
+    return latest_by_key(rows, row_key, verdict_of, where=_where)
+
+
 def read_reviews(path: Path = REVIEWS_PATH) -> dict:
-    """{pair_key: verdict}, the last row winning if a pair was reviewed twice.
-    A missing file means no reviews; a row with another verdict is ignored
-    (review_problems lists it)."""
-    return {row_key(r): verdict_of(r) for r in _rows(path) if verdict_of(r) in (SAME, NOT_SAME)}
+    """{pair_key: verdict}. A missing file means no reviews; a row with another verdict is ignored, and a pair with
+    two different verdicts has none (review_problems lists both)."""
+    chosen, _ = _chosen(path)
+    return {k: verdict_of(r) for k, r in chosen.items()}
 
 
 def review_problems(path: Path = REVIEWS_PATH) -> list:
-    """Each row whose verdict is neither SAME nor NOT_SAME (case and spacing aside), as "line N (record id): 'verdict'"."""
-    return [f"line {r['_line']} ({(r.get('record_id') or '').strip() or 'no record id'}): '{(r.get('verdict') or '').strip()}'"
-            for r in _rows(path) if verdict_of(r) not in (SAME, NOT_SAME)]
+    """Each row whose verdict is neither SAME nor NOT_SAME (case and spacing aside), as "line N (record id):
+    'verdict'", then each conflict (two rows for one pair with different verdicts: neither counts)."""
+    bad = [f"{_where(r)}: '{(r.get('verdict') or '').strip()}'" for r in _rows(path) if verdict_of(r) not in (SAME, NOT_SAME)]
+    return bad + _chosen(path)[1]

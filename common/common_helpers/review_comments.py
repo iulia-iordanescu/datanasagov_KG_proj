@@ -41,6 +41,7 @@ import io
 import re
 from pathlib import Path
 
+from common.latest import latest_by_key
 from common.component_class_mapping import (MAPPING_PATH, NONE, condition_text, gtt_definition, gtt_definitions,
                                             is_stale_gtt, read_mapping)
 from common.expert_questions import QUESTIONS_PATH, read_questions
@@ -436,15 +437,15 @@ def read_comments(files, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
     got, more = sends(parts)
     rows += got
     problems += more
-    latest = {}
-    for r in rows:
-        r = {**{c: (r.get(c) or "").strip() for c in COMMENT_COLUMNS}, "file": r["file"], "sender": r["sender"]}
-        if not r["comment"]:
-            continue
-        key = (r["reviewer"].lower(), r["topic"], r["entry"])
-        if key not in latest or r["timestamp"] >= latest[key]["timestamp"]:
-            latest[key] = r
-    return list(latest.values()), problems
+    # One reviewer's comments on one entry: the latest counts (by its timestamp, read as a moment, so two spellings
+    # of one moment are equal); an empty comment is a withdrawal, which wins the same way; two different comments at
+    # the same moment are a conflict and neither counts (common/common_helpers/latest.py, the one rule).
+    tidy = [{**{c: (r.get(c) or "").strip() for c in COMMENT_COLUMNS}, "file": r["file"], "sender": r["sender"]}
+            for r in rows]
+    latest, more = latest_by_key(tidy, lambda r: (r["reviewer"].lower(), r["topic"], r["entry"]),
+                                 lambda r: r["comment"], when=lambda r: r["timestamp"],
+                                 where=lambda r: f"{r['file']} ({r['reviewer']} on {r['topic']} {r['entry']})")
+    return list(latest.values()), problems + more
 
 
 def read_all(paths=(REVIEWS_DIR,), schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH,
