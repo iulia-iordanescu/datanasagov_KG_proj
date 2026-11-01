@@ -882,10 +882,22 @@ class Questions(unittest.TestCase):
                 "\"swath\" (SpatialRepresentation)\n")
         self.assertIn(line, QUESTION)
         with tempfile.TemporaryDirectory() as t:
-            paths = question_world(Path(t), QUESTION.replace(line, "", 1))
+            draft = QUESTION.replace(line, "", 1).replace("- classed triple: \"Snow V1\"",
+                                                           "- in the ground truth: not yet (being annotated)\n"
+                                                           "- classed triple: \"Snow V1\"", 1)
+            paths = question_world(Path(t), draft)
             gt = paths["ground_truth_dir"] / "batch_000.csv"
             gt.write_text(gt.read_text(encoding="utf-8").replace("swath data,1\n", "swath data,0\n"), encoding="utf-8")
             self.assertEqual(len(questions_of(paths)), 1)
+        # one rule for both places: the example's own triples of a record not finished are drafts too, so the record
+        # must say "not yet"; without the line, it is refused
+        with tempfile.TemporaryDirectory() as t:
+            paths = question_world(Path(t), QUESTION.replace(line, "", 1))
+            gt = paths["ground_truth_dir"] / "batch_000.csv"
+            gt.write_text(gt.read_text(encoding="utf-8").replace("swath data,1\n", "swath data,0\n"), encoding="utf-8")
+            with self.assertRaises(ValueError) as stop:
+                questions_of(paths)
+            self.assertIn("isn't finished in the ground truth", str(stop.exception))
 
     def test_a_link_to_a_term_not_shown(self):
         with tempfile.TemporaryDirectory() as t:

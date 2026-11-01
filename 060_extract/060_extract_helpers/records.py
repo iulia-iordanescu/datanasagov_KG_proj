@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import DRAFTED_BY, read_ground_truth, read_pool
+from common.ground_truth import ANNOTATED, DRAFTED_BY, EVALUABLE, SCHEMA_EVIDENCE, TO_FIX, read_ground_truth, read_pool
 from common.llm import maker
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
@@ -37,7 +37,9 @@ NOT_FINISHED = "not finished in the ground truth"
 class Chosen:
     items: list = field(default_factory=list)      # {"id", "title", "maintainer", "text", "pieces"}
     records: dict = field(default_factory=dict)    # every record, {id: record}
-    ground_truth: set = field(default_factory=set) # ids of every record in the ground truth
+    ground_truth: set = field(default_factory=set) # ids of every record in the ground truth, in any state (ANNOTATED)
+    schema_evidence: set = field(default_factory=set)  # ids of its finished tuning records (SCHEMA_EVIDENCE): the only
+                                                   # ones a "source: ground truth tuning #N" line may name
     how: str = ""                                  # the choice in words, for the report
     notes: list = field(default_factory=list)      # where the run differs from what was asked
     skipped: dict = field(default_factory=dict)    # {reason: [ids]}
@@ -51,7 +53,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                    f"can't choose records. Set --extract_from to {' or '.join(MODES)} (or name the records with "
                    f"--ids), then run `py 060_extract/run.py` again.")
     chosen = Chosen(records=load_records(inputs["records"]))
-    chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in read_pool(inputs["splits"])}
+    pool_rows = read_pool(inputs["splits"])
+    chosen.pool = {r["id"]: (r["position"], r.get("part")) for r in pool_rows}
     gt_files = input_files(Path(inputs["ground_truth"]))
     ids = read_ids(settings["ids"])
     if not gt_files and not ids and settings["extract_from"] == "ground_truth":
@@ -60,8 +63,9 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                    f"then `py helpers/annotate.py`), or set --extract_from all, or name the records with --ids, "
                    f"then run `py 060_extract/run.py` again.")
     # No ground truth files is fine for extract_from all and for ids: no record is then in the ground truth.
-    gt = read_ground_truth(gt_files[0].parent if gt_files else Path(inputs["ground_truth"]).parent)
-    chosen.ground_truth = {r["id"] for r in gt.rows}
+    gt = read_ground_truth(gt_files[0].parent if gt_files else Path(inputs["ground_truth"]).parent, pool_rows)
+    chosen.ground_truth = set(gt.select(ANNOTATED).ids)
+    chosen.schema_evidence = set(gt.select(SCHEMA_EVIDENCE).ids)
     chosen.notes += [f"Ground truth, {p}" for p in gt.problems]
     skipped = {NOT_IN_CATALOG: [], WITHOUT_TEXT: [], NOT_FINISHED: []}
 
@@ -73,8 +77,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
                                 f"from {settings['extract_from']} records instead, leave ids empty.")
         wanted = ids
     elif settings["extract_from"] == "ground_truth":
-        finished = [rid for rid, r in gt.records.items() if r["finished"]]
-        skipped[NOT_FINISHED] = [rid for rid, r in gt.records.items() if not r["finished"]]
+        finished = list(gt.select(EVALUABLE).ids)
+        skipped[NOT_FINISHED] = list(gt.select(TO_FIX).ids)
         chosen.how = f"the {len(finished)} finished record(s) of the ground truth"
         wanted = finished
     else:
@@ -102,7 +106,8 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
             continue                                             # expected: most catalogs have a few
         if reason == NOT_FINISHED:
             chosen.notes.append(f"{len(rids)} record(s) of the ground truth aren't finished yet (all facts "
-                                f"extracted not ticked), so skipped: {named(rids)}. Step 070 evaluates only "
+                                f"extracted not ticked, or a problem of the ground truth listed with these notes), "
+                                f"so skipped: {named(rids)}. Step 070 evaluates only "
                                 f"finished records. To include them, finish them in `py helpers/annotate.py` "
                                 f"(tick All facts extracted), then run `py 060_extract/run.py` again.")
         else:
@@ -113,16 +118,17 @@ def pick_records(inputs: dict, settings: dict) -> Chosen:
         raise Stop("Nothing to extract: none of the records chosen can be extracted from, so 060 can't write "
                    "extracted triples. " + " ".join(chosen.notes) + " Change the settings as these reasons say, "
                    "then run `py 060_extract/run.py` again.")
-    chosen.notes += same_model_notes(gt, {i["id"] for i in chosen.items}, settings["model"])
+    chosen.notes += same_model_notes(gt.select(ANNOTATED), {i["id"] for i in chosen.items}, settings["model"])
     return chosen
 
 
-def same_model_notes(gt, ids: set, model: str) -> list:
+def same_model_notes(selection, ids: set, model: str) -> list:
     """A note when the ground truth of the records chosen was drafted (050, column drafted_by) by this run's model,
     or by another model of the same maker: facts that model misses tend to be missing from both the ground truth
-    and the extraction, so recall would look better than it is (070_evaluate/metrics/recall.md)."""
+    and the extraction, so recall would look better than it is (070_evaluate/metrics/recall.md). selection: the ground
+    truth's rows of every record (gt.select(ANNOTATED)), whatever its state."""
     by_drafter = {}
-    for r in gt.rows:
+    for r in selection.rows:
         if r["id"] in ids and r.get(DRAFTED_BY):
             by_drafter.setdefault(r[DRAFTED_BY], set()).add(r["id"])
     notes, mine = [], maker(model)

@@ -48,8 +48,9 @@ from pathlib import Path
 from common import audit
 from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, STALE, crt_definitions, gtt_definitions, \
     is_checked, read_mapping, repeats, row_states
-from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, GROUND_TRUTH_DIR, KIND_KEYS, NUMBERED, PATTERN, TUNING,
-                                 check_rows, ground_truth_schema_gaps, read_ground_truth, read_pool, with_coined)
+from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALUABLE, GROUND_TRUTH_DIR, HELD_OUT, KIND_KEYS,
+                                 NUMBERED, PATTERN, TO_FIX, TUNING, check_rows, ground_truth_schema_gaps, read_ground_truth,
+                                 read_pool)
 from common.partial_reviews import PARTIAL_PAIR, REVIEWS_PATH, read_reviews, row_key
 from common.report import named
 from common.schema_io import addition_problem, additions_entries, read_ground_truth_schema
@@ -124,11 +125,12 @@ def unopened_drafts(drafts_dir: Path = DRAFTS_DIR, gt_dir: Path = GROUND_TRUTH_D
 
 
 def unfinished(gt) -> dict:
-    """{ground truth file: [ids of its records not finished]}, files in order."""
+    """{ground truth file: [ids of its records not finished]} (TO_FIX: unfinished, a bad mark, or in two files; one in
+    two files is listed under each), files in order."""
     out = {}
-    for rid, r in gt.records.items():
-        if not r["finished"]:
-            out.setdefault(r["file"], []).append(rid)
+    for rid in gt.select(TO_FIX).ids:
+        for file in gt.records[rid]["files"]:
+            out.setdefault(file, []).append(rid)
     return dict(sorted(out.items()))
 
 
@@ -181,7 +183,7 @@ def steps_status() -> list:
 
 def _step_items(steps: list, gt) -> list:
     items, named_next = [], False
-    finished = any(r["finished"] for r in gt.records.values())
+    finished = bool(gt.select(EVALUABLE).ids)
     for s in steps:
         step, number = s["step"], s["step"][:3]
         if s["state"] == NO_RUN:
@@ -250,27 +252,25 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
     for problem in gt.problems:
         items.append(_item("Ground truth", TO_DO, f"{problem}", "while-annotating", "annotations/ground_truth/"))
     if records:
-        typos = check_rows(gt, records)
+        typos = check_rows(gt.select(ANNOTATED), records)
         if typos:
             items.append(_item("Ground truth", TO_DO, f"{len(typos)} ground truth triple(s) or describes triple(s) have an error "
                                f"to fix (each kind: 050_annotate/050_annotate.md, Checks on each row): "
                                f"{named([t['where'] for t in typos], 3)}. The annotation tool marks each with ✖.",
                                "while-annotating", "annotations/ground_truth/"))
-    gaps = ground_truth_schema_gaps(schema, gt)
-    if gaps["component_classes"]:
-        coined = with_coined(schema, gt)["coined"]
-        # every row of a finished record, its describes triple too (its entity class, as step 070 checks it)
-        in_finished = {(kind, component_class_key(r[c])) for r in gt.rows if gt.records[r["id"]]["finished"]
-                       for kind, cols in (("entity_classes", ("subject_class", "object_class")),
-                                          ("predicates", ("predicate",))) for c in cols}
-        stops = [n for kind in ("entity_classes", "predicates") for n in coined[kind]
-                 if (kind, component_class_key(n)) in in_finished]
-        names = [f"{g['component_class']} ({g['entry_type']}, coined in the ground truth)" for g in gaps["component_classes"]]
-        items.append(_item("Ground truth", TO_DO, f"{len(names)} entity class(es) or predicate(s) the ground truth uses "
-                           f"aren't in the ground truth schema: {named(names, 4, '; ')}. Add each with a one-line "
+    # what the finished records use that the ground truth schema lacks (step 070 stops on it); an unfinished
+    # record's are errors on its rows in the annotation tool, and a model's uncorrected draft is never proposed here
+    gaps = ground_truth_schema_gaps(schema, gt)["component_classes"]
+    if gaps:
+        held = [g for g in gaps if HELD_OUT in g["parts"]]
+        names = [f"{g['component_class']} ({g['entry_type']}" + (", used in a held-out record" if g in held else "")
+                 + ")" for g in gaps]
+        items.append(_item("Ground truth", TO_DO, f"{len(names)} entity class(es) or predicate(s) that finished records "
+                           f"use aren't in the ground truth schema: {named(names, 4, '; ')}. Add each with a one-line "
                            f"definition (annotation tool, the button under its ✖, or Help → Ground truth schema), or "
-                           f"fix the typo." + (f" Step 070 stops while a finished record uses one ({len(stops)} do)."
-                                               if stops else ""), "while-annotating",
+                           f"fix the typo" + ("; one a held-out record uses can't be added (the ground truth schema is "
+                                              "frozen for held-out records), so fix it in that record" if held else "")
+                           + ". Step 070 stops while a finished record uses one.", "while-annotating",
                            repo_path(GROUND_TRUTH_SCHEMA)))
     return items
 
@@ -388,10 +388,10 @@ def project_status(records: dict | None = None) -> dict:
     ground truth, schema additions, translation table, partial pairs, Git). records: 020's records by id, if
     already read (the annotation tool has them); read here otherwise."""
     from common.records_io import load_records
-    gt = read_ground_truth()
     schema = read_ground_truth_schema(GROUND_TRUTH_SCHEMA) if GROUND_TRUTH_SCHEMA.exists() else \
         {"entity_classes": {}, "predicates": {}, "patterns": []}
     pool = read_pool(SPLITS) if SPLITS.exists() else []
+    gt = read_ground_truth(GROUND_TRUTH_DIR, pool)
     parts_by_id = {r["id"]: r.get("part") for r in pool}
     parts = {r["position"]: r.get("part") for r in pool}
     positions = {r["id"]: r["position"] for r in pool}

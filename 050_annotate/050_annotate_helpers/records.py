@@ -27,11 +27,16 @@ each part, whether the ground truth, the drafted batches waiting and this
 drafted batch together are still exactly the first N records of that part
 in pool order.
 
-The model is shown the ground truth schema plus the component classes a
-person coined in the ground truth and hasn't added to it yet
-(common/common_helpers/ground_truth.with_coined), so a coined one is reused
-from the next drafted batch on. The checks compare with the ground truth schema alone,
-so a coined component class (or a typo) stays an error until it is added there.
+The model is shown the ground truth schema plus the component classes coined, and
+the patterns used, in the FINISHED TUNING records of the ground truth that the
+file lacks (common/common_helpers/ground_truth.ground_truth_schema_view): what a
+person has checked, so a coined one is reused from the next drafted batch on, while
+a model's uncorrected draft (an unfinished record) or a held-out record never
+reaches the prompt or the checks. The checks compare entity classes and predicates
+with the ground truth schema alone, so a coined component class (or a typo) stays an
+error until it is added there; patterns with the file's plus those the finished
+tuning records use. A record in the ground truth in any state (finished or not,
+in two files, a bad mark: ANNOTATED) is never drafted again.
 """
 from __future__ import annotations
 
@@ -40,8 +45,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.chunking import full_text, pieces
-from common.ground_truth import (DRAFT_NUMBERED, DRAFT_PATTERN, HELD_OUT, NUMBERED, PARTS, TUNING, fair_sample, fair_words,
-                                 pool_parts, read_ground_truth, read_pool, with_coined)
+from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, HELD_OUT, NUMBERED, PARTS, TUNING, fair_sample,
+                                 fair_words, ground_truth_schema_view, pool_parts, read_ground_truth, read_pool)
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
 from common.schema_io import read_ground_truth_schema
@@ -66,7 +71,7 @@ class Chosen:
     positions: dict = field(default_factory=dict)  # {id: pool position}
     schema_text: str = ""                          # the ground truth schema, as the prompt shows it
     schema_entries: object = None  # the ground truth schema's entries, as the checks compare them (common.validate.SchemaEntries)
-    coined: dict = field(default_factory=dict)     # {kind: [component classes]} used in the ground truth, not in the ground truth schema
+    coined: dict = field(default_factory=dict)     # {kind: [component classes]} the finished tuning records use, not in the ground truth schema
     fair: dict = field(default_factory=dict)       # {part: common/common_helpers/ground_truth.fair_sample()'s answer}
     parts: dict = field(default_factory=dict)      # {id: "tuning" or "held-out"}
     how: str = ""                                  # the choice in words, for the report
@@ -77,8 +82,8 @@ def vocabulary_text(hand_text: str, coined: dict, used_patterns: list = ()) -> s
     """The ground truth schema as the model sees it: the ground truth
     schema's text as written, then the component classes coined in the ground truth,
     which have no definition yet, and the patterns the ground truth uses that the
-    file doesn't list (common.ground_truth.with_coined's
-    used_patterns). With nothing of either, just the schema's text, so earlier
+    file doesn't list (common.ground_truth.ground_truth_schema_view's
+    used_patterns: the finished tuning records'). With nothing of either, just the schema's text, so earlier
     answers stay in the cache."""
     out = hand_text
     lines = [f"{label}: {', '.join(coined[kind])}"
@@ -125,16 +130,16 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     chosen.positions = {r["id"]: r["position"] for r in pool_rows}
     chosen.parts = {r["id"]: r["part"] for r in pool_rows}
     gt_files = input_files(Path(inputs["ground_truth"]))
-    chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent)   # none yet: no record done
+    chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent, pool_rows)   # none yet: no record done
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
-    vocab = with_coined(hand, chosen.ground_truth)
-    # the checks: the file's entity classes and predicates; its patterns and every one the ground truth uses
+    vocab = ground_truth_schema_view(hand, chosen.ground_truth)
+    # the checks: the file's entity classes and predicates; its patterns and every one the finished tuning records use
     chosen.schema_entries = SchemaEntries({**hand, "patterns": vocab["patterns"]})
     chosen.coined = vocab["coined"]
     chosen.schema_text = vocabulary_text(Path(inputs["ground_truth_schema"]).read_text(encoding="utf-8-sig").strip(),
                                          chosen.coined, vocab["used_patterns"])
     chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
-    chosen.done = {r["id"] for r in chosen.ground_truth.rows}
+    chosen.done = set(chosen.ground_truth.select(ANNOTATED).ids)
     chosen.waiting, highest = _waiting(output)
     gt_numbers = [int(m.group(1)) for f in gt_files if (m := NUMBERED.fullmatch(f.name))]
     chosen.batch = max([highest, *gt_numbers]) + 1

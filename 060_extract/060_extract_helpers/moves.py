@@ -23,7 +23,8 @@ from common.files import write_csv, write_json
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results
 from common.triples_io import COLUMNS as TRIPLE_COLUMNS, ENTRY_PREDICATE
-from common.ground_truth import HELD_OUT, TUNING
+from common.ground_truth import HELD_OUT
+from common.schema_io import source_line
 
 KEPT_NAME = "extracted_triples.csv"
 REMOVED_NAME = "extracted_triples_removed.csv"
@@ -91,7 +92,8 @@ def _new_component_classes(chosen, rows, settings) -> tuple:
     every record, no ground truth record at all (ones learned from records
     outside it are fair as they are). Otherwise, tuning records are counted
     and named by pool position, for the "source: ground truth tuning #N" line a schema
-    entry of annotations/schema_additions.txt learned from them needs."""
+    entry of annotations/schema_additions.txt learned from them needs: only FINISHED tuning records
+    (common.ground_truth.SCHEMA_EVIDENCE), the only ones such a line may name."""
     all_records = settings["extract_from"] == "all" and not settings["ids"].strip()
     listed = []
     for (kind, name), v in rows.new_component_classes.items():
@@ -99,9 +101,9 @@ def _new_component_classes(chosen, rows, settings) -> tuple:
         recs = [r for r in v["records"] if part[r] != HELD_OUT and not (all_records and r in chosen.ground_truth)]
         if not (recs and name):
             continue
-        tuning = sorted(chosen.pool[r][0] for r in recs if r in chosen.ground_truth and part[r] == TUNING)
-        source = ("ground truth tuning " + ", ".join(f"#{p}" for p in tuning) if tuning else
-                  "extraction over records not annotated")
+        source = (source_line(chosen.pool[r][0] for r in recs if r in chosen.schema_evidence)
+                  or ("extraction over records not finished in annotation" if any(r in chosen.ground_truth for r in recs)
+                      else "extraction over records not annotated"))
         listed.append({"kind": kind, "component_class": name, "records": len(recs), "source": source})
     listed.sort(key=lambda x: (-x["records"], x["kind"], x["component_class"]))
     where = ("records outside the ground truth" if all_records else

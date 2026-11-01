@@ -183,7 +183,7 @@ The tool's home page opens in your browser: in **[Ground truth](terminology.md#4
 
 ### Shared warnings and stops
 
-Each step's guide, under *Checks and warnings*, lists that step's own messages. This table lists the ones several steps share, and how the laptop or a service can fail. The ones starting *Ground truth,* are the [ground truth](terminology.md#4-ground-truth-and-samples)'s own problems, all six of them (their one list): every step that reads it (040, 050, 060, 070) shows them in its report's warnings; 050 and 060 also before paying, and 070 before evaluating, asking whether to go ahead; 040 reads the ground truth only after its [model calls](terminology.md#8-the-pipeline) (to compare its schema with the [ground truth schema](terminology.md#3-schemas)), so it shows them in its report only.
+Each step's guide, under *Checks and warnings*, lists that step's own messages. This table lists the ones several steps share, and how the laptop or a service can fail. The ones starting *Ground truth,* are the [ground truth](terminology.md#4-ground-truth-and-samples)'s own problems, all seven of them (their one list): every step that reads it (040, 050, 060, 070) shows them in its report's warnings; 050 and 060 also before paying, and 070 before evaluating, asking whether to go ahead; 040 reads the ground truth only after its [model calls](terminology.md#8-the-pipeline) (to compare its schema with the [ground truth schema](terminology.md#3-schemas)), so it shows them in its report only.
 
 | What you see | What it means | What to do |
 |---|---|---|
@@ -224,6 +224,7 @@ Each step's guide, under *Checks and warnings*, lists that step's own messages. 
 | *Ground truth, record … (batch_…): lines … and … are the same classed triple.*, then each line | [The same classed triple twice](terminology.md#4-ground-truth-and-samples) in one record (a hand edit). Only one copy can be paired, so evaluation would count the other as ground truth only. Step 070 stops until one is deleted. | Delete one of the two rows. |
 | *Ground truth, record … (batch_…): lines … and … state the same subject instance, predicate, and object instance, with different entity classes.*, then each line | Likely one fact given two [entity classes](terminology.md#3-schemas) by mistake. | If they state one fact, delete the line with the wrong entity classes. |
 | *Ground truth, batch_… lacks the column(s) …; not read* | A ground truth file without one of the columns (see `annotations/README.md`). | Add the column. |
+| *Ground truth, batch_… isn't read: a ground truth file is named batch_, its batch number in three digits or more, then .csv* | A file in `annotations/ground_truth/` named `batch_*.csv` that isn't `batch_` and a number of three digits or more (e.g. `batch_6.csv`, made by hand): step 050 numbers its [drafted batches](terminology.md#4-ground-truth-and-samples) by that name, so it isn't read, and the two can't disagree. | Rename it to `batch_` and a number no other file has, in three digits (e.g. `batch_006.csv`). |
 | *running scripts is disabled* | PowerShell's script policy. | Part 3 of `docs/virtual_environment_setup.md`. |
 
 ## 8. Tracing where something came from

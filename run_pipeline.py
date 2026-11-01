@@ -52,7 +52,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from common.audit import new_run_id                                                    # noqa: E402
-from common.ground_truth import GROUND_TRUTH_DIR, read_ground_truth                    # noqa: E402
+from common.ground_truth import EVALUABLE, GROUND_TRUTH_DIR, read_ground_truth         # noqa: E402
 from common import status as project                                                   # noqa: E402
 from common.step import (EXIT_CODES, FAILED, INTERRUPTED, LOGS_DIR, MANIFEST_NAME, NOT_FINISHED, PIPELINE_STEPS,  # noqa: E402
                          RAN, REPORTS_DIR, RESULTS_DIR, git_commit)
@@ -96,7 +96,8 @@ def batch_waiting() -> str | None:
 
 
 def any_finished() -> bool:
-    return any(r["finished"] for r in read_ground_truth().records.values())
+    """Whether the ground truth has a finished record (EVALUABLE): 060 and 070 have something to work on."""
+    return bool(read_ground_truth().select(EVALUABLE).ids)
 
 
 def gate(step: str, forced: bool) -> tuple:

@@ -26,25 +26,33 @@ person has finished (every fact of its text is there), 0 while it is in
 progress (FINISHED_MARKS; any other value is a problem, and the record isn't finished). A row with an id but an empty subject, predicate, and object says
 "this record was annotated and states no facts".
 
-    from common.ground_truth import read_ground_truth
-    gt = read_ground_truth()                 # or read_ground_truth(folder)
-    gt.rows        [{..., "_origin": ["annotations/ground_truth/batch_000.csv#4"]}, …]
-    gt.records     {record id: {"file", "rows", "finished"}}
+    from common.ground_truth import read_ground_truth, read_pool, SCHEMA_EVIDENCE
+    gt = read_ground_truth(folder, read_pool(splits_path))   # the pool gives each record its part
+    gt.records     {record id: {"file", "files", "rows", "state", "finished", "part"}}: every record in a file
+    gt.state(id)   its one state: absent, in two files, bad mark, unfinished, or finished (STATES)
+    gt.select(SCHEMA_EVIDENCE)   the rows and ids one purpose takes (PURPOSES): SCHEMA_EVIDENCE (finished tuning
+                   records: all that may shape the ground truth schema a model or a check sees), EVALUABLE
+                   (finished records, of a part with parts=), ANNOTATED (every record in a file), TO_FIX
+                   (in two files, a bad mark, or unfinished). No consumer filters the rows itself: they are
+                   handed out only by purpose, each row {..., "_origin": ["annotations/ground_truth/batch_000.csv#4"]}
+    gt.with_file(name, rows)     the ground truth as it will be once a file holds these rows (the annotation tool)
     gt.problems    ["…"]: what a person must fix (see below)
     gt.repeats     [{"message", "copies"}]: the problems that stop 070 (a classed triple twice in a record)
     fair_sample, fair_prefix  whether ids are the first records of a pool order (below)
     pool_parts(pool_rows)     the pool's ids in order, split into its parts: {"tuning": […], "held-out": […]}
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
-    with_coined(ground_truth_schema, gt)  the ground truth schema's component classes
-                              plus those coined in the ground truth (not in it yet)
-    check_rows(gt, records)   rows with an error to fix: an id not in the
+    ground_truth_schema_view(ground_truth_schema, gt)  the ground truth schema as every model and check sees it:
+                              its file, plus the component classes coined and the patterns used in the finished
+                              tuning records (with_coined over SCHEMA_EVIDENCE)
+    with_coined(ground_truth_schema, selection)  the same over any selection
+    check_rows(selection, records)   rows with an error to fix: an id not in the
                               catalog, a source text not in the record's
                               text, a describes triple with no describes class, …
                               (ROW_ERRORS, at the end of this file)
 
 Problems, each listed, none silently resolved:
   - a record in more than one file: annotated twice, and code can't tell
-    which is right (both are kept out of gt.records until fixed);
+    which is right (its state is "in two files": only ANNOTATED and TO_FIX take it, until fixed);
   - a record whose rows disagree on all_facts_extracted (some 1, some 0);
   - the same classed triple twice in a record: the same subject instance,
     predicate and object instance (compared as
@@ -57,9 +65,11 @@ Problems, each listed, none silently resolved:
   - the same subject instance, predicate, and object instance twice in a
     record, with different entity classes: one fact given two entity
     classes by mistake, or two facts that differ only in them;
-  - a file missing one of the columns above.
+  - a file missing one of the columns above;
+  - a file named batch_*.csv whose name isn't batch_<NNN>.csv (NUMBERED): not read, so that reading the ground
+    truth and numbering the next drafted batch (050) agree.
 A problem about lines of a file shows each of them on a line of its own
-(the message has several lines). For a person, all six: docs/running_on_nasa_laptop.md, section 7.
+(the message has several lines). For a person, all seven: docs/running_on_nasa_laptop.md, section 7.
 040, 050, 060, and 070 list them in their report's warnings; 050 and 060 also before paying, and 070 before
 it evaluates, asking whether to go ahead (040 reads the ground truth only after its model calls); the
 annotation tool shows them on its page.
@@ -181,50 +191,162 @@ FINISHED_MARKS = ("0", "1")
 FILE_COLUMNS = COLUMNS + [DRAFTED_BY]
 
 
+#: Each record's one state in the ground truth (GroundTruth.state). Every consumer asks for rows by purpose
+#: (GroundTruth.select, PURPOSES), never filters the rows itself.
+ABSENT = "absent"                # in no ground truth file
+IN_TWO_FILES = "in two files"    # annotated twice: which annotation is right can't be told
+BAD_MARK = "bad mark"            # an all_facts_extracted value other than 0 and 1 (FINISHED_MARKS) on some row
+UNFINISHED = "unfinished"        # in progress: 0 on some row (or on every row)
+FINISHED = "finished"            # 1 on every row: a person checked that every fact of its text is there
+STATES = (IN_TWO_FILES, BAD_MARK, UNFINISHED, FINISHED)
+
+#: What the rows are for (GroundTruth.select), each with the states and the parts of the pool it takes (None: every
+#: part, and records outside the pool):
+#:   SCHEMA_EVIDENCE  what may shape the ground truth schema as any model or check sees it (the component classes
+#:                    coined, the patterns used, a "source:" line naming ground truth records): finished tuning
+#:                    records only, so neither a model's uncorrected draft nor a held-out record reaches a prompt or
+#:                    a check;
+#:   EVALUABLE        what step 070 evaluates against and step 060 extracts from: finished records (of a part, when
+#:                    asked);
+#:   ANNOTATED        every record in a ground truth file, whatever its state: what 050 never drafts again, and what
+#:                    the annotation tool renames, merges, counts and guards (a held-out record's use);
+#:   TO_FIX           what a person still has to finish or fix before the record can be evaluated.
+SCHEMA_EVIDENCE, EVALUABLE, ANNOTATED, TO_FIX = "schema evidence", "evaluable", "annotated", "to fix"
+PURPOSES = {SCHEMA_EVIDENCE: ({FINISHED}, ("tuning",)),
+            EVALUABLE: ({FINISHED}, None),
+            ANNOTATED: (set(STATES), None),
+            TO_FIX: ({IN_TWO_FILES, BAD_MARK, UNFINISHED}, None)}
+
+
+@dataclass(frozen=True)
+class Selection:
+    """The rows of the records one purpose takes (GroundTruth.select), in file order, and those records' ids in the
+    order first met."""
+    purpose: str
+    rows: tuple
+    ids: tuple
+
+
 @dataclass
 class GroundTruth:
-    rows: list = field(default_factory=list)       # every row of every file, with its origin
-    records: dict = field(default_factory=dict)    # {id: {"file", "rows", "finished"}}
+    _rows: list = field(default_factory=list)      # every row of every file, with its origin: only select() hands them out
+    records: dict = field(default_factory=dict)    # {id: {"file", "files", "rows", "state", "finished", "part"}}
     files: list = field(default_factory=list)      # the files read, in order
     problems: list = field(default_factory=list)   # what a person must fix
     repeats: list = field(default_factory=list)    # of those, a classed triple twice in a record: stops 070
+    parts: dict | None = None                      # {id: "tuning" | "held-out"}, from the pool; None: no pool given
+    _files_rows: list = field(default_factory=list)  # [(file name, [rows])]: what with_file() and with_pool() rebuild from
+    _file_problems: list = field(default_factory=list)  # the problems of the files themselves (a name, a column)
+
+    def state(self, rid: str) -> str:
+        """The record's one state: ABSENT, or one of STATES."""
+        return self.records[rid]["state"] if rid in self.records else ABSENT
+
+    def part(self, rid: str) -> str | None:
+        """The record's part of the pool ("tuning" or "held-out"), or None when it isn't in the pool."""
+        if self.parts is None:
+            raise ValueError("the ground truth was read without the pool (030's splits.json), so a record's part "
+                             "isn't known: read it with read_ground_truth(folder, pool), or call with_pool(pool)")
+        return self.parts.get(rid)
+
+    def select(self, purpose: str, parts=None) -> Selection:
+        """The rows and ids of the records `purpose` (PURPOSES) takes. parts ("tuning", "held-out", or a list of
+        them) narrows them to those parts of the pool; it never widens SCHEMA_EVIDENCE beyond tuning."""
+        states, own = PURPOSES[purpose]
+        asked = (parts,) if isinstance(parts, str) else tuple(parts) if parts is not None else None
+        keep = own if asked is None else tuple(p for p in asked if own is None or p in own)
+        if keep is not None and self.parts is None:
+            self.part("")                          # raises: the part isn't known
+        ids = [rid for rid, r in self.records.items()
+               if r["state"] in states and (keep is None or self.parts.get(rid) in keep)]
+        taken = set(ids)
+        return Selection(purpose, tuple(r for r in self._rows if r["id"] in taken), tuple(ids))
+
+    def with_pool(self, pool_rows: list) -> "GroundTruth":
+        """The same ground truth, each record with its part from the pool (read_pool()'s rows)."""
+        return _build(self._files_rows, self.files, self._file_problems, pool_rows)
+
+    def with_file(self, name: str, rows: list) -> "GroundTruth":
+        """The ground truth as it will be once the file `name` (e.g. "batch_004.csv") holds `rows` (dicts with the
+        columns of FILE_COLUMNS), the other files as they are: what the annotation tool checks a save against."""
+        ref = ref_path(GROUND_TRUTH_DIR / name)
+        files_rows = sorted([(n, rs) for n, rs in self._files_rows if n != name]
+                            + [(name, [_as_read(r, ref, i) for i, r in enumerate(rows) if str(r.get("id") or "").strip()])])
+        pool = None if self.parts is None else [{"id": i, "part": p} for i, p in self.parts.items()]
+        return _build(files_rows, self.files, self._file_problems, pool)
 
 
 #: Each row's line in its file, as read (blank lines and source texts spanning lines counted).
 LINE_FIELD = "_line"
 
 
-def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
-    gt = GroundTruth()
-    in_files = {}                                  # {id: [files it appears in]}
-    by_record = {}                                 # {id: [its rows]}
+def _as_read(raw: dict, ref: str, position: int, line: int | None = None) -> dict:
+    """A row as read_ground_truth keeps it: every column of FILE_COLUMNS, stripped, with its origin and its line in
+    the file (the line it ends on; without one, as a file written from these rows would have it)."""
+    row = {c: str(raw.get(c) or "").strip() for c in FILE_COLUMNS}
+    row[ORIGIN_FIELD] = [f"{ref}#{position}"]
+    row[LINE_FIELD] = line if line is not None else position + 2          # the header is line 1
+    return row
+
+
+def marks_state(marks) -> str:
+    """The state a record's all_facts_extracted values in one file give (its rows' marks): FINISHED when every one is
+    "1", BAD_MARK when one is neither "0" nor "1" (FINISHED_MARKS), else UNFINISHED. The one rule, for the ground
+    truth (read_ground_truth) and for one file's view of it (the annotation tool's tick box and batch counts)."""
+    marks = set(marks)
+    return BAD_MARK if marks - set(FINISHED_MARKS) else FINISHED if marks == {"1"} else UNFINISHED
+
+
+def read_ground_truth(folder: Path = GROUND_TRUTH_DIR, pool=None) -> GroundTruth:
+    """Every ground truth file of `folder` (NUMBERED), taken together. pool: read_pool()'s rows (030's splits.json),
+    which give each record its part; without them, select() refuses what needs a part (SCHEMA_EVIDENCE, parts=)."""
+    files, files_rows, problems = [], [], []
     for path in sorted(Path(folder).glob(PATTERN)):
-        gt.files.append(path)
+        if not NUMBERED.fullmatch(path.name):
+            problems.append(f"{ref_path(path)} isn't read: a ground truth file is named batch_, its batch number "
+                            f"in three digits or more, then .csv (e.g. {file_name(6)}), so that reading the ground "
+                            f"truth and numbering the next drafted batch agree. Rename it to that shape (a number no "
+                            f"other file has), then rerun.")
+            continue
+        files.append(path)
         with open(path, encoding="utf-8-sig", newline="") as fh:
             reader = csv.DictReader(fh)
             missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
             if missing:
-                gt.problems.append(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so none of its rows "
-                                   f"were read. Restore its header line, which names the columns: "
-                                   f"{', '.join(COLUMNS)}.")
+                problems.append(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so none of its rows "
+                                f"were read. Restore its header line, which names the columns: "
+                                f"{', '.join(COLUMNS)}.")
                 continue
+            rows = []
             for position, raw in enumerate(reader):
-                row = {c: (raw.get(c) or "").strip() for c in FILE_COLUMNS}
-                if not row["id"]:
-                    continue                       # a blank line
-                row[ORIGIN_FIELD] = [f"{ref_path(path)}#{position}"]
-                row[LINE_FIELD] = reader.line_num          # the file line the row ends on (blank lines counted)
-                gt.rows.append(row)
-                by_record.setdefault(row["id"], []).append(row)
-                files = in_files.setdefault(row["id"], [])
-                if path.name not in files:
-                    files.append(path.name)
+                if (raw.get("id") or "").strip():                      # else a blank line
+                    rows.append(_as_read(raw, ref_path(path), position, reader.line_num))
+            files_rows.append((path.name, rows))
+    return _build(files_rows, files, problems, pool)
+
+
+def _build(files_rows: list, files: list, file_problems: list, pool) -> GroundTruth:
+    """The ground truth of these files' rows: each record's state and part, and every problem."""
+    gt = GroundTruth(files=list(files), parts=None if pool is None else {r["id"]: r.get("part") for r in pool},
+                     _files_rows=list(files_rows), _file_problems=list(file_problems), problems=list(file_problems))
+    in_files = {}                                  # {id: [files it appears in]}
+    by_record = {}                                 # {id: [its rows]}
+    for name, rows in files_rows:
+        for row in rows:
+            gt._rows.append(row)
+            by_record.setdefault(row["id"], []).append(row)
+            names = in_files.setdefault(row["id"], [])
+            if name not in names:
+                names.append(name)
 
     for rid, rows in by_record.items():
+        entry = {"file": in_files[rid][0], "files": list(in_files[rid]), "rows": len(rows),
+                 "part": None if gt.parts is None else gt.parts.get(rid)}
         if len(in_files[rid]) > 1:
             gt.problems.append(f"record {rid} is in {' and '.join(in_files[rid])}: annotated twice, and which "
                                f"annotation is right can't be told, so the record is left out until fixed. Delete its "
                                f"rows from all files but one (by hand: the annotation tool can't remove a record).")
+            gt.records[rid] = {**entry, "state": IN_TWO_FILES, "finished": False}
             continue
         marks = {r["all_facts_extracted"] for r in rows}
         other = sorted(marks - set(FINISHED_MARKS))
@@ -239,7 +361,8 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR) -> GroundTruth:
                                f"{' on some rows, '.join(sorted(marks))} on others, so the record counts as not "
                                f"finished. In the annotation tool (`py helpers/annotate.py`), tick All facts extracted on "
                                f"the record if every fact is there (untick it again if not): saving sets every row.")
-        gt.records[rid] = {"file": in_files[rid][0], "rows": len(rows), "finished": marks == {"1"}}
+        state = marks_state(marks)
+        gt.records[rid] = {**entry, "state": state, "finished": state == FINISHED}
         groups = {}                                # triple key -> {(subject class, object class) keys: [rows]}
         for row in rows:
             if not (row["subject"] and row["predicate"] and row["object"]) or is_describes(row):
@@ -296,8 +419,8 @@ ROW_ERRORS = {
 }
 
 
-def check_rows(gt: GroundTruth, records: dict) -> list:
-    """Every row with something to fix, as {"where": "batch_000.csv line 6",
+def check_rows(selection: Selection, records: dict) -> list:
+    """Every row of the selection (GroundTruth.select) with something to fix, as {"where": "batch_000.csv line 6",
     "id", "errors": [names of ROW_ERRORS]}. records is {id: record} (020's
     records.jsonl, read by common.records_io.load_records)."""
     from common.chunking import full_text
@@ -306,7 +429,7 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
     from common.validate import check_describes, check_triple_instance
 
     texts, out = {}, []
-    for row in gt.rows:
+    for row in _rows_of(selection):
         rid = row["id"]
         filled = [bool(row[k]) for k in ("subject", "predicate", "object")]
         if rid not in records:
@@ -328,57 +451,77 @@ def check_rows(gt: GroundTruth, records: dict) -> list:
 
 
 # --------------------------------------------------------------------------
-# the ground truth schema (050, the annotation tool, 070)
+# the ground truth schema (040, 050, 060, 070, the annotation tool, the status)
 # --------------------------------------------------------------------------
 
-def with_coined(ground_truth_schema: dict, gt: GroundTruth) -> dict:
+def _rows_of(selection: Selection) -> tuple:
+    """A selection's rows. A GroundTruth is refused: which records count is GroundTruth.select's to say."""
+    if not isinstance(selection, Selection):
+        raise TypeError("pass the rows of one purpose, gt.select(...) (common/common_helpers/ground_truth.py, "
+                        "PURPOSES), not the whole ground truth")
+    return selection.rows
+
+
+def ground_truth_schema_view(ground_truth_schema: dict, gt: GroundTruth) -> dict:
+    """The ground truth schema as every model and check sees it: with_coined over the finished tuning records only
+    (SCHEMA_EVIDENCE). The one view 040 (its comparison), 050 (its prompt and its checks), 060 (when it extracts
+    with the ground truth schema) and the annotation tool (its suggestions, pattern buttons and pattern flags) use, so
+    a model's uncorrected draft or a held-out record never shapes it."""
+    return with_coined(ground_truth_schema, gt.select(SCHEMA_EVIDENCE))
+
+
+def with_coined(ground_truth_schema: dict, selection: Selection) -> dict:
     """The ground truth schema's entity classes and predicates
     (ground_truth_schema, as common.schema_io.read_ground_truth_schema reads it),
-    plus every one the ground truth triples use that it lacks. Component
+    plus every one the selection's ground truth triples use that it lacks. Component
     classes are compared as common.triples_io.component_class_key does (ignoring case and
     punctuation), keeping the first spelling met; the describes triple's own
-    component classes (CatalogEntry, DESCRIBES), the undecided X and anything
+    component classes (the entity class CatalogEntry, the predicate DESCRIBES), the undecided
+    entity class X (each in any spelling, as component_class_key compares them) and anything
     without a letter or digit (e.g. "-") are not counted.
 
     Returned in the schema shape, plus "coined": {"entity_classes": [...],
-    "predicates": [...]}, the component classes used in the ground truth but
+    "predicates": [...]}, the component classes used in the selection but
     not in the ground truth schema, in the order first used. A coined component
     class has an empty definition: only the ground truth schema has definitions.
-    The annotation tool marks a coined one as an error, and step 070 stops while
-    a finished record uses one.
 
-    "patterns" is the file's patterns, then every other pattern the ground truth
+    "patterns" is the file's patterns, then every other pattern the selection's ground truth
     triples use ("used_patterns", in the order first used): the file's say
     "where a predicate has been used", which the ground truth itself says, so
-    nobody keeps them up to date by hand."""
+    nobody keeps them up to date by hand. Which rows count is the caller's
+    selection: ground_truth_schema_view takes the finished tuning records (SCHEMA_EVIDENCE)."""
     from common.triples_io import ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED, component_class_key
 
+    rows = _rows_of(selection)
+    # written by code (the describes triple), never coined, in any spelling (component_class_key), each in its own kind
+    fixed = {"entity_classes": {component_class_key(ENTRY_CLASS), component_class_key(UNDECIDED)},
+             "predicates": {component_class_key(ENTRY_PREDICATE)}}
     out = {"entity_classes": dict(ground_truth_schema["entity_classes"]), "predicates": dict(ground_truth_schema["predicates"]),
            "patterns": list(ground_truth_schema.get("patterns", [])),
            "coined": {"entity_classes": [], "predicates": []}, "used_patterns": []}
     in_file = {tuple(component_class_key(x) for x in p) for p in out["patterns"]}
-    for key, spelled in used_patterns(gt.rows).items():   # patterns: the file's, then every other one used
+    for key, spelled in used_patterns(selection).items():   # patterns: the file's, then every other one used
         if key not in in_file:
             out["patterns"].append(spelled)
             out["used_patterns"].append(spelled)
     known = {kind: {component_class_key(n) for n in out[kind]} for kind in ("entity_classes", "predicates")}
-    for row in gt.rows:
+    for row in rows:
         for kind, name in (("entity_classes", row["subject_class"]), ("entity_classes", row["object_class"]),
                            ("predicates", row["predicate"])):
-            if component_class_key(name) and name not in (ENTRY_CLASS, ENTRY_PREDICATE, UNDECIDED) \
-                    and component_class_key(name) not in known[kind]:
+            key = component_class_key(name)
+            if key and key not in fixed[kind] and key not in known[kind]:
                 out[kind][name] = ""
                 out["coined"][kind].append(name)
-                known[kind].add(component_class_key(name))
+                known[kind].add(key)
     return out
 
 
-def coined_uses(gt: GroundTruth, coined: dict) -> list:
-    """Where each coined component class is used, for messages: ["Instrumnet (entity class): batch_000.csv lines
-    4, 9", ...], in with_coined()'s order. coined is with_coined()["coined"]."""
+def coined_uses(selection: Selection, coined: dict) -> list:
+    """Where each coined component class is used in the selection, for messages: ["Instrumnet (entity class):
+    batch_000.csv lines 4, 9", ...], in with_coined()'s order. coined is with_coined()["coined"]."""
     from common.triples_io import component_class_key
     where = {}
-    for row in gt.rows:
+    for row in _rows_of(selection):
         file = row[ORIGIN_FIELD][0].rsplit("/", 1)[-1].split("#")[0]
         for kind, column in (("entity_classes", "subject_class"), ("entity_classes", "object_class"),
                              ("predicates", "predicate")):
@@ -399,11 +542,11 @@ def coined_uses(gt: GroundTruth, coined: dict) -> list:
 # the annotation tool import it from here too.
 
 
-def uses_of(gt: GroundTruth, kind: str, name: str) -> list:
-    """The ground truth triples and describes triples that use a component class (compared as component_class_key does); kind is
-    "entity class" or "predicate"."""
+def uses_of(selection: Selection, kind: str, name: str) -> list:
+    """The selection's ground truth triples and describes triples that use a component class (compared as
+    component_class_key does); kind is "entity class" or "predicate"."""
     columns = ("subject_class", "object_class") if kind == "entity class" else ("predicate",)
-    return [r for r in gt.rows if any(component_class_key(r[c]) == component_class_key(name) for c in columns)]
+    return [r for r in _rows_of(selection) if any(component_class_key(r[c]) == component_class_key(name) for c in columns)]
 
 
 def pattern_of(row: dict) -> tuple | None:
@@ -413,25 +556,39 @@ def pattern_of(row: dict) -> tuple | None:
     return None if is_describes(row) or not all(key) else key
 
 
-def used_patterns(rows) -> dict:
+def used_patterns(selection: Selection) -> dict:
     """{pattern key: (subject class, predicate, object class) as first spelled}, in the order first used: every
-    pattern the ground truth triples use."""
+    pattern the selection's ground truth triples use."""
     out = {}
-    for r in rows:
+    for r in _rows_of(selection):
         key = pattern_of(r)
         if key and key not in out:
             out[key] = (r["subject_class"].strip(), r["predicate"].strip(), r["object_class"].strip())
     return out
 
 
+def pattern_uses(selection: Selection) -> collections.Counter:
+    """How many of the selection's ground truth triples use each pattern (pattern_of)."""
+    return collections.Counter(k for r in _rows_of(selection) if (k := pattern_of(r)))
+
+
 def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict:
-    """What the ground truth uses that the ground truth schema lacks: the entity classes and predicates coined in
-    the ground truth, each with how many rows use it. (Patterns are never missing: the ground truth schema's
-    patterns are those of its file plus every one the ground truth uses; see with_coined.) Shared by the annotation
-    tool and the project's status (common/common_helpers/status.py)."""
-    coined = with_coined(ground_truth_schema, gt)["coined"]
-    return {"component_classes": [{"entry_type": kind, "component_class": n, "uses": len(uses_of(gt, kind, n))}
-                                  for kind, key in KIND_KEYS.items() for n in coined[key]]}
+    """What the finished records (EVALUABLE, every part: step 070 stops while one uses a component class the ground
+    truth schema lacks) use that the ground truth schema lacks: the entity classes and predicates coined there, each
+    with how many of those rows use it and the parts of the records using it ("tuning", "held-out", or None for a
+    record outside the pool; a held-out one can't be added, since the ground truth schema is frozen for held-out
+    records). (Patterns are never missing: the ground truth schema's patterns are those of its file plus every one
+    the finished tuning records use; see ground_truth_schema_view.) Shared by the annotation tool and the project's
+    status (common/common_helpers/status.py)."""
+    finished = gt.select(EVALUABLE)
+    coined = with_coined(ground_truth_schema, finished)["coined"]
+    out = []
+    for kind, key in KIND_KEYS.items():
+        for n in coined[key]:
+            uses = uses_of(finished, kind, n)
+            parts = sorted({str(gt.records[r["id"]]["part"]) for r in uses})
+            out.append({"entry_type": kind, "component_class": n, "uses": len(uses), "parts": parts})
+    return {"component_classes": out}
 
 
 # --------------------------------------------------------------------------

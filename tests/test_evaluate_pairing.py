@@ -1138,7 +1138,12 @@ class HeldOutSources(unittest.TestCase):
             self.assertEqual(records.held_out_sources(path, pool),
                              [("entity class", "Moonlet", "ground truth tuning #0; held-out #8, #11", [(8, "r8"), (11, "r11")]),
                               ("predicate", "ORBITS", "ground truth held-out #8", [(8, "r8")])])
+            # the pool, not the word, decides: positions 8 and 11 are held-out whatever the line calls them
             path.write_text(schema.replace("held-out", "tuning"), encoding="utf-8")
+            self.assertEqual([(k, n, r) for k, n, _, r in records.held_out_sources(path, pool)],
+                             [("entity class", "Moonlet", [(8, "r8"), (11, "r11")]), ("predicate", "ORBITS", [(8, "r8")])])
+            path.write_text(schema.replace("held-out #8, #11", "tuning #3").replace("held-out #8", "tuning #4"),
+                            encoding="utf-8")
             self.assertEqual(records.held_out_sources(path, pool), [])
 
 

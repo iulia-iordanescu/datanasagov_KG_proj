@@ -48,12 +48,17 @@ class GroundTruthFiles(unittest.TestCase):
             row("c", "X", "Y", "Z", "W", "V", "multi\nline source"),
             row("c", "X2", "Y", "Z", "W", "V", "s")])
         gt = ground_truth.read_ground_truth(self.tmp)
-        self.assertEqual(len(gt.rows), 5)
-        self.assertEqual(gt.records["a"], {"file": "batch_000.csv", "rows": 2, "finished": True})
+        rows = gt.select(ground_truth.ANNOTATED).rows
+        self.assertEqual(len(rows), 5)
+        self.assertEqual(gt.records["a"], {"file": "batch_000.csv", "files": ["batch_000.csv"], "rows": 2,
+                                           "part": None, "state": "finished", "finished": True})
         self.assertFalse(gt.records["b"]["finished"])
         self.assertEqual(gt.problems, [])
-        self.assertEqual([r[ground_truth.LINE_FIELD] for r in gt.rows], [2, 3, 5, 7, 8])   # file lines
-        self.assertTrue(gt.rows[1]["_origin"][0].endswith("batch_000.csv#1"))
+        self.assertEqual([r[ground_truth.LINE_FIELD] for r in rows], [2, 3, 5, 7, 8])   # file lines
+        self.assertTrue(rows[1]["_origin"][0].endswith("batch_000.csv#1"))
+        self.assertFalse(hasattr(gt, "rows"))                    # rows are handed out by purpose only (select)
+        with self.assertRaises(ValueError):                      # read without the pool: no record's part is known
+            gt.select(ground_truth.SCHEMA_EVIDENCE)
 
     def test_problems(self):
         gt_file(self.tmp, "batch_000.csv", [row("a", "MODIS", "I", "ABOARD", "Aqua", "S", "x"),
@@ -68,7 +73,8 @@ class GroundTruthFiles(unittest.TestCase):
         gt_file(self.tmp, "batch_002.csv", [["a", "b"]], columns=["id", "subject"])
         gt = ground_truth.read_ground_truth(self.tmp)
         self.assertEqual(len(gt.problems), 6)
-        self.assertNotIn("a", gt.records)                                         # in two files: kept out
+        self.assertEqual(gt.state("a"), ground_truth.IN_TWO_FILES)               # in two files: kept out
+        self.assertNotIn("a", gt.select(ground_truth.EVALUABLE).ids)
         joined = "\n".join(gt.problems)
         self.assertIn("record a is in batch_000.csv and batch_001.csv", joined)
         self.assertIn("record b (batch_000.csv): all_facts_extracted", joined)
@@ -100,7 +106,7 @@ class GroundTruthFiles(unittest.TestCase):
             row("a"),
             row("gone", "x", "y", "z", "w", "v", "s")])
         records = {"a": {"id": "a", "title": "Title A", "notes": "MODIS aboard Aqua since 2002."}}
-        found = ground_truth.check_rows(ground_truth.read_ground_truth(self.tmp), records)
+        found = ground_truth.check_rows(ground_truth.read_ground_truth(self.tmp).select(ground_truth.ANNOTATED), records)
         self.assertEqual([(f["where"], f["errors"]) for f in found], [
             ("batch_000.csv line 2", ["describes_undecided"]),
             ("batch_000.csv line 4", ["source_not_in_text"]),
@@ -124,7 +130,7 @@ class GroundTruthFiles(unittest.TestCase):
             row("a", "MODIS", "-", "x", "Aqua", "X", "s")])
         hand = {"entity_classes": {"Instrument": "d", "Dataset": "d"}, "predicates": {"ABOARD": "d"},
                 "patterns": [("Instrument", "ABOARD", "Dataset")]}
-        v = ground_truth.with_coined(hand, ground_truth.read_ground_truth(self.tmp))
+        v = ground_truth.with_coined(hand, ground_truth.read_ground_truth(self.tmp).select(ground_truth.ANNOTATED))
         self.assertEqual(v["coined"], {"entity_classes": ["Probe"], "predicates": ["CARRIED_BY", "x"]})
         self.assertEqual(v["entity_classes"]["Probe"], "")
         self.assertEqual(v["entity_classes"]["Instrument"], "d")
@@ -932,7 +938,8 @@ class SameModel(unittest.TestCase):
                       [{**dict(zip(ground_truth.COLUMNS, row("b", "AIRS", "I", "ABOARD", "Aqua", "S", "x"))), "drafted_by": "gpt-4o"}])
             gt = ground_truth.read_ground_truth(tmp)
             self.assertEqual(gt.problems, [])                                  # the column is optional
-            self.assertEqual({r["id"]: r["drafted_by"] for r in gt.rows}, {"a": "", "b": "gpt-4o"})
+            self.assertEqual({r["id"]: r["drafted_by"] for r in gt.select(ground_truth.ANNOTATED).rows},
+                             {"a": "", "b": "gpt-4o"})
         finally:
             shutil.rmtree(tmp)
 
@@ -942,7 +949,7 @@ class SameModel(unittest.TestCase):
         from records import same_model_notes                                   # 060_extract_helpers/records.py
         rows = [{"id": "a", "drafted_by": "google-claude-sonnet-5"}, {"id": "a", "drafted_by": ""},
                 {"id": "b", "drafted_by": "claude-opus-4"}, {"id": "c", "drafted_by": "gpt-4o"}, {"id": "d", "drafted_by": ""}]
-        gt = type("GT", (), {"rows": rows})
+        gt = ground_truth.Selection(ground_truth.ANNOTATED, tuple(rows), ("a", "b", "c", "d"))
         same = same_model_notes(gt, {"a", "b", "c", "d"}, "google-claude-sonnet-5")
         self.assertEqual(len(same), 2)                                         # a: same model; b: same maker; c: other maker
         self.assertIn("drafted (step 050) by claude-opus-4, a model from the same maker (Anthropic)", same[0])
@@ -1576,6 +1583,190 @@ class LiteLLM(unittest.TestCase):
     def test_unknown_service(self):
         with self.assertRaisesRegex(ValueError, "asksage, litellm"):
             self.llm.paid_calls({"service": "openai", "model": "x", "confirm_paid_calls": False}, Path("060_extract"))
+
+
+
+def _helper(step: str, name: str = "records"):
+    """A step's helper module, loaded under a name of its own (the steps' helper folders share file names)."""
+    import importlib.util
+    folder = step.split("_", 1)[0]
+    spec = importlib.util.spec_from_file_location(f"{name}_{folder}", ROOT / step / f"{step}_helpers" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[f"{name}_{folder}"] = module                                # its dataclasses need it registered
+    spec.loader.exec_module(module)
+    return module
+
+
+class OneSelection(unittest.TestCase):
+    """common/common_helpers/ground_truth.py: every record has one state, every consumer takes its rows by purpose
+    (GroundTruth.select), and nothing but finished tuning records shapes the ground truth schema a model or a check
+    sees. One fixture of every state, run through every consumer."""
+
+    #: (id, pool position, part, files and marks, what its row coins or uses)
+    HAND = {"entity_classes": {"Instrument": "d", "Spacecraft": "d", "Dataset": "d"}, "predicates": {"ABOARD": "d"},
+            "patterns": [("Instrument", "ABOARD", "Spacecraft")]}
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.pool = [{"id": rid, "position": i, "part": part} for i, (rid, part) in enumerate(
+            [("fin_t", "tuning"), ("draft_t", "tuning"), ("fin_h", "held-out"), ("draft_h", "held-out"),
+             ("twice", "tuning"), ("bad", "tuning")])]
+        gt_file(self.tmp, "batch_000.csv", [
+            row("fin_t", "MODIS", "Instrument", "ABOARD", "Gauge", "Gauge", "s"),                 # checked: coins Gauge
+            row("draft_t", "MODIS", "Instrument", "DRAFTED", "Aqua", "Spacecraft", "s", "0"),      # a model's draft,
+            row("draft_t", "AIRS", "Instrument", "DRAFTED", "Aqua", "Spacecraft", "s", "0"),       # its pattern twice
+            row("fin_h", "MODIS", "Instrument", "ABOARD", "Data", "Dataset", "s"),                 # held-out: new pattern
+            row("fin_h", "MODIS", "HeldThing", "ABOARD", "Aqua", "Spacecraft", "s"),               # and a coined one
+            row("draft_h", "MODIS", "HeldDraft", "ABOARD", "Aqua", "Spacecraft", "s", "0"),
+            row("twice", "MODIS", "TwiceThing", "ABOARD", "Aqua", "Spacecraft", "s"),
+            row("bad", "MODIS", "BadThing", "ABOARD", "Aqua", "Spacecraft", "s", "2")])
+        gt_file(self.tmp, "batch_001.csv", [row("twice", "MODIS", "TwiceThing", "ABOARD", "Aqua", "Spacecraft", "s")])
+        self.gt = ground_truth.read_ground_truth(self.tmp, self.pool)
+
+    def test_states_and_purposes(self):
+        g = ground_truth
+        self.assertEqual({rid: self.gt.state(rid) for rid in ("fin_t", "draft_t", "fin_h", "draft_h", "twice", "bad", "nope")},
+                         {"fin_t": g.FINISHED, "draft_t": g.UNFINISHED, "fin_h": g.FINISHED, "draft_h": g.UNFINISHED,
+                          "twice": g.IN_TWO_FILES, "bad": g.BAD_MARK, "nope": g.ABSENT})
+        ids = lambda *a, **k: set(self.gt.select(*a, **k).ids)                 # noqa: E731
+        self.assertEqual(ids(g.SCHEMA_EVIDENCE), {"fin_t"})
+        self.assertEqual(ids(g.SCHEMA_EVIDENCE, parts="held-out"), set())      # parts never widens it
+        self.assertEqual(ids(g.EVALUABLE), {"fin_t", "fin_h"})
+        self.assertEqual(ids(g.EVALUABLE, parts="held-out"), {"fin_h"})
+        self.assertEqual(ids(g.ANNOTATED), {"fin_t", "draft_t", "fin_h", "draft_h", "twice", "bad"})
+        self.assertEqual(ids(g.TO_FIX), {"draft_t", "draft_h", "twice", "bad"})
+        self.assertEqual(self.gt.records["twice"]["files"], ["batch_000.csv", "batch_001.csv"])
+        # the same files, read again with one file replaced (the annotation tool's save): states follow
+        after = self.gt.with_file("batch_001.csv", [])
+        self.assertEqual(after.state("twice"), g.FINISHED)
+        self.assertEqual(self.gt.state("twice"), g.IN_TWO_FILES)               # the original is left alone
+        self.assertEqual(g.marks_state(["1", "1"]), g.FINISHED)
+        self.assertEqual([g.marks_state(m) for m in (["1", "0"], ["0"], ["1", "2"], ["", "1"], ["yes"])],
+                         [g.UNFINISHED, g.UNFINISHED, g.BAD_MARK, g.BAD_MARK, g.BAD_MARK])
+
+    def test_schema_view_takes_finished_tuning_records_only(self):
+        view = ground_truth.ground_truth_schema_view(self.HAND, self.gt)
+        self.assertEqual(view["coined"], {"entity_classes": ["Gauge"], "predicates": []})
+        self.assertEqual(view["used_patterns"], [("Instrument", "ABOARD", "Gauge")])
+        # what 050's drafting model is shown, and what its checks compare with
+        text = _helper("050_annotate").vocabulary_text("FILE", view["coined"], view["used_patterns"])
+        for leaked in ("DRAFTED", "HeldThing", "HeldDraft", "TwiceThing", "BadThing", "Dataset"):
+            self.assertNotIn(leaked, text.replace("FILE", ""), leaked)
+        entries = validate.SchemaEntries({**self.HAND, "patterns": view["patterns"]})
+        self.assertIn(validate.PATTERN_NOT_IN_SCHEMA, validate.check_against_schema(
+            {"subject_class": "Instrument", "predicate": "ABOARD", "object_class": "Dataset"}, entries))   # held-out's
+        self.assertNotIn(validate.PATTERN_NOT_IN_SCHEMA, validate.check_against_schema(
+            {"subject_class": "Instrument", "predicate": "ABOARD", "object_class": "Gauge"}, entries))
+        # every consumer refuses the whole ground truth: it must say which purpose
+        for f in (lambda: ground_truth.with_coined(self.HAND, self.gt), lambda: ground_truth.uses_of(self.gt, "predicate", "x"),
+                  lambda: ground_truth.used_patterns(self.gt), lambda: ground_truth.coined_uses(self.gt, view["coined"]),
+                  lambda: ground_truth.pattern_uses(self.gt), lambda: ground_truth.check_rows(self.gt, {})):
+            with self.assertRaises(TypeError):
+                f()
+
+    def test_what_070_and_the_status_stop_on(self):
+        """Step 070 and the status ask about the finished records of every part (EVALUABLE): Gauge (tuning) and
+        HeldThing (held-out, which can't be added); a draft's, a bad mark's or a record in two files' never."""
+        gaps = ground_truth.ground_truth_schema_gaps(self.HAND, self.gt)["component_classes"]
+        self.assertEqual([(g["component_class"], g["parts"]) for g in gaps], [("Gauge", ["tuning"]), ("HeldThing", ["held-out"])])
+        records_070 = _helper("070_evaluate")
+        schema = self.tmp / "ground_truth_schema.txt"
+        schema.write_text("ENTITY CLASSES\n--------------\nInstrument  d\nSpacecraft  d\nDataset  d\n\nPREDICATES\n"
+                          "----------\nABOARD  d\n", encoding="utf-8")
+        from common.stop import Stop
+        with self.assertRaises(Stop) as stop:
+            records_070.check_coined(self.gt, schema)
+        self.assertIn("Gauge (entity class): batch_000.csv line 2", str(stop.exception))
+        self.assertIn("HeldThing (entity class): batch_000.csv line 6", str(stop.exception))
+        for absent in ("DRAFTED", "HeldDraft", "TwiceThing", "BadThing"):
+            self.assertNotIn(absent, str(stop.exception))
+        # the advice for the first gap of each part names the state of the record there
+        positions = {r["id"]: r["position"] for r in self.pool}
+        gap = lambda order: records_070._first_gap(order, "tuning", positions, set(), self.gt)   # noqa: E731
+        self.assertIn("finished, but not extracted", gap(["fin_t"]))
+        self.assertIn("not finished in the ground truth", gap(["draft_t"]))
+        self.assertIn("in batch_000.csv and batch_001.csv, annotated twice", gap(["twice"]))
+        self.assertIn("neither 0 nor 1", gap(["bad"]))
+        self.assertIn("not in the ground truth yet. Draft it", records_070._first_gap(["new"], "tuning", {"new": 9},
+                                                                                       set(), self.gt))
+
+    def test_one_reading_of_a_source_line(self):
+        """common.schema_io.parse_source, used by 060's source check and learned_from, 070's note on held-out
+        sources and the annotation tool: a position's part comes from the pool, never from the word before it."""
+        from common.schema_io import ground_truth_source_problem, parse_source, source_line
+        parts = {0: "tuning", 1: "tuning", 2: "held-out"}
+        cases = [   # source, (tuning, held-out, unknown), problem's start or None
+            ("ground truth tuning #0, #1", ([0, 1], [], []), None),
+            ("Ground-Truth tuning #0", ([0], [], []), None),
+            ("ground_truth tuning #1; mentor", ([1], [], []), None),
+            ("ground truth tuning #0, #2", ([0], [2], []), "comes from held-out record(s) #2"),     # no word "held-out"
+            ("ground truth tuning #0; held-out #2", ([0], [2], []), "comes from held-out record(s) #2"),
+            ("ground truth #2", ([], [2], []), "comes from held-out record(s) #2"),
+            ("ground truth held-out #0", ([0], [], []), "names ground truth records but doesn't say tuning"),
+            ("ground truth tuning #9", ([], [], [9]), "names #9, not a pool position"),
+            ("ground truth tuning", ([], [], []), "says ground truth but names no record"),
+            ("mentor, 2026-10-01 #2", ([], [], []), None),                    # not the ground truth: names no record
+            ("", ([], [], []), None)]
+        for source, (tuning, held, unknown), problem in cases:
+            found = parse_source(source, parts)
+            self.assertEqual((found["tuning"], found["held_out"], found["unknown"]), (tuning, held, unknown), source)
+            why = ground_truth_source_problem(source, parts)
+            self.assertEqual(why is None, problem is None, (source, why))
+            if problem:
+                self.assertTrue(why.startswith(problem), (source, why))
+        self.assertEqual(source_line([8, 3, 3]), "ground truth tuning #3, #8")
+        self.assertEqual(parse_source(source_line([8, 3]), {3: "tuning", 8: "tuning"})["tuning"], [3, 8])
+        self.assertEqual(source_line([]), "")
+
+    def test_held_out_sources_070(self):
+        """070's note on the ground truth schema's entries learned from held-out records reads parse_source too."""
+        records_070 = _helper("070_evaluate")
+        schema = self.tmp / "ground_truth_schema.txt"
+        schema.write_text("ENTITY CLASSES\n--------------\nGauge  d\n          source: ground truth tuning #0, #2\n"
+                          "Meter  d\n          source: ground truth tuning #0\n\nPREDICATES\n----------\nABOARD  d\n",
+                          encoding="utf-8")
+        found = records_070.held_out_sources(schema, self.pool)
+        self.assertEqual([(kind, name, records) for kind, name, _, records in found], [("entity class", "Gauge", [(2, "fin_h")])])
+
+    def test_no_consumer_reads_the_rows_itself(self):
+        """A guard: outside ground_truth.py, no code reads a GroundTruth's rows; every consumer asks select()."""
+        import re
+        offenders = []
+        for path in ROOT.rglob("*.py"):
+            rel = path.relative_to(ROOT).as_posix()
+            if rel.startswith(("archive/", ".myvenv/", "DONOTTRACK/")) or rel == "common/common_helpers/ground_truth.py":
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for n, line in enumerate(text.splitlines(), 1):
+                if re.search(r"\._rows\b|\b(gt|ground_truth|truth)\.rows\b|read_ground_truth\([^)]*\)\.rows", line) \
+                        and "tests/" not in rel[:6]:
+                    offenders.append(f"{rel}:{n}: {line.strip()}")
+        self.assertEqual(offenders, [])
+
+    def test_names_written_by_code_are_never_coined(self):
+        """CatalogEntry (entity class), DESCRIBES (predicate) and X (the undecided entity class) are never coined, in
+        any spelling; the same words in another kind are (a predicate "x" is a typo to fix)."""
+        gt_file(self.tmp, "batch_000.csv", [
+            row("fin_t", "fin_t", "catalog_entry", "describes", "T", "x", "(record structure)"),
+            row("fin_t", "MODIS", "Instrument", "x", "Aqua", "CatalogEntry", "s"),
+            row("fin_t", "MODIS", "Instrument", "Describes", "Aqua", "Spacecraft", "s")])
+        (self.tmp / "batch_001.csv").unlink()
+        gt = ground_truth.read_ground_truth(self.tmp, self.pool)
+        v = ground_truth.ground_truth_schema_view(self.HAND, gt)
+        self.assertEqual(v["coined"], {"entity_classes": [], "predicates": ["x"]})
+
+    def test_one_file_name_rule(self):
+        """Only batch_<NNN>.csv is read (the name 050 numbers its drafted batches by); any other batch_*.csv is a
+        problem, named, and not read."""
+        for name in ("batch_6.csv", "batch_06.csv", "batch_abc.csv", "batch_.csv"):
+            gt_file(self.tmp, name, [row("other", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "s")])
+            gt = ground_truth.read_ground_truth(self.tmp, self.pool)
+            self.assertEqual(gt.state("other"), ground_truth.ABSENT, name)
+            self.assertTrue(any(f"{name} isn't read" in p for p in gt.problems), (name, gt.problems))
+            (self.tmp / name).unlink()
+        gt_file(self.tmp, "batch_1000.csv", [row("other", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "s")])
+        self.assertEqual(ground_truth.read_ground_truth(self.tmp, self.pool).state("other"), ground_truth.FINISHED)
 
 
 class AnnotationsReadCleanly(unittest.TestCase):

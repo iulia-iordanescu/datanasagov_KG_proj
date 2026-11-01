@@ -400,6 +400,53 @@ class ExtractionChecksPatternSources(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
+class ExtractionWithTheGroundTruthSchema(unittest.TestCase):
+    """Step 060 given the ground truth schema (annotations/ground_truth_schema.txt, or a copy of it anywhere: the
+    same content) extracts with the one view every step uses (ground_truth_schema_view, in
+    common/common_helpers/ground_truth.py): its file's patterns, then those the finished tuning records use, never a draft's or a
+    held-out record's; and it knows which records the schema was learned from. A file that differs in one definition
+    is another schema."""
+
+    def test_patterns_and_learned_from(self):
+        import csv
+        from support import use_step
+        use_step("060_extract")
+        import schema as extract_schema
+        from common.ground_truth import COLUMNS
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        copy = tmp / "copy_of_the_ground_truth_schema.txt"
+        shutil.copy2(HAND, copy)
+        (tmp / "additions.txt").write_text("", encoding="utf-8")
+        pool = [{"id": f"r{i}", "position": i, "part": "held-out" if i == 8 else "tuning"} for i in range(10)]
+        (tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}), encoding="utf-8")
+        (tmp / "ground_truth").mkdir()
+        hand = schema_io.read_ground_truth_schema(HAND)
+        a, b = sorted(hand["entity_classes"])[:2]
+        p = sorted(hand["predicates"])[0]
+        new = [(a, p, b), (b, p, a), (a, p, a)]
+        self.assertFalse(set(new) & set(hand["patterns"]))                 # three patterns the file lacks
+        with open(tmp / "ground_truth" / "batch_000.csv", "w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(COLUMNS)
+            for rid, (s_, p_, o_), mark in (("r1", new[0], "1"), ("r2", new[1], "0"), ("r8", new[2], "1")):
+                w.writerow([rid, "x", s_, p_, "y", o_, "x y", mark])      # finished tuning; unfinished; held-out
+        inputs = {"schema": copy, "additions": tmp / "additions.txt", "splits": tmp / "splits.json",
+                  "ground_truth": tmp / "ground_truth" / "batch_*.csv"}
+        s = extract_schema.load_schema(inputs)
+        self.assertIn(new[0], s.content["patterns"])
+        self.assertNotIn(new[1], s.content["patterns"])
+        self.assertNotIn(new[2], s.content["patterns"])
+        self.assertTrue(s.learned_from["known"])
+        self.assertTrue({f"r{i}" for i in range(6)} <= set(s.learned_from["ids"]))
+        # the near miss: one definition changed, so it is another schema (the patterns its own, learned from unknown)
+        copy.write_text(copy.read_text(encoding="utf-8-sig").replace(hand["predicates"][p], "something else", 1),
+                        encoding="utf-8")
+        s = extract_schema.load_schema(inputs)
+        self.assertNotIn(new[0], s.content["patterns"])
+        self.assertFalse(s.learned_from["known"])
+
+
 class ExtractionKeepsPins(unittest.TestCase):
     """Step 060's merged schema keeps the "only:" lines of its schema file and of the additions file, in the merged
     schema's spelling; a pinned predicate of the additions file left out for not coming from tuning records takes

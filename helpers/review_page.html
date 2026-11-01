@@ -939,7 +939,7 @@ function impactsBox(q) {
     a.records.length ? field("Records", el("ul", {}, a.records.map((r) => el("li", {},
       `“${r.title}”`, el("span", { class: "meta nolink" }, ` (id ${r.id})`),
       byPos[r.position] ? el("div", {}, byPos[r.position].map((t) => [tripleLine(t),
-        t.draft ? el("span", { class: "meta" }, "our draft: this record isn't in the ground truth yet") : null])) : null)))) : null,
+        t.draft ? el("span", { class: "meta" }, "our draft: this record isn't finished in the ground truth yet") : null])) : null)))) : null,
     a.rows.length ? field("Rows of the translation table (current or past schema)", el("ul", {}, a.rows.map((r) => el("li", {}, `${r.kind} ${r.crt}`)))) : null,
     a.entries.length ? field("Entries of the ground truth schema", el("ul", {}, a.entries.map((e) => el("li", {}, `${e.kind} ${e.entry}`)))) : null,
     a.rules.length ? field("Rules of the annotation guidelines", el("ul", {}, a.rules.map((r) => el("li", {}, `${r.section}, rule ${r.rule}`)))) : null,

@@ -32,6 +32,12 @@ in the pool, or no record at all is left out, with a note shown before
 paying. The patterns written under such a predicate are left out with it;
 a pattern of the PATTERNS section is checked by its own source line.
 
+When the schema file is the ground truth schema (the same content, wherever the
+file is: is_ground_truth_schema), its patterns are those every step and the
+annotation tool use: the file's, then every one the finished tuning records of
+the ground truth use (common/common_helpers/ground_truth.ground_truth_schema_view),
+so the model is shown, and every row checked against, the same patterns as in 050.
+
 The schema file's own entries are never left out, but one whose "source:"
 line fails the same check (e.g. a component class the annotation tool added to the
 ground truth schema from a held-out record) becomes a note shown before
@@ -47,14 +53,14 @@ twins (docs/terminology.md): evaluated records with the same title, the same
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.audit import log, ref_path
-from common.ground_truth import GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, read_pool
+from common.ground_truth import (GROUND_TRUTH_DIR, GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, ground_truth_schema_view,
+                                 read_ground_truth, read_pool)
 from common.report import named
-from common.schema_io import ANY, ground_truth_source_problem, pattern_key, read_schema, schema_text
+from common.schema_io import ANY, ground_truth_source_problem, parse_source, pattern_key, read_schema, schema_text
 from common.step import repo_path
 from common.stop import Stop
 from common.triples_io import KIND_OF_KEY, component_class_key
@@ -90,17 +96,36 @@ def _made(path: Path) -> dict:
         return {}
 
 
+#: The parts of a schema that make it the schema it is: two files with the same are the same schema.
+SCHEMA_CONTENT = ("entity_classes", "predicates", "patterns", "pinned")
+
+
+def is_ground_truth_schema(path: Path) -> bool:
+    """Whether the schema file holds the ground truth schema (annotations/ground_truth_schema.txt): the same entity
+    classes, predicates (with their definitions), patterns and pins, wherever the file is (a copy elsewhere counts too)."""
+    if not GROUND_TRUTH_SCHEMA.is_file():
+        return False
+    if Path(path).resolve() == GROUND_TRUTH_SCHEMA.resolve():
+        return True
+    mine, theirs = read_schema(path), read_schema(GROUND_TRUTH_SCHEMA)
+    return all(mine.get(k) == theirs.get(k) for k in SCHEMA_CONTENT)
+
+
 def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
     """The records the schema was learned from, for 070's twins (docs/terminology.md): {"known", "ids", "how":
     [sentences]}.
       - the induced schema: the texts the same run of 040 learned from, in its induction_evidence.json, beside the schema;
-      - the ground truth schema: pool positions 0 to GROUND_TRUTH_SCHEMA_FROM - 1, which it was written while annotating;
-      - either way, also the pool records an entry's source line names ("source: ground truth tuning #12").
+      - the ground truth schema (is_ground_truth_schema: by content, so a copy counts too): pool positions 0 to
+        GROUND_TRUTH_SCHEMA_FROM - 1, which it was written while annotating;
+      - either way, also the pool records an entry's source line names ("source: ground truth tuning #12"), read by
+        common.schema_io.parse_source: tuning and held-out ones alike, since both shaped the schema (a held-out one
+        is also a note of step 070's).
     Any other schema file: not known ("known": False), unless an induction_evidence.json of the same run is beside it."""
     path = Path(inputs["schema"])
     by_position = {r["position"]: r["id"] for r in pool}
+    parts = {r["position"]: r.get("part") for r in pool}
     ids, how = set(), []
-    if path.resolve() == GROUND_TRUTH_SCHEMA.resolve():
+    if is_ground_truth_schema(path):
         ids |= {by_position[p] for p in range(GROUND_TRUTH_SCHEMA_FROM) if p in by_position}
         how.append(f"the ground truth schema was written while annotating pool positions 0 to {GROUND_TRUTH_SCHEMA_FROM - 1}")
     else:
@@ -117,8 +142,8 @@ def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
     for sources in (base.get("sources", {}), result.sources):
         for of_kind in sources.values():
             for source in of_kind.values():
-                if re.search(r"ground[\s_-]*truth", source.lower()):
-                    named_positions |= {int(n) for n in re.findall(r"#(\d+)", source)}
+                found = parse_source(source, parts)
+                named_positions |= set(found["tuning"]) | set(found["held_out"])
     found = sorted(p for p in named_positions if p in by_position)
     if found:
         ids |= {by_position[p] for p in found}
@@ -143,6 +168,13 @@ def load_schema(inputs: dict) -> Schema:
 
     pool = read_pool(inputs["splits"])
     parts = {r["position"]: r.get("part") for r in pool}
+    if is_ground_truth_schema(inputs["schema"]):
+        # the ground truth schema as every step sees it: its file's patterns, then every one the finished tuning
+        # records use (common/common_helpers/ground_truth.ground_truth_schema_view), as 050 and the annotation tool
+        # check them
+        folder = Path(inputs["ground_truth"]).parent if inputs.get("ground_truth") else GROUND_TRUTH_DIR
+        view = ground_truth_schema_view(base, read_ground_truth(folder, pool))
+        base = {**base, "patterns": view["patterns"]}
 
     merged = {kind: dict(base[kind]) for kind in KINDS}
     result.came_from = {kind: {name: "schema" for name in base[kind]} for kind in KINDS}

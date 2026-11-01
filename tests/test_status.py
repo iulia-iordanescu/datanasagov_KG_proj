@@ -109,17 +109,37 @@ class Status(unittest.TestCase):
                             or "batch_000.csv has 2 record(s) not finished (pool position): #1, #2" in t for t in gt), gt)
 
     def test_coined_component_class_and_070s_stop(self):
+        """A component class a FINISHED record uses that the ground truth schema lacks is listed (step 070 stops on
+        it); one only an unfinished record uses (a model's uncorrected draft, say) is never proposed for adding; a
+        held-out record's can't be added; a record in two files never crashes the status."""
+        self.splits([("r0", "tuning"), ("r1", "tuning"), ("r2", "held-out"), ("r3", "tuning")])
+        coined = lambda: [t for t in self.texts(self.status(), "Ground truth")             # noqa: E731
+                          if "aren't in the ground truth schema" in t]
         self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
-        gt = self.texts(self.status(), "Ground truth")
-        coined = [t for t in gt if "aren't in the ground truth schema" in t]
-        self.assertEqual(len(coined), 1, gt)
-        self.assertIn("Gizmo (entity class, coined in the ground truth)", coined[0])
-        self.assertIn("Step 070 stops while a finished record uses one (1 do)", coined[0])
+        found = coined()
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("1 entity class(es) or predicate(s) that finished records use aren't in the ground truth schema: "
+                      "Gizmo (entity class).", found[0])
+        self.assertIn("Step 070 stops while a finished record uses one.", found[0])
+        self.assertNotIn("held-out", found[0])
         # a describes triple's entity class counts too, as step 070 checks it
         self.ground_truth(0, [["r1", "r1", "CatalogEntry", "DESCRIBES", "A title", "Gadgetry", "(record structure)", "1"]])
-        coined = [t for t in self.texts(self.status(), "Ground truth") if "aren't in the ground truth schema" in t]
-        self.assertIn("Gadgetry (entity class, coined in the ground truth)", coined[0])
-        self.assertIn("(1 do)", coined[0])
+        self.assertIn("Gadgetry (entity class)", coined()[0])
+        # near misses: the same name in an unfinished record (0), with a bad mark (2), or in a record in two files
+        for mark in ("0", "2"):
+            self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", mark]])
+            self.assertEqual(coined(), [], mark)
+        self.ground_truth(0, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
+        self.ground_truth(1, [["r1", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
+        texts = self.texts(self.status(), "Ground truth")                 # no crash (it used to raise KeyError)
+        self.assertEqual([t for t in texts if "aren't in the ground truth schema" in t], [])
+        self.assertTrue(any("record r1 is in batch_000.csv and batch_001.csv" in t for t in texts), texts)
+        (self.tmp / "annotations" / "ground_truth" / "batch_001.csv").unlink()
+        # a finished held-out record's: listed, and it can't be added (frozen)
+        self.ground_truth(0, [["r2", "MODIS", "Gizmo", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua", "1"]])
+        found = coined()
+        self.assertIn("Gizmo (entity class, used in a held-out record)", found[0])
+        self.assertIn("can't be added (the ground truth schema is frozen for held-out records)", found[0])
 
     def test_rows_with_an_error_point_to_the_checks(self):
         self.output("020_clean", "records.jsonl", json.dumps({"id": "r1", "title": "MODIS", "notes": "MODIS aboard Aqua"}))

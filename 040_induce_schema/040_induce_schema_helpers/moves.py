@@ -34,7 +34,7 @@ import texts as texts_stage
 from common import audit, dropped, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
-from common.ground_truth import read_ground_truth, twin_kinds, twin_table, with_coined
+from common.ground_truth import ground_truth_schema_view, read_ground_truth, read_pool, twin_kinds, twin_table
 from common.schema_io import read_ground_truth_schema
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results, repo_path
@@ -80,9 +80,10 @@ def check_schema(counts, definitions, settings):
 
 def compare_with_ground_truth_schema(inputs, schema) -> dict:
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
-    # its patterns: the file's, and every one the ground truth uses (common/common_helpers/ground_truth.with_coined)
-    gt = read_ground_truth(Path(inputs["ground_truth"]).parent)
-    hand = {**hand, "patterns": with_coined(hand, gt)["patterns"]}
+    # its patterns: the file's, and every one the finished tuning records use (the one view of the ground truth
+    # schema every step and the annotation tool use: common/common_helpers/ground_truth.ground_truth_schema_view)
+    gt = read_ground_truth(Path(inputs["ground_truth"]).parent, read_pool(inputs["splits"]))
+    hand = {**hand, "patterns": ground_truth_schema_view(hand, gt)["patterns"]}
     comparison = compare.compare(hand, schema)
     # the ground truth's own problems (a record annotated twice, a file missing a column, ...), shown as warnings
     # like every other step that reads it; results() takes them out before writing the evidence file

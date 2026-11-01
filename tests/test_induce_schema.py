@@ -247,10 +247,11 @@ class Checking(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
         (tmp / "batch_000.csv").write_text("id,subject\nr1,MODIS\n", encoding="utf-8")
+        (tmp / "splits.json").write_text('{"ground_truth_candidates": {"records": []}}', encoding="utf-8")
         schema = check.Schema()
         comparison = moves.compare_with_ground_truth_schema(
             {"ground_truth_schema": ROOT / "annotations" / "ground_truth_schema.txt",
-             "ground_truth": tmp / "batch_*.csv"}, schema)
+             "ground_truth": tmp / "batch_*.csv", "splits": tmp / "splits.json"}, schema)
         self.assertEqual(len(comparison["ground_truth_problems"]), 1)
         self.assertIn("lacks the column(s)", comparison["ground_truth_problems"][0])
 

@@ -20,7 +20,7 @@ import re
 from pathlib import Path
 
 from common.component_class_mapping import MAPPING_PATH, read_mapping
-from common.ground_truth import GROUND_TRUTH_DIR, TUNING, read_ground_truth, read_pool
+from common.ground_truth import EVALUABLE, FINISHED, GROUND_TRUTH_DIR, TUNING, read_ground_truth, read_pool
 from common.records_io import load_records
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
@@ -295,8 +295,8 @@ def _question(qid: str, title: str, lines: list, at: list, path: Path) -> dict:
                     rec[label] = value
                 elif label == "in the ground truth":
                     if not value.startswith("not yet"):
-                        raise err(n, '"in the ground truth" is written only for a record not in it yet: "- in the '
-                                     'ground truth: not yet (…why…)"')
+                        raise err(n, '"in the ground truth" is written only for a record not finished in it yet: "- '
+                                     'in the ground truth: not yet (…why…)"')
                     rec["in the ground truth"] = value
                     rec["in_ground_truth"], rec["not_yet"] = False, value
                 elif label == "source text":
@@ -561,6 +561,8 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
         pool = {r["id"]: r for r in read_pool(splits_path)}
         gt = read_ground_truth(ground_truth_dir)
     schema = read_ground_truth_schema(schema_path)
+    # "in the ground truth" means finished there (gt.state): an unfinished record's classed triples are drafts, not
+    # checked, both where a question quotes them and in Affects (the one rule for both)
     rules = guideline_rules(guidelines_path) if any(q["rules"] for q in questions) else {}
     mapping = read_mapping(mapping_path)
     if any(q["affects"]["rules"] for q in questions) and not rules:
@@ -602,14 +604,17 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
                 if squeeze(s["text"]) not in text:
                     problems.append(f"{where(q, s['line'])}: the source text \"{s['text']}\" isn't in record {rid}'s "
                                     f"title or notes, word for word.")
-            rows = [row for row in gt.rows if row["id"] == rid]
-            if rec["in_ground_truth"] and rid not in gt.records:
-                problems.append(f"{at}: record {rid} isn't in the ground truth (annotations/ground_truth/): write "
-                                f"\"- in the ground truth: not yet (…)\" in its part, or annotate it first.")
-            elif not rec["in_ground_truth"] and rid in gt.records:
-                problems.append(f"{at}: record {rid} is in the ground truth now ({gt.records[rid]['file']}): take "
-                                f"out the line \"in the ground truth: not yet\", so its classed triples are checked "
-                                f"against it.")
+            rows = [row for row in gt.select(EVALUABLE).rows if row["id"] == rid]
+            finished = gt.state(rid) == FINISHED
+            if rec["in_ground_truth"] and not finished:
+                problems.append(f"{at}: record {rid} isn't finished in the ground truth (annotations/ground_truth/"
+                                + (f"{gt.records[rid]['file']}: {gt.state(rid)}" if rid in gt.records else ": not there")
+                                + f"), so its classed triples are drafts: write \"- in the ground truth: not yet (…)\" "
+                                f"in its part, or finish it first.")
+            elif not rec["in_ground_truth"] and finished:
+                problems.append(f"{at}: record {rid} is finished in the ground truth now ({gt.records[rid]['file']}): "
+                                f"take out the line \"in the ground truth: not yet\", so its classed triples are "
+                                f"checked against it.")
             elif rec["in_ground_truth"]:
                 sources = {squeeze(s["text"]) for s in rec["source_texts"]}
                 for t in rec["triples"]:
@@ -705,10 +710,10 @@ def _check_affects(q: dict, where, pool: dict, gt, schema: dict, mapping: list, 
                             f"\"Affects\" itself: add \"- record at pool position {t['position']}: <its id>\".")
             listed_records.add(t["position"])
         rec = by_position.get(t["position"])
-        t["draft"] = rec is None or rec["id"] not in gt.records
+        t["draft"] = rec is None or gt.state(rec["id"]) != FINISHED
         if t["draft"]:
-            continue                                         # a record not in the ground truth yet: a draft
-        if not any(row["id"] == rec["id"] and all(row[k] == t[k] for k in keys) for row in gt.rows):
+            continue                                         # a record not finished in the ground truth yet: a draft
+        if not any(row["id"] == rec["id"] and all(row[k] == t[k] for k in keys) for row in gt.select(EVALUABLE).rows):
             problems.append(f"{where(q, t['line'])}: this isn't one of the ground truth triples of the record at "
                             f"pool position {t['position']}, word for word.")
     positions = {r["id"]: r["position"] for r in pool.values()} if pool else {}
@@ -718,9 +723,9 @@ def _check_affects(q: dict, where, pool: dict, gt, schema: dict, mapping: list, 
             problems.append(f"{where(q, e['line'])}: the ground truth schema has no {e['kind']} {e['entry']}.")
             continue
         field = ("predicate",) if e["kind"] == "predicate" else ("subject_class", "object_class")
-        for row in gt.rows:
+        for row in gt.select(EVALUABLE).rows:
             # a record not finished yet holds drafted triples, not checked: Affects need not name them until it is
-            if row["id"] in tuning and gt.records.get(row["id"], {}).get("finished")                     and any(row[f] == e["entry"] for f in field) and row["predicate"]:
+            if row["id"] in tuning and any(row[f] == e["entry"] for f in field) and row["predicate"]:
                 k = (positions[row["id"]],) + tuple(row[x] for x in keys)
                 if k not in listed:
                     problems.append(f"{where(q, e['line'])}: {e['kind']} {e['entry']} (ground truth schema) is used by "

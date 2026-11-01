@@ -198,19 +198,21 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(sorted(b["definitions"]["entity_classes"]), b["entity_classes"])
         self.assertEqual(sorted(b["definitions"]["predicates"]), b["predicates"])
         self.assertEqual(set(b["coined"]), {"entity_classes", "predicates"})
-        # the definition under each component class field: every component class the batch uses has an entry
-        # (the describes triple's subject class and predicate are written by code: no field, no definition)
+        # the definition under each component class field: every component class the batch uses has an entry, or
+        # (coined in an unfinished record: a model's draft) an error on its row; nothing coined in a record not
+        # finished is offered (the describes triple's subject class and predicate are written by code: no field)
+        self.assertEqual(b["coined"], {"entity_classes": [], "predicates": []})
         for rec in b["records"]:
             for r in rec["rows"]:
-                for key, kind in (("subject_class", "entity_classes"), ("predicate", "predicates"),
-                                  ("object_class", "entity_classes")):
+                errors = {p["code"] for p in r["problems"] if p["type"] == "error"}
+                for key, kind, code in (("subject_class", "entity_classes", "subject_class_not_in_schema"),
+                                        ("predicate", "predicates", "predicate_not_in_schema"),
+                                        ("object_class", "entity_classes", "object_class_not_in_schema")):
                     if r[key] and r[key] != "X" and (key == "object_class" or r["predicate"] != "DESCRIBES"):
-                        self.assertIn(r[key], b["definitions"][kind], (rec["id"], key))
-        # the pattern buttons' list: every pattern a ground truth triple uses
-        used = {(r["subject_class"], r["predicate"], r["object_class"]) for rec in b["records"]
-                for r in rec["rows"] if r["predicate"] not in ("", "DESCRIBES") and r["object_class"]}
-        self.assertTrue(used)
-        self.assertLessEqual(used, {tuple(p) for p in b["patterns"]})
+                        self.assertTrue(r[key] in b["definitions"][kind] or code in errors, (rec["id"], key))
+        # the pattern buttons' list: the file's, and every pattern a finished tuning record uses (none is finished
+        # yet, so the file's alone)
+        self.assertEqual(b["patterns"], [["Instrument", "ABOARD", "Spacecraft"]])
         r1 = b["records"][1]
         codes = [p["code"] for row in r1["rows"] for p in row["problems"]]
         self.assertIn("describes_undecided", codes)
@@ -233,8 +235,12 @@ class B_Batch(unittest.TestCase):
         saved = post("/api/save", {"n": 0, "records": recs})
         problems = saved["problems"]
         self.assertTrue(all(len(p) == 3 for p in saved["patterns"]))          # the pattern buttons' list, as saved
-        self.assertEqual((saved["definitions"], saved["coined"]), (b["definitions"], b["coined"]))  # the definitions
-                                                                    # under the fields, refreshed after each save
+        # the definitions under the fields, refreshed after each save: r1 (tuning) is finished now, so what it coins
+        # is offered from now on (r3, held-out and unfinished, adds nothing)
+        self.assertEqual(b["coined"], {"entity_classes": [], "predicates": []})
+        self.assertEqual(saved["coined"], {"entity_classes": ["Planet"], "predicates": ["ORBITS"]})
+        self.assertEqual(saved["definitions"]["predicates"], {**b["definitions"]["predicates"], "ORBITS": ""})
+        self.assertIn(["Spacecraft", "ORBITS", "Planet"], saved["patterns"])
         self.assertEqual([len(p) for p in problems], [3, 2, 0, 1])               # one list per row sent
         # MODIS aboard Aqua: no chain links it to the catalog entry (r0, Title r0)
         self.assertEqual([[p["code"] for p in row] for row in problems[0]], [[], ["not_connected"], ["empty"]])
@@ -431,14 +437,19 @@ class C_HandSchema(unittest.TestCase):
         self.assertEqual(schema_flags(), ["pattern_not_in_schema"])           # its first use
         other = TMP / "annotations" / "ground_truth" / "batch_009.csv"
         row = next(r for r in gt_rows() if r["predicate"] == "ORBITS")
-        with open(other, "w", encoding="utf-8", newline="") as fh:
-            w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
-            w.writeheader()
-            w.writerow({**{c: row.get(c, "") for c in ground_truth.FILE_COLUMNS}, "id": "r-other"})
-        try:
-            self.assertEqual(schema_flags(), [])                              # used again elsewhere: no flag
-        finally:
-            other.unlink()
+        # used again elsewhere: no flag only when that use is a finished tuning record's (p4); a record not finished
+        # (a model's uncorrected draft), with a bad mark, held-out (p8) or outside the pool leaves the flag
+        for rid, mark, flags in (("p4", "1", []), ("p4", "0", ["pattern_not_in_schema"]),
+                                 ("p4", "2", ["pattern_not_in_schema"]), ("p8", "1", ["pattern_not_in_schema"]),
+                                 ("r-other", "1", ["pattern_not_in_schema"])):
+            with open(other, "w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
+                w.writeheader()
+                w.writerow({**{c: row.get(c, "") for c in ground_truth.FILE_COLUMNS}, "id": rid, "all_facts_extracted": mark})
+            try:
+                self.assertEqual(schema_flags(), flags, (rid, mark))
+            finally:
+                other.unlink()
 
     def test_held_out_frozen(self):
         """The ground truth schema is frozen for held-out records (annotations/guidelines.md, Before you start): a
@@ -471,9 +482,57 @@ class C_HandSchema(unittest.TestCase):
             tuning = next(p for rec in get("/api/batch?n=0")["records"] for row in rec["rows"] for p in row["problems"]
                           if p["code"] == "object_class_not_in_schema" and row["object_class"] == "Comet")
             self.assertEqual(tuning["add"], {"entry_type": "entity class", "component_class": "Comet"})
+            # patterns are frozen too: a held-out row's pattern no finished tuning record uses gets the frozen
+            # message (and no button), a flag still; the same pattern in a tuning row gets the usual one
+            rows[-1].update(object_class="Spacecraft", predicate="ORBITS")      # Instrument ORBITS Spacecraft: new
+            rows[1].update(subject="MODIS", subject_class="Instrument", predicate="ORBITS", object="Aqua",
+                           object_class="Dataset", source_text="MODIS aboard Aqua")      # r0, tuning: new too
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
+                w.writeheader()
+                w.writerows(rows)
+            flagged = {row["id"]: p for rec in get("/api/batch?n=0")["records"] for row in rec["rows"]
+                       for p in row["problems"] if p["code"] == "pattern_not_in_schema"}
+            self.assertEqual(set(flagged), {"r0", "r1", "r3"})                # r1: Spacecraft ORBITS Planet, its first use
+            self.assertEqual(flagged["r3"]["type"], "flag")
+            self.assertIn("held-out record (pool position 3)", flagged["r3"]["message"])
+            self.assertIn("never becomes one of its patterns", flagged["r3"]["message"])
+            self.assertIsNone(flagged["r3"]["add"])
+            self.assertNotIn("held-out", flagged["r0"]["message"])
         finally:
             path.write_bytes(saved)
             hand.write_bytes(before)
+
+    def test_source_names_finished_tuning_records_only(self):
+        """The "source:" line the tool writes names only finished tuning records using the component class: not one
+        in progress (a model's uncorrected draft), with a bad mark, or outside the pool; none at all when no such
+        record uses it."""
+        hand = TMP / "annotations" / "ground_truth_schema.txt"
+        other = TMP / "annotations" / "ground_truth" / "batch_008.csv"
+        before = hand.read_bytes()
+        uses = [("p5", "0"), ("p6", "2"), ("r-other", "1"), ("p7", "1")]
+
+        def write(chosen):
+            with open(other, "w", encoding="utf-8", newline="") as fh:
+                w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
+                w.writeheader()
+                for rid, mark in chosen:
+                    w.writerow({**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": rid, "subject": "Tail",
+                                "subject_class": "Comet", "predicate": "ABOARD", "object": "Aqua",
+                                "object_class": "Spacecraft", "source_text": "x", "all_facts_extracted": mark})
+        try:
+            for chosen, source in ((uses, "ground truth tuning #7"), (uses[:3], None)):
+                hand.write_bytes(before)
+                write(chosen)
+                added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Comet",
+                                               "definition": "a comet"})
+                self.assertNotIn("error", added, added)
+                s = schema_io.read_ground_truth_schema(hand)
+                self.assertEqual(s["sources"]["entity_classes"].get("Comet"), source, chosen)
+        finally:
+            hand.write_bytes(before)
+            other.unlink(missing_ok=True)
+            get("/api/vocab")                                       # the tool rereads the ground truth schema
 
 
 class D_Mapping(unittest.TestCase):

@@ -66,7 +66,7 @@ ABOARD            is carried on
 - Under an entity class or a predicate of the ground truth schema, an indented line starting `rule 19:` marks it for rule 19 of *Writing a classed triple* (`annotations/guidelines.md`): `rule 19: standalone` or `rule 19: describing` under an entity class (a [standalone entity class](../docs/terminology.md#3-schemas) or a [describing entity class](../docs/terminology.md#3-schemas)), `rule 19: qualifier, a country` under a [qualifier predicate](../docs/terminology.md#3-schemas). Step 060 reads them and doesn't use them.
 - Lines starting with `#` are comments. Any other line is not read: in a schema given with `--schema` it's ignored as prose (like the explanation in the ground truth schema); in the additions file, where it's usually a mistake, it's pointed out before paying.
 
-So `py 060_extract/run.py --schema annotations/ground_truth_schema.txt` extracts with your ground truth schema.
+So `py 060_extract/run.py --schema annotations/ground_truth_schema.txt` extracts with your ground truth schema. Its patterns are then the ones every step and the annotation tool use: the file's, and every one the finished tuning records of the [ground truth](../docs/terminology.md#4-ground-truth-and-samples) use (`common/common_helpers/ground_truth.py`, `ground_truth_schema_view`), never a record still in progress or a [held-out record](../docs/terminology.md#7-evaluating-extraction-step-070). A file with the same content elsewhere (the same entity classes, predicates, definitions, patterns and pins) counts as the ground truth schema too, also for which records it was learned from.
 
 ### Writing the schema additions
 

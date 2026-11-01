@@ -78,10 +78,13 @@ shown or accepted (reviewing them would mean looking at held-out results).
 The checks are step 050's own, all from common/common_helpers/validate.py (source texts,
 "is it in the text", and whether each entity class, predicate, and pattern
 is in the ground truth schema), shown in plain words (MESSAGES). The ground
-truth schema's patterns are its file's plus every one the ground truth uses
-(common/common_helpers/ground_truth.with_coined), so a pattern is flagged only
-the first time it is used, for a look (a wrong entity class or direction),
-and never needs adding. One check is the tool's own (connection_problems): a
+truth schema's patterns are its file's plus every one the FINISHED TUNING records
+use (common/common_helpers/ground_truth.ground_truth_schema_view, the view every
+step uses), so a pattern is flagged until a finished tuning record other than the
+row's own uses it, for a look (a wrong entity class or direction), and never needs
+adding; a model's uncorrected draft or a held-out record never silences it. In a
+held-out record, a pattern no finished tuning record uses gets the frozen message
+(_frozen_message): it never becomes one of the ground truth schema's patterns. One check is the tool's own (connection_problems): a
 ground truth triple that no chain of the record's ground truth triples links to
 the record's id is flagged (not_connected), so the fact that connects it is
 looked for. Another is too (qualifier_problems): a subject instance given two or
@@ -91,21 +94,22 @@ an instance holding one item of a "/" or "+" list whose items the record's text
 never names separately is flagged (slash_list_split), since rule 22 keeps such a
 list whole. The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
-ground truth (common/common_helpers/ground_truth.with_coined), so a coined
-component class is offered for reuse. A coined component class is an error
+finished tuning records (the same view), so a coined component class a person
+checked is offered for reuse, and a model's never is. A coined component class is an error
 until it is added to the ground truth schema, since it could be a typo, and
 step 070 stops while a finished record uses one.
 
 Adding to the ground truth schema: each error "not in the ground truth schema" on a row
 has a button that adds the entity class or predicate, with the one-line definition the
 person types; so does the list, in the ground truth schema's overview (Help -> Ground
-truth schema), of what the ground truth uses that the ground truth schema lacks
+truth schema), of what the finished records use that the ground truth schema lacks
 (ground_truth_schema_gaps). The file is changed by
 common/common_helpers/schema_io.add_to_ground_truth_schema, which adds one entry,
 checks that nothing else changed, and otherwise puts the file back. A component
-class gets a "source:" line naming the ground truth records using it, by part
-("ground truth tuning #3; held-out #8"), so it can be told whether held-out
-records shaped its component classes.
+class gets a "source:" line naming the FINISHED TUNING records using it ("ground
+truth tuning #3, #8"; common/common_helpers/schema_io.source_line), none when
+none does: a model's uncorrected draft or a held-out record is never named as
+what it was learned from.
 
 The ground truth schema is frozen for held-out records (annotations/guidelines.md,
 Before you start): in a held-out record, an entity class or predicate the ground truth
@@ -128,13 +132,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
-from common.audit import ORIGIN_FIELD
 from common.chunking import full_text
 from common.files import write_csv, write_text
-from common.ground_truth import (COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, GROUND_TRUTH_DIR, NUMBERED, PATTERN,
-                                 HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
-                                 ground_truth_schema_gaps as schema_gaps, pattern_of,
-                                 read_ground_truth, read_pool, uses_of, with_coined)
+from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, FINISHED, GROUND_TRUTH_DIR,
+                                 NUMBERED, PATTERN, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
+                                 ground_truth_schema_gaps as schema_gaps, ground_truth_schema_view, marks_state,
+                                 pattern_of, pattern_uses, read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH,
                                             MISSING_TARGET, NONE, NOW_EXISTS, REPEATED, SHARED, STALE, SUGGESTED,
                                             VALUES as MAPPING_VALUES, crt_definitions, gtt_definition,
@@ -148,7 +151,8 @@ from common.review_comments import (CHANGED, GONE, NOT_VERIFIED, TOPIC_HEADINGS,
 from common.expert_questions import OPEN, QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
-    pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema
+    pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema, \
+    source_line
 from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text, norm_text
@@ -291,10 +295,9 @@ class Data:
     def __init__(self):
         self.records = load_records(RECORDS) if RECORDS.exists() else {}
         self.positions, self.parts = {}, {}
-        if SPLITS.exists():
-            pool = read_pool(SPLITS)
-            self.positions = {r["id"]: r["position"] for r in pool}
-            self.parts = {r["id"]: r.get("part") for r in pool}            # "tuning" or "held-out"
+        self.pool = read_pool(SPLITS) if SPLITS.exists() else []          # none: no record is tuning or held-out
+        self.positions = {r["id"]: r["position"] for r in self.pool}
+        self.parts = {r["id"]: r.get("part") for r in self.pool}          # "tuning" or "held-out"
         self.read_hand()
         self._texts = {}
 
@@ -303,6 +306,10 @@ class Data:
         hand = read_ground_truth_schema(GROUND_TRUTH_SCHEMA) if GROUND_TRUTH_SCHEMA.exists() else \
             {"entity_classes": {}, "predicates": {}, "patterns": []}
         self.hand, self.schema_entries = hand, SchemaEntries(hand)
+
+    def ground_truth(self):
+        """The ground truth as it is now, each record with its part (common/common_helpers/ground_truth.py)."""
+        return read_ground_truth(GROUND_TRUTH_DIR, self.pool)
 
     def text(self, rid: str) -> Text | None:
         if rid not in self.records:
@@ -329,10 +336,10 @@ def _group(rows: list) -> list:
     return [(rid, grouped[rid]) for rid in order]
 
 
-def check_row(data: Data, row: dict, title: str, uses: collections.Counter | None = None) -> list:
-    """The row's problems, as {"code", "message", "type": "error" | "flag"}. uses: how many ground truth triples use
-    each pattern (pattern_uses), this row among them: a pattern the file lacks is flagged only where no other
-    ground truth triple uses it."""
+def check_row(data: Data, row: dict, title: str, uses: collections.Counter | None = None, counted: bool = False) -> list:
+    """The row's problems, as {"code", "message", "type": "error" | "flag"}. uses: how many ground truth triples of
+    the finished tuning records use each pattern (pattern_uses over SCHEMA_EVIDENCE); counted: whether this row is one
+    of them. A pattern the file lacks is flagged only where no other such triple uses it."""
     if is_describes(row):
         errors, flags = check_describes(row, row["id"], data.schema_entries)
     elif not (row["subject"] and row["predicate"] and row["object"]):
@@ -341,7 +348,7 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
         text = data.text(row["id"])
         errors, flags = check_triple_instance(row, text, title) if text is not None else ([], [])
         flags = flags + check_against_schema(row, data.schema_entries)
-        if uses is not None and uses[pattern_of(row)] > 1:
+        if uses is not None and uses[pattern_of(row)] - counted > 0:
             flags = [c for c in flags if c != PATTERN_NOT_IN_SCHEMA]
     # an entity class or predicate the ground truth schema lacks must be added to it (or the typo fixed): step 070
     # stops on one in a finished record, so it's an error to fix, not a flag; a pattern used for the first time
@@ -350,8 +357,9 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
     held_out = data.parts.get(row.get("id")) == HELD_OUT
-    return [{"code": c, "type": kind, "add": None if held_out and c in ADDS else _offer(c, row, every),
-             "message": _frozen_message(data, c, row) if held_out and c in ADDS else _message(c, row, every, title)}
+    frozen = lambda c: held_out and (c in ADDS or c == PATTERN_NOT_IN_SCHEMA)          # noqa: E731
+    return [{"code": c, "type": kind, "add": None if frozen(c) else _offer(c, row, every),
+             "message": _frozen_message(data, c, row) if frozen(c) else _message(c, row, every, title)}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
 
 
@@ -361,8 +369,16 @@ INSTEAD = ("use the ground truth schema's {kind} that fits; if none fits, delete
 
 
 def _frozen_message(data: Data, code: str, row: dict) -> str:
-    """The message of an entity class or predicate the ground truth schema lacks, in a held-out record: the ground
-    truth schema is frozen for held-out records, so it can't be added from one."""
+    """The message of an entity class, predicate or pattern the ground truth schema lacks, in a held-out record: the
+    ground truth schema is frozen for held-out records, so nothing joins it from one. A pattern is only a flag: the
+    triple may stay, and its pattern never becomes one of the ground truth schema's."""
+    if code == PATTERN_NOT_IN_SCHEMA:
+        return (f"No finished tuning record's ground truth triple uses {row.get('predicate') or '(none)'} between "
+                f"{row.get('subject_class') or '(none)'} and {row.get('object_class') or '(none)'}, and this is a "
+                f"held-out record (pool position {data.positions.get(row['id'], '?')}): the ground truth schema is "
+                f"frozen while annotating held-out records, so this pattern never becomes one of its patterns. Check "
+                f"the entity classes and the direction; if they are right, keep the triple: the pattern then shapes "
+                f"no prompt and no check.")
     kind, column = ADDS[code]
     article = "an" if kind == "entity class" else "a"
     return (f"\"{row.get(column) or '(none)'}\" isn't {article} {kind} of the ground truth schema, and this is a held-out "
@@ -537,18 +553,14 @@ def _offer(code: str, row: dict, flags: list) -> dict | None:
     return None
 
 
-def pattern_uses(rows) -> collections.Counter:
-    """How many ground truth triples use each pattern (common/common_helpers/ground_truth.pattern_of)."""
-    return collections.Counter(k for r in rows if (k := pattern_of(r)))
-
-
 def _is_blank(row: dict) -> bool:
     """A row with no subject, predicate, and object: in a file, the one row of
     a record that states no facts; on the page, a row not filled in yet."""
     return not (row["subject"] or row["predicate"] or row["object"])
 
 
-def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collections.Counter | None = None) -> dict:
+def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collections.Counter | None = None,
+                counted: bool = False) -> dict:
     record = data.records.get(rid) or {}
     title = record.get("title") or ""
     return {
@@ -562,7 +574,7 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title, uses) + extra + several + slash}
+        "rows": [{**r, "problems": check_row(data, r, title, uses, counted) + extra + several + slash}
                  for r, extra, several, slash in zip(rows, connection_problems(rid, rows), qualifier_problems(rows, qualifier_predicates(data.hand)),
                                                      slash_list_problems(full_text(record) if record else "", rows))],
     }
@@ -570,12 +582,13 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
 
 def batch_view(data: Data, n: int, path: Path) -> dict:
     """The batch as the page shows it: one entry per record, in the file's order."""
-    gt = read_ground_truth()
-    uses = pattern_uses(gt.rows)                       # this file's rows are among them, as saved
+    gt = data.ground_truth()
+    evidence = gt.select(SCHEMA_EVIDENCE)
+    uses, counted = pattern_uses(evidence), set(evidence.ids)      # this file's rows are among them, as saved
     records = [record_view(data, rid, [r for r in rows if not _is_blank(r)],
-                           all(r["all_facts_extracted"] == "1" for r in rows), uses)
+                           marks_state(r["all_facts_extracted"] for r in rows) == FINISHED, uses, rid in counted)
                for rid, rows in _group(_read_rows(path))]
-    vocab = with_coined(data.hand, gt)
+    vocab = ground_truth_schema_view(data.hand, gt)
     return {"n": n, "file": path.name, "records": records,
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
             **definitions_view(data, gt), "patterns": patterns_view(data, gt),
@@ -585,35 +598,30 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
 
 def definitions_view(data: Data, gt=None) -> dict:
     """For the page's list of component classes and the definition under each component class field: each one's
-    definition (empty for a coined one), and which are coined. Sent again after each save, as the schema may grow."""
-    vocab = with_coined(data.hand, gt or read_ground_truth())
+    definition (empty for a coined one), and which are coined (in the finished tuning records:
+    ground_truth_schema_view). Sent again after each save, as the schema may grow."""
+    vocab = ground_truth_schema_view(data.hand, gt or data.ground_truth())
     return {"definitions": {"entity_classes": vocab["entity_classes"], "predicates": vocab["predicates"]},
             "coined": vocab["coined"]}
 
 
 def patterns_view(data: Data, gt=None) -> list:
-    """The ground truth schema's patterns (the file's, then every one the ground truth uses), for the page's
-    pattern buttons under a ground truth triple: [subject class, predicate, object class]."""
-    return [list(t) for t in with_coined(data.hand, gt or read_ground_truth())["patterns"]]
+    """The ground truth schema's patterns (the file's, then every one the finished tuning records use:
+    ground_truth_schema_view), for the page's pattern buttons under a ground truth triple: [subject class, predicate,
+    object class]."""
+    return [list(t) for t in ground_truth_schema_view(data.hand, gt or data.ground_truth())["patterns"]]
 
 
 # --------------------------------------------------------------------------
 # adding to the ground truth schema
 # --------------------------------------------------------------------------
 
-def _learned_from(data: Data, rows: list) -> str:
+def _learned_from(data: Data, evidence, kind: str, name: str) -> str:
     """Where a component class was learned, as a "source:" line the source check
-    (common/common_helpers/schema_io.ground_truth_source_problem) can read: the
-    ground truth records using it, by part, as pool positions."""
-    by_part, outside = {TUNING: set(), HELD_OUT: set()}, []
-    for rid in dict.fromkeys(r["id"] for r in rows):
-        if data.parts.get(rid) in by_part and rid in data.positions:
-            by_part[data.parts[rid]].add(data.positions[rid])
-        else:
-            outside.append(rid)
-    bits = [f"{part} " + ", ".join(f"#{p}" for p in sorted(ps)) for part, ps in by_part.items() if ps]
-    bits += ["not in the pool: " + ", ".join(outside)] if outside else []
-    return "ground truth " + "; ".join(bits) if bits else ""
+    (common/common_helpers/schema_io.parse_source) reads: the finished tuning records using it (evidence: the ground
+    truth's SCHEMA_EVIDENCE), by pool position; "" when none does (a model's uncorrected draft, a record still in
+    progress, or a held-out record is never named)."""
+    return source_line(data.positions[r["id"]] for r in uses_of(evidence, kind, name) if r["id"] in data.positions)
 
 
 def ground_truth_schema_gaps(data: Data, gt) -> dict:
@@ -637,7 +645,8 @@ def add_to_hand(data: Data, item: dict) -> str:
             raise ValueError("entry_type must be entity class or predicate")
         name = str(item.get("component_class") or "").strip()
         refuse_if_held_out(data, item, f"adding {name}")
-        uses = uses_of(read_ground_truth(), kind, name)
+        gt = data.ground_truth()
+        uses = uses_of(gt.select(ANNOTATED), kind, name)           # a held-out record's use, in any state, refuses it
         held = sorted({(data.positions.get(r["id"], -1), r["id"]) for r in uses if data.parts.get(r["id"]) == HELD_OUT})
         if held:
             raise ValueError(f"{name} is used by {len(held)} held-out record(s): "
@@ -645,7 +654,7 @@ def add_to_hand(data: Data, item: dict) -> str:
                              + ". The ground truth schema is frozen for held-out records, so it can't be added from them. "
                              f"In those records, " + INSTEAD.format(kind=kind)
                              + f". If a tuning record needs {name}, add it once no held-out record uses it.")
-        source = _learned_from(data, uses)
+        source = _learned_from(data, gt.select(SCHEMA_EVIDENCE), kind, name)
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
         return f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else "")
@@ -664,7 +673,7 @@ def list_batches() -> list:
         out.append({"n": n, "draft": drafts[n].name if n in drafts else None,
                     "ground_truth": gt.name if gt else None,
                     "records": len(grouped),
-                    "finished": sum(all(r["all_facts_extracted"] == "1" for r in rs) for _, rs in grouped)})
+                    "finished": sum(marks_state(r["all_facts_extracted"] for r in rs) == FINISHED for _, rs in grouped)})
     return out
 
 
@@ -687,28 +696,31 @@ def save_batch(data: Data, n: int, records: list) -> list:
     line up with its rows). "finished" sets all_facts_extracted on every row
     of the record. Rows not filled in aren't written; a record left with no
     rows is written as one row holding only its id ("states no facts")."""
-    out, problems = [], []
-    # the patterns as they will be once this file is written: the other files' uses, and this one's from the page
-    others = [r for r in read_ground_truth().rows if not r[ORIGIN_FIELD][0].split("#")[0].endswith("/" + file_name(n))]
-    sent = [{c: str(r.get(c) or "").strip() for c in FILE_COLUMNS} for rec in records for r in rec.get("rows", [])]
-    uses = pattern_uses(others + sent)
+    out, problems, page_rows = [], [], []
     for rec in records:
         mark = "1" if rec.get("finished") else "0"
-        title = (data.records.get(rec["id"]) or {}).get("title") or ""
-        written, found = [], []
+        rows, written = [], []
         for r in rec.get("rows", []):
             row = {c: str(r.get(c) or "").strip() for c in FILE_COLUMNS}      # drafted_by: kept; empty on a row you add
             row["id"], row["all_facts_extracted"] = rec["id"], mark
             if is_describes(row):
                 row["subject"], row["source_text"] = rec["id"], ENTRY_SOURCE
-            found.append(check_row(data, row, title, uses))
+            rows.append(row)
             if not _is_blank(row):
                 written.append(row)
+        page_rows.append(rows)
+        out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
+    # the patterns as they will be once this file is written (the ground truth with this file's rows from the page):
+    # those of the finished tuning records, the only ones that silence a pattern's flag
+    evidence = data.ground_truth().with_file(file_name(n), out).select(SCHEMA_EVIDENCE)
+    uses, counted = pattern_uses(evidence), set(evidence.ids)
+    for rec, rows in zip(records, page_rows):
+        title = (data.records.get(rec["id"]) or {}).get("title") or ""
+        found = [check_row(data, row, title, uses, rec["id"] in counted) for row in rows]
         record = data.records.get(rec["id"])
         found = [f + extra + several + slash for f, extra, several, slash in zip(
             found, connection_problems(rec["id"], rec.get("rows", [])), qualifier_problems(rec.get("rows", []), qualifier_predicates(data.hand)),
             slash_list_problems(full_text(record) if record else "", rec.get("rows", [])))]
-        out.extend(written or [{c: "" for c in FILE_COLUMNS} | {"id": rec["id"], "all_facts_extracted": mark}])
         problems.append(found)
     # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone
     path = GROUND_TRUTH_DIR / file_name(n)
@@ -729,8 +741,9 @@ def _gtt(data: Data) -> dict:
 
 
 def _coined(data: Data) -> dict:
-    """{kind: {component_class_key(coined component class)}}: the ones the ground truth uses that the file lacks."""
-    coined = with_coined(data.hand, read_ground_truth())["coined"]
+    """{kind: {component_class_key(coined component class)}}: the ones the ground truth uses (any record, in any
+    state: ANNOTATED) that the file lacks."""
+    coined = with_coined(data.hand, data.ground_truth().select(ANNOTATED))["coined"]
     return {kind: {component_class_key(n) for n in coined[key]} for kind, key in KIND_KEYS.items()}
 
 
@@ -1176,8 +1189,8 @@ def vocab_view(data: Data) -> dict:
     ground truth triples and describes triples, and files, use it, and how many rows of the translation
     table translate to it."""
     data.read_hand()                                   # the file as it is now: it may have been edited by hand
-    gt = read_ground_truth()
-    vocab = with_coined(data.hand, gt)
+    every = data.ground_truth().select(ANNOTATED)     # every record, in any state: what renaming and merging reach
+    vocab = with_coined(data.hand, every)
     table = read_mapping(MAPPING_PATH) if MAPPING_PATH.exists() else []
     files = {}
     for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN)):
@@ -1189,7 +1202,7 @@ def vocab_view(data: Data) -> dict:
     for kind, key in KIND_KEYS.items():
         coined = {component_class_key(n) for n in vocab["coined"][key]}
         out[kind] = [{"component_class": n, "definition": d or "", "in_hand": component_class_key(n) not in coined,
-                      "uses": len(uses_of(gt, kind, n)),
+                      "uses": len(uses_of(every, kind, n)),
                       "files": sorted(files.get((kind, component_class_key(n)), [])),
                       "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
                                           if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(n)],
@@ -1216,8 +1229,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
         raise ValueError("kind must be entity class or predicate")
     old, new = str(old or "").strip(), str(new or "").strip()
     data.read_hand()                                   # the file as it is now: it may have been edited by hand
-    gt = read_ground_truth()
-    vocab = with_coined(data.hand, gt)[KIND_KEYS[kind]]
+    vocab = with_coined(data.hand, data.ground_truth().select(ANNOTATED))[KIND_KEYS[kind]]
     spelled = {component_class_key(n): n for n in vocab}
     if component_class_key(old) not in spelled:
         raise ValueError(f"{old} isn't {'an entity class' if kind == 'entity class' else 'a predicate'} of the ground "
@@ -1364,7 +1376,7 @@ def define_vocab(data: Data, item: dict) -> dict:
         content = redefine_in_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "")
         stale = []
         if MAPPING_PATH.exists():
-            now = gtt_definitions(with_coined(read_schema_bytes(content), read_ground_truth()))
+            now = gtt_definitions(with_coined(read_schema_bytes(content), data.ground_truth().select(ANNOTATED)))
             stale = [r["component_class_from_past_or_crt_schema"] for r in read_mapping(MAPPING_PATH)
                      if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(name)
                      and is_checked(r) and is_stale_gtt(r, now)]
@@ -1413,14 +1425,14 @@ def make_handler(data: Data):
                         and (FONTS / url.path[7:]).is_file():
                     self._send(200, (FONTS / url.path[7:]).read_bytes(), "font/woff2")
                 elif url.path == "/api/batches":
-                    gt = read_ground_truth()
+                    gt = data.ground_truth()
                     self._json({"batches": list_batches(), "records_found": bool(data.records),
                                 "problems": gt.problems, "gaps": ground_truth_schema_gaps(data, gt)})
                 elif url.path == "/api/status":
                     # with the levels the page compares with (common/common_helpers/status.py)
                     self._json({**project_status(data.records or None), "levels": {"TO_DO": TO_DO, "LOOK": LOOK}})
                 elif url.path == "/api/gaps":
-                    self._json(ground_truth_schema_gaps(data, read_ground_truth()))
+                    self._json(ground_truth_schema_gaps(data, data.ground_truth()))
                 elif url.path == "/api/mapping":
                     self._json(mapping_view(data))
                 elif url.path == "/api/partial":
@@ -1465,7 +1477,7 @@ def make_handler(data: Data):
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if url.path == "/api/save":
                     problems = save_batch(data, int(body["n"]), body["records"])
-                    gt = read_ground_truth()
+                    gt = data.ground_truth()
                     self._json({"problems": problems, "patterns": patterns_view(data, gt), **definitions_view(data, gt)})
                 elif url.path == "/api/mapping/save":
                     save_mapping(data, body["rows"])

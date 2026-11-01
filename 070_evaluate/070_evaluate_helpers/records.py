@@ -38,22 +38,20 @@ from __future__ import annotations
 
 import collections
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from types import SimpleNamespace
 
 from common.audit import ref_path
 from common.files import read_csv
-from common.ground_truth import (HELD_OUT, coined_uses, fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds,
-                                 with_coined)
+from common.ground_truth import (BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO_FIX, UNFINISHED, coined_uses, fair_prefix,
+                                 pool_parts, read_ground_truth, read_pool, twin_kinds, with_coined)
 from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import load_records
 from common import dropped
 from common.report import named
-from common.schema_io import read_ground_truth_schema
+from common.schema_io import parse_source, read_ground_truth_schema
 from common.step import MANIFEST_NAME, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.triples_io import is_describes
@@ -112,8 +110,8 @@ def refusal(repeats: list) -> str:
 def check_coined(gt, ground_truth_schema_path) -> None:
     """Stop if a finished record's ground truth triples or describes triple use an entity class or predicate that
     the ground truth schema lacks (a coined one): stage 2 translates only into the ground truth schema. Only the
-    finished records are evaluated, so only theirs must use it."""
-    finished = SimpleNamespace(rows=[r for r in gt.rows if gt.records.get(r["id"], {}).get("finished")])
+    finished records are evaluated (EVALUABLE, every part), so only theirs must use it."""
+    finished = gt.select(EVALUABLE)
     coined = with_coined(read_ground_truth_schema(ground_truth_schema_path), finished)["coined"]
     if coined["entity_classes"] or coined["predicates"]:
         uses = coined_uses(finished, coined)
@@ -124,21 +122,19 @@ def check_coined(gt, ground_truth_schema_path) -> None:
                    f"button), or fix the typo where it's used; {AGAIN}")
 
 
-#: In a "source:" line of the ground truth schema (written by the annotation tool), the held-out records it names.
-HELD_OUT_SOURCE = re.compile(r"held-out\s+(#\d+(?:\s*,\s*#\d+)*)")
-
-
 def held_out_sources(ground_truth_schema_path, pool_rows: list) -> list:
     """The ground truth schema's entity classes and predicates whose "source:" line names a held-out record, i.e. that
     were added while a held-out record used them, though the ground truth schema is frozen for held-out records
-    (annotations/guidelines.md, Before you start): [(kind, component class, source, [(pool position, record id)])]."""
+    (annotations/guidelines.md, Before you start): [(kind, component class, source, [(pool position, record id)])].
+    Read by common.schema_io.parse_source: a position counts as held-out by its part in the pool, whatever word stands
+    before it ("ground truth tuning #12, #8" names held-out #8 when #8 is held-out)."""
     held = {r["position"]: r["id"] for r in pool_rows if r.get("part") == HELD_OUT}
+    parts = {r["position"]: r.get("part") for r in pool_rows}
     sources = read_ground_truth_schema(ground_truth_schema_path)["sources"]
     found = []
     for section, kind in (("entity_classes", "entity class"), ("predicates", "predicate")):
         for name, source in sources[section].items():
-            named_ = [int(n) for m in HELD_OUT_SOURCE.finditer(source) for n in re.findall(r"\d+", m.group(1))]
-            records = [(n, held[n]) for n in named_ if n in held]
+            records = [(n, held[n]) for n in parse_source(source, parts)["held_out"]]
             if records:
                 found.append((kind, name, source, records))
     return found
@@ -166,17 +162,24 @@ def _mark_twins(evaluated: Evaluated, catalog: dict, inputs: dict) -> None:
         r["twin"] = kind[r["id"]]
 
 
-def _first_gap(order: list, part: str, positions: dict, taken: set, finished: set, in_ground_truth) -> str:
-    """The first record of one part (`order`: that part's ids in pool order) that is not taken, why, and what brings
-    it in (for messages); "" if none."""
+def _first_gap(order: list, part: str, positions: dict, taken: set, gt) -> str:
+    """The first record of one part (`order`: that part's ids in pool order) that is not taken, why (its state in the
+    ground truth, gt.state), and what brings it in (for messages); "" if none."""
     gap = next((rid for rid in order if rid not in taken), None)
     if gap is None:
         return ""
     where = f"pool position #{positions[gap]} (`{gap}`)"
     head = f"The first {part} record missing from the fair sample of the {part} part is {where}"
-    if gap in finished:
+    state = gt.state(gap)
+    if gt.records.get(gap, {}).get("finished"):
         return f"{head}: finished, but not extracted by 060's last run. Run `py 060_extract/run.py`"
-    if gap in in_ground_truth:
+    if state == IN_TWO_FILES:
+        return (f"{head}: in {' and '.join(gt.records[gap]['files'])}, annotated twice. Delete its rows from all "
+                f"files but one (by hand), finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
+    if state == BAD_MARK:
+        return (f"{head}: its all_facts_extracted is neither 0 nor 1 on some row. Tick *All facts extracted* on it in "
+                f"`py helpers/annotate.py` if every fact is there, run `py 060_extract/run.py`")
+    if state == UNFINISHED:
         return f"{head}: not finished in the ground truth. Finish it in `py helpers/annotate.py` (tick *All facts extracted*), run `py 060_extract/run.py`"
     return (f"{head}: not in the ground truth yet. Draft it with "
             f"`py 050_annotate/run.py` (set --part {part}), correct and finish it in `py helpers/annotate.py`, run `py 060_extract/run.py`")
@@ -205,12 +208,12 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     check_settings(settings, {})
     evaluated = Evaluated()
     gt_files = input_files(Path(inputs["ground_truth"]))
-    gt = evaluated.ground_truth = read_ground_truth(gt_files[0].parent)        # run_step made sure there is one
+    pool_rows = read_pool(inputs["splits"])
+    gt = evaluated.ground_truth = read_ground_truth(gt_files[0].parent, pool_rows)   # run_step made sure there is one
     evaluated.notes += [f"Ground truth, {p}" for p in gt.problems]
     if gt.repeats:
         raise Stop(refusal(gt.repeats))
     check_coined(gt, inputs["ground_truth_schema"])
-    pool_rows = read_pool(inputs["splits"])
     if any("part" not in r for r in pool_rows):
         splits = repo_path(inputs["splits"])
         raise Stop(f"{splits} has no tuning / held-out part for its records (an older step 030 wrote it), so 070 "
@@ -256,8 +259,8 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     evaluated.catalog_records = len(catalog)
     titles = {rid: (r.get("title") or "") for rid, r in catalog.items()}
 
-    finished = {rid for rid, r in gt.records.items() if r["finished"]}
-    evaluated.unfinished = len(gt.records) - len(finished)
+    finished = set(gt.select(EVALUABLE).ids)
+    evaluated.unfinished = len(gt.select(TO_FIX).ids)
     not_extracted = sorted(finished - extracted_ids)
     # Why each was not extracted: 060's model calls failed for it (its details file, key left_out, or for an older
     # 060 its records' status), or 060's last run didn't choose it.
@@ -285,7 +288,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     part_of = {r["id"]: r["part"] for r in pool_rows}
 
     def gaps_of(only=None) -> str:      # the first gap of each part (of those with a record in `only`, if given), as sentences
-        found = [_first_gap(order, name, positions, taken, finished, gt.records) for name, order in parts.items()
+        found = [_first_gap(order, name, positions, taken, gt) for name, order in parts.items()
                  if only is None or any(part_of.get(rid) == name for rid in only)]
         return "; ".join(g for g in found if g)
 
@@ -313,7 +316,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
                                f"Nothing to do for those: only pool records can form a fair sample." if not_in_pool else ""))
 
     rows_of = {}
-    for r in gt.rows:
+    for r in gt.select(EVALUABLE).rows:
         rows_of.setdefault(r["id"], []).append(r)
     for rid in evaluated.pool:
         if rid not in fair:

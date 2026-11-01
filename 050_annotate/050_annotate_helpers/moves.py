@@ -22,7 +22,7 @@ import records as records_stage
 from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.ground_truth import (COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
+from common.ground_truth import (ANNOTATED, COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
                                  file_name)
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table, this_report
 from common.step import Results, repo_path
@@ -75,7 +75,7 @@ def build_rows(chosen, replies) -> Drafts:
 
 
 def check_ground_truth(chosen) -> list:
-    typos = check_rows(chosen.ground_truth, chosen.records)
+    typos = check_rows(chosen.ground_truth.select(ANNOTATED), chosen.records)       # every row of every file
     log.info(f"  ground truth: {len(chosen.ground_truth.records)} records in "
              f"{len(chosen.ground_truth.files)} file(s); {len(typos)} row(s) to fix, "
              f"{len(chosen.ground_truth.problems)} other problem(s)")
@@ -123,8 +123,8 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
                         f"`py 050_annotate/run.py` again.")
     coined = [n for kind in ("entity_classes", "predicates") for n in chosen.coined[kind]]
     if coined:
-        warnings.append(f"{len(coined)} component class(es) used in the ground truth aren't in the ground truth schema, so the model "
-                        f"saw them without a definition: "
+        warnings.append(f"{len(coined)} component class(es) used in the ground truth's finished tuning records aren't in the "
+                        f"ground truth schema, so the model saw them without a definition: "
                         f"{named([f'{n} (coined in the ground truth)' for n in coined], 5, '; ')}. "
                         f"Add each one you mean to keep, with a one-line definition, to the ground truth "
                         f"schema, annotations/ground_truth_schema.txt (the buttons of the "

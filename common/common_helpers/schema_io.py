@@ -91,6 +91,9 @@ translates the current schema into the ground truth schema.
     schema_text(schema)       the text shape, for a prompt
     additions_text(header, entries)       the additions file, written by the annotation tool
     ground_truth_source_problem(source, parts)   why a schema entry's source isn't fair, or None
+    parse_source(source, parts)   the one reading of a "source:" line: the tuning, held-out and unknown pool
+                              positions it names (each position's part from the pool, never from its words)
+    source_line(positions)    the line the annotation tool writes: "ground truth tuning #3, #8"
     add_to_ground_truth_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
 
 read_ground_truth_schema(path) is read_schema for the ground truth schema's text file.
@@ -293,6 +296,37 @@ def schema_text(schema: dict) -> str:
 # the additions file (annotations/schema_additions.txt)
 # --------------------------------------------------------------------------
 
+#: A "source:" line names the ground truth in any spelling ("ground truth", "ground-truth", "Ground_Truth").
+GROUND_TRUTH_WORDS = re.compile(r"ground[\s_-]*truth", re.I)
+#: A record of the pool, named by its pool position in a source line: "#12".
+SOURCE_POSITION = re.compile(r"#(\d+)")
+
+
+def parse_source(source: str, parts: dict) -> dict:
+    """What a schema entry's "source:" line says about the ground truth, the one reading of it (step 060's source
+    check and learned_from, step 070's note on held-out sources, the annotation tool): {"ground_truth": whether it
+    names the ground truth, "says_tuning": whether it says "tuning", "tuning": [pool positions of tuning records],
+    "held_out": [pool positions of held-out records], "unknown": [numbers that aren't pool positions]}, positions in
+    the order written. Each position's part comes from the pool (parts: {pool position: "tuning" | "held-out"},
+    030's splits.json), never from the words around it: "ground truth tuning #12, #8" names held-out #8 when #8 is
+    held-out. A source that doesn't name the ground truth names no record."""
+    out = {"ground_truth": bool(GROUND_TRUTH_WORDS.search(source or "")),
+           "says_tuning": bool(re.search(r"\btuning\b", (source or "").lower())),
+           "tuning": [], "held_out": [], "unknown": []}
+    if out["ground_truth"]:
+        for n in dict.fromkeys(int(x) for x in SOURCE_POSITION.findall(source)):
+            out["held_out" if parts.get(n) == HELD_OUT else "tuning" if n in parts else "unknown"].append(n)
+    return out
+
+
+def source_line(tuning_positions) -> str:
+    """The "source:" line naming the ground truth records an entry was learned from, as parse_source reads it:
+    "ground truth tuning #3, #8", or "" for none. Only tuning records are ever named (the annotation tool passes the
+    finished tuning records using the entry: common.ground_truth.SCHEMA_EVIDENCE)."""
+    positions = sorted(set(tuning_positions))
+    return "ground truth tuning " + ", ".join(f"#{p}" for p in positions) if positions else ""
+
+
 def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     """Why a schema entry whose source names the ground truth isn't fair to
     use, or None. Such a source must say "tuning" and name its records by
@@ -300,22 +334,20 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
     tuning part: a component class learned from a held-out record would let held-out
     records influence the schema, and the held-out numbers would no longer
     measure records the pipeline was never adjusted to. parts is {pool position: "tuning" | "held-out"}
-    (030's splits.json). Shared by step 060 (which leaves such a schema entry
-    out) and the annotation tool (which refuses to save it)."""
-    if not re.search(r"ground[\s_-]*truth", source.lower()):    # any spelling: "ground-truth" too
+    (030's splits.json). Read by parse_source, so a held-out position is refused whatever word stands before it.
+    Shared by step 060 (which leaves such a schema entry out) and the annotation tool (which refuses to save it)."""
+    found = parse_source(source, parts)
+    if not found["ground_truth"]:
         return None
-    positions = [int(n) for n in re.findall(r"#(\d+)", source)]
-    if not positions:
+    if not (found["tuning"] or found["held_out"] or found["unknown"]):
         return "says ground truth but names no record (write: ground truth tuning #12)"
-    held = [p for p in positions if parts.get(p) == HELD_OUT]
-    if held:
-        return ("comes from held-out record(s) " + ", ".join(f"#{p}" for p in held)
+    if found["held_out"]:
+        return ("comes from held-out record(s) " + ", ".join(f"#{p}" for p in found["held_out"])
                 + ", which must not shape the schema (name only tuning records, or delete the entry)")
-    if not re.search(r"\btuning\b", source.lower()):
+    if not found["says_tuning"]:
         return "names ground truth records but doesn't say tuning (write: ground truth tuning #12)"
-    unknown = [p for p in positions if p not in parts]
-    if unknown:
-        return "names " + ", ".join(f"#{p}" for p in unknown) + ", not a pool position: check the number"
+    if found["unknown"]:
+        return "names " + ", ".join(f"#{p}" for p in found["unknown"]) + ", not a pool position: check the number"
     return None
 
 
