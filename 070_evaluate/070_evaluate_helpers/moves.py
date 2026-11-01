@@ -26,7 +26,7 @@ import records as records_stage
 import stats
 from common import audit, dropped, extraction, llm, text_match
 from common.audit import ORIGIN_COLUMN, check_origins, log
-from common.files import append_csv, read_csv, write_csv, write_json, write_text
+from common.files import append_csv, locked, read_csv, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, per_text_table, this_report
 from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
@@ -94,6 +94,7 @@ def _margin_check_lines(checks: dict | None) -> list:
         return []
     ok = lambda good: "holds" if good else "**doesn't hold**"           # noqa: E731
     bound = checks["at_bound"]
+    fewer = checks.get("fewer_redraws") or {}
     big = checks["largest_record"]
     share = checks["catalog_proportion"] or 0
     return ["#### The margin of error's assumptions, checked", "",
@@ -106,6 +107,10 @@ def _margin_check_lines(checks: dict | None) -> list:
             f"| The range isn't at 0% or 100% | metrics whose range reaches 0% or 100%: "
             f"{named(bound, 5) if bound else 'none'} | {ok(not bound)}: there, a percentile range is too narrow"
             f"{'; more evaluated records make this rarer' if bound else ''} |",
+            f"| Every redraw gives a value | metrics undefined in some redraws (their range comes from the redraws "
+            f"that gave a value): "
+            + (named([f"{label} ({used:,} of {stats.REDRAWS:,})" for label, used in fewer.items()], 5) if fewer else "none")
+            + f" | {ok(not fewer)}{': a range from fewer redraws is less steady' if fewer else ''} |",
             f"| No one record dominates | the largest record's proportion of the occurrences: "
             f"{readings.pct(big['extracted triples']['proportion'])} (`{big['extracted triples']['record']}`); of the "
             f"ground truth triples: {readings.pct(big['ground truth triples']['proportion'])} "
@@ -395,24 +400,51 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
 def _keep_evaluation(evaluated, translation, output, tuning: list, inputs_manifest: dict):
     """Write this run's tuning records' counts and recipe to evaluations/<run id>.json (never overwritten, one file
     per run), for py helpers/compare_runs.py. Held-out records are never kept: comparing runs is tuning."""
-    run_id = audit.current_run_id() or dt.datetime.now().strftime("070_evaluate_%Y-%m-%d_%H%M%S")
+    run_id = audit.current_run_id() or dt.datetime.now().strftime("070_evaluate_%Y-%m-%d_%H%M%S_%f")
     path = output / EVALUATIONS_DIR / f"{run_id}.json"
+    pending = {}
+    for row in evaluated.pending:
+        pending.setdefault(row["id"], []).append({k: row[k] for k in PENDING_COLUMNS})
+    # Each record's own fingerprints, so py helpers/compare_runs.py can tell a record whose ground truth, pending
+    # rows or translation changed between runs (and leave it out) from one whose extraction did (the thing compared).
     write_json(path, {
         "run_id": run_id, "recipe": _recipe(evaluated, translation, inputs_manifest),
         "records": [{"id": r["id"], "position": r["position"], "stratum": r["stratum"], "twin": r.get("twin"),
                      "ground_truth_sha256": _fingerprint(_ground_truth_rows(r)),
+                     "pending_sha256": _fingerprint(pending.get(r["id"], [])),
+                     "translation": _translation_of(r, translation),
                      "counts": dict(r["compared"]["counts"]),
                      "describes": {k: r["compared"]["describes"][k] for k in ("truth", "said", "right")}}
-                    for r in tuning]})
+                    for r in tuning]}, new=True)
     return path
 
 
-def _log_look(evaluated, translation, schema_file: str) -> dict:
+def _translation_of(r: dict, translation) -> dict:
+    """How the translation table translated this record's occurrences: {the classed triple's shape as extracted
+    (subject class | predicate | object class) : its shape translated, with "swapped" when subject and object were
+    turned}. Only the shapes the record's occurrences have, so two runs can be compared on the shapes they share: a
+    shape translated otherwise in another run means the translation changed for this record; a shape only one run
+    has is the extraction's difference, the thing compared."""
+    out = {}
+    for f in r["extracted"]:
+        t = pairing.translate(f, translation)
+        swapped = t["crt"]["subject_class"] != f["subject_class"] and t["crt"]["object_class"] != f["object_class"] \
+            and f["subject_class"] != f["object_class"]
+        out[" | ".join(f[k] for k in ("subject_class", "predicate", "object_class"))] = \
+            " | ".join(t[k] for k in ("subject_class", "predicate", "object_class")) + (" (swapped)" if swapped else "")
+    return out
+
+
+def _log_look(evaluated, translation, schema_file: str) -> dict | None:
     """Add one line to annotations/held_out_looks.csv (never changing a line already there): what the look saw (the
     current schema, 060's run, fingerprints of the translation used and of the held-out records' ground truth).
     Returns {"count": looks so far, "changed": [what differs from the previous look, as readings.LOOK_INPUTS names
-    it] or None for a first look, "previous": that look's row or None}."""
+    it] or None for a first look, "previous": that look's row or None}; None, and no line, when no held-out record
+    was evaluated (nothing was seen, so nothing is counted as a look). The count is read and the line added under
+    one lock (common.files.locked), so two runs at once get two different counts."""
     held = sorted((r for r in evaluated.records if r["part"] == HELD_OUT), key=lambda r: r["id"])
+    if not held:
+        return None
     rows = [_ground_truth_rows(r) for r in held]
     look = {"date": dt.date.today().isoformat(), "run_id": audit.current_run_id() or "", "schema": schema_file,
             "held_out_records": str(len(held)),
@@ -425,8 +457,9 @@ def _log_look(evaluated, translation, schema_file: str) -> dict:
             raise Stop(f"{repo_path(LOOKS)} has the columns {header}, not the ones 070 writes "
                        f"({','.join(LOOKS_COLUMNS)}), so a look added now would land in the wrong columns. Its first "
                        f"line was probably edited: restore it from Git (`git diff {repo_path(LOOKS)}`), {AGAIN}")
-    before = read_csv(LOOKS) if LOOKS.exists() else []
-    append_csv(LOOKS, LOOKS_COLUMNS, [look])
+    with locked(LOOKS):
+        before = read_csv(LOOKS) if LOOKS.exists() else []
+        append_csv(LOOKS, LOOKS_COLUMNS, [look])
     previous = before[-1] if before else None
     changed = None if previous is None else [why for k, why in readings.LOOK_INPUTS.items()
                                              if (previous.get(k) or "") != look[k]]
@@ -706,13 +739,16 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                               f"evaluated; read the numbers with it in mind ({this_report()}, section *Results*, "
                               f"subsection *Metrics: {part} part*, table *Per stratum*).")
         checks = v["margin_checks"]
-        if checks and (checks["at_bound"]
+        if checks and (checks["at_bound"] or checks.get("fewer_redraws")
                        or (checks["catalog_proportion"] or 0) > stats.FINITE_NEGLIGIBLE):
             share = checks["catalog_proportion"] or 0
             why = []
             if checks["at_bound"]:
                 why.append(f"the range of {named(checks['at_bound'], 5)} reaches 0% or 100%, where a percentile range "
                            f"is too narrow (more evaluated records make this rarer)")
+            if checks.get("fewer_redraws"):
+                why.append(f"the range of {named([f'{k} ({n:,} of {stats.REDRAWS:,} redraws)' for k, n in checks['fewer_redraws'].items()], 5)} "
+                           f"comes from the redraws where the number was defined only, so it is less steady")
             if share > stats.FINITE_NEGLIGIBLE:
                 why.append(f"{readings.pct(share)} of the catalog is evaluated, above "
                            f"{100 * stats.FINITE_NEGLIGIBLE:.0f}%, so the ranges come out somewhat too wide (nothing "
@@ -758,6 +794,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
         warnings.append(mismatch_warning(frequent))
+    if settings["evaluate_held_out"] and looks is None:
+        warnings.append("evaluate_held_out is true, but no held-out record was evaluated (none is finished in the "
+                        "ground truth, or none is in 060's output), so nothing of the held-out part was seen and no "
+                        "look was logged in annotations/held_out_looks.csv. Nothing to do; a look is counted only "
+                        "when held-out numbers are shown.")
     if looks is not None:
         warnings.append(f"The held-out part was looked at: {looks['count']} time(s) so far, each logged in "
                         f"annotations/held_out_looks.csv. {readings.since_previous(looks)} A change made after a look "

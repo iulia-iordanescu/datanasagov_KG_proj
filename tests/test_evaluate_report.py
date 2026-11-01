@@ -53,6 +53,42 @@ def strict_rows(tables, table):
             for r in tables[table]}
 
 
+class MarginCheckLines(unittest.TestCase):
+    """The report's table of the margin of error's assumptions: a metric undefined in some redraws is named with how
+    many redraws its range comes from; none, when every redraw gave a value."""
+
+    def checks(self, fewer):
+        return {"at_bound": [], "fewer_redraws": fewer, "catalog_proportion": 0.001,
+                "largest_record": {"extracted triples": {"record": "r1", "proportion": 0.1},
+                                   "ground truth triples": {"record": "r1", "proportion": 0.1}}}
+
+    def test_row(self):
+        text = "\n".join(moves._margin_check_lines(self.checks({"exact: precision": 940})))
+        self.assertIn("| Every redraw gives a value | metrics undefined in some redraws (their range comes from the "
+                      "redraws that gave a value): exact: precision (940 of 1,000) | **doesn't hold**", text)
+        text = "\n".join(moves._margin_check_lines(self.checks({})))
+        self.assertIn("| Every redraw gives a value | metrics undefined in some redraws (their range comes from the "
+                      "redraws that gave a value): none | holds |", text)
+
+
+class HeldOutLook(unittest.TestCase):
+    """A look is logged only when a held-out record was evaluated: with none, nothing was seen, so no line is added
+    and the count doesn't grow."""
+
+    def test_no_held_out_record_no_look(self):
+        import tempfile
+        from types import SimpleNamespace
+        from unittest import mock
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            looks = Path(tmp) / "held_out_looks.csv"
+            evaluated = SimpleNamespace(records=[{"id": "t1", "part": "tuning", "gt": [], "gt_describes": None}],
+                                        schema_used={"made": {}})
+            with mock.patch.object(moves, "LOOKS", looks):
+                self.assertIsNone(moves._log_look(evaluated, SimpleNamespace(entity={}, predicate={}), "s.json"))
+            self.assertFalse(looks.exists())
+
+
 class PerComponentClass(unittest.TestCase):
     def setUp(self):
         self.tables = stats.per_component_class([compared()])

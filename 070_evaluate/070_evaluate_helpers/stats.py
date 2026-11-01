@@ -26,6 +26,7 @@ warning. The draws are seeded, so a rerun gives the same margins.
 from __future__ import annotations
 
 import collections
+import math
 import random
 
 from pairing import LEVELS, PER_COMPONENT_CLASS
@@ -100,9 +101,18 @@ def _get(d: dict, path: tuple):
     return d
 
 
-def _middle_95(vals: list) -> tuple:
-    """The middle 95% of sorted redraw results: (low, high)."""
-    return vals[int(0.025 * (len(vals) - 1))], vals[int(round(0.975 * (len(vals) - 1)))]
+def interval(values: list, redraws: int = REDRAWS) -> dict:
+    """The middle 95% of the bootstrap's values: {"low", "high", "used", "skipped"}. The values are sorted; low is
+    the one at position 0.025·(n − 1), rounded down, and high the one at 0.975·(n − 1), rounded up, so as many values
+    lie below the range as above it (24 of 1,000 each). used: how many redraws gave a value; skipped: how many
+    didn't (the number was undefined there, e.g. no extracted triples in the redraw) and so aren't in the range;
+    the report says so when any were. The one home of the rule: py helpers/compare_runs.py uses it too."""
+    vals = sorted(values)
+    n = len(vals)
+    if not n:
+        return {"low": None, "high": None, "used": 0, "skipped": redraws}
+    return {"low": vals[math.floor(0.025 * (n - 1))], "high": vals[math.ceil(0.975 * (n - 1))],
+            "used": n, "skipped": redraws - n}
 
 
 def with_margins(records: list) -> dict:
@@ -120,17 +130,21 @@ def with_margins(records: list) -> dict:
                 v = _get(n, path)
                 if v is not None:
                     samples[path].append(v)
-    for path, _ in WITH_MARGIN:
+    fewer = {}
+    for path, label in WITH_MARGIN:
         value = _get(point, path)
         low = high = None
-        vals = sorted(samples[path])
-        if enough and vals:
-            low, high = _middle_95(vals)
+        if enough and samples[path]:
+            r = interval(samples[path])
+            low, high = r["low"], r["high"]
+            if r["skipped"]:
+                fewer[label] = r["used"]
         target = point
         for p in path[:-1]:
             target = target[p]
         target[path[-1]] = {"value": value, "low": low, "high": high}
     point["margins"] = enough
+    point["redraws_used"] = fewer                     # {label: redraws that gave a value}, only where fewer than REDRAWS
     return point
 
 
@@ -148,12 +162,13 @@ def margin_checks(records: list, point: dict, catalog_records: int) -> dict:
     catalog evaluated."""
     at_bound = [label for path, label in WITH_MARGIN
                 if (m := _get(point, path)) and m.get("low") is not None and (m["low"] <= 0 or m["high"] >= 1)]
+    fewer_redraws = dict(point.get("redraws_used") or {})
     largest = {}
     for key, what in (("extracted", "extracted triples"), ("gt", "ground truth triples")):
         total = sum(r["compared"]["counts"][key] for r in records)
         top = max(records, key=lambda r: r["compared"]["counts"][key])
         largest[what] = {"record": top["id"], "proportion": _ratio(top["compared"]["counts"][key], total)}
-    return {"at_bound": at_bound, "largest_record": largest,
+    return {"at_bound": at_bound, "largest_record": largest, "fewer_redraws": fewer_redraws,
             "catalog_proportion": _ratio(len(records), catalog_records)}
 
 
@@ -264,10 +279,11 @@ def per_component_class(records: list) -> dict:
             if level != "row":
                 row[level] = {"pairs": c[f"{level}_pairs"], "strict_pairs": c[f"{level}_strict_pairs"]}
             for what, v in m.items():
-                vals = sorted(samples.get((key, level, what), []))
+                vals = samples.get((key, level, what), [])
                 low = high = None
                 if enough and vals:
-                    low, high = _middle_95(vals)
+                    r = interval(vals)
+                    low, high = r["low"], r["high"]
                 (row if level == "row" else row[level])[what] = {"value": v, "low": low, "high": high}
         out[key[0]].append(row)
     for rows in out.values():

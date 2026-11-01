@@ -99,18 +99,61 @@ def differences(runs: list) -> list:
             if len({f.get(k, "(not recorded)") for f in flat}) > 1]
 
 
+#: What a kept evaluation records about each record besides its counts, and what a difference in it means: a record
+#: differing in any of these between the runs is left out, since the difference could come from there rather than
+#: from the pipeline. A run before 2026-11-01 recorded the ground truth only.
+PER_RECORD = {"ground_truth_sha256": "ground truth changed between the runs",
+              "pending_sha256": "facts waiting on an expert changed between the runs (annotations/pending_triples.csv)",
+              "translation": "translation changed between the runs, for a shape of classed triple the record has in "
+                             "every run (annotations/component_class_mapping.csv)"}
+NOT_A_PREFIX = "after a record left out, so no longer the first records of the pool (not a fair sample)"
+
+
+def _same(key: str, values: list) -> bool:
+    """Whether a record's per-record value is the same in every run. The translation is compared on the shapes the
+    record has in every run (its extraction differing is the thing compared, not a change of translation)."""
+    if key != "translation":
+        return len({json.dumps(v, sort_keys=True) for v in values}) == 1
+    shared = set.intersection(*(set(v) for v in values))
+    return all(len({v[s] for v in values}) == 1 for s in shared)
+
+
 def common_records(runs: list) -> tuple:
-    """(ids compared, {why left out: [ids]}): the tuning records evaluated in every run, with the same ground truth
-    in every run; a record whose ground truth changed between the runs is left out, since a difference there could
-    come from the ground truth rather than the pipeline."""
+    """(ids compared, {why left out: [ids]}, notes): the tuning records evaluated in every run, with the same ground
+    truth, the same facts waiting on an expert and the same translation of their classed triples' shapes in every
+    run (PER_RECORD); a record differing in any of them is left out, since a difference there could come from it
+    rather than from the pipeline. The records kept must still be each part's fair sample, the first records of the
+    pool: the compared set ends before the first record left out (in pool order), and the records after it are left
+    out too (NOT_A_PREFIX). notes: what couldn't be checked (a run before 2026-11-01 records the ground truth only)."""
     by_run = [{r["id"]: r for r in run["records"]} for run in runs]
     everywhere = set(by_run[0]).intersection(*by_run[1:])
     every_id = set().union(*by_run)
-    changed = sorted(i for i in everywhere if len({b[i]["ground_truth_sha256"] for b in by_run}) > 1)
-    kept = [r["id"] for r in runs[0]["records"] if r["id"] in everywhere and r["id"] not in changed]
-    left = {"not evaluated in every run": sorted(every_id - everywhere),
-            "ground truth changed between the runs": changed}
-    return kept, {k: v for k, v in left.items() if v}
+    left, notes = {"not evaluated in every run": sorted(every_id - everywhere)}, []
+    changed = set()
+    for key, why in PER_RECORD.items():
+        lacking = [run["run_id"] for run, b in zip(runs, by_run) if any(key not in r for r in b.values())]
+        if lacking:
+            notes.append(f"{why.split(' changed')[0]}: not recorded per record by {', '.join(f'`{r}`' for r in lacking)} "
+                         f"(a run before 2026-11-01), so a change in it between the runs can't be seen here.")
+            continue
+        differ = sorted(i for i in everywhere if not _same(key, [b[i][key] for b in by_run]))
+        left[why] = differ
+        changed.update(differ)
+    position = {}
+    for b in by_run:
+        for i, r in b.items():
+            position.setdefault(i, r.get("position"))
+    if any(position[i] is None for i in every_id):
+        notes.append("A run records no pool positions, so whether the records compared are still the first records "
+                     "of the pool (a fair sample) can't be checked.")
+        cut = set()
+    else:
+        order = sorted(every_id, key=lambda i: position[i])
+        first_out = next((n for n, i in enumerate(order) if i not in everywhere or i in changed), len(order))
+        cut = {i for i in order[first_out + 1:] if i in everywhere and i not in changed}
+    left[NOT_A_PREFIX] = sorted(cut, key=lambda i: position.get(i) or 0)
+    kept = [r["id"] for r in runs[0]["records"] if r["id"] in everywhere and r["id"] not in changed and r["id"] not in cut]
+    return kept, {k: v for k, v in left.items() if v}, notes
 
 
 def as_records(run: dict, ids: list) -> list:
@@ -141,12 +184,9 @@ def paired(base: list, other: list) -> list:
     rows = []
     for path, label in stats.WITH_MARGIN:
         va, vb = stats._get(a_point, path), stats._get(b_point, path)
-        vals = sorted(samples[path])
-        low = high = None
-        if vals:
-            low, high = vals[int(0.025 * (len(vals) - 1))], vals[int(round(0.975 * (len(vals) - 1)))]
-        rows.append({"label": label, "a": va, "b": vb,
-                     "diff": None if va is None or vb is None else vb - va, "low": low, "high": high})
+        r = stats.interval(samples[path]) if samples[path] else {"low": None, "high": None, "used": 0, "skipped": 0}
+        rows.append({"label": label, "a": va, "b": vb, "diff": None if va is None or vb is None else vb - va,
+                     "low": r["low"], "high": r["high"], "redraws": r["used"]})
     return rows
 
 
@@ -198,7 +238,16 @@ def spread(runs: list, ids: list) -> list:
 
 # ------------------------------ the report ----------------------------------
 
-def report(runs: list, ids: list, left: dict) -> str:
+def _range(r: dict) -> str:
+    """A row's 95% range, with how many redraws it comes from when fewer than all of them gave a value."""
+    if r["low"] is None:
+        return "–"
+    return (f"{points(r['low'])} to {points(r['high'])}"
+            + (f" (from {r['redraws']:,} of {stats.REDRAWS:,} redraws: the number was undefined in the others)"
+               if 0 < r.get("redraws", stats.REDRAWS) < stats.REDRAWS else ""))
+
+
+def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
     names = [LABELS[i] for i in range(len(runs))]
     lines = ["# Comparing evaluations", "",
              f"Made {dt.datetime.now():%Y-%m-%d %H:%M} by `py helpers/compare_runs.py` (helpers/compare_runs.md). "
@@ -224,10 +273,14 @@ def report(runs: list, ids: list, left: dict) -> str:
     else:
         lines.append("Nothing recorded differs.")
     lines += ["", "## The records compared", "",
-              f"{len(ids)} tuning records, evaluated in every run, with the same ground truth in every run."]
+              f"{len(ids)} tuning records, evaluated in every run, with the same ground truth, the same facts waiting "
+              f"on an expert and the same translation of their classed triples' shapes in every run, and still the "
+              f"first records of the pool (a fair sample: the set ends before the first record left out)."]
     for why, which in left.items():
         lines.append(f"Left out, {why}: {len(which)} ({', '.join(f'`{i}`' for i in which[:20])}"
                      f"{', …' if len(which) > 20 else ''}).")
+    for note in notes:
+        lines.append(f"Not checked: {note}")
     if len(ids) < stats.MIN_RECORDS:
         lines += ["", f"**Fewer than {stats.MIN_RECORDS} records, so no difference gets a range: the numbers below "
                       f"could easily have come out the other way. Don't draw conclusions from them yet.**"]
@@ -253,9 +306,8 @@ def report(runs: list, ids: list, left: dict) -> str:
         lines += ["", f"## {n} compared with {names[0]}", "",
                   f"| Number | {names[0]} | {n} | {n} − {names[0]} | 95% range of the difference | Verdict |",
                   "|---|---:|---:|---:|---|---|"]
-        lines += [f"| {r['label']} | {pct(r['a'])} | {pct(r['b'])} | {points(r['diff'])} | "
-                  + ("–" if r["low"] is None else f"{points(r['low'])} to {points(r['high'])}")
-                  + f" | {verdict(r, n)} |" for r in rows]
+        lines += [f"| {r['label']} | {pct(r['a'])} | {pct(r['b'])} | {points(r['diff'])} | {_range(r)} | "
+                  f"{verdict(r, n)} |" for r in rows]
         counts = collections.Counter(verdict(r, n) for r in rows)
         lines += ["", "In short: " + "; ".join(f"{k}: {v}" for k, v in counts.most_common()) + "."]
     if first:
@@ -267,7 +319,10 @@ def report(runs: list, ids: list, left: dict) -> str:
                   + f". *Then:* on the same {len(ids)} tuning records, run {names[0]} scored {pct(r['a'])} and run "
                     f"{n} {pct(r['b'])}, a difference of {points(r['diff'])}. The records were then drawn at random "
                     f"{stats.REDRAWS:,} times, with repeats, the same draw for both runs, and the difference "
-                    f"recomputed each time; the 95% range holds the middle 95% of those differences. A range all "
+                    f"recomputed each time; the 95% range holds the middle 95% of those differences (the values at "
+                    f"positions 0.025·(n − 1), rounded down, and 0.975·(n − 1), rounded up, of the sorted differences, "
+                    f"as 070's margins; a redraw where a number is undefined in either run is skipped, and the range "
+                    f"then says from how many it comes). A range all "
                     f"above 0 means {n} is higher by more than chance; all below 0, lower; a range that includes 0, "
                     f"the two runs can't be told apart on these records.",
                   "",
@@ -297,14 +352,20 @@ def main() -> int:
         sys.exit("Give two or more run ids: the baseline first, then the runs to compare with it. "
                  "`py helpers/compare_runs.py` lists them.")
     runs = [load(r) for r in args.runs]
-    ids, left = common_records(runs)
+    twice = sorted({r["run_id"] for r in runs if [x["run_id"] for x in runs].count(r["run_id"]) > 1})
+    if twice:
+        sys.exit(f"The same run is given more than once ({', '.join(twice)}), and a run compared with itself shows "
+                 f"nothing (every row would be \"the same\"). Give each run once: `py helpers/compare_runs.py` lists them.")
+    ids, left, notes = common_records(runs)
     if not ids:
-        sys.exit("No tuning record was evaluated in every one of these runs with the same ground truth, so there is "
-                 "nothing to compare. Compare runs made on the same finished records (`py 060_extract/run.py`, then "
-                 "`py 070_evaluate/run.py`, for each version).")
+        sys.exit("No tuning record was evaluated in every one of these runs with the same ground truth, the same facts "
+                 "waiting on an expert and the same translation, so there is nothing to compare. Compare runs made on "
+                 "the same finished records (`py 060_extract/run.py`, then `py 070_evaluate/run.py`, for each version)."
+                 + "".join(f"\nLeft out, {why}: {len(which)} ({', '.join(which[:10])})." for why, which in left.items()))
     path = REPORTS_DIR / f"compare_runs_{dt.datetime.now():%Y-%m-%d_%H%M%S}.md"
-    write_text(path, report(runs, ids, left))
-    print(f"Compared {len(runs)} runs on {len(ids)} tuning records: {repo_path(path)}")
+    write_text(path, report(runs, ids, left, notes))
+    print(f"Compared {len(runs)} runs on {len(ids)} tuning records: {repo_path(path)}"
+          + "".join(f"\n  left out, {why}: {len(which)}" for why, which in left.items()))
     return 0
 
 

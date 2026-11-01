@@ -16,17 +16,60 @@ was written on Windows (see .gitattributes).
     write_csv(path, columns, rows)             # a header, then rows (dicts)
     read_csv(path)                             # every row, as dicts
     append_csv(path, columns, rows)            # add rows, never changing what is there
+    with locked(path): ...                     # one process at a time reads and writes path (a lock file beside it)
 
 new=True refuses to replace an existing file (e.g. a drafted batch's file, which is
 never overwritten).
 """
 from __future__ import annotations
 
+import contextlib
 import csv
 import io
 import json
 import os
+import threading
+import time
 from pathlib import Path
+
+#: How long locked() waits for another process to let go of a file before giving up.
+LOCK_WAIT_SECONDS = 30
+_thread_locks, _thread_locks_guard = {}, threading.Lock()
+
+
+@contextlib.contextmanager
+def locked(path):
+    """One process (and one thread of it) at a time, between reading a file and writing it back: a lock file
+    <name>.lock beside it, made only if absent (the operating system makes that one step, so two processes can't
+    both make it), and a lock within the process. For the files several programs may read, change and write at once
+    (two steps or the annotation tool and a step): the counted held-out looks, the model answer caches, the files
+    the annotation tool saves. Waits up to LOCK_WAIT_SECONDS, then raises TimeoutError naming the lock file, so a
+    lock left by a crash is found, not waited on forever."""
+    path = Path(path)
+    lock = path.with_name(path.name + ".lock")
+    with _thread_locks_guard:
+        mine = _thread_locks.setdefault(str(path.resolve()) if path.parent.exists() else str(path), threading.Lock())
+    with mine:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + LOCK_WAIT_SECONDS
+        while True:
+            try:
+                fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(fd)
+                break
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"{lock} has been held for {LOCK_WAIT_SECONDS} s: another program is writing "
+                                       f"{path.name}, or crashed while doing so. If nothing else is running, delete "
+                                       f"{lock}, then try again.") from None
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            try:
+                os.unlink(lock)
+            except FileNotFoundError:
+                pass
 
 
 def write_text(path, text: str, new: bool = False) -> None:

@@ -748,6 +748,35 @@ class Margins(unittest.TestCase):
         self.assertEqual((p["value"], p["high"]), (39 / 40, 1.0))
 
 
+class Interval(unittest.TestCase):
+    """stats.interval: the one rule for the middle 95%, used by 070's margins and by py helpers/compare_runs.py."""
+
+    def test_symmetric(self):
+        r = stats.interval(list(range(1000)))
+        self.assertEqual((r["low"], r["high"], r["used"], r["skipped"]), (24, 975, 1000, 0))   # 24 values below, 24 above
+        r = stats.interval(list(range(999, -1, -1)))                                           # order doesn't matter
+        self.assertEqual((r["low"], r["high"]), (24, 975))
+        r = stats.interval(list(range(20)))
+        self.assertEqual((r["low"], r["high"]), (0, 19))                                       # positions 0.475 -> 0 and 18.525 -> 19
+        r = stats.interval([0.5])
+        self.assertEqual((r["low"], r["high"], r["used"], r["skipped"]), (0.5, 0.5, 1, 999))
+        r = stats.interval([])
+        self.assertEqual((r["low"], r["high"], r["used"], r["skipped"]), (None, None, 0, 1000))
+
+    def test_skipped_redraws_reported(self):
+        """A metric undefined in some redraws: its range comes from the others, and the report says so; a metric
+        defined in every redraw isn't listed."""
+        recs = [counts_record(0, 1, 0, 0) for _ in range(stats.MIN_RECORDS - 1)] + [counts_record(1, 1, 1, 1)]
+        m = stats.with_margins(recs)                      # a redraw without the one extracted record has no precision
+        self.assertIn("exact: precision", m["redraws_used"])
+        self.assertLess(m["redraws_used"]["exact: precision"], stats.REDRAWS)
+        self.assertNotIn("exact: recall", m["redraws_used"])
+        checks = stats.margin_checks(recs, m, catalog_records=10_000)
+        self.assertEqual(checks["fewer_redraws"], m["redraws_used"])
+        full = stats.with_margins([counts_record(2, 2, 1, 1) for _ in range(stats.MIN_RECORDS)])
+        self.assertEqual(full["redraws_used"], {})
+
+
 class MarginChecks(unittest.TestCase):
 
     def records(self, strata, extracted=2):
@@ -850,8 +879,9 @@ class CompareRuns(unittest.TestCase):
                                f"{level}_object_class_pairs": m, f"{level}_pairs_within_reach": m,
                                f"{level}_strict_pairs_within_strict_reach": m})
             records.append({"id": f"r{i:02d}", "position": i, "stratum": "s", "twin": "",
-                            "ground_truth_sha256": gt if i else gt + "-0", "counts": counts,
-                            "describes": {"truth": "Dataset", "said": "Dataset", "right": True}})
+                            "ground_truth_sha256": gt if i else gt + "-0", "pending_sha256": "p",
+                            "translation": {"Instrument | ABOARD | Spacecraft": "Instrument | ABOARD | Platform"},
+                            "counts": counts, "describes": {"truth": "Dataset", "said": "Dataset", "right": True}})
         return {"run_id": run_id, "records": records,
                 "recipe": {"extraction (060)": {"settings": {"model": model}}, "evaluation (070)": {"git_commit": "abc"}}}
 
@@ -860,11 +890,11 @@ class CompareRuns(unittest.TestCase):
         a = self.kept("A", lambda i: 2, "claude-opus-5.5")
         b = self.kept("B", lambda i: 3 if i % 2 else 4, "gemini-2.5-pro")       # better on every record
         c = self.kept("C", lambda i: 2, "claude-opus-5.5")                       # the same as A
-        c["records"][0]["ground_truth_sha256"] = "changed"                     # its ground truth changed: left out
-        c["records"].pop()                                                      # not evaluated in every run
-        ids, left = cr.common_records([a, b, c])
-        self.assertEqual(len(ids), 23)
-        self.assertEqual(left, {"not evaluated in every run": ["r24"], "ground truth changed between the runs": ["r00"]})
+        c["records"].pop()                                                      # r24: not evaluated in every run
+        c["records"][23]["ground_truth_sha256"] = "changed"                     # r23's ground truth changed: left out
+        ids, left, notes = cr.common_records([a, b, c])
+        self.assertEqual((len(ids), notes), (23, []))
+        self.assertEqual(left, {"not evaluated in every run": ["r24"], "ground truth changed between the runs": ["r23"]})
         self.assertEqual(cr.differences([a, b, c]),
                          [("extraction (060) / settings / model", ["claude-opus-5.5", "gemini-2.5-pro", "claude-opus-5.5"])])
         base = cr.as_records(a, ids)
@@ -892,7 +922,7 @@ class CompareRuns(unittest.TestCase):
             run["recipe"]["extraction (060)"].update(run_id=f"060-{n}", model_calls={"repeat": n})
             run["recipe"]["extraction (060)"]["settings"]["repeat"] = n
             runs.append(run)
-        ids, _ = cr.common_records(runs)
+        ids, _, _ = cr.common_records(runs)
         self.assertTrue(cr.only_repeats(cr.differences(runs)))
         rows = {r["label"]: r for r in cr.spread(runs, ids)}
         p = rows["exact: precision"]
@@ -931,7 +961,7 @@ class CompareRuns(unittest.TestCase):
         cr = self.cr
         a = self.kept("A", lambda i: 2 + (i % 3 == 0), "m")
         b = self.kept("B", lambda i: 2 + (i % 3 == 1), "m")                     # as good, on other records
-        ids, _ = cr.common_records([a, b])
+        ids, _, _ = cr.common_records([a, b])
         row = {r["label"]: r for r in cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))}["exact: recall"]
         self.assertLess(row["low"], 0)
         self.assertGreater(row["high"], 0)
@@ -941,11 +971,94 @@ class CompareRuns(unittest.TestCase):
         cr = self.cr
         a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
         a["records"], b["records"] = a["records"][:5], b["records"][:5]
-        ids, _ = cr.common_records([a, b])
+        ids, _, _ = cr.common_records([a, b])
         row = cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))[0]
         self.assertIsNone(row["low"])
         self.assertEqual(cr.verdict(row, "B"), "no range (too few records)")
         self.assertIn("Don't draw conclusions from them yet", cr.report([a, b], ids, {}))
+
+    def test_a_changed_record_cuts_the_fair_sample(self):
+        """The records compared must still be the first records of the pool: a record left out in the middle ends
+        the compared set there, and the records after it are left out too, named with the reason."""
+        cr = self.cr
+        a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
+        b["records"][10]["ground_truth_sha256"] = "changed"
+        ids, left, notes = cr.common_records([a, b])
+        self.assertEqual(ids, [f"r{i:02d}" for i in range(10)])
+        self.assertEqual(left["ground truth changed between the runs"], ["r10"])
+        self.assertEqual(left[cr.NOT_A_PREFIX], [f"r{i:02d}" for i in range(11, 25)])
+        self.assertIn("Left out, " + cr.NOT_A_PREFIX, cr.report([a, b], ids, left, notes))
+        # a record missing from one run in the middle cuts the same way
+        c = self.kept("C", lambda i: 3, "m")
+        del c["records"][5]
+        ids, left, _ = cr.common_records([a, c])
+        self.assertEqual((ids, left["not evaluated in every run"]), ([f"r{i:02d}" for i in range(5)], ["r05"]))
+        # the last record changed cuts nothing after it (near miss)
+        d = self.kept("D", lambda i: 3, "m")
+        d["records"][24]["ground_truth_sha256"] = "changed"
+        ids, left, _ = cr.common_records([a, d])
+        self.assertEqual((len(ids), cr.NOT_A_PREFIX in left), (24, False))
+
+    def test_pending_and_translation_changes_leave_a_record_out(self):
+        """A record whose facts waiting on an expert, or whose translation (for a shape of classed triple it has in
+        both runs), changed between the runs is left out and named; a shape only one run has is the extraction's
+        difference, the thing compared, and keeps the record."""
+        cr = self.cr
+        a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
+        b["records"][24]["pending_sha256"] = "a new pending row"
+        b["records"][23]["translation"] = {"Instrument | ABOARD | Spacecraft": "Instrument | ABOARD | Spacecraft"}
+        b["records"][22]["translation"]["Dataset | USES | Instrument"] = "Dataset | USES_GADGET | Instrument"  # only in B
+        ids, left, notes = cr.common_records([a, b])
+        self.assertEqual(len(ids), 23)                                          # r22 kept, r23 and r24 left out
+        self.assertEqual(left["facts waiting on an expert changed between the runs (annotations/pending_triples.csv)"], ["r24"])
+        self.assertEqual([k for k in left if k.startswith("translation changed")], ["translation changed between the "
+                         "runs, for a shape of classed triple the record has in every run (annotations/component_class_mapping.csv)"])
+        self.assertEqual(left[[k for k in left if k.startswith("translation changed")][0]], ["r23"])
+        self.assertEqual(notes, [])
+
+    def test_a_run_before_the_fingerprints_is_said(self):
+        """A run kept before 2026-11-01 records the ground truth per record only: the report says what can't be
+        checked, and the comparison goes on."""
+        cr = self.cr
+        a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
+        for r in b["records"]:
+            del r["pending_sha256"], r["translation"]
+        ids, left, notes = cr.common_records([a, b])
+        self.assertEqual(len(ids), 25)
+        self.assertEqual(len(notes), 2)
+        self.assertIn("not recorded per record by `B`", notes[0])
+        self.assertIn("Not checked: facts waiting on an expert", cr.report([a, b], ids, left, notes))
+        for r in a["records"] + b["records"]:                                    # no run records positions
+            r["position"] = None
+        _, _, notes = cr.common_records([a, b])
+        self.assertTrue(any("no pool positions" in n for n in notes))
+
+    def test_the_same_run_twice_is_refused(self):
+        import sys
+        from unittest import mock
+        cr = self.cr
+        a = self.kept("A", lambda i: 2, "m")
+        with mock.patch.object(cr, "load", lambda r: dict(a)), mock.patch.object(sys, "argv", ["x", "A", "A"]), \
+                self.assertRaises(SystemExit) as caught:
+            cr.main()
+        self.assertIn("given more than once (A)", str(caught.exception.code))
+        b = self.kept("B", lambda i: 3, "m")
+        with mock.patch.object(cr, "load", lambda r: {"A": a, "B": b}[r]), mock.patch.object(sys, "argv", ["x", "A", "B", "A"]), \
+                self.assertRaises(SystemExit) as caught:
+            cr.main()
+        self.assertIn("given more than once (A)", str(caught.exception.code))
+
+    def test_range_from_fewer_redraws_is_said(self):
+        """A row whose number was undefined in some redraws says from how many the range comes; one with every
+        redraw doesn't; the rule is stats.interval, the same as 070's margins."""
+        cr = self.cr
+        self.assertEqual(cr._range({"low": -0.1, "high": 0.2, "redraws": stats.REDRAWS}), "-10.0 points to +20.0 points")
+        self.assertIn("(from 900 of 1,000 redraws", cr._range({"low": -0.1, "high": 0.2, "redraws": 900}))
+        self.assertEqual(cr._range({"low": None, "high": None, "redraws": 0}), "–")
+        a, b = self.kept("A", lambda i: 2, "m"), self.kept("B", lambda i: 3, "m")
+        ids, _, _ = cr.common_records([a, b])
+        rows = cr.paired(cr.as_records(a, ids), cr.as_records(b, ids))
+        self.assertTrue(all(r["redraws"] == stats.REDRAWS for r in rows if r["low"] is not None))
 
 
 class TranslationBatches(unittest.TestCase):
