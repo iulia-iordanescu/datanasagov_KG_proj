@@ -203,7 +203,7 @@ NASA's own lists call Aqua "a NASA Earth Science satellite mission", one entry f
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -1021,7 +1021,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get none.
+- Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get no ground truth triple.
 
 ### Consequences
 
@@ -1127,7 +1127,7 @@ Records write how far their data have been processed, the processing level, in m
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -1337,8 +1337,8 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - predicate UNIQUE_TO_INSTRUMENT: is found only on this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
-- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
@@ -1492,7 +1492,7 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
 - predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 - What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
@@ -1645,8 +1645,8 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
-- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then put one item alone in the list's place (the subject or the object), with the words the items share copied onto it. Each item is now one thing, so shared words that agree with the number of items are put in the singular to agree with one item ("channels" → "channel"; "are" → "is"); each item's own words stay as written ("oceans").
-- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask: can one of the things they describe have all the describing words at once? 1. Yes: keep them whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
+- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans").
+- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask whether one of the things the words describe (one orbit, one balloon, one access) can have all the describing words at once. 1. Yes: keep them whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
 - Writing a classed triple, rule 22: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 19 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
@@ -1789,7 +1789,7 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 - entity class Method -> Algorithm: A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.
 - entity class Topic -> Discipline: A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.
 - predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject (a set of observations or data) belongs to the object, a scientific discipline or category.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 
@@ -2424,7 +2424,7 @@ Checked on 2026-10-31: the standard agrees with our reading. OGC's Abstract Spec
 - predicate HAS_COORDINATE_SYSTEM -> MAPPED_INTO: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
 - Writing a classed triple, rule 23: One thing, one wording, within a record.
-- Writing a classed triple, rule 23: the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
+- Writing a classed triple, rule 23: the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
 
 ### Consequences
 
@@ -2591,7 +2591,7 @@ We write only what a record states (rule 1 of *What counts as a fact*, quoted be
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -2717,9 +2717,9 @@ Settled on 2026-10-31: SST4 is a skin SST, as the OBPG's SST4 document says ("Th
 ### Quoted for us
 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the first wording this order picks; the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
 ### Consequences
 
@@ -2836,7 +2836,7 @@ Checked on 2026-10-31, the note left for us above on whether "V006", "Version 6"
 - What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
 - Writing a classed triple, rule 20: Parentheses that hold the code of something else are not part of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the first wording this order picks; the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. 2. Otherwise, the wording from a sentence that states a fact about the thing with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. 2. Otherwise, the wording from a sentence that states a fact about the thing with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
 
 ### Consequences
 
@@ -2978,7 +2978,7 @@ Withdrawn on 2026-10-31: settled from sources, so it is no longer asked of the e
 - predicate ALSO_KNOWN_AS: is the same thing under another name
 - predicate HAS_LATENCY -> (none): The subject (a data product or table) is made available or updated with the object, a latency or update delay.
 - predicate HAS_IDENTIFIER -> (none): The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
@@ -3344,7 +3344,7 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 ### Quoted for us
 
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the first wording this order picks; the others appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
 ### Consequences
 
@@ -3766,7 +3766,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - entity class Purpose: an aim something is meant to achieve
 - entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - predicate HAS_PURPOSE: is meant to achieve
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
@@ -3857,7 +3857,7 @@ Corrected on 2026-10-31 (the research of that day): the table's second row said,
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 
 ### Consequences
 
@@ -3947,7 +3947,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Task: a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
 - predicate REVISED_AFTER: was corrected after this review
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). This holds whether or not the ground truth schema has an entity class or predicate for it.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 
 ### Affects
 

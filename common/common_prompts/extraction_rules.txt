@@ -14,12 +14,14 @@ WHAT COUNTS AS A FACT
    level ("L2"). Any other code needs the record's own explanation. The
    record may be one part of a longer record ("part 1 of 2"); state only
    what this part states.
-   Names you recognize: a name the record doesn't explain gets its entity
-   class, and nothing else, when you know it as that kind of thing for the
-   record's own mission or platform from an official list of its field (such
-   as NASA's lists of instruments, platforms and planetary context
-   products). Write the name as the record writes it, never expanded, and
-   add no other fact from what you know: a title "KX12/Halden Lake Ice L3",
+   Names on an official NASA list: a name the record doesn't explain gets
+   its entity class, and nothing else, when you know that one of these
+   official NASA lists names it, for the record's own mission or platform,
+   as an instance of that entity class: the Global Change Master
+   Directory's (GCMD) Instruments or Platforms keywords, or the Planetary
+   Data System's PDS4 context products. Write the name as the record writes
+   it, never expanded, and add no other fact from what you know: a title
+   "KX12/Halden Lake Ice L3",
    whose notes never say what KX12 is, where you know KX12 as an instrument
    of the Halden satellite, gives the record's dataset collected by "KX12"
    (an instrument), and not what KX12 stands for.
@@ -29,11 +31,12 @@ WHAT COUNTS AS A FACT
      decommissioned and directs users to a newer one; then the newer one
      replaces the older one ("Version 3 was decommissioned in 2019. Please
      use Version 4." gives "Version 4" replacing "Version 3").
-   - Comparison: the record says one thing is lower, higher, better (or any
-     other comparison) without saying than what, and names exactly two
-     things of that kind together; then the other one is what it is
-     compared with ("Two products are made, Q1 and Q2. Q2 has lower noise."
-     gives Q2 lower noise than Q1). With three or more, no fact.
+   - Comparison: the record says one named thing is lower, higher, better
+     (or any other comparison) without saying than what, and names exactly
+     two things of that kind together; then the other of the two is what
+     the first is compared with ("Two products are made, Q1 and Q2. Q2 has
+     lower noise." gives Q2 lower noise than Q1). With three or more, no
+     fact.
    - Membership by name: the title or an identifier of the record's dataset
      contains the name of a group of datasets the record describes; then the
      record's dataset is a member, and a statement about the group is
@@ -108,9 +111,9 @@ WHAT COUNTS AS A FACT
    two developers, without "jointly".
    Such a word is kept when the record doesn't state the fact without it,
    that is, when the sentence doesn't imply the shorter one (the test of
-   rule 19: "would give a triple that isn't true"). It is then part of what
-   the predicate says when the object is an amount (rule 18), and part of
-   the subject or object otherwise: "the data's reliable depth range is
+   rule 19: "would give a triple that isn't true"). The word is then part
+   of what the predicate says when the object is an amount (rule 18), and
+   part of the subject or object otherwise: "the data's reliable depth range is
    2 to 40 m" gives the record's dataset a range its values can be used
    over, "2 to 40 m", since the data may reach beyond it.
    What data have been used for, or can be used for, is a fact of the work
@@ -205,26 +208,27 @@ WRITING A TRIPLE
     as written: "TERN L1 RAW LAKE IMAGES" with "raw lake image strips" in
     the notes gives the processing level "L1", and "raw lake image strips"
     whole.
-    Whose fact it is: it depends only on the entity class of the subject or
-    object the qualifier was in, not on the record's other facts. When that
-    entity class is standalone (its instances exist on their own and have
-    facts of their own, such as a dataset, an organization, a person, an
-    instrument, a spacecraft, a mission phase, a variable or an algorithm),
-    the new triple's subject is that subject or object: "the Level-1B swaths
-    are made from the raw counts" gives the swaths' processing level
-    "Level-1B" (swaths are data, standalone). When it is describing (its
-    instances only describe something else, such as a measured quantity, a
-    purpose, a task, a role or a time), the new triple's subject is the
-    subject of the triple whose object that subject or object was, in the
-    sentence the qualifier is in: "the surface albedo of Halden-4" gives the record's dataset's target
+    Whose fact it is: the new triple's subject depends only on the entity
+    class of the subject or object the qualifier was in, not on the record's
+    other facts. 1. When that entity class is standalone (its instances
+    exist on their own and have facts of their own, such as a dataset, an
+    organization, a person, an instrument, a platform, a mission phase, a
+    variable or an algorithm), the new triple's subject is that subject or
+    object: "the Level-1B swaths are made from the raw counts" gives the
+    swaths' processing level "Level-1B" (swaths are data, standalone).
+    2. When that entity class is describing (its instances only describe
+    something else, such as a measured quantity, a purpose, a task, a role
+    or a time), the new triple's subject is the subject of the triple whose
+    object that subject or object was, in the sentence the qualifier is in:
+    "the surface albedo of Halden-4" gives the record's dataset's target
     "Halden-4" (surface albedo is a measured quantity, describing).
-    A country: it is based in when it qualifies a person or an organization
-    ("the U.K. Coastal Survey Bureau (CSB)" above), and an area the data
-    cover when it qualifies what is measured: "U.K. rainfall" gives
-    "rainfall" and the area the data cover "U.K.".
-    A country is based in of the person or organization it qualifies, and of
-    no other, whatever entity class holds its words. When the words it
-    qualifies name no specific person or organization (rule 9), it stays, as
+    A country: 1. A country that qualifies a specific person or organization
+    (one the record names, rule 9) is based in of that person or
+    organization, and of no other, whatever entity class holds its words
+    ("the U.K. Coastal Survey Bureau (CSB)" above). 2. A country that
+    qualifies what is measured is an area the data cover: "U.K. rainfall"
+    gives "rainfall" and the area the data cover "U.K.". 3. A country that
+    qualifies persons or organizations the record doesn't name stays, as
     written: a board "set up to meet survey needs across U.K. regional
     councils" has the purpose "meet survey needs across U.K. regional
     councils", and no based in.
@@ -267,18 +271,18 @@ WRITING A TRIPLE
 21. General facts: include them; about another dataset, only when the
     record links it to the record's dataset by "part of" or "made from".
     Include a general fact (one true beyond this record) about something
-    the record's dataset relates to, such as its instrument, spacecraft, or
+    the record's dataset relates to, such as its instrument, platform, or
     mission: "Kestrel is aboard the Halden satellite" gives Kestrel aboard
     "Halden".
-    A thing the record's dataset relates to is the subject or object of one
-    of your triples that is connected to the record's title (see ALSO,
-    below). A statement that only explains a concept (what a term means, how
-    a quantity behaves in general, which methods are in common use) and is
-    about nothing so connected gives no triple: "the depths were computed
-    with the Mean Shoreline method; the shoreline moves about 2 m per
-    decade, and three other methods are common" gives the record's dataset
-    produced using "Mean Shoreline", and nothing for the drift or the other
-    methods.
+    Something the record's dataset relates to is the subject or the object
+    of one of your triples that is connected to the record's title (see
+    ALSO, below). A statement that only explains a concept (what a term
+    means, how a quantity behaves in general, which methods are in common
+    use) and is about nothing so connected gives no triple: "the depths
+    were computed with the Mean Shoreline method; the shoreline moves about
+    2 m per decade, and three other methods are common" gives the record's
+    dataset produced using "Mean Shoreline", and nothing for the drift or
+    the other methods.
     Another dataset: include facts about it when the record states a chain
     of "part of" or "made from" links that connects it to the record's
     dataset: its parts, what it is part of, what it is made from, and so on
@@ -295,14 +299,14 @@ WRITING A TRIPLE
     fact about Q; "dataset R was used to make this dataset; R covers 1990 to
     1994" gives the record's dataset computed from "R", and R covers "1990
     to 1994", since the record's dataset is made from R.
-22. A list: one triple per item. Take the qualifiers out
-    first (rule 19); then put each item alone in the list's place (the
-    subject or the object), with the words the items share copied onto it.
-    Each item is now one thing, so shared words that agree with the number
-    of items go in the singular ("channels" becomes "channel", "are"
-    becomes "is"); each item's own words stay as written ("rivers"). An
-    item that names no specific thing ("her group", "his team") gives no
-    triple (rule 9).
+22. A list: one triple per item. Apply rule 19 first. Then write one triple
+    per item of the list, in which that item alone takes the list's place
+    (the subject or the object), with the words the items share copied onto
+    the item. Each such triple names one item, so shared words that agree
+    with the number of items go in the singular ("channels" becomes
+    "channel", "are" becomes "is"); an item's own words stay as written
+    ("rivers"). An item that names no specific thing ("her group", "his
+    team") gives no triple (rule 9).
     Examples: "derived from the 3 and 9 micron channels" gives "3 micron
     channel" and "9 micron channel"; "Halden was launched to monitor the
     global health of the Earth lakes, rivers and wetlands" gives Halden's
@@ -333,9 +337,10 @@ WRITING A TRIPLE
     things, it is a list, and the abbreviation belongs to no item: "Halden
     Survey and Mapping Office (HSMO)" stays whole (one office); "Ice
     Thickness and Albedo (IT&A)" gives "Ice Thickness" and "Ice Albedo".
-    Describing words joined by "and" or a comma: ask, can one of the things
-    they describe have all the describing words at once? 1. Yes: keep them
-    whole, in one triple. 2. No: split them, one triple per describing word.
+    Describing words joined by "and" or a comma: ask whether one of the
+    things the words describe (one beam, one kite) can have all the
+    describing words at once. 1. Yes: keep them whole, in one triple. 2. No:
+    split them, one triple per describing word.
     "A bright, narrow beam": one beam can be bright and narrow at once, so
     one object. "Over 40 light, 3 kg, high-altitude kites": one kite can be
     light, 3 kg and high-altitude at once, so the count stays whole. "To
@@ -368,9 +373,10 @@ WRITING A TRIPLE
     near-infrared reflectances" gives one object, "ratio of the red and
     near-infrared reflectances".
 23. One thing, one wording, within a record. When the record names the
-    same thing more than once, in different words, use the first wording
-    this order picks, in every triple; the others appear only in an
-    also-known-as triple, and only if the record states one.
+    same thing more than once, in different words, use the wording the
+    first of the four tests below picks, in every triple; the other wordings
+    appear only in an also-known-as triple, and only if the record states
+    one.
     1. The wording that says more: it contains the other's words, each as a
     whole word, is more precise, or spells out the other's abbreviation.
     2. Otherwise, the wording from a sentence that states a fact about the
@@ -391,17 +397,17 @@ WRITING A TRIPLE
     stands for: VLF is very low frequency).
     The thing the record's title names: it is the exception, always
     written as its title (rule 12).
-    Type words: leave out a type word that only describes the thing,
-    written in lowercase beside the name: write "Halden", not "Halden
-    satellite", since its entity class already says what it is (rule 4).
-    Keep a type word written as part of the name, capitalized:
-    write "Hurricane Katrina", not "Katrina". Keep it too when the words
-    left once the type word is removed aren't a name: "the Kestrel low gain
-    sensor" stays whole.
-    If the record writes the type word in lowercase beside the name at least
-    once, outside text typed all in capitals, it is a type word everywhere
-    in the record, even where it is capitalized: "The TERN Project was ..."
-    and later "the TERN project ended" give "TERN" in every triple. The type
+    Type words: 1. If the record writes a type word in lowercase beside the
+    name at least once, outside text typed all in capitals, it is a type
+    word everywhere in the record, even where it is capitalized. Leave out a
+    type word that only describes the thing, written in lowercase beside the
+    name: write "Halden", not "Halden satellite", since its entity class
+    already says what it is (rule 4); "The TERN Project was ..." and later
+    "the TERN project ended" give "TERN" in every triple. Keep the type word
+    only when the words left once it is removed aren't a name: "the Kestrel
+    low gain sensor" stays whole. 2. Otherwise, the type word is part of the
+    name, capitalized wherever the record writes it: keep it, and write
+    "Hurricane Katrina", not "Katrina". The type
     words of a method include "approach", "method", "technique", "procedure"
     and "algorithm": "a spline approach" gives "spline", a name; "a modified
     two-band ice algorithm" stays whole, since "modified two-band ice" isn't
@@ -426,9 +432,9 @@ WRITING A TRIPLE
     from "IWI", and produced using "threshold test"; its measurements are of
     "ice cover", without the words for the input and the method.
     Words that name no method: a word that says only that something was
-    done ("corrected", "calibrated", "detrended") names no method. It gives
-    no triple, and it stays in the subject or object, as written (rule 19:
-    any other kind). "The dataset's reflectances were corrected, then
+    done ("corrected", "calibrated", "detrended") names no method. Such a
+    word gives no triple, and stays in the subject or object, as written
+    (rule 19: any other kind). "The dataset's reflectances were corrected, then
     composited using the Tern algorithm" gives the record's dataset
     produced using "Tern"; "corrected" names no method, so it gives no
     triple. "Corrected reflectances" stays "corrected reflectances".

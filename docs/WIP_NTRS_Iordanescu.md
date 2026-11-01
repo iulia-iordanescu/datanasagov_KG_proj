@@ -10,7 +10,7 @@ data.nasa.gov is NASA's public catalog of datasets and related resources. Each c
 
 ## 1. Introduction
 
-The data.nasa.gov catalog describes tens of thousands of datasets, tools, and documents. Its search works on words. A question such as "which datasets were collected by instruments aboard Aqua" needs relationships between things, and those relationships are written in the prose of each entry's description, not in a structured field.
+The data.nasa.gov catalog describes tens of thousands of datasets, tools, and documents. Its search works on words. A question such as "which datasets were collected by instruments aboard Aqua" needs relationships between things, and those relationships are written in the prose of each entry's notes, not in a structured field.
 
 A knowledge graph holds such relationships as typed edges between named things. Building one from the catalog's text raises three questions: what schema the facts should use (which entity classes, such as Instrument, and which predicates, such as ABOARD), how to get the facts out of the text, and how to know whether they are right. My goal for the internship is a pipeline that answers all three in a way another person can rerun and check, with every number traceable to the records and model answers behind it, and every change judged by a measurement. This report records that pipeline as it stands. Its terms follow the project's terminology file, `docs/terminology.md`.
 
@@ -87,7 +87,7 @@ The report also gives a saturation curve: the expected number of schema entries 
 
 ### 4.4 Annotation (050)
 
-Step 050 drafts the classed triples of the next pool records, ten per drafted batch by default. A classed triple writes one fact as a subject instance with its entity class, a predicate, and an object instance with its entity class, such as "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). The drafting prompt asks first for every fact the text states, then for the ground truth schema's entity classes and predicates where they fit, coining new ones where they do not. Code adds each record's describes triple, which links the record's id to its title and keeps the catalog entry apart from the thing it describes, and flags every drafted triple that fails a check against the record's text or the ground truth schema. A person then corrects the batch in a local, browser-based annotation tool, which saves the ground truth files to Git.
+Step 050 drafts the classed triples of the next pool records, ten per drafted batch by default. A classed triple writes one fact as a subject instance with its entity class, a predicate, and an object instance with its entity class, such as "MODIS" (Instrument) ABOARD "Aqua" (Platform). The drafting prompt asks first for every fact the text states, then for the ground truth schema's entity classes and predicates where they fit, coining new ones where they do not. Code adds each record's describes triple, which links the record's id to its title and keeps the catalog entry apart from the thing it describes, and flags every drafted triple that fails a check against the record's text or the ground truth schema. A person then corrects the batch in a local, browser-based annotation tool, which saves the ground truth files to Git.
 
 ### 4.5 Extraction (060)
 

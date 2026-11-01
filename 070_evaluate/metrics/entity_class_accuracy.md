@@ -75,20 +75,20 @@ In each example, a [component class](../../docs/terminology.md#3-schemas) whose 
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) |
 |---|---|---|---|
-| G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) |
-| G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) |
-| G3 | AMSR-E (Instrument) | ABOARD | Aqua (Spacecraft) |
-| G4 | Clouds and the Earth's Radiant Energy System (CERES) (Instrument) | ABOARD | Aqua (Spacecraft) |
+| G1 | MODIS (Instrument) | ABOARD | Aqua (Platform) |
+| G2 | AIRS (Instrument) | ABOARD | Aqua (Platform) |
+| G3 | AMSR-E (Instrument) | ABOARD | Aqua (Platform) |
+| G4 | Clouds and the Earth's Radiant Energy System (CERES) (Instrument) | ABOARD | Aqua (Platform) |
 
 Extraction gives 5 [extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060), so the record has 5 occurrences:
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | What evaluation does with it |
 |---|---|---|---|---|
-| E1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | an [exact pair](pairs.md) with G1, strict |
-| E2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) | an exact pair with G2, strict |
-| E3 | AMSR-E (Dataset) | ABOARD | Aqua (Spacecraft) | an exact pair with G3, not strict: the [subject classes](../../docs/terminology.md#2-triples) differ |
-| E4 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) | a [partial pair](pairs.md) with G4 ("CERES" is inside G4's [subject instance](../../docs/terminology.md#2-triples), as a whole word), strict |
-| E5 | MODIS (Instrument) | ABOARD | Terra (Spacecraft) | extracted only: the text doesn't say MODIS is aboard Terra |
+| E1 | MODIS (Instrument) | ABOARD | Aqua (Platform) | an [exact pair](pairs.md) with G1, strict |
+| E2 | AIRS (Instrument) | ABOARD | Aqua (Platform) | an exact pair with G2, strict |
+| E3 | AMSR-E (Dataset) | ABOARD | Aqua (Platform) | an exact pair with G3, not strict: the [subject classes](../../docs/terminology.md#2-triples) differ |
+| E4 | CERES (Instrument) | ABOARD | Aqua (Platform) | a [partial pair](pairs.md) with G4 ("CERES" is inside G4's [subject instance](../../docs/terminology.md#2-triples), as a whole word), strict |
+| E5 | MODIS (Instrument) | ABOARD | Terra (Platform) | extracted only: the text doesn't say MODIS is aboard Terra |
 
 *Then:*
 
@@ -99,7 +99,7 @@ Extraction gives 5 [extracted triples](../../docs/terminology.md#6-extracting-wi
 - Partial precision = 4 ÷ 5 = 80%, and strict partial precision = 3 ÷ 5 = 60% = 80% × 75%.
 - By slot: only E3's subject class is wrong. Exact subject-class accuracy = 2 ÷ 3 = 67%, exact object-class accuracy = 3 ÷ 3 = 100%; partial subject-class accuracy = 3 ÷ 4 = 75%, partial object-class accuracy = 4 ÷ 4 = 100%. So the wrong [entity classes](../../docs/terminology.md#3-schemas) are the subject classes.
 
-*A wrong entity class on a repeat.* *Suppose:* a record's text says MODIS is aboard Aqua. Its ground truth has one ground truth triple, G1: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). Extraction gives E1, "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft), and E2, "the MODIS instrument" (Dataset) ABOARD "Aqua" (Spacecraft). *Then:* E1 and G1 form an exact pair, which is strict; E2 is eligible with G1 at the partial pair level, but G1 already has its partner, so E2 is extracted only. Exact entity-class accuracy = 1 ÷ 1 = 100%: E2's wrong subject class isn't counted, though precision counts E2 as not correct (1 ÷ 2 = 50%).
+*A wrong entity class on a repeat.* *Suppose:* a record's text says MODIS is aboard Aqua. Its ground truth has one ground truth triple, G1: "MODIS" (Instrument) ABOARD "Aqua" (Platform). Extraction gives E1, "MODIS" (Instrument) ABOARD "Aqua" (Platform), and E2, "the MODIS instrument" (Dataset) ABOARD "Aqua" (Platform). *Then:* E1 and G1 form an exact pair, which is strict; E2 is eligible with G1 at the partial pair level, but G1 already has its partner, so E2 is extracted only. Exact entity-class accuracy = 1 ÷ 1 = 100%: E2's wrong subject class isn't counted, though precision counts E2 as not correct (1 ÷ 2 = 50%).
 
 ## Sources
 

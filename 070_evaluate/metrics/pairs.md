@@ -68,7 +68,7 @@ A wrong pair never lowers the non-strict exact versions, and never moves the non
 
 | # | Cause | Example | Versions of precision and recall it affects | Caused by | What to do |
 |---|---|---|---|---|---|
-| 1 | Containment fooled at the partial level | *Suppose:* the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft); extraction gives "MODIS Terra" (Instrument) ABOARD "Aqua" (Spacecraft), which names the MODIS instrument on Terra, a different instrument from the one on Aqua. *Then:* "MODIS" is inside "MODIS Terra" as whole words, and the predicates and the object instances are the same, so the two are eligible at the partial level and pair, though they state different facts (Example: *A wrong pair*, below) | partial versions | code (pairing, step 070) | review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*; [tuning records](../../docs/terminology.md#7-evaluating-extraction-step-070) only): one you mark "not the same fact" is never paired. The [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s partial pairs aren't reviewed until the pipeline is frozen for the final evaluation (see `070_evaluate/070_evaluate.md`, *Known limits*) |
+| 1 | Containment fooled at the partial level | *Suppose:* the [ground truth](../../docs/terminology.md#4-ground-truth-and-samples) has "MODIS" (Instrument) ABOARD "Aqua" (Platform); extraction gives "MODIS Terra" (Instrument) ABOARD "Aqua" (Platform), which names the MODIS instrument on Terra, a different instrument from the one on Aqua. *Then:* "MODIS" is inside "MODIS Terra" as whole words, and the predicates and the object instances are the same, so the two are eligible at the partial level and pair, though they state different facts (Example: *A wrong pair*, below) | partial versions | code (pairing, step 070) | review partial pairs in the [annotation tool](../../docs/terminology.md#4-ground-truth-and-samples) (*Partial pairs*; [tuning records](../../docs/terminology.md#7-evaluating-extraction-step-070) only): one you mark "not the same fact" is never paired. The [held-out part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s partial pairs aren't reviewed until the pipeline is frozen for the final evaluation (see `070_evaluate/070_evaluate.md`, *Known limits*) |
 | 2 | A partial pair you marked "same fact" by mistake | *Suppose:* the pair of row 1, and when reviewing partial pairs in the annotation tool you pressed **Same fact** for it. *Then:* the pair stays, exactly as it would with no verdict: a "same fact" verdict changes nothing, and only "not the same fact" keeps an occurrence and a ground truth triple from pairing | partial versions | you (your review of partial pairs) | mark it "not the same fact" instead (annotation tool, *Partial pairs*). Review with care: decide each pair from the record's text (click *The record's text* under the pair to read it), not from how alike the two [classed triples](../../docs/terminology.md#2-triples) look. Subject instances or object instances that share words often refer to different things: "MODIS Terra" and "MODIS" are different instruments, and "MODIS Snow Cover" and "MODIS Snow Cover Daily" are different datasets. A wrong "same fact" leaves a wrong pair counted as correct, and nothing else will catch it |
 | 3 | The ground truth and extraction make the same mistake | *Suppose:* the record's text says MODIS is aboard Aqua; the ground truth has "MODIS" ABOARD "Terra" (the person annotating kept a wrong [drafted triple](../../docs/terminology.md#4-ground-truth-and-samples)); extraction also gives "MODIS" ABOARD "Terra". *Then:* the two are the same, so they form an exact pair, and both count as right, though the text doesn't state that fact | all | you (the ground truth) and the model (extraction, step 060) | fix the ground truth in the annotation tool (tuning records only: you see only the [tuning part](../../docs/terminology.md#7-evaluating-extraction-step-070)'s results), then rerun step 070; and extract with a model from another maker than the one that drafted the ground truth (models alike make mistakes alike; step 060 warns before paying when they are the same model or maker) |
 | 4 | A wrong row of the translation table makes the occurrence of a wrong extracted triple pair | *Suppose:* the record's text says "MODIS, aboard Aqua, collected the snow data". The ground truth schema has the predicates ABOARD (an instrument is on a spacecraft) and ACQUIRED_BY_INSTRUMENT (data were acquired by an instrument). The current schema, which extraction uses, has COLLECTED_BY (data collected by an instrument), which the ground truth schema doesn't have, so step 070 asks a model what it means; the model wrongly proposes ABOARD (it should be ACQUIRED_BY_INSTRUMENT), and your check in the annotation tool misses it. The ground truth has "MODIS" ABOARD "Aqua". Extraction mixes up the verbs and gives "MODIS" COLLECTED_BY "Aqua", which is wrong. *Then:* translated with the wrong row, it reads "MODIS" ABOARD "Aqua" and pairs exactly with the ground truth triple: two mistakes cancel out. The wrong row also turns every right COLLECTED_BY triple into an ABOARD one, so those stop pairing. | all | you (the translation table: step 070 asked a model to propose this row, and your check of it in the annotation tool missed the mistake). Extraction's wrong triple alone would have counted as not correct | fix the row in the annotation tool (*Translation table*): make COLLECTED_BY translate to ACQUIRED_BY_INSTRUMENT, and tick **Checked**; then rerun step 070. The wrong extracted triple then counts as not correct, and the right ACQUIRED_BY_INSTRUMENT triples pair again. To find wrong rows, read step 070's report (`outputs/reports/070_evaluate_<date>_<time>.md`), section *Results*, subsection *Component class mismatches*: it lists rows that the results contradict |
@@ -88,7 +88,7 @@ In each example, a [component class](../../docs/terminology.md#3-schemas) whose 
 | predicate | ABOARD | ABOARD |
 | [entity class](../../docs/terminology.md#3-schemas) | `Sensor` | `Instrument` |
 | entity class | `Instrument` | `Instrument` |
-| entity class | `Satellite` | `Spacecraft` |
+| entity class | `Satellite` | `Platform` |
 
 ```mermaid
 flowchart LR
@@ -97,24 +97,24 @@ flowchart LR
     E2["E2: MODIS (Instrument) ABOARD Aqua (Satellite)"]
   end
   subgraph M["Its multiset of translated extracted triples (ground truth schema)"]
-    T1["MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
-    T2["MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+    T1["MODIS (Instrument) ABOARD Aqua (Platform)"]
+    T2["MODIS (Instrument) ABOARD Aqua (Platform)"]
   end
   E1 -- translated --> T1
   E2 -- translated --> T2
 ```
 
-E1 and E2 are two elements of the [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060). Their [translated extracted triples](../../docs/terminology.md#7-evaluating-extraction-step-070) read the same, so they are one element of the multiset, call it *t* = "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft), and the multiset is {*t*, *t*}. Each single time an element is in a multiset is an **occurrence** of it, and how many occurrences a multiset element has is its **multiplicity**: here *t* has two occurrences, so its multiplicity is 2. Pairing gives each occurrence at most one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) partner (see *Every outcome in one record*, below).
+E1 and E2 are two elements of the [set of extracted triples](../../docs/terminology.md#6-extracting-with-a-schema-step-060). Their [translated extracted triples](../../docs/terminology.md#7-evaluating-extraction-step-070) read the same, so they are one element of the multiset, call it *t* = "MODIS" (Instrument) ABOARD "Aqua" (Platform), and the multiset is {*t*, *t*}. Each single time an element is in a multiset is an **occurrence** of it, and how many occurrences a multiset element has is its **multiplicity**: here *t* has two occurrences, so its multiplicity is 2. Pairing gives each occurrence at most one [ground truth triple](../../docs/terminology.md#4-ground-truth-and-samples) partner (see *Every outcome in one record*, below).
 
 *Every outcome in one record.* Another [record](../../docs/terminology.md#1-records-and-their-text). Its ground truth triples:
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) |
 |---|---|---|---|
-| G1 | MODIS (Instrument) | ABOARD | Aqua (Spacecraft) |
-| G2 | AIRS (Instrument) | ABOARD | Aqua (Spacecraft) |
+| G1 | MODIS (Instrument) | ABOARD | Aqua (Platform) |
+| G2 | AIRS (Instrument) | ABOARD | Aqua (Platform) |
 | G3 | MODIS Snow Cover (Dataset) | ACQUIRED_BY_INSTRUMENT | MODIS (Instrument) |
 | G4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | 2002–2023 (Time) |
-| G5 | CERES (Instrument) | ABOARD | Aqua (Spacecraft) |
+| G5 | CERES (Instrument) | ABOARD | Aqua (Platform) |
 
 The translation table translates every component class here to itself, except:
 
@@ -122,39 +122,39 @@ The translation table translates every component class here to itself, except:
 |---|---|---|
 | predicate | MOUNTED_ON | ABOARD |
 | entity class | `Sensor` | `Instrument` |
-| entity class | `Satellite` | `Spacecraft` |
+| entity class | `Satellite` | `Platform` |
 
 Its translated extracted triples, and what each becomes:
 
 | | Subject instance (subject class) | Predicate | Object instance (object class) | Outcome |
 |---|---|---|---|---|
-| E1 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | exact pair with G1 ("the" is ignored); strict |
-| E2 | AIRS (Dataset) | ABOARD | Aqua (Spacecraft) | exact pair with G2; not strict ([subject class](../../docs/terminology.md#2-triples) Dataset, not Instrument) |
+| E1 | the MODIS (Instrument) | ABOARD | Aqua (Platform) | exact pair with G1 ("the" is ignored); strict |
+| E2 | AIRS (Dataset) | ABOARD | Aqua (Platform) | exact pair with G2; not strict ([subject class](../../docs/terminology.md#2-triples) Dataset, not Instrument) |
 | E3 | MODIS Snow Cover 5-Min L2 Swath (Dataset) | ACQUIRED_BY_INSTRUMENT | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | partial pair with G3 ("MODIS Snow Cover" is inside the [subject instance](../../docs/terminology.md#2-triples), "MODIS" inside the [object instance](../../docs/terminology.md#2-triples)); strict |
 | E4 | MODIS Snow Cover (Dataset) | HAS_TIME_SPAN | the period 2002–2023 (Dataset) | partial pair with G4 ("2002–2023" is inside the object instance); not strict ([object class](../../docs/terminology.md#2-triples) Dataset, not Time) |
-| E5 | MODIS (Instrument) | ABOARD | Terra (Spacecraft) | extracted only: the record's text doesn't say MODIS is aboard Terra (in the real world a MODIS instrument is, but this record doesn't state it), so no ground truth triple has the [object](../../docs/terminology.md#2-triples) instance Terra |
-| E6 | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: it repeats G1's fact, with the subject instance named in full; it would form a partial pair with G1, but G1 already has an exact partner, E1, and a ground truth triple has at most one partner |
-| E7 | the MODIS (Instrument) | ABOARD | Aqua (Spacecraft) | extracted only: extracted as "the MODIS" (Sensor) MOUNTED_ON "Aqua" (Satellite), it translates to exactly what E1 translates to, so the record's multiset of translated extracted triples holds that element twice; G1 can have only one partner, and takes the occurrence from E1 (either occurrence would make the same exact, strict pair) |
+| E5 | MODIS (Instrument) | ABOARD | Terra (Platform) | extracted only: the record's text doesn't say MODIS is aboard Terra (in the real world a MODIS instrument is, but this record doesn't state it), so no ground truth triple has the [object](../../docs/terminology.md#2-triples) instance Terra |
+| E6 | Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) | ABOARD | Aqua (Platform) | extracted only: it repeats G1's fact, with the subject instance named in full; it would form a partial pair with G1, but G1 already has an exact partner, E1, and a ground truth triple has at most one partner |
+| E7 | the MODIS (Instrument) | ABOARD | Aqua (Platform) | extracted only: extracted as "the MODIS" (Sensor) MOUNTED_ON "Aqua" (Satellite), it translates to exactly what E1 translates to, so the record's multiset of translated extracted triples holds that element twice; G1 can have only one partner, and takes the occurrence from E1 (either occurrence would make the same exact, strict pair) |
 
 And G5 (CERES ABOARD Aqua) has no partner: ground truth only, a missed [fact](../../docs/terminology.md#2-triples).
 
 ```mermaid
 flowchart LR
   subgraph O["The record's multiset of translated extracted triples"]
-    E1["E1: the MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
-    E2["E2: AIRS (Dataset) ABOARD Aqua (Spacecraft)"]
+    E1["E1: the MODIS (Instrument) ABOARD Aqua (Platform)"]
+    E2["E2: AIRS (Dataset) ABOARD Aqua (Platform)"]
     E3["E3: MODIS Snow Cover 5-Min L2 Swath (Dataset) ACQUIRED_BY_INSTRUMENT Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument)"]
     E4["E4: MODIS Snow Cover (Dataset) HAS_TIME_SPAN the period 2002–2023 (Dataset)"]
-    E5["E5: MODIS (Instrument) ABOARD Terra (Spacecraft)"]
-    E6["E6: Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) ABOARD Aqua (Spacecraft)"]
-    E7["E7: the MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
+    E5["E5: MODIS (Instrument) ABOARD Terra (Platform)"]
+    E6["E6: Moderate Resolution Imaging Spectroradiometer (MODIS) (Instrument) ABOARD Aqua (Platform)"]
+    E7["E7: the MODIS (Instrument) ABOARD Aqua (Platform)"]
   end
   subgraph GT["Its set of ground truth triples"]
-    G1["G1: MODIS (Instrument) ABOARD Aqua (Spacecraft)"]
-    G2["G2: AIRS (Instrument) ABOARD Aqua (Spacecraft)"]
+    G1["G1: MODIS (Instrument) ABOARD Aqua (Platform)"]
+    G2["G2: AIRS (Instrument) ABOARD Aqua (Platform)"]
     G3["G3: MODIS Snow Cover (Dataset) ACQUIRED_BY_INSTRUMENT MODIS (Instrument)"]
     G4["G4: MODIS Snow Cover (Dataset) HAS_TIME_SPAN 2002–2023 (Time)"]
-    G5["G5: CERES (Instrument) ABOARD Aqua (Spacecraft)"]
+    G5["G5: CERES (Instrument) ABOARD Aqua (Platform)"]
   end
   E1 ---|exact, strict| G1
   E2 ---|exact, not strict| G2
@@ -175,7 +175,7 @@ In all: 7 occurrences, 5 ground truth triples; 2 exact pairs (E1–G1 strict, E2
 
 Taking each ground truth triple's first possible partner, G0 takes E0, and G1 is left without one, since its only possible partner, E0, is taken: 1 pair. Evaluation instead takes the largest possible set of pairs, G0 with E1 and G1 with E0: 2 pairs, both right. E0's "MODIS" is less specific than "Terra MODIS", since it could name either instrument, but it names an instrument that did acquire the data, so the pair states the same fact, named differently.
 
-*Equally large sets of pairs.* A record's ground truth has G1, "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). Extraction gives E1, "MODIS" (Dataset) ABOARD "Aqua" (Spacecraft), then E2, "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft). Each can form an exact pair with G1, which can have only one partner, so the record has two possible sets of pairs: {E1–G1}, leaving E2 extracted only, and {E2–G1}, leaving E1 extracted only. Both have 1 pair: they are equally large. Evaluation takes {E2–G1}, whose pair is strict. Which of E1 and E2 comes first in the file doesn't matter.
+*Equally large sets of pairs.* A record's ground truth has G1, "MODIS" (Instrument) ABOARD "Aqua" (Platform). Extraction gives E1, "MODIS" (Dataset) ABOARD "Aqua" (Platform), then E2, "MODIS" (Instrument) ABOARD "Aqua" (Platform). Each can form an exact pair with G1, which can have only one partner, so the record has two possible sets of pairs: {E1–G1}, leaving E2 extracted only, and {E2–G1}, leaving E1 extracted only. Both have 1 pair: they are equally large. Evaluation takes {E2–G1}, whose pair is strict. Which of E1 and E2 comes first in the file doesn't matter.
 
 *Exact pairs first.* A record describes two datasets, "MODIS Snow Cover" and "MODIS Snow Cover Daily", both made by MODIS. Its ground truth has G0, "MODIS Snow Cover" ACQUIRED_BY_INSTRUMENT "MODIS", and G1, "MODIS Snow Cover Daily" ACQUIRED_BY_INSTRUMENT "MODIS". Extraction gives E0, "MODIS Snow Cover" ACQUIRED_BY_INSTRUMENT "MODIS", and E1, "the MODIS Snow Cover product" ACQUIRED_BY_INSTRUMENT "MODIS", which repeats G0's fact (every entity class the same).
 
@@ -195,9 +195,9 @@ Evaluation first makes the exact pair E0–G0. That leaves E1 and G1, which aren
 
 *A quantity, however written.* *Suppose:* a record's ground truth has "MODIS Snow Cover" (Dataset) HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution), and extraction gives "MODIS Snow Cover" (Dataset) HAS_SPATIAL_RESOLUTION "1 km" (SpatialResolution). *Then:* the two object instances are the same quantity once [evened out](../../docs/terminology.md#2-triples), so the two are eligible at the exact pair level. Compared as words, they were not even eligible at the partial pair level: "1 km" isn't inside "1 kilometer (km)" as whole words, since "kilometer" stands between "1" and "km". Had the ground truth's object instance been "1 kilometer (km) pixel", the two would be eligible at the partial pair level: "1 km" is inside it as whole words, the quantity counting as one word. An object instance "10 km", "1 m", "1 square kilometer", or "1 kilometer per second" is a different quantity, or no quantity, and pairs with neither.
 
-*A wrong pair.* How a pair that isn't the same fact affects precision and recall. A record's ground truth has one ground truth triple, G1: "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft).
+*A wrong pair.* How a pair that isn't the same fact affects precision and recall. A record's ground truth has one ground truth triple, G1: "MODIS" (Instrument) ABOARD "Aqua" (Platform).
 
-**Case 1: nothing else would have paired.** Extraction gives one extracted triple, E1: "MODIS Terra" (Instrument) ABOARD "Aqua" (Spacecraft). It names the MODIS instrument on Terra, a different instrument from the one on Aqua, so E1 and G1 state different facts. But "MODIS" is inside "MODIS Terra" as whole words, and the predicate and the object instance are the same, so they are eligible at the partial level, and they pair.
+**Case 1: nothing else would have paired.** Extraction gives one extracted triple, E1: "MODIS Terra" (Instrument) ABOARD "Aqua" (Platform). It names the MODIS instrument on Terra, a different instrument from the one on Aqua, so E1 and G1 state different facts. But "MODIS" is inside "MODIS Terra" as whole words, and the predicate and the object instance are the same, so they are eligible at the partial level, and they pair.
 
 | | As evaluated (E1–G1 paired) | Right (no pair) |
 |---|---|---|
@@ -206,7 +206,7 @@ Evaluation first makes the exact pair E0–G0. That leaves E1 and G1, which aren
 
 Both come out too high.
 
-**Case 2: the wrong pair takes a right pair's place.** Extraction gives E1, as in case 1, and then E2: "the MODIS unit" (Instrument) ABOARD "Aqua" (Spacecraft), which does state G1's fact. "MODIS" is inside "the MODIS unit" as whole words too, so E2 is also eligible with G1 at the partial level. G1 can have only one partner, so the record has two possible sets of pairs, {E1–G1} and {E2–G1}. Each has 1 pair, and each pair is strict, so they are equally large and equally strict, and evaluation takes the one whose occurrence's contents sort first (the rule for a tie, in *Definition*, above: subject instances evened out, "modis terra" before "modis unit"), whatever the order of the rows: E1–G1. E2 is left extracted only.
+**Case 2: the wrong pair takes a right pair's place.** Extraction gives E1, as in case 1, and then E2: "the MODIS unit" (Instrument) ABOARD "Aqua" (Platform), which does state G1's fact. "MODIS" is inside "the MODIS unit" as whole words too, so E2 is also eligible with G1 at the partial level. G1 can have only one partner, so the record has two possible sets of pairs, {E1–G1} and {E2–G1}. Each has 1 pair, and each pair is strict, so they are equally large and equally strict, and evaluation takes the one whose occurrence's contents sort first (the rule for a tie, in *Definition*, above: subject instances evened out, "modis terra" before "modis unit"), whatever the order of the rows: E1–G1. E2 is left extracted only.
 
 | | As evaluated (E1–G1 paired) | Right (E2–G1 paired) |
 |---|---|---|
@@ -231,7 +231,7 @@ Exact pairs come first, so evaluation pairs O1 with G1. That leaves O2 and G2, w
 
 The exact versions come out too high, and the partial versions too low.
 
-**Case 4: only the strict versions move.** As in case 2, but E2, the right occurrence, has the wrong subject class: "the MODIS unit" (Dataset) ABOARD "Aqua" (Spacecraft). E1, the wrong occurrence, has G1's entity classes. Both possible sets of pairs have 1 pair, so evaluation takes the one with more strict pairs: {E1–G1}, the wrong one.
+**Case 4: only the strict versions move.** As in case 2, but E2, the right occurrence, has the wrong subject class: "the MODIS unit" (Dataset) ABOARD "Aqua" (Platform). E1, the wrong occurrence, has G1's entity classes. Both possible sets of pairs have 1 pair, so evaluation takes the one with more strict pairs: {E1–G1}, the wrong one.
 
 | | As evaluated (E1–G1) | Right (E2–G1) |
 |---|---|---|
