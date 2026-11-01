@@ -22,6 +22,7 @@ import json
 import re
 from pathlib import Path
 
+from common.files import read_json, read_jsonl, read_text
 from common.step import MANIFEST_NAME, RESULTS_DIR, repo_path
 from common.stop import Stop
 from common.text_match import even
@@ -68,7 +69,7 @@ def harvest_file(record: dict, harvest_dir: Path = HARVEST_DIR) -> Path | None:
 @functools.lru_cache(maxsize=2)
 def _harvest_batch(path: Path, mtime: float) -> dict:
     """{id: raw record} of one batch file (each about 7 MB); the last two read are kept."""
-    return {r["id"]: r for r in json.loads(path.read_text(encoding="utf-8"))["records"]}
+    return {r["id"]: r for r in read_json(path)["records"]}
 
 
 def saved_copy(record: dict, harvest_dir: Path = HARVEST_DIR) -> dict | None:
@@ -82,7 +83,7 @@ def harvest_date(harvest_dir: Path = HARVEST_DIR) -> str | None:
     """The saved harvest's date, from step 010's manifest (e.g. "2026-10-01"),
     or None when the manifest isn't on this computer or has none."""
     try:
-        return json.loads((harvest_dir / MANIFEST_NAME).read_text(encoding="utf-8")).get("harvest_date")
+        return read_json(harvest_dir / MANIFEST_NAME).get("harvest_date")
     except (OSError, ValueError):
         return None
 
@@ -92,11 +93,12 @@ def load_records(path) -> dict:
     keeps each catalog entry once, so a repeat means the file was edited or
     is not 020's output."""
     records = {}
-    with open(Path(path), encoding="utf-8") as fh:
-        for number, line in enumerate(fh, 1):
-            if not line.strip():
-                continue
-            record = json.loads(line)
+    if True:                                  # (the block's shape kept: common.files.read_jsonl names a bad line)
+        for number, record in read_jsonl(path):
+            if not isinstance(record, dict) or not record.get("id"):
+                raise Stop(f"{repo_path(path)} line {number}: not a record with an id, so the step can't read the "
+                           f"records (020_clean writes one record per line, each with its id: the file was edited, or "
+                           f"isn't 020_clean's output). Run `py 020_clean/run.py` again, then run the step again.")
             rid = record["id"]
             if rid in records:
                 raise Stop(f"{repo_path(path)} line {number}: id {rid} appears twice, so the step can't tell which "
@@ -145,7 +147,7 @@ def read_ids(value: str) -> list:
                        f"records to take. Give the file's path from the repository folder, or the ids themselves "
                        f"separated by commas, with --ids, then run the step again.")
         ids = []
-        for line in path.read_text(encoding="utf-8-sig").splitlines():
+        for line in read_text(path).splitlines():
             first = line.split(",")[0].strip().strip('"')
             if first and not first.startswith("#") and first.lower() != "id":
                 ids.append(first)

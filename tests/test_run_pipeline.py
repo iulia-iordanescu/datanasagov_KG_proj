@@ -119,8 +119,10 @@ class Running(Base):
         rp.command = lambda step, confirm: [sys.executable, "-c", FAKE_STEP, step, str(codes[step]),
                                             str(rp.REPORTS_DIR), str(rp.RESULTS_DIR)]
         exit_code = rp.main(list(argv))
-        report = next(rp.REPORTS_DIR.glob("000_pipeline_*.md")).read_text(encoding="utf-8")
-        return exit_code, report
+        report_path = next(rp.REPORTS_DIR.glob("000_pipeline_*.md"))
+        for p in (report_path, *rp.LOGS_DIR.glob("000_pipeline_*.log")):
+            self.assertNotIn(b"\r", p.read_bytes(), p.name)                      # plain line endings, on Windows too
+        return exit_code, report_path.read_text(encoding="utf-8")
 
     def test_stops_at_the_first_step_that_does_not_finish(self):
         code, report = self.run_fake({"010_a": 0, "020_b": 2, "030_c": 0})

@@ -58,6 +58,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
+from common import console
 from common import llm
 
 # ------------------------------ step A ------------------------------------
@@ -201,6 +202,7 @@ def step_b(model: str) -> None:
 
 
 def main() -> None:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     p = argparse.ArgumentParser(prog="py helpers/check_effort.py",
                                 description="Whether LiteLLM passes an effort setting on to a Claude model.")
     p.add_argument("--model", default=llm.MODEL, help=f"the Claude model to check (default: {llm.MODEL})")

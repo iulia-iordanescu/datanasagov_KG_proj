@@ -61,7 +61,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common import audit, prompt_files
-from common.files import write_text
+from common.files import read_json, read_text, write_text
 from common.stop import Stop
 from common.audit import log
 
@@ -310,7 +310,7 @@ def _describe_inputs(inputs: dict, defaults: dict | None = None) -> tuple:
             origin = "kept in Git, made by a person" + (UNCOMMITTED if _uncommitted(files) else "")
         elif manifest_path.exists():
             try:
-                m = json.loads(manifest_path.read_text(encoding="utf-8"))
+                m = read_json(manifest_path)
                 run_id = m.get("run_id")
                 origin = run_id or f"{m.get('step', '?')}, finished {m.get('finished', '?')}"
                 if m.get("harvest_date"):
@@ -417,7 +417,7 @@ def _take_manifest(output: Path) -> str | None:
     path = output / MANIFEST_NAME
     if not path.exists():
         return None
-    text = path.read_text(encoding="utf-8")
+    text = read_text(path)
     path.unlink()
     return text
 
@@ -475,7 +475,7 @@ def _keep_previous(output: Path, manifest_text: str | None) -> list:
                 shutil.copy2(live, second)
         kept.append((live, second))
     if kept:
-        (folder / MANIFEST_NAME).write_text(manifest_text, encoding="utf-8")
+        write_text(folder / MANIFEST_NAME, manifest_text)
     return folder, kept
 
 

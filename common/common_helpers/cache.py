@@ -40,7 +40,7 @@ import threading
 from pathlib import Path
 
 from common import llm
-from common.files import locked, write_json
+from common.files import locked, read_json, write_json
 
 
 def key(*parts) -> str:
@@ -61,7 +61,7 @@ class Cache:
         self.answers = {}
         if self.path.exists():
             try:
-                self.answers = json.loads(self.path.read_text(encoding="utf-8"))
+                self.answers = read_json(self.path)
             except (ValueError, OSError) as e:
                 self.answers = {}                 # unreadable: ask again, but keep a copy and say so
                 self._unreadable(e)
@@ -145,7 +145,7 @@ class Cache:
             with locked(self.path):
                 if self.path.exists():
                     try:
-                        on_disk = json.loads(self.path.read_text(encoding="utf-8"))
+                        on_disk = read_json(self.path)
                     except (ValueError, OSError):
                         on_disk = {}
                     if isinstance(on_disk, dict):

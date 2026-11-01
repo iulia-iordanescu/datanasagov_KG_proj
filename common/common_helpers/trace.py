@@ -20,6 +20,7 @@ import csv
 import json
 from pathlib import Path
 
+from common.files import read_csv, read_json, read_jsonl
 from common.audit import ORIGIN_COLUMN, ORIGIN_FIELD, ref_path, sha256
 from common.step import LOGS_DIR, MANIFEST_NAME, REPORTS_DIR, RESULTS_DIR, ROOT
 
@@ -43,7 +44,7 @@ _items_cache, _hash_cache = {}, {}
 def _manifest(folder: Path) -> dict:
     path = folder / MANIFEST_NAME
     try:
-        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        return read_json(path) if path.exists() else {}
     except ValueError:
         return {}
 
@@ -66,13 +67,11 @@ def _read(path: Path):
         return _items_cache[path]
     header, items = None, []
     if path.suffix == ".csv":
-        with open(path, encoding="utf-8-sig", newline="") as fh:
-            items = list(csv.DictReader(fh))
+        items = read_csv(path)
     elif path.suffix == ".jsonl":
-        with open(path, encoding="utf-8") as fh:
-            items = [json.loads(line) for line in fh if line.strip()]
+        items = [item for _, item in read_jsonl(path)]
     elif path.suffix == ".json":
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = read_json(path)
         if isinstance(data, dict) and isinstance(data.get("records"), list):
             items = data["records"]
             header = {k: v for k, v in data.items() if k != "records"}

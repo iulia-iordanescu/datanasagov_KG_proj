@@ -41,6 +41,8 @@ import io
 import re
 from pathlib import Path
 
+from common.stop import Stop
+from common.files import read_text
 from common.latest import latest_by_key
 from common.component_class_mapping import (MAPPING_PATH, NONE, condition_text, gtt_definition, gtt_definitions,
                                             is_stale_gtt, read_mapping)
@@ -414,7 +416,7 @@ def read_comments(files, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
         try:
             suffix = f.suffix.lower()
             if suffix == ".csv":
-                got, problem = _csv_rows(f.read_text(encoding="utf-8-sig"), f.name)
+                got, problem = _csv_rows(read_text(f), f.name)
                 rows += [{**r, "file": f.name, "sender": NOT_VERIFIED} for r in got]
                 problems += [problem] if problem else []
             elif suffix == ".eml":
@@ -427,12 +429,12 @@ def read_comments(files, domains=ALLOWED_SENDER_DOMAINS) -> tuple:
                     problems.append(f"{f.name}: an email from {sender} with no review comments in it (no line "
                                     f"\"{HEADER}\", and no .csv attached); skipped")
             else:
-                found = email_parts(f.read_text(encoding="utf-8-sig", errors="replace"), f.name)
+                found = email_parts(read_text(f), f.name)
                 parts += [{**p, "sender": NOT_VERIFIED} for p in found]
                 if not found:
                     problems.append(f"{f.name}: no line \"{HEADER}\", so it isn't the text of an email the review "
                                     f"page wrote; skipped")
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
+        except (OSError, UnicodeDecodeError, csv.Error, Stop) as e:        # Stop: not UTF-8 (common.files.read_text)
             problems.append(f"{f.name}: can't be read ({e}); skipped")
     got, more = sends(parts)
     rows += got

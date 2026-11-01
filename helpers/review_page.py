@@ -59,13 +59,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 
+from common import console  # noqa: E402
 from common.component_class_mapping import MAPPING_PATH, NONE, is_checked     # noqa: E402
 from common.expert_questions import (ANSWERED, GUIDELINES_PATH, OPEN, PRIORITIES, QUESTION_KIND_WORDS,  # noqa: E402
                                      QUESTIONS_PATH, RECORDS_PATH, WITHDRAWN,
                                      SPLITS_PATH, check_questions, read_questions)
 from common.ground_truth import GROUND_TRUTH_DIR                               # noqa: E402
 from common.records_io import load_records                                     # noqa: E402
-from common.files import write_text                                            # noqa: E402
+from common.files import read_text, write_text                                            # noqa: E402
 from common.review_comments import (ALLOWED_SENDER_DOMAINS, CHANGED, COMMENT_COLUMNS, GENERAL, GONE,  # noqa: E402,F401
                                     LEGACY_TOPIC, TOPIC_HEADINGS, TOPICS,
                                     NOT_VERIFIED, REVIEWS_DIR, SCHEMA_PATH, entry_texts, mapping_entries, read_all,
@@ -144,7 +145,7 @@ def glossary(path: Path = TERMS_PATH, terms=GLOSSARY) -> list:
     "pool"), and those of ALIASES that point to it, lowercased. Stops (ValueError) if one isn't there, so the page
     never shows a definition retyped elsewhere."""
     found = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in read_text(path).splitlines():
         m = re.match(r"^\| (\*\*.*?) \| (.*) \|$", line)
         if m:
             first = re.match(r"\*\*([^*]+)\*\*", m.group(1)).group(1).strip().lower()
@@ -196,7 +197,7 @@ def annotator_styles(page: Path = ANNOTATOR_PAGE, fonts: Path = FONTS) -> str:
     """The annotation tool's style sheets, as its page holds them but light only (light_only: the review page has no
     dark version), with each typeface it loads from /fonts/ put inside (a data: address), so the review page needs no
     server and no network."""
-    styles = re.findall(r"<style>(.*?)</style>", page.read_text(encoding="utf-8"), re.S)
+    styles = re.findall(r"<style>(.*?)</style>", read_text(page), re.S)
     if not styles:
         raise ValueError(f"{page.relative_to(ROOT).as_posix()} has no <style> block to take the look from")
     css = light_only("\n".join(styles))
@@ -393,7 +394,7 @@ def page_data(schema_path: Path = SCHEMA_PATH, mapping_path: Path = MAPPING_PATH
 
 def build(data: dict) -> str:
     """The page's HTML, from the template, the annotation tool's look, and the data."""
-    page = TEMPLATE.read_text(encoding="utf-8")
+    page = read_text(TEMPLATE)
     for key, value in {"{{ANNOTATOR_STYLES}}": annotator_styles(), "{{PAGE_FONTS}}": page_fonts(), "{{DATA}}": _script_json(data),
                        "{{VERSION}}": html.escape(data["version"]["id"])}.items():
         if key not in page:
@@ -549,6 +550,7 @@ def read_and_summarize(paths, out_dir: Path = OUT_DIR, schema_path: Path = SCHEM
 
 
 def main() -> None:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     parser = argparse.ArgumentParser(prog="py helpers/review_page.py",
                                      description="Write a read-only review page of the ground truth schema, the "
                                                  "translation table and my questions for experts, publish it at its "

@@ -34,7 +34,7 @@ import maintainers
 import note_cleaning
 from ftfy import fix_encoding
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
-from common.files import write_jsonl
+from common.files import read_json, write_jsonl
 from common.records_io import CLEANING_FIELD, TEXT_FIELDS, has_text
 from common.report import cell, named, this_report
 from common.step import Results, Spec, check_settings, input_files, repo_path
@@ -109,7 +109,7 @@ def load_raw(inputs: dict, settings: dict) -> Catalog:
     files = input_files(inputs["batches"])
     catalog.files = len(files)
     for path in files:
-        batch = json.loads(path.read_text(encoding="utf-8"))
+        batch = read_json(path)
         if not isinstance(batch, dict) or "records" not in batch:
             raise Stop(f"{repo_path(path)} is in the old batch format (a bare list, with no "
                        f"request block), so 020 can't read its records. Run `py 010_harvest/run.py` again "

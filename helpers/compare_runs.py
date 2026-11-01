@@ -29,8 +29,9 @@ sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 
 
 import stats                                                                   # noqa: E402
 from moves import EVALUATIONS_DIR                                              # noqa: E402
+from common import console  # noqa: E402
 from common import audit                                                      # noqa: E402
-from common.files import write_text                                            # noqa: E402
+from common.files import read_json, write_text                                            # noqa: E402
 from common.step import REPORTS_DIR, RESULTS_DIR, repo_path                    # noqa: E402
 
 EVALUATIONS = RESULTS_DIR / "070_evaluate" / EVALUATIONS_DIR
@@ -78,7 +79,7 @@ def load(run_id: str) -> dict:
         sys.exit(f"No evaluation kept for {run_id} ({repo_path(path)} doesn't exist), so it can't be compared. "
                  f"`py helpers/compare_runs.py` lists the evaluations kept so far: copy a run id from there, then run "
                  f"the command again.")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return read_json(path)
 
 
 def flatten(d, prefix="") -> dict:
@@ -331,6 +332,7 @@ def report(runs: list, ids: list, left: dict, notes: list = ()) -> str:
 
 
 def main() -> int:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     ap = argparse.ArgumentParser(prog="py helpers/compare_runs.py", description=__doc__.split("\n\n")[1])
     ap.add_argument("runs", nargs="*", help="070's run ids (or evaluation files), the baseline first")
     args = ap.parse_args()
@@ -342,7 +344,7 @@ def main() -> int:
             return 0
         print(f"Evaluations kept ({repo_path(EVALUATIONS)}/), oldest first:")
         for p in kept:
-            run = json.loads(p.read_text(encoding="utf-8"))
+            run = read_json(p)
             ex = run.get("recipe", {}).get("extraction (060)", {}).get("settings", {})
             print(f"  {run['run_id']}   {len(run['records'])} tuning records   060: "
                   f"{ex.get('service', '?')} {ex.get('model', '?')}")

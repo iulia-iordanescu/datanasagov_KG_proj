@@ -1,7 +1,19 @@
 """
 common/common_helpers/files.py -- the one way every step, the manifest, the report, and the
-annotation tool save a file. (The log is the one exception: it is written
+annotation tool read and save a file. (The log is the one exception: it is written
 line by line as a run goes, so a crash still leaves every line before it.)
+
+Reading: every text file is read as UTF-8 with a byte-order mark dropped (a file saved by Notepad or Excel may
+start with one) and Windows line endings read as plain "\n"; a file that isn't UTF-8 (saved in another encoding),
+or isn't in its format (JSON, a JSON line, a CSV), stops the step with a Stop naming the file and the line, never a
+traceback. No step, helper or the annotation tool opens a text file itself (a test keeps it so).
+
+    read_text(path)                            # the text; Stop if it isn't UTF-8
+    read_json(path)                            # the JSON value; Stop naming the line and column if it isn't JSON
+    read_jsonl(path)                           # [(line number, item)]; Stop naming the line if one isn't JSON
+    read_csv(path)                             # every row, as dicts
+    read_csv_table(path)                       # (the columns, every row with its "_line" in the file)
+    append_text(path, text)                    # add text at the end of a file (the logs, the failed-call record)
 
 Each function but append_csv (which adds rows to the end of a file in place)
 writes under a temporary name (<name>.part) and then renames it, so a file is either the old one or the complete new one, never half
@@ -35,6 +47,76 @@ import os
 import threading
 import time
 from pathlib import Path
+
+from common.stop import Stop
+
+
+def _name(path) -> str:
+    """The file as a message names it: from the repository folder when it is inside it."""
+    root = Path(__file__).resolve().parents[2]
+    p = Path(path).resolve()
+    return p.relative_to(root).as_posix() if p.is_relative_to(root) else str(path)
+
+
+def _decode(path) -> str:
+    """The file's bytes as text: UTF-8, a byte-order mark dropped; Stop when it isn't UTF-8."""
+    raw = Path(path).read_bytes()
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError as e:
+        raise Stop(f"{_name(path)} isn't UTF-8 text (byte {e.object[e.start:e.start + 1]!r} at position {e.start}): it "
+                   f"was saved in another encoding (Excel or Notepad may save in the Windows code page). Save it as "
+                   f"UTF-8, then run again.") from None
+
+
+def read_text(path) -> str:
+    """The file's text, UTF-8 (a byte-order mark dropped), with Windows line endings read as plain "\n"."""
+    return _decode(path).replace("\r\n", "\n")
+
+
+def read_json(path):
+    """The file's JSON value; Stop naming the file, line and column when it isn't JSON."""
+    try:
+        return json.loads(read_text(path))
+    except json.JSONDecodeError as e:
+        raise Stop(f"{_name(path)} isn't valid JSON (line {e.lineno}, column {e.colno}: {e.msg}), so it can't be "
+                   f"read. It was cut short or edited: restore it (from Git, or by running the step that writes it "
+                   f"again), then run again.") from None
+
+
+def read_jsonl(path) -> list:
+    """[(line number, item)] of a file with one JSON item per line (blank lines skipped); Stop naming the line when
+    one isn't JSON."""
+    items = []
+    for number, line in enumerate(read_text(path).split("\n"), 1):
+        if not line.strip():
+            continue
+        try:
+            items.append((number, json.loads(line)))
+        except json.JSONDecodeError as e:
+            raise Stop(f"{_name(path)} line {number} isn't valid JSON (column {e.colno}: {e.msg}), so the file can't "
+                       f"be read. It was cut short or edited: restore it (from Git, or by running the step that "
+                       f"writes it again), then run again.") from None
+    return items
+
+
+def read_csv_table(path) -> tuple:
+    """(columns, rows): the header's column names and every row as a dict, each with "_line", its line in the file
+    (the header is line 1). Stop if the file isn't UTF-8."""
+    reader = csv.DictReader(io.StringIO(_decode(path), newline=""))
+    rows = []
+    for row in reader:
+        rows.append({**row, "_line": reader.line_num})
+    return list(reader.fieldnames or []), rows
+
+
+def append_text(path, text: str) -> None:
+    """Add text at the end of the file (made if missing), UTF-8 with plain line endings: the logs and the failed-call
+    record, written line by line as a run goes."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
 
 
 class Changed(ValueError):
@@ -144,11 +226,9 @@ def write_csv(path, columns: list, rows, new: bool = False) -> None:
 
 
 def read_csv(path) -> list:
-    """Every row of a CSV file, as a dict. utf-8-sig: a file saved by Excel
-    may start with an invisible byte-order mark, which would stick to the
-    first column's name."""
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        return list(csv.DictReader(fh))
+    """Every row of a CSV file, as a dict (utf-8-sig: a file saved by Excel may start with an invisible byte-order
+    mark, which would stick to the first column's name; Stop if it isn't UTF-8)."""
+    return list(csv.DictReader(io.StringIO(_decode(path), newline="")))
 
 
 def append_csv(path, columns: list, rows) -> None:
@@ -159,8 +239,7 @@ def append_csv(path, columns: list, rows) -> None:
     path = Path(path)
     if not path.exists():
         write_csv(path, columns, [])
-    text = path.read_text(encoding="utf-8-sig")
-    with open(path, "a", encoding="utf-8", newline="") as fh:
-        if text and not text.endswith("\n"):
-            fh.write("\n")
-        csv.DictWriter(fh, columns, extrasaction="ignore", lineterminator="\n").writerows(rows)
+    text = _decode(path)
+    buf = io.StringIO()
+    csv.DictWriter(buf, columns, extrasaction="ignore", lineterminator="\n").writerows(rows)
+    append_text(path, ("\n" if text and not text.endswith("\n") else "") + buf.getvalue())

@@ -56,6 +56,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common.files import read_json
 from common.audit import log, ref_path
 from common.ground_truth import (GROUND_TRUTH_DIR, GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, ground_truth_schema_view,
                                  read_ground_truth, read_pool)
@@ -91,7 +92,7 @@ EVIDENCE_NAME = "induction_evidence.json"
 def _made(path: Path) -> dict:
     """A JSON file's "made" block (the run that wrote it), or {}."""
     try:
-        return json.loads(path.read_text(encoding="utf-8")).get("made") or {}
+        return read_json(path).get("made") or {}
     except (OSError, ValueError, AttributeError):
         return {}
 
@@ -135,7 +136,7 @@ def learned_from(inputs: dict, base: dict, result: Schema, pool: list) -> dict:
             return {"known": False, "ids": [],
                     "how": [f"{repo_path(path)} has no {EVIDENCE_NAME} beside it written by the same run, so which "
                             f"texts the schema was learned from isn't known"]}
-        texts = json.loads(evidence.read_text(encoding="utf-8")).get("texts", [])
+        texts = read_json(evidence).get("texts", [])
         ids |= {t["id"] for t in texts}
         how.append(f"040's run {run} learned it from {len(texts)} texts ({repo_path(evidence)}, key texts)")
     named_positions = set()

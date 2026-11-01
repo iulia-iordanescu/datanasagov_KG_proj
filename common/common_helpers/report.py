@@ -32,9 +32,9 @@ def _duration(seconds: float | None) -> str:
 
 
 def cell(value) -> str:
-    """A value as a Markdown table cell: | escaped, line breaks as spaces,
+    """A value as a Markdown table cell: | escaped, line breaks (\\n, \\r\\n or \\r) as spaces,
     nothing for None. Shared by every step's report details."""
-    return "" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
+    return "" if value is None else str(value).replace("|", "\\|").replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
 
 
 def named(items, show: int = 5, sep: str = ", ") -> str:

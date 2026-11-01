@@ -28,6 +28,7 @@ it: annotations/README.md.
 import argparse
 import sys
 import webbrowser
+from common import console
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
@@ -36,6 +37,7 @@ from annotator.server import serve
 
 
 def main() -> None:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     parser = argparse.ArgumentParser(prog="py helpers/annotate.py", description="Correct the ground truth triples a model drafted, in your browser.")
     parser.add_argument("--port", type=int, default=8050, help="the port the page is served on (default 8050)")
     parser.add_argument("--no-browser", action="store_true", help="don't open the browser")

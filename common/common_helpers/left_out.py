@@ -40,6 +40,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from common.files import read_text
 from common.step import ANNOTATIONS_DIR
 
 LEFT_OUT_PATH = ANNOTATIONS_DIR / "left_out.md"
@@ -63,7 +64,7 @@ _MATTER = re.compile(r"\b(?:(?P<all>all) (?P<n_all>\d+)|(?P<none>none)|(?P<n>\d+
 def read_left_out(path: Path = LEFT_OUT_PATH) -> list:
     """The file's sections (see the module); ValueError naming the line of the first thing not in the format."""
     name = f"annotations/{path.name}" if path == LEFT_OUT_PATH else str(path)
-    lines = path.read_text(encoding="utf-8").split("\n")
+    lines = read_text(path).split("\n")
 
     def bad(n: int, what: str) -> ValueError:
         return ValueError(f"{name}, line {n}: {what} (the format: annotations/README.md, row left_out.md)")
@@ -148,10 +149,12 @@ def read_pending(path: Path = PENDING_PATH, left_out_path: Path = LEFT_OUT_PATH)
     "line"], in the file's order; ValueError naming the file and line of the first problem. Every row is checked
     against left_out.md (read_left_out), and every item there that waits must have a row or a NO_TRIPLE note."""
     import csv
+    import io
+    import io
     name = f"annotations/{path.name}" if path == PENDING_PATH else str(path)
     lo_name = f"annotations/{left_out_path.name}" if left_out_path == LEFT_OUT_PATH else str(left_out_path)
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        reader = csv.reader(fh)
+    if True:                                  # (the block's shape kept: the text through common.files.read_text)
+        reader = csv.reader(io.StringIO(read_text(path), newline=""))
         header = next(reader, None)
         if header != PENDING_COLUMNS:
             raise ValueError(f"{name}, line 1: the header must be {','.join(PENDING_COLUMNS)}, not "

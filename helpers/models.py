@@ -29,6 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
+from common import console
 from common import llm
 
 
@@ -50,6 +51,7 @@ def try_models(wanted: list, listed: list, service: str = llm.SERVICE) -> list:
 
 
 def main() -> None:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     p = argparse.ArgumentParser(prog="py helpers/models.py",
                                 description="The AI models a service lists for your account; with --try, which of "
                                             "them you may use.")

@@ -82,6 +82,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from common.files import read_csv_table
 from common.audit import ref_path
 from common.step import ANNOTATIONS_DIR
 from common.stop import Stop
@@ -270,21 +271,21 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
     """Every row with a component_class_from_past_or_crt_schema, in the file's order, each
     value trimmed, plus "_line": its line in the file (the header is line 1;
     never written back). Stops if a column is missing."""
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        reader = csv.DictReader(fh)
-        missing = [c for c in COLUMNS if c not in (reader.fieldnames or []) and c not in CONDITIONS]   # a table
+    if True:                                  # (the block's shape kept: one reader, common.files.read_csv_table)
+        columns, raw_rows = read_csv_table(path)
+        missing = [c for c in COLUMNS if c not in columns and c not in CONDITIONS]   # a table
         # from before conditional rows (2026-10-30) has no condition columns: read as unconditional rows
         if missing:
             raise Stop(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so the translation table can't "
                        f"be read. Restore its header line, which names the columns: {', '.join(COLUMNS)}.")
         rows = []
-        for r in reader:
+        for r in raw_rows:
             if (r.get("component_class_from_past_or_crt_schema") or "").strip():
                 row = {c: (r.get(c) or "").strip() for c in COLUMNS}
                 row.update({c: " ".join(row[c].lower().split()) for c in VALUES})
                 if "".join(row["component_class_in_gtt"].casefold().split()) == NONE:
                     row["component_class_in_gtt"] = NONE              # "(None)", "( none )": the one spelling
-                rows.append({**row, "_line": reader.line_num})
+                rows.append({**row, "_line": r["_line"]})
         return rows
 
 

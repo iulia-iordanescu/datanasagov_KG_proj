@@ -27,7 +27,7 @@ from records import SPECS                               # noqa: F401  (the contr
 import stats
 from common import audit, dropped, extraction, llm, text_match
 from common.audit import ORIGIN_COLUMN, check_origins, log
-from common.files import append_csv, locked, read_csv, write_csv, write_json, write_text
+from common.files import append_csv, locked, read_csv, read_text, write_csv, write_json, write_text
 from common.report import cell, model_calls, named, per_text_table, this_report
 from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
@@ -453,7 +453,7 @@ def _log_look(evaluated, translation, schema_file: str) -> dict | None:
             "translation_sha256": _translation_fingerprint(translation),
             "held_out_ground_truth_sha256": _fingerprint([[r["id"] for r in held], rows])}
     if LOOKS.exists():
-        header = LOOKS.read_text(encoding="utf-8-sig").split("\n", 1)[0].strip()
+        header = read_text(LOOKS).split("\n", 1)[0].strip()
         if header != ",".join(LOOKS_COLUMNS):
             raise Stop(f"{repo_path(LOOKS)} has the columns {header}, not the ones 070 writes "
                        f"({','.join(LOOKS_COLUMNS)}), so a look added now would land in the wrong columns. Its first "

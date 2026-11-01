@@ -45,7 +45,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from common.audit import ref_path
-from common.files import read_csv
+from common.files import read_csv, read_json
 from common.ground_truth import (BAD_MARK, EVALUABLE, HELD_OUT, IN_TWO_FILES, TO_FIX, UNFINISHED, evaluable_problems,
                                  fair_prefix, pool_parts, read_ground_truth, read_pool, twin_kinds)
 from common.left_out import read_pending
@@ -253,12 +253,12 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     for r in pool_rows:
         g = strata.get(r["id"], "")
         evaluated.pool_strata[g] = evaluated.pool_strata.get(g, 0) + 1
-    details = json.loads(Path(inputs["extracted_triples_details"]).read_text(encoding="utf-8"))
+    details = read_json(inputs["extracted_triples_details"])
     evaluated.extraction_made = details.get("made") or {}
     manifest = Path(inputs["extracted_triples"]).parent / MANIFEST_NAME
-    evaluated.extraction_manifest = json.loads(manifest.read_text(encoding="utf-8")) if manifest.is_file() else {}
+    evaluated.extraction_manifest = read_json(manifest) if manifest.is_file() else {}
     extracted_ids = {r["id"] for r in details["records"] if r["status"] == "extracted"}
-    evaluated.schema_used = json.loads(Path(inputs["schema_used"]).read_text(encoding="utf-8"))
+    evaluated.schema_used = read_json(inputs["schema_used"])
     removed = {}
     for row in read_csv(Path(inputs["extracted_triples_removed"])):
         removed.setdefault(row["id"], collections.Counter())[row["reason"]] += 1

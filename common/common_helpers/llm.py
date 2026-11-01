@@ -69,6 +69,8 @@ import requests
 from dotenv import load_dotenv
 
 from common.audit import log
+from common.files import append_text
+from common.files import append_text
 from common.stop import Stop
 
 #: The model the calls use: the default of every step's `model` setting,
@@ -1241,9 +1243,7 @@ class PaidCalls:
                           "served_as": call.get("served_as"), "attempts": call.get("attempts"),
                           "asks": call.get("asks"), "seconds": call.get("seconds"),
                           "answer": getattr(error, "answer", None), "what_to_do": advice(error)})
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "a", encoding="utf-8", newline="\n") as fh:
-            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        append_text(path, json.dumps(entry, ensure_ascii=False) + "\n")
         OUTCOMES["file"] = path.relative_to(path.parents[2]).as_posix()
 
 

@@ -31,6 +31,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from common.files import read_csv_table
 from common.latest import latest_by_key
 from common.step import ANNOTATIONS_DIR
 from common.text_match import instance_key
@@ -80,9 +81,7 @@ def _rows(path: Path) -> list:
     """The file's rows, each with "_line" (its line in the file; the header is line 1)."""
     if not Path(path).exists():
         return []
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        reader = csv.DictReader(fh)
-        return [{**r, "_line": reader.line_num} for r in reader]
+    return read_csv_table(path)[1]
 
 
 def _where(r: dict) -> str:

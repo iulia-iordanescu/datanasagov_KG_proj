@@ -105,6 +105,7 @@ import os
 import re
 from pathlib import Path
 
+from common.files import read_json, read_text
 from common.audit import ref_path
 from common.ground_truth import HELD_OUT
 from common.triples_io import KIND_KEYS, component_class_key
@@ -168,7 +169,7 @@ def _read_text(path) -> dict:
     schema = _empty()
     sections = SECTIONS
     section, entry_name = None, None
-    for number, line in enumerate(Path(path).read_text(encoding="utf-8-sig").splitlines(), 1):
+    for number, line in enumerate(read_text(path).splitlines(), 1):
         head = line.strip()
         if head in sections:
             section, entry_name = sections[head], None
@@ -232,7 +233,7 @@ def _read_text(path) -> dict:
 
 
 def _read_json(path) -> dict:
-    data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    data = read_json(path)
     where = Path(path).name
     if not isinstance(data, dict):
         raise ValueError(f"{where}: a JSON schema must be an object with entity_classes and predicates, so it can't "
@@ -360,7 +361,7 @@ def ground_truth_source_problem(source: str, parts: dict) -> str | None:
 def additions_header(path) -> str:
     """The comments at the top of the additions file (everything before its
     ENTITY CLASSES line), kept as they are when the tool rewrites the entries."""
-    text = Path(path).read_text(encoding="utf-8-sig") if Path(path).exists() else ""
+    text = read_text(path) if Path(path).exists() else ""
     lines = text.splitlines()
     for i, line in enumerate(lines):
         if SECTIONS.get(line.strip()) == "entity_classes":

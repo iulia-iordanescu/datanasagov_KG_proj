@@ -51,6 +51,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
+from common.files import append_text, read_json, write_text  # noqa: E402
+from common import console  # noqa: E402
 from common.audit import new_run_id                                                    # noqa: E402
 from common.ground_truth import EVALUABLE, GROUND_TRUTH_DIR, read_ground_truth         # noqa: E402
 from common import status as project                                                   # noqa: E402
@@ -142,7 +144,10 @@ def run_one(step: str, confirm: str | None, say) -> dict:
            "headline": {}, "warnings": None, "why": ""}
     manifest = RESULTS_DIR / step / MANIFEST_NAME
     if out["status"] == RAN and manifest.exists():
-        m = json.loads(manifest.read_text(encoding="utf-8"))
+        try:
+            m = read_json(manifest)                           # one reader; a cut-short manifest can't crash the pipeline
+        except (ValueError, OSError) as e:
+            m, out["why"] = {}, f"its manifest can't be read ({e})"
         out["headline"], out["warnings"] = m.get("headline") or {}, m.get("warnings")
     say(f"--- {step}: {out['status']} in {out['duration_s']} s" + (f" (exit code {code})" if code else ""))
     return out
@@ -196,6 +201,7 @@ def report_text(run: dict, rows: list, next_up: list | None = None) -> str:
 
 
 def main(argv=None) -> int:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     p = argparse.ArgumentParser(description="Run the pipeline's steps in order (each as py <step>/run.py would).")
     p.add_argument("--from", dest="start", help="the first step to run, e.g. 040")
     p.add_argument("--to", help="the last step to run, e.g. 060")
@@ -222,8 +228,7 @@ def main(argv=None) -> int:
 
     def say(text):
         print(text, flush=True)
-        with open(log_path, "a", encoding="utf-8") as fh:
-            fh.write(f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {text}\n")
+        append_text(log_path, f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {text}\n")
 
     say(f"pipeline run {run_id}: {', '.join(steps)}")
     rows, stopped = [], False
@@ -258,7 +263,7 @@ def main(argv=None) -> int:
         next_up = [f"The project's status couldn't be worked out ({type(e).__name__}: {e}); "
                    f"`py run_pipeline.py --status` shows the error in full."]
         summary = f"the project's status couldn't be worked out ({type(e).__name__}: {e})"
-    report_path.write_text(report_text(run, rows, next_up), encoding="utf-8")
+    write_text(report_path, report_text(run, rows, next_up))
     shown = report_path.relative_to(ROOT).as_posix() if report_path.is_relative_to(ROOT) else report_path
     say(f"pipeline report: {shown}")
     say(summary)

@@ -19,6 +19,7 @@ import html
 import re
 from pathlib import Path
 
+from common.files import read_text
 from common.component_class_mapping import MAPPING_PATH, read_mapping
 from common.ground_truth import EVALUABLE, FINISHED, GROUND_TRUTH_DIR, TUNING, read_ground_truth, read_pool
 from common.records_io import load_records
@@ -498,7 +499,7 @@ def read_questions(path: Path = QUESTIONS_PATH) -> list:
     path = Path(path)
     if not path.exists():
         return []
-    lines = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    lines = read_text(path).replace("\r", "\n").split("\n")
     err = _Lines(path).error
     starts = [i for i, l in enumerate(lines) if l.startswith("## ")]
     out, seen = [], {}
@@ -519,6 +520,22 @@ def read_questions(path: Path = QUESTIONS_PATH) -> list:
 
 # ------------------------------ checking the quotes --------------------------
 
+def _text_or_empty(path) -> str:
+    """A repository file's text, or "" when it isn't UTF-8 text (a quote can then never be found in it)."""
+    try:
+        return read_text(path)
+    except Stop:
+        return ""
+
+
+def _text_or_empty(path) -> str:
+    """A repository file's text, or "" when it isn't UTF-8 text (a quote can then never be found in it)."""
+    try:
+        return read_text(path)
+    except Stop:
+        return ""
+
+
 def _plain_md(text: str) -> str:
     text = re.sub(r"\[([^\[\]]*)\]\([^)]*\)", r"\1", text)
     return squeeze(text.replace("**", "").replace("`", "").replace("*", ""))
@@ -528,7 +545,7 @@ def guideline_rules(path: Path = GUIDELINES_PATH) -> dict:
     """{(section heading, rule number): the rule's words, markup and links taken out}: each numbered rule of
     annotations/guidelines.md, with the indented lines that continue it."""
     rules, section, cur = {}, "", None
-    for line in Path(path).read_text(encoding="utf-8").split("\n"):
+    for line in read_text(path).split("\n"):
         h = re.match(r"^#{2,3} (.+)", line)
         m = re.match(r"^(\d+)\. (.*)", line)
         if h:
@@ -659,7 +676,7 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
             f = ANNOTATIONS_DIR.parent / meth["path"]
             if not f.is_file():
                 problems.append(f"{where(q, meth['line'])}: {meth['path']} isn't a file of the repository.")
-            elif _plain_md(meth["words"]) not in _plain_md(f.read_text(encoding="utf-8", errors="replace")):
+            elif _plain_md(meth["words"]) not in _plain_md(_text_or_empty(f)):
                 problems.append(f"{where(q, meth['line'])}: these words aren't in {meth['path']} as it is now: "
                                 f"quote them exactly.")
         problems += _check_affects(q, where, pool, gt, schema, mapping, rules, ground_truth_dir)

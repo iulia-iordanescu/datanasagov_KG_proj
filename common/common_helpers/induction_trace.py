@@ -23,6 +23,7 @@ import json
 import re
 from pathlib import Path
 
+from common.files import read_json
 from common.step import RESULTS_DIR, repo_path
 
 STEP = "040_induce_schema"
@@ -46,7 +47,7 @@ def _read(folder: Path, name: str):
             f"`py 040_induce_schema/run.py` (or point --folder at a folder that holds {SCHEMA_NAME} and "
             f"{EVIDENCE_NAME}, e.g. one under previous_runs/).")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return read_json(path)
     except json.JSONDecodeError as e:
         raise ValueError(f"{repo_path(path)} isn't valid JSON ({e}): it may be cut short. Run "
                          f"`py 040_induce_schema/run.py` again to rewrite it.") from None

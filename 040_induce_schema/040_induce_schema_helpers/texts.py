@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common.files import read_json
 from common.audit import log
 from common.chunking import full_text, pieces
 from common.records_io import load_records
@@ -42,7 +43,7 @@ SPECS = {"induction_maintainers": Spec(int, 1, 10_000), "texts_per_maintainer": 
 def pick_texts(inputs: dict, settings: dict) -> Texts:
     check_settings(settings, SPECS)
     records = load_records(inputs["records"])
-    splits = json.loads(Path(inputs["splits"]).read_text(encoding="utf-8"))
+    splits = read_json(inputs["splits"])
     induction = splits["induction_candidates"]
     chosen = induction["maintainers"][:settings["induction_maintainers"]]
     wanted = {m["maintainer"] for m in chosen}

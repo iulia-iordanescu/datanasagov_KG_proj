@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from common.files import write_text
+from common.files import read_json, write_text
 
 PATTERN = "batch_*.json"
 
@@ -41,7 +41,7 @@ def load_batch(path: Path) -> dict:
     """The batch as {request block..., "records": [...]}. A file in the old
     format (a bare list of records, no request block) comes back as
     {"records": [...]} alone."""
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = read_json(path)
     return {"records": data} if isinstance(data, list) else data
 
 

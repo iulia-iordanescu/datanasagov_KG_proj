@@ -22,11 +22,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
+from common import console
 from common.induction_trace import trace_induction
 from common.trace import find, trace
 
 
 def main() -> int:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     ap = argparse.ArgumentParser(prog="py helpers/audit.py", description=__doc__.split("\n\n")[1])
     ap.add_argument("key", nargs="?", help="the item's key, e.g. a CKAN record id")
     ap.add_argument("--step", help="look only in this step, e.g. 010_harvest")

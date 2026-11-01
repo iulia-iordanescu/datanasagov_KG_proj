@@ -90,6 +90,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common.files import read_csv_table, read_json
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
 from common.triples_io import KIND_KEYS, canonical_row, classed_key, component_class_key, is_describes
@@ -312,18 +313,18 @@ def read_ground_truth(folder: Path = GROUND_TRUTH_DIR, pool=None) -> GroundTruth
                             f"other file has), then rerun.")
             continue
         files.append(path)
-        with open(path, encoding="utf-8-sig", newline="") as fh:
-            reader = csv.DictReader(fh)
-            missing = [c for c in COLUMNS if c not in (reader.fieldnames or [])]
+        if True:                              # (the block's shape kept: one reader, common.files.read_csv_table)
+            columns, raw_rows = read_csv_table(path)
+            missing = [c for c in COLUMNS if c not in columns]
             if missing:
                 problems.append(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so none of its rows "
                                 f"were read. Restore its header line, which names the columns: "
                                 f"{', '.join(COLUMNS)}.")
                 continue
             rows = []
-            for position, raw in enumerate(reader):
+            for position, raw in enumerate(raw_rows):
                 if (raw.get("id") or "").strip():                      # else a blank line
-                    rows.append(_as_read(raw, ref_path(path), position, reader.line_num))
+                    rows.append(_as_read(raw, ref_path(path), position, raw["_line"]))
             files_rows.append((path.name, rows))
     return _build(files_rows, files, problems, pool)
 
@@ -659,7 +660,7 @@ def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict
 def read_pool(splits_path) -> list:
     """The ground truth candidates pool, in pool order, from 030's
     splits.json: [{"id", "position", "part" ("tuning" or "held-out"), …}]."""
-    return json.loads(Path(splits_path).read_text(encoding="utf-8"))["ground_truth_candidates"]["records"]
+    return read_json(splits_path)["ground_truth_candidates"]["records"]
 
 
 #: The two parts of the pool (docs/terminology.md, *held-out part*), each value as 030's splits.json writes it.

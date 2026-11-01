@@ -135,7 +135,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
 from common.chunking import full_text
-from common.files import fingerprint, locked, read_snapshot, write_csv, write_if_unchanged, write_text
+from common.files import fingerprint, locked, read_csv, read_csv_table, read_json, read_snapshot, read_text, write_csv, write_if_unchanged, write_text
 from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, FINISHED, GROUND_TRUTH_DIR,
                                  NUMBERED, PATTERN, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
                                  ground_truth_schema_gaps as schema_gaps, ground_truth_schema_view, marks_state,
@@ -326,9 +326,8 @@ class Data:
 
 
 def _read_rows(path: Path) -> list:
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        return [{c: (row.get(c) or "").strip() for c in FILE_COLUMNS} for row in csv.DictReader(fh)
-                if (row.get("id") or "").strip()]
+    return [{c: (row.get(c) or "").strip() for c in FILE_COLUMNS} for row in read_csv(path)
+            if (row.get("id") or "").strip()]
 
 
 def _group(rows: list) -> list:
@@ -811,7 +810,7 @@ def _crt() -> dict | None:
     or None if step 060's schema_used.json isn't there."""
     if not SCHEMA_USED.exists():
         return None
-    return crt_definitions(json.loads(SCHEMA_USED.read_text(encoding="utf-8")))
+    return crt_definitions(read_json(SCHEMA_USED))
 
 
 def mapping_view(data: Data) -> dict:
@@ -827,11 +826,10 @@ def mapping_view(data: Data) -> dict:
     crt = _crt()
     examples = {}
     if EXTRACTED.exists():
-        with open(EXTRACTED, encoding="utf-8-sig", newline="") as fh:
-            for r in csv.DictReader(fh):
-                if not is_describes(r):
-                    examples.setdefault(component_class_key(r.get("predicate")),
-                                        {"subject": r.get("subject") or "", "object": r.get("object") or ""})
+        for r in read_csv(EXTRACTED):
+            if not is_describes(r):
+                examples.setdefault(component_class_key(r.get("predicate")),
+                                    {"subject": r.get("subject") or "", "object": r.get("object") or ""})
     gtt = _gtt(data)
     gtt_now = _gtt_definitions(gtt)
     table = read_mapping(MAPPING_PATH)
@@ -840,7 +838,7 @@ def mapping_view(data: Data) -> dict:
     same_name = {kind: {component_class_key(n): n for n in names} for kind, names in gtt.items()}
     suggested = {}                                    # evaluation's last suggestions for (none) rows
     if METRICS.exists():
-        for s in json.loads(METRICS.read_text(encoding="utf-8")).get("translation_suggestions", []):
+        for s in read_json(METRICS).get("translation_suggestions", []):
             suggested[(s["kind"], component_class_key(s["component_class_from_past_or_crt_schema"]))] = s["component_class_in_gtt"]
     shared = sharing(table, crt)
     rows = []
@@ -951,7 +949,7 @@ def terms() -> dict:
     """{term, lower case: its definition, as plain text}, from docs/terminology.md: every name written in bold in the
     first cell of a row of its tables (a term and its other names), read from the file each time."""
     rows = [[c.strip() for c in line.strip().strip("|").split("|")]
-            for line in TERMINOLOGY.read_text(encoding="utf-8").splitlines() if line.startswith("| **")]
+            for line in read_text(TERMINOLOGY).splitlines() if line.startswith("| **")]
     rows = [r for r in rows if len(r) >= 2]
     out = {}
     # A row's own names first; then the names a definition writes in bold ("its **pool position**"), which that row
@@ -969,7 +967,7 @@ def doc_text(path: str) -> dict:
     target = (ROOT / path).resolve()
     if target.suffix.lower() != ".md" or not target.is_relative_to(ROOT.resolve()) or not target.is_file():
         raise ValueError(f"{path} isn't a Markdown file of this repository, so it can't be shown here")
-    return {"file": target.relative_to(ROOT.resolve()).as_posix(), "markdown": target.read_text(encoding="utf-8")}
+    return {"file": target.relative_to(ROOT.resolve()).as_posix(), "markdown": read_text(target)}
 
 
 def _section(text: str, head: str) -> str:
@@ -985,7 +983,7 @@ def help_text(view: str) -> dict:
     head = HELP_SECTIONS.get(view)
     if head is None:
         raise ValueError(f"no help for {view!r}")
-    text = README.read_text(encoding="utf-8")
+    text = read_text(README)
     section = _section(text, head)
     whole = "\n\n".join([section] + [_section(text, h) for h in HELP_ALSO.get(view, ())])
     # The section's first paragraph after its heading: what the view is for, shown at the top of the view.
@@ -1056,17 +1054,17 @@ def additions_view(data: Data) -> dict:
     if SCHEMA_USED.exists():
         for kind, key in KIND_KEYS.items():
             used[kind] = {component_class_key(e["component_class"]): e["component_class"]
-                          for e in json.loads(SCHEMA_USED.read_text(encoding="utf-8")).get(key, [])
+                          for e in read_json(SCHEMA_USED).get(key, [])
                           if e.get("from") != "additions"}
     names = []
     if EXTRACTION_DETAILS.exists():
-        details = json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
+        details = read_json(EXTRACTION_DETAILS)
         have = {(e["entry_type"], component_class_key(e["component_class"])) for e in entries if e["entry_type"] != "pattern"}
         names = [{**n, "added": (n["kind"], component_class_key(n["component_class"])) in have}
                  for n in (details.get("new_component_classes") or {}).get("component_classes", [])]
     return {"file": f"annotations/{ADDITIONS.name}", "entries": entries, "unread": unread,
             "fingerprint": fingerprint(ADDITIONS),
-            "new_component_classes": names, "counted_over": (json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
+            "new_component_classes": names, "counted_over": (read_json(EXTRACTION_DETAILS)
                                              .get("new_component_classes") or {}).get("counted_over")
             if EXTRACTION_DETAILS.exists() else None,
             "schema_component_classes": {k: sorted(v.values()) for k, v in used.items()}}
@@ -1120,8 +1118,7 @@ def _read_reviews_rows() -> list:
     """The file's rows; a verdict read as step 070 reads it (case and spacing aside: partial_reviews.verdict_of)."""
     if not REVIEWS_PATH.exists():
         return []
-    with open(REVIEWS_PATH, encoding="utf-8-sig", newline="") as fh:
-        rows = [{c: (r.get(c) or "").strip() for c in REVIEW_COLUMNS} for r in csv.DictReader(fh)]
+    rows = [{c: (r.get(c) or "").strip() for c in REVIEW_COLUMNS} for r in read_csv(REVIEWS_PATH)]
     for r in rows:
         if verdict_of(r) in (SAME, NOT_SAME):
             r["verdict"] = verdict_of(r)
@@ -1169,8 +1166,7 @@ def partial_view(data: Data) -> dict:
     items, seen = [], set()
     rows = []
     if COMPARED.exists():
-        with open(COMPARED, encoding="utf-8-sig", newline="") as fh:
-            rows = list(csv.DictReader(fh))
+        rows = read_csv(COMPARED)
     # a record's occurrences, by their translated extracted triple as written (two that read the same are one element)
     by_triple = collections.defaultdict(list)
     for r in rows:
@@ -1312,9 +1308,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
 
     # 1. the ground truth files: every cell holding the component class, in any spelling
     for p in sorted(GROUND_TRUTH_DIR.glob(PATTERN)):
-        with open(p, encoding="utf-8-sig", newline="") as fh:
-            reader = csv.DictReader(fh)
-            columns, rows = list(reader.fieldnames or []), list(reader)
+        columns, rows = read_csv_table(p)
         cells = 0
         for r in rows:
             for c in GT_COLUMNS[kind]:
@@ -1505,7 +1499,7 @@ def make_handler(data: Data):
                 elif url.path == "/api/doc":
                     self._json(doc_text(q["path"][0]))
                 elif url.path == "/api/guidelines":
-                    self._json({"file": f"annotations/{GUIDELINES.name}", "markdown": GUIDELINES.read_text(encoding="utf-8")})
+                    self._json({"file": f"annotations/{GUIDELINES.name}", "markdown": read_text(GUIDELINES)})
                 elif url.path == "/api/additions":
                     self._json(additions_view(data))
                 elif url.path == "/api/vocab":

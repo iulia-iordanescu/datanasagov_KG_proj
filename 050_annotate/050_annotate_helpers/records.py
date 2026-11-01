@@ -44,6 +44,7 @@ import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from common.files import read_csv, read_text
 from common.chunking import full_text, pieces
 from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, HELD_OUT, NUMBERED, PARTS, TUNING, fair_sample,
                                  fair_words, ground_truth_schema_view, pool_parts, read_ground_truth, read_pool)
@@ -109,11 +110,10 @@ def _waiting(output: Path) -> tuple:
             continue
         n = int(m.group(1))
         highest = max(highest, n)
-        with open(path, encoding="utf-8-sig", newline="") as fh:
-            for row in csv.DictReader(fh):
-                rid = (row.get("id") or "").strip()
-                if rid:
-                    waiting.setdefault(rid, n)
+        for row in read_csv(path):                        # Stop, naming the file, if it isn't UTF-8 (Excel's cp1252)
+            rid = (row.get("id") or "").strip()
+            if rid:
+                waiting.setdefault(rid, n)
     return waiting, highest
 
 
@@ -139,7 +139,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     # the checks: the file's entity classes and predicates; its patterns and every one the finished tuning records use
     chosen.schema_entries = SchemaEntries({**hand, "patterns": vocab["patterns"]})
     chosen.coined = vocab["coined"]
-    chosen.schema_text = vocabulary_text(Path(inputs["ground_truth_schema"]).read_text(encoding="utf-8-sig").strip(),
+    chosen.schema_text = vocabulary_text(read_text(inputs["ground_truth_schema"]).strip(),
                                          chosen.coined, vocab["used_patterns"])
     chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
     chosen.done = set(chosen.ground_truth.select(ANNOTATED).ids)

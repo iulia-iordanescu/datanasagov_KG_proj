@@ -63,7 +63,7 @@ from pathlib import Path
 
 from common import audit
 from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
-from common.files import write_json
+from common.files import read_csv, read_json, write_json
 from common.ground_truth import GROUND_TRUTH_SCHEMA_FROM, HELD_OUT, TUNING, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
@@ -115,8 +115,7 @@ def load_records(inputs: dict) -> dict:
 
 def ground_truth_candidates(inputs: dict, records: dict) -> Candidates:
     path = Path(inputs["candidates"])
-    with open(path, encoding="utf-8-sig", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+    rows = read_csv(path)
     if not rows or "id" not in rows[0] or "maintainer" not in rows[0]:
         has = f"its columns are {', '.join(rows[0])}" if rows else "it has no rows"
         raise Stop(f"{ref_path(path)} needs the columns id and maintainer ({has}), so 030 can't read the "
@@ -210,7 +209,7 @@ def _from_trial_harvest(inputs: dict) -> bool:
     says so in its manifest (harvest_partial, passed on from 010)."""
     manifest = Path(inputs["records"]).parent / MANIFEST_NAME
     try:
-        return bool(json.loads(manifest.read_text(encoding="utf-8")).get("harvest_partial"))
+        return bool(read_json(manifest).get("harvest_partial"))
     except (OSError, ValueError):
         return False
 
@@ -223,7 +222,7 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
 
     kept, same = path.exists(), True
     if kept:
-        existing = json.loads(path.read_text(encoding="utf-8"))
+        existing = read_json(path)
         same = {k: existing.get(k) for k in drawn} == drawn
         log.info(f"  {OUTPUT_NAME} already exists: kept as it is"
                  + ("" if same else " (this run's draw differs)"))

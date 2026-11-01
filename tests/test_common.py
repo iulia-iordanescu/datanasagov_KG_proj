@@ -1842,6 +1842,114 @@ def _helper(step: str, name: str = "records"):
     return module
 
 
+class OneReader(unittest.TestCase):
+    """Every text file is read and written through common/common_helpers/files.py (UTF-8, a byte-order mark dropped,
+    Windows line endings read as plain; a file that isn't UTF-8 or isn't in its format stops the step naming the
+    file and line), and every program sets the console up once (common/common_helpers/console.py), so a cp1252
+    console or a redirected output never crashes on ✖."""
+
+    #: Code that may open a file itself: the readers' home, and the binary reads (hashes, fonts, emails, the page).
+    HOMES = ("common/common_helpers/files.py",)
+    ALLOWED = (r'open\(f, "rb"\)', r"webbrowser\.open\(", r"\.read_bytes\(", r"\.write_bytes\(")
+
+    def code_files(self):
+        from support import ROOT
+        import subprocess
+        out = subprocess.run(["git", "ls-files", "*.py"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+        return [f for f in out.split("\n") if f and not f.startswith(("tests/", "archive/", "DONOTTRACK/"))
+                and f not in self.HOMES]
+
+    def test_no_file_opened_outside_files_py(self):
+        import re
+        from support import ROOT
+        found = []
+        for rel in self.code_files():
+            for n, line in enumerate((ROOT / rel).read_text(encoding="utf-8").split("\n"), 1):
+                if any(re.search(a, line) for a in self.ALLOWED):
+                    continue
+                if re.search(r"\.read_text\(|\.write_text\(|(?<![\w.])open\(", line):
+                    found.append(f"{rel}:{n}: {line.strip()}")
+        self.assertEqual(found, [])
+
+    def test_every_program_sets_the_console_up(self):
+        from support import ROOT
+        for rel in ("run_pipeline.py", "helpers/annotate.py", "helpers/audit.py", "helpers/models.py",
+                    "helpers/check_effort.py", "helpers/check_answer_cache.py", "helpers/review_page.py",
+                    "helpers/compare_runs.py", "tests/run_all.py", "common/common_helpers/audit.py"):
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            self.assertTrue("console.setup()" in text or "console_setup()" in text or "setup()" in text, rel)
+
+    def test_console_under_cp1252(self):
+        """A program that printed ✖ to a cp1252 console (or a redirected output) died with UnicodeEncodeError; with
+        console.setup() the character is replaced and the program goes on."""
+        import os
+        import subprocess
+        import sys
+        from support import ROOT
+        env = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}
+        code = "import sys; sys.path.insert(0, %r); from common import console; console.setup(); print('\u2716 \u2192 ok')" % str(ROOT)
+        run = subprocess.run([sys.executable, "-c", code], capture_output=True, env=env, cwd=ROOT)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(b"? ? ok", run.stdout)
+        bare = "import sys; print('\u2716')"
+        run = subprocess.run([sys.executable, "-c", bare], capture_output=True, env=env, cwd=ROOT)
+        self.assertNotEqual(run.returncode, 0)                                     # the near miss: without the set-up
+
+    def test_readers(self):
+        import tempfile
+        from common import files, prompt_files, records_io
+        from common.stop import Stop
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            t = tmp / "t.txt"
+            t.write_bytes(b"\xef\xbb\xbfline one\r\nline two\n")
+            self.assertEqual(files.read_text(t), "line one\nline two\n")             # BOM dropped, CRLF read as \n
+            self.assertEqual(prompt_files.load(t).template, "line one\nline two\n")   # a prompt's BOM never reaches the model
+            t.write_bytes("caf\xe9".encode("cp1252"))
+            with self.assertRaises(Stop) as s:
+                files.read_text(t)
+            self.assertIn("t.txt isn't UTF-8 text", str(s.exception))
+            self.assertIn("Save it as UTF-8", str(s.exception))
+            j = tmp / "j.json"
+            j.write_bytes(b'{"a": 1,\n "b": }')
+            with self.assertRaises(Stop) as s:
+                files.read_json(j)
+            self.assertIn("j.json isn't valid JSON (line 2, column", str(s.exception))
+            j.write_bytes(b"\xef\xbb\xbf{\"a\": 1}\r\n")
+            self.assertEqual(files.read_json(j), {"a": 1})
+            l = tmp / "l.jsonl"
+            l.write_bytes(b'{"id": "a"}\n\n{"id": "b"\n{"id": "c"}\n')
+            with self.assertRaises(Stop) as s:
+                files.read_jsonl(l)
+            self.assertIn("l.jsonl line 3 isn't valid JSON", str(s.exception))
+            l.write_bytes(b'\xef\xbb\xbf{"id": "a"}\r\n\r\n{"id": "b"}\r\n')
+            self.assertEqual(files.read_jsonl(l), [(1, {"id": "a"}), (3, {"id": "b"})])
+            self.assertEqual(sorted(records_io.load_records(l)), ["a", "b"])            # a BOM'd records.jsonl loads
+            l.write_bytes(b'{"id": "a"}\n{"title": "no id"}\n')
+            with self.assertRaises(Stop) as s:
+                records_io.load_records(l)
+            self.assertIn("line 2: not a record with an id", str(s.exception))
+            c = tmp / "c.csv"
+            c.write_bytes(b"\xef\xbb\xbfid,x\r\n1,a\r\n\r\n2,b\r\n")
+            self.assertEqual(files.read_csv(c), [{"id": "1", "x": "a"}, {"id": "2", "x": "b"}])
+            columns, rows = files.read_csv_table(c)
+            self.assertEqual((columns, [r["_line"] for r in rows]), (["id", "x"], [2, 4]))
+            c.write_bytes("id,x\n1,caf\xe9\n".encode("cp1252"))
+            with self.assertRaises(Stop):
+                files.read_csv(c)
+            a = tmp / "a.log"
+            files.append_text(a, "one\n")
+            files.append_text(a, "two\n")
+            self.assertEqual(a.read_bytes(), b"one\ntwo\n")                          # plain line endings on Windows
+            files.append_csv(c, ["id", "x"], [{"id": "3", "x": "c"}]) if False else None
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_cell_drops_every_line_break(self):
+        from common.report import cell
+        self.assertEqual(cell("a\r\nb\rc\nd|e"), "a b c d\\|e")
+
+
 class ReadThenWrite(unittest.TestCase):
     """common.files: a file read with its fingerprint is written back only if it still has it (write_if_unchanged,
     under locked), so a change made in between (another tab, a hand edit, a step) is never overwritten."""

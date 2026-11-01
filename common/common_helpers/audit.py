@@ -115,11 +115,8 @@ def start_log(path: Path, step_name: str) -> logging.FileHandler:
         f"%(asctime)s.%(msecs)03d  %(levelname)-7s  {step_name}  %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"))
 
-    # A Windows console reads any character, but output redirected to a file
-    # or a pipe is encoded in the system's code page, which has no "→" or
-    # "≠": replace what it can't encode rather than lose the whole message.
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(errors="replace")
+    from common.console import setup
+    setup()                                  # the one set-up: what the console can't encode is replaced, never a crash
     console = logging.StreamHandler(sys.stdout)
     console.setLevel(logging.INFO)
     console.setFormatter(_Console())

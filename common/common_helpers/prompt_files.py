@@ -29,6 +29,8 @@ import hashlib
 from pathlib import Path
 from string import Template
 
+from common.files import read_text
+
 _used: dict = {}                     # {file, as the report names it: sha256 of its text}
 
 
@@ -40,7 +42,7 @@ class Prompt(Template):
 
 
 def load(path) -> Prompt:
-    return Prompt(Path(path).read_text(encoding="utf-8"), path)
+    return Prompt(read_text(path), path)       # a byte-order mark (Notepad) never reaches the model
 
 
 def fill(template: Template, **values) -> str:

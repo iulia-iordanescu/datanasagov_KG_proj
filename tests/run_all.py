@@ -16,6 +16,10 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+from common.console import setup as console_setup      # noqa: E402  (the one set-up: a cp1252 console shows "?" for ✖, never crashes)
+sys.path.insert(0, str(HERE.parent))
+from common.console import setup as console_setup      # noqa: E402  (the one set-up: a cp1252 console shows "?" for ✖, never crashes)
 TIME_LIMIT = 300            # seconds per test file; the slowest takes about 20
 
 
@@ -27,6 +31,7 @@ def repository_state() -> str:
 
 
 def main(argv: list) -> int:
+    console_setup()
     files = sorted(HERE.glob("test_*.py"))
     if argv:
         files = [f for f in files if any(a in f.stem for a in argv)]

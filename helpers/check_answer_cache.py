@@ -46,6 +46,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
+from common import console
 from common import llm
 
 #: The response header LiteLLM's proxy puts on an answer it serves from its cache.
@@ -188,6 +189,7 @@ def show(name: str, call: dict) -> None:
 
 
 def main() -> None:
+    console.setup()                                   # what the console can't show is replaced, never a crash
     p = argparse.ArgumentParser(prog="py helpers/check_answer_cache.py",
                                 description="Whether NASA's LiteLLM answers repeated requests from its own cache.")
     p.add_argument("--model", default=llm.MODEL, help=f"the model to ask (default: {llm.MODEL})")

@@ -45,6 +45,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from common.files import read_csv, read_json
 from common import audit
 from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, STALE, crt_definitions, gtt_definitions, \
     is_checked, read_mapping, repeats, row_states
@@ -98,7 +99,7 @@ def _item(area: str, level: str, text: str, section: str, source: str = "") -> d
 def _manifest(step: str) -> dict | None:
     path = RESULTS_DIR / step / MANIFEST_NAME
     try:
-        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+        return read_json(path) if path.exists() else None
     except (ValueError, OSError):
         return None
 
@@ -290,7 +291,7 @@ def _additions_items(parts: dict) -> list:
                            f"before step 060 runs again: {named(wrong, 2, '; ')}. Annotation tool, Schema additions.",
                            "after-step-060", repo_path(ADDITIONS)))
     if DETAILS.exists():
-        details = json.loads(DETAILS.read_text(encoding="utf-8"))
+        details = read_json(DETAILS)
         have = {(e["entry_type"], component_class_key(e.get("component_class"))) for e in entries}
         new = [n for n in (details.get("new_component_classes") or {}).get("component_classes", [])
                if (n["kind"], component_class_key(n["component_class"])) not in have]
@@ -311,7 +312,7 @@ def _additions_items(parts: dict) -> list:
 def _translation_items(schema: dict, gt) -> list:
     if not SCHEMA_USED.exists() or not MAPPING_PATH.exists():
         return []
-    crt = crt_definitions(json.loads(SCHEMA_USED.read_text(encoding="utf-8")))
+    crt = crt_definitions(read_json(SCHEMA_USED))
     gtt_now = gtt_definitions(schema)                 # the file's own, as step 070 reads it: never a coined one
     table = read_mapping(MAPPING_PATH)
     current = [r for r in table if component_class_key(r["component_class_from_past_or_crt_schema"])
@@ -350,9 +351,8 @@ def _partial_items(parts_by_id: dict) -> list:
     if not COMPARED.exists():
         return []
     reviews = read_reviews(REVIEWS_PATH)
-    with open(COMPARED, encoding="utf-8-sig", newline="") as fh:
-        waiting = {row_key(r) for r in csv.DictReader(fh) if r.get("status") == PARTIAL_PAIR
-                   and parts_by_id.get(r.get("record_id")) == TUNING and row_key(r) not in reviews}
+    waiting = {row_key(r) for r in read_csv(COMPARED) if r.get("status") == PARTIAL_PAIR
+               and parts_by_id.get(r.get("record_id")) == TUNING and row_key(r) not in reviews}
     if not waiting:
         return []
     m = _manifest("070_evaluate") or {}
