@@ -24,7 +24,9 @@ It runs in the frame every step runs in (common/common_helpers/step.py, run_step
 manifest (the model, its settings, the prompts' fingerprints), and the answers cached in its own output folder, so a
 rerun with the same repeats pays nothing. It writes no drafted batch, and nothing in annotations/ unless --apply true,
 which writes only annotations/second_opinion.csv (common/common_helpers/second_opinion.py: for each ground truth
-triple and model, in how many repeats it was found). Step 070 then reports recall and partial F1 for the ground truth
+triple and model, in how many repeats it was found) and annotations/second_opinion_candidates.csv (the draft's facts
+the ground truth lacks, tuning records only, each with an empty column decision for the reviewer; a rerun keeps
+every decision already filled). Step 070 then reports recall and partial F1 for the ground truth
 triples found in at least one repeat and for those found in none, and how many were found in 0, 1, ..., N repeats.
 
 Held-out records are drafted too (so step 070 can group their triples), but the draft's facts the ground truth lacks
@@ -35,7 +37,7 @@ Reads:   records.jsonl (020), splits.json (030), annotations/ground_truth_schema
 Writes:  second_opinion_triples.csv (every repeat's draft, in a drafted batch's columns and the column repeat),
          second_opinion_matches.csv (each ground truth triple with the repeats that found it; the draft's facts the
          ground truth lacks, tuning records only), second_opinion_details.json; with --apply true,
-         annotations/second_opinion.csv
+         annotations/second_opinion.csv and annotations/second_opinion_candidates.csv
 Details: helpers/second_opinion.md
 """
 from __future__ import annotations
@@ -55,7 +57,8 @@ from common.files import write_csv, write_json                                # 
 from common.ground_truth import DRAFTED_BY, EVALUABLE, HELD_OUT, TO_FIX, TUNING  # noqa: E402
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, read_ids  # noqa: E402
 from common.report import cell, model_calls, named                            # noqa: E402
-from common.second_opinion import FOUND, NOT_FOUND, PATH as TABLE_PATH, TRIPLE, counts, key_of, read_table, write_table  # noqa: E402
+from common.second_opinion import (CANDIDATES_PATH, FOUND, NOT_FOUND, PATH as TABLE_PATH, TRIPLE, candidate_key,  # noqa: E402
+                                   candidates_path_for, counts, key_of, read_candidates, read_table, write_candidates, write_table)
 from common.step import Results, Spec, check_settings, load_moves, repo_path, run_step  # noqa: E402
 from common.stop import Stop                                                   # noqa: E402
 from common.triples_io import classed_key, is_describes                       # noqa: E402
@@ -89,7 +92,7 @@ SETTINGS = {
     "thinking":           "medium",  # how much a model that thinks may think: low, medium, high, or model_default (050's setting)
     "repeats":            REPEATS,  # how many times each record is drafted: repeats 1, 2, ..., N, each with answers of its own
     "confirm_paid_calls": True,  # stop and ask before the first model call; false for unattended runs
-    "apply":              False,  # also write what was found into annotations/second_opinion.csv (the only write to annotations/)
+    "apply":              False,  # also write annotations/second_opinion.csv and second_opinion_candidates.csv (the only writes to annotations/)
 }
 
 #: This helper's own settings' rules (common.step.Spec); the shared ones come with check_settings.
@@ -195,7 +198,14 @@ def pick_records(inputs: dict, settings: dict, output: Path):
                         + ", ".join(f"{n} {p}" for p, n in sorted(parts.items())) + f") with {settings['model']}, "
                         f"in {repeats} repeat(s) (repeats 1 to {repeats}), to match the drafts against the ground truth. It "
                         f"writes no drafted batch and changes nothing in annotations/"
-                        + (" except annotations/second_opinion.csv (--apply true)." if settings["apply"] else "."))
+                        + (" except annotations/second_opinion.csv and annotations/second_opinion_candidates.csv "
+                           "(--apply true)." if settings["apply"] else "."))
+    if settings["apply"]:
+        try:                                             # a mistake in the files stops here, before any paid call
+            read_table(TABLE_PATH)
+            read_candidates(CANDIDATES_PATH)
+        except ValueError as e:
+            raise Stop(f"{e}. --apply true rewrites this file, so fix it first, then run this again.") from None
     same = [r for r in finished.rows if r["id"] in set(picked) and r.get(DRAFTED_BY, "").strip().lower()
             == settings["model"].strip().lower()]
     if same:
@@ -351,7 +361,9 @@ def apply(chosen, combined: Combined, settings: dict, path: Path = TABLE_PATH) -
     """With --apply true: annotations/second_opinion.csv gets, for every record drafted this run, one row per ground
     truth triple for this run's model, with its repeats, found_in_repeats and found_exact_in_repeats (replacing that model's
     earlier row, keeping every other model's); rows of those records that match no ground truth triple any more are
-    dropped; every other record's rows are kept as they are. Returns what was written, or None."""
+    dropped; every other record's rows are kept as they are. Then the draft's facts the ground truth lacks go to the
+    candidates file beside it, annotations/second_opinion_candidates.csv (apply_candidates). Returns what was written,
+    or None."""
     if not settings["apply"]:
         return None
     model = llm.MODEL
@@ -376,12 +388,64 @@ def apply(chosen, combined: Combined, settings: dict, path: Path = TABLE_PATH) -
         pos = chosen.positions.get(row["id"])
         return (pos is None, pos or 0, row["id"], order.get(k, len(order)), k)
     ordered = [rows[k] for k in sorted(rows, key=place)]
+    candidates = read_candidates(candidates_path_for(path))    # read before writing anything: a mistake stops both
     write_table(path, ordered)
     lines = sum(len(r["by"]) for r in ordered)
     log.info(f"  wrote {repo_path(path)}: {lines} row(s), {len(rebuilt)} of them for {model} on the "
              f"{len(drafted)} record(s) drafted now")
     return {"path": repo_path(path), "rows": lines, "triples": len(ordered), "rebuilt": len(rebuilt),
-            "dropped": len(dropped_rows), "kept_other_records": len(kept)}
+            "dropped": len(dropped_rows), "kept_other_records": len(kept),
+            "candidates": apply_candidates(chosen, combined, model, candidates, candidates_path_for(path))}
+
+
+def apply_candidates(chosen, combined: Combined, model: str, old: list, path: Path) -> dict:
+    """annotations/second_opinion_candidates.csv (old: its rows as read): for every TUNING record drafted this run,
+    this model's rows are replaced by its draft-only classed triples (the union over the repeats), each with the
+    decision already filled for the same record and classed triple (by any model), else an empty one; a row of this
+    model on those records with a decision filled whose classed triple this run no longer proposes is kept as it was,
+    so that no decision is lost; every other model's rows, and every other record's, are kept. A held-out record's
+    draft-only triples are never written (counted only), and a row of a record now in the held-out part is dropped.
+    Rows are ordered by pool position, then the file's order. Returns what was written."""
+    drafted = set(combined.per_record)
+    held_out = {rid for rid, part in chosen.parts.items() if part == HELD_OUT}
+    decisions = {candidate_key(r): r["decision"] for r in old if r["decision"]}
+    titles = {item["id"]: item["title"] for item in chosen.items}
+    new = []
+    for item in chosen.items:
+        rid, e = item["id"], combined.per_record.get(item["id"])
+        if e is None or chosen.parts.get(rid) != TUNING:
+            continue
+        for u in sorted(e["draft_only"], key=lambda u: -len(u["repeats"])):
+            t = u["triple"]
+            row = {"id": rid, "title": titles.get(rid, ""), **{c: t[c] for c in TRIPLE}, "source_text": t["source_text"],
+                   "model": model, "proposed_in_repeats": len(u["repeats"]), "repeats": len(e["repeats"])}
+            row["decision"] = decisions.get(candidate_key(row), "")
+            new.append(row)
+    proposed = {candidate_key(r) for r in new}
+    kept, kept_decided, dropped_held_out = [], 0, 0
+    for r in old:
+        if r["id"] in held_out:
+            dropped_held_out += 1
+        elif r["model"] == model and r["id"] in drafted:
+            if r["decision"] and candidate_key(r) not in proposed:
+                kept.append(r)
+                kept_decided += 1
+        else:
+            kept.append(r)
+    rows = kept + new
+
+    def place(i):                                        # pool position, then the file's order, then this run's
+        pos = chosen.positions.get(rows[i]["id"])
+        return (pos is None, pos or 0, rows[i]["id"], i)
+    ordered = [rows[i] for i in sorted(range(len(rows)), key=place)]
+    write_candidates(path, ordered)
+    held_out_count = sum(len(e["draft_only"]) for rid, e in combined.per_record.items() if rid in held_out)
+    log.info(f"  wrote {repo_path(path)}: {len(ordered)} row(s), {len(new)} of them for {model} on the tuning "
+             f"record(s) drafted now, {sum(1 for r in new if r['decision'])} with a decision kept")
+    return {"path": repo_path(path), "rows": len(ordered), "written": len(new),
+            "decisions_kept": sum(1 for r in new if r["decision"]), "kept_decided": kept_decided,
+            "undecided": sum(1 for r in ordered if not r["decision"]), "held_out_not_written": held_out_count,
+            "dropped_held_out": dropped_held_out}
 
 
 # --------------------------------------------------------------------------
@@ -441,7 +505,7 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
         })
         files = [draft_path, matches_path, details_path]
         if applied:
-            files.append(TABLE_PATH)
+            files += [TABLE_PATH, CANDIDATES_PATH]
         log.info(f"  wrote {DRAFT_NAME}, {MATCHES_NAME} and {DETAILS_NAME}")
 
     warnings = list(chosen.notes)
@@ -565,9 +629,22 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
                   f"triple(s) dropped (their classed triple is no longer in the ground truth), "
                   f"{applied['kept_other_records']} of other records kept as they were. Commit it. Step 070 now reports "
                   f"recall by the group found in at least one repeat / found in none / not checked.", ""]
+        c = applied["candidates"]
+        lines += [f"`{c['path']}` now has {c['rows']} row(s), the draft's facts the ground truth lacks, to review: "
+                  f"{c['written']} written for `{llm.MODEL}` on the tuning record(s) drafted now, {c['decisions_kept']} of "
+                  f"them with the decision already filled for the same record and classed triple"
+                  + (f"; {c['kept_decided']} decided row(s) kept although this run no longer proposes their classed "
+                     f"triple" if c["kept_decided"] else "")
+                  + (f"; {c['dropped_held_out']} row(s) of records now in the held-out part dropped"
+                     if c["dropped_held_out"] else "")
+                  + f". {c['undecided']} row(s) have no decision yet: fill the column `decision` of each with `added`, "
+                  f"`left out (<section>, rule <n>)` or `already in the ground truth in other words` "
+                  f"(helpers/second_opinion.md, *The draft's facts to review*). The {c['held_out_not_written']} of the "
+                  f"held-out records are not written. Commit both files.", ""]
     else:
         lines += ["Nothing written to `annotations/`. To record which ground truth triples this second opinion found "
-                  "(`annotations/second_opinion.csv`, read by step 070), run `py helpers/second_opinion.py --apply "
+                  "(`annotations/second_opinion.csv`, read by step 070), and the draft's facts the ground truth lacks "
+                  "for review (`annotations/second_opinion_candidates.csv`), run `py helpers/second_opinion.py --apply "
                   "true` with the same repeats: it pays nothing for the answers already cached.", ""]
     lines += dropped.section(left_out, chosen.items, "at least one repeat (each record is matched on the repeats that "
                              "drafted it)", repo_path(details_path) if files else None)

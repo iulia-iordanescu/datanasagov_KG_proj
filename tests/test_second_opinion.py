@@ -3,7 +3,9 @@ too, their draft's facts the ground truth lacks never listed), each ground truth
 by 070's pairing without translation, with the near misses; several repeats combined (each ground truth triple found in k
 of the repeats, exactly in j; the draft-only facts the union over the repeats, with the repeats that proposed each; a failed
 repeat counted on the others); what --apply true writes into annotations/second_opinion.csv (two models merged, the same
-model again replaced, a reworded triple dropped, other records kept, the reader's near misses); the whole helper run
+model again replaced, a reworded triple dropped, other records kept, the reader's near misses); what it writes into
+annotations/second_opinion_candidates.csv (tuning records only; each decision kept on a rerun; the decisions allowed;
+the reader's near misses); the whole helper run
 with the stand-in model in a temporary copy, its answers differing by repeat: 1 repeat, then 3 repeats paying only for
 repeats 2 and 3 and asking once, then the same 3 repeats paying nothing; and the settings sent to gemini-4-argon. Step
 070's side: tests/test_evaluate_second_opinion.py."""
@@ -23,8 +25,9 @@ from support import ROOT, temp_repo
 from common import llm                                                        # noqa: E402
 from common.files import read_csv, write_csv                                  # noqa: E402
 from common.ground_truth import FILE_COLUMNS, read_ground_truth              # noqa: E402
-from common.second_opinion import (COLUMNS, FOUND, NOT_CHECKED, NOT_FOUND, TRIPLE, groups_of, key_of,  # noqa: E402
-                                   read_table, repeats_of, stale_rows, write_table)
+from common.second_opinion import (CANDIDATE_COLUMNS, COLUMNS, FOUND, NOT_CHECKED, NOT_FOUND, TRIPLE,  # noqa: E402
+                                   candidates_path_for, decision_problem, groups_of, key_of, read_candidates,
+                                   read_table, repeats_of, stale_rows, write_candidates, write_table)
 from common.stop import Stop                                                  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -303,6 +306,137 @@ class Apply(Fixture):
         self.assertIn("two rows", str(e.exception))
 
 
+class Candidates(Fixture):
+    """annotations/second_opinion_candidates.csv: what --apply true writes there, and what reading it refuses."""
+
+    MOON = triple("MODIS", "Instrument", "ABOARD", "Moon", "Spacecraft", "MODIS on the Moon")
+    SAT = triple("Aura", "Spacecraft", "PART_OF", "EOS", "Mission", "Aura, part of EOS")        # t2: another fact
+    HELD = triple("AIRS", "Instrument", "ABOARD", "Terra", "Spacecraft", "AIRS on Terra")
+    RULES = {("Writing a classed triple", 21): "General facts", ("What counts as a fact", 9): "Not a fact"}
+
+    def setUp(self):
+        self.path = self.tmp / f"second_opinion_{self._testMethodName}.csv"
+        self.cpath = candidates_path_for(self.path)
+
+    def apply(self, repeats, model, ids=("t0", "h1", "t2")):
+        llm.MODEL = model
+        return self.helper.apply(self.chosen(ids), self.combined(repeats, ids), {"apply": True}, self.path)["candidates"]
+
+    def rows(self):
+        return [(r["id"], r["object"], r["object_class"], r["model"], r["proposed_in_repeats"], r["repeats"], r["decision"])
+                for r in read_candidates(self.cpath, self.RULES)]
+
+    def decide(self, obj, decision):
+        rows = read_candidates(self.cpath, self.RULES)
+        for r in rows:
+            if r["object"] == obj:
+                r["decision"] = decision
+        write_candidates(self.cpath, rows)
+
+    def test_the_real_file_is_beside_the_table(self):
+        real = ROOT / "annotations" / "second_opinion_candidates.csv"
+        self.assertEqual(candidates_path_for(ROOT / "annotations" / "second_opinion.csv"), real)
+        self.assertEqual(real.read_text(encoding="utf-8").splitlines()[0], ",".join(CANDIDATE_COLUMNS))
+        read_candidates(real)                                                              # every decision there is allowed
+
+    def test_tuning_only_union_and_titles(self):
+        c = self.apply([{"t0": GT_T0 + [self.MOON], "h1": GT_H1 + [self.HELD], "t2": [self.SAT]},
+                        {"t0": [self.MOON, self.MOON], "h1": [self.HELD], "t2": []}], "model-a")
+        self.assertEqual(self.rows(), [("t0", "Moon", "Spacecraft", "model-a", "2", "2", ""),      # twice in a repeat: once
+                                       ("t2", "EOS", "Mission", "model-a", "1", "2", "")])
+        self.assertEqual((c["written"], c["held_out_not_written"], c["undecided"]), (2, 1, 2))
+        self.assertNotIn("AIRS", self.cpath.read_text(encoding="utf-8"))                     # the held-out record's
+        first = read_candidates(self.cpath, self.RULES)[0]
+        self.assertEqual((first["title"], first["source_text"]), ("Title t0", "MODIS on the Moon"))
+
+    def test_decision_kept_on_rerun_and_across_models(self):
+        self.apply([{"t0": [self.MOON], "t2": [self.SAT]}], "model-a", ids=("t0", "t2"))
+        self.decide("Moon", "left out (Writing a classed triple, rule 21)")
+        # the same model again, 3 repeats: its rows replaced (new counts), the decision kept
+        c = self.apply([{"t0": [self.MOON], "t2": []}, {"t0": [self.MOON], "t2": []}, {"t0": [], "t2": []}], "model-a",
+                       ids=("t0", "t2"))
+        self.assertEqual(self.rows(), [("t0", "Moon", "Spacecraft", "model-a", "2", "3",
+                                        "left out (Writing a classed triple, rule 21)")])          # t2's undecided row gone
+        self.assertEqual((c["decisions_kept"], c["kept_decided"]), (1, 0))
+        # another model proposing the same classed triple, in other spacing and case: the decision is the fact's
+        self.apply([{"t0": [{**self.MOON, "object": " moon "}]}], "model-b", ids=("t0",))
+        self.assertEqual([r[3:] for r in self.rows()],
+                         [("model-a", "2", "3", "left out (Writing a classed triple, rule 21)"),
+                          ("model-b", "1", "1", "left out (Writing a classed triple, rule 21)")])
+        # a near miss: another object class is another classed triple, so no decision carries over (and model-b's
+        # decided row, no longer proposed, is kept)
+        self.apply([{"t0": [{**self.MOON, "object_class": "Satellite"}]}], "model-b", ids=("t0",))
+        self.assertEqual([r[2:] for r in self.rows()],
+                         [("Spacecraft", "model-a", "2", "3", "left out (Writing a classed triple, rule 21)"),
+                          ("Spacecraft", "model-b", "1", "1", "left out (Writing a classed triple, rule 21)"),
+                          ("Satellite", "model-b", "1", "1", "")])
+
+    def test_a_decided_row_no_longer_proposed_is_kept(self):
+        self.apply([{"t0": [self.MOON], "t2": [self.SAT]}], "model-a", ids=("t0", "t2"))
+        self.decide("Moon", "added")
+        c = self.apply([{"t0": [], "t2": []}], "model-a", ids=("t0", "t2"))
+        self.assertEqual(self.rows(), [("t0", "Moon", "Spacecraft", "model-a", "1", "1", "added")])
+        self.assertEqual(c["kept_decided"], 1)
+
+    def test_other_records_kept_and_held_out_rows_dropped(self):
+        self.apply([{"t0": [self.MOON], "t2": [self.SAT]}], "model-a", ids=("t0", "t2"))
+        rows = read_candidates(self.cpath, self.RULES)
+        rows.append({**rows[0], "id": "h1", "title": "Title h1"})                             # a row of a held-out record
+        write_candidates(self.cpath, rows)
+        c = self.apply([{"t0": []}], "model-a", ids=("t0",))                                  # t2 not drafted now
+        self.assertEqual(self.rows(), [("t2", "EOS", "Mission", "model-a", "1", "1", "")])
+        self.assertEqual(c["dropped_held_out"], 1)
+
+    def test_decisions_allowed(self):
+        for ok in ("", "added", "already in the ground truth in other words", "left out (Writing a classed triple, rule 21)",
+                   "left out (What counts as a fact, rule 9)", "  added  "):
+            with self.subTest(ok=ok):
+                self.assertIsNone(decision_problem(ok, self.RULES))
+        for bad in ("Added", "add", "left out", "left out (rule 21)", "left out (Writing a classed triple, rule 22)",
+                    "left out (Writing a classed triple, rule twenty-one)", "left out (Writing a classed triple rule 21)",
+                    "already in the ground truth", "added; left out (What counts as a fact, rule 9)"):
+            with self.subTest(bad=bad):
+                self.assertIsNotNone(decision_problem(bad, self.RULES))
+
+    def test_the_guidelines_rules_are_used_when_not_given(self):
+        row = {"id": "t0", "model": "m", "proposed_in_repeats": 1, "repeats": 1, **self.MOON}
+        write_candidates(self.cpath, [{**row, "decision": "left out (Writing a classed triple, rule 21)"}])
+        self.assertEqual(len(read_candidates(self.cpath)), 1)                                  # the real guidelines
+        write_candidates(self.cpath, [{**row, "decision": "left out (Writing a classed triple, rule 99)"}])
+        with self.assertRaises(ValueError):
+            read_candidates(self.cpath)
+
+    def test_reader_near_misses(self):
+        self.assertEqual(read_candidates(self.tmp / "absent.csv"), [])
+        write_candidates(self.cpath, [])
+        self.assertEqual(read_candidates(self.cpath), [])                                     # header only
+        (self.tmp / "bad.csv").write_text("id,title,subject\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as e:
+            read_candidates(self.tmp / "bad.csv")
+        self.assertIn("decision", str(e.exception))
+        base = {"id": "t0", "title": "T", **self.MOON, "model": "m", "proposed_in_repeats": "1", "repeats": "3",
+                "decision": ""}
+        for bad in ({"id": ""}, {"model": " "}, {"proposed_in_repeats": "0"}, {"proposed_in_repeats": "4"},
+                    {"repeats": "three"}, {"proposed_in_repeats": ""}, {"decision": "kept"}):
+            write_candidates(self.cpath, [{**base, **bad}])
+            with self.subTest(bad=bad), self.assertRaises(ValueError) as e:
+                read_candidates(self.cpath, self.RULES)
+            self.assertIn("line 2", str(e.exception))
+        write_candidates(self.cpath, [base, {**base, "object": " moon"}])                     # one model twice
+        with self.assertRaises(ValueError) as e:
+            read_candidates(self.cpath, self.RULES)
+        self.assertIn("lines 2 and 3", str(e.exception))
+        write_candidates(self.cpath, [{**base, "decision": "added"}, {**base, "model": "m2", "decision": "added"}])
+        self.assertEqual(len(read_candidates(self.cpath, self.RULES)), 2)                     # two models, one decision
+        write_candidates(self.cpath, [{**base, "decision": "added"},
+                                      {**base, "model": "m2", "decision": "already in the ground truth in other words"}])
+        with self.assertRaises(ValueError) as e:                                               # two decisions on one fact
+            read_candidates(self.cpath, self.RULES)
+        self.assertIn("two decisions", str(e.exception))
+        write_candidates(self.cpath, [{**base, "decision": "added"}, {**base, "model": "m2"}])
+        self.assertEqual(len(read_candidates(self.cpath, self.RULES)), 2)                     # one decided, one not yet
+
+
 class Picking(Fixture):
 
     def inputs(self):
@@ -410,7 +544,7 @@ class WholeRun(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.repo)
 
-    def run_helper(self, *args, expect=0):
+    def run_helper(self, *args, expect=0, counted=True):
         env = {k: v for k, v in os.environ.items() if k != llm.ANSWER_CACHE_SWITCH}
         r = subprocess.run([sys.executable, str(HERE / "stand_in_run.py"), str(self.repo), "helpers/second_opinion.py",
                             "--confirm_paid_calls", "false", *args],
@@ -419,6 +553,8 @@ class WholeRun(unittest.TestCase):
         out = r.stdout + r.stderr
         self.assertEqual(r.returncode, expect, out[-3000:])
         self.assertNotIn("Traceback", out, out[-3000:])
+        if not counted:                                                # stopped before the model was reached
+            return out
         return out, int(re.search(r"stand-in model answered (\d+) prompt", out).group(1))
 
     def matches(self) -> dict:
@@ -487,8 +623,36 @@ class WholeRun(unittest.TestCase):
         out, prompts = self.run_helper("--apply", "true")
         after = {p.name: p.read_bytes() for p in (self.repo / "annotations").rglob("*") if p.is_file()}
         self.assertEqual(prompts, 0)
-        self.assertEqual(sorted(n for n in after if after[n] != before.get(n)), ["second_opinion.csv"])
+        self.assertEqual(sorted(n for n in after if after[n] != before.get(n)),
+                         ["second_opinion.csv", "second_opinion_candidates.csv"])
         self.assertEqual(set(before), set(after))
+        cand_path = self.repo / "annotations" / "second_opinion_candidates.csv"
+        cand = read_candidates(cand_path)
+        self.assertEqual([(r["id"], r["title"], r["object"], r["object_class"], r["model"], r["proposed_in_repeats"],
+                           r["repeats"], r["decision"]) for r in cand],
+                         [("rec-1", "MODIS Aqua Dataset 1", "Moon", "Spacecraft", "gemini-4-argon", "3", "3", ""),
+                          ("rec-1", "MODIS Aqua Dataset 1", "Aqua", "Satellite", "gemini-4-argon", "2", "3", "")])
+        self.assertTrue(all(r["source_text"] for r in cand))
+        self.assertFalse(any(r["id"] == "rec-2" for r in cand))                    # held-out: never written
+        self.assertIn("left out (<section>, rule <n>)", self.report())
+        # a decision filled, then applied again: kept, and nothing else changes
+        for r in cand:
+            if r["object"] == "Moon":
+                r["decision"] = "left out (Writing a classed triple, rule 21)"
+        write_candidates(cand_path, cand)
+        filled = cand_path.read_bytes()
+        _, prompts = self.run_helper("--apply", "true")
+        self.assertEqual(prompts, 0)
+        self.assertEqual(cand_path.read_bytes(), filled)
+        # a decision that isn't allowed stops the run before any model call, and nothing is written
+        text = filled.decode("utf-8").replace("left out (Writing a classed triple, rule 21)", "left out")
+        cand_path.write_text(text, encoding="utf-8")
+        table_bytes = (self.repo / "annotations" / "second_opinion.csv").read_bytes()
+        out = self.run_helper("--apply", "true", expect=2, counted=False)
+        self.assertIn("second_opinion_candidates.csv, line 2", out)
+        self.assertEqual(cand_path.read_text(encoding="utf-8"), text)
+        self.assertEqual((self.repo / "annotations" / "second_opinion.csv").read_bytes(), table_bytes)
+        cand_path.write_bytes(filled)
         table = read_table(self.repo / "annotations" / "second_opinion.csv")
         self.assertEqual(len(table), 3)
 

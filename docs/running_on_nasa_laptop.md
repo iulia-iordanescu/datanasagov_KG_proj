@@ -259,12 +259,16 @@ Many ground truth triples were first drafted by a model and corrected by hand, a
 py helpers/second_opinion.py
 ```
 
-It asks once before paying for all 3 repeats (the plan shows 3 repeats × the [text pieces](terminology.md#1-records-and-their-text), and how many are already in the cache; its notes say which records it drafts, by part; `--repeats <n>` for another number of repeats; `--ids <id>,<id>` for some of the records; `--model <name>` for another model than `gemini-4-argon`). Keep `LITELLM_BYPASS_ANSWER_CACHE=1` in `.env`, so LiteLLM doesn't answer the repeats from its own cache. Read its report: the counts found in at least one repeat / found in none, how many repeats found each ground truth triple, and, for [tuning records](terminology.md#7-evaluating-extraction-step-070) only, the draft's facts the ground truth lacks, to review (a missed fact, one the rules leave out on purpose, or a wrong one). Then record what was found, so step 070 reports recall by the group found in at least one repeat / found in none:
+It asks once before paying for all 3 repeats (the plan shows 3 repeats × the [text pieces](terminology.md#1-records-and-their-text), and how many are already in the cache; its notes say which records it drafts, by part; `--repeats <n>` for another number of repeats; `--ids <id>,<id>` for some of the records; `--model <name>` for another model than `gemini-4-argon`). Keep `LITELLM_BYPASS_ANSWER_CACHE=1` in `.env`, so LiteLLM doesn't answer the repeats from its own cache. Read its report: the counts found in at least one repeat / found in none, how many repeats found each ground truth triple, and, for [tuning records](terminology.md#7-evaluating-extraction-step-070) only, the draft's facts the ground truth lacks, to review (a missed fact, one the rules leave out on purpose, or a wrong one). Then record what was found, so step 070 reports recall by the group found in at least one repeat / found in none, and the draft's facts the ground truth lacks, to review, and bring both files to the personal laptop through Git:
 
 ```powershell
+git pull
 py helpers/second_opinion.py --apply true
+git add annotations/second_opinion.csv annotations/second_opinion_candidates.csv
+git commit -m "Second opinion applied"
+git push
 ```
 
-It pays nothing (the 3 repeats' answers are cached) and writes `annotations/second_opinion.csv`, the only file of `annotations/` it ever writes; commit it. Apply again after rewording or adding ground truth triples of a finished record (a reworded one counts as not checked until then; step 070 warns).
+`git pull` first, so that a decision already filled in `annotations/second_opinion_candidates.csv` is kept. Applying pays nothing (the 3 repeats' answers are cached) and writes `annotations/second_opinion.csv` and `annotations/second_opinion_candidates.csv`, the only files of `annotations/` it ever writes: the second one lists, for the tuning records only, the draft's facts the ground truth lacks, each with an empty column `decision` that I fill when I review it against the record and the rules (`helpers/second_opinion.md`, *The draft's facts to review*); a rerun keeps every decision already filled. A wrong `decision` stops the run before it pays, naming the line. Apply again after rewording or adding ground truth triples of a finished record (a reworded one counts as not checked until then; step 070 warns).
 
 *(New items go here.)*

@@ -4,13 +4,14 @@ Many [ground truth triples](../docs/terminology.md#4-ground-truth-and-samples) w
 
 ```
 py helpers/second_opinion.py                       draft every finished record again in 3 repeats (asks once before paying), match, report
-py helpers/second_opinion.py --apply true          the same, and record what was found in annotations/second_opinion.csv
+py helpers/second_opinion.py --apply true          the same, and record what was found in annotations/second_opinion.csv,
+                                                   and the draft's facts to review in annotations/second_opinion_candidates.csv
 py helpers/second_opinion.py --repeats <n>         another number of repeats (1 to 20)
 py helpers/second_opinion.py --ids <id>,<id>       only these finished records
 py helpers/second_opinion.py --model <name>        another model (the default: gemini-4-argon)
 ```
 
-The ground truth is never changed: the second opinion writes no [drafted batch](../docs/terminology.md#4-ground-truth-and-samples), and nothing in `annotations/` unless `--apply true`, which writes only `annotations/second_opinion.csv` (below). Decided on 2026-11-01; the entry in [`docs/improvements.md`](../docs/improvements.md), section *050_annotate*, says why, and why 3 repeats.
+The ground truth is never changed: the second opinion writes no [drafted batch](../docs/terminology.md#4-ground-truth-and-samples), and nothing in `annotations/` unless `--apply true`, which writes only `annotations/second_opinion.csv` and `annotations/second_opinion_candidates.csv` (below). Decided on 2026-11-01; the entry in [`docs/improvements.md`](../docs/improvements.md), section *050_annotate*, says why, and why 3 repeats.
 
 ## How it drafts
 
@@ -45,9 +46,9 @@ In `outputs/intermediate_results/second_opinion/`:
 | `second_opinion_details.json` | The run's record: run id, model, service, the settings as sent, the settings given, the repeats; each record's pool position, part, the repeats that drafted it and those that failed (with the errors), ground truth triples, how many were found in 0, 1, ..., N repeats, found in at least one repeat, found in none, draft only (over the repeats), and the items 050's checks removed, by repeat; the records skipped while choosing; the records left out of at least one repeat because a model call failed; what `--apply true` wrote. |
 | `cache/`, `_manifest.json` | As for every step. |
 
-The report (`outputs/reports/second_opinion_<date>_<time>.md`), section *Results*: a table per record (the repeats that drafted it; ground truth triples; found in at least one repeat, found in every repeat, found in none; draft only, over the repeats); *Found by the second opinion*, the counts by part of the pool and by the ground truth triples' `drafted_by` (a row a model drafted and I corrected, or a row I wrote), and how many ground truth triples were found in 0, 1, ..., N repeats; *The second opinion's facts the ground truth lacks (tuning records)*, every draft-only triple of the tuning records with the number of repeats that proposed it and its source text, grouped by record, for review; *Provenance recorded*, what `--apply true` wrote, or how to write it.
+The report (`outputs/reports/second_opinion_<date>_<time>.md`), section *Results*: a table per record (the repeats that drafted it; ground truth triples; found in at least one repeat, found in every repeat, found in none; draft only, over the repeats); *Found by the second opinion*, the counts by part of the pool and by the ground truth triples' `drafted_by` (a row a model drafted and I corrected, or a row I wrote), and how many ground truth triples were found in 0, 1, ..., N repeats; *The second opinion's facts the ground truth lacks (tuning records)*, every draft-only triple of the tuning records with the number of repeats that proposed it and its source text, grouped by record, for review; *Provenance recorded*, what `--apply true` wrote (both files, with how many rows still have no decision), or how to write it.
 
-**Held-out records.** They are drafted too, so that step 070 can group their triples, and their found / found in none counts are in the table and the counts. Their draft-only triples are counted and nowhere listed, not in the report nor in `second_opinion_matches.csv`: reviewing them would let the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070) shape the ground truth and the annotation guidelines (`annotations/guidelines.md`, *Before you start*). Read `second_opinion_triples.csv` with the same care.
+**Held-out records.** They are drafted too, so that step 070 can group their triples, and their found / found in none counts are in the table and the counts. Their draft-only triples are counted and nowhere listed, not in the report, nor in `second_opinion_matches.csv`, nor in `annotations/second_opinion_candidates.csv`: reviewing them would let the [held-out part](../docs/terminology.md#7-evaluating-extraction-step-070) shape the ground truth and the annotation guidelines (`annotations/guidelines.md`, *Before you start*). Read `second_opinion_triples.csv` with the same care.
 
 ## The provenance: `annotations/second_opinion.csv`
 
@@ -61,9 +62,34 @@ With `--apply true`, one row per ground truth triple of every record drafted thi
 | `found_in_repeats` | In how many of those repeats its draft paired with this triple (an exact or partial pair). |
 | `found_exact_in_repeats` | In how many of them the pair was exact. |
 
-Applying with a model rewrites that model's rows on the records drafted now (each replaced by this run's counts), keeps every other model's rows, drops a row of those records whose triple is no longer in the ground truth (so a reworded triple needs the second opinion applied again, which the cache makes free), and leaves the rows of records not drafted now as they are. Rows are ordered by pool position. The file is read by `common/common_helpers/second_opinion.py`; `drafted_by`, in the ground truth files, stays what it is: who first drafted the row. The file starts with its header only, and nothing but `--apply true` writes it. Commit it after applying. Reading it stops (step 070 names the line) on a header with the counts' names of before 2026-11-01 (`runs`, `found_in_runs`, `found_exact_in_runs`; rename them as in this table), on a row without a model, on counts that aren't whole numbers with repeats ≥ 1 and 0 ≤ `found_exact_in_repeats` ≤ `found_in_repeats` ≤ `repeats`, and on two rows of one model for one triple.
+Applying with a model rewrites that model's rows on the records drafted now (each replaced by this run's counts), keeps every other model's rows, drops a row of those records whose triple is no longer in the ground truth (so a reworded triple needs the second opinion applied again, which the cache makes free), and leaves the rows of records not drafted now as they are. Rows are ordered by pool position. The file is read by `common/common_helpers/second_opinion.py`; `drafted_by`, in the ground truth files, stays what it is: who first drafted the row. The file starts with its header only, and nothing but `--apply true` writes it. Commit it after applying, with `annotations/second_opinion_candidates.csv` (below; the commands: `docs/running_on_nasa_laptop.md`, *A second opinion on the ground truth*). Reading it stops (step 070 names the line) on a header with the counts' names of before 2026-11-01 (`runs`, `found_in_runs`, `found_exact_in_runs`; rename them as in this table), on a row without a model, on counts that aren't whole numbers with repeats ≥ 1 and 0 ≤ `found_exact_in_repeats` ≤ `found_in_repeats` ≤ `repeats`, and on two rows of one model for one triple.
 
 A ground truth triple's **group** by the second opinion: *found* (a model found it in at least one repeat: a row's `found_in_repeats` is above 0), *not found* (found in none: every row's `found_in_repeats` is 0), *not checked* (no row: the record wasn't drafted, or the triple was reworded since).
+
+## The draft's facts to review: `annotations/second_opinion_candidates.csv`
+
+With `--apply true`, the draft's facts the ground truth lacks, of the tuning records, go to `annotations/second_opinion_candidates.csv` too, so that I can review each one against its record and the annotation guidelines. `second_opinion_matches.csv` lists them as well, but `outputs/` is never committed, so this file is their one home in Git (written by `helpers/second_opinion.py`, `apply_candidates`; read by `common/common_helpers/second_opinion.py`, `read_candidates`). One row per classed triple of a tuning record and per model, the union over the repeats:
+
+| Column | Meaning |
+|---|---|
+| `id`, `title` | The record and its title. |
+| `subject`, `subject_class`, `predicate`, `object`, `object_class` | The draft's classed triple, as the first repeat that proposed it writes it. |
+| `source_text` | Its source text, from the same repeat. |
+| `model` | The model whose repeats proposed it. |
+| `proposed_in_repeats` | In how many of its repeats a draft proposed it (a repeat stating it twice counts once). |
+| `repeats` | How many of its repeats drafted the record. |
+| `decision` | Mine, empty until I review the row (below). |
+
+The `decision` is one of:
+
+- `added`: I added the fact to the ground truth (in the annotation tool).
+- `left out (<section>, rule <n>)`: a rule of the annotation guidelines leaves the fact out, named by its section's heading and its number as `annotations/guidelines.md` writes them, e.g. `left out (Writing a classed triple, rule 21)`.
+- `already in the ground truth in other words`: a ground truth triple states the same fact in words the pairing can't match (*When a pair isn't the same fact*, in `pairs.md`).
+- empty: not reviewed yet.
+
+A decision is about the fact, so it is kept by the record's id and the classed triple (compared as step 070's exact pairs compare: `common/common_helpers/triples_io.py`, `classed_key`), whichever model's row it is on. Applying again with a model replaces that model's rows on the tuning records drafted now (with this run's counts), and each new row gets the decision already filled for the same record and classed triple, else an empty one. A row of that model with a decision filled whose classed triple this run no longer proposes (one I added to the ground truth since, which now pairs, among them) is kept as it was, so no decision is lost. Every other model's rows, and the rows of records not drafted now, are kept; a row of a record now in the held-out part is dropped. Rows are ordered by pool position, then the file's order. Held-out records' draft-only triples are never written (*Held-out records*, above).
+
+Reading the file stops, naming the line, on a missing column, a row without an id or a model, counts that aren't whole numbers with 1 ≤ `proposed_in_repeats` ≤ `repeats`, a decision that isn't one of the above (a left-out decision naming a section and rule `annotations/guidelines.md` doesn't have among them), two rows of one model for one classed triple of a record, and two different decisions on one classed triple of a record. `--apply true` reads it, and `annotations/second_opinion.csv`, before its first paid call, so a mistake in either stops the run before it pays and before it writes anything. The file starts with its header only; nothing but `--apply true` writes it, and only the person reviewing fills `decision`. Step 070 doesn't read it.
 
 ## What step 070 does with it
 
