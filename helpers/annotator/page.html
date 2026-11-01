@@ -769,7 +769,8 @@ async function save() {
   status("Saving…");
   try {
     const sent = batch.records;
-    const data = await api("/api/save", { n: batch.n, records: sent });
+    const data = await api("/api/save", { n: batch.n, records: sent, fingerprint: batch.fingerprint });
+    if (data.fingerprint) batch.fingerprint = data.fingerprint;   // what the file is now: the next save checks against it
     if (data.patterns) batch.patterns = data.patterns;
     if (data.definitions) { batch.definitions = data.definitions; batch.coined = data.coined; refreshDefinitions(); }
     data.problems.forEach((rows, i) => rows.forEach((p, j) => { if (sent[i] && sent[i].rows[j]) sent[i].rows[j].problems = p; }));
@@ -1750,7 +1751,9 @@ async function saveMapping() {
   try {
     const done = await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
       component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
-      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: has(r, "STALE") })) });
+      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: has(r, "STALE") })),
+      fingerprint: mapping.fingerprint });
+    if (done.fingerprint && mapping) mapping.fingerprint = done.fingerprint;
     // the rows' states as saved, unless the page changed again meanwhile (the next save brings those)
     if (!mapDirty && mapping) {
       mapping.rows.forEach(r => Object.assign(r, done.rows[r._line] || {}));
@@ -1919,7 +1922,7 @@ async function openAdditions(prefill) {
 
 async function saveAdditions(entries) {
   try {
-    await api("/api/additions/save", { entries });
+    await api("/api/additions/save", { entries, fingerprint: additions.fingerprint });
     additions = await api("/api/additions");
     editing = null;
     status(`Saved to ${additions.file} at ${new Date().toLocaleTimeString()}`, "saved");

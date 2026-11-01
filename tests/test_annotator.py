@@ -90,6 +90,19 @@ def get(path):
             return {"error": json.load(e)["error"]}
 
 
+def fp_batch(n):
+    """What the file was when a page loaded it (batch_view's fingerprint): a save sends it back."""
+    return get(f"/api/batch?n={n}")["fingerprint"]
+
+
+def fp_mapping():
+    return get("/api/mapping")["fingerprint"]
+
+
+def fp_additions():
+    return get("/api/additions")["fingerprint"]
+
+
 def post(path, body):
     req = urllib.request.Request(url(path), json.dumps(body).encode(), {"Content-Type": "application/json"})
     try:
@@ -233,7 +246,7 @@ class B_Batch(unittest.TestCase):
         recs[2]["finished"] = True
         recs[2]["rows"] = []                                                   # states no facts
         recs[3]["rows"][0]["predicate"] = ""                                   # incomplete
-        saved = post("/api/save", {"n": 0, "records": recs})
+        saved = post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
         problems = saved["problems"]
         self.assertTrue(all(len(p) == 3 for p in saved["patterns"]))          # the pattern buttons' list, as saved
         # r1 was ticked finished, but its rows still have a ✖ (ORBITS and Planet aren't in the ground truth schema):
@@ -262,7 +275,7 @@ class B_Batch(unittest.TestCase):
         # saving again with nothing new leaves the file untouched
         path = TMP / "annotations" / "ground_truth" / "batch_000.csv"
         stamp = path.stat().st_mtime_ns
-        post("/api/save", {"n": 0, "records": get("/api/batch?n=0")["records"]})
+        post("/api/save", {"n": 0, "records": get("/api/batch?n=0")["records"], "fingerprint": fp_batch(0)})
         self.assertEqual(path.stat().st_mtime_ns, stamp)
         listed = get("/api/batches")["batches"]
         self.assertEqual(listed, [{"n": 0, "draft": "drafted_triples_batch0.csv", "ground_truth": "batch_000.csv",
@@ -277,7 +290,7 @@ class B_Batch(unittest.TestCase):
                  "object_class": "Dataset", "source_text": "(record structure)"}
         try:
             r2.update(finished=True, rows=[dict(twice), {**twice, "object_class": "Instrument"}])
-            saved = post("/api/save", {"n": 0, "records": recs})
+            saved = post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
             self.assertEqual(saved["unfinished"], [{"index": 2, "id": "r2", "errors": ["several_describes"]}])
             self.assertEqual([[p["code"] for p in row if p["type"] == "error"] for row in saved["problems"][2]],
                              [[], ["several_describes"]])
@@ -290,13 +303,13 @@ class B_Batch(unittest.TestCase):
                                                          "object": "Moon", "object_class": "Spacecraft",
                                                          "source_text": "No facts here."},
                                            {"subject": "", "predicate": "", "object": ""}])
-            saved = post("/api/save", {"n": 0, "records": recs})
+            saved = post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
             self.assertEqual(saved["unfinished"], [])
             self.assertTrue(any(p["type"] == "flag" for p in saved["problems"][2][1]))
             self.assertEqual({r["all_facts_extracted"] for r in gt_rows() if r["id"] == "r2"}, {"1"})
         finally:
             r2.update(finished=True, rows=[])
-            post("/api/save", {"n": 0, "records": recs})
+            post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
         self.assertEqual([r for r in gt_rows() if r["id"] == "r2"][0]["all_facts_extracted"], "1")
 
     def test_3_missing_batch(self):
@@ -436,6 +449,90 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(message, server.MESSAGES["object_not_in_source"] + note.format("object"))
 
 
+class B2_StaleSaves(unittest.TestCase):
+    """Every whole-file save sends the fingerprint of what the page loaded, and is refused if the file changed since
+    (common.files.write_if_unchanged): another tab's save, a hand edit, a rename by the Ground truth schema view. A
+    partial pair's verdict replaces that pair's row only, so two tabs' verdicts both stay."""
+
+    def records(self):
+        return get("/api/batch?n=0")["records"]
+
+    def test_two_tabs_on_one_batch(self):
+        tab_a = get("/api/batch?n=0")
+        tab_b = get("/api/batch?n=0")
+        self.assertEqual(tab_a["fingerprint"], tab_b["fingerprint"])
+        recs = tab_b["records"]
+        recs[0]["rows"][0]["source_text"] = "(record structure)"
+        recs[1]["rows"][0]["object"] = "Aqua"
+        saved = post("/api/save", {"n": 0, "records": recs, "fingerprint": tab_b["fingerprint"]})
+        self.assertNotIn("error", saved)
+        self.assertNotEqual(saved["fingerprint"], tab_b["fingerprint"])        # the file is new: tab B keeps its print
+        stale = post("/api/save", {"n": 0, "records": tab_a["records"], "fingerprint": tab_a["fingerprint"]})
+        self.assertIn("changed on disk since it was loaded", stale["error"])   # tab A's save would drop B's: refused
+        self.assertIn("reload", stale["error"])
+        self.assertEqual(gt_rows()[1]["object"], "Aqua")                         # B's edit kept
+        again = post("/api/save", {"n": 0, "records": recs, "fingerprint": saved["fingerprint"]})   # B saves on
+        self.assertNotIn("error", again)
+        self.assertEqual(again["fingerprint"], saved["fingerprint"])            # nothing new: the same file
+        self.assertIn("didn't say which version", post("/api/save", {"n": 0, "records": recs})["error"])
+
+    def test_hand_edit_then_save(self):
+        b = get("/api/batch?n=0")
+        path = TMP / "annotations" / "ground_truth" / "batch_000.csv"
+        path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")   # the same bytes: no change
+        self.assertNotIn("error", post("/api/save", {"n": 0, "records": b["records"], "fingerprint": b["fingerprint"]}))
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace("\n", "\r\n"), encoding="utf-8", newline="")   # Excel: CRLF, the same content
+        self.assertIn("changed on disk", post("/api/save", {"n": 0, "records": b["records"], "fingerprint": b["fingerprint"]})["error"])
+        path.write_text(text, encoding="utf-8", newline="\n")
+
+    def test_mapping_and_additions(self):
+        v = get("/api/mapping")
+        sent = [{"kind": r["kind"], "component_class_from_past_or_crt_schema": r["component_class_from_past_or_crt_schema"],
+                 "component_class_in_gtt": r["component_class_in_gtt"], "swap_subject_and_object": r["swap_subject_and_object"],
+                 "checked": r["checked"], "keep_definition": True} for r in v["rows"]]
+        # step 070 appends a row in between: the save is refused, the row kept
+        with open(server.MAPPING_PATH, "a", encoding="utf-8", newline="") as fh:
+            fh.write("entity class,Added,,,,no,no,\n")
+        r = post("/api/mapping/save", {"rows": sent, "fingerprint": v["fingerprint"]})
+        self.assertTrue("changed on disk" in r["error"] or "has changed since the page was loaded" in r["error"])
+        rows = server.read_mapping(server.MAPPING_PATH)
+        self.assertEqual(rows[-1]["component_class_from_past_or_crt_schema"], "Added")
+        server.write_csv(server.MAPPING_PATH, server.MAPPING_COLUMNS, rows[:-1])
+        ok = post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
+        self.assertTrue(ok["saved"])
+        self.assertEqual(ok["fingerprint"], fp_mapping())
+        a = get("/api/additions")
+        server.ADDITIONS.write_text(server.ADDITIONS.read_text(encoding="utf-8") + "\n# a hand note\n", encoding="utf-8")
+        self.assertIn("changed on disk", post("/api/additions/save", {"entries": a["entries"], "fingerprint": a["fingerprint"]})["error"])
+        self.assertIn("a hand note", server.ADDITIONS.read_text(encoding="utf-8"))
+        self.assertEqual(post("/api/additions/save", {"entries": a["entries"], "fingerprint": fp_additions()})["saved"], True)
+
+    def test_rename_then_stale_save(self):
+        b = get("/api/batch?n=0")
+        plan = post("/api/vocab/plan", {"kind": "entity class", "old": "Satelite", "new": "Satellite"})
+        if "error" in plan:
+            self.skipTest(plan["error"])
+        done = post("/api/vocab/apply", {"kind": "entity class", "old": "Satelite", "new": "Satellite"})
+        self.assertNotIn("error", done)
+        stale = post("/api/save", {"n": 0, "records": b["records"], "fingerprint": b["fingerprint"]})
+        self.assertIn("changed on disk", stale["error"])                       # would write the old name back
+        self.assertNotIn("Satelite", [r["object_class"] for r in gt_rows()])
+        post("/api/vocab/apply", {"kind": "entity class", "old": "Satellite", "new": "Satelite"})   # put back
+
+    def test_two_verdicts_both_kept(self):
+        item = {"record_id": "r0", "ground_truth_subject": "MODIS", "ground_truth_predicate": "ABOARD",
+                "ground_truth_object": "Aqua", "translated_subject": "MODIS Terra", "translated_predicate": "ABOARD",
+                "translated_object": "Aqua"}
+        other = {**item, "ground_truth_subject": "AIRS", "translated_subject": "AIRS Aqua"}
+        post("/api/partial/review", {**item, "verdict": "same fact"})
+        post("/api/partial/review", {**other, "verdict": "not the same fact"})   # a second tab, loaded before the first
+        rows = {r["ground_truth_subject"]: r["verdict"] for r in server._read_reviews_rows()}
+        self.assertEqual((rows.get("MODIS"), rows.get("AIRS")), ("same fact", "not the same fact"))
+        post("/api/partial/review", {**item, "verdict": ""})                      # taken back: that row alone goes
+        post("/api/partial/review", {**other, "verdict": ""})
+
+
 class C_HandSchema(unittest.TestCase):
 
     def test_adds(self):
@@ -459,7 +556,7 @@ class C_HandSchema(unittest.TestCase):
         # no ✖ left on r1: it can be ticked finished now
         recs = get("/api/batch?n=0")["records"]
         recs[1]["finished"] = True
-        self.assertEqual(post("/api/save", {"n": 0, "records": recs})["unfinished"], [])
+        self.assertEqual(post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})["unfinished"], [])
         self.assertEqual([r["all_facts_extracted"] for r in gt_rows() if r["id"] == "r1"], ["1", "1"])
         gaps = get("/api/gaps")
         self.assertEqual(gaps, {"file": gaps["file"], "component_classes": []})
@@ -617,7 +714,7 @@ class D_Mapping(unittest.TestCase):
                  "component_class_in_gtt": "Spacecraft", "checked": "yes", "keep_definition": True},
                 {"kind": "predicate", "component_class_from_past_or_crt_schema": "MOUNTED_ON",
                  "component_class_in_gtt": "aboard", "checked": "yes", "swap_subject_and_object": "yes"}]
-        saved = post("/api/mapping/save", {"rows": sent})
+        saved = post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
         self.assertTrue(saved["saved"])
         # the rows' states as saved, by line, for the page: Satellite and craft now both translate to Spacecraft
         self.assertEqual({line: x["states"] for line, x in saved["rows"].items()},
@@ -629,7 +726,7 @@ class D_Mapping(unittest.TestCase):
                           rows[1]["definition_from_past_or_crt_schema"]), ("ABOARD", "yes", "sits on"))
         self.assertEqual(len(rows), 4)                                         # rows after the sent ones kept
         sent[0].pop("keep_definition")
-        post("/api/mapping/save", {"rows": sent})
+        post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
         self.assertEqual(self.read()[0]["definition_from_past_or_crt_schema"], "an orbiting craft")
 
     def test_stale_gtt(self):
@@ -645,10 +742,10 @@ class D_Mapping(unittest.TestCase):
                          [(False, True), (False, False)])
         sent = [{"kind": "entity class", "component_class_from_past_or_crt_schema": n, "component_class_in_gtt": "Spacecraft",
                  "checked": "yes", "keep_definition": True} for n in ("Satellite", "Craft")]
-        post("/api/mapping/save", {"rows": sent})
+        post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
         self.assertEqual(self.read()[0]["definition_in_gtt"], "an old meaning")              # not ticked: still stale
         sent[0].pop("keep_definition")
-        post("/api/mapping/save", {"rows": sent})
+        post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
         self.assertEqual(self.read()[0]["definition_in_gtt"], "a vehicle in space")          # ticked: stores it
         self.assertNotIn(GTT, get("/api/mapping")["rows"][0]["stale_in"])
 
@@ -656,9 +753,9 @@ class D_Mapping(unittest.TestCase):
         before = self.path.read_bytes()
         bad_name = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite",
                      "component_class_in_gtt": "Rocket", "checked": "yes"}]
-        self.assertIn("isn't an entity class", post("/api/mapping/save", {"rows": bad_name})["error"])
+        self.assertIn("isn't an entity class", post("/api/mapping/save", {"rows": bad_name, "fingerprint": fp_mapping()})["error"])
         moved = [{"kind": "predicate", "component_class_from_past_or_crt_schema": "Satellite"}]
-        self.assertIn("reload", post("/api/mapping/save", {"rows": moved})["error"])
+        self.assertIn("reload", post("/api/mapping/save", {"rows": moved, "fingerprint": fp_mapping()})["error"])
         self.assertIn("repeated rows", post("/api/mapping/delete", {"line": 2, "kind": "entity class",
                                                                  "component_class": "Satellite"})["error"])
         self.assertIn("reload", post("/api/mapping/delete", {"line": 4, "kind": "entity class",
@@ -677,7 +774,7 @@ class D_Mapping(unittest.TestCase):
                  "component_class_in_gtt": "Spacecraft", "checked": "same component class"},
                 {"kind": "entity class", "component_class_from_past_or_crt_schema": "Instrument",
                  "component_class_in_gtt": "Spacecraft", "checked": "same component class"}]   # an old page's status
-        self.assertTrue(post("/api/mapping/save", {"rows": sent})["saved"])
+        self.assertTrue(post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})["saved"])
         self.assertEqual([(r["component_class_in_gtt"], r["checked"]) for r in self.read()],
                          [("Spacecraft", "same component class"), ("Spacecraft", "no")])
 
@@ -708,15 +805,15 @@ class D_Mapping(unittest.TestCase):
                          [(True, False, False), (False, False, False)])
         same = [{"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite",
                  "component_class_in_gtt": "Rocket", "checked": "yes", "keep_definition": True}]
-        self.assertTrue(post("/api/mapping/save", {"rows": same})["saved"])
+        self.assertTrue(post("/api/mapping/save", {"rows": same, "fingerprint": fp_mapping()})["saved"])
         self.assertEqual(self.read()[0]["component_class_in_gtt"], "Rocket")
         before = self.path.read_bytes()
         coined = [dict(same[0], component_class_in_gtt="Comet")]
-        said = post("/api/mapping/save", {"rows": coined})["error"]
+        said = post("/api/mapping/save", {"rows": coined, "fingerprint": fp_mapping()})["error"]
         self.assertIn("only coined", said)
         self.assertIn("add it to the ground truth schema first", said)
         other = [dict(same[0], component_class_in_gtt="Moon")]
-        self.assertIn("Pick one from the list", post("/api/mapping/save", {"rows": other})["error"])
+        self.assertIn("Pick one from the list", post("/api/mapping/save", {"rows": other, "fingerprint": fp_mapping()})["error"])
         self.assertEqual(self.path.read_bytes(), before)
 
     def test_delete_repeat(self):
@@ -740,7 +837,7 @@ class E_Additions(unittest.TestCase):
                     "source": "ground truth tuning #0", "patterns": [["Spacecraft", "Instrument"]]},
                    {"entry_type": "pattern", "subject_class": "Probe", "predicate": "ABOARD", "object_class": "Spacecraft",
                     "source": "ground truth tuning #1"}]
-        self.assertEqual(post("/api/additions/save", {"entries": entries}), {"saved": True})
+        self.assertTrue(post("/api/additions/save", {"entries": entries, "fingerprint": fp_additions()})["saved"])
         text = self.path.read_text(encoding="utf-8")
         self.assertTrue(text.startswith("# my comments\n# kept\n"))
         view = get("/api/additions")
@@ -759,16 +856,16 @@ class E_Additions(unittest.TestCase):
                                    "source": "x"}}
         for why, entry in cases.items():
             with self.subTest(why=why):
-                self.assertIn(why, post("/api/additions/save", {"entries": [entry]})["error"])
+                self.assertIn(why, post("/api/additions/save", {"entries": [entry], "fingerprint": fp_additions()})["error"])
                 self.assertIn(why, post("/api/additions/check", entry)["problem"])
         twice = [{"entry_type": "pattern", "subject_class": "A", "predicate": "P", "object_class": "B", "source": "x"},
                  {"entry_type": "pattern", "subject_class": "a", "predicate": "p", "object_class": "b", "source": "y"}]
-        self.assertIn("twice", post("/api/additions/save", {"entries": twice})["error"])
+        self.assertIn("twice", post("/api/additions/save", {"entries": twice, "fingerprint": fp_additions()})["error"])
         self.assertEqual(self.path.read_bytes(), before)
 
     def test_unread_line_blocks_saving(self):
         self.path.write_text("ENTITY CLASSES\n--------------\nTwo words here\n", encoding="utf-8")
-        self.assertIn("can't read", post("/api/additions/save", {"entries": []})["error"])
+        self.assertIn("can't read", post("/api/additions/save", {"entries": [], "fingerprint": fp_additions()})["error"])
 
 
 class F_Partial(unittest.TestCase):

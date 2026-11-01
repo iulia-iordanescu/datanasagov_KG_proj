@@ -40,7 +40,7 @@ import threading
 from pathlib import Path
 
 from common import llm
-from common.files import write_json
+from common.files import locked, write_json
 
 
 def key(*parts) -> str:
@@ -138,9 +138,20 @@ class Cache:
                                "thinking": llm.THINKING, "usage": getattr(error, "usage", None) or {}}})
 
     def put(self, k: str, answer) -> None:
+        """Store one answer, and write the file: under the file's lock (common.files.locked), merging what another
+        process (a second repeat run in another terminal) wrote since this one read it, so no paid answer is lost."""
         with self._lock:                          # extraction stores from several threads
             self.answers[k] = answer
-            write_json(self.path, self.answers, indent=None)
+            with locked(self.path):
+                if self.path.exists():
+                    try:
+                        on_disk = json.loads(self.path.read_text(encoding="utf-8"))
+                    except (ValueError, OSError):
+                        on_disk = {}
+                    if isinstance(on_disk, dict):
+                        for key, value in on_disk.items():
+                            self.answers.setdefault(key, value)
+                write_json(self.path, self.answers, indent=None)
 
 
 #: The key of a cut-off marker: {CUT_OFF: {"why", "max_answer_tokens", "thinking", "usage"}} stored in place of an answer.

@@ -159,7 +159,9 @@ def _changed_inputs(step: str, manifest: dict) -> list:
     for row in manifest.get("inputs", []):
         path = ROOT / row.get("path", "")
         made_by_a_step = path.resolve().is_relative_to(RESULTS_DIR.resolve())
-        if not made_by_a_step and row.get("name") not in COUNTED_PERSON_INPUTS.get(step, set()):
+        # a person's file counts when it is one of COUNTED_PERSON_INPUTS, or was given on the command line in place
+        # of the input's default (e.g. 060 --schema annotations/ground_truth_schema.txt: the manifest's "given")
+        if not made_by_a_step and row.get("name") not in COUNTED_PERSON_INPUTS.get(step, set()) and not row.get("given"):
             continue
         if audit.sha256(input_files(path)) != row.get("sha256"):
             changed.append(row.get("name"))

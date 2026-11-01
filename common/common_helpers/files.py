@@ -17,6 +17,9 @@ was written on Windows (see .gitattributes).
     read_csv(path)                             # every row, as dicts
     append_csv(path, columns, rows)            # add rows, never changing what is there
     with locked(path): ...                     # one process at a time reads and writes path (a lock file beside it)
+    fingerprint(path)                          # the sha256 of the file's bytes as they are now (None: no file)
+    text, fp = read_snapshot(path)             # the text (utf-8-sig, "\n" line endings) with the fingerprint it had
+    write_if_unchanged(path, text, fp)         # writes only if the file still has fingerprint fp, else Changed
 
 new=True refuses to replace an existing file (e.g. a drafted batch's file, which is
 never overwritten).
@@ -25,12 +28,53 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import hashlib
 import io
 import json
 import os
 import threading
 import time
 from pathlib import Path
+
+
+class Changed(ValueError):
+    """The file changed on disk since it was read, so writing it back would drop that change (write_if_unchanged)."""
+
+
+def fingerprint(path) -> str | None:
+    """The sha256 of the file's bytes as they are now; None when there is no file. What read_snapshot hands out and
+    write_if_unchanged checks: any change on disk (another tab of the annotation tool, a hand edit, a step writing
+    the file) changes it."""
+    path = Path(path)
+    if not path.exists():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read_snapshot(path) -> tuple:
+    """(text, fingerprint): the file's text (utf-8-sig: a byte-order mark dropped; "\r\n" read as "\n") and the
+    fingerprint of the bytes it was read from, to give write_if_unchanged; (None, None) when there is no file."""
+    path = Path(path)
+    if not path.exists():
+        return None, None
+    raw = path.read_bytes()
+    return raw.decode("utf-8-sig").replace("\r\n", "\n"), hashlib.sha256(raw).hexdigest()
+
+
+def write_if_unchanged(path, text: str, expected: str | None) -> str:
+    """Write text to path only if the file still has the fingerprint expected (None: no file yet), under locked(), so
+    nothing written since it was read is lost; returns the new fingerprint. Otherwise raises Changed, saying what to
+    do: the one rule for every file a person's program reads, changes and writes back (the annotation tool's saves).
+    expected None with a file there, or a fingerprint for a file that is gone, is a change too."""
+    path = Path(path)
+    with locked(path):
+        now = fingerprint(path)
+        if now != expected:
+            raise Changed(f"{path.name} changed on disk since it was loaded (another tab, a hand edit, or a step wrote "
+                          f"it), so saving now would overwrite that change. Nothing was saved: reload, then make your "
+                          f"last change again.")
+        write_text(path, text)
+        return fingerprint(path)
 
 #: How long locked() waits for another process to let go of a file before giving up.
 LOCK_WAIT_SECONDS = 30

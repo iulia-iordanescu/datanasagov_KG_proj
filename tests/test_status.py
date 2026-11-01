@@ -38,12 +38,30 @@ class Status(unittest.TestCase):
         return [i["text"] for i in st["items"] if i["area"] == area]
 
     # ---- made-up files
-    def manifest(self, step: str, inputs=()):
+    def manifest(self, step: str, inputs=(), given=()):
         folder = self.results / step
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "_manifest.json").write_text(json.dumps({
             "run_id": f"{step}_2026-10-14_1200", "step": step, "finished": "2026-10-14T12:00:00-04:00",
-            "inputs": [{"name": n, "path": p, "sha256": h} for n, p, h in inputs]}), encoding="utf-8")
+            "inputs": [{"name": n, "path": p, "sha256": h, **({"given": True} if n in given else {})}
+                       for n, p, h in inputs]}), encoding="utf-8")
+
+    def test_a_person_file_given_in_place_of_a_step_input_counts(self):
+        """060 run with --schema annotations/ground_truth_schema.txt: the manifest marks the input given, so an edit
+        of that file makes 060 out of date; the same file under the default (not given) doesn't count for 060."""
+        for step in ("010_harvest", "020_clean", "030_split", "040_induce_schema", "050_annotate"):
+            self.manifest(step)
+        schema = self.tmp / "annotations" / "ground_truth_schema.txt"
+        schema.write_text("entity classes\n", encoding="utf-8")
+        before = hashlib.sha256(schema.read_bytes()).hexdigest()
+        schema.write_text("entity classes\n- Gadget: a thing\n", encoding="utf-8")
+        self.manifest("060_extract", [("schema", "annotations/ground_truth_schema.txt", before)], given=("schema",))
+        st = self.status()
+        step = next(s for s in st["steps"] if s["step"] == "060_extract")
+        self.assertEqual((step["state"], step["changed"]), ("out of date", ["schema"]))
+        self.manifest("060_extract", [("schema", "annotations/ground_truth_schema.txt", before)])
+        step = next(s for s in self.status()["steps"] if s["step"] == "060_extract")
+        self.assertEqual(step["state"], "ran")
 
     def output(self, step: str, name: str, text: str) -> str:
         """Write an output file; its sha256, as a manifest records it."""

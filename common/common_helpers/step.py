@@ -286,12 +286,16 @@ def _uncommitted(files: list) -> bool:
     return bool(out.strip())
 
 
-def _describe_inputs(inputs: dict) -> tuple:
+def _describe_inputs(inputs: dict, defaults: dict | None = None) -> tuple:
     """For each input: its files, their hash, and the run that produced them
     (from the manifest beside them, if any). Returns (rows, warnings,
     harvest_dates, harvest_partial): harvest_partial is True if any input
-    comes from a trial harvest, None if no input says."""
+    comes from a trial harvest, None if no input says. defaults: the control
+    panel's input paths; a row says "given": True when the path isn't the
+    default (a file given on the command line, e.g. the ground truth schema in
+    place of 060's schema), which the status counts as an input of the step."""
     rows, warnings, harvest_dates, harvest_partial = [], [], set(), None
+    defaults = defaults or {}
     for key, path in inputs.items():
         files = input_files(path)
         where = files[0] if files else path          # an input allowed to have no files yet: its wildcard path
@@ -323,11 +327,28 @@ def _describe_inputs(inputs: dict) -> tuple:
         row = {"name": key, "path": repo_path(path), "files": len(files),
                "sha256": audit.sha256(files), "run_id": run_id, "origin": origin,
                "file_hashes": {audit.ref_path(f): audit.sha256([f]) for f in files}}
+        if key in defaults:
+            row["given"] = Path(path).resolve() != _default_input_path(defaults[key]).resolve()
         rows.append(row)
         log.info(f"input {key}: {row['path']} ({len(files)} file{'s' if len(files) != 1 else ''}), "
                  f"from {origin}")
         log.debug(f"input {key}: sha256 {row['sha256']}")
     return rows, warnings, harvest_dates, harvest_partial
+
+
+def _inputs_still_the_same(inputs: dict, rows: list) -> None:
+    """Stop if an input's files changed while the step ran (between the hashes taken at the start, which the manifest
+    would record, and now): the annotation tool saving a ground truth file while 070 waited at its question, a hand
+    edit, another step writing its output. The outputs may then mix the old and the new content, and the manifest
+    would describe files the run never read, so none is written (the run ends stopped) and the step is run again."""
+    changed = [(row["name"], row["path"]) for row in rows
+               if audit.sha256(input_files(inputs[row["name"]])) != row["sha256"]]
+    if changed:
+        raise Stop(f"{len(changed)} input(s) changed while the step ran: "
+                   + "; ".join(f"{name} ({path})" for name, path in changed)
+                   + ". They were read at the start, and something wrote them since (the annotation tool, a hand edit, "
+                   "or another step), so this run's outputs may mix the old and the new content, and no manifest is "
+                   "written for them. Run the step again (a step that pays reuses every answer already received).")
 
 
 def _name_in(folder: Path, f) -> str:
@@ -557,7 +578,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
     try:
         check_settings(chosen_settings, specs or {})          # before any input is read: one check for every step
         _check_inputs(chosen_inputs, inputs, may_be_empty)
-        input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs)
+        input_rows, input_warnings, harvest_dates, harvest_partial = _describe_inputs(chosen_inputs, inputs)
         run["harvest_partial"] = harvest_partial              # what the inputs say (010 replaces it below)
         output.mkdir(parents=True, exist_ok=True)
         # The old manifest may no longer describe this folder once the run
@@ -585,6 +606,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
         if results.harvest_partial is not None:
             run["harvest_partial"] = results.harvest_partial
         output_rows = _describe_outputs(output, results)
+        _inputs_still_the_same(chosen_inputs, input_rows)      # else Stop: no manifest describes files it didn't read
         run["status"] = RAN              # the statuses and exit codes: docs/running_on_nasa_laptop.md, section 4
     except InputMissing as exc:
         run["status"], error = FAILED, RunError(str(exc))

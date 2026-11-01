@@ -1842,6 +1842,144 @@ def _helper(step: str, name: str = "records"):
     return module
 
 
+class ReadThenWrite(unittest.TestCase):
+    """common.files: a file read with its fingerprint is written back only if it still has it (write_if_unchanged,
+    under locked), so a change made in between (another tab, a hand edit, a step) is never overwritten."""
+
+    def test_variants(self):
+        import tempfile
+        from common import files
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            path = tmp / "a.csv"
+            self.assertEqual(files.read_snapshot(path), (None, None))
+            self.assertIsNone(files.fingerprint(path))
+            fp = files.write_if_unchanged(path, "x\n", None)                    # no file yet: expected None
+            self.assertEqual(fp, files.fingerprint(path))
+            text, fp2 = files.read_snapshot(path)
+            self.assertEqual((text, fp2), ("x\n", fp))
+            fp3 = files.write_if_unchanged(path, "y\n", fp)                      # unchanged since read: written
+            self.assertNotEqual(fp3, fp)
+            with self.assertRaises(files.Changed) as c:
+                files.write_if_unchanged(path, "z\n", fp)                        # a stale fingerprint: refused
+            self.assertIn("a.csv changed on disk since it was loaded", str(c.exception))
+            self.assertEqual(path.read_text(encoding="utf-8"), "y\n")           # nothing written
+            path.write_bytes(b"\xef\xbb\xbfhand\r\nedit\r\n")                      # a hand edit (Excel: BOM, CRLF)
+            with self.assertRaises(files.Changed):
+                files.write_if_unchanged(path, "w\n", fp3)
+            self.assertEqual(files.read_snapshot(path)[0], "hand\nedit\n")      # read evened: no BOM, \n
+            with self.assertRaises(files.Changed):
+                files.write_if_unchanged(path, "w\n", None)                      # "no file" expected, but one is there
+            path.unlink()
+            with self.assertRaises(files.Changed):
+                files.write_if_unchanged(path, "w\n", fp3)                       # a file expected, but gone
+            self.assertFalse((tmp / "a.csv.lock").exists())                     # the lock never stays
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_locked(self):
+        import tempfile
+        import threading
+        from unittest import mock
+        from common import files
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            path = tmp / "f.json"
+            lock = tmp / "f.json.lock"
+            with files.locked(path):
+                self.assertTrue(lock.exists())
+            self.assertFalse(lock.exists())
+            lock.write_text("held by a crashed program")                           # a lock left behind
+            with mock.patch.object(files, "LOCK_WAIT_SECONDS", 0.2), self.assertRaises(TimeoutError) as t:
+                with files.locked(path):
+                    pass
+            self.assertIn("delete", str(t.exception))
+            lock.unlink()
+            order = []
+
+            def hold():
+                with files.locked(path):
+                    order.append("a")
+                    threading.Event().wait(0.3)
+                    order.append("b")
+            t1 = threading.Thread(target=hold)
+            t1.start()
+            threading.Event().wait(0.05)
+            with files.locked(path):
+                order.append("c")
+            t1.join()
+            self.assertEqual(order, ["a", "b", "c"])                                # one at a time within a process
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_sha256_of_several_files_sees_a_rename(self):
+        import hashlib
+        import tempfile
+        from common import audit
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            a, b = tmp / "batch_004.csv", tmp / "batch_005.csv"
+            a.write_bytes(b"one"), b.write_bytes(b"two")
+            self.assertEqual(audit.sha256([a]), hashlib.sha256(b"one").hexdigest())    # one file: its plain sha256
+            both = audit.sha256([a, b])
+            c = tmp / "batch_007.csv"
+            a.rename(c)
+            self.assertNotEqual(audit.sha256([c, b]), both)                           # renamed: another hash
+            c.rename(a)
+            self.assertEqual(audit.sha256([a, b]), both)
+            a.write_bytes(b"on"), b.write_bytes(b"etwo")                              # the same bytes, split otherwise
+            self.assertNotEqual(audit.sha256([a, b]), both)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_two_caches_on_one_file_keep_both_answers(self):
+        import tempfile
+        from common import cache as cache_module
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            one, two = cache_module.Cache(tmp, "extract"), cache_module.Cache(tmp, "extract")   # two processes
+            one.put("k1", {"triples": [1]})
+            two.put("k2", {"triples": [2]})
+            self.assertEqual(set(cache_module.Cache(tmp, "extract").answers), {"k1", "k2"})
+            one.put("k3", {"triples": [3]})
+            self.assertEqual(set(cache_module.Cache(tmp, "extract").answers), {"k1", "k2", "k3"})
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_an_input_changed_during_the_run_stops_it(self):
+        """run_step hashes the inputs before main and checks them again after: a file changed in between (the
+        annotation tool saving while 070 waited at its question) ends the run stopped, with no manifest."""
+        import tempfile
+        from unittest import mock
+        from common import step
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            src = tmp / "in.txt"
+            src.write_text("v1", encoding="utf-8")
+
+            def main(inputs, settings, output):
+                Path(inputs["records"]).write_text("v2", encoding="utf-8")       # something writes the input
+                return step.Results(headline={})
+            with mock.patch.object(step, "RESULTS_DIR", tmp / "results"), mock.patch.object(step, "REPORTS_DIR", tmp / "reports"), \
+                    mock.patch.object(step, "LOGS_DIR", tmp / "logs"), self.assertRaises(SystemExit) as caught:
+                step.run_step("999_stand_in", {"records": str(src)}, {}, main, argv=[])
+            self.assertEqual(caught.exception.code, 2)
+            report = max((tmp / "reports").glob("999_stand_in_*.md")).read_text(encoding="utf-8")
+            self.assertIn("1 input(s) changed while the step ran: records", report)
+            self.assertFalse((tmp / "results" / "999_stand_in" / "_manifest.json").exists())
+            # unchanged inputs: the run ends ran, and the manifest says which inputs were given on the command line
+            with mock.patch.object(step, "RESULTS_DIR", tmp / "results"), mock.patch.object(step, "REPORTS_DIR", tmp / "reports"), \
+                    mock.patch.object(step, "LOGS_DIR", tmp / "logs"):
+                step.run_step("999_stand_in", {"records": str(src), "other": str(src)}, {},
+                              lambda i, s, o: step.Results(headline={}), argv=["--other", str(tmp / "in.txt")])
+            m = json.loads((tmp / "results" / "999_stand_in" / "_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual({r["name"]: r["given"] for r in m["inputs"]}, {"records": False, "other": False})
+        finally:
+            import logging
+            logging.shutdown()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class HasText(unittest.TestCase):
     """One definition of "has text" (common.records_io.has_text): the same fields as the text a model reads
     (full_text: title, notes and the extra text fields 020 kept), blank once evened out."""

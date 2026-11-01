@@ -40,6 +40,7 @@ from __future__ import annotations
 import datetime as dt
 import functools
 import hashlib
+import os
 import logging
 import re
 import sys
@@ -75,9 +76,16 @@ def run_order(run_id: str) -> tuple:
 
 
 def sha256(files) -> str:
-    """One hash over one or more files, in the order given."""
+    """One hash over one or more files, in the order given. One file: its bytes alone (so a file's hash is the
+    plain sha256 of its content). Several (an input of many files, e.g. the ground truth's batch files): each file's
+    name and length before its bytes, so renaming a file, or moving bytes from one file to the next, changes the
+    hash. Manifests written before 2026-11-01 hashed several files' bytes alone, so such an input shows as changed
+    once in the status after this change."""
+    files = list(files)
     h = hashlib.sha256()
     for f in files:
+        if len(files) > 1:
+            h.update(f"{Path(f).name}\n{os.path.getsize(f)}\n".encode("utf-8"))
         with open(f, "rb") as fh:
             for block in iter(lambda: fh.read(1 << 20), b""):
                 h.update(block)

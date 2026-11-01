@@ -135,7 +135,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
 from common.chunking import full_text
-from common.files import write_csv, write_text
+from common.files import fingerprint, locked, read_snapshot, write_csv, write_if_unchanged, write_text
 from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, FINISHED, GROUND_TRUTH_DIR,
                                  NUMBERED, PATTERN, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
                                  ground_truth_schema_gaps as schema_gaps, ground_truth_schema_view, marks_state,
@@ -608,7 +608,7 @@ def batch_view(data: Data, n: int, path: Path) -> dict:
                            marks_state(r["all_facts_extracted"] for r in rows) == FINISHED, uses, rid in counted)
                for rid, rows in _group(_read_rows(path))]
     vocab = ground_truth_schema_view(data.hand, gt)
-    return {"n": n, "file": path.name, "records": records,
+    return {"n": n, "file": path.name, "records": records, "fingerprint": fingerprint(path),
             "entity_classes": sorted(vocab["entity_classes"]), "predicates": sorted(vocab["predicates"]),
             **definitions_view(data, gt), "patterns": patterns_view(data, gt),
             # the problems of a row the page adds, not filled in yet (so the page doesn't retype the message)
@@ -716,10 +716,23 @@ def open_batch(n: int) -> Path:
     return gt
 
 
-def save_batch(data: Data, n: int, records: list) -> dict:
+def _loaded(fp) -> str:
+    """The fingerprint the page sent with a save: what the file was when the page loaded it (common.files.fingerprint).
+    A save without one can't be checked, so it is refused."""
+    if not fp:
+        raise ValueError("the page didn't say which version of the file it loaded, so the save can't be checked "
+                         "against the file on disk. Nothing was saved: reload the page, then make your change again.")
+    return fp
+
+
+def save_batch(data: Data, n: int, records: list, loaded: str | None = None) -> dict:
     """Write the page's records to batch n's ground truth file, in the page's
     order, and return {"problems": each row's problems (as the page sent them, so they
-    line up with its rows), "unfinished": [{"index", "id", "errors"}]}. "finished" sets
+    line up with its rows), "unfinished": [{"index", "id", "errors"}], "fingerprint": the file's
+    now}. loaded: the file's fingerprint when the page loaded it (batch_view); the file is
+    written only if it still has it (common.files.write_if_unchanged), so another tab's
+    save, a hand edit or a rename in the meantime is never overwritten: the save is refused
+    and the page told to reload. "finished" sets
     all_facts_extracted on every row of the record, unless a row written has an error
     (✖): a record with one is saved as not finished, and listed in "unfinished" (step 070
     evaluates only finished records, and stops on one with an error:
@@ -759,12 +772,15 @@ def save_batch(data: Data, n: int, records: list) -> dict:
             qualifier_problems(rec.get("rows", []), qualifier_predicates(data.hand)),
             slash_list_problems(full_text(record) if record else "", rec.get("rows", [])))]
         problems.append(found)
-    # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone
+    # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone; and only
+    # if the file is still what the page loaded (else common.files.Changed: shown on the page, nothing saved)
     path = GROUND_TRUTH_DIR / file_name(n)
-    now = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n") if path.exists() else None
-    if now != _csv_bytes(FILE_COLUMNS, out).decode("utf-8"):
-        write_csv(path, FILE_COLUMNS, out)
-    return {"problems": problems, "unfinished": unfinished}
+    loaded = _loaded(loaded)
+    text = _csv_bytes(FILE_COLUMNS, out).decode("utf-8")
+    now, fp = read_snapshot(path)
+    if now != text or fp != loaded:         # new content, or the same content but not what the page loaded (refused)
+        fp = write_if_unchanged(path, text, loaded)
+    return {"problems": problems, "unfinished": unfinished, "fingerprint": fp}
 
 
 # --------------------------------------------------------------------------
@@ -841,6 +857,7 @@ def mapping_view(data: Data) -> dict:
                      "stale_in": stale_in(r, crt, gtt_now), "sharing": shared.get(r["_line"], []),
                      "example": examples.get(key) if r["kind"] == "predicate" else None})
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
+            "fingerprint": fingerprint(MAPPING_PATH),
             "rows": rows, "none": NONE, "repeats": repeated, "checked_values": list(CHECKED),
             # the names the page compares with: each row state (ROW_STATES) and whose definition changed (stale_in)
             "state_names": {"REPEATED": REPEATED, "STALE": STALE, "MISSING_TARGET": MISSING_TARGET,
@@ -850,15 +867,17 @@ def mapping_view(data: Data) -> dict:
                     for kind, names in gtt.items()}}
 
 
-def save_mapping(data: Data, sent: list) -> None:
-    """Write the person's choices for the rows the page showed. The rows'
-    kinds and component classes of the current schema must still be the file's
-    first rows, in order; rows added after them (by step 070) are kept as
-    they are. A row saved as checked stores the current schema's definition
+def save_mapping(data: Data, sent: list, loaded: str | None = None) -> str:
+    """Write the person's choices for the rows the page showed; returns the file's fingerprint now. The file must
+    still be what the page loaded (loaded: its fingerprint then, mapping_view; common.files.write_if_unchanged),
+    so a row step 070 appended or another tab's save in the meantime is never lost: the save is refused and the page
+    told to reload. The rows' kinds and component classes of the current schema must still be the file's first rows,
+    in order; rows added after them (by step 070) are kept as they are. A row saved as checked stores the current schema's definition
     of its component class and the ground truth schema's definition of its
     component class of the ground truth schema, unless the page says
     keep_definition: a stale row the person hasn't ticked again keeps its
     checked value and its old definitions, so it stays stale."""
+    loaded = _loaded(loaded)
     rows = read_mapping(MAPPING_PATH)
     crt = _crt()
     if [(r["kind"], r["component_class_from_past_or_crt_schema"]) for r in rows[:len(sent)]] != \
@@ -900,7 +919,7 @@ def save_mapping(data: Data, sent: list) -> None:
                 row["definition_from_past_or_crt_schema"] = \
                     crt.get(row["kind"], {}).get(component_class_key(row["component_class_from_past_or_crt_schema"]), "")
             row["definition_in_gtt"] = gtt_definition(row, gtt_now)
-    write_csv(MAPPING_PATH, MAPPING_COLUMNS, rows)
+    return write_if_unchanged(MAPPING_PATH, _csv_bytes(MAPPING_COLUMNS, rows).decode("utf-8"), loaded)
 
 
 def delete_mapping_row(line: int, kind: str, name: str) -> None:
@@ -1046,6 +1065,7 @@ def additions_view(data: Data) -> dict:
         names = [{**n, "added": (n["kind"], component_class_key(n["component_class"])) in have}
                  for n in (details.get("new_component_classes") or {}).get("component_classes", [])]
     return {"file": f"annotations/{ADDITIONS.name}", "entries": entries, "unread": unread,
+            "fingerprint": fingerprint(ADDITIONS),
             "new_component_classes": names, "counted_over": (json.loads(EXTRACTION_DETAILS.read_text(encoding="utf-8"))
                                              .get("new_component_classes") or {}).get("counted_over")
             if EXTRACTION_DETAILS.exists() else None,
@@ -1057,8 +1077,11 @@ def check_addition(data: Data, e: dict) -> str | None:
     return addition_problem(e, {data.positions[i]: part for i, part in data.parts.items() if i in data.positions})
 
 
-def save_additions(data: Data, entries: list) -> None:
-    """Rewrite the additions file with these entries, keeping its comments."""
+def save_additions(data: Data, entries: list, loaded: str | None = None) -> str:
+    """Rewrite the additions file with these entries, keeping its comments; returns its fingerprint now. The file must
+    still be what the page loaded (loaded: its fingerprint then; common.files.write_if_unchanged), else the save is
+    refused and the page told to reload."""
+    loaded = _loaded(loaded)
     _, unread = _additions()
     if unread:
         raise ValueError(f"annotations/{ADDITIONS.name} has line(s) its layout can't read "
@@ -1086,7 +1109,7 @@ def save_additions(data: Data, entries: list) -> None:
                       "definition": " ".join(e["definition"].split()), "source": " ".join(e["source"].split()),
                       "patterns": [[str(a).strip(), str(b).strip()] for a, b in e.get("patterns") or []]
                       if e["entry_type"] == "predicate" else []})
-    write_text(ADDITIONS, additions_text(additions_header(ADDITIONS), clean))
+    return write_if_unchanged(ADDITIONS, additions_text(additions_header(ADDITIONS), clean), loaded)
 
 
 # --------------------------------------------------------------------------
@@ -1199,10 +1222,11 @@ def save_review(data: Data, item: dict) -> None:
     if verdict not in (SAME, NOT_SAME, ""):
         raise ValueError(f"verdict must be '{SAME}' or '{NOT_SAME}'")
     row = {c: str(item.get(c) or "").strip() for c in REVIEW_COLUMNS}
-    rows = [r for r in _read_reviews_rows() if row_key(r) != row_key(row)]
-    if verdict:
-        rows.append(row)
-    write_csv(REVIEWS_PATH, REVIEW_COLUMNS, rows)
+    with locked(REVIEWS_PATH):                       # read, replace this pair's row, write: one save at a time, so
+        rows = [r for r in _read_reviews_rows() if row_key(r) != row_key(row)]   # another tab's verdict is kept
+        if verdict:
+            rows.append(row)
+        write_csv(REVIEWS_PATH, REVIEW_COLUMNS, rows)
 
 
 # --------------------------------------------------------------------------
@@ -1513,17 +1537,18 @@ def make_handler(data: Data):
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 if url.path == "/api/save":
-                    saved = save_batch(data, int(body["n"]), body["records"])
+                    saved = save_batch(data, int(body["n"]), body["records"], body.get("fingerprint"))
                     gt = data.ground_truth()
                     self._json({**saved, "patterns": patterns_view(data, gt), **definitions_view(data, gt)})
                 elif url.path == "/api/mapping/save":
-                    save_mapping(data, body["rows"])
+                    fp = save_mapping(data, body["rows"], body.get("fingerprint"))
                     # each row's states as saved, by line, for the page to show (it computes none itself)
-                    self._json({"saved": True, "rows": {r["_line"]: {k: r[k] for k in ("states", "stale_in", "sharing")}
-                                                        for r in mapping_view(data)["rows"]}})
+                    self._json({"saved": True, "fingerprint": fp,
+                                "rows": {r["_line"]: {k: r[k] for k in ("states", "stale_in", "sharing")}
+                                         for r in mapping_view(data)["rows"]}})
                 elif url.path == "/api/additions/save":
-                    save_additions(data, body["entries"])
-                    self._json({"saved": True})
+                    fp = save_additions(data, body["entries"], body.get("fingerprint"))
+                    self._json({"saved": True, "fingerprint": fp})
                 elif url.path == "/api/hand/add":
                     self._json({"added": add_to_hand(data, body)})
                 elif url.path == "/api/additions/check":
