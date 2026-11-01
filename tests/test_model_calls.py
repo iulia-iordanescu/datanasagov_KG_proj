@@ -13,6 +13,9 @@ model behind LiteLLM's reply shape (tests/stand_ins.py, stand_in_post):
     the report            the Model calls section's thinking tokens, failed calls, and cut-offs
     the session id        060 sends one LiteLLM session header per run, its run id; no other step sends one; the
                           words sent, the settings and the cache key are the same either way
+    the answer cache      with LITELLM_BYPASS_ANSWER_CACHE=1, every LiteLLM call of 040 to 070 carries LiteLLM's
+                          cache control, never one through Ask Sage; the words sent, the other settings and the
+                          cache key are the same either way; recorded in the run's record and report
 """
 import json
 import logging
@@ -510,6 +513,70 @@ class Guards(unittest.TestCase):
         self.assertIn("`x-litellm-session-id` `060_extract_2026-10-31_1200` (this run's id)", text)
         self.step_calls("050_annotate", "050_annotate_2026-10-31_1200")
         self.assertNotIn("Session:", "\n".join(report.model_calls([("drafting", 1, 0)], 1, llm.model_label())))
+
+    # ---------------------------------------------------------------- LiteLLM's answer cache
+
+    def sent_by_step(self, folder: str, switch: str) -> tuple:
+        """(the request body, the cache key, the run record) of one call of a step's run, with the bypass switch."""
+        with mock.patch.dict(os.environ, {llm.ANSWER_CACHE_SWITCH: switch}):
+            self.step_calls(folder, f"{folder}_2026-10-31_1200")
+            stand_ins.PAYLOADS.clear()
+            llm.call_llm(llm.TEST_PROMPT + " #x#", cache_until="#x#")
+            return stand_ins.PAYLOADS[0], llm.cache_identity(), llm.describe(), llm._last.reply["settings_sent"]
+
+    def test_answer_cache_bypass_on_every_step(self):
+        """With LITELLM_BYPASS_ANSWER_CACHE=1, every LiteLLM call of 040, 050, 060 and 070 carries the cache control;
+        the words sent, the other settings and the cache key are the same as without it."""
+        for folder in ("040_induce_schema", "050_annotate", "060_extract", "070_evaluate"):
+            with self.subTest(folder=folder):
+                on, key_on, made_on, settings_on = self.sent_by_step(folder, "1")
+                off, key_off, made_off, settings_off = self.sent_by_step(folder, "")
+                self.assertEqual(on["cache"], {"no-cache": True, "no-store": True})
+                self.assertNotIn("cache", off)
+                self.assertEqual({k: v for k, v in on.items() if k != "cache"}, off)     # messages and settings
+                self.assertEqual(key_on, key_off)                                        # the cache key
+                self.assertEqual(made_on["answer_cache"], "bypassed")
+                self.assertTrue(made_off["answer_cache"].startswith("not bypassed (LITELLM_BYPASS_ANSWER_CACHE"))
+                self.assertEqual(settings_on["cache"], on["cache"])                      # what was sent, recorded
+                self.assertNotIn("cache", settings_off)
+
+    def test_answer_cache_switch_values(self):
+        """1, true and yes switch it on, in any case, spaces around ignored; anything else leaves it off."""
+        for value, on in (("1", True), ("true", True), (" YES ", True), ("True", True), ("", False), ("0", False),
+                          ("no", False), ("false", False), ("on", False), ("11", False), ("yes please", False)):
+            with self.subTest(value=value), mock.patch.dict(os.environ, {llm.ANSWER_CACHE_SWITCH: value}):
+                self.assertEqual(llm.answer_cache_bypassed(), on)
+                self.assertEqual(llm.answer_cache_control(), llm.ANSWER_CACHE_CONTROL if on else {})
+        with mock.patch.dict(os.environ, {llm.ANSWER_CACHE_SWITCH: "1"}):
+            llm.answer_cache_control()["cache"]["no-cache"] = False              # a copy: the constant stays
+            self.assertEqual(llm.ANSWER_CACHE_CONTROL, {"cache": {"no-cache": True, "no-store": True}})
+
+    def test_answer_cache_never_through_ask_sage(self):
+        sent = []
+
+        class Reply:
+            status_code, text = 200, ""
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"status": 200, "message": "OK"}
+        with mock.patch.dict(os.environ, {llm.ANSWER_CACHE_SWITCH: "1"}), \
+                mock.patch.object(llm.requests, "post", lambda url, json=None, **k: sent.append(json) or Reply()), \
+                mock.patch.object(llm, "_asksage_token", lambda: "token"):
+            llm.SERVICE = "asksage"
+            llm.call_llm("hi", model="google-claude-sonnet-5", service="asksage")
+            self.assertNotIn("cache", sent[0])
+            self.assertNotIn("answer_cache", llm.describe())
+            self.assertNotIn("answer cache", "\n".join(report.model_calls([("x", 1, 0)], 1, "m")))
+
+    def test_answer_cache_in_the_report(self):
+        for switch, words in (("1", "LiteLLM answer cache: bypassed (every request asked LiteLLM for a fresh answer"),
+                              ("", "LiteLLM answer cache: not bypassed (LITELLM_BYPASS_ANSWER_CACHE isn't set")):
+            with mock.patch.dict(os.environ, {llm.ANSWER_CACHE_SWITCH: switch}):
+                self.step_calls("060_extract", "060_extract_2026-10-31_1200")
+                self.assertIn(words, "\n".join(report.model_calls([("extracting", 1, 0)], 1, llm.model_label())))
 
 
 class CtrlC(unittest.TestCase):

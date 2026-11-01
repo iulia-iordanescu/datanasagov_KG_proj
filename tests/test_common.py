@@ -1404,6 +1404,166 @@ class CheckEffort(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.run_steps([], only="b", answer="n")
 
+    def test_answer_cache_control_sent_when_switched_on(self):
+        """check_effort's requests carry LiteLLM's cache control with LITELLM_BYPASS_ANSWER_CACHE=1, and not without."""
+        from unittest import mock
+        from common import llm
+        for switch, expected in (("1", llm.ANSWER_CACHE_CONTROL["cache"]), ("", None)):
+            with mock.patch.dict("os.environ", {llm.ANSWER_CACHE_SWITCH: switch}), \
+                    mock.patch.object(llm, "load_dotenv", lambda *a, **k: None):
+                _, sent = self.run_steps([(400, {"error": {"message": "no"}})] * 2, only="a")
+            self.assertEqual([s.get("cache") for s in sent], [expected] * 2)
+            self.assertEqual(sent[0]["reasoning_effort"], "not_a_level")              # the setting checked, kept
+
+
+class CheckAnswerCache(unittest.TestCase):
+    """py helpers/check_answer_cache.py: the decision rule and the cache control's acceptance with fake replies
+    (the cache header present or absent, identical or different answers, a refusal), the near misses, and the 4
+    requests it sends."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("check_answer_cache",
+                                                      support.ROOT / "helpers" / "check_answer_cache.py")
+        cls.cc = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.cc)
+
+    @staticmethod
+    def call(text="The Moon is bright.", tokens=12, key=None, status=200):
+        return {"status": status, "key": key, "text": text if status == 200 else "HTTP error text",
+                "usage": {"completion_tokens": tokens} if status == 200 else {}, "cache_fields": {}}
+
+    def test_cached(self):
+        c, cc = self.call, self.cc
+        a, b, d = c("The Moon is bright."), c("The Moon orbits Earth.", 14), c("The Moon has no air.", 11)
+        # the second plain call carries the header
+        self.assertEqual(cc.verdict([a, c(key="k1"), b, d])[0], cc.CACHE_VERDICT)
+        # byte-identical with identical usage, the no-cache calls differing
+        self.assertEqual(cc.verdict([a, c(), b, d])[0], cc.CACHE_VERDICT)
+        # byte-identical, the no-cache calls identical too but carrying no header
+        found, why = cc.verdict([a, c(), b, dict(b)])
+        self.assertEqual(found, cc.CACHE_VERDICT)
+        self.assertIn("carry no x-litellm-cache-key", why)
+        # 2026-10-31's pattern: identical counts and words, no header seen anywhere, fresh no-cache answers
+        self.assertEqual(cc.verdict([c(tokens=717), c(tokens=717), c("Other.", 717), c("Else.", 717)])[0],
+                         cc.CACHE_VERDICT)
+
+    def test_no_cache_seen(self):
+        c, cc = self.call, self.cc
+        found, why = cc.verdict([c("A."), c("B."), c("C."), c("D.")])
+        self.assertEqual(found, cc.NO_CACHE_VERDICT)
+        self.assertIn("the two plain answers differ", why)
+        # different words with the same token count: still no cache
+        self.assertEqual(cc.verdict([c("A.", 9), c("B.", 9), c("C."), c("D.")])[0], cc.NO_CACHE_VERDICT)
+
+    def test_near_misses(self):
+        c, cc = self.call, self.cc
+        # same words, usage differs by one token, no header: neither verdict
+        found, why = cc.verdict([c(tokens=12), c(tokens=13), c("C."), c("D.")])
+        self.assertEqual(found, cc.NOT_SHOWN)
+        self.assertIn("same words with different usage", why)
+        # different answers, but a no-cache call carries the header: not "no cache seen"
+        found, why = cc.verdict([c("A."), c("B."), c("C.", key="k"), c("D.")])
+        self.assertEqual(found, cc.NOT_SHOWN)
+        self.assertIn("no-cache call 1 carries", why)
+        # different answers, the first plain call carries the header (stored), the second doesn't
+        self.assertEqual(cc.verdict([c("A.", key="k"), c("B."), c("C."), c("D.")])[0], cc.NOT_SHOWN)
+        # cached plain calls, and the no-cache calls cached as well: the control ignored
+        found, why = cc.verdict([c(), c(key="k"), c("C.", key="k2"), c("C.", key="k2")])
+        self.assertEqual(found, cc.NOT_SHOWN)
+        self.assertIn("ignored the cache control", why)
+        # a plain call failed
+        found, why = cc.verdict([c(), c(status=500), c("C."), c("D.")])
+        self.assertEqual(found, cc.NOT_SHOWN)
+        self.assertIn("HTTP 500", why)
+        # cached plain calls, the no-cache calls refused: nothing to compare
+        found, why = cc.verdict([c(), c(), c(status=400), c(status=400)])
+        self.assertEqual(found, cc.NOT_SHOWN)
+        self.assertIn("wasn't answered", why)
+
+    def test_accepted(self):
+        c, cc = self.call, self.cc
+        self.assertEqual(cc.accepted([c(), c(), c("C."), c("D.")])[0], True)
+        taken, words = cc.accepted([c(), c(), c(status=400), c(status=400)])
+        self.assertIs(taken, False)
+        self.assertIn("refused (HTTP 400)", words)
+        self.assertIn("HTTP error text", words)                                    # the error, quoted
+        self.assertIs(cc.accepted([c(), c(), c("C."), c(status=422)])[0], False)    # one refusal is enough
+        self.assertIsNone(cc.accepted([c(), c(), c("C."), c(status=503)])[0])       # 5xx: not a refusal
+        self.assertEqual(cc.accepted([c(), c(status=400), c("C."), c("D.")])[0], True)   # a plain refusal: not it
+
+    def test_advice(self):
+        cc = self.cc
+        self.assertIn("LITELLM_BYPASS_ANSWER_CACHE=1", cc.advice(cc.CACHE_VERDICT, True))
+        self.assertIn("Leave LITELLM_BYPASS_ANSWER_CACHE unset", cc.advice(cc.CACHE_VERDICT, False))
+        self.assertNotIn("=1", cc.advice(cc.CACHE_VERDICT, None))
+        self.assertIn("Nothing to change", cc.advice(cc.NO_CACHE_VERDICT, True))
+        self.assertIn("Run the check again", cc.advice(cc.NOT_SHOWN, True))
+
+    def test_cache_fields(self):
+        found = self.cc.cache_fields({"completion_tokens": 5, "prompt_tokens_details": {"cached_tokens": 0},
+                                      "cache_read_input_tokens": 3},
+                                     {"x-litellm-cache-key": "k", "content-type": "application/json"})
+        self.assertEqual(found, {"usage prompt_tokens_details.cached_tokens": 0, "usage cache_read_input_tokens": 3,
+                                 "header x-litellm-cache-key": "k"})
+
+    def run_check(self, replies, answer=""):
+        """main() against fake replies (status, body, headers), one per request: what it printed, and what it sent."""
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        from common import llm
+        sent, replies = [], list(replies)
+
+        class Reply:
+            def __init__(self, status, body, headers):
+                self.status_code, self._body, self.text, self.headers = status, body, json.dumps(body), headers
+
+            def json(self):
+                return self._body
+
+        def post(url, headers=None, json=None, timeout=None):
+            sent.append(json)
+            return Reply(*replies.pop(0))
+        out = io.StringIO()
+        with mock.patch.object(llm, "_post", post), mock.patch.object(llm, "_litellm", lambda p: ("u", {})), \
+                mock.patch("builtins.input", lambda q: answer), \
+                mock.patch.object(sys, "argv", ["check_answer_cache.py"]), redirect_stdout(out):
+            self.cc.main()
+        return out.getvalue(), sent
+
+    @staticmethod
+    def answered(text, tokens=12, headers=None):
+        return 200, {"choices": [{"message": {"content": text}}], "usage": {"completion_tokens": tokens}}, headers or {}
+
+    def test_requests(self):
+        out, sent = self.run_check([self.answered("A."), self.answered("A.", headers={"X-LiteLLM-Cache-Key": "k1"}),
+                                    self.answered("C."), self.answered("D.")])
+        self.assertEqual(len(sent), 4)
+        self.assertEqual([s.get("cache") for s in sent], [None, None] + [{"no-cache": True, "no-store": True}] * 2)
+        self.assertEqual(len({s["messages"][0]["content"] for s in sent}), 1)          # one question, 4 times
+        self.assertTrue(all("temperature" not in s for s in sent))                     # never to Claude
+        self.assertTrue(all(s["max_tokens"] == sent[0]["max_tokens"] for s in sent))  # nothing else differs
+        self.assertLess(out.index("Decision rule (fixed before the calls)"), out.index("plain call 1:"))
+        self.assertIn("x-litellm-cache-key present (k1)", out)                          # header names in any case
+        self.assertIn("Verdict: LiteLLM answers from its cache: the second plain call carries", out)
+        self.assertIn("The cache control: accepted", out)
+        self.assertIn("LITELLM_BYPASS_ANSWER_CACHE=1", out)
+
+    def test_refused_control(self):
+        out, _ = self.run_check([self.answered("A."), self.answered("B."),
+                                 (400, {"error": {"message": "unknown parameter cache"}}, {}),
+                                 (400, {"error": {"message": "unknown parameter cache"}}, {})])
+        self.assertIn("Verdict: no answer cache seen", out)
+        self.assertIn("refused (HTTP 400)", out)
+        self.assertIn("unknown parameter cache", out)
+        self.assertIn("Leave LITELLM_BYPASS_ANSWER_CACHE unset", out)
+
+    def test_declined_pays_nothing(self):
+        with self.assertRaises(SystemExit):
+            self.run_check([], answer="n")
+
 
 class LiteLLM(unittest.TestCase):
     """The second service: requests in the OpenAI shape, errors that will not fix themselves raised at once, the
@@ -1567,7 +1727,8 @@ class LiteLLM(unittest.TestCase):
                                           "thinking": f"not sent (the step's setting, {llm.THINKING}, isn't sent to "
                                                       "this model)",
                                           "thinking_sent": None, "effort": "not sent (model default)",
-                                          "service_note": llm.SERVICE_NOTES["litellm"], "repeat": 1})
+                                          "service_note": llm.SERVICE_NOTES["litellm"], "repeat": 1,
+                                          "answer_cache": llm.answer_cache_note("litellm")})   # values: test_model_calls
         self.assertEqual(llm.model_label(), "`claude-sonnet-5` through LiteLLM (answered as `claude-sonnet-5-20260101`)")
         llm.MODEL = "claude-opus-5.5"                                            # its documented default effort
         self.assertEqual(llm.describe()["effort"], "not sent (model default, medium)")

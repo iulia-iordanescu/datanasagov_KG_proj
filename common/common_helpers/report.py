@@ -252,6 +252,10 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
                  f"so that LiteLLM, where its session affinity is on, sends them all to one deployment and its prompt "
                  f"cache; whether NASA's proxy has it on isn't known (compare the cache reads above with earlier runs')."
                  if llm.SESSION_ID and llm.SERVICE == "litellm" else "")
+              + (f" LiteLLM answer cache: {llm.answer_cache_note()}"
+                 + (" (every request asked LiteLLM for a fresh answer and not to keep it, so a repeat's answers are "
+                    "new ones; only the step's own `cache/` reuses answers)." if llm.answer_cache_bypassed() else ".")
+                 if llm.SERVICE == "litellm" else "")
               + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else ""), "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet."

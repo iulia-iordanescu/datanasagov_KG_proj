@@ -164,6 +164,14 @@ py helpers/check_effort.py
 
 `py helpers/check_effort.py --only a` or `--only b` runs one step. Put what it prints in `docs/findings.md`.
 
+**Checking LiteLLM's answer cache.** LiteLLM's proxy can keep answers and give a repeated identical request the kept answer ([LiteLLM caching](https://docs.litellm.ai/docs/proxy/caching)). If NASA's does, the runs of a recipe's repeats (*Repeats: how much the numbers vary on their own*, above) get the same answers, not new ones. On 2026-10-31, `check_effort.py` got exactly the same completion-token count for the 3 identical requests of each setting (717, 814 and 802), which suggests it does. To find out:
+
+```powershell
+py helpers/check_answer_cache.py
+```
+
+It asks the model for one sentence about the Moon 4 times (4 tiny paid calls, asked about before sending): twice as it is, then twice with LiteLLM's per-request cache control `{"cache": {"no-cache": true, "no-store": true}}` ("Force a fresh response, bypassing the cache", and don't keep it: [LiteLLM cache controls](https://docs.litellm.ai/docs/proxy/caching_controls)). For each call it prints the HTTP status, whether the reply carries the header `x-litellm-cache-key` (LiteLLM puts it on an answer from its cache), the completion tokens, the answer, and every cache-related field. Before the calls it prints its decision rule: "LiteLLM answers from its cache" if the second plain call carries `x-litellm-cache-key` or returns a byte-identical answer with identical usage, while the no-cache calls differ from each other or carry no `x-litellm-cache-key`; "no answer cache seen" if no call carries the header and the two plain answers differ; "not shown" otherwise, with the reason. It also says whether the proxy accepted the cache control (no HTTP 4xx) and what to do. If LiteLLM answers from its cache and the control is accepted, put the line `LITELLM_BYPASS_ANSWER_CACHE=1` in `.env`: every LiteLLM request of 040, 050, 060 and 070 (and of the checks) then carries the control, and the step's own `cache/` is the only reuse; the words the model gets, the cache keys and the prompts' fingerprints don't change. Each run's record (`answer_cache`) and report (*Model calls*) say "LiteLLM answer cache: bypassed" or "not bypassed". The control is off until then because LiteLLM's docs don't say whether a proxy with its cache off accepts it. Put what the check prints in `docs/findings.md`.
+
 Which model where:
 
 - **040, 050, 070: the strongest model that answers you.** Their calls are few (tens to a few hundred), and their quality matters most: 040 shapes the induced [schema](terminology.md#3-schemas), 050 decides how much you correct by hand, 070's translations decide the metrics.

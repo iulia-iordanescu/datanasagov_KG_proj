@@ -359,9 +359,9 @@ def _translation_fingerprint(translation) -> str:
 
 #: What 060's details file records about how its model calls were sent (llm.describe()), carried into the recipe so
 #: a new model version, answer limit or thinking setting shows in py helpers/compare_runs.py's *What differs*, and
-#: which repeat of 060's recipe (the setting repeat) this run evaluated.
+#: which repeat of 060's recipe (the setting repeat) this run evaluated, and whether LiteLLM's answer cache was bypassed.
 MODEL_CALL_FIELDS = ("service", "model", "served_as", "temperature", "max_answer_tokens", "thinking", "thinking_sent",
-                     "effort", "repeat")
+                     "effort", "repeat", "answer_cache")
 
 
 def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:

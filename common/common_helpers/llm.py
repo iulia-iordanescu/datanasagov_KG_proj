@@ -11,7 +11,8 @@ instead of printed.
 It holds, in this order:
 
     THE RUN'S MODEL       MODEL, SERVICE, THINKING; describe and model_label
-                          for the run's record and report; cache_identity
+                          for the run's record and report; cache_identity;
+                          the LiteLLM answer cache bypass (answer_cache_control)
     THE ASK SAGE CLIENT and THE LITELLM CLIENT: one request each
     EITHER SERVICE
         list_models       the model names the service lists (free; see py helpers/models.py)
@@ -156,6 +157,39 @@ _requests_lock = threading.Lock()
 SESSION_ID = None
 SESSION_HEADER = "x-litellm-session-id"
 
+#: What each LiteLLM request carries in its body when the proxy's own answer cache is to be bypassed: LiteLLM's
+#: per-request cache controls (https://docs.litellm.ai/docs/proxy/caching_controls: `no-cache`, "Force a fresh
+#: response, bypassing the cache"; `no-store`, "Will not cache the response"). A proxy with caching on answers a
+#: repeated identical request from its cache (https://docs.litellm.ai/docs/proxy/caching: "The second response is
+#: served from the cache"), which would make the runs of a recipe's repeats copies of one run; the pipeline's own
+#: cache (common/common_helpers/cache.py) stays the only reuse. Sent only with LITELLM_BYPASS_ANSWER_CACHE=1 in .env
+#: (answer_cache_bypassed): LiteLLM's docs don't say whether a proxy with caching off accepts the controls, so they
+#: are sent once py helpers/check_answer_cache.py shows that NASA's proxy accepts them and answers from its cache.
+#: It changes no word the model gets, nor the cache key (cache_identity), nor any fingerprint.
+ANSWER_CACHE_CONTROL = {"cache": {"no-cache": True, "no-store": True}}
+ANSWER_CACHE_SWITCH = "LITELLM_BYPASS_ANSWER_CACHE"
+
+
+def answer_cache_bypassed() -> bool:
+    """Whether LiteLLM requests carry ANSWER_CACHE_CONTROL: ANSWER_CACHE_SWITCH in .env set to 1, true or yes."""
+    load_dotenv()
+    return (os.getenv(ANSWER_CACHE_SWITCH) or "").strip().lower() in ("1", "true", "yes")
+
+
+def answer_cache_control() -> dict:
+    """What a LiteLLM request adds to its body for the proxy's answer cache: ANSWER_CACHE_CONTROL, or nothing."""
+    return json.loads(json.dumps(ANSWER_CACHE_CONTROL)) if answer_cache_bypassed() else {}
+
+
+def answer_cache_note(service: str | None = None) -> str | None:
+    """LiteLLM's answer cache in the run record's words ("bypassed", or why not); None through Ask Sage."""
+    if (service or SERVICE) != "litellm":
+        return None
+    return ("bypassed" if answer_cache_bypassed() else
+            f"not bypassed ({ANSWER_CACHE_SWITCH} isn't set in .env; py helpers/check_answer_cache.py shows whether "
+            f"the proxy answers repeated requests from its cache)")
+
+
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
 #: Ask Sage's doesn't), for the run's record (describe).
 SERVED = set()
@@ -167,6 +201,7 @@ def describe() -> dict:
     sent (call_settings)."""
     return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings(),
             "service_note": SERVICE_NOTES.get(SERVICE), "repeat": REPEAT,
+            **({"answer_cache": answer_cache_note()} if SERVICE == "litellm" else {}),
             **({"session_id": SESSION_ID} if SESSION_ID and SERVICE == "litellm" else {})}
 
 
@@ -528,6 +563,7 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
         payload["temperature"] = TEMPERATURE
     if thinking_sent(model, "litellm"):
         payload["reasoning_effort"] = thinking_sent(model, "litellm")
+    payload.update(answer_cache_control())                  # a fresh answer, where the proxy caches answers
     _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "messages"},
                    "request_bytes": len(json.dumps(payload).encode("utf-8"))}
     resp = _post(url, headers=headers, json=payload, timeout=(5, read_timeout))
