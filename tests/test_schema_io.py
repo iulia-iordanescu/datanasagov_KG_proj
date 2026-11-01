@@ -518,5 +518,102 @@ class ExtractionKeepsPins(unittest.TestCase):
             schema_io.read_schema(path)
 
 
+class HeldOutOnly(unittest.TestCase):
+    """Held-out-only entries (docs/terminology.md, *held-out-only entry*): the line "held-out only" under an entity
+    class or a predicate, read, written, kept by a rename, dropped by Unmark, and left out of what models see."""
+    TEXT = "\n".join(["ENTITY CLASSES", "--------------",
+                      "Instrument        a device",
+                      "Moonlet           a small moon",
+                      "                  Held-Out   only",
+                      "                  source: ground truth held-out #8",
+                      "Spacecraft        a vehicle",
+                      "", "PREDICATES", "----------",
+                      "ABOARD            is carried on",
+                      "                  Instrument -> Spacecraft; Instrument -> Moonlet",
+                      "                  only: Instrument -> Spacecraft; any -> Moonlet",
+                      "ORBITS            goes around",
+                      "                  held-out only",
+                      "                  held-out only",
+                      "                  rule 19: qualifier, a target body",
+                      "                  Moonlet -> Spacecraft",
+                      "                  source: ground truth held-out #8, #11",
+                      "", "PATTERNS", "--------",
+                      "Moonlet ABOARD Spacecraft",
+                      "                  held-out only",
+                      "                  source: mentor",
+                      "Instrument ABOARD Spacecraft", ""])
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.path = self.tmp / "ground_truth_schema.txt"
+        self.path.write_text(self.TEXT, encoding="utf-8")
+
+    def test_read(self):
+        s = schema_io.read_ground_truth_schema(self.path)
+        self.assertEqual(s["held_out_only"], {"entity_classes": {"Moonlet"}, "predicates": {"ORBITS"}})
+        unread = [u.split(": ", 1)[1] for u in s["unread"]]
+        self.assertIn("held-out only (a second held-out only line; the first is kept)", unread)   # a second line
+        self.assertIn("held-out only", unread)                                    # under a pattern entry: not read
+        self.assertTrue(schema_io.is_held_out_only(s, "entity class", "moonlet"))   # any spelling
+        self.assertFalse(schema_io.is_held_out_only(s, "predicate", "ABOARD"))      # near miss: not marked
+
+    def test_without_held_out_only(self):
+        s = schema_io.read_ground_truth_schema(self.path)
+        w = schema_io.without_held_out_only(s)
+        self.assertEqual((list(w["entity_classes"]), list(w["predicates"])), (["Instrument", "Spacecraft"], ["ABOARD"]))
+        self.assertEqual(w["patterns"], [("Instrument", "ABOARD", "Spacecraft"), ("Instrument", "ABOARD", "Spacecraft")])
+        self.assertEqual(w["pinned"], {"ABOARD": [("Instrument", "Spacecraft")]})      # the pin naming Moonlet goes
+        self.assertEqual((w["rule_19_predicates"], w["sources"]["entity_classes"], w["sources"]["predicates"]),
+                         ({}, {}, {}))
+        self.assertEqual(w["sources"]["patterns"], {})                               # Moonlet ABOARD Spacecraft's
+        self.assertEqual(s["entity_classes"]["Moonlet"], "a small moon")             # the original is left alone
+        unmarked = {**s, "held_out_only": {"entity_classes": set(), "predicates": set()}}
+        self.assertIs(schema_io.without_held_out_only(unmarked), unmarked)           # nothing marked: the same
+        text = schema_io.text_without_held_out_only(self.TEXT, s)
+        for gone in ("Moonlet", "ORBITS", "held-out"):
+            self.assertNotIn(gone, text, gone)
+        self.assertIn("Instrument -> Spacecraft\n", text + "\n")
+        self.assertIn("only: Instrument -> Spacecraft", text)
+        self.assertIn("Instrument ABOARD Spacecraft", text)
+        self.assertEqual(schema_io.text_without_held_out_only(self.TEXT, unmarked), self.TEXT)
+
+    def test_source_line(self):
+        self.assertEqual(schema_io.source_line([3], [8, 8]), "ground truth tuning #3; held-out #8")
+        self.assertEqual(schema_io.source_line((), [11, 8]), "ground truth held-out #8, #11")
+        self.assertEqual(schema_io.source_line([], []), "")
+        found = schema_io.parse_source("ground truth tuning #3; held-out #8", {3: "tuning", 8: "held-out"})
+        self.assertEqual((found["tuning"], found["held_out"]), ([3], [8]))
+
+    def test_add_rename_unmark(self):
+        schema_io.add_to_ground_truth_schema(self.path, "entity class", "Comet", "a comet", source="ground truth held-out #8",
+                                             held_out_only=True)
+        text = self.path.read_text(encoding="utf-8")
+        self.assertIn("Comet             a comet\n                  held-out only\n                  source: ground truth "
+                      "held-out #8\n", text)
+        s = schema_io.read_ground_truth_schema(self.path)
+        self.assertEqual(s["held_out_only"]["entity_classes"], {"Moonlet", "Comet"})
+        schema_io.add_to_ground_truth_schema(self.path, "entity class", "Asteroid", "a rock")   # near miss: unmarked
+        self.assertNotIn("Asteroid", schema_io.read_ground_truth_schema(self.path)["held_out_only"]["entity_classes"])
+        data, how = schema_io.rename_in_ground_truth_schema(self.path, "entity class", "Comet", "IcyBody")
+        self.path.write_bytes(data)
+        self.assertEqual(how, "renamed")
+        s = schema_io.read_ground_truth_schema(self.path)
+        self.assertEqual(s["held_out_only"]["entity_classes"], {"Moonlet", "IcyBody"})     # the mark follows the name
+        data, how = schema_io.rename_in_ground_truth_schema(self.path, "entity class", "IcyBody", "Moonlet")
+        self.path.write_bytes(data)
+        self.assertEqual(how, "merged")
+        self.assertEqual(schema_io.read_ground_truth_schema(self.path)["held_out_only"]["entity_classes"], {"Moonlet"})
+        self.path.write_bytes(schema_io.unmark_held_out_only(self.path, "entity class", "Moonlet", [3], [8]))
+        s = schema_io.read_ground_truth_schema(self.path)
+        self.assertEqual(s["held_out_only"]["entity_classes"], set())
+        self.assertEqual(s["sources"]["entity_classes"]["Moonlet"], "ground truth tuning #3; held-out #8")
+        self.assertEqual(s["entity_classes"]["Moonlet"], "a small moon")
+        with self.assertRaises(ValueError):                                          # no longer marked
+            schema_io.unmark_held_out_only(self.path, "entity class", "Moonlet", [3])
+        with self.assertRaises(ValueError):                                          # no tuning record to name
+            schema_io.unmark_held_out_only(self.path, "predicate", "ORBITS", [])
+
+
 if __name__ == "__main__":
     unittest.main()

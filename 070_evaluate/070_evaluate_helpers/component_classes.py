@@ -51,7 +51,7 @@ from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, KINDS, NONE
                                             values_text)
 from common.prompt_files import fill, load
 from common.report import named
-from common.schema_io import read_ground_truth_schema
+from common.schema_io import read_ground_truth_schema, without_held_out_only
 from common.stop import Stop
 from common.triples_io import component_class_key
 
@@ -95,8 +95,10 @@ class Translation:
 
 
 def gtt_schema(ground_truth_schema_path) -> dict:
-    """The ground truth schema, by kind, each component class with its definition."""
-    vocab = read_ground_truth_schema(ground_truth_schema_path)
+    """The ground truth schema, by kind, each component class with its definition, without its held-out-only entries
+    (common.schema_io.without_held_out_only): never a target of the translation table, never proposed nor suggested,
+    and a row naming one has a missing target."""
+    vocab = without_held_out_only(read_ground_truth_schema(ground_truth_schema_path))
     return {kind: {name: definition for name, definition in vocab[key].items()}
             for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
 
@@ -201,7 +203,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
              [("predicate", e["component_class"]) for e in evaluated.schema_used["predicates"]]
     gtt_key = {k: {component_class_key(n): n for n in v} for k, v in translation.gtt.items()}
     now = crt_definitions(evaluated.schema_used)
-    gtt_now = gtt_definitions(read_ground_truth_schema(inputs["ground_truth_schema"]))
+    gtt_now = gtt_definitions(without_held_out_only(read_ground_truth_schema(inputs["ground_truth_schema"])))
     same, missing = [], []
     handled = set(have)                     # a component class spelled two ways in the schema gets one row
     for kind, name in needed:
@@ -270,10 +272,12 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"component class that the ground truth schema ({ref_path(inputs['ground_truth_schema'])}) "
                          f"doesn't have, so 070 can't translate with them: {named(unknown, 5, '; ')}. Its causes "
                          f"(docs/terminology.md, *row state*): a typo in the table, a component class renamed or "
-                         f"deleted by hand in the ground truth schema, a coined one chosen in the table, or "
+                         f"deleted by hand in the ground truth schema, a coined one or one marked held-out only chosen in the table, or "
                          f"--ground_truth_schema pointing to another file. In each, choose a component class of the "
                          f"ground truth schema, or (none) (column component_class_in_gtt; {TABLE}), or add the "
-                         f"missing one to the ground truth schema; {AGAIN}")
+                         f"missing one to the ground truth schema; a component class marked held-out only there is "
+                         f"never a target (docs/terminology.md, *held-out-only entry*): choose another, or (none); "
+                         f"{AGAIN}")
     if stale_gtt:
         raise Stop(f"{len(stale_gtt)} checked row(s) of {ref_path(path)} were checked when the ground truth schema "
                          f"({ref_path(inputs['ground_truth_schema'])}) defined the component class they translate "

@@ -139,6 +139,8 @@ entity classes ("any": any entity class), and the checks flag any other pattern.
 A predicate whose definition names its object's entity class is pinned to it.
 A line "rule 19: qualifier, ..." marks a qualifier predicate: one of the qualifiers that rule 19 of
 Writing a classed triple takes out of an instance, named in the rule's words.
+A line "held-out only" under an entity class or a predicate marks a held-out-only entry
+(docs/terminology.md): coined while annotating a held-out record, never shown to a model.
 
 ABOARD               is carried on
                      Instrument -> Platform

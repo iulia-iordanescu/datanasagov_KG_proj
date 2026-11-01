@@ -591,39 +591,73 @@ class C_HandSchema(unittest.TestCase):
             finally:
                 other.unlink()
 
-    def test_held_out_frozen(self):
-        """The ground truth schema is frozen for held-out records (annotations/guidelines.md, Before you start): a
-        component class a held-out record coins gets its own message and no button, and can't be added; nothing can be
-        added while a held-out record is shown."""
+    def test_held_out_coins_marked(self):
+        """A held-out record coins entries marked held-out only (annotations/guidelines.md, Before you start;
+        docs/terminology.md, *held-out-only entry*): the coined entity class gets an add button, the add writes the mark and a
+        source naming the held-out record; a tuning row using it gets ✖ and Unmark; while a held-out record is shown,
+        a marked entry can be redefined and an unmarked one can't; Unmark names the tuning record too."""
         hand = TMP / "annotations" / "ground_truth_schema.txt"
         path = TMP / "annotations" / "ground_truth" / "batch_000.csv"
         saved, before = path.read_bytes(), hand.read_bytes()
         rows = gt_rows()
         rows[-1].update(subject="CERES", subject_class="Instrument", predicate="ABOARD", object="Terra",
                         object_class="Moonlet", source_text="CERES aboard Terra")      # r3: held-out
-        rows[1]["object_class"] = "Comet"                                     # r0: tuning
-        try:
+
+        def write():
             with open(path, "w", encoding="utf-8", newline="") as fh:
                 w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
                 w.writeheader()
                 w.writerows(rows)
-            problem = next(p for rec in get("/api/batch?n=0")["records"] for row in rec["rows"] for p in row["problems"]
-                           if p["code"] == "object_class_not_in_schema" and row["object_class"] == "Moonlet")
-            self.assertIn("held-out record (pool position 3)", problem["message"])
-            self.assertIn("annotations/left_out.md", problem["message"])
-            self.assertIsNone(problem["add"])
+
+        def problems(rid, code):
+            return [p for rec in get("/api/batch?n=0")["records"] if rec["id"] == rid for row in rec["rows"]
+                    for p in row["problems"] if p["code"] == code]
+        try:
+            write()
+            (problem,) = problems("r3", "object_class_not_in_schema")
+            self.assertIn("added from it is marked held-out only", problem["message"])
+            self.assertEqual(problem["add"], {"entry_type": "entity class", "component_class": "Moonlet"})
+            # from a tuning record (or none) shown, it is refused: it was coined in a held-out record
             refused = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Moonlet", "definition": "small"})
-            self.assertIn("used by 1 held-out record(s): pool position 3 (r3)", refused["error"])
-            shown = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Comet", "definition": "a comet",
-                                           "record": "r3"})
-            self.assertIn("the record shown, r3 (pool position 3), is a held-out record", shown["error"])
+            self.assertIn("coined in a held-out record", refused["error"])
             self.assertEqual(hand.read_bytes(), before)
-            # a tuning record's coined component class keeps its button
-            tuning = next(p for rec in get("/api/batch?n=0")["records"] for row in rec["rows"] for p in row["problems"]
-                          if p["code"] == "object_class_not_in_schema" and row["object_class"] == "Comet")
-            self.assertEqual(tuning["add"], {"entry_type": "entity class", "component_class": "Comet"})
-            # patterns are frozen too: a held-out row's pattern no finished tuning record uses gets the frozen
-            # message (and no button), a flag still; the same pattern in a tuning row gets the usual one
+            added = post("/api/hand/add", {"entry_type": "entity class", "component_class": "Moonlet",
+                                           "definition": "a small moon", "record": "r3"})
+            self.assertIn("marked held-out only", added["added"])
+            schema = schema_io.read_ground_truth_schema(hand)
+            self.assertEqual(schema["held_out_only"]["entity_classes"], {"Moonlet"})
+            self.assertEqual(schema["sources"]["entity_classes"]["Moonlet"], "ground truth held-out #3")
+            self.assertEqual(problems("r3", "object_class_not_in_schema"), [])          # judged against the whole file
+            self.assertNotIn("Moonlet", get("/api/batch?n=0")["entity_classes"])        # never suggested
+            # a tuning row using it: an error, with Unmark
+            rows[1]["object_class"] = "Moonlet"                                         # r0: tuning
+            write()
+            (marked,) = problems("r0", "object_class_held_out_only")
+            self.assertEqual((marked["type"], marked["add"]),
+                             ("error", {"action": "unmark", "entry_type": "entity class", "component_class": "Moonlet"}))
+            self.assertIn("press Unmark", marked["message"])
+            # while a held-out record is shown, a marked entry can be redefined, an unmarked one can't; while a tuning
+            # record is shown, a marked one can't (only Unmark); merging an unmarked entry into a marked one: refused
+            self.assertTrue(post("/api/vocab/define", {"kind": "entity class", "component_class": "Moonlet",
+                                                       "definition": "a small moon of a planet", "record": "r3"})["saved"])
+            self.assertIn("isn't marked held-out only", post("/api/vocab/define", {
+                "kind": "entity class", "component_class": "Instrument", "definition": "x", "record": "r3"})["error"])
+            self.assertIn("the record shown isn't a held-out record", post("/api/vocab/define", {
+                "kind": "entity class", "component_class": "Moonlet", "definition": "x", "record": "r0"})["error"])
+            self.assertIn("Moonlet is marked held-out only, so renaming or merging Spacecraft is refused", post(
+                "/api/vocab/plan", {"kind": "entity class", "old": "Spacecraft", "new": "Moonlet", "record": "r0"})["error"])
+            self.assertIn("is a held-out record", post("/api/hand/unmark", {
+                "entry_type": "entity class", "component_class": "Moonlet", "record": "r3"})["error"])
+            un = post("/api/hand/unmark", {"entry_type": "entity class", "component_class": "Moonlet", "record": "r0"})
+            self.assertIn("Read its definition again", un["added"])
+            schema = schema_io.read_ground_truth_schema(hand)
+            self.assertEqual(schema["held_out_only"]["entity_classes"], set())
+            self.assertEqual(schema["sources"]["entity_classes"]["Moonlet"], "ground truth tuning #0; held-out #3")
+            self.assertEqual(schema["entity_classes"]["Moonlet"], "a small moon of a planet")
+            self.assertEqual(problems("r0", "object_class_held_out_only"), [])
+            # a held-out row's pattern no finished tuning record uses keeps its own message (and no button), a flag
+            # still: patterns are read from finished tuning records only; the same pattern in a tuning row gets the
+            # usual one
             rows[-1].update(object_class="Spacecraft", predicate="ORBITS")      # Instrument ORBITS Spacecraft: new
             rows[1].update(subject="MODIS", subject_class="Instrument", predicate="ORBITS", object="Aqua",
                            object_class="Dataset", source_text="MODIS aboard Aqua")      # r0, tuning: new too

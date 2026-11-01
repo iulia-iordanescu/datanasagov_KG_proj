@@ -50,11 +50,12 @@ from common import audit
 from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, STALE, crt_definitions, gtt_definitions, \
     is_checked, read_mapping, repeats, row_states
 from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALUABLE, GROUND_TRUTH_DIR, HELD_OUT, KIND_KEYS,
-                                 NUMBERED, PATTERN, TO_FIX, TUNING, check_rows, ground_truth_schema_gaps, read_ground_truth,
+                                 NUMBERED, PATTERN, TO_FIX, TUNING, check_rows, ground_truth_schema_gaps,
+                                 held_out_only_problems, read_ground_truth,
                                  read_pool)
 from common.partial_reviews import PARTIAL_PAIR, REVIEWS_PATH, read_reviews, row_key
 from common.report import named
-from common.schema_io import addition_problem, additions_entries, read_ground_truth_schema
+from common.schema_io import addition_problem, additions_entries, read_ground_truth_schema, without_held_out_only
 from common.step import ANNOTATIONS_DIR, MANIFEST_NAME, PIPELINE_STEPS, RESULTS_DIR, ROOT, input_files, repo_path
 from common.triples_io import component_class_key
 
@@ -237,7 +238,7 @@ def _setup_items(steps: list) -> list:
 # the ground truth, the ground truth schema, and the schema additions
 # --------------------------------------------------------------------------
 
-def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict) -> list:
+def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict, parts: dict | None = None) -> list:
     items = []
     shown = lambda rid: f"#{positions[rid]}" if rid in positions else rid      # as the annotation tool names a record
     for n in unopened_drafts():
@@ -265,16 +266,21 @@ def _ground_truth_items(gt, schema: dict, records: dict | None, positions: dict)
     # record's are errors on its rows in the annotation tool, and a model's uncorrected draft is never proposed here
     gaps = ground_truth_schema_gaps(schema, gt)["component_classes"]
     if gaps:
-        held = [g for g in gaps if HELD_OUT in g["parts"]]
-        names = [f"{g['component_class']} ({g['entry_type']}" + (", used in a held-out record" if g in held else "")
+        held = [g for g in gaps if g.get("held_out_only")]
+        names = [f"{g['component_class']} ({g['entry_type']}" + (", used in held-out records only" if g in held else "")
                  + ")" for g in gaps]
         items.append(_item("Ground truth", TO_DO, f"{len(names)} entity class(es) or predicate(s) that finished records "
                            f"use aren't in the ground truth schema: {named(names, 4, '; ')}. Add each with a one-line "
                            f"definition (annotation tool, the button under its ✖, or Help → Ground truth schema), or "
-                           f"fix the typo" + ("; one a held-out record uses can't be added (the ground truth schema is "
-                                              "frozen for held-out records), so fix it in that record" if held else "")
+                           f"fix the typo" + ("; one only held-out records use is added marked held-out only (open "
+                                              "that record in the annotation tool and press the button there)"
+                                              if held else "")
                            + ". Step 070 stops while a finished record uses one.", "while-annotating",
                            repo_path(GROUND_TRUTH_SCHEMA)))
+    # a held-out-only entry a finished tuning record uses, or whose source names no held-out record: 070 stops
+    for line in held_out_only_problems(schema, gt, parts, repo_path(GROUND_TRUTH_SCHEMA)) if gt.parts is not None else ():
+        items.append(_item("Ground truth", TO_DO, line + " (unmark it or change the entry). Step 070 stops on it.",
+                           "while-annotating", repo_path(GROUND_TRUTH_SCHEMA)))
     return items
 
 
@@ -313,7 +319,7 @@ def _translation_items(schema: dict, gt) -> list:
     if not SCHEMA_USED.exists() or not MAPPING_PATH.exists():
         return []
     crt = crt_definitions(read_json(SCHEMA_USED))
-    gtt_now = gtt_definitions(schema)                 # the file's own, as step 070 reads it: never a coined one
+    gtt_now = gtt_definitions(without_held_out_only(schema))   # as step 070 reads it: never a coined or held-out-only one
     table = read_mapping(MAPPING_PATH)
     current = [r for r in table if component_class_key(r["component_class_from_past_or_crt_schema"])
                in crt.get(r["kind"], {})]
@@ -400,7 +406,7 @@ def project_status(records: dict | None = None) -> dict:
     if records is None:
         records = load_records(RECORDS) if RECORDS.exists() else None
     steps = steps_status()
-    items = (_setup_items(steps) + _step_items(steps, gt) + _ground_truth_items(gt, schema, records, positions)
+    items = (_setup_items(steps) + _step_items(steps, gt) + _ground_truth_items(gt, schema, records, positions, parts)
              + _additions_items(parts) + _translation_items(schema, gt) + _partial_items(parts_by_id) + _git_items())
     return {"when": dt.datetime.now().strftime("%Y-%m-%d %H:%M"), "steps": steps, "items": items}
 

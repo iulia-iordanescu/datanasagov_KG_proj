@@ -858,7 +858,7 @@ function show(i) {
               el("dt", {}, "Pool position"), el("dd", {}, String(rec.position ?? "not in the pool")),
               el("dt", {}, "Part"), el("dd", {}, rec.part
                 ? el("span", { class: "part " + rec.part, title: rec.part === "held-out"
-                    ? "A held-out record: the ground truth schema is frozen while annotating it (no entity class or predicate added, renamed, or merged, and no definition changed: annotations/guidelines.md, Before you start), and an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
+                    ? "A held-out record: annotate every fact, as in a tuning record. An entity class or predicate you coin here is added marked held-out only (no model and no check sees it), and only held-out-only entries can be renamed, merged, or redefined while it is shown (annotations/guidelines.md, Before you start); an entity class or predicate that occurs to you while annotating this record must not go into the schema additions (annotations/schema_additions.txt), because held-out records must not influence the current schema."
                     : "A tuning record: an entity class or predicate that occurs to you while annotating this record may go into the schema additions (annotations/schema_additions.txt)." }, rec.part)
                 : "none (not in the pool)"),
               expertQuestionsOn(rec.id),
@@ -1288,6 +1288,10 @@ function refreshProblems() {
 // The server writes the file (annotations/ground_truth_schema.txt) and the checks run again. (Patterns are never
 // added: the ground truth schema's patterns include every one the ground truth uses.)
 function addControl(a) {
+  if (a.action === "unmark")                        // a held-out-only entry a tuning record uses: unmark it for it
+    return el("span", { class: "addbox" }, el("button", { onclick: () => addToHand(a),
+      title: "Makes it a normal entry of the ground truth schema, which every model sees: read its definition again" },
+      `Unmark ${a.component_class} (this tuning record needs it)`));
   const box = el("span", { class: "addbox" });
   const start = el("button", { onclick: () => {
     const def = el("input", { placeholder: `one-line definition of ${a.component_class}`, "aria-label": `definition of ${a.component_class}` });
@@ -1310,7 +1314,7 @@ async function addToHand(item) {
   try {
     await flush();
     if (dirty) return;                              // the batch didn't save: save() has said why
-    const r = await api("/api/hand/add", { ...item, record: shownRecordId() });
+    const r = await api(item.action === "unmark" ? "/api/hand/unmark" : "/api/hand/add", { ...item, record: shownRecordId() });
     drawGaps(await api("/api/gaps"));
     if (batch) { dirty = true; await save(); }       // the checks run again against the grown schema
     if (!dirty) status(r.added, "saved");            // else save() has said why it failed
@@ -2117,7 +2121,7 @@ function vocabEntry(kind, v) {
                                "aria-label": `rename ${v.component_class}` });
   return el("div", { class: "row" },
     el("div", {}, el("span", { class: "kind" }, kind), el("b", {}, v.component_class),
-       el("span", { class: "meta" }, `  ${v.in_hand ? "in the ground truth schema" : "coined while annotating, not in the ground truth schema yet"}` +
+       el("span", { class: "meta" }, `  ${v.in_hand ? (v.held_out_only ? "in the ground truth schema, marked held-out only (not shown to any model)" : "in the ground truth schema") : "coined while annotating, not in the ground truth schema yet"}` +
          ` · used ${v.uses} time(s) in the ground truth` + (v.files.length ? ` (${v.files.join(", ")})` : "") +
          (v.translated_from.length ? ` · the translation table translates ${v.translated_from.join(", ")} (current or past schema) into ${v.component_class}` : ""))),
     el("div", { class: "bar" }, def, " ",
@@ -2146,7 +2150,10 @@ function drawVocab() {
   if (vocabPlan) cards.push(planCard());
   for (const kind of ["entity class", "predicate"])
     cards.push(el("section", { class: "card" }, el("h3", {}, kind === "entity class" ? "Entity classes" : "Predicates"),
-      vocab.vocabulary[kind].map(v => vocabEntry(kind, v))));
+      vocab.vocabulary[kind].filter(v => !v.held_out_only).map(v => vocabEntry(kind, v))));
+  const held = ["entity class", "predicate"].flatMap(kind => vocab.vocabulary[kind].filter(v => v.held_out_only).map(v => vocabEntry(kind, v)));
+  if (held.length)
+    cards.push(el("section", { class: "card" }, el("h3", {}, "Held-out only (not shown to any model)"), held));
   $("record").replaceChildren(...cards);
 }
 

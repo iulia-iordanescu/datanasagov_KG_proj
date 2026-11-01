@@ -82,6 +82,8 @@ class Evaluated:
     extraction_failed: list = field(default_factory=list)  # finished records 060's model calls failed for, with why and
                                                    # maintainer (common/common_helpers/dropped.py); left out of every number
     finished: list = field(default_factory=list)   # the finished ground truth records, {"id", "maintainer"}
+    held_out_only: dict = field(default_factory=dict)  # the ground truth schema's held-out-only entries, by kind
+                                                   # (schema_io: {"entity_classes": set, "predicates": set})
     pending: list = field(default_factory=list)    # every row of annotations/pending_triples.csv (read_pending): the
                                                    # facts that wait on an expert, of every record, evaluated or not
     second_opinion_models: list = field(default_factory=list)  # the models whose second opinion checked an evaluated
@@ -115,12 +117,16 @@ def refusal(repeats: list) -> str:
 
 
 
-def check_evaluable(gt, catalog: dict, ground_truth_schema_path, pending: list = ()) -> None:
+def check_evaluable(gt, catalog: dict, ground_truth_schema_path, pending: list = (), pool_rows: list = ()) -> None:
     """Stop unless every finished record (EVALUABLE, every part) and every fact that waits on an expert is fit to
-    evaluate against (common.ground_truth.evaluable_problems): each problem named with its file and line, the
-    record, and what to do. Only the finished records are evaluated, so only theirs are checked."""
+    evaluate against (common.ground_truth.evaluable_problems), and the held-out-only entries keep their rule
+    (common.ground_truth.held_out_only_problems; pool_rows give each pool position its part): each problem named with
+    its file and line, the record, and what to do. Only the finished records are evaluated, so only theirs are
+    checked."""
     path = ref_path(Path(ground_truth_schema_path))
-    problems = evaluable_problems(gt, catalog, read_ground_truth_schema(ground_truth_schema_path), path, pending)
+    parts = {r["position"]: r.get("part") for r in pool_rows} if pool_rows else None
+    problems = evaluable_problems(gt, catalog, read_ground_truth_schema(ground_truth_schema_path), path, pending,
+                                  parts=parts)
     if problems:
         raise Stop(f"Step 070 can't evaluate: the finished records of the ground truth, or the facts that wait on an "
                    f"expert, have {len(problems)} problem(s), each of which would make a number wrong:\n"
@@ -128,17 +134,22 @@ def check_evaluable(gt, catalog: dict, ground_truth_schema_path, pending: list =
 
 
 def held_out_sources(ground_truth_schema_path, pool_rows: list) -> list:
-    """The ground truth schema's entity classes and predicates whose "source:" line names a held-out record, i.e. that
-    were added while a held-out record used them, though the ground truth schema is frozen for held-out records
-    (annotations/guidelines.md, Before you start): [(kind, component class, source, [(pool position, record id)])].
+    """The ground truth schema's entity classes and predicates whose "source:" line names a held-out record without
+    the held-out only mark, i.e. that were added from held-out records unmarked, so they reach every model and check
+    (annotations/guidelines.md, Before you start): [(kind, component class, source, [(pool position, record id)])]. A
+    held-out-only entry is skipped: its source names held-out records on purpose (docs/terminology.md); one unmarked
+    since keeps its held-out records in its source too, so it is listed, for its definition to be read again.
     Read by common.schema_io.parse_source: a position counts as held-out by its part in the pool, whatever word stands
     before it ("ground truth tuning #12, #8" names held-out #8 when #8 is held-out)."""
     held = {r["position"]: r["id"] for r in pool_rows if r.get("part") == HELD_OUT}
     parts = {r["position"]: r.get("part") for r in pool_rows}
-    sources = read_ground_truth_schema(ground_truth_schema_path)["sources"]
+    schema = read_ground_truth_schema(ground_truth_schema_path)
+    sources, marked = schema["sources"], schema["held_out_only"]
     found = []
     for section, kind in (("entity_classes", "entity class"), ("predicates", "predicate")):
         for name, source in sources[section].items():
+            if name in marked[section]:
+                continue
             records = [(n, held[n]) for n in parse_source(source, parts)["held_out"]]
             if records:
                 found.append((kind, name, source, records))
@@ -264,27 +275,27 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
         raise Stop(refusal(gt.repeats))
     catalog = load_records(inputs["records"])
     evaluated.pending = _read_pending(inputs)
-    check_evaluable(gt, catalog, inputs["ground_truth_schema"], evaluated.pending)
+    check_evaluable(gt, catalog, inputs["ground_truth_schema"], evaluated.pending, pool_rows)
     if any("part" not in r for r in pool_rows):
         splits = repo_path(inputs["splits"])
         raise Stop(f"{splits} has no tuning / held-out part for its records (an older step 030 wrote it), so 070 "
                    f"can't keep the held-out part apart. Delete {splits}, run `py 030_split/run.py`, then run "
                    f"`py 070_evaluate/run.py` again.")
     evaluated.pool = [r["id"] for r in pool_rows]
+    evaluated.held_out_only = read_ground_truth_schema(inputs["ground_truth_schema"])["held_out_only"]
     frozen = held_out_sources(inputs["ground_truth_schema"], pool_rows)
     if frozen:
         evaluated.notes.append(
             f"{len(frozen)} entity class(es) or predicate(s) of the ground truth schema "
-            f"({ref_path(Path(inputs['ground_truth_schema']))}) were added from held-out records, though the ground truth "
-            f"schema is frozen for held-out records (annotations/guidelines.md, Before you start): "
+            f"({ref_path(Path(inputs['ground_truth_schema']))}) were added from held-out records without the held-out "
+            f"only mark, so every model and check sees them (annotations/guidelines.md, Before you start): "
             + named([f"{name} ({kind}; source: {source}; held-out "
                      + ", ".join(f"pool position {n} ({rid})" for n, rid in records) + ")"
                      for kind, name, source, records in frozen], 10, "; ")
             + ". So those held-out records shaped the ground truth schema, and their numbers may flatter the pipeline. "
-              "In those records, use an entity class or predicate the ground truth schema had before, or delete the "
-              "ground truth triple and write the fact in annotations/left_out.md with a question for the experts; "
-              "then delete the entry from the ground truth schema if no tuning record uses it, or change its source "
-              "line to name only the tuning records that use it; " + AGAIN)
+              "If no tuning record uses the entry, mark it held-out only (a line \"held-out only\" under it in the "
+              "file); if one does (it was unmarked for it), read its definition again, so that it says what the tuning "
+              "record needs, not what the held-out record said; " + AGAIN)
     by_id = {r["id"]: r for r in pool_rows}
     strata = {r["id"].strip(): (r.get("stratum") or "").strip() for r in read_csv(Path(inputs["candidates"]))}
     for r in pool_rows:

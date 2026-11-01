@@ -63,7 +63,12 @@ shapes:
    class, "rule 19: standalone" or "rule 19: describing" (a standalone entity class
    or a describing entity class, docs/terminology.md); under a predicate, "rule 19:
    qualifier, <the kind of qualifier, in rule 19's words>" (a qualifier
-   predicate). Lines starting with # are comments.
+   predicate). An indented line "held-out only" under an entity class or a
+   predicate (only the ground truth schema has them, first under the entry)
+   marks a held-out-only entry (docs/terminology.md): coined while annotating
+   a held-out record, it is left out of the ground truth schema as every
+   model and check sees it (without_held_out_only). Lines starting with # are
+   comments.
 
 Several steps read it: 040 compares the induced schema with the ground truth
 schema; 050 shows the ground truth schema to the model and checks every drafted
@@ -84,6 +89,9 @@ translates the current schema into the ground truth schema.
     schema["rule_19_classes"] {"Dataset": "standalone", "Purpose": "describing", …}: the entity classes' rule 19 marks
     schema["rule_19_predicates"] {"BASED_IN": "a country", …}: the qualifier predicates, each with its kind of
                               qualifier in rule 19's words (text shape only)
+    schema["held_out_only"]   {"entity_classes": {…}, "predicates": {…}}: the held-out-only entries, by kind (text
+                              shape only)
+    without_held_out_only(schema)  a copy without the held-out-only entries, their patterns, pins, marks and sources
     qualifier_predicates(schema)  the qualifier predicates, in the file's order
     schema["unread"]          ["line 12: …"]: lines of a section that are neither an entry, a
                               source nor patterns, e.g. prose, or a repeated entry (the first
@@ -93,8 +101,11 @@ translates the current schema into the ground truth schema.
     ground_truth_source_problem(source, parts)   why a schema entry's source isn't fair, or None
     parse_source(source, parts)   the one reading of a "source:" line: the tuning, held-out and unknown pool
                               positions it names (each position's part from the pool, never from its words)
-    source_line(positions)    the line the annotation tool writes: "ground truth tuning #3, #8"
-    add_to_ground_truth_schema(path, kind, name, definition, patterns, source)   one entry added (the annotation tool)
+    source_line(tuning, held_out)  the line the annotation tool writes: "ground truth tuning #3, #8",
+                              "ground truth held-out #8", or both joined by "; "
+    add_to_ground_truth_schema(path, kind, name, definition, patterns, source, held_out_only)   one entry added
+                              (the annotation tool)
+    unmark_held_out_only(path, kind, name, tuning, held_out)   a held-out-only entry made a normal one (the tool)
 
 read_ground_truth_schema(path) is read_schema for the ground truth schema's text file.
 """
@@ -125,6 +136,9 @@ PINNED = "only:"
 RULE_19 = "rule 19:"
 RULE_19_CLASS_MARKS = ("standalone", "describing")
 RULE_19_QUALIFIER = "qualifier,"
+#: The line under an entity class or a predicate that marks a held-out-only entry (docs/terminology.md): read with case
+#: and spacing evened out, written as it is here.
+HELD_OUT_ONLY = "held-out only"
 ANY = "any"
 #: The text shape's section headings ("CLASSES" is the older heading of the
 #: entity classes, still read).
@@ -141,7 +155,8 @@ def _pins_of(line: str) -> list:
 def _empty() -> dict:
     return {"entity_classes": {}, "predicates": {}, "patterns": [], "pattern_entries": [],
             "sources": {"entity_classes": {}, "predicates": {}, "patterns": {}}, "unread": [], "pinned": {},
-            "rule_19_classes": {}, "rule_19_predicates": {}}
+            "rule_19_classes": {}, "rule_19_predicates": {},
+            "held_out_only": {"entity_classes": set(), "predicates": set()}}
 
 
 def qualifier_predicates(schema: dict) -> tuple:
@@ -200,6 +215,13 @@ def _read_text(path) -> dict:
             entry_name = name
             continue
         if entry_name and line[:1].isspace():
+            if " ".join(head.lower().split()) == HELD_OUT_ONLY and section in ("entity_classes", "predicates"):
+                marked = schema["held_out_only"][section]
+                if entry_name in marked:
+                    schema["unread"].append(f"line {number}: {head} (a second held-out only line; the first is kept)")
+                else:
+                    marked.add(entry_name)
+                continue
             if head.lower().startswith("source:"):
                 schema["sources"][section][entry_name] = head[len("source:"):].strip()
                 continue
@@ -326,12 +348,15 @@ def parse_source(source: str, parts: dict) -> dict:
     return out
 
 
-def source_line(tuning_positions) -> str:
-    """The "source:" line naming the ground truth records an entry was learned from, as parse_source reads it:
-    "ground truth tuning #3, #8", or "" for none. Only tuning records are ever named (the annotation tool passes the
-    finished tuning records using the entry: common.ground_truth.SCHEMA_EVIDENCE)."""
-    positions = sorted(set(tuning_positions))
-    return "ground truth tuning " + ", ".join(f"#{p}" for p in positions) if positions else ""
+def source_line(tuning_positions, held_out_positions=()) -> str:
+    """The "source:" line naming the ground truth records an entry was learned from, as parse_source reads it (by
+    the pool, not the words): "ground truth tuning #3, #8", "ground truth held-out #8", both joined by "; "
+    ("ground truth tuning #3; held-out #8"), or "" for none. Held-out records are named only for a held-out-only
+    entry (the annotation tool: the held-out records using it, kept when it is unmarked, so its history shows)."""
+    tuning, held = sorted(set(tuning_positions)), sorted(set(held_out_positions))
+    parts = ([f"tuning {', '.join(f'#{p}' for p in tuning)}"] if tuning else []) \
+        + ([f"held-out {', '.join(f'#{p}' for p in held)}"] if held else [])
+    return "ground truth " + "; ".join(parts) if parts else ""
 
 
 def ground_truth_source_problem(source: str, parts: dict) -> str | None:
@@ -410,7 +435,13 @@ def _comparable(schema: dict) -> tuple:
     their line numbers, which shift when a line is added above them."""
     return (schema["entity_classes"], schema["predicates"], sorted(schema["patterns"]), schema["sources"],
             sorted(u.split(": ", 1)[-1] for u in schema["unread"]), schema.get("rule_19_classes", {}),
-            schema.get("rule_19_predicates", {}))
+            schema.get("rule_19_predicates", {}), _marks(schema))
+
+
+def _marks(schema: dict) -> tuple:
+    """The held-out-only entries, by kind, in a form to compare."""
+    marked = schema.get("held_out_only") or {}
+    return tuple(tuple(sorted(marked.get(k, ()))) for k in ("entity_classes", "predicates"))
 
 
 def _edit_text(path, edit, expected: dict, what: str) -> None:
@@ -453,13 +484,15 @@ def _pairs_text(pairs) -> str:
     return "; ".join(f"{s} -> {o}" for s, o in pairs)
 
 
-def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patterns: list = (), source: str = "") -> None:
+def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patterns: list = (), source: str = "",
+                               held_out_only: bool = False) -> None:
     """Add one entry to the ground truth schema (text shape): an entity class
     after the last entity class, a predicate after the last predicate and
-    the lines under it, aligned like the entries of its section. A
-    predicate's patterns, [(subject class, object class)], go on the line
-    under it, then the source, if any, on a "source:" line. kind is "entity
-    class" or "predicate"."""
+    the lines under it, aligned like the entries of its section. With
+    held_out_only, the line "held-out only" comes first under it (a
+    held-out-only entry). A predicate's patterns, [(subject class, object
+    class)], go on the next line, then the source, if any, on a "source:"
+    line. kind is "entity class" or "predicate"."""
     key = KIND_KEYS[kind]
     name, definition, source = str(name).strip(), " ".join(str(definition).split()), " ".join(str(source).split())
     patterns = [(str(s).strip(), str(o).strip()) for s, o in patterns] if key == "predicates" else []
@@ -478,14 +511,17 @@ def add_to_ground_truth_schema(path, kind: str, name: str, definition: str, patt
         start, end = _section(lines, key, path)
         entries = [i for i in range(start, end) if ENTRY.match(lines[i])]
         column = max(ENTRY.match(lines[entries[0]]).start(2) if entries else 18, len(name) + 2)
-        new = [name.ljust(column) + definition] + ([" " * column + _pairs_text(patterns)] if patterns else []) \
+        new = [name.ljust(column) + definition] + ([" " * column + HELD_OUT_ONLY] if held_out_only else []) \
+            + ([" " * column + _pairs_text(patterns)] if patterns else []) \
             + ([" " * column + "source: " + source] if source else [])
         last = _under(lines, entries[-1], end) if entries else start + 1     # else under the heading's dashes
         return lines[:last + 1] + new + lines[last + 1:]
 
     expected = {**before, key: {**before[key], name: definition},
                 "patterns": before["patterns"] + [(s, name, o) for s, o in patterns],
-                "sources": {**before["sources"], key: {**before["sources"][key], **({name: source} if source else {})}}}
+                "sources": {**before["sources"], key: {**before["sources"][key], **({name: source} if source else {})}},
+                "held_out_only": {**before["held_out_only"],
+                                  key: before["held_out_only"][key] | ({name} if held_out_only else set())}}
     _edit_text(path, edit, expected, name)
 
 
@@ -510,7 +546,7 @@ def _as_read(schema: dict) -> tuple:
     return (schema["entity_classes"], schema["predicates"], set(schema["patterns"]), schema["sources"],
             sorted(u.split(": ", 1)[-1] for u in schema["unread"]),
             {p: set(v) for p, v in schema.get("pinned", {}).items()}, schema.get("rule_19_classes", {}),
-            schema.get("rule_19_predicates", {}))
+            schema.get("rule_19_predicates", {}), _marks(schema))
 
 
 def _checked(path, bom: str, newline: str, lines: list, expected: dict, what: str) -> bytes:
@@ -651,8 +687,12 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
     pinned = ({p: [(swap(s), swap(o)) for s, o in v] for p, v in before["pinned"].items()} if key == "entity_classes"
               else renamed(before["pinned"]))
     marks = "rule_19_classes" if key == "entity_classes" else "rule_19_predicates"
+    held = before["held_out_only"][key]
     expected = {**before, key: renamed(before[key]), "patterns": patterns, "pinned": pinned,
                 marks: renamed(before.get(marks, {})),
+                # a rename keeps the mark (the line moves with the entry); a merge drops the old entry's with it
+                "held_out_only": {**before["held_out_only"],
+                                  key: set(renamed({n: True for n in held}))},
                 "sources": {**before["sources"], key: renamed(before["sources"][key]),
                             "patterns": {pattern_key(trio(tuple(n.split(" ")))): v
                                          for n, v in before["sources"]["patterns"].items()}}}
@@ -662,6 +702,131 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
     else:
         how = "merged" if merging else "renamed"
     return data, how
+
+
+def text_without_held_out_only(text: str, schema: dict) -> str:
+    """The ground truth schema's file text (schema: as read from it) without its held-out-only entries, for a prompt
+    that shows the file as written (050's and the second opinion's): each marked entry's line and the lines under it,
+    every pattern or pin naming a marked entity class (a line left with none goes too), and every PATTERNS entry
+    naming one. The text as it is when nothing is marked, so a prompt's fingerprint changes only with a mark."""
+    marked = schema.get("held_out_only") or {}
+    out_e = {component_class_key(n) for n in marked.get("entity_classes", ())}
+    out_p = {component_class_key(n) for n in marked.get("predicates", ())}
+    if not (out_e or out_p):
+        return text
+    keep_e = lambda n: n == ANY or component_class_key(n) not in out_e        # noqa: E731
+    lines, kept, section, skipping = text.split("\n"), [], None, False
+    for line in lines:
+        head = line.strip()
+        if head in SECTIONS:
+            section, skipping = SECTIONS[head], False
+            kept.append(line)
+            continue
+        if line[:1].isspace() and head:
+            if skipping:
+                continue
+            if section == "predicates" and head.lower().startswith(PINNED):
+                pins = [(s, o) for s, o in _pins_of(head) if keep_e(s) and keep_e(o)]
+                if _pins_of(head) and not pins:
+                    continue
+                if pins and len(pins) != len(_pins_of(head)):
+                    line = _indent(line) + PINNED + " " + _pairs_text(pins)
+            elif section == "predicates" and _is_pairs_line(line):
+                pairs = [(s, o) for s, o in _pairs_of(line) if keep_e(s) and keep_e(o)]
+                if not pairs:
+                    continue
+                if len(pairs) != len(_pairs_of(line)):
+                    line = _indent(line) + _pairs_text(pairs)
+            kept.append(line)
+            continue
+        skipping = False
+        if section in ("entity_classes", "predicates") and (m := ENTRY.match(line)):
+            if component_class_key(m.group(1)) in (out_e if section == "entity_classes" else out_p):
+                skipping = True
+                continue
+        elif section == "patterns" and (m := PATTERN_LINE.match(head)) and not line[:1].isspace():
+            s, p, o = m.groups()
+            if not (keep_e(s) and component_class_key(p) not in out_p and keep_e(o)):
+                skipping = True
+                continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
+def unmark_held_out_only(path, kind: str, name: str, tuning_positions, held_out_positions=()) -> bytes:
+    """The ground truth schema with the held-out-only entry `name` made a normal one: its "held-out only" line deleted,
+    and its "source:" line written anew, source_line(tuning_positions, held_out_positions) (the held-out records kept,
+    so its history shows; a "source:" line is added under the entry when it had none). Nothing else changes. For a
+    tuning record that needs the entry (the annotation tool's Unmark): its definition then joins what every model
+    sees, so it should be read again, since it was written from a held-out record."""
+    key = KIND_KEYS[kind]
+    before = _read_text(path)
+    spelled = _spelled(before[key], name)
+    if spelled is None or spelled not in before["held_out_only"][key]:
+        raise ValueError(f"{name} isn't {'an entity class' if key == 'entity_classes' else 'a predicate'} of the "
+                         f"ground truth schema marked held-out only: nothing to unmark")
+    source = source_line(tuning_positions, held_out_positions)
+    if not source:
+        raise ValueError(f"unmarking {spelled} needs the tuning record that uses it, for its source line")
+    bom, newline, lines = _file_lines(path)
+    start, end = _section(lines, key, path)
+    i = _entry_line(lines, start, end, spelled)
+    last = _under(lines, i, end)
+    column = ENTRY.match(lines[i]).start(2)
+    under = [j for j in range(i + 1, last + 1) if lines[j].strip()]
+    mark = next(j for j in under if " ".join(lines[j].lower().split()) == HELD_OUT_ONLY)
+    at = next((j for j in under if lines[j].strip().lower().startswith("source:")), None)
+    if at is not None:
+        lines[at] = _indent(lines[at]) + "source: " + source
+    else:
+        lines.insert(last + 1, " " * column + "source: " + source)
+    del lines[mark]
+    expected = {**before, "sources": {**before["sources"], key: {**before["sources"][key], spelled: source}},
+                "held_out_only": {**before["held_out_only"], key: before["held_out_only"][key] - {spelled}}}
+    return _checked(path, bom, newline, lines, expected, f"unmarking {spelled}")
+
+
+def is_held_out_only(schema: dict, kind: str, name) -> bool:
+    """Whether a component class (any spelling, compared as component_class_key does) is a held-out-only entry of
+    the schema. kind: "entity class" or "predicate" (or its key, "entity_classes" or "predicates")."""
+    key = KIND_KEYS.get(kind, kind)
+    k = component_class_key(name)
+    return any(component_class_key(n) == k for n in (schema.get("held_out_only") or {}).get(key, ()))
+
+
+def without_held_out_only(schema: dict) -> dict:
+    """A copy of the schema without its held-out-only entries: the entries, the patterns naming one, their pins,
+    rule 19 marks and sources. What every model and check sees (common.ground_truth.ground_truth_schema_view), the
+    translation table's targets (070's gtt_schema) and the annotation tool's suggestions; the full file is what a
+    held-out record's ground truth triples are judged against."""
+    marked = schema.get("held_out_only") or {}
+    out_e = {component_class_key(n) for n in marked.get("entity_classes", ())}
+    out_p = {component_class_key(n) for n in marked.get("predicates", ())}
+    if not (out_e or out_p):
+        return schema
+    keep_e = lambda n: component_class_key(n) not in out_e            # noqa: E731
+    keep_p = lambda n: component_class_key(n) not in out_p            # noqa: E731
+
+    def pattern_ok(t) -> bool:
+        s, p, o = t
+        return keep_e(s) and keep_p(p) and keep_e(o)
+    out = dict(schema)
+    out["entity_classes"] = {n: d for n, d in schema["entity_classes"].items() if keep_e(n)}
+    out["predicates"] = {n: d for n, d in schema["predicates"].items() if keep_p(n)}
+    out["patterns"] = [t for t in schema.get("patterns", []) if pattern_ok(t)]
+    out["pattern_entries"] = [t for t in schema.get("pattern_entries", []) if pattern_ok(t)]
+    out["pinned"] = {p: [(s, o) for s, o in pins if (s == ANY or keep_e(s)) and (o == ANY or keep_e(o))]
+                     for p, pins in schema.get("pinned", {}).items() if keep_p(p)}
+    out["pinned"] = {p: pins for p, pins in out["pinned"].items() if pins}
+    out["rule_19_classes"] = {n: m for n, m in schema.get("rule_19_classes", {}).items() if keep_e(n)}
+    out["rule_19_predicates"] = {n: m for n, m in schema.get("rule_19_predicates", {}).items() if keep_p(n)}
+    sources = schema.get("sources") or {"entity_classes": {}, "predicates": {}, "patterns": {}}
+    out["sources"] = {"entity_classes": {n: v for n, v in sources["entity_classes"].items() if keep_e(n)},
+                      "predicates": {n: v for n, v in sources["predicates"].items() if keep_p(n)},
+                      "patterns": {n: v for n, v in sources["patterns"].items()
+                                   if len(n.split(" ")) != 3 or pattern_ok(tuple(n.split(" ")))}}
+    out["held_out_only"] = {"entity_classes": set(), "predicates": set()}
+    return out
 
 
 # --------------------------------------------------------------------------

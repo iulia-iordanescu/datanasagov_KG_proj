@@ -2358,6 +2358,21 @@ class OneSelection(unittest.TestCase):
             with self.assertRaises(TypeError):
                 f()
 
+    def test_schema_view_leaves_out_held_out_only_entries(self):
+        """Every consumer of the view (040, 050, 060, the second opinion through 050, the annotation tool) gets the
+        file without its held-out-only entries: not offered, not in the patterns, not in 050's prompt text."""
+        hand = {**self.HAND, "entity_classes": {**self.HAND["entity_classes"], "Moonlet": "a small moon"},
+                "patterns": list(self.HAND.get("patterns", [])) + [("Instrument", "ABOARD", "Moonlet")],
+                "held_out_only": {"entity_classes": {"Moonlet"}, "predicates": set()},
+                "sources": {"entity_classes": {"Moonlet": "ground truth held-out #8"}, "predicates": {}, "patterns": {}}}
+        view = ground_truth.ground_truth_schema_view(hand, self.gt)
+        self.assertNotIn("Moonlet", view["entity_classes"])
+        self.assertNotIn(("Instrument", "ABOARD", "Moonlet"), view["patterns"])
+        self.assertEqual(view["coined"], {"entity_classes": ["Gauge"], "predicates": []})   # as without the mark
+        unmarked = ground_truth.ground_truth_schema_view({**hand, "held_out_only": {"entity_classes": set(),
+                                                                                    "predicates": set()}}, self.gt)
+        self.assertIn("Moonlet", unmarked["entity_classes"])                       # near miss: without the mark
+
     def test_what_070_and_the_status_stop_on(self):
         """Step 070 and the status ask about the finished records of every part (EVALUABLE): Gauge (tuning) and
         HeldThing (held-out, which can't be added); a draft's, a bad mark's or a record in two files' never."""
@@ -2489,6 +2504,34 @@ class Evaluable(unittest.TestCase):
     def describes(self, rid="r1", cls="Dataset", done="1"):
         return row(rid, rid, "CatalogEntry", "DESCRIBES", f"Title {'one' if rid == 'r1' else 'two'}", cls,
                    "(record structure)", done)
+
+    def test_held_out_only_entries(self):
+        """A held-out record's triple using a held-out-only entry is fine; a finished tuning record's stops 070; so does
+        a held-out-only entry whose source names a tuning record, or no record."""
+        marked = {**self.HAND, "entity_classes": {**self.HAND["entity_classes"], "Moonlet": "d"},
+                  "held_out_only": {"entity_classes": {"Moonlet"}, "predicates": set()},
+                  "sources": {"entity_classes": {"Moonlet": "ground truth held-out #1"}, "predicates": {}, "patterns": {}}}
+        parts = {0: "tuning", 1: "held-out"}
+        held = [self.describes("r2"), row("r2", "MODIS", "Instrument", "ABOARD", "Aqua", "Moonlet", "MODIS aboard Aqua")]
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        pool = [{"id": "r1", "position": 0, "part": "tuning"}, {"id": "r2", "position": 1, "part": "held-out"}]
+
+        def problems(rows, schema):
+            gt_file(tmp, "batch_000.csv", rows)
+            gt = ground_truth.read_ground_truth(tmp, pool)
+            return ground_truth.evaluable_problems(gt, self.RECORDS, schema, "annotations/ground_truth_schema.txt",
+                                                   parts=parts)
+        self.assertEqual(problems(held, marked), [])
+        tuning = [self.describes(), row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Moonlet", "MODIS aboard Aqua")]
+        (line,) = problems(tuning, marked)
+        self.assertIn("Moonlet (entity class) is marked held-out only in annotations/ground_truth_schema.txt, and the "
+                      "tuning record r1 (batch_000.csv line 3) uses it: unmark it", line)
+        for source, said in (("ground truth tuning #0; held-out #1", "names tuning record(s) #0"),
+                             ("mentor", "names no held-out record")):
+            schema = {**marked, "sources": {**marked["sources"], "entity_classes": {"Moonlet": source}}}
+            (line,) = problems(held, schema)
+            self.assertIn(f"but its source {said}: unmark it", line)
 
     def test_each_problem_and_its_near_miss(self):
         good = row("r1", "MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft", "MODIS aboard Aqua")

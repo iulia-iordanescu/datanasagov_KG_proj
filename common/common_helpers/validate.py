@@ -50,6 +50,11 @@ OBJECT_CLASS_NOT_IN_SCHEMA = "object_class_not_in_schema"
 PREDICATE_NOT_IN_SCHEMA = "predicate_not_in_schema"
 PATTERN_NOT_IN_SCHEMA = "pattern_not_in_schema"
 PATTERN_NOT_PINNED = "pattern_not_pinned"
+# the annotation tool, on a tuning record's row: an entity class or predicate marked held-out only in the ground truth
+# schema (docs/terminology.md, *held-out-only entry*), which no tuning record may use
+SUBJECT_CLASS_HELD_OUT_ONLY = "subject_class_held_out_only"
+OBJECT_CLASS_HELD_OUT_ONLY = "object_class_held_out_only"
+PREDICATE_HELD_OUT_ONLY = "predicate_held_out_only"
 # check_describes
 DESCRIBES_UNDECIDED = "describes_undecided"
 DESCRIBES_SUBJECT_NOT_ID = "describes_subject_not_id"
@@ -75,6 +80,8 @@ FLAGS = (SUBJECT_NOT_IN_TEXT, OBJECT_NOT_IN_TEXT, SUBJECT_NOT_IN_SOURCE, OBJECT_
 #: check_against_schema's flags.
 SCHEMA_FLAGS = (SUBJECT_CLASS_NOT_IN_SCHEMA, OBJECT_CLASS_NOT_IN_SCHEMA, PREDICATE_NOT_IN_SCHEMA, PATTERN_NOT_IN_SCHEMA,
                 PATTERN_NOT_PINNED)
+#: The annotation tool's errors on a tuning record's row using a held-out-only entry, one per slot.
+HELD_OUT_ONLY_ERRORS = (SUBJECT_CLASS_HELD_OUT_ONLY, OBJECT_CLASS_HELD_OUT_ONLY, PREDICATE_HELD_OUT_ONLY)
 #: check_describes's errors, and its flag.
 DESCRIBES_ERRORS = (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED)
 DESCRIBES_FLAGS = (DESCRIBES_CLASS_NOT_IN_SCHEMA,)
@@ -89,7 +96,7 @@ TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT)
 # "rule 19: qualifier, …" lines in annotations/ground_truth_schema.txt (schema_io.qualifier_predicates).
 #: Every check code, each once.
 ALL_CHECKS = (ERRORS + FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS + ROWS_FLAGS + GROUND_TRUTH_ERRORS
-              + TOOL_CHECKS)
+              + TOOL_CHECKS + HELD_OUT_ONLY_ERRORS)
 
 
 # PASSAGES_JOIN (" … ", the join of a source text of several passages) and passages() live in

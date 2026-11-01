@@ -66,6 +66,34 @@ def since_previous(looks: dict) -> str:
     return f"Since {when}, changed: {'; '.join(looks['changed'])}."
 
 
+def held_out_only_note(recs: list, marked: dict) -> str:
+    """The held-out part's line on the ground truth triples that use held-out-only entries (docs/terminology.md):
+    the current schema can't reach them by design (no row of the translation table may target one), so they count
+    against recall, out of reach."""
+    keys = {k: {component_class_key(n): n for n in marked.get(k, ())} for k in ("entity_classes", "predicates")}
+    used = {"predicates": collections.Counter(), "entity_classes": collections.Counter()}
+    G = n_using = 0
+    for r in recs:
+        for g in r["gt"]:
+            G += 1
+            p = keys["predicates"].get(component_class_key(g["predicate"]))
+            e = [keys["entity_classes"][k] for k in (component_class_key(g["subject_class"]),
+                                                     component_class_key(g["object_class"])) if k in keys["entity_classes"]]
+            if p:
+                used["predicates"][p] += 1
+            for x in e:
+                used["entity_classes"][x] += 1
+            n_using += bool(p or e)
+    if not n_using:
+        return "- **Held-out-only entries:** no ground truth triple of these records uses one."
+    names = lambda c: ", ".join(f"{n} ({k})" for n, k in c.most_common()) or "none"     # noqa: E731
+    return (f"- **Held-out-only entries:** {n_using} of the {G} ground truth triples use entries marked held-out only "
+            f"(predicates: {names(used['predicates'])}; entity classes: {names(used['entity_classes'])}), which the "
+            f"current schema can't reach by design: those with such a predicate count against recall and are out of "
+            f"reach; those with such an entity class can never be in a strict pair (`docs/terminology.md`, "
+            f"*held-out-only entry*).")
+
+
 def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
     """Once per part: what these numbers were computed from."""
     made = evaluated.extraction_made
@@ -96,6 +124,7 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
                                         "never reviewed for the held-out part (that would mean looking at it).")),
            ]
     if part == HELD_OUT:
+        out.append(held_out_only_note(recs, getattr(evaluated, "held_out_only", None) or {}))
         out.append(f"- **Held-out looks:** the held-out numbers have been shown {looks['count']} time(s), this run "
                    f"included (`annotations/held_out_looks.csv`). {since_previous(looks)} A change made after seeing "
                    f"them lets these records influence the pipeline, so they no longer measure records it was never "

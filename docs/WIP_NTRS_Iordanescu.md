@@ -147,7 +147,7 @@ Each metric has a 95% percentile interval from 1,000 bootstrap redraws of whole 
 
 ### 6.4 Tuning, held-out records, and twins
 
-While the pipeline is being improved, step 070 shows only the tuning part's numbers. The held-out part's numbers are shown only on request, at the end, and every such look is logged in `annotations/held_out_looks.csv`, in Git. Changes are compared on tuning records only, one at a time, with the paired bootstrap [13] (`helpers/compare_runs.py`).
+Held-out records are annotated as tuning records are, with every fact they state. An entity class or predicate coined while annotating one is marked held-out only: it is never shown to a model or offered as a translation target, so the held-out records shape no prompt, check, or translation, and a fact the pipeline could miss is still in their ground truth. While the pipeline is being improved, step 070 shows only the tuning part's numbers. The held-out part's numbers are shown only on request, at the end, and every such look is logged in `annotations/held_out_looks.csv`, in Git. Changes are compared on tuning records only, one at a time, with the paired bootstrap [13] (`helpers/compare_runs.py`).
 
 Two records can share text: a series of datasets often repeats the same `notes` under different titles. A pool record with the same title, the same `notes`, or both as a record the schema was learned from is a twin, and its numbers may flatter extraction. Counted on 2026-10-12, 21 pool records are twins of the 150 texts step 040 learns from. Step 070 reports each part's precision, recall, and F1 with and without the twins.
 

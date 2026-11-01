@@ -42,9 +42,12 @@ progress (FINISHED_MARKS; any other value is a problem, and the record isn't fin
     pool_parts(pool_rows)     the pool's ids in order, split into its parts: {"tuning": […], "held-out": […]}
     read_pool(splits_path)    the pool, from 030's splits.json: [{"id", "position", "part", …}]
     ground_truth_schema_view(ground_truth_schema, gt)  the ground truth schema as every model and check sees it:
-                              its file, plus the component classes coined and the patterns used in the finished
-                              tuning records (with_coined over SCHEMA_EVIDENCE)
-    with_coined(ground_truth_schema, selection)  the same over any selection
+                              its file without its held-out-only entries (schema_io.without_held_out_only), plus the
+                              component classes coined and the patterns used in the finished tuning records
+                              (with_coined over SCHEMA_EVIDENCE)
+    with_coined(ground_truth_schema, selection)  the same over any selection, against the schema the caller passes
+    held_out_only_problems(ground_truth_schema, gt, parts)  a tuning record using a held-out-only entry, or a
+                              held-out-only entry whose source names a tuning record or none: step 070 stops
     check_rows(selection, records)   rows with an error to fix: an id not in the
                               catalog, a source text not in the record's
                               text, a describes triple with no describes class, …
@@ -462,7 +465,8 @@ def check_rows(selection: Selection, records: dict) -> list:
 # --------------------------------------------------------------------------
 
 def evaluable_problems(gt: GroundTruth, records: dict, ground_truth_schema: dict, schema_path: str = "",
-                       pending: list = (), pending_path: str = "annotations/pending_triples.csv") -> list:
+                       pending: list = (), pending_path: str = "annotations/pending_triples.csv",
+                       parts: dict | None = None) -> list:
     """Every reason the finished records (EVALUABLE, every part), or the facts that wait on an expert (pending:
     common.left_out.read_pending's rows), aren't fit to evaluate against, each one line naming the file and line, the
     record, the problem, and what to do. Step 070 stops while there is one (a finished record says every fact is
@@ -472,7 +476,11 @@ def evaluable_problems(gt: GroundTruth, records: dict, ground_truth_schema: dict
         not in the record's text, the describes triple's subject not the record's id, an undecided describes class,
         a second describes triple);
       - every entity class or predicate the finished records use that the ground truth schema lacks (a coined one:
-        step 070 translates only into the ground truth schema);
+        step 070 translates only into the ground truth schema), judged against the whole file: a held-out record's
+        triple using a held-out-only entry is fine;
+      - held_out_only_problems: a finished tuning record using a held-out-only entry, and a held-out-only entry whose
+        source names a tuning record or no record (parts: {pool position: part}, 030's splits.json; without it, the
+        sources aren't checked);
       - each pending row's entity classes and predicate, which must be the ground truth schema's too: one it lacks
         could never equal a translated extracted triple's, so the occurrence it waits for would count against
         precision instead of being left out.
@@ -485,6 +493,7 @@ def evaluable_problems(gt: GroundTruth, records: dict, ground_truth_schema: dict
     lines += [f"{use}: not in the ground truth schema{where}, so step 070 can't translate into it: add it with a one-line "
               f"definition (`py helpers/annotate.py`, view *Ground truth*: the ✖ under it has a button), or fix the "
               f"typo where it's used" for use in coined_uses(finished, coined)]
+    lines += held_out_only_problems(ground_truth_schema, gt, parts, schema_path)
     from common.left_out import NO_TRIPLE
     known = {kind: {component_class_key(n) for n in ground_truth_schema[kind]} for kind in ("entity_classes", "predicates")}
     for row in pending:
@@ -514,11 +523,46 @@ def _rows_of(selection: Selection) -> tuple:
 
 
 def ground_truth_schema_view(ground_truth_schema: dict, gt: GroundTruth) -> dict:
-    """The ground truth schema as every model and check sees it: with_coined over the finished tuning records only
-    (SCHEMA_EVIDENCE). The one view 040 (its comparison), 050 (its prompt and its checks), 060 (when it extracts
-    with the ground truth schema) and the annotation tool (its suggestions, pattern buttons and pattern flags) use, so
-    a model's uncorrected draft or a held-out record never shapes it."""
-    return with_coined(ground_truth_schema, gt.select(SCHEMA_EVIDENCE))
+    """The ground truth schema as every model and check sees it: its file without the held-out-only entries
+    (schema_io.without_held_out_only: their entries, patterns, pins, rule 19 marks and sources), then with_coined over
+    the finished tuning records only (SCHEMA_EVIDENCE); the file's pins, rule 19 marks and sources are kept. The one
+    view 040 (its comparison), 050 (its prompt and its checks), 060 (when it extracts with the ground truth schema),
+    the second opinion (through 050) and the annotation tool (its suggestions, pattern buttons and pattern flags, and
+    a tuning record's checks) use, so a model's uncorrected draft or a held-out record never shapes it. A tuning
+    record using a held-out-only entry finds it coined here (✖ in the tool; step 070 stops: held_out_only_problems)."""
+    from common.schema_io import without_held_out_only
+    shown = without_held_out_only(ground_truth_schema)
+    return {**shown, **with_coined(shown, gt.select(SCHEMA_EVIDENCE))}
+
+
+def held_out_only_problems(ground_truth_schema: dict, gt: GroundTruth, parts: dict | None = None,
+                           schema_path: str = "") -> list:
+    """What breaks the rule of held-out-only entries (docs/terminology.md, *held-out-only entry*), one line each, for
+    step 070 (which stops) and the status: a finished tuning record that uses one (a tuning record must never lean on a
+    held-out coinage silently), and, with parts ({pool position: "tuning" | "held-out"}, 030's splits.json), one whose
+    "source:" line names a tuning record, or no record (it was coined in a held-out record, and should say which)."""
+    from common.schema_io import parse_source
+    path = schema_path or "annotations/ground_truth_schema.txt"
+    marked = ground_truth_schema.get("held_out_only") or {}
+    lines = []
+    finished_tuning = gt.select(SCHEMA_EVIDENCE) if gt.parts is not None else None
+    for key, kind in (("entity_classes", "entity class"), ("predicates", "predicate")):
+        for name in sorted(marked.get(key, ())):
+            if finished_tuning is not None:
+                for r in uses_of(finished_tuning, kind, name):
+                    file = r[ORIGIN_FIELD][0].rsplit("/", 1)[-1].split("#")[0]
+                    lines.append(f"{name} ({kind}) is marked held-out only in {path}, and the tuning record {r['id']} "
+                                 f"({file} line {r[LINE_FIELD]}) uses it: unmark it in `py helpers/annotate.py` (the ✖ "
+                                 f"under it has a button) if the tuning record needs it, or use the entry that fits")
+            if parts is not None:
+                found = parse_source(ground_truth_schema["sources"][key].get(name, ""), parts)
+                if found["tuning"] or not found["held_out"]:
+                    said = (f"names tuning record(s) {', '.join(f'#{p}' for p in found['tuning'])}" if found["tuning"]
+                            else "names no held-out record")
+                    lines.append(f"{name} ({kind}) is marked held-out only in {path}, but its source {said}: unmark "
+                                 f"it if a tuning record needs it, or fix the source (ground truth held-out #<pool "
+                                 f"position> of the held-out records that use it)")
+    return lines
 
 
 def with_coined(ground_truth_schema: dict, selection: Selection) -> dict:
@@ -626,9 +670,9 @@ def pattern_uses(selection: Selection) -> collections.Counter:
 def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict:
     """What the finished records (EVALUABLE, every part: step 070 stops while one uses a component class the ground
     truth schema lacks) use that the ground truth schema lacks: the entity classes and predicates coined there, each
-    with how many of those rows use it and the parts of the records using it ("tuning", "held-out", or None for a
-    record outside the pool; a held-out one can't be added, since the ground truth schema is frozen for held-out
-    records). (Patterns are never missing: the ground truth schema's patterns are those of its file plus every one
+    with how many of those rows use it, the parts of the records using it ("tuning", "held-out", or None for a
+    record outside the pool), and "held_out_only": whether only held-out records use it, so it is added marked held-out
+    only (docs/terminology.md, *held-out-only entry*). (Patterns are never missing: the ground truth schema's patterns are those of its file plus every one
     the finished tuning records use; see ground_truth_schema_view.) Shared by the annotation tool and the project's
     status (common/common_helpers/status.py)."""
     finished = gt.select(EVALUABLE)
@@ -638,7 +682,8 @@ def ground_truth_schema_gaps(ground_truth_schema: dict, gt: GroundTruth) -> dict
         for n in coined[key]:
             uses = uses_of(finished, kind, n)
             parts = sorted({str(gt.records[r["id"]]["part"]) for r in uses})
-            out.append({"entry_type": kind, "component_class": n, "uses": len(uses), "parts": parts})
+            out.append({"entry_type": kind, "component_class": n, "uses": len(uses), "parts": parts,
+                        "held_out_only": parts == [HELD_OUT]})
     return {"component_classes": out}
 
 

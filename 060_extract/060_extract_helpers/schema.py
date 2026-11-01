@@ -61,7 +61,7 @@ from common.audit import log, ref_path
 from common.ground_truth import (GROUND_TRUTH_DIR, GROUND_TRUTH_SCHEMA, GROUND_TRUTH_SCHEMA_FROM, ground_truth_schema_view,
                                  read_ground_truth, read_pool)
 from common.report import named
-from common.schema_io import ANY, ground_truth_source_problem, parse_source, pattern_key, read_schema, schema_text
+from common.schema_io import ANY, ground_truth_source_problem, parse_source, pattern_key, read_schema, schema_text, without_held_out_only
 from common.step import repo_path
 from common.stop import Stop
 from common.triples_io import KIND_OF_KEY, component_class_key
@@ -170,12 +170,12 @@ def load_schema(inputs: dict) -> Schema:
     pool = read_pool(inputs["splits"])
     parts = {r["position"]: r.get("part") for r in pool}
     if is_ground_truth_schema(inputs["schema"]):
-        # the ground truth schema as every step sees it: its file's patterns, then every one the finished tuning
-        # records use (common/common_helpers/ground_truth.ground_truth_schema_view), as 050 and the annotation tool
-        # check them
+        # the ground truth schema as every step sees it: its file without the held-out-only entries (their pins,
+        # rule 19 marks and sources too), and its file's patterns, then every one the finished tuning records use
+        # (common/common_helpers/ground_truth.ground_truth_schema_view), as 050 and the annotation tool check them
         folder = Path(inputs["ground_truth"]).parent if inputs.get("ground_truth") else GROUND_TRUTH_DIR
         view = ground_truth_schema_view(base, read_ground_truth(folder, pool))
-        base = {**base, "patterns": view["patterns"]}
+        base = {**without_held_out_only(base), "patterns": view["patterns"]}
 
     merged = {kind: dict(base[kind]) for kind in KINDS}
     result.came_from = {kind: {name: "schema" for name in base[kind]} for kind in KINDS}

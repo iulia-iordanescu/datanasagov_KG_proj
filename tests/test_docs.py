@@ -332,7 +332,7 @@ def field_words_in(rel: str, whole: str) -> list:
 
 #: The docs whose terms link to docs/terminology.md (every non-code doc except the prompts,
 #: terminology.md itself, and the person-made files of annotations/).
-LINKED_DOCS = ["README.md", "070_evaluate/metrics.md", "annotations/guidelines.md", *(f"070_evaluate/metrics/{n}.md" for n in ("pairs", "precision", "recall", "f1", "entity_class_accuracy", "recall_upper_bound", "recall_within_reach", "describes", "approximately")), "annotations/README.md", "helpers/audit.md", "tests/README.md",
+LINKED_DOCS = ["README.md", "070_evaluate/metrics.md", "annotations/guidelines.md", *(f"070_evaluate/metrics/{n}.md" for n in ("pairs", "precision", "recall", "f1", "entity_class_accuracy", "recall_upper_bound", "recall_within_reach", "schema_fit", "describes", "approximately")), "annotations/README.md", "helpers/audit.md", "tests/README.md",
                "docs/running_on_nasa_laptop.md", "docs/virtual_environment_setup.md", "docs/upkeep.md"] + [f"{s}/{s}.md" for s in STEPS]
 #: Multi-word terms whose bold in terminology.md marks emphasis or an everyday phrase, not a separate term;
 #: and terms that also read as an everyday phrase ("records outside the ground truth only"), checked by hand.

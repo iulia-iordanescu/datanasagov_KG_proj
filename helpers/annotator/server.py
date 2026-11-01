@@ -113,12 +113,18 @@ none when none does: a model's uncorrected draft no person is looking at, or a
 held-out record, is never named as what it was learned from. A record can be ticked
 finished only without a ✖ (save_batch), so its component classes are added before.
 
-The ground truth schema is frozen for held-out records (annotations/guidelines.md,
-Before you start): in a held-out record, an entity class or predicate the ground truth
-schema lacks gets its own message (_frozen_message) and no button to add it; adding one
-that a held-out record uses is refused; and adding, renaming, merging, or changing a
-definition is refused while the record shown is held-out (refuse_if_held_out; the page sends the id of the
-record shown). Step 070 notes an entry whose "source:" line names a held-out record.
+Held-out records (annotations/guidelines.md, Before you start; docs/terminology.md, *held-out-only
+entry*; since 2026-11-01): a held-out record is annotated as a tuning one, every fact, and an entity class or predicate it coins
+is added marked held-out only (a line "held-out only" under it, and a source naming the held-out records
+using it: add_to_hand). Such an entry is in the file, so a held-out row using it is judged against the whole
+file; a tuning row is judged against the view without it, so its use is an error (✖, the codes of
+validate.HELD_OUT_ONLY_ERRORS) with an Unmark button (/api/hand/unmark: unmark_held_out_only, its source then
+naming the tuning records too). While a held-out record is shown, only held-out-only entries can be renamed,
+merged or redefined; while a tuning record is shown, a held-out-only entry can be changed only by Unmark, and an
+entry no held-out-only one may be merged into (refuse_unless_allowed). A held-out row's pattern that no finished
+tuning record uses keeps its own message (_frozen_message): it never becomes one of the ground truth schema's
+patterns. The page sends the id of the record shown. Step 070 notes an entry without the mark whose "source:"
+line names a held-out record.
 """
 from __future__ import annotations
 
@@ -153,13 +159,15 @@ from common.review_comments import (CHANGED, GONE, NOT_VERIFIED, TOPIC_HEADINGS,
 from common.expert_questions import OPEN, QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
-    pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema, \
-    source_line
+    is_held_out_only, parse_source, pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, \
+    redefine_in_ground_truth_schema, rename_in_ground_truth_schema, source_line, unmark_held_out_only, \
+    without_held_out_only
 from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
 from common.text_match import Text, instance_key, norm_text
 from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDECIDED,
                                component_class_key, is_describes)
+from common.validate import (OBJECT_CLASS_HELD_OUT_ONLY, PREDICATE_HELD_OUT_ONLY, SUBJECT_CLASS_HELD_OUT_ONLY)  # noqa: E402
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
@@ -229,6 +237,15 @@ MESSAGES = {
     DATASET_SUBJECT_NOT_TITLE: "This triple's subject is a Dataset, but not this record's title ({title}). If it is this "
                                  "record's dataset, use the title (rule 23); if it is another dataset, such as an "
                                  "input, keep it.",
+    SUBJECT_CLASS_HELD_OUT_ONLY: "\"{subject_class}\" is marked held-out only in the ground truth schema, and this is a "
+                                   "tuning record: press Unmark if the tuning record needs it (its definition then joins "
+                                   "what every model sees: read it again), or use the entry that fits.",
+    OBJECT_CLASS_HELD_OUT_ONLY: "\"{object_class}\" is marked held-out only in the ground truth schema, and this is a "
+                                  "tuning record: press Unmark if the tuning record needs it (its definition then joins "
+                                  "what every model sees: read it again), or use the entry that fits.",
+    PREDICATE_HELD_OUT_ONLY: "\"{predicate}\" is marked held-out only in the ground truth schema, and this is a "
+                               "tuning record: press Unmark if the tuning record needs it (its definition then joins "
+                               "what every model sees: read it again), or use the entry that fits.",
     SUBJECT_CLASS_NOT_IN_SCHEMA: "\"{subject_class}\" isn't an entity class of the ground truth schema: a new one, "
                                    "or a typo. Keep it only if none of the schema's fits. "
                                    "If it's new, add it to the ground truth schema with the button below, "
@@ -363,45 +380,69 @@ def check_row(data: Data, row: dict, title: str, uses: collections.Counter | Non
     errors = errors + [c for c in flags if c in ADDS]
     flags = [c for c in flags if c not in ADDS]
     held_out = data.parts.get(row.get("id")) == HELD_OUT
-    frozen = lambda c: held_out and (c in ADDS or c == PATTERN_NOT_IN_SCHEMA)          # noqa: E731
+    # a held-out row is judged against the whole file; a tuning row against the view, which lacks the held-out-only
+    # entries: its use of one is an error, with an Unmark button
+    if not held_out and not is_describes(row):
+        errors += [code for code, (kind, column) in MARKED.items() if row.get(column)
+                   and is_held_out_only(data.hand, kind, row[column])]
+    frozen = lambda c: held_out and c == PATTERN_NOT_IN_SCHEMA                         # noqa: E731
     return [{"code": c, "type": kind, "add": None if frozen(c) else _offer(c, row, every),
-             "message": _frozen_message(data, c, row) if frozen(c) else _message(c, row, every, title)}
+             "message": _frozen_message(data, c, row) if frozen(c) else
+             _message(c, row, every, title) + (_marked_on_add(data, row) if held_out and c in ADDS else "")}
             for kind, codes in (("error", errors), ("flag", flags)) for c in codes]
 
 
-#: What to do instead of changing the ground truth schema while annotating a held-out record (annotations/guidelines.md).
-INSTEAD = ("use the ground truth schema's {kind} that fits; if none fits, delete the ground truth triple and write the "
-           "fact in annotations/left_out.md, with a question for the experts (annotations/guidelines.md, Before you start)")
+#: A tuning row's use of a held-out-only entry: its code, and the entry's kind and column.
+MARKED = {SUBJECT_CLASS_HELD_OUT_ONLY: ("entity class", "subject_class"),
+          OBJECT_CLASS_HELD_OUT_ONLY: ("entity class", "object_class"),
+          PREDICATE_HELD_OUT_ONLY: ("predicate", "predicate")}
+
+
+def _marked_on_add(data: Data, row: dict) -> str:
+    """What adding means on a held-out record's row: the entry is added marked held-out only."""
+    return (f" This is a held-out record (pool position {data.positions.get(row['id'], '?')}): an entity class or "
+            f"predicate added from it is marked held-out only, so no model and no check sees it, and it is never a "
+            f"target of the translation table (annotations/guidelines.md, Before you start).")
 
 
 def _frozen_message(data: Data, code: str, row: dict) -> str:
-    """The message of an entity class, predicate or pattern the ground truth schema lacks, in a held-out record: the
-    ground truth schema is frozen for held-out records, so nothing joins it from one. A pattern is only a flag: the
-    triple may stay, and its pattern never becomes one of the ground truth schema's."""
-    if code == PATTERN_NOT_IN_SCHEMA:
-        return (f"No finished tuning record's ground truth triple uses {row.get('predicate') or '(none)'} between "
-                f"{row.get('subject_class') or '(none)'} and {row.get('object_class') or '(none)'}, and this is a "
-                f"held-out record (pool position {data.positions.get(row['id'], '?')}): the ground truth schema is "
-                f"frozen while annotating held-out records, so this pattern never becomes one of its patterns. Check "
-                f"the entity classes and the direction; if they are right, keep the triple: the pattern then shapes "
-                f"no prompt and no check.")
-    kind, column = ADDS[code]
-    article = "an" if kind == "entity class" else "a"
-    return (f"\"{row.get(column) or '(none)'}\" isn't {article} {kind} of the ground truth schema, and this is a held-out "
-            f"record (pool position {data.positions.get(row['id'], '?')}): the ground truth schema is frozen while "
-            f"annotating held-out records, so nothing can be added to it from this record. If it's a typo, fix it; "
-            f"otherwise " + INSTEAD.format(kind=kind) + ".")
+    """The message of a pattern no finished tuning record uses, in a held-out record: only a flag (the triple may
+    stay), and the pattern never becomes one of the ground truth schema's, which are read from finished tuning records
+    only."""
+    return (f"No finished tuning record's ground truth triple uses {row.get('predicate') or '(none)'} between "
+            f"{row.get('subject_class') or '(none)'} and {row.get('object_class') or '(none)'}, and this is a "
+            f"held-out record (pool position {data.positions.get(row['id'], '?')}): its patterns are read from "
+            f"finished tuning records only, so this pattern never becomes one of its patterns. Check "
+            f"the entity classes and the direction; if they are right, keep the triple: the pattern then shapes "
+            f"no prompt and no check.")
 
 
-def refuse_if_held_out(data: Data, item: dict, what: str) -> None:
-    """Refuse a change to the ground truth schema (adding, renaming, merging, changing a definition) while the record
-    shown is held-out."""
+def refuse_unless_allowed(data: Data, item: dict, what: str, kind: str, name: str, into: str | None = None) -> None:
+    """Refuse a change to an entry of the ground truth schema (renaming, merging into `into`, changing a definition)
+    that the rule of held-out-only entries forbids (annotations/guidelines.md, Before you start): while a held-out
+    record is shown, only a held-out-only entry can change; while a tuning record (or none) is shown, a held-out-only
+    entry changes only by Unmark, except merged into an entry without the mark (that only relabels held-out rows).
+    Merging into a held-out-only entry is always refused unless the merged one is marked too, since it would make
+    rows of tuning records use it."""
     rid = str(item.get("record") or "")
+    marked = is_held_out_only(data.hand, kind, name)
+    target = into is not None and is_held_out_only(data.hand, kind, into)
     if data.parts.get(rid) == HELD_OUT:
-        raise ValueError(f"the record shown, {rid} (pool position {data.positions.get(rid, '?')}), is a held-out "
-                         f"record, and the ground truth schema is frozen while annotating held-out records, so {what} "
-                         f"is refused. For this record, " + INSTEAD.format(kind="entity class or predicate")
-                         + ". If a tuning record needs the change, make it with a tuning record shown.")
+        if not marked:
+            raise ValueError(f"the record shown, {rid} (pool position {data.positions.get(rid, '?')}), is a held-out "
+                             f"record, and {name} isn't marked held-out only, so {what} is refused: while a held-out "
+                             f"record is shown, only held-out-only entries can change (annotations/guidelines.md, "
+                             f"Before you start). Use the entry that fits, or coin one: it is added marked held-out "
+                             f"only. If a tuning record needs the change, make it with a tuning record shown.")
+        return
+    if marked and not (into is not None and not target):
+        raise ValueError(f"{name} is marked held-out only, and the record shown isn't a held-out record, so {what} is "
+                         f"refused. Open a held-out record that uses it to change it there, or, if a tuning record "
+                         f"needs it, press Unmark under its ✖ in that tuning record.")
+    if target and not marked:
+        raise ValueError(f"{into} is marked held-out only, so {what} is refused: {name} would then be held-out only "
+                         f"in the tuning records that use it. Merge it into an entry without the mark, or unmark "
+                         f"{into} first, from a tuning record that needs it.")
 
 
 def _message(code: str, row: dict, every: list, title: str = "") -> str:
@@ -568,6 +609,10 @@ def _offer(code: str, row: dict, flags: list) -> dict | None:
         kind, column = ADDS[code]
         name = str(row.get(column) or "").strip()
         return {"entry_type": kind, "component_class": name} if component_class_key(name) else None
+    if code in MARKED:
+        kind, column = MARKED[code]
+        name = str(row.get(column) or "").strip()
+        return {"action": "unmark", "entry_type": kind, "component_class": name} if component_class_key(name) else None
     return None
 
 
@@ -635,6 +680,12 @@ def patterns_view(data: Data, gt=None) -> list:
 # adding to the ground truth schema
 # --------------------------------------------------------------------------
 
+def _held_out_positions(data: Data, gt, kind: str, name: str) -> list:
+    """The pool positions of the held-out records (any state) whose rows use a component class."""
+    return sorted({data.positions[r["id"]] for r in uses_of(gt.select(ANNOTATED), kind, name)
+                   if data.parts.get(r["id"]) == HELD_OUT and r["id"] in data.positions})
+
+
 def _learned_from(data: Data, gt, kind: str, name: str, shown: str = "") -> str:
     """Where a component class was learned, as a "source:" line the source check
     (common/common_helpers/schema_io.parse_source) reads, by pool position: the finished tuning records using it (the
@@ -662,7 +713,8 @@ def add_to_hand(data: Data, item: dict) -> str:
     """Add one component class (with its definition) to the ground truth
     schema; say what was added. It is written as the page sent it, with
     a "source:" line naming the finished tuning records using it, and the tuning record shown if it uses
-    it (_learned_from; uses in any spelling, compared as component_class_key does). One add at a time (HAND_LOCK):
+    it (_learned_from; uses in any spelling, compared as component_class_key does). From a held-out record shown, it
+    is added marked held-out only, its source naming the held-out records using it. One add at a time (HAND_LOCK):
     the server answers requests in parallel, and two adds at once could
     undo each other."""
     with HAND_LOCK:
@@ -670,20 +722,55 @@ def add_to_hand(data: Data, item: dict) -> str:
         if kind not in KIND_KEYS:
             raise ValueError("entry_type must be entity class or predicate")
         name = str(item.get("component_class") or "").strip()
-        refuse_if_held_out(data, item, f"adding {name}")
+        shown = str(item.get("record") or "")
         gt = data.ground_truth()
-        uses = uses_of(gt.select(ANNOTATED), kind, name)           # a held-out record's use, in any state, refuses it
-        held = sorted({(data.positions.get(r["id"], -1), r["id"]) for r in uses if data.parts.get(r["id"]) == HELD_OUT})
+        held = _held_out_positions(data, gt, kind, name)
+        if data.parts.get(shown) == HELD_OUT:              # added marked held-out only, named by its held-out records
+            source = source_line((), held)
+            add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source,
+                                       held_out_only=True)
+            data.read_hand()
+            return (f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}, marked held-out only (no model and no "
+                    f"check sees it)" + (f" (source: {source})" if source else ""))
         if held:
-            raise ValueError(f"{name} is used by {len(held)} held-out record(s): "
-                             + ", ".join(f"pool position {p} ({rid})" for p, rid in held)
-                             + ". The ground truth schema is frozen for held-out records, so it can't be added from them. "
-                             f"In those records, " + INSTEAD.format(kind=kind)
-                             + f". If a tuning record needs {name}, add it once no held-out record uses it.")
-        source = _learned_from(data, gt, kind, name, str(item.get("record") or ""))
+            raise ValueError(f"{name} is used by {len(held)} held-out record(s) (pool position(s) "
+                             + ", ".join(f"#{p}" for p in held) + f"): coined in a held-out record, so it is added "
+                             f"marked held-out only: open that record to add it there. If a tuning record needs it too, "
+                             f"press Unmark under its ✖ in that tuning record afterwards.")
+        source = _learned_from(data, gt, kind, name, shown)
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()
         return f"Added the {kind} {name} to {GROUND_TRUTH_SCHEMA.name}" + (f" (source: {source})" if source else "")
+
+
+def unmark_hand(data: Data, item: dict) -> str:
+    """Make a held-out-only entry a normal one, for the tuning record shown that needs it (common.schema_io.
+    unmark_held_out_only): its source then names the tuning records using it (_learned_from) and keeps its held-out
+    ones. Refused while a held-out record is shown, and when no tuning record uses it. The definition then joins what
+    every model sees, so the message asks to read it again."""
+    with HAND_LOCK:
+        kind = item.get("entry_type")
+        if kind not in KIND_KEYS:
+            raise ValueError("entry_type must be entity class or predicate")
+        name = str(item.get("component_class") or "").strip()
+        shown = str(item.get("record") or "")
+        if data.parts.get(shown) == HELD_OUT:
+            raise ValueError(f"the record shown, {shown}, is a held-out record: unmarking {name} is for a tuning record "
+                             f"that needs it, so open that record and press Unmark there")
+        gt = data.ground_truth()
+        tuning = parse_source(_learned_from(data, gt, kind, name, shown), {p: "tuning" for p in data.positions.values()})["tuning"]
+        if not tuning:
+            raise ValueError(f"no tuning record uses {name}, so there is nothing to unmark it for: unmark it from a "
+                             f"tuning record whose rows use it")
+        before = parse_source(data.hand["sources"][KIND_KEYS[kind]].get(name, ""),
+                              {r["position"]: r.get("part") for r in data.pool})["held_out"]
+        held = sorted(set(before) | set(_held_out_positions(data, gt, kind, name)))
+        content = unmark_held_out_only(GROUND_TRUTH_SCHEMA, kind, name, tuning, held)
+        _write_all({GROUND_TRUTH_SCHEMA: content})
+        data.read_hand()
+        source = source_line(tuning, held)
+        return (f"Unmarked the {kind} {name} in {GROUND_TRUTH_SCHEMA.name} (source: {source}): every model and check "
+                f"now sees it. Read its definition again: it was written from a held-out record.")
 
 
 def list_batches() -> list:
@@ -789,8 +876,10 @@ def save_batch(data: Data, n: int, records: list, loaded: str | None = None) -> 
 
 def _gtt(data: Data) -> dict:
     """The ground truth schema by kind: {kind: {component class: definition}}: the file's own, as step 070 reads
-    it, so a coined component class (used in the ground truth, not in the file yet) is never a translation's target."""
-    return {kind: dict(data.hand[key]) for kind, key in KIND_KEYS.items()}
+    it, so a coined component class (used in the ground truth, not in the file yet) or a held-out-only one is never
+    a translation's target."""
+    shown = without_held_out_only(data.hand)
+    return {kind: dict(shown[key]) for kind, key in KIND_KEYS.items()}
 
 
 def _coined(data: Data) -> dict:
@@ -1260,6 +1349,7 @@ def vocab_view(data: Data) -> dict:
     for kind, key in KIND_KEYS.items():
         coined = {component_class_key(n) for n in vocab["coined"][key]}
         out[kind] = [{"component_class": n, "definition": d or "", "in_hand": component_class_key(n) not in coined,
+                      "held_out_only": is_held_out_only(data.hand, kind, n),
                       "uses": len(uses_of(every, kind, n)),
                       "files": sorted(files.get((kind, component_class_key(n)), [])),
                       "translated_from": [r["component_class_from_past_or_crt_schema"] for r in table
@@ -1332,7 +1422,7 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
         table = read_mapping(MAPPING_PATH)
         hit = [r for r in table if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == k]
         if hit:
-            new_hand = gtt_definitions(read_schema_bytes(hand_bytes))      # the file's own, as step 070 reads it
+            new_hand = gtt_definitions(without_held_out_only(read_schema_bytes(hand_bytes)))   # as step 070 reads it
             for r in hit:
                 r["component_class_in_gtt"] = target
             stale = [r["component_class_from_past_or_crt_schema"] for r in hit
@@ -1390,8 +1480,17 @@ def _plan(data: Data, kind: str, old: str, new: str) -> tuple:
     return {"kind": kind, "old": old, "new": target, "merge": merging, "changes": changes, "notes": notes}, files
 
 
+def _refuse_vocab(data: Data, item: dict) -> None:
+    """refuse_unless_allowed for a rename or a merge: a merge when the new name is already an entry."""
+    kind, old, new = item.get("kind"), str(item.get("old") or "").strip(), str(item.get("new") or "").strip()
+    if kind in KIND_KEYS:
+        into = new if any(component_class_key(n) == component_class_key(new) for n in data.hand[KIND_KEYS[kind]]) \
+            and component_class_key(new) != component_class_key(old) else None
+        refuse_unless_allowed(data, item, f"renaming or merging {old}", kind, old, into)
+
+
 def plan_vocab(data: Data, item: dict) -> dict:
-    refuse_if_held_out(data, item, f"renaming or merging {item.get('old')}")
+    _refuse_vocab(data, item)
     with HAND_LOCK:
         return _plan(data, item.get("kind"), item.get("old"), item.get("new"))[0]
 
@@ -1414,7 +1513,7 @@ def _write_all(files: dict) -> None:
 
 def apply_vocab(data: Data, item: dict) -> dict:
     """Rename or merge, as plan_vocab showed (worked out again, then written)."""
-    refuse_if_held_out(data, item, f"renaming or merging {item.get('old')}")
+    _refuse_vocab(data, item)
     with HAND_LOCK:
         shown, files = _plan(data, item.get("kind"), item.get("old"), item.get("new"))
         _write_all(files)
@@ -1427,12 +1526,12 @@ def define_vocab(data: Data, item: dict) -> dict:
     kind, name = item.get("kind"), str(item.get("component_class") or "").strip()
     if kind not in KIND_KEYS:
         raise ValueError("kind must be entity class or predicate")
-    refuse_if_held_out(data, item, f"changing the definition of {name}")
+    refuse_unless_allowed(data, item, f"changing the definition of {name}", kind, name)
     with HAND_LOCK:
         content = redefine_in_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "")
         stale = []
         if MAPPING_PATH.exists():
-            now = gtt_definitions(with_coined(read_schema_bytes(content), data.ground_truth().select(ANNOTATED)))
+            now = gtt_definitions(without_held_out_only(read_schema_bytes(content)))   # as step 070 reads it
             stale = [r["component_class_from_past_or_crt_schema"] for r in read_mapping(MAPPING_PATH)
                      if r["kind"] == kind and component_class_key(r["component_class_in_gtt"]) == component_class_key(name)
                      and is_checked(r) and is_stale_gtt(r, now)]
@@ -1546,6 +1645,8 @@ def make_handler(data: Data):
                     self._json({"saved": True, "fingerprint": fp})
                 elif url.path == "/api/hand/add":
                     self._json({"added": add_to_hand(data, body)})
+                elif url.path == "/api/hand/unmark":
+                    self._json({"added": unmark_hand(data, body)})
                 elif url.path == "/api/additions/check":
                     self._json({"problem": check_addition(data, body)})
                 elif url.path == "/api/partial/review":

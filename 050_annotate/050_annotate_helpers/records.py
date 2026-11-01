@@ -50,7 +50,7 @@ from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, HELD_
                                  fair_words, ground_truth_schema_view, pool_parts, read_ground_truth, read_pool)
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, load_records, read_ids
 from common.report import named
-from common.schema_io import read_ground_truth_schema
+from common.schema_io import read_ground_truth_schema, text_without_held_out_only, without_held_out_only
 from common.step import Spec, check_settings, input_files, repo_path
 from common.stop import Stop
 from common.validate import SchemaEntries
@@ -138,10 +138,11 @@ def read_inputs(inputs: dict) -> tuple:
     chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent, pool_rows)   # none yet: no record done
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
     vocab = ground_truth_schema_view(hand, chosen.ground_truth)
-    # the checks: the file's entity classes and predicates; its patterns and every one the finished tuning records use
-    chosen.schema_entries = SchemaEntries({**hand, "patterns": vocab["patterns"]})
+    # the checks: the file's entity classes and predicates, less the held-out-only ones (no model and no check sees
+    # them: docs/terminology.md, *held-out-only entry*); its patterns and every one the finished tuning records use
+    chosen.schema_entries = SchemaEntries({**without_held_out_only(hand), "patterns": vocab["patterns"]})
     chosen.coined = vocab["coined"]
-    chosen.schema_text = vocabulary_text(read_text(inputs["ground_truth_schema"]).strip(),
+    chosen.schema_text = vocabulary_text(text_without_held_out_only(read_text(inputs["ground_truth_schema"]), hand).strip(),
                                          chosen.coined, vocab["used_patterns"])
     chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
     return chosen, pool_rows

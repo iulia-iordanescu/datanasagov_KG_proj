@@ -153,11 +153,11 @@ class Status(unittest.TestCase):
         self.assertEqual([t for t in texts if "aren't in the ground truth schema" in t], [])
         self.assertTrue(any("record r1 is in batch_000.csv and batch_001.csv" in t for t in texts), texts)
         (self.tmp / "annotations" / "ground_truth" / "batch_001.csv").unlink()
-        # a finished held-out record's: listed, and it can't be added (frozen)
+        # a finished held-out record's: listed, and added marked held-out only, from that record
         self.ground_truth(0, [["r2", "MODIS", "Gizmo", "ABOARD", "Aqua", "Platform", "MODIS aboard Aqua", "1"]])
         found = coined()
-        self.assertIn("Gizmo (entity class, used in a held-out record)", found[0])
-        self.assertIn("can't be added (the ground truth schema is frozen for held-out records)", found[0])
+        self.assertIn("Gizmo (entity class, used in held-out records only)", found[0])
+        self.assertIn("one only held-out records use is added marked held-out only (open that record", found[0])
 
     def test_rows_with_an_error_point_to_the_checks(self):
         self.output("020_clean", "records.jsonl", json.dumps({"id": "r1", "title": "MODIS", "notes": "MODIS aboard Aqua"}))

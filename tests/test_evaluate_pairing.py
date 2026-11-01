@@ -1333,8 +1333,8 @@ class EvaluationVersions(unittest.TestCase):
 
 
 class HeldOutSources(unittest.TestCase):
-    """070 notes an entry of the ground truth schema whose source line names a held-out record: the ground truth
-    schema is frozen for held-out records (annotations/guidelines.md, Before you start)."""
+    """070 notes an entry of the ground truth schema without the held-out only mark whose source line names a
+    held-out record: it reaches every model and check (annotations/guidelines.md, Before you start)."""
 
     def test_found(self):
         import tempfile
@@ -1362,6 +1362,46 @@ class HeldOutSources(unittest.TestCase):
             path.write_text(schema.replace("held-out #8, #11", "tuning #3").replace("held-out #8", "tuning #4"),
                             encoding="utf-8")
             self.assertEqual(records.held_out_sources(path, pool), [])
+            # a held-out-only entry's held-out source is expected, so it isn't listed; the unmarked one still is
+            path.write_text(schema.replace("ORBITS            goes around\n",
+                                           "ORBITS            goes around\n                  held-out only\n"),
+                            encoding="utf-8")
+            self.assertEqual([n for _, n, _, _ in records.held_out_sources(path, pool)], ["Moonlet"])
+
+
+class HeldOutOnlyEntries(unittest.TestCase):
+    """A held-out-only entry (docs/terminology.md) is never a target of the translation table (gtt_schema leaves it
+    out, so a row naming it has a missing target) and is out of reach; the held-out part's reading counts the ground
+    truth triples using one."""
+
+    def test_not_a_target_and_out_of_reach(self):
+        import tempfile
+        from pathlib import Path
+        import component_classes
+        schema = "\n".join(["ENTITY CLASSES", "--------------", "Instrument        a device", "Moonlet           a moon",
+                            "                  held-out only", "", "PREDICATES", "----------",
+                            "ABOARD            is carried on", "ORBITS            goes around",
+                            "                  held-out only", ""])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ground_truth_schema.txt"
+            path.write_text(schema, encoding="utf-8")
+            gtt = component_classes.gtt_schema(path)
+        self.assertEqual((list(gtt["entity class"]), list(gtt["predicate"])), (["Instrument"], ["ABOARD"]))
+        # a ground truth triple with a held-out-only predicate: no checked row may reach it, so out of reach
+        t = translation(ENTITY + ["Moonlet"], ["ABOARD"])
+        g = triple("Phobos", "Moonlet", "ORBITS", "Mars", "Instrument")
+        self.assertFalse(pairing._within_reach(g, t))
+
+    def test_held_out_note(self):
+        import readings
+        recs = [{"gt": [triple("Phobos", "Moonlet", "ORBITS", "Mars", "Instrument"),
+                        triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+                        triple("Deimos", "Moonlet", "ABOARD", "Mars", "Instrument")]}]
+        note = readings.held_out_only_note(recs, {"entity_classes": {"Moonlet"}, "predicates": {"ORBITS"}})
+        self.assertIn("2 of the 3 ground truth triples use entries marked held-out only (predicates: ORBITS (1); "
+                      "entity classes: Moonlet (2))", note)
+        self.assertIn("no ground truth triple of these records uses one",
+                      readings.held_out_only_note(recs, {"entity_classes": set(), "predicates": set()}))
 
 
 class OrderFree(unittest.TestCase):
