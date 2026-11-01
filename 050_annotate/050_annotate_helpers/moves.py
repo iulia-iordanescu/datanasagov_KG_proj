@@ -26,7 +26,7 @@ from common.ground_truth import (ANNOTATED, COLUMNS as GROUND_TRUTH_COLUMNS, DRA
                                  file_name)
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table, this_report
 from common.step import Results, repo_path
-from common.triples_io import ENTRY_PREDICATE
+from common.triples_io import is_describes
 
 #: A drafted batch's columns: the ground truth's, then the checks, then where each row came from.
 COLUMNS = GROUND_TRUTH_COLUMNS + [DRAFTED_BY, "flags", ORIGIN_COLUMN]
@@ -139,7 +139,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
         warnings.append(missing)
 
     per_text = [(listed_label("all drafted"),
-                 [sum(1 for r in drafts.rows[i["id"]] if r["predicate"] != ENTRY_PREDICATE)
+                 [sum(1 for r in drafts.rows[i["id"]] if not is_describes(r))
                   for i in chosen.items if i["id"] in drafts.rows])]
     gt = chosen.ground_truth
     lines = ["### What this run worked on", ""]

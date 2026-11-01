@@ -177,7 +177,8 @@ def _read_text(path) -> dict:
             continue
         if section == "patterns" and not line[:1].isspace():
             triple = PATTERN_LINE.match(head)
-            if triple and pattern_key(triple.groups()) in map(pattern_key, schema["pattern_entries"]):
+            if triple and tuple(map(component_class_key, triple.groups())) in {
+                    tuple(map(component_class_key, q)) for q in schema["pattern_entries"]}:
                 schema["unread"].append(f"line {number}: {head} (repeats an earlier entry; the first is kept)")
                 entry_name = None
                 continue
@@ -189,7 +190,8 @@ def _read_text(path) -> dict:
         entry = ENTRY.match(line) if section != "patterns" else None
         if entry:
             name, definition = entry.groups()
-            if name in schema[section]:            # a repeat: the first entry is kept
+            if component_class_key(name) in {component_class_key(n) for n in schema[section]}:
+                # a repeat, in any spelling (as every step compares component classes): the first entry is kept
                 schema["unread"].append(f"line {number}: {head} (repeats an earlier entry; the first is kept)")
                 entry_name = None
                 continue
@@ -246,6 +248,10 @@ def _read_json(path) -> dict:
             if not isinstance(name, str) or not name.strip():
                 raise ValueError(f"{where}: {kind} entry {i} has no \"component_class\"")
             definition = item.get("definition")
+            if component_class_key(name) in {component_class_key(n) for n in schema[kind]}:
+                # a repeat, in any spelling: the first is kept, as in the text shape
+                schema["unread"].append(f"{kind} entry {i}: {name.strip()} (repeats an earlier entry; the first is kept)")
+                continue
             schema[kind][name.strip()] = definition.strip() if isinstance(definition, str) else ""
     for i, item in enumerate(data.get("patterns") or []):
         triple = item.get("pattern") if isinstance(item, dict) else item

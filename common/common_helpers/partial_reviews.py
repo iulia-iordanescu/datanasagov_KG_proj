@@ -29,7 +29,8 @@ import csv
 from pathlib import Path
 
 from common.step import ANNOTATIONS_DIR
-from common.text_match import norm_text
+from common.text_match import instance_key
+from common.triples_io import component_class_key
 from common.triples_io import REQUIRED
 
 REVIEWS_PATH = ANNOTATIONS_DIR / "partial_pair_reviews.csv"
@@ -51,10 +52,12 @@ SAME, NOT_SAME = "same fact", "not the same fact"
 
 def pair_key(record_id: str, gt: dict, translated: dict) -> tuple:
     """The key a verdict is filed under: the record and both triples' subject,
-    predicate and object, evened out. gt and translated are triples with
+    predicate and object, evened out as step 070's exact pairs compare them (instances by
+    text_match.instance_key, the predicate by triples_io.component_class_key). gt and translated are triples with
     "subject", "predicate", "object"."""
-    return (record_id.strip(),) + tuple(norm_text(gt.get(s)) for s in SLOTS) \
-        + tuple(norm_text(translated.get(s)) for s in SLOTS)
+    def keyed(t):
+        return (instance_key(t.get("subject")), component_class_key(t.get("predicate")), instance_key(t.get("object")))
+    return (record_id.strip(),) + keyed(gt) + keyed(translated)
 
 
 def row_key(row: dict) -> tuple:

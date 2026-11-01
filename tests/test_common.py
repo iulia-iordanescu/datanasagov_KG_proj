@@ -447,8 +447,9 @@ class Checks(unittest.TestCase):
 
     def test_source_text_in_passages(self):
         """Suppose a fact's source text is two passages of the record joined by " … " (a fact a predicate's definition
-        derives from statements in two places). Then it is in the text when each passage is. Near misses: one passage
-        not in the text, passages joined by "..." or "…" without spaces (taken as one passage), and a lone passage."""
+        derives from statements in two places). Then it is in the text when each passage is, the join written in any
+        of its ways (" … ", " ... ", "…" or "..." without spaces: common.triples_io.passages). Near misses: one passage
+        not in the text, two dots (not a join), and a lone passage."""
         text = text_match.Text("The first is a skin SST (NSST). Other words here. The SST4 product has lower uncertainty.")
         row = {"subject": "SST4", "object": "skin SST", "source_text": ""}
         def errors(source):
@@ -456,8 +457,10 @@ class Checks(unittest.TestCase):
         self.assertEqual(errors("The first is a skin SST … The SST4 product has lower uncertainty"), [])
         self.assertEqual(errors("The first is a skin SST … The SST4 product has higher uncertainty"),
                          ["source_not_in_text"])
-        self.assertEqual(errors("The first is a skin SST ... The SST4 product has lower uncertainty"), ["source_not_in_text"])
-        self.assertEqual(errors("The first is a skin SST…The SST4 product has lower uncertainty"), ["source_not_in_text"])
+        self.assertEqual(errors("The first is a skin SST ... The SST4 product has lower uncertainty"), [])
+        self.assertEqual(errors("The first is a skin SST…The SST4 product has lower uncertainty"), [])
+        self.assertEqual(errors("The first is a skin SST...The SST4 product has lower uncertainty"), [])
+        self.assertEqual(errors("The first is a skin SST .. The SST4 product has lower uncertainty"), ["source_not_in_text"])
         self.assertEqual(errors("The SST4 product has lower uncertainty"), [])
         self.assertEqual(validate.PASSAGES_JOIN, " … ")
 
@@ -639,11 +642,11 @@ class BuildRows(unittest.TestCase):
         import re
         text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
         row = next(line for line in text.splitlines() if line.startswith("| **extracted triple** |"))
-        listed = row.split("with the reason, one of five:", 1)[1].split(". How the five relate", 1)[0]
+        listed = row.split("with the reason, one of six:", 1)[1].split(". How the six relate", 1)[0]
         named = re.findall(r"`([a-z_ ]+)` \(", listed)
         self.assertEqual(named, ["source_text", "component_class_not_in_schema",
                                  extraction.joined_reason([extraction.SOURCE_TEXT, extraction.COMPONENT_CLASS_NOT_IN_SCHEMA]),
-                                 "duplicate", "malformed"])
+                                 "duplicate", "describes_triple", "malformed"])
         self.assertEqual(set(named) - {named[2]}, set(extraction.REMOVAL_REASONS))
 
     def test_fence(self):

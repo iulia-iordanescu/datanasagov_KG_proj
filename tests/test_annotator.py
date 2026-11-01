@@ -850,7 +850,7 @@ class G_Vocabulary(unittest.TestCase):
         self.assertIn("CIRCLES", schema_io.read_ground_truth_schema(server.GROUND_TRUTH_SCHEMA)["predicates"])
         reviews = partial_reviews.read_reviews(server.REVIEWS_PATH)
         self.assertEqual(list(reviews.values()), ["same fact"])
-        self.assertEqual(list(reviews)[0][2], partial_reviews.norm_text("CIRCLES"))
+        self.assertEqual(list(reviews)[0][2], partial_reviews.component_class_key("CIRCLES"))
 
     def test_merge_predicate_moves_patterns(self):
         post("/api/vocab/apply", {"kind": "predicate", "old": "ORBITS", "new": "ABOARD"})

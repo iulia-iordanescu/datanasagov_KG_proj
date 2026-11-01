@@ -155,7 +155,7 @@ from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_
     source_line
 from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
-from common.text_match import Text, norm_text
+from common.text_match import Text, instance_key, norm_text
 from common.triples_io import (ENTRY_CLASS, ENTRY_PREDICATE, ENTRY_SOURCE, UNDECIDED,
                                component_class_key, is_describes)
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
@@ -415,7 +415,7 @@ NOT_IN_SOURCE = {SUBJECT_NOT_IN_SOURCE: (SUBJECT_NOT_IN_TEXT, "subject"),
 def connection_problems(rid: str, rows: list) -> list:
     """For each of a record's rows, its not_connected flag (a list of one), or []. The rows form a graph: each
     ground truth triple joins its subject instance and its object instance (direction ignored; instances compared
-    as norm_text evens them out), the describes triple joining the record's id to its title. A
+    as text_match.instance_key evens them out), the describes triple joining the record's id to its title. A
     ground truth triple is connected when a chain of them links it to the record's id. Rows not filled in, or
     lacking a subject or an object, are skipped."""
     parent = {}
@@ -431,15 +431,15 @@ def connection_problems(rid: str, rows: list) -> list:
         pair = (subject, str(row.get("object") or "").strip())
         ends.append(pair if all(pair) else None)
         if all(pair):
-            parent[root(norm_text(pair[0]))] = root(norm_text(pair[1]))
+            parent[root(instance_key(pair[0]))] = root(instance_key(pair[1]))
     pieces = collections.defaultdict(dict)                 # {piece: {evened-out instance: its first spelling}}
     for pair in filter(None, ends):
         for x in pair:
-            pieces[root(norm_text(x))].setdefault(norm_text(x), x)
-    entry = root(norm_text(rid))
-    return [[] if pair is None or root(norm_text(pair[0])) == entry else
+            pieces[root(instance_key(x))].setdefault(instance_key(x), x)
+    entry = root(instance_key(rid))
+    return [[] if pair is None or root(instance_key(pair[0])) == entry else
             [{"code": NOT_CONNECTED, "type": "flag", "add": None, "message": MESSAGES[NOT_CONNECTED].format(
-                piece=", ".join(f'"{x}"' for x in pieces[root(norm_text(pair[0]))].values()))}]
+                piece=", ".join(f'"{x}"' for x in pieces[root(instance_key(pair[0]))].values()))}]
             for pair in ends]
 
 
@@ -458,7 +458,7 @@ def qualifier_problems(rows: list, qualifiers) -> list:
     def key(row: dict):
         predicate = str(row.get("predicate") or "").strip()
         subject, obj = (str(row.get(c) or "").strip() for c in ("subject", "object"))
-        return (norm_text(subject), predicate) if predicate in qualifiers and subject and obj else None
+        return (instance_key(subject), predicate) if predicate in qualifiers and subject and obj else None
     groups = collections.defaultdict(list)
     for row in rows:
         if (k := key(row)) is not None:

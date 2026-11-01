@@ -142,8 +142,8 @@ def _schema_classes(prompt: str) -> tuple:
 def _record_reply(prompt: str) -> dict:
     """Steps 050 and 060: the facts of the record, as the record's own words.
     Faults: a repeat, a source text that isn't in the text, a component class
-    outside the schema, a malformed item; some records name no entity class
-    for the describes triple."""
+    outside the schema, a malformed item, a describes triple of its own among
+    the triples; some records name no entity class for the describes triple."""
     text = _between(prompt, "----- BEGIN RECORD -----", "----- END RECORD -----").strip()
     entity, predicates = _schema_classes(prompt)
     instrument = "Instrument" if "Instrument" in entity else entity[0]
@@ -158,7 +158,9 @@ def _record_reply(prompt: str) -> dict:
         triples += [dict(first),                                                          # a repeat
                     {**first, "object": "Moon", "source_text": "aboard the Moon"},        # not in the text
                     {**first, "object_class": "Satellite"},                               # outside the schema
-                    {"subject": ["MODIS"], "predicate": aboard, "object": "Aqua"}]        # malformed
+                    {"subject": ["MODIS"], "predicate": aboard, "object": "Aqua"},        # malformed
+                    {"subject": "this record", "subject_class": "catalog_entry", "predicate": "Describes",
+                     "object": "its title", "object_class": "Dataset", "source_text": "x"}]   # its own describes triple
     h = _h(text)
     return {"describes_class": "" if h % 4 == 0 else "Dataset", "triples": triples}
 

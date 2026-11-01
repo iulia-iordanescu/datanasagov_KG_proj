@@ -24,7 +24,7 @@ from common.ground_truth import EVALUABLE, FINISHED, GROUND_TRUTH_DIR, TUNING, r
 from common.records_io import load_records
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
-from common.validate import PASSAGES_JOIN
+from common.triples_io import classed_key, component_class_key, passages
 
 QUESTIONS_PATH = ANNOTATIONS_DIR / "questions_for_experts.md"
 GUIDELINES_PATH = ANNOTATIONS_DIR / "guidelines.md"
@@ -618,33 +618,36 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
             elif rec["in_ground_truth"]:
                 sources = {squeeze(s["text"]) for s in rec["source_texts"]}
                 for t in rec["triples"]:
-                    same = [row for row in rows if all(row[k] == t[k] for k in
-                                                       ("subject", "subject_class", "predicate", "object", "object_class"))]
+                    same = [row for row in rows if classed_key(row) == classed_key(t)]
                     if not same:
                         problems.append(f"{where(q, t['line'])}: the classed triple isn't one of record {rid}'s ground "
-                                        f"truth triples (annotations/ground_truth/), word for word.")
+                                        f"truth triples (annotations/ground_truth/), compared as step 070 compares "
+                                        f"them (common/common_helpers/triples_io.py, classed_key).")
                     elif not any(squeeze(row["source_text"]) in sources
-                                 or all(squeeze(part) in sources for part in row["source_text"].split(PASSAGES_JOIN))
+                                 or all(squeeze(part) in sources for part in passages(row["source_text"]))
                                  for row in same):          # a source text of several passages: each its own field
                         problems.append(f"{where(q, t['line'])}: its ground truth triple's source text, "
                                         f"\"{same[0]['source_text']}\", isn't among the record's \"source text\" "
                                         f"fields: add it.")
         for e in q["schema"]:
             key = "entity_classes" if e["kind"] == "entity class" else "predicates"
-            now = schema[key].get(e["entry"])
+            now = next((d for n, d in schema[key].items() if component_class_key(n) == component_class_key(e["entry"])),
+                       None)
             if now is None:
                 problems.append(f"{where(q, e['line'])}: the ground truth schema has no {e['kind']} {e['entry']}.")
             elif squeeze(now) != squeeze(e["definition"]):
                 problems.append(f"{where(q, e['line'])}: the ground truth schema's definition of {e['kind']} "
                                 f"{e['entry']} is now \"{now}\": quote it as it is.")
         for row in q["rows"]:
-            same = [r for r in mapping if r["kind"] == row["kind"] and r["component_class_from_past_or_crt_schema"] == row["crt"]]
+            same = [r for r in mapping if r["kind"] == row["kind"]
+                    and component_class_key(r["component_class_from_past_or_crt_schema"]) == component_class_key(row["crt"])]
             if not same:
                 problems.append(f"{where(q, row['line'])}: the translation table has no row for {row['kind']} "
                                 f"{row['crt']} (current or past schema).")
                 continue
             r = same[0]
-            if r["component_class_in_gtt"] != row["gtt"] or (r["swap_subject_and_object"] == "yes") != row["swap"]:
+            if component_class_key(r["component_class_in_gtt"]) != component_class_key(row["gtt"]) \
+                    or (r["swap_subject_and_object"] == "yes") != row["swap"]:
                 problems.append(f"{where(q, row['line'])}: the translation table's row for {row['kind']} {row['crt']} "
                                 f"(current or past schema) translates it to {r['component_class_in_gtt']}"
                                 + (" (swap subject and object)" if r["swap_subject_and_object"] == "yes" else "")
@@ -701,10 +704,9 @@ def _check_affects(q: dict, where, pool: dict, gt, schema: dict, mapping: list, 
         elif p["position"] != r["position"]:
             problems.append(f"{where(q, r['line'])}: record {r['id']} is at pool position {p['position']}, not "
                             f"{r['position']}.")
-    keys = ("subject", "subject_class", "predicate", "object", "object_class")
     listed = set()
     for t in a["triples"]:
-        listed.add((t["position"],) + tuple(t[k] for k in keys))
+        listed.add((t["position"], classed_key(t)))
         if t["position"] not in listed_records:
             problems.append(f"{where(q, t['line'])}: the record at pool position {t['position']} isn't named in "
                             f"\"Affects\" itself: add \"- record at pool position {t['position']}: <its id>\".")
@@ -713,33 +715,36 @@ def _check_affects(q: dict, where, pool: dict, gt, schema: dict, mapping: list, 
         t["draft"] = rec is None or gt.state(rec["id"]) != FINISHED
         if t["draft"]:
             continue                                         # a record not finished in the ground truth yet: a draft
-        if not any(row["id"] == rec["id"] and all(row[k] == t[k] for k in keys) for row in gt.select(EVALUABLE).rows):
+        if not any(row["id"] == rec["id"] and classed_key(row) == classed_key(t) for row in gt.select(EVALUABLE).rows):
             problems.append(f"{where(q, t['line'])}: this isn't one of the ground truth triples of the record at "
                             f"pool position {t['position']}, word for word.")
     positions = {r["id"]: r["position"] for r in pool.values()} if pool else {}
     for e in a["entries"]:
         key = "entity_classes" if e["kind"] == "entity class" else "predicates"
-        if e["entry"] not in schema[key]:
+        if component_class_key(e["entry"]) not in {component_class_key(n) for n in schema[key]}:
             problems.append(f"{where(q, e['line'])}: the ground truth schema has no {e['kind']} {e['entry']}.")
             continue
         field = ("predicate",) if e["kind"] == "predicate" else ("subject_class", "object_class")
         for row in gt.select(EVALUABLE).rows:
             # a record not finished yet holds drafted triples, not checked: Affects need not name them until it is
-            if row["id"] in tuning and any(row[f] == e["entry"] for f in field) and row["predicate"]:
-                k = (positions[row["id"]],) + tuple(row[x] for x in keys)
+            if row["id"] in tuning and row["predicate"] \
+                    and any(component_class_key(row[f]) == component_class_key(e["entry"]) for f in field):
+                k = (positions[row["id"]], classed_key(row))
                 if k not in listed:
                     problems.append(f"{where(q, e['line'])}: {e['kind']} {e['entry']} (ground truth schema) is used by "
                                     f"the ground truth triple \"{row['subject']}\" ({row['subject_class']}) "
                                     f"{row['predicate']} \"{row['object']}\" ({row['object_class']}) of the record at "
                                     f"pool position {k[0]}, which \"Affects\" doesn't name: add it.")
         for r in mapping:
-            if r["kind"] == e["kind"] and r["component_class_in_gtt"] == e["entry"] and not any(
-                    x["kind"] == r["kind"] and x["crt"] == r["component_class_from_past_or_crt_schema"] for x in a["rows"]):
+            if r["kind"] == e["kind"] and component_class_key(r["component_class_in_gtt"]) == component_class_key(e["entry"]) \
+                    and not any(x["kind"] == r["kind"] and component_class_key(x["crt"])
+                                == component_class_key(r["component_class_from_past_or_crt_schema"]) for x in a["rows"]):
                 problems.append(f"{where(q, e['line'])}: the translation table's row {r['kind']} "
                                 f"{r['component_class_from_past_or_crt_schema']} (current or past schema) translates to "
                                 f"{e['entry']}, and \"Affects\" doesn't name it: add it.")
     for r in a["rows"]:
-        if not any(m["kind"] == r["kind"] and m["component_class_from_past_or_crt_schema"] == r["crt"] for m in mapping):
+        if not any(m["kind"] == r["kind"] and component_class_key(m["component_class_from_past_or_crt_schema"])
+                   == component_class_key(r["crt"]) for m in mapping):
             problems.append(f"{where(q, r['line'])}: the translation table has no row for {r['kind']} {r['crt']}.")
     for r in a["rules"]:
         if (r["section"], r["rule"]) not in rules:

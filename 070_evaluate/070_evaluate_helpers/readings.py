@@ -17,6 +17,7 @@ import re
 
 import stats
 from common.ground_truth import HELD_OUT, TUNING
+from common.triples_io import component_class_key
 
 
 #: How every number of the report, per_record.md and the readings is written when its formula would divide by 0: one
@@ -224,10 +225,11 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
 
     # describes
     d = n["describes"]
-    truths = collections.Counter()
-    for (t, _), k in confusion.items():
-        truths[t] += k
-    common = truths.most_common(1)[0][0] if truths else None
+    truths, spelled = collections.Counter(), {}
+    for (t, _), k in confusion.items():                # by component class, as stats.numbers groups them
+        truths[component_class_key(t)] += k
+        spelled.setdefault(component_class_key(t), t)
+    common = spelled[truths.most_common(1)[0][0]] if truths else None
     right = round((d["accuracy"]["value"] or 0) * d["records"]) if d["accuracy"]["value"] is not None else 0
     out += [f"#### Describes accuracy: {pct(d['accuracy']['value'])}", "",
             f"- Of the {d['records']} record(s) whose ground truth names a describes class, extraction named "

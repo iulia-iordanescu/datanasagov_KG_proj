@@ -74,13 +74,11 @@ import re
 from common.audit import log
 from common.partial_reviews import NOT_SAME, pair_key
 from common.text_match import instance_key, norm_text, quantity_words
-from common.triples_io import UNDECIDED, component_class_key
+from common.triples_io import SYMMETRIC_PREDICATES, component_class_key, is_symmetric as _symmetric, is_undecided
 
 LEVELS = ("exact", "partial")
-#: Predicates of the ground truth schema that say the same fact either way round
-#: (subject and object may be swapped when pairing). The ground truth schema's
-#: file has no marker for this, so they are listed here.
-SYMMETRIC_PREDICATES = frozenset({"ALSO_KNOWN_AS"})
+# SYMMETRIC_PREDICATES (the ground truth schema's predicates that say the same fact either way round, so subject and
+# object may be swapped when pairing) live in common/common_helpers/triples_io.py, with the key of the same fact.
 MISMATCH_WARN = 2                 # a component class mismatch seen this often is a warning: a row to look at
 
 
@@ -166,8 +164,8 @@ def _can_pair(g: dict, t: dict, level: str) -> bool:
 
 
 def is_symmetric(predicate) -> bool:
-    """Whether the predicate (ground truth schema) says the same fact either way round."""
-    return component_class_key(predicate) in {component_class_key(p) for p in SYMMETRIC_PREDICATES}
+    """Whether the predicate (ground truth schema) says the same fact either way round (triples_io.is_symmetric)."""
+    return _symmetric(predicate)
 
 
 def swapped(t: dict) -> dict:
@@ -344,9 +342,9 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     counts["pending"] = len(pending)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]
-    truth = gd["object_class"] if gd and gd["object_class"] not in ("", UNDECIDED) else None
+    truth = gd["object_class"] if gd and not is_undecided(gd["object_class"]) else None
     said = None
-    if ed and ed["object_class"] not in ("", UNDECIDED):
+    if ed and not is_undecided(ed["object_class"]):
         said = translation.entity.get(component_class_key(ed["object_class"])) or f"{ed['object_class']}{NO_TRANSLATION}"
     rejected = sum(1 for gi in range(len(gt)) for ei in range(len(ex))
                    if not allowed(gi, ei) and _ways(gt[gi], ex[ei], "partial"))

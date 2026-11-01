@@ -28,8 +28,8 @@ same checks and names.
 """
 from __future__ import annotations
 
-from common.text_match import Text, norm_text
-from common.triples_io import component_class_key, is_describes
+from common.text_match import Text, instance_key
+from common.triples_io import PASSAGES_JOIN, component_class_key, is_describes, is_undecided, passages  # noqa: F401
 
 # --------------------------------------------------------------------------
 # the check codes
@@ -89,17 +89,16 @@ ALL_CHECKS = (ERRORS + FLAGS + SCHEMA_FLAGS + DESCRIBES_ERRORS + DESCRIBES_FLAGS
               + TOOL_CHECKS)
 
 
-#: Joins the passages of a source text made of several (rule 1 of "What counts as a fact", annotations/guidelines.md:
-#: a fact that a test in a predicate's definition derives from the record's own statements, in more than one place).
-PASSAGES_JOIN = " … "
+# PASSAGES_JOIN (" … ", the join of a source text of several passages) and passages() live in
+# common/common_helpers/triples_io.py, with every other key (imported above).
 
 
 def source_in_text(source: str, text: Text) -> bool:
-    """Whether a source text is in the record's text: as one passage, or as passages joined by PASSAGES_JOIN, each
-    in the text."""
+    """Whether a source text is in the record's text: as one passage, or as passages joined by " … " (written in any
+    of its ways: common.triples_io.passages), each in the text."""
     if text.contains(source):
         return True
-    parts = [p for p in source.split(PASSAGES_JOIN) if p.strip()]
+    parts = passages(source)
     return len(parts) > 1 and all(text.contains(p) for p in parts)
 
 
@@ -118,13 +117,13 @@ def check_triple_instance(instance: dict, text: Text, title: str = "") -> tuple:
     if source.strip():
         passage = Text(source)
         if not passage.contains(instance.get("subject")) \
-                and norm_text(instance.get("subject")) != norm_text(title):
+                and instance_key(instance.get("subject")) != instance_key(title):
             flags.append(SUBJECT_NOT_IN_SOURCE)
         if not passage.contains(instance.get("object")):
             flags.append(OBJECT_NOT_IN_SOURCE)
-    if norm_text(instance.get("subject")) == norm_text(instance.get("object")):
+    if instance_key(instance.get("subject")) == instance_key(instance.get("object")):
         flags.append(SUBJECT_EQUALS_OBJECT)
-    if title.strip() and component_class_key(instance.get("subject_class")) == "dataset"             and not is_describes(instance) and norm_text(instance.get("subject")) != norm_text(title):
+    if title.strip() and component_class_key(instance.get("subject_class")) == "dataset"             and not is_describes(instance) and instance_key(instance.get("subject")) != instance_key(title):
         flags.append(DATASET_SUBJECT_NOT_TITLE)
     return errors, flags
 
@@ -177,12 +176,11 @@ def check_against_schema(instance: dict, schema_entries: SchemaEntries) -> list:
 
 def check_describes(row: dict, record_id: str, schema_entries: SchemaEntries | None = None) -> tuple:
     """(errors, flags) of a record's describes triple (see above)."""
-    from common.triples_io import UNDECIDED
     errors, flags = [], []
     if str(row.get("subject") or "").strip() != record_id:
         errors.append(DESCRIBES_SUBJECT_NOT_ID)
     entity_class = str(row.get("object_class") or "").strip()
-    if entity_class in ("", UNDECIDED):
+    if is_undecided(entity_class):                 # empty, or X in any spelling
         errors.append(DESCRIBES_UNDECIDED)
     elif schema_entries is not None and schema_entries.key(entity_class) not in schema_entries.entity_classes:
         flags.append(DESCRIBES_CLASS_NOT_IN_SCHEMA)

@@ -585,13 +585,15 @@ function status(text, kind) {
   s.textContent = kind === "saved" && /^(Editing|Saved to) /.test(text) ? "✓ Saved" : text;
   s.title = text; s.className = kind || "";
 }
-// As the server decides (common/common_helpers/triples_io.is_describes): the subject class by
-// loose match (only letters and digits count, so "Catalog_Entry" counts too); the predicate
-// with case ignored, spaces, "_" and "-" equivalent, and punctuation at either end dropped.
-const looseKey = (s) => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-const predicateKey = (s) => (s || "").toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
-  .replace(/[\s_\-]+/g, " ").trim();
-const isDescribes = (r) => looseKey(r.subject_class) === "catalogentry" && predicateKey(r.predicate) === "describes";
+// As the server decides (common/common_helpers/triples_io.component_class_key, the loose match):
+// only letters and digits count, of any script; case folded (ß is ss, a final sigma σ); accents,
+// full-width letters and ligatures evened out (NFKD); invisible format characters dropped. So
+// "Catalog_Entry" is CatalogEntry, and "ΔT" stays "δt". tests/test_keys.py runs it on the table
+// the server's key passes (tests/key_variants.py).
+const looseKey = (s) => (s || "").normalize("NFKD").replace(/[\p{M}\p{Cf}]/gu, "").toLowerCase()
+  .replace(/ß/g, "ss").replace(/ς/g, "σ").normalize("NFKD").replace(/[^\p{L}\p{N}]/gu, "");
+// The describes triple (triples_io.is_describes): its subject class and predicate by loose match.
+const isDescribes = (r) => looseKey(r.subject_class) === "catalogentry" && looseKey(r.predicate) === "describes";
 // A record's ground truth triples, filled in (its describes triple not counted).
 const groundTruthCount = (rec) => rec.rows.filter((r) => !isDescribes(r) && r.subject && r.predicate && r.object).length;
 const errorsIn = (rec) => rec.rows.reduce((n, r) => n + r.problems.filter(p => p.type === "error").length, 0);

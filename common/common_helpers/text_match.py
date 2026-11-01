@@ -8,7 +8,12 @@ both sides first, and nothing else:
 
     same     upper/lower case; runs of spaces, tabs, and line breaks; Unicode
              variants of one character (NFKC, e.g. a non-breaking space or a
-             full-width letter); the dashes and hyphens of every width; and
+             full-width letter); invisible format characters (Unicode's
+             category Cf: the soft hyphen, the zero-width space, non-joiner and
+             joiner, the word joiner, the byte-order mark), which are removed,
+             since a copy from a PDF or a web page leaves them inside words
+             ("Terra", a soft hyphen, "Aqua" is "TerraAqua"); the dashes and
+             hyphens of every width; and
              quote marks, which are ignored altogether (they carry no
              content), so "Aqua satellite" is found in '"Aqua" satellite'
              and "Earth's" still matches "Earth’s". On the component
@@ -141,7 +146,9 @@ QUANTITY_UNITS = (
 UNITS = tuple(sp for row in QUANTITY_UNITS for sp in row[3])
 
 #: Bump when what counts as the same component instance changes, so comparing two runs shows it (070's recipe).
-MATCHING_VERSION = 2              # 2: quantities as quantities (QUANTITY_UNITS); 1 (before 2026-10-24): words only
+#: 3 (2026-10-31): invisible format characters (Cf) removed; 2: quantities as quantities (QUANTITY_UNITS); 1 (before
+#: 2026-10-24): words only.
+MATCHING_VERSION = 3
 
 # A whole number (not the end of a name like "MOD021KM", nor the tail of "4.63"), then, with no space, a whole unit:
 # no letter or digit after it, so "500meters" and "5mins" are left as they are. Longest unit first: "m/s" before "m".
@@ -149,10 +156,17 @@ _NUMBER_UNIT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(%s)(?!\w)"
                           % "|".join(map(re.escape, sorted(UNITS, key=len, reverse=True))))
 
 
+def drop_format(s: str) -> str:
+    """s without its invisible format characters (Unicode's category Cf: U+00AD soft hyphen, U+200B zero-width space,
+    U+200C and U+200D zero-width non-joiner and joiner, U+2060 word joiner, U+FEFF byte-order mark, ...). The one
+    place they are removed: every key of common/common_helpers/triples_io.py goes through it."""
+    return s if s.isascii() else "".join(c for c in s if unicodedata.category(c) != "Cf")
+
+
 def even(s) -> str:
-    """Case, spacing, Unicode variants, and dashes evened out; quote marks
-    removed; a number written against its unit (UNITS) given a space."""
-    s = unicodedata.normalize("NFKC", str(s or "")).translate(QUOTES_AND_DASHES)
+    """Case, spacing, Unicode variants, and dashes evened out; invisible format characters (drop_format) and quote
+    marks removed; a number written against its unit (UNITS) given a space."""
+    s = unicodedata.normalize("NFKC", drop_format(str(s or ""))).translate(QUOTES_AND_DASHES)
     s = s.replace('"', "").replace("'", "")
     return _NUMBER_UNIT.sub(r"\1 \2", re.sub(r"\s+", " ", s.casefold()))
 

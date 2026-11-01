@@ -181,7 +181,8 @@ def sharing(rows: list, crt: dict | None) -> dict:
     out = {}
     for r in current:
         others = [o["component_class_from_past_or_crt_schema"] for o in current
-                  if o is not r and o["kind"] == r["kind"] and o["component_class_in_gtt"] == r["component_class_in_gtt"]]
+                  if o is not r and o["kind"] == r["kind"]
+                  and component_class_key(o["component_class_in_gtt"]) == component_class_key(r["component_class_in_gtt"])]
         if others:
             out[r["_line"]] = others
     return out
@@ -281,6 +282,8 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
             if (r.get("component_class_from_past_or_crt_schema") or "").strip():
                 row = {c: (r.get(c) or "").strip() for c in COLUMNS}
                 row.update({c: " ".join(row[c].lower().split()) for c in VALUES})
+                if "".join(row["component_class_in_gtt"].casefold().split()) == NONE:
+                    row["component_class_in_gtt"] = NONE              # "(None)", "( none )": the one spelling
                 rows.append({**row, "_line": reader.line_num})
         return rows
 

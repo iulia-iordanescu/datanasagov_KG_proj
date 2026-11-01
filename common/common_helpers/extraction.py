@@ -61,7 +61,7 @@ from common.chunking import text_fields
 from common.prompt_files import fill, load, text as prompt_text
 from common.report import named
 from common.text_match import Text
-from common.triples_io import (clean_triple, describes_triple, component_class_key, triple_key)
+from common.triples_io import (classed_key, clean_triple, describes_triple, is_describes, triple_key)
 from common.validate import CONFLICTING_CLASSES, SchemaEntries, check_against_schema, check_describes, check_triple_instance
 
 PROMPTS = Path(__file__).resolve().parents[1] / "common_prompts"       # common/common_prompts/
@@ -82,19 +82,23 @@ ROW_KEYS = ("subject", "subject_class", "predicate", "object", "object_class", "
 
 # 060's reasons for removing an item (extracted_triples_removed.csv's "reason"). Their list, how they relate (each
 # removed item has exactly one, the joined one included) and the order they're decided in: docs/terminology.md,
-# *extracted triple* (the home). MALFORMED and DUPLICATE are given here, by build_rows; the other two by 060's checks.
+# *extracted triple* (the home). MALFORMED, DESCRIBES and DUPLICATE are given here, by build_rows; the other two by
+# 060's checks.
 MALFORMED = "malformed"
+DESCRIBES = "describes_triple"
 DUPLICATE = "duplicate"
 SOURCE_TEXT = "source_text"
 COMPONENT_CLASS_NOT_IN_SCHEMA = "component_class_not_in_schema"
 #: Each reason, in the order they're decided, and what it means in a report's words. A removal for both of the checks'
 #: reasons is written as the two, joined (joined_reason).
 REMOVAL_REASONS = {MALFORMED: "not a classed triple at all",
+                   DESCRIBES: "a describes triple of the model's own, among its classed triples (code writes the "
+                              "record's describes triple)",
                    DUPLICATE: "the same classed triple twice in the record (one copy is kept)",
                    SOURCE_TEXT: "its source text is missing, or isn't in the record's text",
                    COMPONENT_CLASS_NOT_IN_SCHEMA: "an entity class or predicate the current schema doesn't have"}
-#: The reasons build_rows gives: an item that wasn't checked (MALFORMED), or a copy of one kept (DUPLICATE).
-NOT_BY_A_CHECK = (MALFORMED, DUPLICATE)
+#: The reasons build_rows gives: an item that wasn't checked (MALFORMED, DESCRIBES), or a copy of one kept (DUPLICATE).
+NOT_BY_A_CHECK = (MALFORMED, DESCRIBES, DUPLICATE)
 
 
 def joined_reason(reasons) -> str:
@@ -172,7 +176,10 @@ def best_copies(items: list, key, failed) -> tuple:
 def build_rows(record_id: str, title: str, text: str, replies: list, schema_entries: SchemaEntries) -> tuple:
     """(rows, removed). rows: the describes triple, then one per triple
     instance, each {"id", ROW_KEYS…, "errors": [...], "flags": [...]}.
-    removed: {"reason": MALFORMED | DUPLICATE, "raw" or the row}."""
+    removed: {"reason": MALFORMED | DESCRIBES | DUPLICATE, "raw" or the row}. Every triple is tidied first
+    (common.triples_io.clean_triple, with the record's text: a JSON number written as the text writes it); a describes
+    triple of the model's own among its triples (common.triples_io.is_describes, in any spelling) is removed (DESCRIBES),
+    since code writes the record's one describes triple."""
     removed = []
     named = [str(r.get("describes_class") or "").strip() for r in replies if isinstance(r, dict)]
     head = describes_triple(record_id, title, next((c for c in named if c), ""))
@@ -186,16 +193,19 @@ def build_rows(record_id: str, title: str, text: str, replies: list, schema_entr
             removed.append({"reason": MALFORMED, "raw": json.dumps(reply, ensure_ascii=False)})
             continue
         for item in reply["triples"]:
-            t = clean_triple(item)
+            t = clean_triple(item, text)                # a JSON number written as the record's text writes it
             if t is None:
                 removed.append({"reason": MALFORMED, "raw": json.dumps(item, ensure_ascii=False)})
                 continue
             row = {"id": record_id, **{k: t.get(k, "") for k in ROW_KEYS}}
+            if is_describes(row):                       # code writes the describes triple, never the model
+                removed.append({"reason": DESCRIBES, **row})
+                continue
             errors, flags = check_triple_instance(row, whole, title)
             checked.append({**row, "errors": errors, "flags": flags + check_against_schema(row, schema_entries)})
 
     def copy_key(row):                          # the same triple instance with the same entity classes
-        return triple_key(row), component_class_key(row["subject_class"]), component_class_key(row["object_class"])
+        return classed_key(row)
     kept, copies = best_copies(checked, copy_key, lambda row: bool(row["errors"]))
     removed += [{"reason": DUPLICATE, **{k: v for k, v in row.items() if k not in ("errors", "flags")}}
                 for row in copies]

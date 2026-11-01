@@ -22,7 +22,7 @@ from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results
-from common.triples_io import COLUMNS as TRIPLE_COLUMNS, ENTRY_PREDICATE
+from common.triples_io import COLUMNS as TRIPLE_COLUMNS, is_describes
 from common.ground_truth import HELD_OUT
 from common.schema_io import source_line
 
@@ -149,10 +149,10 @@ def results(chosen, schema, replies, rows, calls, settings, output) -> Results:
     if missing:
         warnings.append(missing)
 
-    n_kept_facts = sum(1 for r in kept if r["predicate"] != ENTRY_PREDICATE)
+    n_kept_facts = sum(1 for r in kept if not is_describes(r))
     # per text: kept (extracted triples), and raw = kept + removed by a check (not extraction.NOT_BY_A_CHECK:
     # build_rows' removals, which weren't triple instances or were the same classed triple again)
-    kept_of = {rid: sum(1 for r in rows.kept[rid] if r["predicate"] != ENTRY_PREDICATE)
+    kept_of = {rid: sum(1 for r in rows.kept[rid] if not is_describes(r))
                for rid in (i["id"] for i in chosen.items) if rid in rows.kept}
     checked_out = {rid: sum(1 for x in rows.removed.get(rid, []) if x["reason"] not in extraction.NOT_BY_A_CHECK)
                    for rid in kept_of}

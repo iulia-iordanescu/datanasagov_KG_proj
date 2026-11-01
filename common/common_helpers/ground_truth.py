@@ -90,7 +90,7 @@ from pathlib import Path
 
 from common.audit import ORIGIN_FIELD, ref_path
 from common.step import ANNOTATIONS_DIR
-from common.triples_io import KIND_KEYS, component_class_key, is_describes, triple_key
+from common.triples_io import KIND_KEYS, canonical_row, component_class_key, is_describes, triple_key
 from common.validate import (DESCRIBES_SUBJECT_NOT_ID, DESCRIBES_UNDECIDED, ID_NOT_IN_RECORDS, INCOMPLETE, NO_SOURCE_TEXT,
                              SOURCE_NOT_IN_TEXT)
 
@@ -281,9 +281,11 @@ LINE_FIELD = "_line"
 
 
 def _as_read(raw: dict, ref: str, position: int, line: int | None = None) -> dict:
-    """A row as read_ground_truth keeps it: every column of FILE_COLUMNS, stripped, with its origin and its line in
-    the file (the line it ends on; without one, as a file written from these rows would have it)."""
-    row = {c: str(raw.get(c) or "").strip() for c in FILE_COLUMNS}
+    """A row as read_ground_truth keeps it: every column of FILE_COLUMNS, tidied as every row is
+    (common.triples_io.canonical_row: one line, spaces evened out; "" for an empty one), with its origin and its line
+    in the file (the line it ends on; without one, as a file written from these rows would have it)."""
+    tidy = canonical_row({c: str(raw.get(c) or "") for c in FILE_COLUMNS}, keys=FILE_COLUMNS)
+    row = {c: tidy[c] or "" for c in FILE_COLUMNS}
     row[ORIGIN_FIELD] = [f"{ref}#{position}"]
     row[LINE_FIELD] = line if line is not None else position + 2          # the header is line 1
     return row

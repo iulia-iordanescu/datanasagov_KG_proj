@@ -58,7 +58,7 @@ from pathlib import Path
 from common import extraction
 from common.audit import log
 from common.prompt_files import load
-from common.triples_io import UNDECIDED, is_describes
+from common.triples_io import UNDECIDED, component_class_key, is_describes
 from common.validate import (DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_UNDECIDED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              PREDICATE_NOT_IN_SCHEMA, SOURCE_NOT_IN_TEXT, SUBJECT_CLASS_NOT_IN_SCHEMA)
 
@@ -110,7 +110,7 @@ def ask_model(chosen, schema, calls, settings: dict) -> extraction.Replies:
 def sort_rows(chosen, schema, replies) -> Rows:
     rows = Rows()
     flags, reasons = collections.Counter(), collections.Counter()
-    new_component_classes = collections.defaultdict(set)
+    new_component_classes, spelled = collections.defaultdict(set), {}     # by component_class_key: one per component class
     for item in chosen.items:
         rid = item["id"]
         if rid not in replies.of:
@@ -121,7 +121,8 @@ def sort_rows(chosen, schema, replies) -> Rows:
             for check in row["errors"] + row["flags"]:
                 if check in SLOTS_OF:
                     kind, column = SLOTS_OF[check]
-                    new_component_classes[(kind, row[column])].add(rid)
+                    key = spelled.setdefault((kind, component_class_key(row[column])), (kind, row[column]))
+                    new_component_classes[key].add(rid)
             if is_describes(row):
                 row = _in_schema_spelling(row, schema.schema_entries)
                 if row["errors"] or DESCRIBES_CLASS_NOT_IN_SCHEMA in row["flags"]:
