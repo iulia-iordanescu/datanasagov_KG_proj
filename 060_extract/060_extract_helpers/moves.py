@@ -45,7 +45,9 @@ def load_schema(inputs):
 
 
 def paid_calls(chosen, schema, settings, output) -> llm.Calls:
-    return llm.paid_calls(settings, output, notes=chosen.notes + schema.notes)
+    # One LiteLLM session id per run, the run's id: where the proxy pins a session to one deployment, every request
+    # of the run reaches the same prompt cache (llm.SESSION_ID; 060_extract.md, *The schema in the prompt*).
+    return llm.paid_calls(settings, output, notes=chosen.notes + schema.notes, session_id=audit.current_run_id())
 
 
 def ask_model(chosen, schema, calls, settings):

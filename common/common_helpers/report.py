@@ -248,6 +248,10 @@ def model_calls(stages: list, test_calls: int, model: str) -> list:
                                     else ", not sent to this model.")
               + (f" Effort: {llm.effort_note()}." if llm.effort_note() else "")
               + (f" Temperature: {llm.TEMPERATURE}." if llm.temperature_sent() else " Temperature: not sent.")
+              + (f" Session: every request carried the header `{llm.SESSION_HEADER}` `{llm.SESSION_ID}` (this run's id), "
+                 f"so that LiteLLM, where its session affinity is on, sends them all to one deployment and its prompt "
+                 f"cache; whether NASA's proxy has it on isn't known (compare the cache reads above with earlier runs')."
+                 if llm.SESSION_ID and llm.SERVICE == "litellm" else "")
               + (f" Each failed call is described in `{llm.OUTCOMES['file']}`." if llm.OUTCOMES["file"] else ""), "",
               f"Model: {model}. Every answer is kept in the step's `cache/`, so a rerun pays only for "
               f"what isn't there yet."

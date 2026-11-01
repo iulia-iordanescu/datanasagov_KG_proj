@@ -1287,6 +1287,114 @@ class TryModels(unittest.TestCase):
         self.assertEqual(len(asked), 3)
 
 
+class CheckEffort(unittest.TestCase):
+    """py helpers/check_effort.py: step A's reading of an invalid effort value's reply, step B's answer parsing and
+    decision rule, and both steps against fake replies, with the near misses."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("check_effort", support.ROOT / "helpers" / "check_effort.py")
+        cls.ce = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.ce)
+
+    def test_step_a_verdict(self):
+        v = self.ce.step_a_verdict
+        for status in (400, 422, 499):
+            self.assertIn("refused", v(status, "Invalid reasoning_effort"))
+            self.assertIn("Invalid reasoning_effort", v(status, "Invalid reasoning_effort"))   # the error text, quoted
+        self.assertIn("dropped or ignored", v(200, "OK"))
+        for status in (399, 500, 503, 302):                                     # near misses: no verdict
+            self.assertIn("no verdict", v(status, "x"))
+            self.assertNotIn("dropped", v(status, "x"))
+
+    def test_answer_number(self):
+        n = self.ce.answer_number
+        self.assertEqual(n("First 360, then 240.\nSo the answer is:\n168"), 168)
+        self.assertEqual(n("168\n\n"), 168)
+        self.assertEqual(n("Answer: 1,168"), 1168)
+        self.assertEqual(n("I count 168.\nThat is all."), 168)                 # the last line with a number
+        self.assertIsNone(n("no number here"))
+        self.assertIsNone(n(None))
+
+    def test_step_b_rule(self):
+        rule = self.ce.step_b_verdict
+        self.assertEqual(rule([100, 120, 110], [300, 400, 350])[0], "passed on")      # every high above every low
+        self.assertEqual(rule([100, 120, 110], [121, 125, 130])[0], "passed on")      # just above the highest low
+        self.assertEqual(rule([100, 120, 110], [120, 125, 130])[0], "not shown")      # a tie with the highest low
+        self.assertEqual(rule([100, 100, 100], [90, 200, 160])[0], "passed on")       # overlap, mean 150 = 1.5 x 100
+        self.assertEqual(rule([100, 100, 100], [90, 200, 159])[0], "not shown")       # overlap, mean 149.7 < 150
+        self.assertEqual(rule([40, 39, 40], [40, 40, 40])[0], "not shown")            # 2026-10-31's numbers
+        self.assertEqual(rule([100, None, 100], [500, 500, 500])[0], "not shown")     # a call failed
+        self.assertEqual(rule([100, 100], [500, 500, 500])[0], "not shown")           # too few calls
+        self.assertIn("a call failed", rule([100, 100, 100], [500, None, 500])[1])
+
+    def test_puzzle_answer(self):
+        """The expected answer, by listing every arrangement."""
+        from itertools import permutations
+        count = sum(1 for p in permutations("ABCDEF") if p.index("A") < p.index("B")
+                    and abs(p.index("C") - p.index("D")) != 1 and p[0] != "E" and p[-1] != "E")
+        self.assertEqual(count, self.ce.PUZZLE_ANSWER)
+
+    def run_steps(self, replies, only=None, answer=""):
+        """main() against fake replies (one per request, in order): what it printed, and the payloads sent."""
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        from common import llm
+        sent, replies = [], list(replies)
+
+        class Reply:
+            def __init__(self, status, body):
+                self.status_code, self._body, self.text = status, body, json.dumps(body)
+
+            def json(self):
+                return self._body
+
+        def post(url, headers=None, json=None, timeout=None):
+            sent.append(json)
+            return Reply(*replies.pop(0))
+        out = io.StringIO()
+        argv = ["check_effort.py"] + (["--only", only] if only else [])
+        with mock.patch.object(llm, "_post", post), mock.patch.object(llm, "_litellm", lambda p: ("u", {})), \
+                mock.patch("builtins.input", lambda q: answer), mock.patch.object(sys, "argv", argv), \
+                redirect_stdout(out):
+            self.ce.main()
+        return out.getvalue(), sent
+
+    @staticmethod
+    def answered(text, completion):
+        return 200, {"choices": [{"message": {"content": text}}],
+                     "usage": {"completion_tokens": completion, "completion_tokens_details": {"reasoning_tokens": 0}}}
+
+    def test_step_a_requests(self):
+        out, sent = self.run_steps([(400, {"error": {"message": "Invalid reasoning_effort: not_a_level"}}),
+                                    self.answered("OK", 2)], only="a")
+        self.assertEqual(sent[0]["reasoning_effort"], "not_a_level")
+        self.assertEqual(sent[1]["output_config"], {"effort": "not_a_level"})
+        self.assertIn("refused (HTTP 400)", out)
+        self.assertIn("Invalid reasoning_effort: not_a_level", out)
+        self.assertIn("answered (HTTP 200), so the setting was dropped or ignored", out)
+        self.assertNotIn("Step B", out)
+
+    def test_step_b_requests(self):
+        replies = [self.answered("...\n168", 900)] * 3 + [self.answered("...\n168", 300)] * 3 \
+            + [self.answered("...\n170", 2000)] * 3
+        out, sent = self.run_steps(replies, only="b")
+        self.assertEqual(len(sent), 9)
+        self.assertEqual([s.get("reasoning_effort") for s in sent], [None] * 3 + ["low"] * 3 + ["high"] * 3)
+        self.assertLess(out.index("Decision rule (fixed before the calls)"), out.index("call 1"))   # written first
+        self.assertIn("completion tokens 300", out)
+        self.assertIn("reasoning_effort high: mean completion tokens 2000", out)
+        self.assertIn("answer 168 (correct)", out)
+        self.assertIn("answer 170 (wrong, expected 168)", out)
+        self.assertIn("Step B's verdict: passed on", out)
+
+    def test_step_b_declined_pays_nothing(self):
+        with self.assertRaises(SystemExit):
+            self.run_steps([], only="b", answer="n")
+
+
 class LiteLLM(unittest.TestCase):
     """The second service: requests in the OpenAI shape, errors that will not fix themselves raised at once, the
     exact model that answered recorded, and Ask Sage's cache keys unchanged."""

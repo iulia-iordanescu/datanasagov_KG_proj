@@ -261,6 +261,7 @@ TRIPLES_PROMPT = 'Reply with ONLY this JSON: {"triples": []}'
 
 
 PAYLOADS = []       # every request body stand_in_post received
+HEADERS = []        # the headers of every request stand_in_post received, in the same order
 
 
 class StandInReply:
@@ -282,6 +283,7 @@ def _fault(name: str, prompt: str) -> bool:
 def stand_in_post(url, headers=None, json=None, timeout=None, **_):
     """LiteLLM's /v1/chat/completions, answered by stand_in_model, with the faults the environment asks for."""
     PAYLOADS.append(json)
+    HEADERS.append(dict(headers or {}))
     if float(os.environ.get("KG_STAND_IN_DELAY") or 0):
         import time
         time.sleep(float(os.environ["KG_STAND_IN_DELAY"]))

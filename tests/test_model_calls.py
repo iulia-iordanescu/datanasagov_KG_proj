@@ -11,6 +11,8 @@ model behind LiteLLM's reply shape (tests/stand_ins.py, stand_in_post):
     the failed-call record   one line per failed, cut-off, or not-made call, in outputs/logs/<run id>_failed_calls.jsonl
     progress              one line per finished call at most every 10 s; the first and the last always
     the report            the Model calls section's thinking tokens, failed calls, and cut-offs
+    the session id        060 sends one LiteLLM session header per run, its run id; no other step sends one; the
+                          words sent, the settings and the cache key are the same either way
 """
 import json
 import logging
@@ -62,6 +64,7 @@ class Guards(unittest.TestCase):
         for p in reversed(self.patches):
             p.stop()
         llm.MODEL, llm.SERVICE, llm.THINKING, llm.MAX_ANSWER_TOKENS, llm.REPEAT = self.saved
+        llm.SESSION_ID = None
         shutil.rmtree(self.tmp)
 
     def calls(self, **settings):
@@ -465,6 +468,48 @@ class Guards(unittest.TestCase):
         self.assertIn("sent as `reasoning_effort` `low`", text)
         self.assertIn("_failed_calls.jsonl", text)
         self.assertEqual(step._failed_calls()["entries"], 1)
+
+
+    # ---------------------------------------------------------------- the session id
+
+    def step_calls(self, folder: str, run_id: str):
+        """The Calls a step's own paid_calls makes, in a run of that step."""
+        audit.end_run()
+        audit.begin_run(run_id, {})
+        moves = step.load_moves(folder)
+        empty = type("Empty", (), {"notes": []})()
+        args = (empty, empty) if folder == "060_extract" else (empty,)
+        return moves.paid_calls(*args, {**SETTINGS, "model": "claude-opus-5.5"}, self.tmp / folder)
+
+    def test_session_header_for_060_only(self):
+        sent = {}
+        for folder in ("040_induce_schema", "050_annotate", "060_extract", "070_evaluate"):
+            run_id = f"{folder}_2026-10-31_1200"
+            self.step_calls(folder, run_id)
+            stand_ins.PAYLOADS.clear()
+            stand_ins.HEADERS.clear()
+            llm.call_llm(llm.TEST_PROMPT + " #x#", cache_until="#x#")
+            sent[folder] = (stand_ins.HEADERS[0].get(llm.SESSION_HEADER), stand_ins.PAYLOADS[0], llm.cache_identity())
+            self.assertEqual(llm.describe().get("session_id"), run_id if folder == "060_extract" else None, folder)
+        self.assertEqual(sent["060_extract"][0], "060_extract_2026-10-31_1200")      # the run's id
+        for folder in ("040_induce_schema", "050_annotate", "070_evaluate"):
+            self.assertIsNone(sent[folder][0], folder)
+            # the same words, settings and cache key with or without the header
+            self.assertEqual(sent[folder][1], sent["060_extract"][1], folder)
+            self.assertEqual(sent[folder][2], sent["060_extract"][2], folder)
+
+    def test_session_header_through_ask_sage_never(self):
+        self.step_calls("060_extract", "060_extract_2026-10-31_1200")
+        llm.SERVICE = "asksage"
+        self.assertNotIn("session_id", llm.describe())
+        self.assertNotIn("Session:", "\n".join(report.model_calls([("extracting", 0, 0)], 0, "m")))
+
+    def test_session_in_the_report_of_060(self):
+        self.step_calls("060_extract", "060_extract_2026-10-31_1200")
+        text = "\n".join(report.model_calls([("extracting", 1, 0)], 1, llm.model_label()))
+        self.assertIn("`x-litellm-session-id` `060_extract_2026-10-31_1200` (this run's id)", text)
+        self.step_calls("050_annotate", "050_annotate_2026-10-31_1200")
+        self.assertNotIn("Session:", "\n".join(report.model_calls([("drafting", 1, 0)], 1, llm.model_label())))
 
 
 class CtrlC(unittest.TestCase):

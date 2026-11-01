@@ -50,11 +50,14 @@ WHAT COUNTS AS A FACT
    about (what it measures, what it covers), not one triple per cell.
    A record that tells the study its data come from: the study's aim and
    method are facts of the record's dataset; its background, its findings,
-   and what it says about methods it did not use are not. "The authors
-   aimed to map the spread of lake algae, using a Kalman filter, and find
-   that the algae spread fastest in June" gives the record's dataset the
-   purpose "map the spread of lake algae" and produced using "Kalman
-   filter", and no triple for the finding.
+   what it says about methods it did not use, and the details of its method
+   beyond what rule 24 writes (how the method was applied, its parameters,
+   what it allows) are not. "The authors aimed to map the spread of lake
+   algae, using a Kalman filter, which allows for gaps between the
+   overpasses, and find that the algae spread fastest in June" gives the
+   record's dataset the purpose "map the spread of lake algae" and produced
+   using "Kalman filter", and no triple for what the filter allows or for
+   the finding.
 9. Not a fact without a specific thing. A triple needs a subject and an
    object the record names. "Kestrel records data at several wavelengths"
    gives no triple, since "several wavelengths" names no wavelength. A

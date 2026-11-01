@@ -130,8 +130,9 @@ MAX_ANSWER_TOKENS = 32000
 #: 32,000 tokens at about 27 tokens a second, thinking included.
 READ_TIMEOUT = 1200
 
-#: The effort level a model runs at when none is sent, where its maker documents one: Claude Opus 5.5 always thinks,
-#: and "A request that omits `effort` runs at `medium`" (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5;
+#: The effort level a model runs at when none is sent, where its maker documents one: on Claude Opus 5.5 adaptive
+#: thinking is always on (the model decides whether and how much to think, and effort is the main control of how
+#: much), and "A request that omits `effort` runs at `medium`" (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5;
 #: https://platform.claude.com/docs/en/build-with-claude/effort). For the run's record only: no effort is sent.
 DEFAULT_EFFORT = {"claude-opus-5.5": "medium", "claude-opus-5-5": "medium",
                   "claude-haiku-5.5": "medium", "claude-haiku-5-5": "medium"}
@@ -146,6 +147,15 @@ REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_t
 REASKS = {"not_json": 0, "wrong_shape": 0, "fixed": 0, "still_failed": 0}
 _requests_lock = threading.Lock()
 
+#: The session id sent with each LiteLLM request of this run, as the header SESSION_HEADER, or None (no header):
+#: set by paid_calls, only for the steps that ask for it (060, whose requests share a cached schema start). LiteLLM
+#: routes the requests of one session id to one deployment when the proxy has session affinity on
+#: (https://docs.litellm.ai/docs/routing: "The proxy reads it from the `x-litellm-session-id` header"; for "when the
+#: deployments behind a model group do not share state, for example provider-side prompt caching"), so they can read
+#: one prompt cache. It changes no word the model gets, nor the cache key (cache_identity), nor any setting sent.
+SESSION_ID = None
+SESSION_HEADER = "x-litellm-session-id"
+
 #: The model names the service said it answered with in this run (LiteLLM's reply names the exact model version;
 #: Ask Sage's doesn't), for the run's record (describe).
 SERVED = set()
@@ -156,7 +166,8 @@ def describe() -> dict:
     for, the exact model the service said answered (when it says), and the settings every call is sent with, as
     sent (call_settings)."""
     return {"service": SERVICE, "model": MODEL, "served_as": sorted(SERVED), **call_settings(),
-            "service_note": SERVICE_NOTES.get(SERVICE), "repeat": REPEAT}
+            "service_note": SERVICE_NOTES.get(SERVICE), "repeat": REPEAT,
+            **({"session_id": SESSION_ID} if SESSION_ID and SERVICE == "litellm" else {})}
 
 
 #: What a service may do to a request that the run record can't see (prompt audit F19, 2026-10-30).
@@ -212,9 +223,9 @@ def temperature_sent(model: str | None = None, service: str | None = None) -> bo
 def thinking_sent(model: str | None = None, service: str | None = None) -> str | None:
     """The `reasoning_effort` a call sends (THINKING), or None when it sends none. Sent only through LiteLLM, and only
     to the models LiteLLM documents it for: Google's Gemini 2.5 and later (https://docs.litellm.ai/docs/providers/gemini).
-    Not to Anthropic's Claude models: Claude Opus 5.5 always thinks, at the effort sent, or at its default, medium,
-    when none is sent (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5), and whether LiteLLM
-    passes an effort setting on to it isn't checked yet (py helpers/check_effort.py; docs/running_on_nasa_laptop.md,
+    Not to Anthropic's Claude models: on Claude Opus 5.5 adaptive thinking is always on, and the model decides whether
+    and how much to think, at the effort sent, or at its default, medium, when none is sent (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5), and whether LiteLLM
+    passes an effort setting on to it isn't shown yet (py helpers/check_effort.py; docs/running_on_nasa_laptop.md,
     "Checking that LiteLLM passes Claude's effort on"). Not to other models either, which might refuse a parameter they don't take. Ask Sage's query takes
     no such parameter."""
     return None if THINKING == "model_default" or not takes_thinking_cap(model, service) else THINKING
@@ -510,6 +521,8 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
     when the reply names it, goes into SERVED for the run's record."""
     url, headers = _litellm("/v1/chat/completions")
+    if SESSION_ID:
+        headers[SESSION_HEADER] = SESSION_ID                # one deployment per run, where the proxy pins sessions
     payload = {"model": model, "messages": _messages(prompt, model, cache_until), "max_tokens": max_tokens_sent("litellm")}
     if temperature_sent(model, "litellm"):
         payload["temperature"] = TEMPERATURE
@@ -1062,12 +1075,13 @@ class Calls:
     cache_dir: Path
 
 
-def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
+def paid_calls(settings: dict, output, notes: list = (), session_id: str | None = None) -> Calls:
     """The Calls of one run: uses the model the setting `model` names, through the service the setting `service`
     names, with the thinking cap the setting `thinking` gives; asks before paying (setting confirm_paid_calls),
     showing notes first; answers kept in cache/ inside the step's output folder. A setting it can't use stops the
-    step (Stop: `stopped`, a problem the person can fix)."""
-    global MODEL, SERVICE, THINKING, REPEAT
+    step (Stop: `stopped`, a problem the person can fix). session_id: sent with each LiteLLM request of the run
+    (SESSION_ID); None sends none."""
+    global MODEL, SERVICE, THINKING, REPEAT, SESSION_ID
     service = str(settings.get("service") or SERVICE).strip().lower()
     if service not in SERVICES:
         raise Stop(f"The setting service is {service!r}, which isn't a service the pipeline can reach, so no "
@@ -1087,7 +1101,7 @@ def paid_calls(settings: dict, output, notes: list = ()) -> Calls:
         raise Stop(f"The setting repeat is {repeat!r}, but it must be a whole number from 1 on (1 reuses the answers "
                    f"saved so far; 2, 3, ... ask again, each repeat into answers of its own), so no model can be "
                    f"called. Give one with --repeat <n>, then run `py {Path(output).name}/run.py` again.")
-    MODEL, SERVICE, THINKING, REPEAT = name, service, thinking, repeat
+    MODEL, SERVICE, THINKING, REPEAT, SESSION_ID = name, service, thinking, repeat, session_id
     SERVED.clear()
     for k in REQUESTS:
         REQUESTS[k] = 0
