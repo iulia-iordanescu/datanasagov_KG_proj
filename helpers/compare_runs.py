@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 070's numbers, computed as 070 does
 
+import pairing                                                                 # noqa: E402
 import stats                                                                   # noqa: E402
 from moves import EVALUATIONS_DIR                                              # noqa: E402
 from common import console  # noqa: E402
@@ -155,6 +156,23 @@ def common_records(runs: list) -> tuple:
     left[NOT_A_PREFIX] = sorted(cut, key=lambda i: position.get(i) or 0)
     kept = [r["id"] for r in runs[0]["records"] if r["id"] in everywhere and r["id"] not in changed and r["id"] not in cut]
     return kept, {k: v for k, v in left.items() if v}, notes
+
+
+def evaluation_versions_differ(runs: list) -> str | None:
+    """Why the runs can't be compared when they were evaluated under different versions of what 070 counts
+    (pairing.EVALUATION_VERSION, in the recipe's evaluation (070) / evaluation_version), else None. Why a stop and not
+    a warning: the numbers here are recomputed from each run's kept counts by today's stats.numbers, and a count a
+    later version subtracts (e.g. version 3's untranslatable occurrences) is missing from an older run's counts (read
+    as 0), so that run would be recomputed under the old formula while labelled with the new one."""
+    versions = [str(r.get("recipe", {}).get("evaluation (070)", {}).get("evaluation_version", "(not recorded)"))
+                for r in runs]
+    if len(set(versions)) == 1:
+        return None
+    named = " vs ".join(f"{v} (`{r['run_id']}`)" for v, r in zip(versions, runs))
+    return (f"These runs were evaluated under different versions of what 070 counts (evaluation_version {named}), so "
+            f"their numbers aren't comparable: a kept evaluation holds counts, and version 3 subtracts a count "
+            f"(untranslatable occurrences) that version 2 never recorded. Re-run `py 070_evaluate/run.py` on the same "
+            f"060 output to get a version-{pairing.EVALUATION_VERSION} evaluation, then compare.")
 
 
 def as_records(run: dict, ids: list) -> list:
@@ -358,6 +376,9 @@ def main() -> int:
     if twice:
         sys.exit(f"The same run is given more than once ({', '.join(twice)}), and a run compared with itself shows "
                  f"nothing (every row would be \"the same\"). Give each run once: `py helpers/compare_runs.py` lists them.")
+    problem = evaluation_versions_differ(runs)
+    if problem:
+        sys.exit(problem)
     ids, left, notes = common_records(runs)
     if not ids:
         sys.exit("No tuning record was evaluated in every one of these runs with the same ground truth, the same facts "

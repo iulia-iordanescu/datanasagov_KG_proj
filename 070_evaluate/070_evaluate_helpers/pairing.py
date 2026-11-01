@@ -82,9 +82,10 @@ LEVELS = ("exact", "partial")
 MISMATCH_WARN = 2                 # a component class mismatch seen this often is a warning: a row to look at
 #: Bump when what step 070 counts changes (what is evaluated, how rows are tidied and keyed, how pairs are chosen),
 #: so its recipe says so and py helpers/compare_runs.py shows two runs as different (its *What differs*).
-#: 2 (2026-10-31): the evaluability gate, the keys and the row tidying of the edge-case audit, and ties broken by the
-#: triples' contents, not their order; 1: before.
-EVALUATION_VERSION = 2
+#: 3 (2026-11-01): occurrences whose predicate translates to (none) leave precision's denominator and are reported as
+#: schema fit; 2 (2026-10-31): the evaluability gate, the keys and the row tidying of the edge-case audit, and ties
+#: broken by the triples' contents, not their order; 1: before.
+EVALUATION_VERSION = 3
 
 
 def _words(s) -> list:
@@ -113,6 +114,16 @@ def same_instance(a, b) -> bool:
 
 
 NO_TRANSLATION = " (current schema; translates to (none))"
+
+
+def is_untranslatable(t: dict) -> bool:
+    """Whether a translated extracted triple is an untranslatable occurrence (docs/terminology.md): its predicate
+    translates to (none) through the row that applies to it (predicate_rule: its conditional row with the most
+    conditions that hold, else its unconditional row). An entity class whose row says (none) doesn't make it one:
+    such an occurrence can still pair, and fails only strictness. An untranslatable occurrence can pair with nothing
+    (its marked predicate equals no predicate of the ground truth schema), so it is left out of precision and counted
+    in schema fit (070_evaluate/metrics/schema_fit.md)."""
+    return str(t["predicate"]).endswith(NO_TRANSLATION)
 
 
 def predicate_rule(triple: dict, translation) -> tuple:
@@ -382,7 +393,8 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     strict_reach = [_within_strict_reach(g, translation) for g in gt]
     element = collections.Counter(multiset_element(t) for t in ex)
     multiplicity = [element[multiset_element(t)] for t in ex]     # each occurrence's element's multiplicity
-    counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach),
+    untranslatable = [is_untranslatable(t) for t in ex]
+    counts = {"extracted": len(ex), "untranslatable": sum(untranslatable), "gt": len(gt), "within_reach": sum(reach),
               "within_strict_reach": sum(strict_reach),
               "occurrences_multiplicity_above_1": sum(m > 1 for m in multiplicity)}
     groups = record.get("second_opinion") or [SECOND_OPINION_GROUPS[-1]] * len(gt)
@@ -424,7 +436,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     unreviewed = sum(1 for gi, ei, lv in pairs
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
-        "translated": ex, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
+        "translated": ex, "untranslatable": untranslatable, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
         "pending": pending, "pending_pairs": pending_pairs, "pending_swapped": pending_turned,
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed, "applied": len(applied),
                            "not_applying": stale_reviews},
@@ -442,7 +454,9 @@ PER_COMPONENT_CLASS = (("predicate", "predicate"), ("subject class", "subject_cl
 def component_class_counts(record: dict, translation) -> dict:
     """One record's counts for stats.per_component_class: {"counts": {(table, component_class_key): Counter} with "occurrences",
     "occurrences_multiplicity_above_1" (of those occurrences, the ones whose element has multiplicity above 1 in the
-    record's multiset of translated extracted triples), "ground_truth_triples", "within_strict_reach" (of those ground truth triples), and per level "<level>_pairs" and
+    record's multiset of translated extracted triples), "untranslatable" (of those occurrences, the untranslatable ones:
+    is_untranslatable; each counts for its three rows, so that no row's precision pays for a predicate the ground truth
+    schema lacks), "ground_truth_triples", "within_strict_reach" (of those ground truth triples), and per level "<level>_pairs" and
     "<level>_strict_pairs", "labels": {(table, key): spelling}, "within_reach": {(table, key): whether some checked
     row of the translation table translates to it (translation.reachable), or None for a component class of the
     current schema whose row says (none)}}.
@@ -487,6 +501,8 @@ def component_class_counts(record: dict, translation) -> dict:
             add(table, t[slot], "occurrences")
             if c["multiplicity"][ei] > 1:
                 add(table, t[slot], "occurrences_multiplicity_above_1")
+            if is_untranslatable(t):
+                add(table, t[slot], "untranslatable")
         if ei in waiting:                             # out of precision's denominator, for each of its rows
             for table, slot in PER_COMPONENT_CLASS:
                 for counted in LEVELS:

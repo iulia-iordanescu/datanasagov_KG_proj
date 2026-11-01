@@ -172,6 +172,7 @@ Each metric below is also read out in sentences, with each run's own counts, in 
 | **within reach** | See [`070_evaluate/metrics/recall_upper_bound.md`](../070_evaluate/metrics/recall_upper_bound.md): within reach and **within strict reach**. |
 | **recall upper bound** | See [`070_evaluate/metrics/recall_upper_bound.md`](../070_evaluate/metrics/recall_upper_bound.md): the recall upper bound and the **strict recall upper bound**. |
 | **recall within reach** | See [`070_evaluate/metrics/recall_within_reach.md`](../070_evaluate/metrics/recall_within_reach.md). |
+| **schema fit** | See [`070_evaluate/metrics/schema_fit.md`](../070_evaluate/metrics/schema_fit.md): schema fit, the **untranslatable occurrence** it counts, and the **translatable occurrences** (the others). Decided on 2026-11-01. |
 | **describes accuracy** | See [`070_evaluate/metrics/describes.md`](../070_evaluate/metrics/describes.md): the describes accuracy, the **describes baseline**, and the **describes per-entity-class average**. |
 | **margin of error** | See [`070_evaluate/metrics/approximately.md`, *Sampling error*](../070_evaluate/metrics/approximately.md#sampling-error). |
 | **bootstrap** | How the margin of error is computed: see [`070_evaluate/metrics/approximately.md`, *Sampling error*](../070_evaluate/metrics/approximately.md#sampling-error). |

@@ -123,7 +123,8 @@ class Report(unittest.TestCase):
         self.assertIn("None: no fact of these records waits on an expert.", "\n".join(moves._waiting_lines(stats.numbers([r]), [r])))
 
     def test_formula_stated(self):
-        self.assertIn("Precision = pairs ÷ (occurrences − occurrences paired with a fact that waits on an expert)",
+        self.assertIn("Precision = pairs ÷ (occurrences − untranslatable occurrences − occurrences paired with a fact "
+                      "that waits on an expert)",
                       moves.PRECISION_FORMULA)
 
     def test_compared_rows_and_per_record(self):

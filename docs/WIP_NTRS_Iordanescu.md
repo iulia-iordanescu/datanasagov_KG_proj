@@ -131,7 +131,8 @@ For each record, each translated extracted triple is then paired with at most on
 
 Counts are summed over all evaluated records of a part before dividing (micro-averaging [17]). Each record's describes triple is compared only on its describes class.
 
-- Precision: the proportion of translated extracted triples that are in a pair.
+- Precision: the proportion of translated extracted triples that are in a pair, among those whose predicate the translation table translates into the ground truth schema and that match no fact waiting on an expert's answer. A triple whose predicate it translates to nothing is left out, as in EDC's evaluation, which excludes the triples with no counterpart in the target schema [2].
+- Schema fit: the proportion of translated extracted triples whose predicate the translation table translates into the ground truth schema, reported beside precision, as Text2KGBench reports its ontology conformance [1].
 - Recall: the proportion of ground truth triples that are in a pair.
 - F1: the harmonic mean of precision and recall.
 - Entity-class accuracy: the proportion of pairs that are strict, overall and by slot.

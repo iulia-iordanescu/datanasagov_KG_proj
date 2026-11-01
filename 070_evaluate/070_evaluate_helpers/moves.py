@@ -33,7 +33,7 @@ from common.stop import Stop
 from common.step import ANNOTATIONS_DIR, Results, git_commit, repo_path
 from common.ground_truth import HELD_OUT, PARTS, TUNING
 from common.left_out import PENDING_COLUMNS
-from common.partial_reviews import EXTRACTED_ONLY, GROUND_TRUTH_ONLY, MATCHES_WAITING, PAIR_STATUS
+from common.partial_reviews import EXTRACTED_ONLY, GROUND_TRUTH_ONLY, MATCHES_WAITING, PAIR_STATUS, UNTRANSLATABLE
 
 METRICS_NAME = "metrics.json"
 PER_RECORD_NAME = "per_record.md"
@@ -165,9 +165,24 @@ PER_COMPONENT_CLASS_NUMBERS = (("precision", "Precision"), ("recall", "Recall"),
                                ("strict_precision", "Precision"), ("strict_recall", "Recall"), ("strict_f1", "F1"),
                                ("strict_recall_within_reach", "Recall within reach"))
 NONE_WITHIN_STRICT_REACH = "no value (0 to divide by: no ground truth triple within strict reach)"
+#: A precision (record or row) whose occurrences are all untranslatable (pairing.is_untranslatable).
+ALL_UNTRANSLATABLE = "no value (0 to divide by: every occurrence is untranslatable)"
+#: The numbers whose denominator holds the occurrences, so they have no value when every occurrence is untranslatable.
+PRECISION_KEYS = ("precision", "strict_precision")
+
+
+def _precision_cell(r: dict, key: str, x) -> str:
+    """A precision of a record or a row, with the reason when it has no value because every occurrence is
+    untranslatable."""
+    if _value(x) is None and key in PRECISION_KEYS and r.get("occurrences") and r.get("untranslatable") == r["occurrences"]:
+        return ALL_UNTRANSLATABLE
+    return _with_margin(x) if isinstance(x, dict) else readings.pct(x)
 #: The column counting occurrences whose element has multiplicity above 1 in its record's multiset of translated
 #: extracted triples (070_evaluate/metrics/pairs.md, Example, *A multiset of translated extracted triples*).
 MULTIPLIED = "Occurrences with multiplicity > 1"
+#: The column of the untranslatable occurrences (pairing.is_untranslatable), in the tables per record and per component
+#: class: left out of precision, and of *Counted against it (exact)*.
+UNTRANSLATABLE_COLUMN = "Untranslatable"
 MULTIPLIED_NOTE = ("*Occurrences with multiplicity > 1*: of the row's occurrences, the ones whose element of their "
                    "record's multiset of translated extracted triples has multiplicity above 1, i.e. two or more "
                    "extracted triples of the record translate to the same translated extracted triple; at most one of "
@@ -205,15 +220,16 @@ def _per_component_class_lines(n: dict, tables: dict) -> list:
         numbers = [f"{label} ({'strict ' if key.startswith('strict') else ''}{level})"
                    for level in pairing.LEVELS for key, label in PER_COMPONENT_CLASS_NUMBERS]
         heads = ([f"{head} (ground truth schema)", "Reach", "Strict recall upper bound", "Occurrences",
-                  MULTIPLIED, "Ground truth triples", "Counted against it (exact)", "Exact pairs that count for it"]
+                  UNTRANSLATABLE_COLUMN, MULTIPLIED, "Ground truth triples", "Counted against it (exact)", "Exact pairs that count for it"]
                  + numbers[:7] + ["Pairs that count for it (partial level)"] + numbers[7:])
         lines += ["| " + " | ".join(heads) + " |", "|---|---|" + "---:|" * (len(heads) - 2)]
         empty = " |" * (len(heads) - 1)
         for r in rows[:SHOW]:
             values = [NONE_WITHIN_STRICT_REACH if key == "strict_recall_within_reach" and not r["within_strict_reach"]
+                      else _precision_cell(r, key, r[level][key]) if _value(r[level][key]) is None
                       else _with_margin(r[level][key]) for level in pairing.LEVELS for key, _ in PER_COMPONENT_CLASS_NUMBERS]
             cells = ([cell(r["component_class"]), _reach_cell(r), _with_margin(r["strict_recall_upper_bound"]),
-                      r["occurrences"], r["occurrences_multiplicity_above_1"], r["ground_truth_triples"], r["counted_against"], r["exact"]["pairs"]]
+                      r["occurrences"], r.get("untranslatable", 0), r["occurrences_multiplicity_above_1"], r["ground_truth_triples"], r["counted_against"], r["exact"]["pairs"]]
                      + values[:7] + [r["partial"]["pairs"]] + values[7:])
             lines.append("| " + " | ".join(str(x) for x in cells) + " |")
         if len(rows) > SHOW:
@@ -291,16 +307,16 @@ def _per_record_lines(rows: list) -> list:
              "its recall), most first, then by pool position. " + MULTIPLIED_NOTE + " Each record's pairs: "
              f"`{PER_RECORD_NAME}`.", ""]
     heads = (["Pool position", f"Record id (first {ID_SHOWN} characters)", f"Title (first {TITLE_SHOWN} characters)",
-              "Occurrences", MULTIPLIED, "Ground truth triples", "Counted against it (exact)", "Recall upper bound",
+              "Occurrences", UNTRANSLATABLE_COLUMN, MULTIPLIED, "Ground truth triples", "Counted against it (exact)", "Recall upper bound",
               "Strict recall upper bound"]
              + [label.format(level) for level in pairing.LEVELS for _, label in PER_RECORD_COLUMNS])
     lines += ["| " + " | ".join(heads) + " |", "|---:|---|---|" + "---:|" * (len(heads) - 3)]
     empty = " |" * (len(heads) - 1)
     for r in rows[:SHOW]:
         cells = ([r["position"], f"`{r['id'][:ID_SHOWN]}`", cell(_short(r["title"] or "", TITLE_SHOWN)),
-                  r["occurrences"], r["occurrences_multiplicity_above_1"], r["ground_truth_triples"],
+                  r["occurrences"], r.get("untranslatable", 0), r["occurrences_multiplicity_above_1"], r["ground_truth_triples"],
                   r["counted_against"], _no_value(r["recall_upper_bound"]), _no_value(r["strict_recall_upper_bound"])]
-                 + [r[level][key] if key.endswith("pairs") else _no_value(r[level][key])
+                 + [r[level][key] if key.endswith("pairs") else _precision_cell(r, key, r[level][key])
                     for level in pairing.LEVELS for key, _ in PER_RECORD_COLUMNS])
         lines.append("| " + " | ".join(str(x) for x in cells) + " |")
     if len(rows) > SHOW:
@@ -313,7 +329,8 @@ def _per_record_lines(rows: list) -> list:
 
 def _record_block(r: dict) -> list:
     """A record's own numbers (stats.per_record), at the top of its section of per_record.md."""
-    lines = [f"Occurrences {r['occurrences']} (with multiplicity > 1: {r['occurrences_multiplicity_above_1']}) · "
+    lines = [f"Occurrences {r['occurrences']} (with multiplicity > 1: {r['occurrences_multiplicity_above_1']}; "
+             f"untranslatable: {r.get('untranslatable', 0)}) · "
              f"ground truth triples {r['ground_truth_triples']} · counted against it "
              f"(exact) {r['counted_against']} · recall upper bound {_no_value(r['recall_upper_bound'])} · strict "
              f"recall upper bound {_no_value(r['strict_recall_upper_bound'])}", "",
@@ -321,8 +338,8 @@ def _record_block(r: dict) -> list:
     for label, key, strict_key in (("Pairs", "pairs", "strict_pairs"), ("Precision", "precision", "strict_precision"),
                                    ("Recall", "recall", "strict_recall"), ("F1", "f1", "strict_f1"),
                                    ("Recall within reach", "recall_within_reach", "strict_recall_within_reach")):
-        show = (lambda x: x) if key == "pairs" else _no_value
-        lines.append(f"| {label} | " + " | ".join(str(show(r[level][k])) for k in (key, strict_key)
+        show = (lambda k, x: x) if key == "pairs" else (lambda k, x: _precision_cell(r, k, x))
+        lines.append(f"| {label} | " + " | ".join(str(show(k, r[level][k])) for k in (key, strict_key)
                                                   for level in pairing.LEVELS) + " |")
     return lines + ["", f"Reading: {readings.record_reading(r)}", ""]
 
@@ -377,6 +394,11 @@ def _multiplied(r: dict, ei: int) -> str:
             + "; ".join(_triple(f) for f in same))
 
 
+def _value(m):
+    """A number's point value, whether it carries its margin ({"value", ...}) or not."""
+    return m.get("value") if isinstance(m, dict) else m
+
+
 def _fingerprint(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
@@ -425,6 +447,10 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
                                  "facts_waiting_on_an_expert": {"excluded_from_precision": True,
                                                                 "pending_triples": len(pending),
                                                                 "sha256": _fingerprint(pending)},
+                                 # an occurrence whose predicate translates to (none) is left out of precision
+                                 "untranslatable_occurrences": {
+                                     "excluded_from_precision": True,
+                                     "to_none_predicates_sha256": _fingerprint(sorted(translation.to_none.get("predicate", [])))},
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
 
 
@@ -546,7 +572,13 @@ def _per_record(records: list, hidden: int) -> str:
                 lines += [f"- {'✓ exact' if level == 'exact' else '≈ partial'}: {_triple(ex[ei])}{_multiplied(r, ei)}",
                           f"  - waits on an expert ({f['question']}): {_triple(f)}"]
             lines.append("")
-        extra = [i for i in range(len(ex)) if i not in paired_e and i not in waiting]
+        unt = c.get("untranslatable") or [False] * len(ex)
+        extra = [i for i in range(len(ex)) if i not in paired_e and i not in waiting and not unt[i]]
+        untranslatable = [i for i in range(len(ex)) if unt[i]]
+        if untranslatable:
+            lines += ["**Untranslatable** (occurrences whose predicate translates to (none); left out of precision, "
+                      "counted in schema fit)", ""]
+            lines += [f"- ○ {_triple(ex[i])}{_multiplied(r, i)}" for i in untranslatable] + [""]
         if extra:
             lines += ["**Extracted only** (occurrences without a partner; against precision)", ""]
             lines += [f"- ✗ {_triple(ex[i])}{_multiplied(r, i)}" for i in extra] + [""]
@@ -555,7 +587,7 @@ def _per_record(records: list, hidden: int) -> str:
             lines += ["**Ground truth only** (ground truth triples without a partner; against recall)", ""]
             lines += [f"- ✗ {_triple(f)}" + ("" if reach else " — out of reach: no predicate of the current schema translates to this one")
                       for f, reach in missed] + [""]
-        if not (c["pairs"] or extra or missed):
+        if not (c["pairs"] or extra or missed or untranslatable):
             lines += ["No ground truth triples, and no occurrences.", ""]
     return "\n".join(lines)
 
@@ -593,17 +625,20 @@ def _compared_rows(records: list) -> list:
                          "waiting_level": level, "waiting_left_out": f["left_out"], "waiting_question": f["question"],
                          "subject_and_object_swapped": "yes" if (pi, ei) in c.get("pending_swapped", ()) else "no"})
             paired_e.add(ei)
-        rows += [row(EXTRACTED_ONLY, ei=i) for i in range(len(ex)) if i not in paired_e]
+        unt = c.get("untranslatable") or [False] * len(ex)
+        rows += [row(UNTRANSLATABLE if unt[i] else EXTRACTED_ONLY, ei=i) for i in range(len(ex)) if i not in paired_e]
         rows += [row(GROUND_TRUTH_ONLY, gi=i) for i in range(len(gt)) if i not in paired_g]
     return rows
 
 
 #: The formulas the report states above its table of precision, recall and F1 (070_evaluate/metrics/precision.md).
-PRECISION_FORMULA = ("Precision = pairs ÷ (occurrences − occurrences paired with a fact that waits on an expert), at "
-                     "each pair level; recall = pairs ÷ ground truth triples; F1 = 2 × pairs ÷ (those occurrences + "
-                     "ground truth triples). The facts that wait on an expert (`annotations/pending_triples.csv`) "
-                     "are not ground truth triples, so recall doesn't count them "
-                     "(`070_evaluate/metrics/precision.md`).")
+PRECISION_FORMULA = ("Precision = pairs ÷ (occurrences − untranslatable occurrences − occurrences paired with a fact "
+                     "that waits on an expert), at each pair level; recall = pairs ÷ ground truth triples; F1 = 2 × "
+                     "pairs ÷ (those occurrences + ground truth triples); schema fit = (occurrences − untranslatable "
+                     "occurrences) ÷ occurrences. An untranslatable occurrence's predicate translates to (none), so "
+                     "the ground truth schema can't say it (`070_evaluate/metrics/schema_fit.md`). The facts that wait "
+                     "on an expert (`annotations/pending_triples.csv`) are not ground truth triples, so recall doesn't "
+                     "count them (`070_evaluate/metrics/precision.md`).")
 
 
 def _waiting_lines(n: dict, recs: list) -> list:
@@ -896,8 +931,11 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                               [len(r["compared"]["translated"]) for r in part_records])])
         lines += ["", "One text is one evaluated record's text; describes triples aren't counted.", ""]
         lines += [PRECISION_FORMULA + " Here: "
+                  f"{n.get('untranslatable', 0)} untranslatable occurrence(s) (schema fit "
+                  f"{readings.pct(_value(n.get('schema_fit')))}), and "
                   f"{n['exact']['pending_pairs']} occurrence(s) at the exact level and {n['partial']['pending_pairs']} "
-                  f"at the partial level are left out of precision (section *{WAITING_SECTION}*).", ""]
+                  f"at the partial level matching a fact that waits on an expert (section *{WAITING_SECTION}*), are "
+                  f"left out of precision.", ""]
         lines += ["| Pair level | | Precision | Recall | F1 |", "|---|---|---:|---:|---:|"]
         for level in pairing.LEVELS:
             L = n[level]

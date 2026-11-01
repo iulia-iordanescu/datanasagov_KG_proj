@@ -1229,6 +1229,109 @@ class QuantitiesPair(unittest.TestCase):
 
 
 
+class Untranslatable(unittest.TestCase):
+    """An untranslatable occurrence (docs/terminology.md; 070_evaluate/metrics/schema_fit.md): its predicate translates
+    to (none) through the row that applies to it. It leaves precision's denominator (and F1's), counts in schema fit,
+    and can pair with nothing; an entity class translating to (none) doesn't make an occurrence untranslatable."""
+
+    def t(self):
+        # GADGET_OF (current schema) translates to (none); Gadget (current schema) translates to (none); SOURCED_FROM
+        # translates to (none) unless its object is a Mission, then to SPONSORED_BY_PARTY (a conditional row)
+        t = translation(extra_entity={"Gadget": None}, extra_predicates={"GADGET_OF": (None, False),
+                                                                         "SOURCED_FROM": (None, False)})
+        t.conditional = {component_class_key("SOURCED_FROM"): [(None, component_class_key("Mission"),
+                                                                "SPONSORED_BY_PARTY", False)]}
+        return t
+
+    def test_which_are_untranslatable(self):
+        t = self.t()
+        cases = [(triple("X", "Dataset", "GADGET_OF", "Y", "Dataset"), True),          # its predicate's row: (none)
+                 (triple("MODIS", "Gadget", "ABOARD", "Aqua", "Spacecraft"), False),   # near miss: an entity class only
+                 (triple("D", "Dataset", "SOURCED_FROM", "Rosetta", "Mission"), False),  # the conditional row applies
+                 (triple("D", "Dataset", "SOURCED_FROM", "X", "Dataset"), True),       # near miss: falls back to (none)
+                 (triple("D", "Dataset", "NEVER_IN_THE_TABLE", "X", "Dataset"), True)]  # no row at all: (none) too
+        for f, expected in cases:
+            with self.subTest(predicate=f["predicate"], object_class=f["object_class"]):
+                self.assertEqual(pairing.is_untranslatable(pairing.translate(f, t)), expected)
+
+    def test_never_paired_nor_waiting(self):
+        """U ∩ pairs = U ∩ W = ∅: an untranslatable occurrence with the very words of a ground truth triple and of a
+        fact that waits on an expert pairs with neither."""
+        gt = [triple("MODIS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft")]
+        ex = [triple("MODIS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft"),
+              triple("AIRS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft")]
+        r = record(gt, ex)
+        r["pending"] = [dict(triple("AIRS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft"), question="Q1",
+                             left_out="x")]
+        c = pairing.compare_record(r, self.t())["compared"]
+        self.assertEqual(c["untranslatable"], [True, True])
+        self.assertEqual((c["pairs"], c["pending_pairs"]), ([], []))
+        self.assertEqual(c["counts"]["untranslatable"], 2)
+
+    def test_numbers(self):
+        """3 occurrences, 1 untranslatable, 2 ground truth triples, 1 exact pair: exact precision 1 ÷ (3 − 1), F1
+        2 × 1 ÷ ((3 − 1) + 2), schema fit (3 − 1) ÷ 3; recall unchanged."""
+        gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("AIRS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        ex = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("CERES", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("NASA", "Agency", "GADGET_OF", "Aqua", "Spacecraft")]
+        n = stats.numbers([pairing.compare_record(record(gt, ex), self.t())])
+        self.assertEqual((n["untranslatable"], n["translatable"], n["schema_fit"]), (1, 2, 2 / 3))
+        self.assertEqual((n["exact"]["counted_occurrences"], n["exact"]["precision"], n["exact"]["recall"],
+                          n["exact"]["f1"]), (2, 1 / 2, 1 / 2, 2 / 4))
+
+    def test_edge_cases(self):
+        """Every occurrence untranslatable: no precision, F1 0 (2 × 0 ÷ (0 + G)), schema fit 0%; no occurrences at
+        all: no precision, no schema fit."""
+        gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        n = stats.numbers([pairing.compare_record(record(gt, [triple("MODIS", "Instrument", "GADGET_OF", "Aqua",
+                                                                      "Spacecraft")]), self.t())])
+        self.assertEqual((n["exact"]["precision"], n["exact"]["f1"], n["schema_fit"]), (None, 0.0, 0.0))
+        n = stats.numbers([pairing.compare_record(record(gt, []), self.t())])
+        self.assertEqual((n["exact"]["precision"], n["schema_fit"]), (None, None))
+
+    def test_rows_per_component_class(self):
+        """The occurrence counts as untranslatable for its predicate's row and for its two entity classes' rows, which
+        leave it out of their precision."""
+        gt = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft")]
+        ex = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),
+              triple("MODIS", "Instrument", "GADGET_OF", "Terra", "Spacecraft")]
+        tables = stats.per_component_class([pairing.compare_record(record(gt, ex), self.t())])
+        instrument = next(r for r in tables["subject class"] if r["component_class"] == "Instrument")
+        self.assertEqual((instrument["occurrences"], instrument["untranslatable"], instrument["counted_against"],
+                          instrument["exact"]["precision"]["value"]), (2, 1, 0, 1.0))
+        gadget = next(r for r in tables["predicate"] if r["component_class"].startswith("GADGET_OF"))
+        self.assertEqual((gadget["untranslatable"], gadget["exact"]["precision"]["value"]), (1, None))
+
+    def test_status_in_compared_triples(self):
+        import moves
+        from common.partial_reviews import EXTRACTED_ONLY, UNTRANSLATABLE
+        ex = [triple("MODIS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft"),
+              triple("AIRS", "Instrument", "ABOARD", "Terra", "Spacecraft")]
+        r = {**pairing.compare_record(record([], ex), self.t()), "position": 0}
+        for i, f in enumerate(r["extracted"]):
+            f["_position"] = i
+        self.assertEqual([x["status"] for x in moves._compared_rows([r])], [UNTRANSLATABLE, EXTRACTED_ONLY])
+
+
+class EvaluationVersions(unittest.TestCase):
+    """py helpers/compare_runs.py stops on runs evaluated under different versions of what 070 counts: their kept
+    counts would be recomputed by today's formulas, an older run lacking a count a later version subtracts."""
+
+    def test_stop(self):
+        import importlib.util
+        from support import ROOT
+        spec = importlib.util.spec_from_file_location("compare_runs", ROOT / "helpers" / "compare_runs.py")
+        cr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cr)
+        run = lambda rid, v: {"run_id": rid, "recipe": {"evaluation (070)": {"evaluation_version": v}}}  # noqa: E731
+        self.assertIsNone(cr.evaluation_versions_differ([run("A", 3), run("B", 3)]))
+        self.assertIn("evaluation_version 2 (`A`) vs 3 (`B`)", cr.evaluation_versions_differ([run("A", 2), run("B", 3)]))
+        self.assertIn("(not recorded) (`B`)", cr.evaluation_versions_differ([run("A", 3), {"run_id": "B"}]))
+        self.assertEqual(pairing.EVALUATION_VERSION, 3)
+
+
 class HeldOutSources(unittest.TestCase):
     """070 notes an entry of the ground truth schema whose source line names a held-out record: the ground truth
     schema is frozen for held-out records (annotations/guidelines.md, Before you start)."""

@@ -24,7 +24,7 @@ EXTRACTED = [triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"),     
              triple("AIRS", "Dataset", "ABOARD", "Aqua", "Spacecraft"),              # e1: exact pair with g1, subject class wrong
              triple("MODIS", "Instrument", "ABOARD", "Terra", "Spacecraft"),         # e2: extracted only
              triple("Snow Cover", "Dataset", "ACQUIRED_BY_INSTRUMENT", "MODIS", "Instrument"),   # e3: partial pair with g2
-             triple("MODIS Snow Cover", "Dataset", "USES_GADGET", "G1", "Gadget")]   # e4: extracted only, (none) rows
+             triple("MODIS Snow Cover", "Dataset", "USES_GADGET", "G1", "Gadget")]   # e4: untranslatable (its predicate's row says (none))
 NONE = pairing.NO_TRANSLATION
 
 
@@ -98,7 +98,7 @@ class PerComponentClass(unittest.TestCase):
         self.assertEqual(got, {
             "ACQUIRED_BY_INSTRUMENT": (1, 1, 2, 0, 1, 0.0, 0.0, 1.0, 1.0),
             "ABOARD": (3, 2, 1, 2, 2, 2 / 3, 1.0, 2 / 3, 1.0),
-            f"USES_GADGET{NONE}": (1, 0, 1, 0, 0, 0.0, None, 0.0, None)})
+            f"USES_GADGET{NONE}": (1, 0, 0, 0, 0, None, None, None, None)})   # e4 untranslatable: out of precision
         self.assertEqual(list(got), ["ACQUIRED_BY_INSTRUMENT", "ABOARD", f"USES_GADGET{NONE}"])  # most counted against first
 
     def test_per_subject_class(self):
@@ -106,7 +106,7 @@ class PerComponentClass(unittest.TestCase):
         # ground truth has it), though e1 and g1 are a pair
         got = rows(self.tables, "subject class")
         self.assertEqual(got, {
-            "Dataset": (3, 1, 4, 0, 1, 0.0, 0.0, 1 / 3, 1.0),
+            "Dataset": (3, 1, 3, 0, 1, 0.0, 0.0, 1 / 2, 1.0),             # e4 is untranslatable: 2 counted
             "Instrument": (2, 2, 2, 1, 1, 0.5, 0.5, 0.5, 0.5)})
         self.assertEqual(list(got), ["Dataset", "Instrument"])
 
@@ -114,9 +114,9 @@ class PerComponentClass(unittest.TestCase):
         got = rows(self.tables, "object class")
         self.assertEqual(got, {
             "Instrument": (1, 1, 2, 0, 1, 0.0, 0.0, 1.0, 1.0),
-            f"Gadget{NONE}": (1, 0, 1, 0, 0, 0.0, None, 0.0, None),
-            "Spacecraft": (3, 2, 1, 2, 2, 2 / 3, 1.0, 2 / 3, 1.0)})
-        self.assertEqual(list(got), ["Instrument", f"Gadget{NONE}", "Spacecraft"])
+            "Spacecraft": (3, 2, 1, 2, 2, 2 / 3, 1.0, 2 / 3, 1.0),
+            f"Gadget{NONE}": (1, 0, 0, 0, 0, None, None, None, None)})
+        self.assertEqual(list(got), ["Instrument", "Spacecraft", f"Gadget{NONE}"])
 
     def test_strict_f1_and_reach(self):
         """Every component class here is within reach and every ground truth triple within strict reach. Strict:
@@ -125,13 +125,13 @@ class PerComponentClass(unittest.TestCase):
         self.assertEqual(strict_rows(self.tables, "predicate"), {
             "ACQUIRED_BY_INSTRUMENT": (True, 1, 1.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1.0, 1.0, 1.0, 1.0, 1.0),
             "ABOARD": (True, 2, 1.0, 1, 0.8, 1 / 3, 0.5, 0.4, 0.5, 1, 0.8, 1 / 3, 0.5, 0.4, 0.5),
-            f"USES_GADGET{NONE}": (None, 0, None, 0, 0.0, 0.0, None, 0.0, None, 0, 0.0, 0.0, None, 0.0, None)})
+            f"USES_GADGET{NONE}": (None, 0, None, 0, None, None, None, None, None, 0, None, None, None, None, None)})
         self.assertEqual(strict_rows(self.tables, "subject class"), {
-            "Dataset": (True, 1, 1.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 0.5, 1 / 3, 1.0, 0.5, 1.0),
+            "Dataset": (True, 1, 1.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 2 / 3, 1 / 2, 1.0, 2 / 3, 1.0),
             "Instrument": (True, 2, 1.0, 1, 0.5, 0.5, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 0.5, 0.5)})
         self.assertEqual(strict_rows(self.tables, "object class"), {
             "Instrument": (True, 1, 1.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1.0, 1.0, 1.0, 1.0, 1.0),
-            f"Gadget{NONE}": (None, 0, None, 0, 0.0, 0.0, None, 0.0, None, 0, 0.0, 0.0, None, 0.0, None),
+            f"Gadget{NONE}": (None, 0, None, 0, None, None, None, None, None, 0, None, None, None, None, None),
             "Spacecraft": (True, 2, 1.0, 1, 0.8, 1 / 3, 0.5, 0.4, 0.5, 1, 0.8, 1 / 3, 0.5, 0.4, 0.5)})
 
     def test_out_of_reach(self):
@@ -151,7 +151,7 @@ class PerComponentClass(unittest.TestCase):
             "object class": {"Instrument": (True, 0, 1, 0.0, None), "Spacecraft": (True, 2, 2, 1.0, 0.5)}})
         text = "\n".join(moves._per_component_class_lines({"records": 1, "margins": False}, tables))
         self.assertIn("| ACQUIRED_BY_INSTRUMENT | out of reach; 0 of 1 ground truth triple within strict reach | 0% | 0 "
-                      "| 0 | 1 | 1 | 0 | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by: no ground truth triple within strict reach) "
+                      "| 0 | 0 | 1 | 1 | 0 | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by: no ground truth triple within strict reach) "
                       "| 0 |", text)
         self.assertIn("| Instrument | within reach; 0 of 1 ground truth triple within strict reach | 0% |", text)
 
@@ -196,20 +196,22 @@ class PerComponentClass(unittest.TestCase):
         n = {"records": 1, "margins": False}
         text = "\n".join(moves._per_component_class_lines(n, self.tables))
         self.assertIn("**Too few records (1, fewer than 20) for a margin of error", text)
-        self.assertIn("| Predicate (ground truth schema) | Reach | Strict recall upper bound | Occurrences | Occurrences with "
+        self.assertIn("| Predicate (ground truth schema) | Reach | Strict recall upper bound | Occurrences | Untranslatable | Occurrences with "
                       "multiplicity > 1 | Ground truth "
                       "triples | Counted against it (exact) | Exact pairs that count for it | Precision (exact) | Recall "
                       "(exact) | F1 (exact) | Precision (strict exact) | Recall (strict exact) | F1 (strict exact) | "
                       "Recall within reach (strict exact) | Pairs that count for it (partial level) | Precision (partial) "
                       "| Recall (partial) | F1 (partial) | Precision (strict partial) | Recall (strict partial) | F1 "
                       "(strict partial) | Recall within reach (strict partial) |", text)
-        self.assertIn("| ABOARD | within reach; 2 of 2 ground truth triples within strict reach | 100% | 3 | 0 | 2 | 1 | 2 | "
+        self.assertIn("| ABOARD | within reach; 2 of 2 ground truth triples within strict reach | 100% | 3 | 0 | 0 | 2 | 1 | 2 | "
                       "67% | 100% | 80% | 33% | 50% | 40% | 50% | 2 | 67% | 100% | 80% | 33% | 50% | 40% | 50% |", text)
-        self.assertIn("| Dataset | within reach; 1 of 1 ground truth triple within strict reach | 100% | 3 | 0 | 1 | 4 | 0 | "
-                      "0% | 0% | 0% | 0% | 0% | 0% | 0% | 1 | 33% | 100% | 50% | 33% | 100% | 50% | 100% |", text)
-        self.assertIn(f"| Gadget{NONE} | none: translates to (none), so not in the ground truth schema | no value (0 to divide by) | 1 | 0 | 0 | 1 | 0 | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | "
-                      f"0% | {moves.NONE_WITHIN_STRICT_REACH} | 0 | 0% | no value (0 to divide by) | 0% | 0% | no value (0 to divide by) | 0% | "
-                      f"{moves.NONE_WITHIN_STRICT_REACH} |", text)
+        # e4 is untranslatable: out of Dataset's precision (2 counted, not 3) and of its count against it
+        self.assertIn("| Dataset | within reach; 1 of 1 ground truth triple within strict reach | 100% | 3 | 1 | 0 | 1 | 3 | 0 | "
+                      "0% | 0% | 0% | 0% | 0% | 0% | 0% | 1 | 50% | 100% | 67% | 50% | 100% | 67% | 100% |", text)
+        none, all_out = "no value (0 to divide by)", moves.ALL_UNTRANSLATABLE
+        self.assertIn(f"| Gadget{NONE} | none: translates to (none), so not in the ground truth schema | {none} | 1 | 1 | 0 | 0 | 0 | 0 | "
+                      f"{all_out} | {none} | {none} | {all_out} | {none} | {none} | {moves.NONE_WITHIN_STRICT_REACH} | 0 | "
+                      f"{all_out} | {none} | {none} | {all_out} | {none} | {none} | {moves.NONE_WITHIN_STRICT_REACH} |", text)
         n["margins"] = True
         self.assertIn("about 1 in 20 of their margins of error misses the true value by chance (each is a 95% range)", "\n".join(moves._per_component_class_lines(n, self.tables)))
 
@@ -226,14 +228,15 @@ class PerRecord(unittest.TestCase):
         (row,) = stats.per_record([self.r])
         self.assertEqual((row["id"], row["position"], row["occurrences"], row["ground_truth_triples"],
                           row["counted_against"], row["recall_upper_bound"], row["strict_recall_upper_bound"]),
-                         ("r1", 3, 5, 3, 4, 1.0, 1.0))                        # 5 + 3 - 2 x 2 exact pairs
-        self.assertEqual(row["exact"], {"pairs": 2, "strict_pairs": 1, "precision": 2 / 5, "recall": 2 / 3,
-                                        "f1": 4 / 8, "strict_precision": 1 / 5, "strict_recall": 1 / 3,
-                                        "strict_f1": 2 / 8, "recall_within_reach": 2 / 3,
+                         ("r1", 3, 5, 3, 3, 1.0, 1.0))           # 5 - 1 untranslatable + 3 - 2 x 2 exact pairs
+        self.assertEqual(row["untranslatable"], 1)                                # e4
+        self.assertEqual(row["exact"], {"pairs": 2, "strict_pairs": 1, "precision": 2 / 4, "recall": 2 / 3,
+                                        "f1": 4 / 7, "strict_precision": 1 / 4, "strict_recall": 1 / 3,
+                                        "strict_f1": 2 / 7, "recall_within_reach": 2 / 3,
                                         "strict_recall_within_reach": 1 / 3})
-        self.assertEqual(row["partial"], {"pairs": 3, "strict_pairs": 2, "precision": 3 / 5, "recall": 1.0,
-                                          "f1": 6 / 8, "strict_precision": 2 / 5, "strict_recall": 2 / 3,
-                                          "strict_f1": 4 / 8, "recall_within_reach": 1.0,
+        self.assertEqual(row["partial"], {"pairs": 3, "strict_pairs": 2, "precision": 3 / 4, "recall": 1.0,
+                                          "f1": 6 / 7, "strict_precision": 2 / 4, "strict_recall": 2 / 3,
+                                          "strict_f1": 4 / 7, "recall_within_reach": 1.0,
                                           "strict_recall_within_reach": 2 / 3})
 
     def test_worst_first_then_pool_position(self):
@@ -241,7 +244,7 @@ class PerRecord(unittest.TestCase):
         recs = [dict(compared(perfect, perfect, rid="good"), position=0, title=""),
                 dict(compared(rid="late"), position=9, title=""), dict(compared(rid="early"), position=5, title="")]
         self.assertEqual([(x["id"], x["counted_against"]) for x in stats.per_record(recs)],
-                         [("early", 4), ("late", 4), ("good", 0)])
+                         [("early", 3), ("late", 3), ("good", 0)])
 
     def test_no_value(self):
         """A record with no occurrences: no precision; with no ground truth triples: no recall, no upper bound."""
@@ -251,7 +254,7 @@ class PerRecord(unittest.TestCase):
         self.assertEqual((row["exact"]["precision"], row["exact"]["recall"], row["recall_upper_bound"],
                           row["exact"]["recall_within_reach"]), (0.0, None, None, None))
         text = "\n".join(moves._per_record_lines([row]))
-        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 0 | 1 | no value (0 to divide by) | no value (0 to divide by) | 0 | 0 | 0% | no value (0 to divide by) | 0% |", text)
+        self.assertIn("| 0 | `no truth` |  | 1 | 0 | 0 | 0 | 1 | no value (0 to divide by) | no value (0 to divide by) | 0 | 0 | 0% | no value (0 to divide by) | 0% |", text)
 
     def test_report_table(self):
         text = "\n".join(moves._per_record_lines(stats.per_record([self.r])))
@@ -259,27 +262,27 @@ class PerRecord(unittest.TestCase):
         self.assertIn("No margin of error: it needs at least 20 records (`070_evaluate/metrics/approximately.md`), and "
                       "each row is one record. *no value (0 to divide by)*: e.g. precision of a record with no occurrences", text)
         self.assertIn("| Pool position | Record id (first 8 characters) | Title (first 50 characters) | Occurrences | "
-                      "Occurrences with multiplicity > 1 | Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
+                      "Untranslatable | Occurrences with multiplicity > 1 | Ground truth triples | Counted against it (exact) | Recall upper bound | Strict recall upper "
                       "bound | Pairs (exact) | Strict pairs (exact) | Precision (exact) | Recall (exact) | F1 (exact) | "
                       "Precision (strict exact) | Recall (strict exact) | F1 (strict exact) | Recall within reach "
                       "(exact) | Recall within reach (strict exact) | Pairs (partial) | Strict pairs (partial) | "
                       "Precision (partial) | Recall (partial) | F1 (partial) | Precision (strict partial) | Recall "
                       "(strict partial) | F1 (strict partial) | Recall within reach (partial) | Recall within reach "
                       "(strict partial) |", text)
-        self.assertIn("| 3 | `r1` | MODIS and AIRS aboard Aqua: a title longer than fi\u2026 | 5 | 0 | 3 | 4 | 100% | 100% | "
-                      "2 | 1 | 40% | 67% | 50% | 20% | 33% | 25% | 67% | 33% | "
-                      "3 | 2 | 60% | 100% | 75% | 40% | 67% | 50% | 100% | 67% |", text)
+        self.assertIn("| 3 | `r1` | MODIS and AIRS aboard Aqua: a title longer than fi\u2026 | 5 | 1 | 0 | 3 | 3 | 100% | 100% | "
+                      "2 | 1 | 50% | 67% | 57% | 25% | 33% | 29% | 67% | 33% | "
+                      "3 | 2 | 75% | 100% | 86% | 50% | 67% | 57% | 100% | 67% |", text)
         many = stats.per_record([dict(compared(rid=f"r{i}"), position=i, title="") for i in range(moves.SHOW + 2)])
         self.assertIn("| \u2026 2 more, in `metrics.json` and `per_record.md` |", "\n".join(moves._per_record_lines(many)))
-        self.assertEqual(moves._per_record_lines([])[-2], "| none |" + " |" * 28)
+        self.assertEqual(moves._per_record_lines([])[-2], "| none |" + " |" * 29)
 
     def test_block_in_per_record_md(self):
         text = moves._per_record([self.r], 0)
-        block = ("Occurrences 5 (with multiplicity > 1: 0) \u00b7 ground truth triples 3 \u00b7 counted against it (exact) 4 \u00b7 recall "
+        block = ("Occurrences 5 (with multiplicity > 1: 0; untranslatable: 1) \u00b7 ground truth triples 3 \u00b7 counted against it (exact) 3 \u00b7 recall "
                  "upper bound 100% \u00b7 strict recall upper bound 100%\n\n"
                  "| | exact | partial | strict exact | strict partial |\n|---|---:|---:|---:|---:|\n"
-                 "| Pairs | 2 | 3 | 1 | 2 |\n| Precision | 40% | 60% | 20% | 40% |\n| Recall | 67% | 100% | 33% | 67% |\n"
-                 "| F1 | 50% | 75% | 25% | 50% |\n| Recall within reach | 67% | 100% | 33% | 67% |\n")
+                 "| Pairs | 2 | 3 | 1 | 2 |\n| Precision | 50% | 75% | 25% | 50% |\n| Recall | 67% | 100% | 33% | 67% |\n"
+                 "| F1 | 57% | 86% | 29% | 57% |\n| Recall within reach | 67% | 100% | 33% | 67% |\n")
         self.assertIn(block, text)
         self.assertLess(text.index(block), text.index("**Pairs**"))           # above the record's pairs
 
@@ -310,7 +313,7 @@ class Multiplicity(unittest.TestCase):
         self.assertIn("- \u2713 exact: MODIS (Instrument) ABOARD Aqua (Spacecraft)" + mark + "\n", text)
         self.assertIn("- \u2717 the MODIS (Instrument) ABOARD Aqua (Spacecraft)" + mark + "\n", text)
         self.assertIn("- \u2717 MODIS (Instrument) ABOARD Terra (Spacecraft)\n", text)     # multiplicity 1: no mark
-        self.assertIn("Occurrences 3 (with multiplicity > 1: 2)", text)
+        self.assertIn("Occurrences 3 (with multiplicity > 1: 2; untranslatable: 0)", text)
 
 
 class RowReadings(unittest.TestCase):
@@ -388,7 +391,7 @@ class RowReadings(unittest.TestCase):
                          "(`070_evaluate/metrics/pairs.md`, *When a pair isn't the same fact*)." + self.END)
         self.assertEqual(self.reading("object class", f"Gadget{NONE}"),
                          f"Gadget{NONE}: its row of {self.TABLE} says (none), so its 1 occurrence can't be in a pair "
-                         f"(precision 0%): either {self.SCHEMA} has an object class the ground truth schema lacks, or "
+                         f"(1 of them untranslatable, left out of its precision: precision has no value): either {self.SCHEMA} has an object class the ground truth schema lacks, or "
                          f"that row should name one of the ground truth schema's." + self.END)
         self.assertEqual(readings.component_class_reading(self.row(1, 2, 2, 1, 1, 1), "predicate"),
                          "ABOARD (predicate, ground truth schema): 1 occurrence and 2 ground truth triples (2 within "
@@ -456,12 +459,13 @@ class RowReadings(unittest.TestCase):
         (row,) = stats.per_record([self.r])
         self.assertEqual(readings.record_reading(row),
                          "Record r1 (pool position 3): 5 occurrences and 3 ground truth triples (3 within reach, 3 "
-                         "within strict reach); 2 exact pairs, 1 of them strict; exact recall 67%, exact precision 40%. "
+                         "within strict reach); 2 exact pairs, 1 of them strict; exact recall 67%, exact precision 50% "
+                         "(1 untranslatable occurrence, left out of its precision: section *Schema fit* of the report). "
                          "In 1 exact pair, the two triples differ in subject class or object class: every ground truth "
                          "triple of the record is within strict reach, so either step 060's extraction gave a wrong "
-                         "entity class, or a row of the translation table translates one to the wrong one. 3 of its "
+                         "entity class, or a row of the translation table translates one to the wrong one. 2 of its "
                          "occurrences have no exact pair, but only 1 of its ground truth triples within reach lacks one, "
-                         "so at least 2 of its occurrences state no fact among those ground truth triples: step 060's "
+                         "so at least 1 of its occurrences state no fact among those ground truth triples: step 060's "
                          "extraction stated facts the ground truth doesn't have (wrong, or right but not annotated), "
                          "stated with a predicate within reach a fact the ground truth has with one out of reach, "
                          "restated a fact already in an exact pair, or repeated an occurrence (multiplicity > 1), among "

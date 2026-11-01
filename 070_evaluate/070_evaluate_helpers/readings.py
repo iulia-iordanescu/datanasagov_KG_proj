@@ -106,26 +106,39 @@ def where_from(part: str, recs: list, evaluated, translation, looks) -> list:
     return out
 
 
+def untranslatable_predicates(recs: list) -> list:
+    """[(predicate of the current schema, its untranslatable occurrences)] over records, most occurrences first."""
+    found = collections.Counter(t["crt"]["predicate"] for r in recs for t, u in
+                                zip(r["compared"]["translated"], r["compared"].get("untranslatable", ())) if u)
+    return sorted(found.items(), key=lambda kv: (-kv[1], component_class_key(kv[0])))
+
+
 def readings(part: str, n: dict, recs: list, evaluated, translation, looks, confusion: dict) -> list:
     E, G = n["extracted"], n["gt_triples"]
     ex, pa = n["exact"], n["partial"]
-    # precision's denominators: the occurrences less those paired with a fact that waits on an expert (pairing.py)
-    Ee, Ep = ex.get("counted_occurrences", E), pa.get("counted_occurrences", E)
+    # precision's denominators: the occurrences less the untranslatable ones and those paired with a fact that waits on
+    # an expert (pairing.py)
+    U = n.get("untranslatable", 0)
+    T = E - U
+    Ee, Ep = ex.get("counted_occurrences", T), pa.get("counted_occurrences", T)
     ex.setdefault("pending_pairs", 0)
     pa.setdefault("pending_pairs", 0)
     out = [f"### Reading the metrics: {part} part", ""] + where_from(part, recs, evaluated, translation, looks)
 
     # precision
     out += [f"#### Precision: {pct(ex['precision']['value'])} (exact pairs), {pct(pa['precision']['value'])} "
-            f"(exact and partial pairs)", "",
+            f"(exact and partial pairs), over the {T} translatable occurrences", "",
             f"- Of the {E} occurrences of these records (one per extracted triple, translated into the ground "
-            f"truth schema), {_of(ex['pairs'], Ee)} are correct at the exact level, and {_of(pa['pairs'], Ep)} at "
+            f"truth schema), {U} are untranslatable (their predicate translates to (none): the ground truth schema "
+            f"can't say them, so they are judged neither right nor wrong; section *Schema fit*), leaving {T}; of "
+            f"those, {_of(ex['pairs'], Ee)} are correct at the exact level, and {_of(pa['pairs'], Ep)} at "
             f"the partial level"
             + (f", of the {Ee} and {Ep} counted: {ex['pending_pairs']} and {pa['pending_pairs']} match a fact that "
                f"waits on an expert (exact, partial), and are left out of precision (section *Extracted triples "
                f"matching facts that wait on an expert*)." if ex["pending_pairs"] or pa["pending_pairs"] else "."),
             f"- So in a knowledge graph built from the whole catalog's extracted triples, approximately "
-            f"{pct(ex['precision']['value']) if E else NO_VALUE} of those edges would be correct at the exact "
+            f"{pct(ex['precision']['value']) if E else NO_VALUE} of those edges whose predicate the ground truth "
+            f"schema can say would be correct at the exact "
             f"level ({pct(pa['precision']['value']) if E else NO_VALUE} at the partial level): an estimate, since "
             f"precision is measured on the evaluated records only.",
             f"- Partial minus exact: {_of(pa['pairs'] - ex['pairs'], Ep)} of the occurrences form a partial pair: "
@@ -137,6 +150,21 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             _sure(n, ex["precision"], "exact precision"),
             "- Assumes the ground truth lists every fact these records state: an occurrence stating a true "
             "fact the ground truth lacks counts as not correct.", ""]
+
+    # schema fit
+    named = "; ".join(f"`{p}` ({k})" for p, k in untranslatable_predicates(recs)[:5])
+    out += [f"#### Schema fit: {pct(n['schema_fit']['value'])}", "",
+            f"- (occurrences − untranslatable occurrences) ÷ occurrences = ({E} − {U}) ÷ {E} = "
+            f"{pct(n['schema_fit']['value'])}.",
+            f"- Of what extraction states, {pct(n['schema_fit']['value'])} is something the ground truth schema can "
+            f"say through the checked translation table; the other {U} occurrence(s) are edges a knowledge graph "
+            f"would hold that no ground truth triple can confirm or deny. Not a mistake of the model by itself: the "
+            f"model extracts with the current schema and never sees the ground truth schema.",
+            (f"- The predicates (current schema) of the untranslatable occurrences, most occurrences first: {named}."
+             if named else "- No occurrence is untranslatable."),
+            _sure(n, n["schema_fit"], "schema fit"),
+            "- A wrong `(none)` row of the translation table lowers it and hides an occurrence from precision "
+            "(`070_evaluate/metrics/precision.md`, *Untranslatable occurrences*).", ""]
 
     # recall
     out += [f"#### Recall: {pct(ex['recall']['value'])} (exact pairs), {pct(pa['recall']['value'])} "
@@ -155,7 +183,8 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
     out += [f"#### F1: {pct(ex['f1']['value'])} (exact pairs), {pct(pa['f1']['value'])} (exact and partial pairs)",
             "",
             f"- Precision and recall in one number: 2 × precision × recall ÷ (precision + recall), here "
-            f"2 × {ex['pairs']} pairs ÷ ({Ee} occurrences counted + {G} ground truth triples). It's high only when both are.",
+            f"2 × {ex['pairs']} pairs ÷ ({Ee} occurrences counted (the translatable ones, less those matching a fact "
+            f"that waits on an expert) + {G} ground truth triples). It's high only when both are.",
             "- The usual headline number for comparing runs or models, and with published results. It weighs "
             "precision and recall equally; read them too when one matters more (for a knowledge graph, a wrong "
             "edge is often worse than a missing one).",
@@ -341,17 +370,31 @@ def component_class_reading(r: dict, table: str) -> str:
     Pe, Pp, Sp = r["exact"]["pairs"], r["partial"]["pairs"], r["partial"]["strict_pairs"]
     many = _multiplied(r["occurrences_multiplicity_above_1"])
     if r["within_reach"] is None:
+        if table == "predicate":
+            return _end(f"{name}: its row of {TABLE} says (none), so "
+                        + (f"its 1 occurrence is" if O == 1 else f"its {O} occurrences are")
+                        + f" untranslatable: left out of precision (which has no value here) and counted in schema "
+                          f"fit: either {SCHEMA} has {_a(table)} the ground truth schema lacks, "
+                          f"or that row should name one of the ground truth schema's." + many)
         return _end(f"{name}: its row of {TABLE} says (none), so "
                     + (f"its 1 occurrence can't" if O == 1 else f"none of its {O} occurrences can")
-                    + f" be in a pair (precision 0%): either {SCHEMA} has {_a(table)} the ground truth schema lacks, "
+                    + " be in a pair"
+                    + (f" (precision 0%)" if not r.get("untranslatable") else
+                       f" ({r['untranslatable']} of them untranslatable, left out of its precision: precision "
+                       + ("has no value" if r["untranslatable"] == O else "0%") + ")")
+                    + f": either {SCHEMA} has {_a(table)} the ground truth schema lacks, "
                       f"or that row should name one of the ground truth schema's." + many)
     name = f"{name} ({table}, ground truth schema)"
     if r["within_reach"] is False:
         return _end(f"{name}: out of reach: no checked row of {TABLE} translates a {table} of the current schema to "
                     f"it, so none of its {_n(G, 'ground truth triple')} can be in a pair (recall 0%): {_gap(table)}."
                     + many)
-    against = O + G - 2 * Pp
-    said = (f"{name}: {_n(O, 'occurrence')} and {_n(G, 'ground truth triple')} ({k} within strict reach); "
+    U = r.get("untranslatable", 0)
+    Ot = O - U                                  # the occurrences precision counts (untranslatable ones left out)
+    against = Ot + G - 2 * Pp
+    said = (f"{name}: {_n(O, 'occurrence')}"
+            + (f" ({U} untranslatable, left out of its precision)" if U else "")
+            + f" and {_n(G, 'ground truth triple')} ({k} within strict reach); "
             f"{_n(Pp, 'pair')} that count{'s' if Pp == 1 else ''} for it at the partial level ({Pe} exact, "
             f"{Pp - Pe} partial), {Sp} of them strict")
     if (against or Pp - Sp) and O + G <= TOO_FEW:
@@ -382,8 +425,8 @@ def component_class_reading(r: dict, table: str) -> str:
                          f"{NOT_RULED_OUT}; the counts don't tell which (every cause: {RECALL_CAUSES})" if k == G else
                          f"either some are out of strict reach (above), or, among the other causes, {did}, or "
                          f"{NOT_RULED_OUT}; the counts don't tell which (every cause: {RECALL_CAUSES})"))
-    if O - Pp:
-        causes.append(f"{_n(O - Pp, 'occurrence')} {_has(O - Pp)} no pair that counts for it (each against its "
+    if Ot - Pp:
+        causes.append(f"{_n(Ot - Pp, 'occurrence')} {_has(Ot - Pp)} no pair that counts for it (each against its "
                       f"precision): step 060's "
                       f"extraction stated a fact the ground truth doesn't have (wrong, or right but not annotated), "
                       f"stated one the ground truth has with {_OTHER[table]} or in words too different to pair even at "
@@ -418,7 +461,9 @@ def record_reading(r: dict) -> str:
           f"reach); {_n(Pe, 'exact pair')}, {Se} of them strict; exact recall {_no_value(r['exact']['recall'])}, exact "
           f"precision {_no_value(r['exact']['precision'])}"
           + (f" ({_n(r['pending_pairs'], 'occurrence')} matching a fact that waits on an expert, left out of its "
-             f"precision)" if r.get("pending_pairs") else ""))
+             f"precision)" if r.get("pending_pairs") else "")
+          + (f" ({_n(r['untranslatable'], 'untranslatable occurrence')}, left out of its precision: section *Schema "
+             f"fit* of the report)" if r.get("untranslatable") else ""))
     against = r["counted_against"]
     if (against or Pe - Se) and O + G <= TOO_FEW:
         what = (f"the {against} of them with no exact pair" if against
@@ -437,7 +482,8 @@ def record_reading(r: dict) -> str:
                          "the ground truth triple is out of strict reach, step 060's extraction gave a wrong entity "
                          "class, or a row of the translation table translates one to the wrong one; the counts don't "
                          "tell which"))
-    missing, unpaired = W - Pe, O - Pe       # every exact pair's ground truth triple is within reach
+    # every exact pair's ground truth triple is within reach; an untranslatable occurrence is judged neither way
+    missing, unpaired = W - Pe, O - r.get("untranslatable", 0) - Pe
     if missing > unpaired:
         causes.append(f"{missing} of its ground truth triples within reach {_has(missing)} no exact pair, but only "
                       f"{unpaired} of its occurrences {'lacks' if unpaired == 1 else 'lack'} one, so at least "
