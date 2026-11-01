@@ -38,7 +38,7 @@ How a dataset's data are laid out over the ground, its spatial representation, i
 
 ### Ground truth schema
 
-- entity class SpatialRepresentation: a way data are laid out over the ground; for a satellite, this is typically either along the satellite's path, as observed (swath), or on a fixed map grid (gridded)
+- entity class SpatialRepresentation: a form data are laid out in: over the ground, typically along a satellite's path, as observed (swath), or on a fixed map grid (gridded); or as images, image cubes, spectra or maps, e.g. swath; map; raw near-IR spectral image cubes
 - predicate HAS_SPATIAL_REPRESENTATION: lays out its data as
 - entity class Grid: a fixed set of cells or points that data values are given on, e.g. ISEAG; pressure grid with 24 levels per decade
 - predicate ON_GRID: its values are given on the cells or points of this Grid
@@ -143,6 +143,10 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_COVERAGE "Polar" (SpatialExtent)
@@ -152,6 +156,10 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ON_GRID "SIN Grid" (Grid)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ON_GRID "SIN Grid" (Grid)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "raw near-IR spectral image cubes" (SpatialRepresentation)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_SPATIAL_REPRESENTATION "zonal" (SpatialRepresentation)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_SPATIAL_REPRESENTATION "geographical mapping" (SpatialRepresentation)
 - ground truth schema entry: entity class SpatialRepresentation
 - ground truth schema entry: predicate HAS_SPATIAL_REPRESENTATION
 - rule: Writing a classed triple, rule 11
@@ -188,7 +196,7 @@ NASA's own lists call Aqua "a NASA Earth Science satellite mission", one entry f
 
 ### Ground truth schema
 
-- entity class Mission: a named spaceflight effort
+- entity class Mission: a named effort to collect data, from space, from the air, on water or on the ground, e.g. Rosetta; BARREL
 - entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 - predicate FROM_MISSION: was collected during this Mission
 - predicate FROM_PLATFORM: was collected from this Platform
@@ -299,6 +307,13 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
+- record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 22: 967275c7-aa2d-4b08-a9db-aff5cf6b7802
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
@@ -330,6 +345,35 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) FROM_MISSION "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "study electron losses from Radiation Belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "augment the Radiation Belt Storm Probes, RBSP, mission" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the spatial variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the temporal variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "Radiation Belt Storm Probes, RBSP" (Mission) ALSO_KNOWN_AS "Van Allen Probes" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
+- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "four BARREL campaigns" (Value)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "over 50 small, approximately 20 kg, stratospheric balloons" (Value)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_MISSION "Chandrayaan-1" (Mission)
+- classed triple of the record at pool position 21: "Chandrayaan-1" (Mission) HAS_TARGET "Moon" (CelestialBody)
+- classed triple of the record at pool position 16: "Plasma Wave Spectrometer (PWS)" (Instrument) ABOARD "Voyager 1" (Platform)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) FROM_PLATFORM "Voyager 1" (Platform)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
+- classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) FROM_PLATFORM "Tail 655" (Platform)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
+- classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -376,7 +420,7 @@ Our schema separates two things a dataset can hold: a PhysicalQuantity, a bare p
 
 ### Ground truth schema
 
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_VARIABLE: holds this Variable in its files
@@ -406,7 +450,7 @@ Approved on 2026-10-25, for the record "MODIS/Terra+Aqua Land Aerosol Optical De
 
 Decided on 2026-10-25, for us to confirm, for the record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006": its four supporting layers, each HAS_MEASUREMENTS_OF a PhysicalQuantity, as for the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (sub-question (g)); its two band emissivities, each HAS_MEASUREMENTS_OF a PhysicalQuantity and COMPUTED_FROM "land cover types" (sub-question (h)). The four supporting layers: confirmed on 2026-10-31 as what the files hold, and written with a predicate of their own (below). The two band emissivities: settled on 2026-10-31 (below: Variables, each narrowed by its band; "land cover types" stays a PhysicalQuantity, the old (h)).
 
-Decided on 2026-10-31, with the new definitions of PhysicalQuantity ("a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover") and Variable ("a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds"): the two band emissivities are Variables, each narrowed by its band, which settles the Variable half of the old (h) below: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_VARIABLE "band 31 emissivity" (Variable) and "band 31 emissivity" (Variable) COMPUTED_FROM "land cover types" (PhysicalQuantity), and the same for band 32 (before: HAS_MEASUREMENTS_OF, and "band 31 emissivity" (PhysicalQuantity)). What kind of thing "land cover types" is, the rest of the old (h), is still open. By the same definitions, three more are Variables now: "RDR data" (Dataset) HAS_VARIABLE "dust fluences at each of twelve mass thresholds" (Variable), narrowed by thresholds (the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0"), and "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_VARIABLE "Ensemble X-Ray Variability" (Variable), narrowed by the sources it is taken over (the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"); both were HAS_MEASUREMENTS_OF a PhysicalQuantity. And the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" now has "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm" (PhysicalQuantity), in place of "image data in W/m^2/sr/nm" (rule 24: the words that name no method stay in the instance; rule 22: describing words joined by "and" or a comma stay whole); the old (i) below is still open.
+Decided on 2026-10-31, with the new definitions of PhysicalQuantity ("a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover") and Variable ("a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds"): the two band emissivities are Variables, each narrowed by its band, which settles the Variable half of the old (h) below: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_VARIABLE "band 31 emissivity" (Variable) and "band 31 emissivity" (Variable) COMPUTED_FROM "land cover types" (PhysicalQuantity), and the same for band 32 (before: HAS_MEASUREMENTS_OF, and "band 31 emissivity" (PhysicalQuantity)). What kind of thing "land cover types" is, the rest of the old (h), is still open. By the same definitions, three more are Variables now: "RDR data" (Dataset) HAS_VARIABLE "dust fluences at each of twelve mass thresholds" (Variable), narrowed by thresholds (the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0"), and "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_VARIABLE "Ensemble X-Ray Variability" (Variable), narrowed by the sources it is taken over (the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3"); both were HAS_MEASUREMENTS_OF a PhysicalQuantity. And the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" now has "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation), in place of "image data in W/m^2/sr/nm" (rule 24: the words that name no method stay in the instance; rule 22: describing words joined by "and" or a comma stay whole); the old (i) below is still open.
 
 Decided on 2026-10-25, for us to confirm, for the record "Ensemble X-Ray Variability of AGN in 2XMMi-DR3": its HAS_MEASUREMENTS_OF "redshifts" and "spectral classifications", each a PhysicalQuantity (sub-question (j)). Confirmed on 2026-10-31 (below, the old (j)): both stay as the record gives them.
 
@@ -489,6 +533,13 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 15: 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3
+- record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 22: 967275c7-aa2d-4b08-a9db-aff5cf6b7802
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_VARIABLE "Global Gravity" (Variable)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
@@ -529,7 +580,43 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_VARIABLE "Ensemble X-Ray Variability" (Variable)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm" (PhysicalQuantity)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric trajectories" (PhysicalQuantity)
+- classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) MEASURES "spectral densities" (PhysicalQuantity)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_MEASUREMENTS_OF "counts" (PhysicalQuantity)
+- classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) MEASURES "relativistic electron precipitation" (PhysicalQuantity)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_MEASUREMENTS_OF "surface water extent over land" (PhysicalQuantity)
+- classed triple of the record at pool position 7: "band 31 emissivity" (Variable) FOR_CHANNEL "band 31" (Channel)
+- classed triple of the record at pool position 7: "band 32 emissivity" (Variable) FOR_CHANNEL "band 32" (Channel)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_VARIABLE "Solar Orbiter Ephemeris" (Variable)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_VARIABLE "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable)
+- classed triple of the record at pool position 18: "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable) FOR_CHANNEL "VIIRS band M4 (0.555 μm)" (Channel)
+- classed triple of the record at pool position 18: "BRDF/Albedo values for VIIRS band M4" (Variable) COMPUTED_FROM "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_VARIABLE "NaI Scintillator Diagnostics" (Variable)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "sampling rate" (Variable)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "units" (Variable)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "parameter description" (Variable)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "parameter ID" (Variable)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_VARIABLE "Geopotential Height Zonal Fourier Coefficients" (Variable)
+- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) COMPUTED_FROM "HIRDLS profiles" (Dataset)
+- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) PRODUCED_USING_ALGORITHM "Kalman filter using both forward and backward passes in time" (Algorithm)
+- classed triple of the record at pool position 24: "mean" (Variable) PART_OF "Geopotential Height Zonal Fourier Coefficients" (Variable)
+- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) HAS_NUMBER_OF "up to 7 sine coefficients" (Value)
+- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) HAS_NUMBER_OF "up to 7 cosine coefficients" (Value)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_ANCILLARY_DATA "precision values" (Variable)
+- classed triple of the record at pool position 24: "precision values" (Variable) PRODUCED_USING_ALGORITHM "root-mean square" (Algorithm)
+- classed triple of the record at pool position 24: "precision values" (Variable) COMPUTED_FROM "differences between the estimated fields and the input data" (Variable)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_VARIABLE "data field for ascending orbit node" (Variable)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_VARIABLE "data field for descending orbit node" (Variable)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_VARIABLE "data field for combined orbit node" (Variable)
+- classed triple of the record at pool position 24: "data field for ascending orbit node" (Variable) OBSERVED_AT_TIME_OF_DAY "daytime" (TimeOfDay)
+- classed triple of the record at pool position 24: "data field for descending orbit node" (Variable) OBSERVED_AT_TIME_OF_DAY "nighttime" (TimeOfDay)
+- classed triple of the record at pool position 24: "data field for ascending orbit node" (Variable) HAS_NUMBER_OF "4 waves" (Value)
+- classed triple of the record at pool position 24: "data field for descending orbit node" (Variable) HAS_NUMBER_OF "4 waves" (Value)
+- classed triple of the record at pool position 24: "data field for combined orbit node" (Variable) HAS_NUMBER_OF "7 waves" (Value)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_VARIABLE "open inland water bodies greater than 3 hectares and 200 meters in width" (Variable)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_VARIABLE "water classification" (Variable)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_ANCILLARY_DATA "confidence" (Variable)
 - translation table row: entity class PhysicalQuantity
 - translation table row: predicate MEASURES
 - translation table row: predicate PROVIDES
@@ -576,7 +663,7 @@ A record often says where its data came from: an instrument, the craft that carr
 ### Ground truth schema
 
 - entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
-- entity class Mission: a named spaceflight effort
+- entity class Mission: a named effort to collect data, from space, from the air, on water or on the ground, e.g. Rosetta; BARREL
 - entity class MissionPhase: a named phase of a Mission
 - predicate FROM_MISSION: was collected during this Mission
 - predicate FROM_PLATFORM: was collected from this Platform
@@ -704,6 +791,13 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 22: 967275c7-aa2d-4b08-a9db-aff5cf6b7802
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
+- record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_MISSION "Rosetta" (Mission)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 4" (MissionPhase)
@@ -760,6 +854,42 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 3" (MissionPhase)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 16: "Plasma Wave Spectrometer (PWS)" (Instrument) ABOARD "Voyager 1" (Platform)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) FROM_PLATFORM "Voyager 1" (Platform)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
+- classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) FROM_PLATFORM "Tail 655" (Platform)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
+- classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) FROM_MISSION "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "study electron losses from Radiation Belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "augment the Radiation Belt Storm Probes, RBSP, mission" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the spatial variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the temporal variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "Radiation Belt Storm Probes, RBSP" (Mission) ALSO_KNOWN_AS "Van Allen Probes" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
+- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "four BARREL campaigns" (Value)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "over 50 small, approximately 20 kg, stratospheric balloons" (Value)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_MISSION "Chandrayaan-1" (Mission)
+- classed triple of the record at pool position 21: "Chandrayaan-1" (Mission) HAS_TARGET "Moon" (CelestialBody)
+- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "PWS spectrum analyzer" (Instrument)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) ACQUIRED_BY_INSTRUMENT "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) ACQUIRED_BY_INSTRUMENT "Rate Counter (RCNT)" (Instrument)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moon Mineralogy Mapper (M3)" (Instrument)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
+- classed triple of the record at pool position 24: "HIRDLS profiles" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -923,6 +1053,11 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 15: 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
+- record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
@@ -937,6 +1072,17 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TIME_SPAN "from 2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000" (Time)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) PRODUCED_USING_ALGORITHM "Average" (Algorithm)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_TEMPORAL_RESOLUTION "Daily" (TemporalResolution)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_TEMPORAL_RESOLUTION "4 s" (TemporalResolution)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_TEMPORAL_RESOLUTION "between 6-12 days" (TemporalResolution)
+- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) HAS_TIME_SPAN "January and February of 2013" (Time)
+- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) HAS_TIME_SPAN "January and February of 2014" (Time)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) HAS_TIME_SPAN "August 2015" (Time)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) HAS_TIME_SPAN "2016" (Time)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) HAS_TIME_SPAN "from November 2008 through August 2009" (Time)
+- classed triple of the record at pool position 25: "Copernicus Sentinel data" (Dataset) HAS_TIME_SPAN "2024-2025" (Time)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
 - translation table row: predicate HAS_DURATION
@@ -1066,6 +1212,11 @@ Checked on 2026-10-31, the old (a): both readings are true. NASA's metadata trea
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_PROCESSING_LEVEL "Level-2 (L2)" (ProcessingLevel)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_PROCESSING_LEVEL "Level-3" (ProcessingLevel)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
@@ -1077,6 +1228,12 @@ Checked on 2026-10-31, the old (a): both readings are true. NASA's metadata trea
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 4" (ProcessingLevel)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) HAS_PROCESSING_LEVEL "L0" (ProcessingLevel)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
+- classed triple of the record at pool position 24: "HIRDLS profiles" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_PROCESSING_LEVEL "Level-3" (ProcessingLevel)
 - translation table row: entity class ProcessingLevel
 - translation table row: predicate HAS_PROCESSING_LEVEL
 - translation table row: predicate HAS_PROPERTY
@@ -1162,7 +1319,7 @@ Settled, so not asked here: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDU
 
 Option 2, as it was: Coin a predicate in the ground truth schema for "uses the measurements of this Channel", and write the channels with it instead of COMPUTED_FROM. My current reading, as it was, ended: "Your answer to (c) would become part of rule 24."
 
-Changed on 2026-10-31: the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" now keeps the four words in the instance of what its dataset holds, "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm" (PhysicalQuantity), in place of "image data in W/m^2/sr/nm", by rule 24's "Words that name no method" ("it stays in the instance, as written") and rule 22's "Describing words joined by "and" or a comma" (they describe one word, "image data", so they stay whole); the expert's (c) says so. The pending facts above stay pending. In the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", the subject of the step the record states ("used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product") is now "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset), the wording the record gives first (rule 23), in place of "MCD19A1N".
+Changed on 2026-10-31: the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" now keeps the four words in the instance of what its dataset holds, "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation), in place of "image data in W/m^2/sr/nm", by rule 24's "Words that name no method" ("it stays in the instance, as written") and rule 22's "Describing words joined by "and" or a comma" (they describe one word, "image data", so they stay whole); the expert's (c) says so. The pending facts above stay pending. In the record "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid", the subject of the step the record states ("used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product") is now "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset), the wording the record gives first (rule 23), in place of "MCD19A1N".
 
 Added to the expert's (c) on 2026-10-31, nothing taken out: "; the words stay in the instance of what the dataset holds".
 
@@ -1218,6 +1375,12 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 15: 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3
+- record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) PRODUCED_USING_ALGORITHM "Multi-Angle Implementation of Atmospheric Correction (MAIAC)" (Algorithm)
 - classed triple of the record at pool position 6: "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
@@ -1227,9 +1390,20 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "2XMMi-DR3" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "DR7 edition of the SDSS Quasar Catalog" (Dataset)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) COMPUTED_FROM "table1.dat" (Dataset)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm" (PhysicalQuantity)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) PRODUCED_USING_ALGORITHM "Average" (Algorithm)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PRODUCED_USING_ALGORITHM "structure function (SF)" (Algorithm)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) COMPUTED_FROM "original trajectory data" (Dataset)
+- classed triple of the record at pool position 16: "calibrated values" (Dataset) COMPUTED_FROM "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset)
+- classed triple of the record at pool position 18: "BRDF/Albedo values for VIIRS band M4" (Variable) COMPUTED_FROM "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable)
+- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) COMPUTED_FROM "HIRDLS profiles" (Dataset)
+- classed triple of the record at pool position 24: "precision values" (Variable) COMPUTED_FROM "differences between the estimated fields and the input data" (Variable)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) COMPUTED_FROM "Sentinel-1 radar observations" (Dataset)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) COMPUTED_FROM "Copernicus Sentinel data" (Dataset)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) PRODUCED_USING_ALGORITHM "Mean of Date" (Algorithm)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) PRODUCED_USING_ALGORITHM "accumulations" (Algorithm)
+- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) PRODUCED_USING_ALGORITHM "Kalman filter using both forward and backward passes in time" (Algorithm)
+- classed triple of the record at pool position 24: "precision values" (Variable) PRODUCED_USING_ALGORITHM "root-mean square" (Algorithm)
 - translation table row: predicate DERIVED_FROM
 - translation table row: predicate USES
 - ground truth schema entry: predicate COMPUTED_FROM
@@ -1343,6 +1517,8 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PROVIDES_ACCESS_TO_DOCUMENT "NASA developed standards" (Document)
 - classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PROVIDES_ACCESS_TO_DOCUMENT "NASA developed handbooks" (Document)
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) SPONSORED_BY_PARTY "NASA Technical Standards Program" (Organization)
@@ -1360,6 +1536,17 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "quality flagging" (Task)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "NASA HEASARC" (Organization)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PROVIDED_BY_PARTY "NASA HEASARC" (Organization)
+- classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
+- classed triple of the record at pool position 19: "Robyn Millan" (Person) AFFILIATED_WITH "BARREL team" (Organization)
+- classed triple of the record at pool position 19: "South African National Antarctic Expedition" (Organization) ALSO_KNOWN_AS "SANAE" (Organization)
+- classed triple of the record at pool position 19: "South African National Antarctic Expedition" (Organization) BASED_IN "South African" (Country)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) DEVELOPED_BY_PARTY "OPERA" (Organization)
+- classed triple of the record at pool position 25: "OPERA" (Organization) INFORMED_BY "Satellite Needs Working Group (SNWG)" (Organization)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) PART_OF "U.S. Government" (Organization)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "identifying observation needs across U.S. civilian federal agencies" (Purpose)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "addressing observation needs across U.S. civilian federal agencies" (Purpose)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 19: "Robyn Millan" (Person) SERVES_AS "BARREL PI" (Role)
 - translation table row: entity class Program
 - translation table row: entity class Location
 - translation table row: entity class Organization
@@ -1451,7 +1638,7 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 
 - entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
-- entity class Mission: a named spaceflight effort
+- entity class Mission: a named effort to collect data, from space, from the air, on water or on the ground, e.g. Rosetta; BARREL
 - entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
 - predicate USED_TO_STUDY -> HAS_PURPOSE: The subject (a mission, instrument, program or dataset) is designed or used to investigate, characterize or trace the object, a scientific phenomenon or process.
 - predicate HAS_OBJECTIVE -> HAS_PURPOSE: The subject (a mission, campaign, project or set of researchers) aims to achieve, study or address the object, a scientific goal, question or problem.
@@ -1480,6 +1667,9 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) HAS_PURPOSE "make it simpler for technical people to access NASA technical information quickly and conveniently" (Purpose)
 - classed triple of the record at pool position 2: "series of screens" (Algorithm) HAS_PURPOSE "alleviate errors" (Purpose)
 - classed triple of the record at pool position 2: "series of screens" (Algorithm) HAS_PURPOSE "flag uncertain snow cover detections" (Purpose)
@@ -1488,6 +1678,17 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - classed triple of the record at pool position 4: "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the oceans" (Purpose)
 - classed triple of the record at pool position 4: "modified nonlinear SST algorithm" (Algorithm) HAS_PURPOSE "provide continuity of SST derived from heritage and current NASA sensors" (Purpose)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_PURPOSE "determine the ensemble variability properties of two serendipitously selected samples" (Purpose)
+- classed triple of the record at pool position 18: "Climate Modeling Grid (CMG)" (Grid) HAS_PURPOSE "use in climate simulation models" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "study electron losses from Radiation Belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "augment the Radiation Belt Storm Probes, RBSP, mission" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the spatial variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the temporal variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) HAS_PURPOSE "measure the bremsstrahlung X-rays produced by precipitating relativistic electrons as they collide with neutrals in the atmosphere" (Purpose)
+- classed triple of the record at pool position 19: "DC magnetometer" (Instrument) HAS_PURPOSE "measure ULF-timescale variations of the magnetic field" (Purpose)
+- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) HAS_PURPOSE "maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) HAS_PURPOSE "maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts" (Purpose)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "identifying observation needs across U.S. civilian federal agencies" (Purpose)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "addressing observation needs across U.S. civilian federal agencies" (Purpose)
 - translation table row: predicate USED_TO_STUDY
 - translation table row: predicate HAS_OBJECTIVE
 - ground truth schema entry: entity class Purpose
@@ -1610,7 +1811,9 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 ### Affects
 
 - record at pool position 1: cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) USES_TECHNIQUE "Radio Science" (Technique)
+- classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) USES_TECHNIQUE "radar" (Technique)
 - translation table row: entity class Method
 - translation table row: entity class Topic
 - translation table row: predicate HAS_DISCIPLINE
@@ -1702,7 +1905,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 
 ### Quoted for us
 
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 - entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
@@ -1741,7 +1944,14 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "Aerosol Optical Depth" (PhysicalQuantity)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_SPATIAL_COVERAGE "Global" (SpatialExtent)
+- classed triple of the record at pool position 18: "Climate Modeling Grid (CMG)" (Grid) HAS_SPATIAL_COVERAGE "globe" (SpatialExtent)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_SPATIAL_COVERAGE "from -64 to 80 degrees" (SpatialExtent)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_SPATIAL_COVERAGE "near-global" (SpatialExtent)
 - translation table row: entity class SpatialCoverage
 - translation table row: predicate HAS_SPATIAL_COVERAGE
 - translation table row: predicate HAS_PROPERTY
@@ -2018,6 +2228,8 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 
 - record at pool position 3: 2705e0d1-95e7-4588-813b-ca91a6da94ff
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
+- record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
 - classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "SST4" (Variable) COMPUTED_FROM "mid-infrared 3.95 micron wavelength channel" (Channel)
@@ -2025,6 +2237,9 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - classed triple of the record at pool position 4: "mid-infrared 3.95 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 4: "mid-infrared 4.05 micron wavelength channel" (Channel) UNIQUE_TO_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) ACQUIRED_BY_INSTRUMENT "Aquarius L-band radiometer" (Instrument)
+- classed triple of the record at pool position 7: "band 31 emissivity" (Variable) FOR_CHANNEL "band 31" (Channel)
+- classed triple of the record at pool position 7: "band 32 emissivity" (Variable) FOR_CHANNEL "band 32" (Channel)
+- classed triple of the record at pool position 18: "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable) FOR_CHANNEL "VIIRS band M4 (0.555 μm)" (Channel)
 - translation table row: entity class Wavelength
 - translation table row: entity class Frequency
 - ground truth schema entry: entity class Channel
@@ -2264,7 +2479,7 @@ The example below says that Aqua was launched "into a sun synchronous, polar orb
 
 ### Ground truth schema
 
-- entity class Orbit: a path a Spacecraft travels around a CelestialBody
+- entity class Orbit: a path a spacecraft travels around a CelestialBody
 - predicate HAS_ORBIT: travels in this Orbit
 - entity class TimeOfDay: a point or period in the day, which comes back every day, e.g. 2:39 PM; morning; nighttime
 - predicate OBSERVED_AT_TIME_OF_DAY: comes from observations made at or during this TimeOfDay
@@ -2372,7 +2587,7 @@ We write only what a record states (rule 1 of *What counts as a fact*, quoted be
 
 - predicate RELATED_TO: is related to
 - predicate ESTIMATES: gives approximate values for
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 
 ### Annotation guidelines
 
@@ -2447,7 +2662,7 @@ The example below, a MODIS sea surface temperature (SST) product, says "Two SST 
 ### Ground truth schema
 
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
-- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover
+- entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
 - predicate ESTIMATES: gives approximate values for
 - predicate HAS_LOWER_UNCERTAINTY_THAN: its values are more certain than those of
 
@@ -2798,9 +3013,15 @@ Withdrawn on 2026-10-31: settled from sources, so it is no longer asked of the e
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD021KM.061" (Identifier)
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier)
 - classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_IDENTIFIER "VNP43D12" (Identifier)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_IDENTIFIER "H3ZFCGPH" (Identifier)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_IDENTIFIER "DSWx-S1" (Identifier)
 - ground truth schema entry: entity class Identifier
 - ground truth schema entry: predicate HAS_DOI
 - ground truth schema entry: entity class Latency
@@ -2914,6 +3135,14 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - record at pool position 10: 3bceffb4-f01e-433c-af79-42b9d9427231
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
+- record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 22: 967275c7-aa2d-4b08-a9db-aff5cf6b7802
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
+- record at pool position 15: 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Terra" (Platform)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) FROM_PLATFORM "Aqua" (Platform)
@@ -2984,8 +3213,56 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
 - classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
-- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MEASUREMENTS_OF "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data in W/m^2/sr/nm" (PhysicalQuantity)
+- classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "PWS spectrum analyzer" (Instrument)
+- classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) PART_OF "Plasma Wave Spectrometer (PWS)" (Instrument)
+- classed triple of the record at pool position 16: "Plasma Wave Spectrometer (PWS)" (Instrument) ABOARD "Voyager 1" (Platform)
+- classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) MEASURES "spectral densities" (PhysicalQuantity)
+- classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) HAS_NUMBER_OF "16 frequency channels" (Value)
+- classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) HAS_FREQUENCY_RANGE "from 50 Hz to 10 kHz" (Value)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) ACQUIRED_BY_INSTRUMENT "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) ACQUIRED_BY_INSTRUMENT "Rate Counter (RCNT)" (Instrument)
+- classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
+- classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) HAS_PURPOSE "measure the bremsstrahlung X-rays produced by precipitating relativistic electrons as they collide with neutrals in the atmosphere" (Purpose)
+- classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
+- classed triple of the record at pool position 19: "DC magnetometer" (Instrument) HAS_PURPOSE "measure ULF-timescale variations of the magnetic field" (Purpose)
+- classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) MEASURES "relativistic electron precipitation" (PhysicalQuantity)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "European Incoherent Scatter Scientific Association, EISCAT, incoherent scatter radar system" (Instrument)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "European Incoherent Scatter Scientific Association, EISCAT, incoherent scatter radar system" (Instrument)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moon Mineralogy Mapper (M3)" (Instrument)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
+- classed triple of the record at pool position 24: "HIRDLS profiles" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
+- classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) FROM_PLATFORM "Voyager 1" (Platform)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
+- classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) FROM_PLATFORM "Tail 655" (Platform)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
+- classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) FROM_MISSION "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "study electron losses from Radiation Belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "augment the Radiation Belt Storm Probes, RBSP, mission" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the spatial variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "providing measurements of the temporal variations of electron precipitation from the radiation belts" (Purpose)
+- classed triple of the record at pool position 19: "Radiation Belt Storm Probes, RBSP" (Mission) ALSO_KNOWN_AS "Van Allen Probes" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
+- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "four BARREL campaigns" (Value)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "over 50 small, approximately 20 kg, stratospheric balloons" (Value)
+- classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_MISSION "Chandrayaan-1" (Mission)
+- classed triple of the record at pool position 21: "Chandrayaan-1" (Mission) HAS_TARGET "Moon" (CelestialBody)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric trajectories" (PhysicalQuantity)
+- classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_MEASUREMENTS_OF "counts" (PhysicalQuantity)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_MEASUREMENTS_OF "surface water extent over land" (PhysicalQuantity)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -3087,10 +3364,16 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
+- record at pool position 18: 0eedd2bc-b2e2-4cc1-a94d-41c141169334
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_RESOLUTION "500m" (SpatialResolution)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_SPATIAL_RESOLUTION "1 kilometer (km)" (SpatialResolution)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_SPATIAL_RESOLUTION "30 arc second (1,000 meter)" (SpatialResolution)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_SPATIAL_RESOLUTION "1 degree latitude" (SpatialResolution)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_SPATIAL_RESOLUTION "30 meters" (SpatialResolution)
 - ground truth schema entry: entity class SpatialResolution
 - ground truth schema entry: predicate HAS_SPATIAL_RESOLUTION
 - translation table row: entity class SpatialResolution
@@ -3121,7 +3404,7 @@ The example below says Aqua was launched into its orbit "formation flying in the
 
 ### Ground truth schema
 
-- entity class SatelliteFormation: a group of Spacecraft flying together in formation in orbit, e.g. A-train
+- entity class SatelliteFormation: a group of spacecraft flying together in formation in orbit, e.g. A-train
 - predicate FLIES_IN: flies in formation as part of
 
 ### My current reading
@@ -3380,11 +3663,23 @@ Checked on 2026-10-31, for the expert's (b): the standards have one general part
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
+- record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
+- record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
+- record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
 - classed triple of the record at pool position 5: "GRaND plus Z boron loaded sensor" (Instrument) PART_OF "GRaND" (Instrument)
 - classed triple of the record at pool position 9: "encounter data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 12: "table1.dat" (Dataset) PART_OF "CDS Catalog J/A+A/536/A84" (Dataset)
+- classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) PART_OF "Plasma Wave Spectrometer (PWS)" (Instrument)
+- classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
+- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 24: "mean" (Variable) PART_OF "Geopotential Height Zonal Fourier Coefficients" (Variable)
+- classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) PART_OF "U.S. Government" (Organization)
 - ground truth schema entry: predicate PART_OF
 - translation table row: predicate PART_OF
 - translation table row: predicate CONTAINS

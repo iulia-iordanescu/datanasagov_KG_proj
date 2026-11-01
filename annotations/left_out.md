@@ -27,9 +27,10 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
   - **May matter because:** checked on 2026-10-30: a running measurement number, "incremented measurement by measurement, independent what kind of measurement was conducted" (the data set's catalog, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/); it tells this dataset from its siblings and states no fact about the data.
   - **Question:** Q6 (b).
-- **Left out:** "RSI" (title), as the Instrument that collected the data
+- **Left out:** what "RSI" stands for (title)
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for. This includes its entity class"
-  - **May matter because:** checked on 2026-10-30: the Planetary Data System files it as INSTRUMENT_ID = RSI, INSTRUMENT_TYPE = RADIO SCIENCE, the "ROSETTA RADIO SCIENCE INVESTIGATION" (the data set's catalog files, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/). Still left out: the record's text does not say what "RSI" stands for, so its entity class would rest on outside knowledge (rule 1). Decided on 2026-10-31 (audit finding G-2); until then, ACQUIRED_BY_INSTRUMENT "RSI" (Instrument) was a ground truth triple.
+  - **May matter because:** checked on 2026-10-30: the Planetary Data System files it as INSTRUMENT_ID = RSI, INSTRUMENT_TYPE = RADIO SCIENCE, the "ROSETTA RADIO SCIENCE INVESTIGATION" (the data set's catalog files, https://archives.esac.esa.int/psa/ftp/INTERNATIONAL-ROSETTA-MISSION/RSI/RO-C-RSI-1-2-3-ESC4-1149-V1.0/CATALOG/). Still left out: the record's text does not say what "RSI" stands for, so its entity class would rest on outside knowledge (rule 1). Decided on 2026-10-31 (audit finding G-2); until then, ACQUIRED_BY_INSTRUMENT "RSI" (Instrument) was a ground truth triple. Reversed later on 2026-10-31: the triple is written again, by rule 1's *Names on an official NASA list*; what "RSI" stands for stays left out.
+  - The list: PDS4 context product urn:esa:psa:context:instrument:ro.rsi, "The Radio Science Investigations (RSI) for the Rosetta Orbiter", an instrument of the instrument host Rosetta Orbiter (https://pds.nasa.gov/data/pds4/context-pds4/instrument/, checked on 2026-10-31).
   - **Question:** Q10 (its part on RSI, settled from this source: see Q10's My notes).
 - **Left out:** "comet" (notes, "at the comet 67P")
   - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
@@ -126,8 +127,12 @@ The dense record: its notes describe a whole family of products (several tempora
 
 ## "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (pool position 7, id d5477563-0415-4e65-ab7c-d4bc9ed809e5)
 
-14 items, 8 that may matter.
+15 items, 9 that may matter.
 
+- **Left out:** what "MODIS" stands for (title, "MODIS/Terra", and notes, "Terra MODIS")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
+  - **May matter because:** its entity class, Instrument, is written (ACQUIRED_BY_INSTRUMENT "MODIS"), by rule 1's *Names on an official NASA list*.
+  - The list: GCMD Instruments keywords (version 25.1), "MODIS", "Moderate-Resolution Imaging Spectroradiometer"; the CMR record of MOD11A1 version 006 lists it under the platform Terra (checked on 2026-10-31).
 - **Left out:** "in a 1,200 by 1,200 km grid" (notes)
   - **Rule:** What counts as a fact, rule 1: "Only what the record states. Never add what you know from elsewhere". The record says only that the data are "in a 1,200 by 1,200 km grid"; that this is one tile of the MODIS sinusoidal grid, the ground each file covers, comes from NASA LAADS, not from the record, and the ground truth schema has no predicate for the ground each file covers (HAS_GRANULE_DURATION is the time each file covers; HAS_SPATIAL_RESOLUTION, the ground each value covers). Decided on 2026-10-31; until then this item waited on the experts' answer to Q1 (c) (rule 2 of *What counts as a fact*). The grid itself is now the ground truth triple BINNED_INTO "SIN Grid".
   - **May matter because:** it is the size of one tile of the MODIS sinusoidal grid, which is how much ground each file covers. Checked on 2026-10-30: "Each tile has fixed Earth-locations covering an area of approximately 1200 x 1200 km (10 x 10 degrees at the equator)" (NASA LAADS, "What are the Product Spatial Formats?", https://landweb.modaps.eosdis.nasa.gov/help/prod_format).
@@ -301,11 +306,11 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says what the correction was about.
   - **Question:** Q28 (c) (settled on 2026-10-31: see Q28's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "solar stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "solar stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "solar stray-light corrected" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "solar stray-light" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "in-field stray-light corrected" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "in-field stray-light corrected" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "in-field stray-light corrected" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "in-field stray-light" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "radiometric calibrated" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
@@ -313,6 +318,287 @@ The notes are mostly the abstract of the study the table comes from; whether a s
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
 - **Left out:** PRODUCED_USING_ALGORITHM "geometric distortion corrected (resampled)" (notes, "contains solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data")
-  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "geometric distortion corrected (resampled)" describes the data; it is not the name of a method (as for "detrended" in the record at pool position 5).
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "geometric distortion corrected (resampled)" describes the data; since 2026-10-31 what was corrected is written, CLEANED_OF "geometric distortion" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method"); it is not the name of a method (as for "detrended" in the record at pool position 5).
   - **May matter because:** it says which corrections were applied to the images.
   - **Question:** Q7 (c) (settled on 2026-10-31: see Q7's My notes).
+
+## "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (pool position 15, id 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3)
+
+13 items, 7 that may matter.
+
+- **Left out:** "HelioWeb" (title)
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for". The record never says what HelioWeb is (a service, a web site, a collection), so it has no entity class.
+  - **May matter because:** my reading, not checked: HelioWeb is the SPDF (NASA Goddard) service that serves these heliocentric trajectories; a search by service would need it.
+- **Left out:** "where users can find many more objects" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "many more objects" names none.
+- **Left out:** "In the case of orbit data for planets, the orbit data can be used as a proxy for spacecraft ephemeris that are in orbit about the planets." (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Orbit data for planets are not this dataset, and no "part of" or "made from" link joins them; it is also a use (rule 9: "when the record doesn't name that work, it gives no ground truth triple.").
+  - **May matter because:** it says what planet data of this kind are good for.
+- **Left out:** "On a heliospheric scale, differences between the planet orbital tarjectory and that of the spacecraft are very small." (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "the planet" and "the spacecraft" name no particular ones; "very small" is a judgement (rule 5).
+- **Left out:** "For instance, the heliocentric longitudes differ by only 0.25° for a spacecraft stationed near the L1 Lagrange point at approximately 100 Earth radii upstream of the Earth." (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The subject is "a spacecraft", none in particular.
+  - **May matter because:** it gives the size of the error when planet data stand in for a spacecraft at L1.
+- **Left out:** the definition of the "Equinox Epoch" ("which is defined as the epoch time when the direction from the Earth to the sun …") (notes)
+  - **Rule:** Writing a classed triple, rule 21: "A statement that only explains a concept (what a term means, how a quantity behaves in general, which methods are in common use) and is about nothing so connected gives no ground truth triple". The Equinox Epoch is the subject or object of no ground truth triple connected to the record's id.
+- **Left out:** "This direction is called the First Point of Aries, FPA and it is not a fixed direction but drifts by about 1.4° per century or 50.26" per year." (notes)
+  - **Rule:** Writing a classed triple, rule 21: "A statement that only explains a concept (what a term means, how a quantity behaves in general, which methods are in common use) and is about nothing so connected gives no ground truth triple". "it is not a fixed direction": also rule 6 of *What counts as a fact*, "A ground truth triple can't say "not"."
+  - **May matter because:** it explains why the choice of equinox matters for the coordinates.
+- **Left out:** "In addition, there are tiny irregularities in FPA drift that are on the order of 1" per year or less." (notes)
+  - **Rule:** Writing a classed triple, rule 21: "A statement that only explains a concept (what a term means, how a quantity behaves in general, which methods are in common use) and is about nothing so connected gives no ground truth triple"
+- **Left out:** "The Equinox Epoch can be determined by using a variety of methods … Four methods for determining the Equinox Epoch are in common usage:" and the table rows "B1950.0", "J2000.0", "True of Date" (notes)
+  - **Rule:** Writing a classed triple, rule 21: "A statement that only explains a concept (what a term means, how a quantity behaves in general, which methods are in common use) and is about nothing so connected gives no ground truth triple". "a variety of methods" names none (rule 9); the three methods the data did not use are connected to nothing.
+- **Left out:** the table row "Mean of Date | the smoothed FPA at 00:00 UT on the date of interest" as a fact of its own (notes)
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class". It defines the method; the method itself is a ground truth triple (PRODUCED_USING_ALGORITHM "Mean of Date").
+  - **May matter because:** it is what "Mean of Date" means: the equinox of each day, smoothed.
+- **Left out:** "requires a values for the "Equinox Epoch"" as a fact of its own (notes)
+  - **Rule:** Writing a classed triple, rule 24: "A method is what could be applied again to other data (an algorithm, a procedure, and its settings, such as coefficients tuned per month)". The Equinox Epoch is the setting of the step whose method is "Mean of Date", so it is part of the method, not an input.
+- **Left out:** "More precise coordinates, and some planet-centered coordinates, are found in the "traj" subdirectories of spacecraft specific directories at https://spdf.gsfc.nasa.gov/pub/data/ and http://ssd.jpl.nasa.gov/horizons.cgi." (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." "More precise" compares those data with this dataset's, a fact of the other data.
+  - **May matter because:** it is where better coordinates of the same objects are.
+  - **Question:** Q24.
+- **Left out:** the title's "Solar Orbiter" against the notes' "Heliocentric trajectories for Comet Borrelly" (title and notes), as a conflict to correct
+  - **Rule:** Finishing a record, *A record that contradicts itself*: "write what each passage states (rule 1 of What counts as a fact), and correct neither from outside knowledge." Both are written: HAS_VARIABLE "Solar Orbiter Ephemeris" and HAS_TARGET "Comet Borrelly".
+  - **May matter because:** my reading, not checked: the notes look copied from the record of the Comet Borrelly series of the same service; the catalog entry may be wrong, and the record's maintainer should be told.
+
+## "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (pool position 16, id ec41fd5d-1159-4aa8-9803-5346e2324a20)
+
+9 items, 5 that may matter.
+
+- **Left out:** "J/S/SS" (title)
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
+  - **May matter because:** my reading, not checked: the PDS target codes for Jupiter, Saturn and the solar system, the targets of the data set; a search by target would need them. The notes say only "the planetary encounters".
+  - **Question:** Q6 (b) lists other unexplained PDS title codes.
+- **Left out:** "FULL RES" (title)
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"; even spelled out, "full resolution" names no value (rule 9: "a variety of spatial resolutions" names no resolution).
+  - **May matter because:** it says these are the analyzer's full-resolution data, not averages.
+- **Left out:** "EDITED" (title), and "edited" (notes, "Some noise lines during the planetary encounters have been edited from the data set.") as a method
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." What was removed is written: the record's dataset CLEANED_OF "noise lines during the planetary encounters" (rule 24: "What a step removed from the data, or corrected in them, is neither the step's input nor its method").
+- **Left out:** "during the planetary encounters" as a mission phase of the dataset (notes)
+  - **Rule:** What counts as a fact, rule 1: "Only what the record states." That the data include the encounters follows from the sentence (noise lines during them were in the data set) but is not stated.
+  - **May matter because:** it says the data include the planetary encounters.
+- **Left out:** "nearly all" (notes, "includes nearly all measurements")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "for the entire mission" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The mission is not named, and "entire" only says how much of it.
+  - **May matter because:** it says the data cover the whole mission (no dates are given).
+- **Left out:** "Each sweep" (notes, "Each sweep of the PWS spectrum analyzer records")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance". It says how the analyzer records (sweep by sweep).
+- **Left out:** "calibrated values" PRODUCED_USING_ALGORITHM "example C-language program" (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Its connection, "calibrated values" COMPUTED_FROM the record's dataset, is a ground truth triple.
+  - **May matter because:** it is how users can calibrate the values.
+- **Left out:** "reads this data set" as a fact of its own (notes)
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." "calibrated values" COMPUTED_FROM the record's dataset already says it.
+
+## "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (pool position 18, id 0eedd2bc-b2e2-4cc1-a94d-41c141169334)
+
+14 items, 6 that may matter.
+
+- **Left out:** "NASA/NOAA" as a fact of its own (notes)
+  - **Rule:** Writing a classed triple, rule 19: "A qualifier stays in the instance, as written, if it is any other kind" (an organization is not on its list); it stays in the platform's instance, "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)".
+- **Left out:** "Data are temporally weighted to the ninth day, which is reflected in the file name." (notes)
+  - **Rule:** Writing a classed triple, rule 24: "A word that says only that something was done ("corrected", "calibrated", "detrended") names no method." "the file name" names no particular file (rule 9).
+  - **May matter because:** it says which day of the 16 each value stands for.
+  - **Question:** Q7.
+- **Left out:** "VNP43D product suite" and its facts as such (notes: "The VNP43D product suite is provided in a Climate Modeling Grid (CMG)"; "this product suite includes model parameters for the VIIRS Day/Night Band (DNB) as VNP43D37 through VNP43D39")
+  - **Rule:** What counts as a fact, rule 1, *Membership by name*: "A statement about the group as a whole is not written for it". The record's identifier VNP43D12 contains "VNP43D", so the facts that hold for each member are written for the record's dataset (the grid, one data layer); the suite itself and its other members are not.
+  - **May matter because:** it says which family the product belongs to, and that the family has 39 one-layer products.
+  - **Question:** Q24; Q25 (b).
+- **Left out:** "Each of the three model parameters (isotropic, volumetric, and geometric) for each of the nine VIIRS moderate resolution bands along with the visible, near-infrared (NIR), and shortwave bands included in the [VNP43MA1](…) product is stored in a separate file as VNP43D01 through VNP43D36." (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The files are the family's other products, and VNP43MA1 is another dataset with no "part of" or "made from" link stated.
+  - **May matter because:** it says the parameters come from VNP43MA1, which a search for related products would need.
+  - **Question:** Q24; Q12.
+- **Left out:** "https://doi.org/10.5067/VIIRS/VNP43MA1.002" (notes), VNP43MA1's DOI
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it."
+  - **May matter because:** it is where the related product is.
+- **Left out:** "Due to the large file size" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." No file is named; "large" is a judgement (rule 5).
+- **Left out:** "just" (notes, "contains just one data layer")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "entire" (notes, "covers the entire globe")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "BRDF/Albedo values for VIIRS band M4" COMPUTED_FROM "isotropic parameters" and "volumetric parameters" (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." Its connection to the record's dataset is a ground truth triple ("BRDF/Albedo values for VIIRS band M4" COMPUTED_FROM the geometric parameter).
+  - **May matter because:** it says the albedo needs all three parameters, that is, three of the family's products together.
+  - **Question:** Q24.
+- **Left out:** "used to derive" as a purpose of the parameter (notes)
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." COMPUTED_FROM says it; and a use is not a purpose (rule 9: "What data have been used for, or can be used for, is a fact of the work that used them, not of the data").
+- **Left out:** "Known Issues" (notes, the heading)
+  - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts."
+- **Left out:** "known issues" as what the page is about (notes)
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "MODIS/VIIRS Land Quality Assessment website" (notes), as the page's name
+  - **Rule:** Writing a classed triple, rule 20: "Write ALSO_KNOWN_AS only when the record gives the other name in words of its own"
+  - **May matter because:** it is the page's name.
+- **Left out:** "NIR" as another name of "near-infrared", and "DNB" of "VIIRS Day/Night Band" (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The bands are the family's, not this dataset's.
+
+## "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (pool position 19, id 6f63dd10-376e-4d17-9156-f2155637e74d)
+
+35 items, 15 that may matter.
+
+- **Left out:** the launch stations and their places (notes, "with launches from two stations located in Antarctica: the British base located at Halley Bay on the Brunt Ice Shelf and the South African SANAE IV base", and "Later campaigns were undertaken in 2015 and 2016 from the Esrange Space Center located in Kiruna, Sweden")
+  - **Rule:** What counts as a fact, rule 2: "or it waits on an expert's answer" (Q8 (c): whether a station or a space center is an Organization or a place).
+  - **May matter because:** a search by launch site or region (Antarctica, Sweden) would need them.
+  - **Question:** Q8 (c).
+  - No clear would-be triple: whether a station is an Organization or a place decides its entity class and its predicates (LAUNCHED_FROM and LOCATED_IN for a place, none of them in the ground truth schema; BASED_IN "British", "South African" and "Sweden" for an Organization), so no row can be written in annotations/pending_triples.csv until Q8 (c) is answered.
+- **Left out:** "4G" (title)
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"
+  - **May matter because:** my reading, not checked: the balloon payload's code (campaign 4, payload G), which tells this dataset from its siblings and gives its campaign.
+  - **Question:** Q6 (b).
+- **Left out:** "CDF" (notes, "all BARREL CDF data products")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for". "CDF" is on no official NASA list as an instrument or a platform, so rule 1's *Names on an official NASA list* does not apply.
+  - **May matter because:** it is the file format (NASA's Common Data Format, my knowledge).
+- **Left out:** "diagnostic fields" as a thing of its own (notes)
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." HAS_VARIABLE "NaI Scintillator Diagnostics" says it (rule 23).
+- **Left out:** "4 s" of "4 s accumulations" as a fact of its own (notes)
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." HAS_TEMPORAL_RESOLUTION "4 s" says it.
+- **Left out:** "was a multiple-balloon investigation" (notes)
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"
+  - **May matter because:** it says the mission used many balloons at once.
+- **Left out:** "Mission of Opportunity" and "Selected" (notes)
+  - **Rule:** What counts as a fact, rule 4: "the kind is left out, and the belonging is a ground truth triple" ("BARREL" PART_OF "NASA Living with a Star"); "Selected" names no party (rule 1: "Never add what you know from elsewhere").
+  - **May matter because:** it is NASA's funding category for the mission.
+- **Left out:** "Each" (notes, "Each BARREL balloon")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "near latitudes close to either the antarctic and arctic circles" (notes)
+  - **Rule:** What counts as a fact, rule 1, *Membership by name*: "A statement about the group as a whole is not written for it": "either … or". Which circle this payload flew near is not stated.
+  - **May matter because:** a search by region (Antarctic, Arctic) would need it.
+  - **Question:** Q24.
+- **Left out:** "stratospheric altitudes" (notes)
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." OBSERVED_AT_ALTITUDE "about 30 km" is the wording that says more (rule 23).
+- **Left out:** "first balloon" (notes, "provided the first balloon measurements")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+  - **May matter because:** it says BARREL was the first to measure this from balloons.
+- **Left out:** "while comprehensive in situ measurements of both plasma waves and energetic particles were available" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." Whose measurements is not said; "comprehensive" is a judgement (rule 5).
+- **Left out:** "Also, the BARREL data has been used to characterize the spatial scale of precipitation at relativistic energies." (notes)
+  - **Rule:** What counts as a fact, rule 9: "when the record doesn't name that work, it gives no ground truth triple." No work that used the data is named; the statement is also about the BARREL data as a whole (rule 1, *Membership by name*).
+  - **May matter because:** it says what the data are good for.
+  - **Question:** Q24.
+- **Left out:** "initially" and "Austral summer months of" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance" ("initially"). "Austral summer months": rule 16 of *Writing a classed triple*, since the months, HAS_TIME_SPAN "January and February of 2013" and "of 2014", say when.
+  - **May matter because:** "Austral summer" says why those months (the southern summer).
+- **Left out:** "Thus, the BARREL balloon constellation constituted an evolving and slowly moving array able to study relativistic electron precipitation from the radiation belts." (notes)
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class" ("constituted an … array"); "able to study" is what it could do, not what it was meant for (HAS_PURPOSE "is meant to achieve").
+  - **May matter because:** it says the balloons formed a moving array, which is how the mission measured spatial scales.
+- **Left out:** "and other ground and space based instruments" (notes)
+  - **Rule:** Writing a classed triple, rule 22: "An item that names no specific thing ("his team") gives no ground truth triple"
+- **Left out:** "A total of eight flights occurred during August 2016." (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The sentence names no campaign; that these are the 2016 campaign's flights follows from the paragraph, but no test of rule 1 allows it.
+  - **May matter because:** it is the 2016 campaign's number of flights.
+- **Left out:** "successively" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "The website creeated and hosted by A.J. Halford (see Information URL below) reports that: "By the end of the campaigns, there were over 90 researchers coordinating on a daily basis with the BARREL team working on 7 different satellite missions, 1 other balloon mission, and way too many ground based instruments to count."" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." The website has no address in the text (WebPage is "a web address, written as the address itself"), and the researchers are named only by a count; "way too many" is a judgement (rule 5).
+  - **May matter because:** it names a person who keeps a BARREL web site, A.J. Halford, and the mission's reach.
+- **Left out:** "only" (notes, "launched only balloons")
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." "only" says nothing else was launched.
+- **Left out:** "research using data collected on these flights is ongoing, so stay tuned for updates!" (notes)
+  - **Rule:** What counts as a fact, rule 10: "Leave out "latest", "current", "now", "then available", and words like them." ("ongoing"); "stay tuned" names nothing (rule 9).
+- **Left out:** "All data and analysis software are freely available to the scientific community." (notes)
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." For the data: HAS_ACCESS_RIGHTS "freely available to the public" says more. "analysis software": rule 9, no particular software is named.
+- **Left out:** "primarily" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "the website maintained by A.J. Halford" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." No address, so no instance.
+- **Left out:** "current" (notes, "The current release")
+  - **Rule:** What counts as a fact, rule 10: "Leave out "latest", "current", "now", "then available", and words like them."
+- **Left out:** "BARREL will make all its scientific data products quickly and publicly available but all users are expected to read and follow the BARREL Data Usage Policy listed below." (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." "all users are expected to read and follow" asks it of users. "will make … publicly available": rule 16 of *Writing a classed triple* (HAS_ACCESS_RIGHTS). "quickly": rule 9.
+  - **May matter because:** it ties the data to their usage policy.
+- **Left out:** "BARREL Data Usage Policy" (notes, the heading)
+  - **Rule:** What counts as a fact, rule 3: "the names are formatting, not facts."
+- **Left out:** "every effort is made to ensure that these products are of the highest quality" (notes)
+  - **Rule:** What counts as a fact, rule 5: "Leave out words such as "great"."
+- **Left out:** "However, there may occasionally be issues with either the instruments or data processing that affect the accuracy of data." (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." ("may").
+- **Left out:** "When possible, a quality flag is included in higher level data products, and known issues are posted in the BARREL data repository." (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." ("When possible"); "known issues" names no issue (rule 9).
+  - **May matter because:** it says where the known issues are posted.
+- **Left out:** "You are also strongly encouraged to follow the guidelines below … This will help you ensure that your science results are valid." (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." ("encouraged to").
+- **Left out:** the bullets' advice to users ("Users should always use the highest version numbers …", "Users should notify the BARREL PI …", "users should Credit/Acknowledge the BARREL team as follows: We acknowledge the BARREL team … for use of BARREL data.", "Users are also requested to provide the PI with a copy …", "the citation should be transmitted to the PI") (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." ("should", "are requested to").
+  - **May matter because:** the acknowledgement text is how the data should be credited.
+- **Left out:** "Browse/quick-look plots are not intended for science analysis or publication and should not be used for those purposes without consent of the principal investigator, PI." (notes)
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"."
+- **Left out:** "if a BARREL team member is already working on a similar or related topic, they may be able to contribute intellectually" (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." ("may").
+- **Left out:** "online copy" (notes)
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing," The policy is the instance, AVAILABLE_AT its address.
+
+## "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (pool position 21, id 264a9b23-9a86-46a7-ab61-9661230ea667)
+
+3 items, 2 that may matter.
+
+- **Left out:** "CH1-ORB" (title)
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for". It is on no list rule 1's *Names on an official NASA list* names, as written.
+  - **May matter because:** in PDS3 naming it is the instrument host, the Chandrayaan-1 orbiter (my reading of the PDS3 naming order; not checked against this data set's catalog files). A search by platform would need it.
+  - **Question:** Q6 (b).
+- **Left out:** "2" (title, "M3 2 L0")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for"; a bare number is not "L" or "Level" followed by a number.
+  - **May matter because:** in PDS3 naming it is most likely the CODMAC level (CODMAC 2 = NASA Level 0, which agrees with "L0"; my reading, not checked for this data set).
+  - **Question:** Q6 (b).
+- **Left out:** "instrument" (notes, "Moon Mineralogy Mapper (M3) instrument") and "mission" (notes, "Chandrayaan-1 mission")
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
+
+## "Flight Data For Tail 655" (pool position 22, id 967275c7-aa2d-4b08-a9db-aff5cf6b7802)
+
+4 items, 1 that may matter.
+
+- **Left out:** "individual flight" (notes, "individual flight recorded data"), that each file holds one flight
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." No flight is named.
+  - **May matter because:** it says how the files are cut.
+- **Left out:** "Flight Data" (title) as a fact
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class". The flights are not named (rule 9).
+- **Left out:** "each with a data structure" (notes), the structure as a thing of its own
+  - **Rule:** What counts as a fact, rule 9: "is written for the thing the group belongs to only when it stays true of that thing: what it holds". The 186 parameters are named only by a count, so the structure's contents are written as the dataset's (HAS_ANCILLARY_DATA "sampling rate", "units", "parameter description", "parameter ID").
+- **Left out:** "sensor recordings" (notes, the first item of the data structure)
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class". The recordings are the values themselves, and name no property.
+
+## "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (pool position 24, id 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9)
+
+7 items, 2 that may matter.
+
+- **Left out:** what "HIRDLS" stands for (title, and notes "HIRDLS data", "HIRDLS Level 2 profiles")
+  - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for". Its entity class, Instrument, is written (ACQUIRED_BY_INSTRUMENT "HIRDLS", twice), by rule 1's *Names on an official NASA list*.
+  - **May matter because:** it is the instrument's name, the main search key.
+  - The list: GCMD Instruments keywords (version 25.1), "HIRDLS", "High-Resolution Dynamics Limb Sounder"; the CMR record of H3ZFCGPH version 007 lists it under the platform Aura (checked on 2026-10-31).
+- **Left out:** "entire" (notes, twice: "the entire mission")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+- **Left out:** "mission" (notes, "the entire mission (~3 years) of HIRDLS data"), as FROM_MISSION
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." No mission is named.
+- **Left out:** "may be used to compute values at any longitude" (notes)
+  - **Rule:** What counts as a fact, rule 7: "Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends." ("may"); and a use is a fact of the work that used the data (rule 9).
+  - **May matter because:** it says what the coefficients are for.
+- **Left out:** "approach" (notes, "a Kalman filter approach")
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
+- **Left out:** "separate" (notes, "separate data fields")
+  - **Rule:** Writing a classed triple, rule 16: "Each fact once, even if the record states it twice or in other words." Three HAS_VARIABLE triples already say there are three fields.
+- **Left out:** the notes' quoted name "HIRDLS/Aura Level 3 Geopotential Height Zonal Fourier Coefficients" as another name of the dataset
+  - **Rule:** Writing a classed triple, rule 20: "Write ALSO_KNOWN_AS only when the record gives the other name in words of its own"; the thing the title names is always written as its title (rule 23).
+
+## "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (pool position 25, id ed2cea26-ed6c-4138-be69-3d32d4ce4858)
+
+7 items, 4 that may matter.
+
+- **Left out:** "irrespective of cloud conditions and daylight illumination" (notes)
+  - **Rule:** What counts as a fact, rule 6: "A ground truth triple can't say "not"." ("irrespective of" means "not affected by").
+  - **May matter because:** all-weather, day-and-night mapping is a reason to choose a radar product.
+- **Left out:** "that often pose challenges to optical sensors" (notes)
+  - **Rule:** What counts as a fact, rule 9: "A ground truth triple needs a subject and an object the record names." "optical sensors" names no sensor.
+- **Left out:** "Forward" (notes, "Forward production … began")
+  - **Rule:** What counts as a fact, rule 9: "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance"
+  - **May matter because:** forward processing is new acquisitions, as against reprocessing of older ones, so data from before Sept 2024 may exist.
+- **Left out:** "data record" (notes, "the DSWx-S1 data record")
+  - **Rule:** Writing a classed triple, rule 23: "Leave out a type word that only describes the thing,"
+- **Left out:** "a set of 3" (notes, "Each product is distributed as a set of 3 GeoTIFF … files")
+  - **Rule:** What counts as a fact, rule 9: "An amount or a count per member gives no ground truth triple". The file format is written (HAS_FILE_FORMAT).
+  - **May matter because:** it says how one granule is packaged.
+- **Left out:** "To access the calibration/validation database for OPERA Dynamic Surface Water Extent Products, please contact podaac@podaac.jpl.nasa.gov" (notes)
+  - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The database is not part of, or an input to, the record's dataset.
+  - **May matter because:** it is where the validation data are, and who to ask.
+  - **Question:** Q24.
+- **Left out:** "an interagency effort" (notes)
+  - **Rule:** What counts as a fact, rule 4: "says what type of thing MODIS is: that belongs in its entity class"
