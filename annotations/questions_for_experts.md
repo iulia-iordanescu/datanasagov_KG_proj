@@ -2994,8 +2994,8 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Version: a label that marks one release of something
 - predicate ALSO_KNOWN_AS: is the same thing under another name
-- predicate HAS_LATENCY -> (none): The subject (a data product or table) is made available or updated with the object, a latency or update delay.
-- predicate HAS_IDENTIFIER -> (none): The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
+- predicate HAS_LATENCY -> HAS_LATENCY: The subject (a data product or table) is made available or updated with the object, a latency or update delay.
+- predicate HAS_IDENTIFIER -> HAS_IDENTIFIER: The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
 - What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
