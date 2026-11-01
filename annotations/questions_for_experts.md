@@ -381,6 +381,7 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
+- translation table row: entity class Aircraft
 - translation table row: predicate SOURCED_FROM
 - translation table row: predicate OBSERVED_BY
 - ground truth schema entry: entity class Mission
@@ -752,9 +753,9 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - predicate PROVIDED_BY -> PROVIDED_BY_PARTY: The subject (a product, campaign or responsibility) is supplied, conducted or overseen by the object, an organization, team or instrument mission.
 - entity class Spacecraft -> Platform: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
 - entity class SpaceStation -> Platform: A crewed orbiting space station, such as the International Space Station, used as a platform for research and observation.
-- entity class Aircraft -> (none): A crewed or research airplane used as a platform for airborne observations or measurements.
+- entity class Aircraft -> Platform: A crewed or research airplane used as a platform for airborne observations or measurements.
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
-- entity class Campaign -> (none): A coordinated period of field or flight measurement activity, such as an aircraft or balloon campaign, conducted to collect data.
+- entity class Campaign -> Campaign: A coordinated period of field or flight measurement activity, such as an aircraft or balloon campaign, conducted to collect data.
 - entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
@@ -2389,7 +2390,7 @@ Our schema has an entity class MapProjection, "a way of drawing the curved Earth
 
 ### Translation table
 
-- entity class CoordinateSystem -> MapProjection: A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data.
+- entity class CoordinateSystem -> CoordinateSystem: A spatial reference frame or grid, such as a heliographic system or equidistant grid, used to locate or map data.
 
 ### Options
 
@@ -2433,7 +2434,7 @@ Checked on 2026-10-31: the standard agrees with our reading. OGC's Abstract Spec
 - predicate MAPPED_INTO: its values were laid onto a map drawn with this MapProjection
 - predicate ALSO_KNOWN_AS: is the same thing under another name
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
-- predicate HAS_COORDINATE_SYSTEM -> MAPPED_INTO: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
+- predicate HAS_COORDINATE_SYSTEM -> HAS_COORDINATE_SYSTEM: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
 - Writing a classed triple, rule 23: One thing, one wording, within a record.
 - Writing a classed triple, rule 23: the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
@@ -3286,6 +3287,7 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
+- translation table row: entity class Aircraft
 - translation table row: entity class Mission
 - translation table row: entity class PhysicalQuantity
 - ground truth schema entry: entity class Instrument
