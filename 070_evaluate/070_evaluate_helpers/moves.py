@@ -248,6 +248,36 @@ PER_RECORD_COLUMNS = (("pairs", "Pairs ({})"), ("strict_pairs", "Strict pairs ({
                       ("strict_recall_within_reach", "Recall within reach (strict {})"))
 
 
+#: The report's subsection on recall by the second opinion, named once.
+SECOND_OPINION_SECTION = "By the second opinion"
+SECOND_OPINION_FORMULA = ("For a group: recall = its pairs ÷ its ground truth triples; precision = its pairs ÷ (counted "
+                          "occurrences − the pairs of the other groups); F1 = 2 × pairs ÷ (that denominator + its "
+                          "ground truth triples).")
+
+
+def _second_opinion_lines(n: dict, models: list) -> list:
+    """The table of recall and partial F1 for the ground truth triples found, not found, and not checked by the second
+    opinion (stats._by_second_opinion), when any was checked; else nothing."""
+    by = n.get("second_opinion")
+    if not by:
+        return []
+    who = ", ".join(f"`{m}`" for m in models) or "the second opinion"
+    lines = [f"#### {SECOND_OPINION_SECTION}", "",
+             f"A second, independent draft of each finished record ({who}; `py helpers/second_opinion.py`, "
+             f"`helpers/second_opinion.md`) was matched against the ground truth with the pairing above. A ground "
+             f"truth triple it also stated is *found*; one it didn't is *not found* (stated by one annotator only: "
+             f"possibly a fact a model misses, or a rule the ground truth applies and the draft doesn't); a record it "
+             f"didn't draft is *not checked*. {SECOND_OPINION_FORMULA} No margin of error: the groups split the same "
+             f"records, so the whole part's margins apply to neither alone.", "",
+             "| Ground truth triples | Count | Recall (exact) | Recall (partial) | Pairs (partial) | Precision (partial) | F1 (partial) |",
+             "|---|---:|---:|---:|---:|---:|---:|"]
+    for group, e in by.items():
+        lines.append(f"| {group} by the second opinion | {e['gt_triples']} | {readings.pct(e['exact']['recall'])} | "
+                     f"{readings.pct(e['partial']['recall'])} | {e['partial']['pairs']} | "
+                     f"{readings.pct(e['partial']['precision'])} | {readings.pct(e['partial']['f1'])} |")
+    return lines + [""]
+
+
 def _per_record_lines(rows: list) -> list:
     """The report's table of each evaluated record's own numbers (stats.per_record)."""
     lines = ["#### Per record", "",
@@ -903,6 +933,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                       "truth schema) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
+        lines += _second_opinion_lines(n, evaluated.second_opinion_models)
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
         lines += ["#### Per stratum", "", f"Numbers once a stratum has {stats.MIN_RECORDS} records; with many strata, "
                   f"about 1 in 20 margins misses by chance, so one odd stratum is not a finding.", "",

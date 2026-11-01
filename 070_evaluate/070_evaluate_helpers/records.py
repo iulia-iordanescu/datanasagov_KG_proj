@@ -52,6 +52,7 @@ from common.left_out import read_pending
 from common.llm import confirm, numbered, show_warnings
 from common.partial_reviews import read_reviews, review_problems
 from common.records_io import has_text, load_records
+from common.second_opinion import groups_of, key_of, read_table as read_second_opinion
 from common import dropped
 from common.report import named
 from common.schema_io import parse_source, read_ground_truth_schema
@@ -83,6 +84,8 @@ class Evaluated:
     finished: list = field(default_factory=list)   # the finished ground truth records, {"id", "maintainer"}
     pending: list = field(default_factory=list)    # every row of annotations/pending_triples.csv (read_pending): the
                                                    # facts that wait on an expert, of every record, evaluated or not
+    second_opinion_models: list = field(default_factory=list)  # the models whose second opinion checked an evaluated
+                                                   # record (annotations/second_opinion.csv, column checked_by)
 
 
 def _triples(rows: list) -> tuple:
@@ -211,6 +214,40 @@ def _read_pending(inputs: dict) -> list:
                    f"match them: {e}. Fix that line, {AGAIN}")
 
 
+def _read_second_opinion(inputs: dict) -> dict:
+    """annotations/second_opinion.csv (common.second_opinion.read_table): which ground truth triples a second,
+    independent draft found. No such input given (a caller other than run.py), or no file: none, so every ground truth
+    triple is "not checked". A file lacking a column stops the step, naming it."""
+    if "second_opinion" not in inputs:
+        return {}
+    path = Path(inputs["second_opinion"])
+    try:
+        return read_second_opinion(path)
+    except ValueError as e:
+        raise Stop(f"{repo_path(path)} can't be read, so 070 can't tell which ground truth triples the second opinion "
+                   f"found: {e}. Restore its header line (`git checkout -- {repo_path(path)}` gives the file with its "
+                   f"header only), or run `py helpers/second_opinion.py --apply true` to write it again, {AGAIN}")
+
+
+def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> None:
+    """The models whose second opinion checked an evaluated record, and a note on the rows of
+    annotations/second_opinion.csv about evaluated records that match none of their ground truth triples (the triple
+    was reworded or deleted since the second opinion was applied), so they count for nothing."""
+    evaluated_ids = {r["id"] for r in evaluated.records}
+    live = {key_of(r["id"], g) for r in evaluated.records for g in r["gt"]}
+    stale = [row for k, row in table.items() if row["id"] in evaluated_ids and k not in live]
+    evaluated.second_opinion_models = sorted({m for k, row in table.items() if row["id"] in evaluated_ids
+                                              for m in row["checked_by"]})
+    if stale:
+        path = repo_path(Path(inputs["second_opinion"]))
+        evaluated.notes.append(f"{len(stale)} row(s) of {path} name a classed triple that is no longer a ground truth "
+                               f"triple of its record (reworded or deleted since the second opinion was applied), so "
+                               f"they count for nothing, and the triple that replaced it counts as not checked: "
+                               + named([f"line {r['_line']} (record {r['id']})" for r in stale], 5, "; ")
+                               + ". Run `py helpers/second_opinion.py --apply true` (it pays nothing for answers already "
+                                 "cached) to rewrite those records' rows, " + AGAIN)
+
+
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
 #: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
 SPECS = {"evaluate_held_out": Spec(bool)}
@@ -331,6 +368,7 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
     rows_of = {}
     for r in gt.select(EVALUABLE).rows:
         rows_of.setdefault(r["id"], []).append(r)
+    second_opinion = _read_second_opinion(inputs)
     for rid in evaluated.pool:
         if rid not in fair:
             continue
@@ -341,7 +379,9 @@ def pick_records(inputs: dict, settings: dict) -> Evaluated:
             "stratum": strata.get(rid, ""), "title": titles.get(rid, ""),
             "gt": gt_triples, "gt_describes": gt_describes, "extracted": ex_triples, "extracted_describes": ex_describes,
             "removed": dict(removed.get(rid, {})), "pending": pending_of.get(rid, []),
+            "second_opinion": groups_of(rid, gt_triples, second_opinion),
         })
+    _note_second_opinion(evaluated, second_opinion, inputs)
     _mark_twins(evaluated, catalog, inputs)
     missing_stratum = [r["id"] for r in evaluated.records if not r["stratum"]]
     if missing_stratum:

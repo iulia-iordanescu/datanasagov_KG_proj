@@ -202,14 +202,14 @@ def _parse_bool(text: str) -> bool:
     raise argparse.ArgumentTypeError(f"expected true or false, got {text!r}")
 
 
-def _parse_command_line(step_name, inputs, settings, argv):
+def _parse_command_line(step_name, inputs, settings, argv, command=None, guide=None):
     shared = sorted(set(inputs) & set(settings))
     if shared:
         raise ValueError(f"{step_name}: an input and a setting can't share a name, since both are given "
                          f"on the command line as --<name>: {', '.join(shared)}")
     ap = argparse.ArgumentParser(
-        prog=f"py {step_name}/run.py",
-        description=f"Run {step_name}. Instructions: {step_name}/{step_name}.md",
+        prog=command or f"py {step_name}/run.py",
+        description=f"Run {step_name}. Instructions: {guide or f'{step_name}/{step_name}.md'}",
     )
     for key, default in inputs.items():
         ap.add_argument(f"--{key}", f"--{key.replace('_', '-')}", dest=f"in_{key}",
@@ -543,13 +543,16 @@ EXIT_CODES = {RAN: 0, STOPPED: 2, INTERRUPTED: 130, FAILED: 1}
 NOT_FINISHED = (FAILED, STOPPED, INTERRUPTED)
 
 
-def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=(), specs=None) -> None:
+def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=(), specs=None,
+             command: str | None = None, guide: str | None = None) -> None:
     """Run a step: parse the command line, check the settings (specs: the step's own Spec table; the shared settings'
-    rules come with it), describe the inputs, run main, write the manifest and the report."""
+    rules come with it), describe the inputs, run main, write the manifest and the report. command and guide: how the
+    messages name the command and its guide, for a helper that runs in this frame but isn't <step>/run.py
+    (py helpers/second_opinion.py); a step leaves them out."""
     from common.report import write_step_report
 
     argv = sys.argv[1:] if argv is None else argv
-    chosen_inputs, chosen_settings, changed = _parse_command_line(step_name, inputs, settings, argv)
+    chosen_inputs, chosen_settings, changed = _parse_command_line(step_name, inputs, settings, argv, command, guide)
 
     started = dt.datetime.now().astimezone()
     clock = time.monotonic()
@@ -567,7 +570,7 @@ def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_
            "settings_changed": changed}
 
     log.info(f"{step_name}: run {run_id} started")
-    log.debug(f"command: {' '.join([f'py {step_name}/run.py'] + argv)}")
+    log.debug(f"command: {' '.join([command or f'py {step_name}/run.py'] + argv)}")
     log.debug(f"git commit: {run['git_commit']}; python {platform.python_version()} on {platform.system()}")
     for key, value in chosen_settings.items():
         log.debug(f"setting {key} = {value!r}" + (" (command line)" if key in changed else ""))

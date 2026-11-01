@@ -251,4 +251,20 @@ See `helpers/audit.md`.
 
 ## Added later
 
+### A second opinion on the ground truth (added 2026-11-01)
+
+Many ground truth triples were first drafted by a model and corrected by hand, and the rest written by hand, so the facts the drafting model missed were found by one person alone. To know which ground truth triples a second, independent annotator also finds, another model drafts every [finished record](terminology.md#4-ground-truth-and-samples) again, the way 050 drafts, and each [ground truth triple](terminology.md#4-ground-truth-and-samples) is matched against that fresh draft (`helpers/second_opinion.md`). The [ground truth](terminology.md#4-ground-truth-and-samples) isn't changed. Once some records are finished:
+
+```powershell
+py helpers/second_opinion.py
+```
+
+It asks before paying (its notes say which records it drafts, by part; `--ids <id>,<id>` for some of them; `--model <name>` for another model than `gemini-4-argon`). Read its report: the counts found / not found, and, for [tuning records](terminology.md#7-evaluating-extraction-step-070) only, the draft's facts the ground truth lacks, to review (a missed fact, one the rules leave out on purpose, or a wrong one). Then record what was found, so step 070 reports recall by the group found / not found:
+
+```powershell
+py helpers/second_opinion.py --apply true
+```
+
+It pays nothing (the answers are cached) and writes `annotations/second_opinion.csv`, the only file of `annotations/` it ever writes; commit it. Apply again after rewording or adding ground truth triples of a finished record (a reworded one counts as not checked until then; step 070 warns).
+
 *(New items go here.)*

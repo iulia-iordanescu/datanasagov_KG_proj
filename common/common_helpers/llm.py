@@ -101,7 +101,9 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 #: parameters ("Omit `temperature`, `top_p`, and `top_k`", and temperature 0 "never guaranteed identical outputs on
 #: prior models": https://platform.claude.com/docs/en/models/opus-5-5/migration-guide); Google advises keeping
 #: Gemini 3's temperature at its default 1.0 ("Setting temperature below 1.0 may lead to unexpected behavior, such as
-#: looping or degraded performance": https://ai.google.dev/gemini-api/docs/gemini-3). Not part of the cache key.
+#: looping or degraded performance": https://ai.google.dev/gemini-api/docs/gemini-3), and for Gemini 4 Argon says
+#: "Remove `temperature`, `top_p`, and `top_k` from your requests. If provided, they are ignored"
+#: (https://ai.google.dev/gemini-api/docs/latest-model, read 2026-11-01). Not part of the cache key.
 TEMPERATURE = 0
 
 #: How much a model that thinks before answering may think: the default of every step's `thinking` setting, which
@@ -110,7 +112,9 @@ TEMPERATURE = 0
 #: less room for the answer: on 2026-10-21, gemini-2.5-pro's answer for a 1,503-character record was cut off after
 #: 10,623 characters, far fewer than 16,000 tokens hold. Sent as LiteLLM's `reasoning_effort`, only where LiteLLM
 #: documents it (thinking_sent): for Gemini 2.5 Pro, LiteLLM turns "low" into a thinking budget of 1,024 tokens, so
-#: the answer keeps about 15,000 of MAX_ANSWER_TOKENS; for Gemini 3, into its thinking level "low". "model_default"
+#: the answer keeps about 15,000 of MAX_ANSWER_TOKENS; for Gemini 3 and 4, into its thinking level of the same name
+#: (https://docs.litellm.ai/docs/providers/gemini, "Mapping for Gemini 3+ models"; Gemini 4 Argon takes low, medium
+#: and high, medium being its default: https://ai.google.dev/gemini-api/docs/thinking). "model_default"
 #: sends nothing, so the model thinks as it would by default.
 THINKING = "low"
 THINKING_LEVELS = ("low", "medium", "high", "model_default")
@@ -255,8 +259,8 @@ def effort_note(model: str | None = None) -> str | None:
 
 def temperature_sent(model: str | None = None, service: str | None = None) -> bool:
     """Whether calls to this model are sent TEMPERATURE: not to Anthropic's Claude models, which take no sampling
-    parameters, nor to Google's Gemini 3 and later, whose maker advises keeping the default (TEMPERATURE cites
-    both); to every other model, Gemini 2.5 among them. The same through either service."""
+    parameters, nor to Google's Gemini 3 and later (Gemini 4 Argon ignores it; Gemini 3's maker advises keeping the
+    default: TEMPERATURE cites both); to every other model, Gemini 2.5 among them. The same through either service."""
     model = model or MODEL
     if maker(model) == "Anthropic":
         return False
@@ -1065,10 +1069,11 @@ class PaidCalls:
     puts them in its report's warnings, where they're read on runs that
     needed no call or had nobody at the keyboard."""
 
-    def __init__(self, confirm: bool, notes: list = (), step: str = ""):
+    def __init__(self, confirm: bool, notes: list = (), step: str = "", command: str | None = None):
         self.confirm = confirm
         self.notes = list(notes)
         self.step = step                    # the step's folder name, e.g. 070_evaluate
+        self.command = command or (f"py {step}/run.py" if step else "")   # how messages say to run it again
         self.started = False
         self.made = 0                       # calls made by the stages
         self.test_calls = 0                 # 1 once the run has started paying
@@ -1091,7 +1096,7 @@ class PaidCalls:
             confirm("Press Enter to start (1 test call first), or anything else to cancel."
                     if not self.notes else
                     "Press Enter to go ahead anyway (1 test call first), or anything else to cancel.")
-        again = f"`py {self.step}/run.py`" if self.step else "the step"
+        again = f"`{self.command}`" if self.command else "the step"
         service = SERVICES.get(SERVICE, SERVICE)
         try:
             call_llm(TEST_PROMPT, attempts=2)
@@ -1211,7 +1216,7 @@ class PaidCalls:
                 f"{EARLY_STOP_WINDOW}, in common/common_helpers/llm.py). What to do: {todo}."
                 + (f" Each failed call is described in {file}." if file else "")
                 + f" Answers already received are kept in the cache, so the next run pays only for the rest: run "
-                  f"`py {self.step}/run.py` again once that is changed.")
+                  f"`{self.command}` again once that is changed.")
 
     def not_sent(self, jobs: list) -> None:
         """The calls the early stop prevented, [(where, prompt)]: one line each in the failed-call record."""
@@ -1259,12 +1264,14 @@ class Calls:
     cache_dir: Path
 
 
-def paid_calls(settings: dict, output, notes: list = (), session_id: str | None = None) -> Calls:
+def paid_calls(settings: dict, output, notes: list = (), session_id: str | None = None,
+               command: str | None = None) -> Calls:
     """The Calls of one run: uses the model the setting `model` names, through the service the setting `service`
     names, with the thinking cap the setting `thinking` gives; asks before paying (setting confirm_paid_calls),
     showing notes first; answers kept in cache/ inside the step's output folder. A setting it can't use stops the
     step (Stop: `stopped`, a problem the person can fix). session_id: sent with each LiteLLM request of the run
-    (SESSION_ID); None sends none."""
+    (SESSION_ID); None sends none. command: how messages say to run it again (a helper's, e.g. py helpers/second_opinion.py;
+    a step leaves it out: py <step>/run.py)."""
     global MODEL, SERVICE, THINKING, REPEAT, SESSION_ID
     from common.step import check_settings                  # the one check of every setting (common.step.shared_specs)
     given = {"service": settings.get("service") if settings.get("service") is not None else SERVICE,
@@ -1285,7 +1292,7 @@ def paid_calls(settings: dict, output, notes: list = (), session_id: str | None 
         REASKS[k] = 0
     OUTCOMES.update(failed=0, cut_off=0, not_sent=0, file=None)
     RUN_WARNINGS.clear()
-    return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name),
+    return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name, command=command),
                  cache_dir=Path(output) / "cache")
 
 

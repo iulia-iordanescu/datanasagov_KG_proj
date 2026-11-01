@@ -341,6 +341,20 @@ def _pair(gt: list, ex: list, free_e: set, allowed) -> tuple:
     return pairs, turned, free_e
 
 
+def pair_triples(gt: list, ex: list) -> list:
+    """The two passes (LEVELS) between a record's ground truth triples and triples already in the ground truth schema
+    (no translation, no partial pair review): [(gt index, other index, level)]. What the second opinion
+    (py helpers/second_opinion.py) matches a fresh draft against the ground truth with, so a ground truth triple is
+    found by it exactly when step 070 would pair it with an occurrence that read the same."""
+    pairs, _, _ = _pair(gt, ex, set(range(len(ex))), lambda gi, ei: True)
+    return pairs
+
+
+#: Each ground truth triple's group by the second opinion (common/common_helpers/second_opinion.py, GROUPS), under
+#: record["second_opinion"]; a record without that key has every ground truth triple in NOT_CHECKED.
+SECOND_OPINION_GROUPS = ("found", "not found", "not checked")
+
+
 def compare_record(record: dict, translation, reviews: dict | None = None) -> dict:
     """The record's pairs and counts: record["compared"]. reviews: a person's
     verdicts on partial pairs ({pair_key: verdict}); a pair marked "not the
@@ -371,6 +385,10 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     counts = {"extracted": len(ex), "gt": len(gt), "within_reach": sum(reach),
               "within_strict_reach": sum(strict_reach),
               "occurrences_multiplicity_above_1": sum(m > 1 for m in multiplicity)}
+    groups = record.get("second_opinion") or [SECOND_OPINION_GROUPS[-1]] * len(gt)
+    if len(groups) != len(gt) or any(g not in SECOND_OPINION_GROUPS for g in groups):
+        raise ValueError(f"record {record['id']}: second_opinion must give one of {SECOND_OPINION_GROUPS} for each of "
+                         f"its {len(gt)} ground truth triples, got {groups!r}")
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
         counts[f"{level}_pairs"] = len(used)
@@ -383,7 +401,12 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         counts[f"{level}_strict_pairs_within_strict_reach"] = sum(strict_reach[gi] for gi, _ in strict)
         # occurrences paired, at this level, with a fact that waits on an expert: out of precision's denominator
         counts[f"{level}_pending_pairs"] = sum(1 for _, _, lv in pending_pairs if level == "partial" or lv == "exact")
+        # the pairs whose ground truth triple is in each group by the second opinion (SECOND_OPINION_GROUPS)
+        for group in SECOND_OPINION_GROUPS:
+            counts[f"{level}_pairs_{group.replace(' ', '_')}"] = sum(1 for gi, _ in used if groups[gi] == group)
     counts["pending"] = len(pending)
+    for group in SECOND_OPINION_GROUPS:
+        counts[f"gt_{group.replace(' ', '_')}"] = sum(1 for g in groups if g == group)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]
     truth = gd["object_class"] if gd and not is_undecided(gd["object_class"]) else None

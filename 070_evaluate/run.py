@@ -18,7 +18,9 @@ Reads:   records.jsonl (020), splits.json (030), extracted_triples.csv,
          ground truth was scored against), annotations/ground_truth/, annotations/component_class_mapping.csv,
          annotations/partial_pair_reviews.csv, annotations/pending_triples.csv
          and annotations/left_out.md (the facts that wait on an expert: an
-         extracted triple matching one isn't counted against precision)
+         extracted triple matching one isn't counted against precision),
+         annotations/second_opinion.csv (which ground truth triples a second,
+         independent draft found: recall is also given by that group)
 Writes:  metrics.json, per_record.md, compared_triples.csv; adds rows to
          annotations/component_class_mapping.csv and, with --evaluate_held_out true, a line
          to annotations/held_out_looks.csv (never changing an existing one)
@@ -47,6 +49,7 @@ INPUTS = {
     "partial_reviews":           "./annotations/partial_pair_reviews.csv",
     "pending_triples":           "./annotations/pending_triples.csv",
     "left_out":                  "./annotations/left_out.md",
+    "second_opinion":            "./annotations/second_opinion.csv",
 }
 
 SETTINGS = {

@@ -52,8 +52,8 @@ def paid_calls(chosen, settings, output) -> llm.Calls:
     return llm.paid_calls(settings, output, notes=chosen.notes)
 
 
-def ask_model(chosen, calls, settings):
-    return draft.ask_model(chosen, calls, settings)
+def ask_model(chosen, calls, settings, plan=None):
+    return draft.ask_model(chosen, calls, settings, plan)
 
 
 def build_rows(chosen, replies) -> Drafts:

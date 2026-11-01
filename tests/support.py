@@ -96,7 +96,7 @@ def use_step(step: str) -> Path:
 #: annotations/ files a temporary copy starts with: copied whole, or only
 #: their first line (a CSV file's header; for the additions file, see below).
 WHOLE = ("README.md", "ground_truth_schema.txt", "guidelines.md")
-HEADER_ONLY = ("component_class_mapping.csv", "partial_pair_reviews.csv", "held_out_looks.csv")
+HEADER_ONLY = ("component_class_mapping.csv", "partial_pair_reviews.csv", "held_out_looks.csv", "second_opinion.csv")
 #: annotations/pending_triples.csv's header (common/common_helpers/left_out.py, PENDING_COLUMNS), for a copy made
 #: before the file exists.
 PENDING_HEADER = "id,subject,subject_class,predicate,object,object_class,source_text,left_out,question"

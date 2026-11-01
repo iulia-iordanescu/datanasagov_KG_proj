@@ -4,6 +4,7 @@ repository with the stand-ins (tests/stand_ins.py) instead of the model and
 data.nasa.gov. Used by test_pipeline.py:
 
     py tests/stand_in_run.py <repository copy> <step folder> [the step's options]
+    py tests/stand_in_run.py <repository copy> helpers/second_opinion.py [its options]   a helper in the steps' frame
 
 The environment variable KG_TEST_CATALOG gives the stand-in catalog's URL
 (step 010). Prints how many prompts the stand-in model answered.
@@ -26,8 +27,9 @@ os.environ.update(LITELLM_API_KEY="stand-in", LITELLM_BASE_URL="http://stand-in.
 llm.load_dotenv = lambda *a, **k: None
 llm._post = stand_ins.stand_in_post
 
-spec = importlib.util.spec_from_file_location("panel", repo / step / "run.py")
+spec = importlib.util.spec_from_file_location("panel", repo / step if step.endswith(".py") else repo / step / "run.py")
 panel = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = panel                    # a dataclass in the panel looks its module up here
 spec.loader.exec_module(panel)
 if "ckan_client" in sys.modules:
     sys.modules["ckan_client"].URL = os.environ["KG_TEST_CATALOG"]
@@ -35,8 +37,9 @@ if "ckan_client" in sys.modules:
 from common.step import run_step                  # noqa: E402
 
 try:
-    run_step(step, panel.INPUTS, panel.SETTINGS, panel.main, argv=argv,
-             may_be_empty=getattr(panel, "MAY_BE_EMPTY", ()))
+    run_step(getattr(panel, "STEP", step), panel.INPUTS, panel.SETTINGS, panel.main, argv=argv,
+             may_be_empty=getattr(panel, "MAY_BE_EMPTY", ()), specs=getattr(panel, "SPECS", None),
+             command=getattr(panel, "COMMAND", None), guide=getattr(panel, "GUIDE", None))
 finally:
     print(f"[stand-in model answered {len(stand_ins.CALLS)} prompt(s)]")
     sent = sorted({str(p.get("reasoning_effort")) for p in stand_ins.PAYLOADS})

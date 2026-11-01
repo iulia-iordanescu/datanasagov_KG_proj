@@ -123,16 +123,18 @@ SPECS = {"records_per_batch": Spec(int, 1, 1000), "start_position": Spec(int, 0,
          "part": Spec(str, choices=(*PARTS, "both"))}
 
 
-def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
-    check_settings(settings, SPECS)
-    part = settings["part"].strip().lower()
+def read_inputs(inputs: dict) -> tuple:
+    """(a Chosen with everything read from the inputs, the pool's rows): the records, the pool (ids, positions, parts),
+    the ground truth (its problems as notes), and the ground truth schema as the model sees it (schema_text) and as
+    the checks compare it (schema_entries), with the component classes coined. What every run that drafts the way
+    050 does starts from: pick_records, and the second opinion (py helpers/second_opinion.py), which drafts finished
+    records again with 050's prompt and checks."""
     chosen = Chosen()
     chosen.records = load_records(inputs["records"])
     pool_rows = read_pool(inputs["splits"])
     chosen.pool = [r["id"] for r in pool_rows]
     chosen.positions = {r["id"]: r["position"] for r in pool_rows}
     chosen.parts = {r["id"]: r["part"] for r in pool_rows}
-    gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.ground_truth = read_ground_truth(Path(inputs["ground_truth"]).parent, pool_rows)   # none yet: no record done
     hand = read_ground_truth_schema(inputs["ground_truth_schema"])
     vocab = ground_truth_schema_view(hand, chosen.ground_truth)
@@ -142,6 +144,26 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
     chosen.schema_text = vocabulary_text(read_text(inputs["ground_truth_schema"]).strip(),
                                          chosen.coined, vocab["used_patterns"])
     chosen.notes += [f"Ground truth, {p}" for p in chosen.ground_truth.problems]
+    return chosen, pool_rows
+
+
+def items_for(chosen: Chosen, picked: list, max_chars: int) -> list:
+    """The items the model is asked about, one per record picked: its id, pool position, title, maintainer, whole
+    text, and text pieces (common/common_helpers/chunking.py)."""
+    items = []
+    for rid in picked:
+        record = chosen.records[rid]
+        items.append({"id": rid, "position": chosen.positions.get(rid), "title": record.get("title") or "",
+                      "maintainer": record.get("maintainer"),
+                      "text": full_text(record), "pieces": pieces(record, max_chars)})
+    return items
+
+
+def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
+    check_settings(settings, SPECS)
+    part = settings["part"].strip().lower()
+    chosen, pool_rows = read_inputs(inputs)
+    gt_files = input_files(Path(inputs["ground_truth"]))
     chosen.done = set(chosen.ground_truth.select(ANNOTATED).ids)
     chosen.waiting, highest = _waiting(output)
     gt_numbers = [int(m.group(1)) for f in gt_files if (m := NUMBERED.fullmatch(f.name))]
@@ -217,11 +239,7 @@ def pick_records(inputs: dict, settings: dict, output: Path) -> Chosen:
             chosen.notes.append(f"{len(rids)} record(s) you listed {'are' if len(rids) > 1 else 'is'} "
                                 f"{reason}{where}, so skipped: {named(rids)}. {to_do[reason]}")
 
-    for rid in picked:
-        record = chosen.records[rid]
-        chosen.items.append({"id": rid, "position": chosen.positions.get(rid), "title": record.get("title") or "",
-                             "maintainer": record.get("maintainer"),
-                             "text": full_text(record), "pieces": pieces(record, settings["max_chars"])})
+    chosen.items = items_for(chosen, picked, settings["max_chars"])
 
     taken_now, taken_after = chosen.done | set(chosen.waiting), chosen.done | set(chosen.waiting) | set(picked)
     for name, in_part in pool_parts(pool_rows).items():

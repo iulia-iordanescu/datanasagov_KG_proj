@@ -29,7 +29,7 @@ import collections
 import math
 import random
 
-from pairing import LEVELS, PER_COMPONENT_CLASS
+from pairing import LEVELS, PER_COMPONENT_CLASS, SECOND_OPINION_GROUPS
 from common.ground_truth import HELD_OUT, PARTS, TUNING
 from common.triples_io import component_class_key
 
@@ -77,12 +77,38 @@ def numbers(records: list) -> dict:
                       "strict_recall_within_reach": _ratio(sw, total["within_strict_reach"]),
                       "pairs": m, "strict_pairs": s, "pairs_within_reach": total[f"{level}_pairs_within_reach"],
                       "strict_pairs_within_reach": sw}
+    out["second_opinion"] = _by_second_opinion(total)
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     describes_classes = collections.Counter(component_class_key(d["truth"]) for d in known)
     per_describes_class = {k: _ratio(sum(d["right"] for d in known if component_class_key(d["truth"]) == k), n) for k, n in describes_classes.items()}
     out["describes"] = {"records": len(known), "accuracy": _ratio(sum(d["right"] for d in known), len(known)),
                         "majority_baseline": _ratio(max(describes_classes.values(), default=0), len(known)),
                         "per_entity_class_average": _ratio(sum(per_describes_class.values()), len(per_describes_class))}
+    return out
+
+
+def _by_second_opinion(total: collections.Counter) -> dict | None:
+    """Recall, precision and F1 at each level for each group of ground truth triples by the second opinion
+    (pairing.SECOND_OPINION_GROUPS: found, not found, not checked; 070_evaluate/070_evaluate.md, *By the second
+    opinion*): {group: {"gt_triples", level: {"pairs", "recall", "precision", "f1"}}}, or None when no ground truth
+    triple was checked (annotations/second_opinion.csv empty, or none of these records in it). For a group, recall =
+    its pairs ÷ its ground truth triples; precision = its pairs ÷ (counted occurrences − the pairs of the other
+    groups), so an occurrence paired with another group's triple is left out, as one paired with a fact that waits
+    on an expert is, and every unpaired occurrence counts against each group alike; F1 from the two. Without a margin
+    of error: the groups split the same records, so the margins of the whole part apply to neither group alone."""
+    groups = [g.replace(" ", "_") for g in SECOND_OPINION_GROUPS]
+    if not any(total[f"gt_{g}"] for g in groups if g != "not_checked"):
+        return None
+    out = {}
+    for g in groups:
+        entry = {"gt_triples": total[f"gt_{g}"]}
+        for level in LEVELS:
+            m = total[f"{level}_pairs_{g}"]
+            others = sum(total[f"{level}_pairs_{o}"] for o in groups if o != g)
+            counted = total["extracted"] - total[f"{level}_pending_pairs"] - others
+            entry[level] = {"pairs": m, "recall": _ratio(m, entry["gt_triples"]), "precision": _ratio(m, counted),
+                            "f1": _ratio(2 * m, counted + entry["gt_triples"])}
+        out[g.replace("_", " ")] = entry
     return out
 
 
