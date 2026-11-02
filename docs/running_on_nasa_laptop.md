@@ -284,4 +284,18 @@ py 060_extract/run.py --repeat 1
 
 The first command pays for every [text piece](terminology.md#1-records-and-their-text) once (the ground truth schema makes other prompts); the second pays nothing. Its report says, under *What this run worked on*, "Translation: identity (060 used the ground truth schema)", and so does its recipe. The third compares it with repeat 1: without `--across_schemas true` it refuses to put a run by identity beside one through the translation table; with it, the report is titled *Comparing evaluations across schemas* and says that each difference measures the schema and its translation together, not extraction alone. The fourth puts 060's output back to the induced schema's repeat 1 (its answers are saved: nothing paid), so a later `py 070_evaluate/run.py` evaluates the baseline again. The ground truth schema was shaped while annotating the very [tuning records](terminology.md#7-evaluating-extraction-step-070) evaluated, so read its numbers as a reference for the induced schema's, not as a held-out result. If 070 stops with *Step 060's last run extracted with the ground truth schema, but … no longer matches*, the ground truth schema changed after 060 ran: run the first command again (paid), then the second.
 
+### Reviewing the partial pairs of several runs (added 2026-11-01)
+
+Each 070 run of the baseline's repeats has [partial pairs](../070_evaluate/metrics/pairs.md) of its own, and the [annotation tool](terminology.md#4-ground-truth-and-samples) shows only the latest run's. To review them all on the personal laptop, collect them here into a file in Git:
+
+```powershell
+git pull
+py helpers/partial_pairs.py --runs 070_evaluate_2026-11-01_1644 070_evaluate_2026-11-01_1701 070_evaluate_2026-11-01_1706
+git add annotations/partial_pairs_to_review.csv
+git commit -m "Partial pairs to review"
+git push
+```
+
+`py helpers/partial_pairs.py` alone lists the 070 runs whose pairs can be collected. The file holds each partial pair of a [tuning record](terminology.md#7-evaluating-extraction-step-070) with no [verdict](terminology.md#7-evaluating-extraction-step-070) yet, once, with the runs that had it and an empty column `verdict`. On the personal laptop I fill `verdict` with `same fact` or `not the same fact`, run `py helpers/partial_pairs.py --apply true` (it moves the filled verdicts into `annotations/partial_pair_reviews.csv`; a wrong value, an edited triple or a conflict stops it, moving nothing), and commit and push both files. Back here, after `git pull`, evaluate each repeat again with the verdicts: `py 060_extract/run.py --repeat 1` (its answers are saved: nothing paid), then `py 070_evaluate/run.py`, and the same for repeats 2 and 3; compare those three new 070 runs. Then `py helpers/partial_pairs.py --delete_stale true --runs <their 070 run ids>` deletes the verdicts 070 lists as *no longer match a partial pair* (`helpers/partial_pairs.md`).
+
 *(New items go here.)*

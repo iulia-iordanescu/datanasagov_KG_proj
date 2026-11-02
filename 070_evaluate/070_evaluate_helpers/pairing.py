@@ -203,6 +203,14 @@ def _ways(g: dict, t: dict, level: str) -> list:
     return ways
 
 
+def verdict_keys(record_id: str, gt: list, ex: list) -> set:
+    """The keys (partial_reviews.pair_key) under which a verdict applies to a record: each ground truth triple and
+    translated extracted triple of it that can pair at the partial level (an exact pair can too). A verdict filed
+    under any other key of the record no longer applies (compare_record's not_applying; helpers/partial_pairs.py
+    reads the same from a run's compared_triples.csv)."""
+    return {pair_key(record_id, g, t) for g in gt for t in ex if _ways(g, t, "partial")}
+
+
 def classes_agree(g: dict, t: dict) -> bool:
     """Both triples name the same entity classes (what "strict" counts)."""
     return component_class_key(g["subject_class"]) == component_class_key(t["subject_class"]) and \
@@ -460,8 +468,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
                    if not allowed(gi, ei) and _ways(gt[gi], ex[ei], "partial"))
     # the verdicts that apply to this record: those filed under a ground truth triple and an occurrence that pair
     # at the partial level (the rest no longer apply: a triple or a translation changed since the review)
-    candidates = {pair_key(record["id"], gt[gi], ex[ei]) for gi in range(len(gt)) for ei in range(len(ex))
-                  if _ways(gt[gi], ex[ei], "partial")}
+    candidates = verdict_keys(record["id"], gt, ex)
     applied = sorted(k for k in reviews if k[0] == record["id"].strip() and k in candidates)
     stale_reviews = sorted(k for k in reviews if k[0] == record["id"].strip() and k not in candidates)
     unreviewed = sum(1 for gi, ei, lv in pairs

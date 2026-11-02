@@ -890,7 +890,8 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         waiting = [r["id"] for r in tuning if r["compared"]["partial_review"]["unreviewed"]]
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, in {len(waiting)} "
                         f"record(s): {named(waiting)}. So the partial level may count pairs that aren't the same fact "
-                        f"(e.g. MODIS vs MODIS Terra). Review them (`py helpers/annotate.py`, view *Partial pairs*), "
+                        f"(e.g. MODIS vs MODIS Terra). Review them (`py helpers/annotate.py`, view *Partial pairs*; the pairs of "
+                        f"several runs, e.g. a baseline's repeats: `py helpers/partial_pairs.py --runs <070 run ids>`), "
                         f"{AGAIN}")
     if evaluated.review_problems:
         warnings.append(f"{len(evaluated.review_problems)} row(s) of annotations/partial_pair_reviews.csv have a "
@@ -906,7 +907,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                         + named([f"record {rid}: {k[1]} {k[2]} {k[3]} / {k[4]} {k[5]} {k[6]}" for rid, k in not_applying],
                                 5, "; ")
                         + ". Nothing to do if that change was meant: any pair it made is counted as not reviewed. "
-                          "To tidy the file, delete those rows.")
+                          "To tidy the file, delete those rows (`py helpers/partial_pairs.py --delete_stale true --runs <070 run ids>`).")
     frequent = [c for c in mismatches if c["count"] >= pairing.MISMATCH_WARN]
     if frequent:
         warnings.append(mismatch_warning(frequent))

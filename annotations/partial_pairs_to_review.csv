@@ -1,0 +1,1 @@
+record_id,record_title,predicate,ground_truth_triple,extracted_triple,runs,verdict,ground_truth_subject,ground_truth_predicate,ground_truth_object,translated_subject,translated_predicate,translated_object,pair_fingerprint
