@@ -81,7 +81,7 @@ predicate,MEASURES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, missi
 predicate,LOCATED_IN,BASED_IN,no,yes,"The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.",is based in this Country,,
 predicate,HAS_START_DATE,(none),no,yes,"The subject (a campaign, dataset, mission phase or event) begins or occurred on the object, a date or time.",,,
 predicate,PROVIDES,HAS_MEASUREMENTS_OF,no,yes,"The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.",holds measurements of this PhysicalQuantity,,
-predicate,AVAILABLE_AT,(none),no,yes,"The subject (a dataset, document or piece of information) can be accessed at the object, a URL, repository, website or data center.",,,
+predicate,AVAILABLE_AT,(none),no,yes,"The subject (a dataset, document or piece of information) can be accessed at the object, a URL, repository, website or data center.",can be got from this WebPage,,
 predicate,ACQUIRED_BY,ACQUIRED_BY_INSTRUMENT,no,yes,"The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.",was collected by this Instrument,,
 predicate,HAS_END_DATE,(none),no,yes,"The subject (a campaign, dataset, product or mission phase) ends, was decommissioned or stopped being acquired on the object, a date.",,,
 predicate,SUPPORTS,(none),no,yes,"The subject (a mission, program, material or dataset) aids, funds, augments or serves as input for the object, another mission, process, product or outcome.",,,
