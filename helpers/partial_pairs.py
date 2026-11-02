@@ -72,7 +72,7 @@ def _manifests(output: Path) -> dict:
     found = {}
     for path in [output / MANIFEST_NAME, *sorted((output / PREVIOUS_RUNS).glob(f"*/{MANIFEST_NAME}"))]:
         try:
-            m = json.loads(path.read_text(encoding="utf-8"))
+            m = read_json(path)
         except (OSError, ValueError):
             continue
         if m.get("run_id"):
