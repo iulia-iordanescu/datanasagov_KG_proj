@@ -106,7 +106,7 @@ def ask(model: str, text: str, extra: dict) -> dict:
                "max_tokens": llm.MAX_ANSWER_TOKENS, **json.loads(json.dumps(extra))}
     if llm.temperature_sent(model, "litellm"):
         payload["temperature"] = llm.TEMPERATURE                # as the pipeline sends it; never to Claude
-    resp = llm._post(url, headers=headers, json=payload, timeout=(5, llm.READ_TIMEOUT))
+    resp = llm.litellm_post(url, headers=headers, json=payload, timeout=(5, llm.READ_TIMEOUT))
     got = {str(k).lower(): v for k, v in dict(getattr(resp, "headers", None) or {}).items()}
     if resp.status_code >= 400:
         return {"status": resp.status_code, "key": got.get(CACHE_HEADER), "text": resp.text, "usage": {},

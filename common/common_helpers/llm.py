@@ -17,7 +17,8 @@ It holds, in this order:
     EITHER SERVICE
         list_models       the model names the service lists (free; see py helpers/models.py)
         call_llm          send a prompt, get the reply text; retries rate
-                          limits and server errors with backoff
+                          limits and server errors with backoff; a used-up
+                          budget (budget_exhausted) stops the whole run
         try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         classify_reply    what a reply is (complete, cut off, refused, empty, malformed), judged by
                           the service's finish reason AND the answer's content, the same for both
@@ -438,6 +439,78 @@ def _retry_after(resp) -> float | None:
         return None
 
 
+#: How a service says the account's money is used up: the budget its administrators set, or the provider's quota or
+#: credit. Never retried, whatever the HTTP status (LiteLLM sends 400, 401 or 429 for it): asking again fails the same
+#: way until someone raises or resets the budget. The forms, compared lower-cased:
+#:   LiteLLM's BudgetExceededError, "Budget has been exceeded! … Current cost: …, Max budget: …" (NASA's proxy sends
+#:   it as HTTP 429: "Budget has been exceeded! User=… in Team=… Current cost: 25.0, Max budget: 25.0"); its error
+#:   type budget_exceeded; "ExceededBudget: User=… over budget. Spend=…, Budget=…", "ExceededTokenBudget: …",
+#:   "… exceeded budget for model=…" (https://docs.litellm.ai/docs/proxy/users);
+#:   OpenAI's insufficient_quota, "You exceeded your current quota, please check your plan and billing details"
+#:   (https://platform.openai.com/docs/guides/error-codes); Anthropic's "Your credit balance is too low to access the
+#:   Anthropic API" (https://docs.anthropic.com/en/api/errors).
+#: Ask Sage's API documentation gives no form for a used-up monthly token allowance, so its errors are read with the
+#: same words. "budget" alone is not enough: a rate limit's "token budget per minute" or Anthropic's thinking
+#: "budget_tokens" is something else.
+BUDGET_WORDS = re.compile(r"budget has been exceeded|budget_exceeded|exceeded[ _]?(?:token)?budget(?!_tokens)|"
+                          r"\bover budget\b|insufficient_quota|exceeded your current quota|credit balance is too low",
+                          re.I)
+#: The numbers a budget answer reports: LiteLLM's "Current cost: 25.0, Max budget: 25.0" or "Spend=…, Budget=…".
+BUDGET_NUMBERS = re.compile(r"(?:current cost|spend)\s*[:=]\s*([0-9][0-9.eE+-]*?)[,;\s]+(?:max budget|budget)\s*[:=]\s*"
+                            r"([0-9][0-9.eE+-]*?)(?=[,;\s]|\.?$|\.\s)", re.I)
+
+
+def budget_exhausted(status: int, text) -> bool:
+    """Whether a service's error answer (HTTP status, its text) says the account's budget or quota is used up
+    (BUDGET_WORDS): never retried, it stops the run (stop_if_budget_gone). The one place that decides it, beside
+    RETRY_STATUSES."""
+    return status >= 400 and bool(BUDGET_WORDS.search(str(text or "")))
+
+
+class BudgetExhausted(SystemExit):
+    """The service answered that the account's budget or quota is used up. A SystemExit, like EarlyStop, so no
+    `except Exception` takes it for one failed call: the whole run stops at once with its message. Once one is
+    raised, every later request of this process is refused before it is sent (call_llm, litellm_post), so no worker
+    sends another; run_parallel keeps the answers of the calls already under way."""
+
+    def __init__(self, message: str, status: int | None = None, body: str = "", answered: bool = False):
+        super().__init__(message)
+        self.status, self.body = status, body
+        self.answered = answered            # True: this request got the budget answer; False: it was never sent
+
+
+#: The first BudgetExhausted of this process, or None: no request is sent after it (reset only by the tests).
+BUDGET_GONE = {"error": None}
+
+
+def budget_message(service: str, status: int, text) -> str:
+    """The one message for a used-up budget: the service, its words and the numbers they report, what to do."""
+    words = " ".join(str(text or "").split())[:400]
+    found = BUDGET_NUMBERS.search(words)
+    numbers = f" It reports a cost of {found.group(1)} against a budget of {found.group(2)}." if found else ""
+    where = SERVICES.get(service, service)
+    return (f"{where} answered that the budget for this account is used up (HTTP {status}: {words}).{numbers} The run "
+            f"stopped at once: no other model call was sent, and none will be until the budget changes. Answers "
+            f"already received are kept in the cache, so nothing is paid for twice. What to do: ask the {where} "
+            f"administrators to raise or reset the budget (docs/running_on_nasa_laptop.md, *The budget is used up*); "
+            f"there is nothing to retry before that. Then run the same command again: it pays only for the calls not "
+            f"yet answered.")
+
+
+def stop_if_budget_gone(service: str, status: int | None = None, text=None, said=None) -> None:
+    """Raise BudgetExhausted when an earlier answer of this process said the budget is used up, or when this one
+    (HTTP status, its whole text) says so (budget_exhausted); else nothing. said: the error's own words for the
+    message (e.g. LiteLLM's error message, out of its JSON body); text when None."""
+    answered = status is not None and budget_exhausted(status, text)
+    with _requests_lock:
+        gone = BUDGET_GONE["error"]
+        if gone is None and answered:
+            gone = BUDGET_GONE["error"] = BudgetExhausted(budget_message(service, status, said or text), status,
+                                                          str(text or "")[:ERROR_BODY_CHARS])
+    if gone is not None:
+        raise BudgetExhausted(gone.code, gone.status, gone.body, answered)
+
+
 class CutOff(ApiError):
     """The answer was cut off: at the longest length allowed (MAX_ANSWER_TOKENS, which LiteLLM takes), or, where the
     service takes no limit and reports no finish reason (Ask Sage), at the model's own limit, seen in the answer
@@ -640,6 +713,7 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
                          json=payload,
                          timeout=(5, read_timeout))
     _http_reply(resp)
+    stop_if_budget_gone("asksage", resp.status_code, resp.text)
     if resp.status_code == 401:
         # The token is cached for the whole run, so one expiry would
         # otherwise fail every remaining call - and each failure still
@@ -669,6 +743,7 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
         code = err.get("code") or "error"
         inner = err.get("http_status")
         detail = f"{code} (http_status {inner}): {body.get('message')}"
+        stop_if_budget_gone("asksage", inner if isinstance(inner, int) else 400, f"{code}: {body.get('message')}")
         if inner in (429, 500, 502, 503, 504):
             raise RuntimeError(detail)      # worth retrying
         raise ApiError(detail)              # will not fix itself
@@ -676,6 +751,7 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
     status = body.get("status")
     if isinstance(status, (int, str)) and str(status).isdigit() \
             and int(status) >= 400:
+        stop_if_budget_gone("asksage", int(status), body.get("message"))
         raise RuntimeError(f"API status {status}: "
                            f"{str(body.get('message'))[:200]}")
     # .get("message") can be absent OR present-and-null; either way
@@ -699,14 +775,19 @@ def _litellm(path: str) -> tuple:
     return f"{base}{path}", {"Authorization": f"Bearer {key}"}
 
 
-def _litellm_error(resp) -> str:
-    """The error LiteLLM sent, in words: its message when the body has one, else the start of the body."""
+def _litellm_said(resp) -> str:
+    """The error LiteLLM sent, in words: its message when the body has one, else the body."""
     try:
         err = resp.json().get("error")
         text = err.get("message") if isinstance(err, dict) else err
     except (ValueError, AttributeError):
         text = None
-    return f"HTTP {resp.status_code}: {str(text or resp.text)[:300]}"
+    return str(text or resp.text)
+
+
+def _litellm_error(resp) -> str:
+    """The error LiteLLM sent, in words, after its HTTP status: its message, or the start of the body."""
+    return f"HTTP {resp.status_code}: {_litellm_said(resp)[:300]}"
 
 
 def _litellm_models() -> list:
@@ -751,6 +832,19 @@ def _post(*args, **kwargs):
     return requests.post(*args, **kwargs)
 
 
+def litellm_post(url, headers, json, timeout):
+    """One LiteLLM request, as every LiteLLM request is sent (the steps', and those of py helpers/check_effort.py and
+    py helpers/check_answer_cache.py): none after a used-up budget, and an answer saying the budget is used up stops
+    the run (stop_if_budget_gone)."""
+    stop_if_budget_gone("litellm")
+    resp = _post(url, headers=headers, json=json, timeout=timeout)
+    if resp.status_code >= 400:
+        if isinstance(getattr(_last, "reply", None), dict):
+            _http_reply(resp)                               # for the failed-call record
+        stop_if_budget_gone("litellm", resp.status_code, resp.text, _litellm_said(resp))
+    return resp
+
+
 def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
     """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
     when the reply names it, goes into SERVED for the run's record."""
@@ -766,7 +860,7 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     payload.update(answer_cache_control())                  # a fresh answer, where the proxy caches answers
     _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "messages"},
                    "request_bytes": len(json.dumps(payload).encode("utf-8"))}
-    resp = _post(url, headers=headers, json=payload, timeout=(5, read_timeout))
+    resp = litellm_post(url, headers=headers, json=payload, timeout=(5, read_timeout))
     _http_reply(resp)
     if resp.status_code in RETRY_STATUSES:
         raise RetryLater(_litellm_error(resp), _retry_after(resp))   # worth retrying
@@ -822,13 +916,15 @@ def list_models(service: str | None = None) -> list:
 
 def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None, cache_until=None):
     """Send prompt to the model, through the service; the reply text. Retries with exponential backoff on rate
-    limits, server errors, and lost connections; a refusal that will not fix itself (ApiError) is raised at once.
+    limits, server errors, and lost connections; a refusal that will not fix itself (ApiError) is raised at once; a
+    used-up budget (BudgetExhausted) stops the whole run.
     model, service: MODEL and SERVICE (the run's) when None."""
     model, service = model or MODEL, service or SERVICE
     # cache_until: where the prompt's identical start ends, for prompt caching (_messages); only LiteLLM uses it
     ask = _ask_litellm if service == "litellm" else _ask_asksage
     began, _last.reply = time.monotonic(), {}
     for attempt in range(attempts):
+        stop_if_budget_gone(service)                        # none after a used-up budget, retries included
         with _requests_lock:
             REQUESTS["sent"] += 1
         try:
@@ -1050,6 +1146,9 @@ def cut_off_advice(usage=None) -> str:
 
 def advice(error) -> str:
     """What to do about one failed call, in words: the same advice the messages and the failed-call record give."""
+    if isinstance(error, BudgetExhausted):
+        return ("Ask the administrators of the service to raise or reset the budget; nothing to retry before that "
+                "(docs/running_on_nasa_laptop.md, *The budget is used up*)")
     if isinstance(error, CutOff):
         return cut_off_advice(getattr(error, "usage", None))
     if isinstance(error, Refused):
@@ -1274,7 +1373,9 @@ class PaidCalls:
                  "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
                  "prompt_characters": len(prompt)}
         if error is None:
-            entry["why"] = "not made: the early stop stopped the run before this call"
+            entry["why"] = ("not made: the service answered that the budget is used up, so the run stopped before "
+                            "this call" if BUDGET_GONE["error"] is not None else
+                            "not made: the early stop stopped the run before this call")
         else:
             call = getattr(error, "call", None) or {}
             usage = usage or call.get("usage")
@@ -1343,7 +1444,9 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str, not_sent=
 
     When handle raises EarlyStop (PaidCalls.outcome), every call not yet started is cancelled, the calls already under
     way are waited for and handled (so their paid answers are kept), not_sent(keys of the cancelled jobs) is called,
-    and the EarlyStop goes on."""
+    and the EarlyStop goes on. A used-up budget (BudgetExhausted, raised by a call) is met the same way: the calls under
+    way are handled, not_sent gets every call never sent, and the BudgetExhausted goes on (also when it came while an
+    early stop was waiting for the calls under way: then no other call can be made at all)."""
     pool = ThreadPoolExecutor(workers)
     futures, handled = {}, set()
     try:
@@ -1355,18 +1458,30 @@ def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str, not_sent=
                 result, error = None, e
             handled.add(future)
             handle(n, futures[future], result, error)
-    except EarlyStop:
+    except (EarlyStop, BudgetExhausted) as stop:
+        # Nothing more is started. The calls already under way are waited for and handled, so their paid answers are
+        # kept; a used-up budget (BudgetExhausted) met among them is the stop said, since nothing more can be sent.
         cancelled = [f for f in futures if f.cancel()]
         under_way = [f for f in futures if f not in handled and f not in cancelled]
+        unsent = list(cancelled)
         for n, future in enumerate(under_way, len(handled) + 1):
             try:
                 result, error = future.result(), None
             except Exception as e:                      # noqa: BLE001
                 result, error = None, e
-            handle(n, futures[future], result, error)
+            except BudgetExhausted as e:
+                stop = e if isinstance(stop, EarlyStop) else stop
+                if not e.answered:                      # stopped before it was sent
+                    unsent.append(future)
+                    continue
+                result, error = None, e                 # the call the service answered with the used-up budget
+            try:
+                handle(n, futures[future], result, error)
+            except EarlyStop:
+                pass                                    # the run is stopping already: one message
         if not_sent is not None:
-            not_sent([futures[f] for f in cancelled])
-        raise
+            not_sent([futures[f] for f in unsent])
+        raise stop
     except KeyboardInterrupt:
         pool.shutdown(wait=False, cancel_futures=True)
         raise Interrupted(f"Stopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. "

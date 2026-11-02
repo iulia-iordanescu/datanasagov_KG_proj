@@ -154,7 +154,7 @@ def ask(model: str, question: str, extra: dict) -> tuple:
     url, headers = llm._litellm("/v1/chat/completions")
     payload = {"model": model, "messages": [{"role": "user", "content": question}],
                "max_tokens": llm.MAX_ANSWER_TOKENS, **llm.answer_cache_control(), **extra}
-    resp = llm._post(url, headers=headers, json=payload, timeout=(5, llm.READ_TIMEOUT))
+    resp = llm.litellm_post(url, headers=headers, json=payload, timeout=(5, llm.READ_TIMEOUT))
     if resp.status_code >= 400:
         return resp.status_code, resp.text, {}
     body = resp.json()

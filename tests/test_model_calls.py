@@ -834,5 +834,217 @@ class ReplyKinds(Guards):
         self.assertIsNone(cache.cut_off("k"))                                             # LiteLLM's marker isn't Ask Sage's
 
 
+class Budget(unittest.TestCase):
+    """A used-up budget or quota (llm.budget_exhausted: LiteLLM's budget answers, the providers' quota and credit
+    answers) is never retried: the first such answer stops the whole run, no worker sends another call, the answers
+    already received stay in the cache, and one message names the service, the numbers it reported, and what to do.
+    An ordinary rate limit still retries. Near-misses included."""
+
+    NASA = "Budget has been exceeded! User=iiordane in Team=trial-moderate Current cost: 25.0, Max budget: 25.0"
+
+    calls, entries, ask = Guards.calls, Guards.entries, Guards.ask      # Guards' set-up, without its tests
+
+    def setUp(self):
+        Guards.setUp(self)
+        llm.BUDGET_GONE["error"] = None
+
+    def tearDown(self):
+        llm.BUDGET_GONE["error"] = None
+        Guards.tearDown(self)
+
+    def budget(self, status=429, message=NASA, kind="budget_exceeded"):
+        return stand_ins.StandInReply(status, {"error": {"message": message, "type": kind, "code": str(status)}})
+
+    def test_which_answers_are_a_used_up_budget(self):
+        for status, text, gone in (
+                (429, self.NASA, True),
+                (429, "Budget has been exceeded! TeamMember=iiordane Current cost: 27.04, Max budget: 25.0", True),
+                (400, "ExceededBudget: User=u1 over budget. Spend=3.7e-05, Budget=0.0", True),
+                (400, "LiteLLM Virtual Key: k, exceeded budget for model=gpt-6.1-sol", True),
+                (401, "Authentication Error, ExceededTokenBudget: Current spend for token: 7.2e-05", True),
+                (429, '{"error": {"type": "budget_exceeded", "message": "over"}}', True),
+                (429, "You exceeded your current quota, please check your plan and billing details. insufficient_quota",
+                 True),
+                (400, "Your credit balance is too low to access the Anthropic API.", True),
+                # near-misses: not a used-up budget
+                (429, "Rate limit reached for requests per minute; try again in 20s", False),
+                (429, "Rate limit: the token budget per minute is exceeded, try again shortly", False),
+                (400, "max_tokens must be greater than thinking.budget_tokens", False),
+                (400, "thinking: you exceeded budget_tokens", False),
+                (200, self.NASA, False),                                   # an answer, whatever its words
+                (500, "internal error while computing the budget", False)):
+            with self.subTest(text=text):
+                self.assertEqual(llm.budget_exhausted(status, text), gone)
+
+    def test_not_retried_and_nothing_sent_after(self):
+        self.calls()
+        posts = []
+
+        def post(url, headers=None, json=None, timeout=None, **_):
+            posts.append(1)
+            return self.budget()
+        with mock.patch.object(llm, "_post", post):
+            with self.assertRaises(llm.BudgetExhausted) as caught:
+                llm.call_llm("x", model="gemini-2.5-pro", service="litellm")
+            self.assertEqual(len(posts), 1)                                           # not asked again
+            said = str(caught.exception.code)
+            for words in ("LiteLLM answered that the budget for this account is used up", "HTTP 429", "iiordane",
+                          "trial-moderate", "a cost of 25.0 against a budget of 25.0",
+                          "ask the LiteLLM administrators to raise or reset the budget", "nothing to retry",
+                          "kept in the cache"):
+                self.assertIn(words, said)
+            self.assertNotIn('{"error"', said)                                       # LiteLLM's words, not its JSON
+            with self.assertRaises(llm.BudgetExhausted):                             # any later call: never sent
+                llm.call_llm("y", model="gemini-2.5-pro", service="litellm")
+            from helpers import check_effort
+            with self.assertRaises(llm.BudgetExhausted):                             # nor a check helper's request
+                check_effort.ask("gemini-2.5-pro", "q", {})
+        self.assertEqual(len(posts), 1)
+
+    def test_a_400_budget_answer_stops_too(self):
+        posts = []
+
+        def post(url, headers=None, json=None, timeout=None, **_):
+            posts.append(1)
+            return self.budget(400, "ExceededBudget: User=u1 over budget. Spend=3.7e-05, Budget=0.0")
+        with mock.patch.object(llm, "_post", post), self.assertRaises(llm.BudgetExhausted) as caught:
+            llm.call_llm("x", model="gemini-2.5-pro", service="litellm")
+        self.assertEqual(len(posts), 1)
+        self.assertIn("a cost of 3.7e-05 against a budget of 0.0", str(caught.exception.code))
+
+    def test_rate_limits_still_retry(self):
+        for message in ("stand-in: too many requests", "Rate limit: the token budget per minute is exceeded"):
+            posts = []
+
+            def post(url, headers=None, json=None, timeout=None, message=message, **_):
+                posts.append(1)
+                if len(posts) < 3:
+                    return stand_ins.StandInReply(429, {"error": {"message": message, "code": 429}})
+                return stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+            with self.subTest(message=message), mock.patch.object(llm, "_post", post):
+                llm.call_llm(llm.TEST_PROMPT, model="gemini-2.5-pro", service="litellm")
+                self.assertEqual(len(posts), 3)
+        self.assertIsNone(llm.BUDGET_GONE["error"])
+
+    def test_a_run_stops_at_once_and_keeps_its_answers(self):
+        calls = self.calls()
+        sent = []
+
+        def post(url, headers=None, json=None, timeout=None, **_):
+            prompt = json["messages"][0]["content"]
+            sent.append(prompt)
+            if "#r03#" in prompt:
+                return self.budget()
+            return stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+
+        ids = [f"r{i:02}" for i in range(10)]
+        with mock.patch.object(llm, "_post", post), self.assertRaises(llm.BudgetExhausted) as caught:
+            self.ask(calls, ids)
+        self.assertIn("ask the LiteLLM administrators", str(caught.exception.code))
+        records = [p for p in sent if "#r" in p]
+        self.assertEqual(len(records), 4)                                            # r00 to r03; none after
+        self.assertTrue(all(any(f"#{i}#" in p for i in ids[:4]) for p in records))
+        kept = json.loads((self.tmp / "050_annotate" / "cache" / "draft.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(kept), 3)                                               # r00 to r02, paid once
+        entries = self.entries()
+        refused = [e for e in entries if e["outcome"] == "failed"]
+        self.assertEqual([e["record"] for e in refused], ["r03"])
+        self.assertEqual(refused[0]["error_type"], "BudgetExhausted")
+        self.assertIn("raise or reset the budget", refused[0]["what_to_do"])
+        not_sent = sorted(e["record"] for e in entries if e["outcome"] == "not_sent")
+        self.assertEqual(not_sent, ids[4:])
+        self.assertTrue(all("budget is used up" in e["why"] for e in entries if e["outcome"] == "not_sent"))
+
+        # a rerun in the same process sends nothing at all: not even the test call
+        sent.clear()
+        with mock.patch.object(llm, "_post", post), self.assertRaises(llm.BudgetExhausted):
+            self.ask(self.calls(), ids)
+        self.assertEqual(sent, [])
+
+    def test_with_several_workers_no_call_after_the_answer(self):
+        import threading
+        calls = self.calls()
+        lock, order, gone = threading.Lock(), [], threading.Event()
+
+        def post(url, headers=None, json=None, timeout=None, **_):
+            prompt = json["messages"][0]["content"]
+            with lock:
+                order.append(("after" if gone.is_set() else "before", prompt))
+            if "#r05#" in prompt:
+                gone.set()
+                return self.budget()
+            return stand_ins.stand_in_post(url, headers=headers, json=json, timeout=timeout)
+
+        with mock.patch.object(llm, "_post", post), self.assertRaises(llm.BudgetExhausted):
+            self.ask(calls, [f"r{i:02}" for i in range(30)], workers=4)
+        after = [p for when, p in order if when == "after"]
+        self.assertLessEqual(len(after), 3)            # at most the other workers' calls already on their way
+        self.assertLess(len(order), 30)
+        answered = [p for _, p in order if "#r05#" not in p and "#r" in p]
+        kept = json.loads((self.tmp / "050_annotate" / "cache" / "draft.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(kept), len(answered))     # every answer paid for is kept
+
+    def test_a_step_ends_stopped_with_the_message(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            def main(inputs, settings, output):
+                raise llm.BudgetExhausted(llm.budget_message("litellm", 429, self.NASA), 429)
+            with mock.patch.object(step, "RESULTS_DIR", tmp / "results"), \
+                    mock.patch.object(step, "REPORTS_DIR", tmp / "reports"), \
+                    mock.patch.object(step, "LOGS_DIR", tmp / "logs"):
+                with self.assertRaises(SystemExit) as caught:
+                    step.run_step("999_stand_in", {}, {}, main, argv=[])
+                self.assertEqual(caught.exception.code, 2)
+                text = sorted((tmp / "reports").glob("999_stand_in_*.md"))[-1].read_text(encoding="utf-8")
+                self.assertIn("stopped", text)
+                self.assertIn("raise or reset the budget", text)
+        finally:
+            logging.shutdown()
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_ask_sage(self):
+        """Ask Sage documents no form for a used-up allowance; the same words stop the run, as an HTTP error or as
+        its error object in an HTTP 200 answer. Its plain rate limit still retries."""
+        class Answer:
+            def __init__(self, status, body):
+                self.status_code, self._body, self.headers = status, body, {}
+                self.text = json.dumps(body)
+
+            def json(self):
+                return self._body
+
+            def raise_for_status(self):
+                pass
+
+        for answer, stops in ((Answer(429, {"message": self.NASA}), True),
+                              (Answer(200, {"status": 200, "message": "Sorry.",
+                                            "error": {"code": "insufficient_quota", "http_status": 429}}), True),
+                              (Answer(200, {"status": 402, "message": "Your credit balance is too low"}), True),
+                              (Answer(429, {"message": "Too many requests"}), False),
+                              (Answer(200, {"status": 200, "message": "Sorry.",
+                                            "error": {"code": "model_not_permitted", "http_status": 400}}), False)):
+            llm.BUDGET_GONE["error"] = None
+            posts = []
+
+            def post(*a, answer=answer, **k):
+                posts.append(1)
+                return answer
+            with self.subTest(body=answer._body), mock.patch.object(llm.requests, "post", post), \
+                    mock.patch.object(llm, "_asksage_token", lambda: "t"):
+                if stops:
+                    with self.assertRaises(llm.BudgetExhausted) as caught:
+                        llm.call_llm("x", model="m", service="asksage")
+                    self.assertEqual(len(posts), 1)
+                    self.assertIn("Ask Sage answered that the budget", str(caught.exception.code))
+                    self.assertIn("ask the Ask Sage administrators", str(caught.exception.code))
+                else:
+                    with self.assertRaises(Exception) as caught:
+                        llm.call_llm("x", model="m", service="asksage")
+                    self.assertNotIsInstance(caught.exception, llm.BudgetExhausted)
+                    self.assertIsNone(llm.BUDGET_GONE["error"])
+                    if answer.status_code == 429:
+                        self.assertEqual(len(posts), 4)                          # retried
+
+
 if __name__ == "__main__":
     unittest.main()

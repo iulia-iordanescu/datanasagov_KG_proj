@@ -58,7 +58,8 @@ def kind(error) -> str:
         return "cut_off"
     if isinstance(error, llm.BadReply):
         return "malformed"
-    if isinstance(error, (llm.ApiError, RuntimeError, ConnectionError, TimeoutError, requests.RequestException)):
+    if isinstance(error, (llm.ApiError, llm.BudgetExhausted, RuntimeError, ConnectionError, TimeoutError,
+                          requests.RequestException)):
         return "service_error"          # RuntimeError: what call_llm raises for a server error or rate limit it gave up on
     return "other"
 
