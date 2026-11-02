@@ -71,7 +71,7 @@ entity class,Container,(none),no,,yes,"A physical vessel, chamber or medium that
 predicate,CONTAINS,PART_OF,yes,,yes,"The subject (a dataset, product, version, file or experiment) includes the object as a component, content item, added feature or member.",is one part of,,
 predicate,HAS_PROPERTY,(none),no,,yes,"The subject (a dataset, version, observation, research effort or object) is characterized by the object, a stated attribute, state, value or improvement.",,,
 predicate,USES,(none),no,,yes,"The subject (a program, survey, project or user) employs the object (an instrument, band, tool or data version) to carry out its work.",,,
-predicate,COVERS,HAS_TIME_SPAN,no,,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",covers this period,,
+predicate,COVERS,HAS_TIME_SPAN,no,broader,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",covers this period,,
 predicate,DERIVED_FROM,COMPUTED_FROM,no,,yes,"The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.",was made by processing this input,,
 predicate,SOURCED_FROM,(none),no,,yes,"The subject (a dataset, file, objective or person) originates from the object, a source instrument, platform, observation set, data portion or institution.",,,
 predicate,USED_TO_STUDY,HAS_PURPOSE,no,,yes,"The subject (a mission, instrument, program or dataset) is designed or used to investigate, characterize or trace the object, a scientific phenomenon or process.",is meant to achieve,,
@@ -183,3 +183,6 @@ predicate,ACQUIRED_BY,ACQUIRED_BY_INSTRUMENT,no,same,yes,"The subject (a dataset
 predicate,ACQUIRED_BY,FROM_PLATFORM,no,same,yes,"The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.",was collected from this Platform,,Spacecraft
 predicate,ACQUIRED_BY,FROM_PLATFORM,no,same,yes,"The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.",was collected from this Platform,,SpaceStation
 predicate,ACQUIRED_BY,FROM_PLATFORM,no,same,yes,"The subject (a dataset or observed class of objects) is collected or detected by the object, an instrument or platform.",was collected from this Platform,,Aircraft
+predicate,COVERS,HAS_TIME_SPAN,no,same,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",covers this period,,TimePeriod
+predicate,COVERS,HAS_SPATIAL_COVERAGE,no,same,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",covers this SpatialExtent,,SpatialCoverage
+predicate,COVERS,HAS_MEASUREMENTS_OF,no,same,yes,"The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.",holds measurements of this PhysicalQuantity,,PhysicalQuantity

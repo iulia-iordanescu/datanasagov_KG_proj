@@ -628,6 +628,7 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - translation table row: predicate MEASURES
 - translation table row: predicate PROVIDES
 - translation table row: predicate MEASURED_BY
+- translation table row: predicate COVERS
 - ground truth schema entry: entity class PhysicalQuantity
 - ground truth schema entry: entity class Variable
 - ground truth schema entry: predicate HAS_MEASUREMENTS_OF
@@ -1969,6 +1970,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - translation table row: entity class SpatialCoverage
 - translation table row: predicate HAS_SPATIAL_COVERAGE
 - translation table row: predicate HAS_PROPERTY
+- translation table row: predicate COVERS
 - ground truth schema entry: entity class SpatialExtent
 - ground truth schema entry: predicate HAS_SPATIAL_COVERAGE
 - rule: Writing a classed triple, rule 19
