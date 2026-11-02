@@ -383,6 +383,7 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - translation table row: entity class SpaceStation
 - translation table row: entity class Aircraft
 - translation table row: predicate SOURCED_FROM
+- translation table row: predicate ACQUIRED_BY
 - translation table row: predicate OBSERVED_BY
 - ground truth schema entry: entity class Mission
 - ground truth schema entry: entity class Platform
