@@ -30,8 +30,8 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061,Dataset,PRODUCED_USING_ALGORITHM,series of screens,Algorithm,gemini-4-argon,3,3,3
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,Normalized Difference Snow Index (NDSI),Variable,COMPUTED_FROM,radiance data,Dataset,gemini-4-argon,3,3,3
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,radiance data,Dataset,ACQUIRED_BY_INSTRUMENT,Moderate Resolution Imaging Spectroradiometer (MODIS),Instrument,gemini-4-argon,3,3,3
-6cfafd07-40f1-46da-9d92-36c2bb319f0b,radiance data,Dataset,HAS_DOI,DOI:10.5067/MODIS/MYD021KM.061,Identifier,gemini-4-argon,3,3,3
-6cfafd07-40f1-46da-9d92-36c2bb319f0b,radiance data,Dataset,HAS_DOI,DOI:10.5067/MODIS/MYD02HKM.061,Identifier,gemini-4-argon,3,3,3
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,radiance data,Dataset,HAS_DOI,DOI:10.5067/MODIS/MYD021KM.061,Identifier,gemini-4-argon,3,3,2
+6cfafd07-40f1-46da-9d92-36c2bb319f0b,radiance data,Dataset,HAS_DOI,DOI:10.5067/MODIS/MYD02HKM.061,Identifier,gemini-4-argon,3,3,2
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,series of screens,Algorithm,HAS_PURPOSE,alleviate errors,Purpose,gemini-4-argon,3,3,3
 6cfafd07-40f1-46da-9d92-36c2bb319f0b,series of screens,Algorithm,HAS_PURPOSE,flag uncertain snow cover detections,Purpose,gemini-4-argon,3,3,3
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,ACQUIRED_BY_INSTRUMENT,Aquarius L-band radiometer,Instrument,gemini-4-argon,3,3,3
@@ -39,34 +39,34 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_MEASUREMENTS_OF,Sea Surface Salinity (SSS) retrievals,PhysicalQuantity,gemini-4-argon,3,3,0
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_PROCESSING_LEVEL,Level-3,ProcessingLevel,gemini-4-argon,3,3,3
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_SPATIAL_COVERAGE,Polar,SpatialExtent,gemini-4-argon,3,0,0
-2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gemini-4-argon,3,3,1
+2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gemini-4-argon,3,3,0
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_TEMPORAL_RESOLUTION,weekly,TemporalResolution,gemini-4-argon,3,3,3
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005,Dataset,HAS_VERSION,V005,Version,gemini-4-argon,3,3,3
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius/Satélite de Aplicaciones Científicas (SAC-D),Mission,DEVELOPED_BY_PARTY,Comisión Nacional de Actividades Espaciales (CONAE),Organization,gemini-4-argon,3,3,3
 2705e0d1-95e7-4588-813b-ca91a6da94ff,Aquarius/Satélite de Aplicaciones Científicas (SAC-D),Mission,DEVELOPED_BY_PARTY,National Aeronautics and Space Administration (NASA),Organization,gemini-4-argon,3,3,3
-2705e0d1-95e7-4588-813b-ca91a6da94ff,Comisión Nacional de Actividades Espaciales (CONAE),Organization,SERVES_AS,Argentina's space agency,Role,gemini-4-argon,3,3,1
+2705e0d1-95e7-4588-813b-ca91a6da94ff,Comisión Nacional de Actividades Espaciales (CONAE),Organization,SERVES_AS,Argentina's space agency,Role,gemini-4-argon,3,3,0
 2705e0d1-95e7-4588-813b-ca91a6da94ff,National Aeronautics and Space Administration (NASA),Organization,BASED_IN,U.S.,Country,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,FLIES_IN,A-train,SatelliteFormation,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,FLIES_IN,Earth Observation Satellites (EOS),SatelliteFormation,gemini-4-argon,3,2,2
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,FLIES_IN,Earth Observation Satellites (EOS),SatelliteFormation,gemini-4-argon,3,0,0
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_ORBIT,"sun synchronous, polar orbit with a daylight ascending node at 13:30",Orbit,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_PURPOSE,study the global dynamics of the atmosphere,Purpose,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_PURPOSE,study the global dynamics of the land,Purpose,gemini-4-argon,3,0,0
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_PURPOSE,study the global dynamics of the oceans,Purpose,gemini-4-argon,3,0,0
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_PURPOSE,study the global dynamics of the land,Purpose,gemini-4-argon,3,2,2
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_PURPOSE,study the global dynamics of the oceans,Purpose,gemini-4-argon,3,2,2
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,HAS_TARGET,Earth,CelestialBody,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,LAUNCHED_BY_PARTY,NASA,Organization,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Aqua,Platform,LAUNCHED_ON,"May 4, 2002",Time,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,equidistant cylindrical,MapProjection,ALSO_KNOWN_AS,Platte Carre,MapProjection,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,equidistant cylindrical,MapProjection,DOCUMENTED_AT,https://oceancolor.gsfc.nasa.gov/docs/format/,WebPage,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,JPL,Organization,OBTAINS_DATA_FROM,NASA Ocean Biology Processing Group (OBPG),Organization,gemini-4-argon,3,3,3
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,JPL,Organization,OBTAINS_DATA_FROM,NASA Ocean Biology Processing Group (OBPG),Organization,gemini-4-argon,3,3,2
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,JPL,Organization,SERVES_AS,official Physical Oceanography Data Archive (PO.DAAC) for SST,Role,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,mid-infrared 3.95 micron wavelength channel,Channel,UNIQUE_TO_INSTRUMENT,Moderate-resolution Imaging Spectroradiometer (MODIS),Instrument,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,mid-infrared 4.05 micron wavelength channel,Channel,UNIQUE_TO_INSTRUMENT,Moderate-resolution Imaging Spectroradiometer (MODIS),Instrument,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Moderate-resolution Imaging Spectroradiometer (MODIS),Instrument,ABOARD,Aqua,Platform,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Moderate-resolution Imaging Spectroradiometer (MODIS),Instrument,HAS_NUMBER_OF,36 spectral bands,Value,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,modified nonlinear SST algorithm,Algorithm,HAS_PURPOSE,provide continuity of SST derived from heritage and current NASA sensors,Purpose,gemini-4-argon,3,1,1
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,modified nonlinear SST algorithm,Algorithm,HAS_PURPOSE,provide continuity of SST derived from heritage and current NASA sensors,Purpose,gemini-4-argon,3,0,0
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,ACQUIRED_BY_INSTRUMENT,Moderate-resolution Imaging Spectroradiometer (MODIS),Instrument,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,COMPUTED_FROM,pixels,Dataset,gemini-4-argon,3,3,2
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,DEVELOPED_BY_PARTY,NASA Ocean Biology Processing Group (OBPG),Organization,gemini-4-argon,3,3,3
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,COMPUTED_FROM,pixels,Dataset,gemini-4-argon,3,3,3
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,DEVELOPED_BY_PARTY,NASA Ocean Biology Processing Group (OBPG),Organization,gemini-4-argon,3,3,2
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,FROM_PLATFORM,Aqua,Platform,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_MEASUREMENTS_OF,skin sea surface temperature (SST),PhysicalQuantity,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0,Dataset,HAS_PROCESSING_LEVEL,Level 3,ProcessingLevel,gemini-4-argon,3,3,3
@@ -82,7 +82,7 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Peter Minnett,Person,RESPONSIBLE_FOR,error statistics,Task,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Peter Minnett,Person,RESPONSIBLE_FOR,quality flagging,Task,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,Peter Minnett,Person,RESPONSIBLE_FOR,sea surface temperature algorithm development,Task,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,pixels,Dataset,HAS_PROCESSING_LEVEL,L2,ProcessingLevel,gemini-4-argon,3,3,2
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,pixels,Dataset,HAS_PROCESSING_LEVEL,L2,ProcessingLevel,gemini-4-argon,3,3,3
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,pixels,Dataset,MAPPED_INTO,equidistant cylindrical,MapProjection,gemini-4-argon,3,0,0
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,pixels,Dataset,ON_GRID,integerized sinusoidal area grid (ISEAG),Grid,gemini-4-argon,3,0,0
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,skin SST,Variable,COMPUTED_FROM,long wave IR 11 micron wavelength channel,Channel,gemini-4-argon,3,0,0
@@ -96,7 +96,7 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,SST4,Variable,ESTIMATES,SST,PhysicalQuantity,gemini-4-argon,3,3,0
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,SST4,Variable,HAS_LOWER_UNCERTAINTY_THAN,skin SST,Variable,gemini-4-argon,3,0,0
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,SST4,Variable,LIMITED_BY,sun glint,Phenomenon,gemini-4-argon,3,3,3
-03a09af3-081e-4db6-9e3b-ea7c0e3138bd,SST4,Variable,OBSERVED_AT_TIME_OF_DAY,night,TimeOfDay,gemini-4-argon,3,2,2
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,SST4,Variable,OBSERVED_AT_TIME_OF_DAY,night,TimeOfDay,gemini-4-argon,3,1,1
 03a09af3-081e-4db6-9e3b-ea7c0e3138bd,V2019.0,Version,SUPERSEDES,v2014.1,Version,gemini-4-argon,3,3,3
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND,Instrument,gemini-4-argon,3,3,3
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND plus Z boron loaded sensor,Instrument,gemini-4-argon,3,3,3
@@ -106,12 +106,12 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,FROM_PLATFORM,DAWN,Platform,gemini-4-argon,3,2,2
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_SPATIAL_REPRESENTATION,map,SpatialRepresentation,gemini-4-argon,3,0,0
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_TARGET,Vesta,CelestialBody,gemini-4-argon,3,3,3
-99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_VARIABLE,fast neutron residual count rates,Variable,gemini-4-argon,3,0,0
+99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_VARIABLE,fast neutron residual count rates,Variable,gemini-4-argon,3,1,1
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,HAS_VERSION,V1.0,Version,gemini-4-argon,3,3,3
 99dff022-24ac-48cb-bc83-09fec8b90ad7,DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0,Dataset,RELATED_TO,average atomic mass,PhysicalQuantity,gemini-4-argon,3,3,3
 99dff022-24ac-48cb-bc83-09fec8b90ad7,GRaND epithermal neutron map,Dataset,ACQUIRED_BY_INSTRUMENT,GRaND,Instrument,gemini-4-argon,3,3,3
 99dff022-24ac-48cb-bc83-09fec8b90ad7,GRaND plus Z boron loaded sensor,Instrument,PART_OF,GRaND,Instrument,gemini-4-argon,3,3,3
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MAIAC Land Surface Bidirectional Reflectance Factor (BRF),Dataset,COMPUTED_FROM,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,gemini-4-argon,3,1,0
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MAIAC Land Surface Bidirectional Reflectance Factor (BRF),Dataset,COMPUTED_FROM,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,gemini-4-argon,3,2,0
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,ACQUIRED_BY_INSTRUMENT,Moderate Resolution Imaging Spectroradiometer (MODIS),Instrument,gemini-4-argon,3,3,3
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,FROM_PLATFORM,Aqua,Platform,gemini-4-argon,3,3,3
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,FROM_PLATFORM,Terra,Platform,gemini-4-argon,3,3,3
@@ -126,18 +126,18 @@ cfd6ec3f-1e63-4a77-bc3f-007d45f7e2fc,ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_REPRESENTATION,gridded,SpatialRepresentation,gemini-4-argon,3,3,3
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_SPATIAL_RESOLUTION,1 kilometer (km),SpatialResolution,gemini-4-argon,3,3,3
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,gemini-4-argon,3,3,3
-4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,ON_GRID,SIN Grid,Grid,gemini-4-argon,3,3,3
+4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,ON_GRID,SIN Grid,Grid,gemini-4-argon,3,0,0
 4c64f3ed-39b4-4f95-95a0-022898ba47a4,MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid,Dataset,PRODUCED_USING_ALGORITHM,Multi-Angle Implementation of Atmospheric Correction (MAIAC),Algorithm,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,band 31 emissivity,Variable,COMPUTED_FROM,land cover types,PhysicalQuantity,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,band 31 emissivity,Variable,FOR_CHANNEL,band 31,Channel,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,band 32 emissivity,Variable,COMPUTED_FROM,land cover types,PhysicalQuantity,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,band 32 emissivity,Variable,FOR_CHANNEL,band 32,Channel,gemini-4-argon,3,3,3
-d5477563-0415-4e65-ab7c-d4bc9ed809e5,loss of data retrieval following the Constellation Exit Maneuvers,Issue,DOCUMENTED_AT,https://landweb.modaps.eosdis.nasa.gov/displayissue?id=98,WebPage,gemini-4-argon,3,2,0
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,loss of data retrieval following the Constellation Exit Maneuvers,Issue,DOCUMENTED_AT,https://landweb.modaps.eosdis.nasa.gov/displayissue?id=98,WebPage,gemini-4-argon,3,1,0
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MOD11_L2,Dataset,HAS_DOI,https://doi.org/10.5067/MODIS/MOD11_L2.006,Identifier,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MOD11_L2,Dataset,HAS_SPATIAL_REPRESENTATION,swath,SpatialRepresentation,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS,Instrument,ABOARD,Terra,Platform,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,ACQUIRED_BY_INSTRUMENT,MODIS,Instrument,gemini-4-argon,3,3,3
-d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,COMPUTED_FROM,MOD11_L2,Dataset,gemini-4-argon,3,2,2
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,COMPUTED_FROM,MOD11_L2,Dataset,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,DECOMMISSIONED_ON,"July 31, 2023",Time,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,DOCUMENTED_AT,https://landweb.modaps.eosdis.nasa.gov/knownissue?sensor=MODIS&sat=Terra&as=6,WebPage,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,FROM_PLATFORM,Terra,Platform,gemini-4-argon,3,3,3
@@ -146,7 +146,7 @@ d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissi
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_ANCILLARY_DATA,quality control assessments,Variable,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_ANCILLARY_DATA,view zenith angles,Variable,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_IDENTIFIER,MOD11A1,Identifier,gemini-4-argon,3,3,3
-d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_MEASUREMENTS_OF,Land Surface Emissivity,PhysicalQuantity,gemini-4-argon,3,2,2
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_MEASUREMENTS_OF,Land Surface Emissivity,PhysicalQuantity,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_MEASUREMENTS_OF,Land Surface Temperature,PhysicalQuantity,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_PROCESSING_LEVEL,L3,ProcessingLevel,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_SPATIAL_COVERAGE,Global,SpatialExtent,gemini-4-argon,3,3,3
@@ -155,56 +155,57 @@ d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissi
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_VARIABLE,band 31 emissivity,Variable,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_VARIABLE,band 32 emissivity,Variable,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,HAS_VERSION,Version 6,Version,gemini-4-argon,3,3,3
-d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,OBSERVED_AT_TIME_OF_DAY,daytime,TimeOfDay,gemini-4-argon,3,1,0
-d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,OBSERVED_AT_TIME_OF_DAY,nighttime,TimeOfDay,gemini-4-argon,3,1,0
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,OBSERVED_AT_TIME_OF_DAY,daytime,TimeOfDay,gemini-4-argon,3,2,1
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,OBSERVED_AT_TIME_OF_DAY,nighttime,TimeOfDay,gemini-4-argon,3,2,1
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,ON_GRID,SIN Grid,Grid,gemini-4-argon,3,0,0
-d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,PRODUCTION_DISCONTINUED_DUE_TO,loss of data retrieval following the Constellation Exit Maneuvers,Issue,gemini-4-argon,3,2,0
+d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,PRODUCTION_DISCONTINUED_DUE_TO,loss of data retrieval following the Constellation Exit Maneuvers,Issue,gemini-4-argon,3,1,0
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006,Dataset,PRODUCTION_DISCONTINUED_ON,"November 16, 2022",Time,gemini-4-argon,3,3,3
 d5477563-0415-4e65-ab7c-d4bc9ed809e5,Version 6.1,Version,SUPERSEDES,Version 6,Version,gemini-4-argon,3,3,3
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,approach,MissionPhase,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,0,0
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,approach,MissionPhase,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,1,1
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,EDR (raw) sensor data,Dataset,HAS_PROCESSING_LEVEL,Level 2,ProcessingLevel,gemini-4-argon,3,0,0
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,EDR (raw) sensor data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,gemini-4-argon,3,2,2
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter,MissionPhase,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,0,0
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter,MissionPhase,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,1,1
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,HAS_DURATION,~40 minute,Value,gemini-4-argon,3,3,0
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,2,0
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,gemini-4-argon,3,1,0
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,3,0
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,gemini-4-argon,3,2,0
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,COMPUTED_FROM,EDR (raw) sensor data,Dataset,gemini-4-argon,3,3,3
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,HAS_MISSION_PHASE,encounter,MissionPhase,gemini-4-argon,3,0,0
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,HAS_PROCESSING_LEVEL,Level 3,ProcessingLevel,gemini-4-argon,3,0,0
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,HAS_VARIABLE,dust fluences at each of twelve mass thresholds,Variable,gemini-4-argon,3,3,3
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,RDR data,Dataset,PART_OF,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,gemini-4-argon,3,2,2
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,Dust Flux Monitor Instrument (DFMI),Instrument,gemini-4-argon,3,3,3
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,FROM_MISSION,Stardust-NExT,Mission,gemini-4-argon,3,3,3
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,FROM_PLATFORM,STARDUST,Platform,gemini-4-argon,3,3,3
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,approach,MissionPhase,gemini-4-argon,3,0,0
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,cruise,MissionPhase,gemini-4-argon,3,0,0
-dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,encounter,MissionPhase,gemini-4-argon,3,0,0
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,FROM_PLATFORM,STARDUST,Platform,gemini-4-argon,3,2,2
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,approach,MissionPhase,gemini-4-argon,3,1,1
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,cruise,MissionPhase,gemini-4-argon,3,1,1
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_MISSION_PHASE,encounter,MissionPhase,gemini-4-argon,3,1,1
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_TARGET,9P/Tempel 1,CelestialBody,gemini-4-argon,3,3,3
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_TIME_SPAN,"from January, 2007 up to March, 2011",Time,gemini-4-argon,3,1,1
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0,Dataset,HAS_VERSION,V1.0,Version,gemini-4-argon,3,3,3
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,Stardust-NExT,Mission,ENDED_ON,"March, 2011",Time,gemini-4-argon,3,3,3
-3bceffb4-f01e-433c-af79-42b9d9427231,comet escort 1,MissionPhase,HAS_TARGET,67P/Churyumov-Gerasimenko,CelestialBody,gemini-4-argon,3,3,2
-3bceffb4-f01e-433c-af79-42b9d9427231,comet escort 1,MissionPhase,HAS_TIME_SPAN,between 2014-11-19 and 2015-03-10,Time,gemini-4-argon,3,3,2
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,EDR (raw) sensor data,Dataset,HAS_MISSION_PHASE,encounter,MissionPhase,gemini-4-argon,3,1,1
+3bceffb4-f01e-433c-af79-42b9d9427231,comet escort 1,MissionPhase,HAS_TARGET,67P/Churyumov-Gerasimenko,CelestialBody,gemini-4-argon,3,3,1
+3bceffb4-f01e-433c-af79-42b9d9427231,comet escort 1,MissionPhase,HAS_TIME_SPAN,between 2014-11-19 and 2015-03-10,Time,gemini-4-argon,3,3,1
 3bceffb4-f01e-433c-af79-42b9d9427231,Rosetta Orbiter ALICE UV Spectrometer,Instrument,ABOARD,Rosetta Orbiter,Platform,gemini-4-argon,3,3,3
 3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,Rosetta Orbiter ALICE UV Spectrometer,Instrument,gemini-4-argon,3,3,3
 3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,FROM_PLATFORM,Rosetta Orbiter,Platform,gemini-4-argon,3,3,3
-3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_MISSION_PHASE,comet escort 1,MissionPhase,gemini-4-argon,3,3,2
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_MISSION_PHASE,comet escort 1,MissionPhase,gemini-4-argon,3,3,1
 3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_PROCESSING_LEVEL,CODMAC level 2,ProcessingLevel,gemini-4-argon,3,3,3
 3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_VERSION,V1.0,Version,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,FROM_PLATFORM,XMM-Newton,Platform,gemini-4-argon,3,0,0
+3bceffb4-f01e-433c-af79-42b9d9427231,ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0,Dataset,HAS_TARGET,67P/Churyumov-Gerasimenko,CelestialBody,gemini-4-argon,3,1,1
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,FROM_PLATFORM,XMM-Newton,Platform,gemini-4-argon,3,1,1
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,HAS_NUMBER_OF,"262,902 unique X-ray sources",Value,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,HAS_NUMBER_OF,"353,191 detections (above the processing likelihood threshold of 6)",Value,gemini-4-argon,3,3,0
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,HAS_NUMBER_OF,"353,191 detections (above the processing likelihood threshold of 6)",Value,gemini-4-argon,3,3,3
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,HAS_SKY_AREA,~ 504 deg^2,Value,gemini-4-argon,3,3,3
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,HAS_SUMMED_SKY_AREA,~ 814 deg^2,Value,gemini-4-argon,3,3,3
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,Dataset,HAS_TIME_SPAN,between 2000 February 3 and 2008 October 08,Time,gemini-4-argon,3,3,3
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,CDS Catalog J/A+A/536/A84,Dataset,AVAILABLE_AT,https://cdsarc.cds.unistra.fr/ftp/cats/J/A+A/536/A84,WebPage,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,DR7 edition of the SDSS Quasar Catalog,Dataset,DOCUMENTED_AT,"Schneider et al. 2010, AJ, 139, 2360",Document,gemini-4-argon,3,3,1
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,DR7 edition of the SDSS Quasar Catalog,Dataset,DOCUMENTED_AT,"Schneider et al. 2010, AJ, 139, 2360",Document,gemini-4-argon,3,1,0
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,COMPUTED_FROM,2XMMi-DR3,Dataset,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,COMPUTED_FROM,DR7 edition of the SDSS Quasar Catalog,Dataset,gemini-4-argon,3,3,1
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,COMPUTED_FROM,table1.dat,Dataset,gemini-4-argon,3,3,3
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,COMPUTED_FROM,DR7 edition of the SDSS Quasar Catalog,Dataset,gemini-4-argon,3,1,0
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,COMPUTED_FROM,table1.dat,Dataset,gemini-4-argon,3,3,1
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,CREATED_ON,April 2012,Time,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,DEVELOPED_BY_PARTY,NASA HEASARC,Organization,gemini-4-argon,3,3,1
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,FROM_PLATFORM,XMM-Newton,Platform,gemini-4-argon,3,0,0
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,DEVELOPED_BY_PARTY,NASA HEASARC,Organization,gemini-4-argon,3,3,2
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,FROM_PLATFORM,XMM-Newton,Platform,gemini-4-argon,3,1,1
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,HAS_LUMINOSITY_RANGE,"in the 0.5 - 4.5 keV band, between ~ 10^43 erg/s and ~ 10^46 erg/s",Value,gemini-4-argon,3,3,0
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,HAS_MEASUREMENTS_OF,redshifts,PhysicalQuantity,gemini-4-argon,3,2,2
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,HAS_MEASUREMENTS_OF,spectral classifications,PhysicalQuantity,gemini-4-argon,3,2,2
@@ -215,11 +216,11 @@ bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,HAS_TARGET,active galactic nuclei (AGN),CelestialBody,gemini-4-argon,3,3,3
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,HAS_VARIABLE,Ensemble X-Ray Variability,Variable,gemini-4-argon,3,0,0
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,PRODUCED_USING_ALGORITHM,structure function (SF),Algorithm,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,PROVIDED_BY_PARTY,NASA HEASARC,Organization,gemini-4-argon,3,3,1
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,Dataset,PROVIDED_BY_PARTY,NASA HEASARC,Organization,gemini-4-argon,3,3,2
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,SDSS Quasar Catalog,Dataset,HAS_RELEASE,DR7 edition of the SDSS Quasar Catalog,Dataset,gemini-4-argon,3,0,0
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,second version of the catalogue,Dataset,HAS_RELEASE,2XMMi-DR3,Dataset,gemini-4-argon,3,0,0
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Serendipitous Source Catalog,Dataset,HAS_RELEASE,2XMMi-DR3,Dataset,gemini-4-argon,3,3,3
-bb1fe4b0-6543-42e3-9386-acbab0b37ad4,table1.dat,Dataset,PART_OF,CDS Catalog J/A+A/536/A84,Dataset,gemini-4-argon,3,3,3
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,table1.dat,Dataset,PART_OF,CDS Catalog J/A+A/536/A84,Dataset,gemini-4-argon,3,3,1
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,V1.0,Version,ALSO_KNOWN_AS,first version,Version,gemini-4-argon,3,3,3
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,OSIRIS Narrow Angle Camera,Instrument,ABOARD,ROSETTA-ORBITER,Platform,gemini-4-argon,3,3,0
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,OSIRIS Narrow Angle Camera,Instrument,gemini-4-argon,3,3,3
@@ -229,9 +230,9 @@ ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RD
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,FROM_PLATFORM,ROSETTA-ORBITER,Platform,gemini-4-argon,3,3,0
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_MISSION_PHASE,COMET ESCORT 3,MissionPhase,gemini-4-argon,3,3,3
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_PROCESSING_LEVEL,CODMAC level 4,ProcessingLevel,gemini-4-argon,3,3,3
-ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_SPATIAL_REPRESENTATION,"solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data",SpatialRepresentation,gemini-4-argon,3,3,3
-ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_TARGET,67P/Churyumov-Gerasimenko 1 (1969 R1),CelestialBody,gemini-4-argon,3,3,3
-ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_TIME_SPAN,from 2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000,Time,gemini-4-argon,3,3,3
+ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_SPATIAL_REPRESENTATION,"solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data",SpatialRepresentation,gemini-4-argon,3,3,1
+ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_TARGET,67P/Churyumov-Gerasimenko 1 (1969 R1),CelestialBody,gemini-4-argon,3,3,2
+ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_TIME_SPAN,from 2015-08-25T23:25:00.000 to 2015-09-22T23:24:59.000,Time,gemini-4-argon,3,2,2
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_UNIT,W/m^2/sr/nm,Unit,gemini-4-argon,3,3,3
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,HAS_VERSION,V1.0,Version,gemini-4-argon,3,3,3
 ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0,Dataset,REVISED_AFTER,September 2019 PSA/PDS external peer review,Task,gemini-4-argon,3,3,3
@@ -240,10 +241,10 @@ ab33f184-95f4-4f33-8f3d-c4a09ec525d3,ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RD
 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_COORDINATE_SYSTEM,"Heliographic Inertial, HGI, Coordinates",CoordinateSystem,gemini-4-argon,3,3,3
 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_COORDINATE_SYSTEM,"Heliographic, HG, Coordinates",CoordinateSystem,gemini-4-argon,3,3,3
 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_COORDINATE_SYSTEM,"Solar Ecliptic, SE, Coordinates",CoordinateSystem,gemini-4-argon,3,3,3
-32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_MEASUREMENTS_OF,Heliocentric trajectories,PhysicalQuantity,gemini-4-argon,3,2,2
+32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_MEASUREMENTS_OF,Heliocentric trajectories,PhysicalQuantity,gemini-4-argon,3,3,3
 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_TARGET,Comet Borrelly,CelestialBody,gemini-4-argon,3,3,3
 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_TEMPORAL_RESOLUTION,Daily,TemporalResolution,gemini-4-argon,3,3,3
-32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_VARIABLE,Solar Orbiter Ephemeris,Variable,gemini-4-argon,3,1,0
+32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,HAS_VARIABLE,Solar Orbiter Ephemeris,Variable,gemini-4-argon,3,0,0
 32614a2f-a286-4c7c-9f1e-deafdf8bd6a3,"Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data",Dataset,PRODUCED_USING_ALGORITHM,Mean of Date,Algorithm,gemini-4-argon,3,0,0
 ec41fd5d-1159-4aa8-9803-5346e2324a20,calibrated values,Dataset,COMPUTED_FROM,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,gemini-4-argon,3,0,0
 ec41fd5d-1159-4aa8-9803-5346e2324a20,Plasma Wave Spectrometer (PWS),Instrument,ABOARD,Voyager 1,Platform,gemini-4-argon,3,3,3
@@ -254,13 +255,13 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,PWS spectrum analyzer,Instrument,PART_OF,Pl
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,Plasma Wave Spectrometer (PWS),Instrument,gemini-4-argon,3,3,3
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,PWS spectrum analyzer,Instrument,gemini-4-argon,3,3,0
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,CLEANED_OF,noise lines during the planetary encounters,Issue,gemini-4-argon,3,3,0
-ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,DOCUMENTED_AT,Instructions for producing calibrated values,Document,gemini-4-argon,3,1,1
+ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,DOCUMENTED_AT,Instructions for producing calibrated values,Document,gemini-4-argon,3,0,0
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,FROM_PLATFORM,Voyager 1,Platform,gemini-4-argon,3,3,3
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,HAS_SOFTWARE,example C-language program,Software,gemini-4-argon,3,3,3
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,HAS_UNIT,instrument data numbers,Unit,gemini-4-argon,3,3,3
 ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0,Dataset,HAS_VERSION,V1.0,Version,gemini-4-argon,3,3,3
-0eedd2bc-b2e2-4cc1-a94d-41c141169334,BRDF geometric parameter for VIIRS band M4 (0.555 μm),Variable,FOR_CHANNEL,VIIRS band M4 (0.555 μm),Channel,gemini-4-argon,3,1,1
-0eedd2bc-b2e2-4cc1-a94d-41c141169334,BRDF/Albedo values for VIIRS band M4,Variable,COMPUTED_FROM,BRDF geometric parameter for VIIRS band M4 (0.555 μm),Variable,gemini-4-argon,3,3,1
+0eedd2bc-b2e2-4cc1-a94d-41c141169334,BRDF geometric parameter for VIIRS band M4 (0.555 μm),Variable,FOR_CHANNEL,VIIRS band M4 (0.555 μm),Channel,gemini-4-argon,3,3,3
+0eedd2bc-b2e2-4cc1-a94d-41c141169334,BRDF/Albedo values for VIIRS band M4,Variable,COMPUTED_FROM,BRDF geometric parameter for VIIRS band M4 (0.555 μm),Variable,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,Climate Modeling Grid (CMG),Grid,HAS_PURPOSE,use in climate simulation models,Purpose,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,Climate Modeling Grid (CMG),Grid,HAS_SPATIAL_COVERAGE,globe,SpatialExtent,gemini-4-argon,3,3,0
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS band M4 (0.555 μm),Channel,CHANNEL_OF,Visible Infrared Imaging Radiometer Suite (VIIRS),Instrument,gemini-4-argon,3,3,3
@@ -271,30 +272,30 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FUL
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,FROM_PLATFORM,NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP),Platform,gemini-4-argon,3,3,0
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_COMPOSITING_PERIOD,16 days,Value,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_IDENTIFIER,VNP43D12,Identifier,gemini-4-argon,3,3,3
-0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_NUMBER_OF,one data layer,Value,gemini-4-argon,3,3,2
+0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_NUMBER_OF,one data layer,Value,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_PROCESSING_LEVEL,L3,ProcessingLevel,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_SPATIAL_COVERAGE,Global,SpatialExtent,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_SPATIAL_RESOLUTION,"30 arc second (1,000 meter)",SpatialResolution,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_TEMPORAL_RESOLUTION,daily,TemporalResolution,gemini-4-argon,3,3,3
-0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_VARIABLE,BRDF geometric parameter for VIIRS band M4 (0.555 μm),Variable,gemini-4-argon,3,3,1
+0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_VARIABLE,BRDF geometric parameter for VIIRS band M4 (0.555 μm),Variable,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,HAS_VERSION,V002,Version,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,Dataset,ON_GRID,Climate Modeling Grid (CMG),Grid,gemini-4-argon,3,3,3
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,Visible Infrared Imaging Radiometer Suite (VIIRS),Instrument,ABOARD,NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP),Platform,gemini-4-argon,3,3,0
-6f63dd10-376e-4d17-9156-f2155637e74d,2013 balloon campaign,Campaign,HAS_PURPOSE,"maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts",Purpose,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2013 balloon campaign,Campaign,HAS_TIME_SPAN,January and February of 2013,Time,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2013 balloon campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2014 balloon campaign,Campaign,HAS_PURPOSE,"maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts",Purpose,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2014 balloon campaign,Campaign,HAS_TIME_SPAN,January and February of 2014,Time,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2014 balloon campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,COORDINATED_WITH,"European Incoherent Scatter Scientific Association, EISCAT, incoherent scatter radar system",Instrument,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,COORDINATED_WITH,"Radiation Belt Storm Probes, RBSP",Mission,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,HAS_NUMBER_OF,eight flights,Value,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,HAS_TIME_SPAN,2016,Time,gemini-4-argon,3,1,1
-6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,1,1
+6f63dd10-376e-4d17-9156-f2155637e74d,2013 balloon campaign,Campaign,HAS_PURPOSE,"maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts",Purpose,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2013 balloon campaign,Campaign,HAS_TIME_SPAN,January and February of 2013,Time,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2013 balloon campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2014 balloon campaign,Campaign,HAS_PURPOSE,"maintain an array with about five payloads spread across about six hours of magnetic local time, MLT, in the region that magnetically maps to the radiation belts",Purpose,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2014 balloon campaign,Campaign,HAS_TIME_SPAN,January and February of 2014,Time,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2014 balloon campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,COORDINATED_WITH,"European Incoherent Scatter Scientific Association, EISCAT, incoherent scatter radar system",Instrument,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,COORDINATED_WITH,"Radiation Belt Storm Probes, RBSP",Mission,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,HAS_NUMBER_OF,eight flights,Value,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,HAS_TIME_SPAN,2016,Time,gemini-4-argon,3,0,0
+6f63dd10-376e-4d17-9156-f2155637e74d,2016 campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,Campaign,COORDINATED_WITH,"European Incoherent Scatter Scientific Association, EISCAT, incoherent scatter radar system",Instrument,gemini-4-argon,3,2,2
 6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,Campaign,COORDINATED_WITH,"Radiation Belt Storm Probes, RBSP",Mission,gemini-4-argon,3,2,2
 6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,Campaign,HAS_NUMBER_OF,Seven balloon launches,Value,gemini-4-argon,3,3,3
-6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,Campaign,HAS_TIME_SPAN,August 2015,Time,gemini-4-argon,3,3,3
+6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,Campaign,HAS_TIME_SPAN,August 2015,Time,gemini-4-argon,3,2,2
 6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,Campaign,PART_OF,BARREL,Mission,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,HAS_NUMBER_OF,four BARREL campaigns,Value,gemini-4-argon,3,1,1
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,HAS_NUMBER_OF,"over 50 small, approximately 20 kg, stratospheric balloons",Value,gemini-4-argon,3,3,3
@@ -304,16 +305,16 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FUL
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,HAS_PURPOSE,study electron losses from Radiation Belts,Purpose,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,HAS_TARGET,Earth,CelestialBody,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,HAS_TIME_SPAN,from 2013 to 2016,Time,gemini-4-argon,3,3,3
-6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,PART_OF,NASA Living with a Star,Organization,gemini-4-argon,3,3,3
-6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,ACQUIRED_BY_INSTRUMENT,Rate Counter (RCNT),Instrument,gemini-4-argon,3,3,3
+6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,Mission,PART_OF,NASA Living with a Star,Organization,gemini-4-argon,3,3,2
+6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,ACQUIRED_BY_INSTRUMENT,Rate Counter (RCNT),Instrument,gemini-4-argon,3,2,2
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,DOCUMENTED_AT,BARREL at Dartmouth,Document,gemini-4-argon,3,3,3
-6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,DOCUMENTED_AT,Millan et al. (2013) Space Science Reviews,Document,gemini-4-argon,3,3,3
+6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,DOCUMENTED_AT,Millan et al. (2013) Space Science Reviews,Document,gemini-4-argon,3,3,2
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,FROM_MISSION,BARREL,Mission,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_ACCESS_RIGHTS,freely available to the public,AccessRights,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_COMPOSITING_PERIOD,4 s,Value,gemini-4-argon,3,3,3
-6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_ISSUE,uncalibrated energy ranges,Issue,gemini-4-argon,3,3,3
+6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_ISSUE,uncalibrated energy ranges,Issue,gemini-4-argon,3,2,2
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_ISSUE,wrap near or above 16384 counts/s,Issue,gemini-4-argon,3,3,3
-6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_MEASUREMENTS_OF,counts,PhysicalQuantity,gemini-4-argon,3,1,1
+6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_MEASUREMENTS_OF,counts,PhysicalQuantity,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_PROCESSING_LEVEL,Level 2,ProcessingLevel,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_TEMPORAL_RESOLUTION,4 s,TemporalResolution,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,HAS_VARIABLE,NaI Scintillator Diagnostics,Variable,gemini-4-argon,3,0,0
@@ -321,20 +322,23 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FUL
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,OBSERVED_AT_ALTITUDE,about 30 km,Value,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,PRODUCED_USING_ALGORITHM,accumulations,Algorithm,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL balloon,Platform,HAS_MASS,approximately 20 kg,Value,gemini-4-argon,3,0,0
-6f63dd10-376e-4d17-9156-f2155637e74d,BARREL balloon,Platform,PART_OF,BARREL,Mission,gemini-4-argon,3,1,0
+6f63dd10-376e-4d17-9156-f2155637e74d,BARREL balloon,Platform,PART_OF,BARREL,Mission,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL Data Usage Policy,Document,AVAILABLE_AT,https://barrel.rmillan.host.dartmouth.edu/documents/data.use.policy.pdf,WebPage,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL instrumentation,Instrument,MEASURES,relativistic electron precipitation,PhysicalQuantity,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL instrumentation,Instrument,PART_OF,BARREL,Mission,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,BARREL team,Organization,PART_OF,BARREL,Mission,gemini-4-argon,3,2,2
 6f63dd10-376e-4d17-9156-f2155637e74d,DC magnetometer,Instrument,ABOARD,BARREL balloon,Platform,gemini-4-argon,3,0,0
-6f63dd10-376e-4d17-9156-f2155637e74d,DC magnetometer,Instrument,HAS_PURPOSE,measure ULF-timescale variations of the magnetic field,Purpose,gemini-4-argon,3,1,1
+6f63dd10-376e-4d17-9156-f2155637e74d,DC magnetometer,Instrument,HAS_PURPOSE,measure ULF-timescale variations of the magnetic field,Purpose,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,"Radiation Belt Storm Probes, RBSP",Mission,ALSO_KNOWN_AS,Van Allen Probes,Mission,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,Robyn Millan,Person,AFFILIATED_WITH,BARREL team,Organization,gemini-4-argon,3,3,2
 6f63dd10-376e-4d17-9156-f2155637e74d,Robyn Millan,Person,HAS_CONTACT_POINT,Robyn.Millan@dartmouth.edu,EmailAddress,gemini-4-argon,3,3,3
 6f63dd10-376e-4d17-9156-f2155637e74d,Robyn Millan,Person,SERVES_AS,BARREL PI,Role,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,South African National Antarctic Expedition,Organization,ALSO_KNOWN_AS,SANAE,Organization,gemini-4-argon,3,0,0
 6f63dd10-376e-4d17-9156-f2155637e74d,X-ray spectrometer,Instrument,ABOARD,BARREL balloon,Platform,gemini-4-argon,3,0,0
-6f63dd10-376e-4d17-9156-f2155637e74d,X-ray spectrometer,Instrument,HAS_PURPOSE,measure the bremsstrahlung X-rays produced by precipitating relativistic electrons as they collide with neutrals in the atmosphere,Purpose,gemini-4-argon,3,2,2
+6f63dd10-376e-4d17-9156-f2155637e74d,X-ray spectrometer,Instrument,HAS_PURPOSE,measure the bremsstrahlung X-rays produced by precipitating relativistic electrons as they collide with neutrals in the atmosphere,Purpose,gemini-4-argon,3,3,3
+6f63dd10-376e-4d17-9156-f2155637e74d,"BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data",Dataset,DOCUMENTED_AT,website creeated and hosted by A.J. Halford,Document,gemini-4-argon,3,1,1
+6f63dd10-376e-4d17-9156-f2155637e74d,website creeated and hosted by A.J. Halford,Document,DEVELOPED_BY_PARTY,A.J. Halford,Person,gemini-4-argon,3,1,1
+6f63dd10-376e-4d17-9156-f2155637e74d,website creeated and hosted by A.J. Halford,Document,PROVIDED_BY_PARTY,A.J. Halford,Person,gemini-4-argon,3,1,1
 264a9b23-9a86-46a7-ab61-9661230ea667,CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0,Dataset,ACQUIRED_BY_INSTRUMENT,Moon Mineralogy Mapper (M3),Instrument,gemini-4-argon,3,3,3
 264a9b23-9a86-46a7-ab61-9661230ea667,CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0,Dataset,FROM_MISSION,Chandrayaan-1,Mission,gemini-4-argon,3,3,3
 264a9b23-9a86-46a7-ab61-9661230ea667,CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0,Dataset,HAS_PROCESSING_LEVEL,L0,ProcessingLevel,gemini-4-argon,3,3,3
@@ -350,20 +354,20 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FUL
 967275c7-aa2d-4b08-a9db-aff5cf6b7802,Flight Data For Tail 655,Dataset,HAS_FILE_FORMAT,Matlab,FileFormat,gemini-4-argon,3,3,3
 967275c7-aa2d-4b08-a9db-aff5cf6b7802,Flight Data For Tail 655,Dataset,HAS_FILE_FORMAT,zip,FileFormat,gemini-4-argon,3,3,3
 967275c7-aa2d-4b08-a9db-aff5cf6b7802,Flight Data For Tail 655,Dataset,HAS_NUMBER_OF,186 parameters,Value,gemini-4-argon,3,3,3
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for ascending orbit node,Variable,HAS_NUMBER_OF,4 waves,Value,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for ascending orbit node,Variable,OBSERVED_AT_TIME_OF_DAY,daytime,TimeOfDay,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for combined orbit node,Variable,HAS_NUMBER_OF,7 waves,Value,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for descending orbit node,Variable,HAS_NUMBER_OF,4 waves,Value,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for descending orbit node,Variable,OBSERVED_AT_TIME_OF_DAY,nighttime,TimeOfDay,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,Geopotential Height Zonal Fourier Coefficients,Variable,COMPUTED_FROM,HIRDLS profiles,Dataset,gemini-4-argon,3,2,0
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for ascending orbit node,Variable,HAS_NUMBER_OF,4 waves,Value,gemini-4-argon,3,1,0
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for ascending orbit node,Variable,OBSERVED_AT_TIME_OF_DAY,daytime,TimeOfDay,gemini-4-argon,3,2,1
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for combined orbit node,Variable,HAS_NUMBER_OF,7 waves,Value,gemini-4-argon,3,1,0
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for descending orbit node,Variable,HAS_NUMBER_OF,4 waves,Value,gemini-4-argon,3,1,0
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,data field for descending orbit node,Variable,OBSERVED_AT_TIME_OF_DAY,nighttime,TimeOfDay,gemini-4-argon,3,2,1
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,Geopotential Height Zonal Fourier Coefficients,Variable,COMPUTED_FROM,HIRDLS profiles,Dataset,gemini-4-argon,3,1,0
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,Geopotential Height Zonal Fourier Coefficients,Variable,HAS_NUMBER_OF,up to 7 cosine coefficients,Value,gemini-4-argon,3,1,0
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,Geopotential Height Zonal Fourier Coefficients,Variable,HAS_NUMBER_OF,up to 7 sine coefficients,Value,gemini-4-argon,3,1,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,Geopotential Height Zonal Fourier Coefficients,Variable,PRODUCED_USING_ALGORITHM,Kalman filter using both forward and backward passes in time,Algorithm,gemini-4-argon,3,3,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS profiles,Dataset,ACQUIRED_BY_INSTRUMENT,HIRDLS,Instrument,gemini-4-argon,3,2,2
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS profiles,Dataset,HAS_PROCESSING_LEVEL,Level 2,ProcessingLevel,gemini-4-argon,3,2,2
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,Geopotential Height Zonal Fourier Coefficients,Variable,PRODUCED_USING_ALGORITHM,Kalman filter using both forward and backward passes in time,Algorithm,gemini-4-argon,3,2,0
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS profiles,Dataset,ACQUIRED_BY_INSTRUMENT,HIRDLS,Instrument,gemini-4-argon,3,1,1
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS profiles,Dataset,HAS_PROCESSING_LEVEL,Level 2,ProcessingLevel,gemini-4-argon,3,1,1
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,ACQUIRED_BY_INSTRUMENT,HIRDLS,Instrument,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,FROM_PLATFORM,Aura,Platform,gemini-4-argon,3,3,3
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_ANCILLARY_DATA,precision values,Variable,gemini-4-argon,3,3,3
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_ANCILLARY_DATA,precision values,Variable,gemini-4-argon,3,3,2
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_DURATION,~3 years,Value,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_FILE_FORMAT,version 5 Hierarchical Data Format for the Earth Observing System (HDF-EOS5),FileFormat,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_GRANULE_DURATION,~3 years,Value,gemini-4-argon,3,3,3
@@ -373,16 +377,16 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FUL
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_SPATIAL_COVERAGE,from -64 to 80 degrees,SpatialExtent,gemini-4-argon,3,3,2
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_SPATIAL_REPRESENTATION,zonal,SpatialRepresentation,gemini-4-argon,3,0,0
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_SPATIAL_RESOLUTION,1 degree latitude,SpatialResolution,gemini-4-argon,3,3,3
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,data field for ascending orbit node,Variable,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,data field for combined orbit node,Variable,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,data field for descending orbit node,Variable,gemini-4-argon,3,0,0
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,data field for ascending orbit node,Variable,gemini-4-argon,3,2,1
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,data field for combined orbit node,Variable,gemini-4-argon,3,2,1
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,data field for descending orbit node,Variable,gemini-4-argon,3,2,1
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VARIABLE,Geopotential Height Zonal Fourier Coefficients,Variable,gemini-4-argon,3,3,0
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VERSION,version 7,Version,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VERTICAL_RANGE,1000 to 0.01 hPa,Value,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,HAS_VERTICAL_RESOLUTION,about 1 km,Value,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),Dataset,ON_GRID,pressure grid with 24 levels per decade,Grid,gemini-4-argon,3,3,3
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,mean,Variable,PART_OF,Geopotential Height Zonal Fourier Coefficients,Variable,gemini-4-argon,3,0,0
-77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,precision values,Variable,COMPUTED_FROM,differences between the estimated fields and the input data,Variable,gemini-4-argon,3,2,2
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,precision values,Variable,COMPUTED_FROM,differences between the estimated fields and the input data,Variable,gemini-4-argon,3,3,2
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,precision values,Variable,PRODUCED_USING_ALGORITHM,root-mean square,Algorithm,gemini-4-argon,3,3,2
 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,version 5 Hierarchical Data Format for the Earth Observing System (HDF-EOS5),FileFormat,EXTENDS,HDF5,FileFormat,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,Copernicus Sentinel data,Dataset,HAS_TIME_SPAN,2024-2025,Time,gemini-4-argon,3,3,3
@@ -391,23 +395,23 @@ ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA,Organization,INFORMED_BY,Satellite Ne
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,COMPUTED_FROM,Copernicus Sentinel data,Dataset,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,COMPUTED_FROM,Sentinel-1 radar observations,Dataset,gemini-4-argon,3,1,1
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,DEVELOPED_BY_PARTY,OPERA,Organization,gemini-4-argon,3,3,3
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,FROM_PLATFORM,Sentinel-1,Platform,gemini-4-argon,3,3,3
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,FROM_PLATFORM,Sentinel-1,Platform,gemini-4-argon,3,2,2
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_ANCILLARY_DATA,confidence,Variable,gemini-4-argon,3,3,0
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_FILE_FORMAT,GeoTIFF (Geographic Tagged Image File Format),FileFormat,gemini-4-argon,3,3,3
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_MEASUREMENTS_OF,surface water extent over land,PhysicalQuantity,gemini-4-argon,3,3,0
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_MEASUREMENTS_OF,surface water extent over land,PhysicalQuantity,gemini-4-argon,3,3,2
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_PROCESSING_LEVEL,Level-3,ProcessingLevel,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_SPATIAL_COVERAGE,near-global,SpatialExtent,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_SPATIAL_REPRESENTATION,geographical mapping,SpatialRepresentation,gemini-4-argon,3,0,0
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_SPATIAL_RESOLUTION,30 meters,SpatialResolution,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_TEMPORAL_RESOLUTION,between 6-12 days,TemporalResolution,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_VARIABLE,open inland water bodies greater than 3 hectares and 200 meters in width,Variable,gemini-4-argon,3,0,0
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_VARIABLE,water classification,Variable,gemini-4-argon,3,3,2
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_VARIABLE,water classification,Variable,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,HAS_VERSION,Version 1,Version,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,ON_GRID,Military Grid reference System (MGRS),Grid,gemini-4-argon,3,3,3
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),Dataset,PRODUCTION_STARTED_ON,Sept 2024,Time,gemini-4-argon,3,3,3
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,HAS_PURPOSE,addressing observation needs across U.S. civilian federal agencies,Purpose,gemini-4-argon,3,3,3
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,HAS_PURPOSE,identifying observation needs across U.S. civilian federal agencies,Purpose,gemini-4-argon,3,3,3
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,HAS_PURPOSE,addressing observation needs across U.S. civilian federal agencies,Purpose,gemini-4-argon,3,3,2
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,HAS_PURPOSE,identifying observation needs across U.S. civilian federal agencies,Purpose,gemini-4-argon,3,2,2
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,HAS_TARGET,Earth,CelestialBody,gemini-4-argon,3,3,3
-ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,PART_OF,U.S. Government,Organization,gemini-4-argon,3,3,3
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,Satellite Needs Working Group (SNWG),Organization,PART_OF,U.S. Government,Organization,gemini-4-argon,3,3,2
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,Sentinel-1 radar observations,Dataset,FROM_PLATFORM,Sentinel-1,Platform,gemini-4-argon,3,1,1
 ed2cea26-ed6c-4138-be69-3d32d4ce4858,Sentinel-1 radar observations,Dataset,USES_TECHNIQUE,radar,Technique,gemini-4-argon,3,1,1
