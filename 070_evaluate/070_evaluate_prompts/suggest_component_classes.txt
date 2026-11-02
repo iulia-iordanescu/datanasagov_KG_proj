@@ -17,12 +17,20 @@ and definition, not by spelling.
 Suggest a pair only if you are confident; leave a component class out
 otherwise.
 
+INEXACT lists component classes of the current schema, each with its
+"kind", that are translated to a component class of GROUND_TRUTH
+("translated_to", with its "translated_to_definition") whose meaning is
+narrower than theirs or only overlaps it, so part of their meaning has no
+counterpart yet. For each, say whether a component class in GROUND_TRUTH,
+of the same kind, is for the part of its meaning that its "translated_to"
+doesn't cover. Suggest nothing for it otherwise.
+
 Use only component classes exactly as they are written in the two lists.
 
 REPLY FORMAT
 
 Return only JSON, with no prose. In each entry, "kind" is "entity class" or
-"predicate", "schema" is the component class from SCHEMA, and
+"predicate", "schema" is the component class from SCHEMA or INEXACT, and
 "ground_truth" is the one from GROUND_TRUTH:
 {"suggestions": [{"kind": "<kind>", "schema": "<component class>", "ground_truth": "<component class>"}]}
 Return {"suggestions": []} if you are confident of none.
@@ -36,3 +44,6 @@ $ground_truth
 
 SCHEMA
 $schema
+
+INEXACT
+$inexact

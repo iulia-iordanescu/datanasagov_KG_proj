@@ -249,9 +249,9 @@ TRANSLATIONS = {"Satellite": "Spacecraft", "Sensor": "Instrument", "MOUNTED_ON":
 
 
 def _mapping(prompt: str) -> dict:
-    schema = json.loads(prompt[prompt.rindex("\nSCHEMA\n") + len("\nSCHEMA\n"):].strip())
-    if "has since gained" in prompt:
+    if "has since gained" in prompt:                 # the suggestion prompt (its SCHEMA list is followed by INEXACT)
         return {"suggestions": []}
+    schema = json.loads(prompt[prompt.rindex("\nSCHEMA\n") + len("\nSCHEMA\n"):].strip())
     return {"mapping": [{"kind": i["kind"], "schema": i["component_class"],
                          "ground_truth": TRANSLATIONS.get(i["component_class"], i["component_class"]
                                                           if i["component_class"] != "Gadget" else None),

@@ -1428,7 +1428,7 @@ function gapsList() {
 // ---------------------------------------------------------------- the translation table
 // One row per component class of the current schema (the one extraction used):
 // which component class of the ground truth schema it means. Only component_class_in_gtt,
-// swap_subject_and_object and checked can be changed here.
+// swap_subject_and_object, match and checked can be changed here.
 // Shown as one compact list per kind (Entity classes, Predicates), one box per row, its
 // definitions always shown; a note's full text opens below the box's flags on a click.
 let mapping = null, mapDirty = false, mapTimer = null, mapSaving = false, onlyToCheck = false, showPast = false;
@@ -1443,9 +1443,15 @@ const isCurrent = (r) => !mapping.schema_found || r.in_crt;
 // mapping.stale_in_names: common/common_helpers/component_class_mapping.py), as do the values that count as checked.
 const has = (r, state) => r.states.includes(mapping.state_names[state]);
 const staleIn = (r, whose) => r.stale_in.includes(mapping.stale_in_names[whose]);
-// A (none) row that now exists needs checking too: keeping (none) on purpose is ticking it again.
-const toCheck = (r) => has(r, "STALE") || has(r, "MISSING_TARGET") || has(r, "NOW_EXISTS")
+// A (none) row that now exists needs checking too: keeping (none) on purpose is ticking it again. So does a
+// checked row with no match value (checked before the match column, 2026-11-01): set its match.
+const toCheck = (r) => has(r, "STALE") || has(r, "MISSING_TARGET") || has(r, "NOW_EXISTS") || has(r, "NO_MATCH")
   || !mapping.checked_values.includes(r.checked);
+// What each match value says (docs/terminology.md, *match*), for the dropdown's options.
+const MATCH_TEXT = { same: "same: the two mean the same",
+                     narrower: "narrower: every one of this is one of that, not the other way",
+                     broader: "broader: some of this isn't that",
+                     overlap: "overlap: some shared, some on each side only" };
 
 async function openMapping() {
   await flush();
@@ -1639,7 +1645,9 @@ function mappingRow(r, i) {
   // A (none) row whose component class the ground truth schema now has: probably out of date.
   const nowExists = has(r, "NOW_EXISTS") ? { component_class: r.same_component_class_in_gtt } : null;
   // a row accepted automatically (same spelling) can be changed; changing it makes it an ordinary row to check
-  const update = (key, value) => { r[key] = value; if (same && key !== "checked") r.checked = "no"; mapChanged(); drawMapping(); };
+  // the match alone can change on such a row without making it one to check
+  const update = (key, value) => { r[key] = value; if (key === "component_class_in_gtt" && value === mapping.none) r.match = "";
+                                   if (same && key !== "checked" && key !== "match") r.checked = "no"; mapChanged(); drawMapping(); };
   const tickAgain = "then tick “Checked: this translation is right” again.";
   const andList = (xs) => xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 
@@ -1652,7 +1660,16 @@ function mappingRow(r, i) {
     `⚑ This row was checked when the ground truth schema defined ${gttLabel} as: “` +
     (r.definition_in_gtt || "(no definition)") + `”. The ground truth schema now defines it as shown on the right. ` +
     `Check that ${crtLabel} still translates to ${gttName}, ${tickAgain}`]);
-  if (has(r, "SUGGESTED")) notes.push(["flag", `Suggested: ${r.suggested_gtt} (ground truth schema ${what})`,
+  if (has(r, "NO_MATCH")) notes.push(["flag", "Match: not set",
+    `⚑ This row was checked before the match column existed. Compare the two definitions and choose its match: ` +
+    `same, narrower (every ${crtName} is also ${gttName}), broader (some ${crtName} isn't), or overlap. ` +
+    `Step 070 counts this row's occurrences under “no match value” until then; no number changes.`]);
+  if (has(r, "SUGGESTED") && r.suggested_beside) notes.push(["flag", `Also: ${r.suggested_gtt} (ground truth schema ${what})`,
+    `⚑ The model suggests that the part of ${crtLabel}'s meaning that ${r.suggested_beside} doesn't cover may be ` +
+    `${r.suggested_gtt} (ground truth schema ${what}), ${aOrAn(what)} ${what} the ground truth schema gained since. If an ` +
+    `entity class of the subject or object tells the two apart, a predicate's row can become ${mapping.none} with a ` +
+    `conditional row for each; otherwise keep this row as it is.`]);
+  else if (has(r, "SUGGESTED")) notes.push(["flag", `Suggested: ${r.suggested_gtt} (ground truth schema ${what})`,
     `⚑ The model suggests ${crtLabel} may mean ${r.suggested_gtt} (ground truth schema ${what}), ${aOrAn(what)} ${what} the ground truth ` +
     `schema gained since this row was checked. If that is right, pick ${r.suggested_gtt} in ` +
     `this box's dropdown; otherwise keep ${mapping.none}.`]);
@@ -1714,6 +1731,14 @@ function mappingRow(r, i) {
         el("input", { type: "checkbox", disabled: none, checked: r.swap_subject_and_object === "yes",
                       onchange: (e) => update("swap_subject_and_object", e.target.checked ? "yes" : "no") }),
         " Swap subject and object") : null,
+      el("label", { class: "mapflag" + (r.match ? " on" : ""),
+                    title: none ? `Match: only for a row that translates to a ground truth schema ${what}, not to ${mapping.none}`
+                         : `How ${crtName} (current schema ${what}) relates to ${gttName} (ground truth schema ${what})` },
+        "Match ",
+        el("select", { disabled: none, "aria-label": `How ${crtLabel} relates to ${gttLabel}`,
+                       onchange: (e) => update("match", e.target.value) },
+          el("option", { value: "", selected: !r.match }, none ? "(none)" : "not set"),
+          mapping.match_values.map(v => el("option", { value: v, selected: r.match === v }, MATCH_TEXT[v] || v)))),
       autoAccepted
         ? el("span", { class: "pill ok", title: `Accepted automatically, because ${crtName} is spelled the same in the current ` +
             `schema and in the ground truth schema. Compare the two definitions above; if they mean different things, pick ` +
@@ -1761,7 +1786,8 @@ async function saveMapping() {
   try {
     const done = await api("/api/mapping/save", { rows: mapping.rows.map(r => ({ kind: r.kind,
       component_class_from_past_or_crt_schema: r.component_class_from_past_or_crt_schema, component_class_in_gtt: r.component_class_in_gtt,
-      swap_subject_and_object: r.swap_subject_and_object, checked: r.checked, keep_definition: has(r, "STALE") || has(r, "NOW_EXISTS") })),
+      swap_subject_and_object: r.swap_subject_and_object, match: r.match || "", checked: r.checked,
+      keep_definition: has(r, "STALE") || has(r, "NOW_EXISTS") })),
       fingerprint: mapping.fingerprint });
     if (done.fingerprint && mapping) mapping.fingerprint = done.fingerprint;
     // the rows' states as saved, unless the page changed again meanwhile (the next save brings those)

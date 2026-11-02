@@ -47,7 +47,7 @@ from pathlib import Path
 
 from common.files import read_csv, read_json
 from common import audit
-from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, NOW_EXISTS, STALE, crt_definitions, gtt_definitions, \
+from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, NO_MATCH, NOW_EXISTS, STALE, crt_definitions, gtt_definitions, \
     is_checked, read_mapping, repeats, row_states
 from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALUABLE, GROUND_TRUTH_DIR, HELD_OUT, KIND_KEYS,
                                  NUMBERED, PATTERN, TO_FIX, TUNING, check_rows, ground_truth_schema_gaps,
@@ -337,6 +337,13 @@ def _translation_items(schema: dict, gt) -> list:
     unknown = [r for r in current if is_checked(r) and MISSING_TARGET in states[r["_line"]]]
     exists = [r for r in current if is_checked(r) and NOW_EXISTS in states[r["_line"]]]
     repeated = repeats(table)
+    no_match = [r for r in current if NO_MATCH in states[r["_line"]] and STALE not in states[r["_line"]]]
+    if no_match:
+        items.append(_item("Translation table", TO_DO, f"{len(no_match)} checked row(s) of the translation table have "
+                           f"no match value (checked before the match column, 2026-11-01): "
+                           f"{named([r['component_class_from_past_or_crt_schema'] + ' (current schema)' for r in no_match], 4)}. "
+                           f"Set each one's match: same, narrower, broader or overlap ({where}). Step 070 only warns "
+                           f"about them; no number changes.", "when-step-070-stops", repo_path(MAPPING_PATH)))
     for rows, what in ((unchecked, "still to check"),
                        (exists, "that say (none) though the ground truth schema now has an entry spelled the same "
                                 "(now exists): pick that entry if it means the same, else tick Checked again to keep "

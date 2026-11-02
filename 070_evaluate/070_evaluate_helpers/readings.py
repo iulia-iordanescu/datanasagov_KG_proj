@@ -191,7 +191,18 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"{_of(pa['pairs'] - pa['strict_pairs'], Ep)} at the partial level).",
             _sure(n, ex["precision"], "exact precision"),
             "- Assumes the ground truth lists every fact these records state: an occurrence stating a true "
-            "fact the ground truth lacks counts as not correct.", ""]
+            "fact the ground truth lacks counts as not correct."]
+    merged_predicates = [f"{', '.join(v)} (current schema) --> {k} (ground truth schema)"
+                         for k, v in translation.merged.get("predicate", {}).items()]
+    if merged_predicates:
+        out.append("- Can't see mix-ups between predicates of the current schema that translate to the same ground "
+                   "truth predicate (such a mix-up still pairs): " + "; ".join(merged_predicates) + ".")
+    inexact = sum((n.get("by_match") or {}).get("extracted_only", {}).get(k, 0) for k in ("broader", "overlap"))
+    if inexact:
+        out.append(f"- {inexact} of the occurrences left extracted only went through a predicate's row marked "
+                   f"broader or overlap, so the table, not extraction, may have filed them under the wrong predicate "
+                   f"(section *Through which kind of row*).")
+    out.append("")
 
     # schema fit
     named = "; ".join(f"`{p}` ({k})" for p, k in untranslatable_predicates(recs)[:5])
@@ -280,6 +291,11 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"triple(s) have a predicate with no counterpart in the schema.",
             f"- {_of(SW, G)} are within strict reach: their two entity classes have a counterpart too. That's "
             f"the most strict recall could be.",
+            *([f"- Split by the best match among the rows that reach them (`docs/terminology.md`, *match*): "
+               + "; ".join(f"{k}: {_of(v, G)}" for k, v in n["by_match"]["within_reach"].items())
+               + ". Through same or narrower rows, the current schema can say the fact; only through broader or "
+                 "overlap rows, it says something wider that the table files under that predicate. An upper bound "
+                 "either way."] if n.get("by_match") else []),
             _sure(n, n["recall_upper_bound"], "the recall upper bound"), ""]
     out += [f"#### Recall within reach: {pct(ex['recall_within_reach']['value'])} (exact pairs), "
             f"{pct(pa['recall_within_reach']['value'])} (exact and partial pairs)", "",

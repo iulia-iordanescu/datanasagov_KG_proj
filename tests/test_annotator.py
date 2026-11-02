@@ -19,6 +19,9 @@ TMP = temp_repo(annotations=True)
 import_from_copy(TMP)          # the copy's code, so the tool writes into the copy, whichever test file ran first
 from annotator import server                      # noqa: E402
 from common import component_class_mapping, ground_truth, partial_reviews, schema_io   # noqa: E402
+#: The columns of the translation table before its match column (2026-11-01): rows written positionally in this order
+#: read as a table from before, with match empty.
+BEFORE_MATCH = [c for c in component_class_mapping.COLUMNS if c != "match"]
 
 HAND = """ENTITY CLASSES
 --------------
@@ -717,7 +720,7 @@ class D_Mapping(unittest.TestCase):
 
     def setUp(self):
         self.path = TMP / "annotations" / "component_class_mapping.csv"
-        cols = component_class_mapping.COLUMNS
+        cols = BEFORE_MATCH
         rows = [["entity class", "Satellite", "Spacecraft", "", "yes", "an old definition"],
                 ["predicate", "MOUNTED_ON", "", "", "", ""],
                 ["entity class", "Craft", "(none)", "", "", ""],
@@ -740,7 +743,7 @@ class D_Mapping(unittest.TestCase):
         self.assertEqual([CRT in r["stale_in"] for r in v["rows"]], [True, False, False, False])
         self.assertEqual([REPEATED in r["states"] for r in v["rows"]], [False, False, True, True])
         self.assertEqual([r["states"] for r in v["rows"]],
-                         [["stale", "shared"], ["missing target"], ["repeated"], ["repeated", "shared"]])
+                         [["stale", "no match value", "shared"], ["missing target"], ["repeated"], ["repeated", "shared"]])
         self.assertEqual(v["rows"][0]["crt_definition"], "an orbiting craft")
 
     def test_save(self):
@@ -750,9 +753,15 @@ class D_Mapping(unittest.TestCase):
                  "component_class_in_gtt": "aboard", "checked": "yes", "swap_subject_and_object": "yes"}]
         saved = post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
         self.assertTrue(saved["saved"])
+        # checked with no match value: a row to check (no match value), until its match is set (Satellite, too, is
+        # checked with none: stale and no match value)
+        self.assertEqual(saved["rows"]["3"]["states"], [component_class_mapping.NO_MATCH])
+        sent[1]["match"] = " Narrower "
+        saved = post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
+        self.assertEqual(self.read()[1]["match"], "narrower")                  # case and spaces aside
         # the rows' states as saved, by line, for the page: Satellite and craft now both translate to Spacecraft
         self.assertEqual({line: x["states"] for line, x in saved["rows"].items()},
-                         {"2": ["stale", "shared"], "3": [], "4": ["repeated"], "5": ["repeated", "shared"]})
+                         {"2": ["stale", "no match value", "shared"], "3": [], "4": ["repeated"], "5": ["repeated", "shared"]})
         self.assertEqual((saved["rows"]["2"]["sharing"], saved["rows"]["5"]["sharing"]), (["craft"], ["Satellite"]))
         rows = self.read()
         self.assertEqual(rows[0]["definition_from_past_or_crt_schema"], "an old definition")   # still stale
@@ -763,9 +772,34 @@ class D_Mapping(unittest.TestCase):
         post("/api/mapping/save", {"rows": sent, "fingerprint": fp_mapping()})
         self.assertEqual(self.read()[0]["definition_from_past_or_crt_schema"], "an orbiting craft")
 
+    def test_save_match(self):
+        """match is saved as sent (case and spaces aside); a value outside same, narrower, broader, overlap is saved
+        empty; a (none) row's is always empty; a page that sends no match keeps the row's own. The view sends the
+        values and counts a checked row without one as no match value (near miss: a (none) row never is)."""
+        base = {"kind": "entity class", "component_class_from_past_or_crt_schema": "Satellite", "checked": "yes"}
+        pred = {"kind": "predicate", "component_class_from_past_or_crt_schema": "MOUNTED_ON",
+                "component_class_in_gtt": "ABOARD", "checked": "yes"}
+        for sent, want in ((" BROADER", "broader"), ("overlap", "overlap"), ("close", ""), ("", "")):
+            with self.subTest(sent=sent):
+                post("/api/mapping/save", {"rows": [{**base, "component_class_in_gtt": "Spacecraft", "match": sent}, pred],
+                                           "fingerprint": fp_mapping()})
+                self.assertEqual(self.read()[0]["match"], want)
+        post("/api/mapping/save", {"rows": [{**base, "component_class_in_gtt": "Spacecraft", "match": "same"}, pred],
+                                   "fingerprint": fp_mapping()})
+        post("/api/mapping/save", {"rows": [{**base, "component_class_in_gtt": "Spacecraft"}, pred],
+                                   "fingerprint": fp_mapping()})
+        self.assertEqual(self.read()[0]["match"], "same")                       # not sent: kept
+        post("/api/mapping/save", {"rows": [{**base, "component_class_in_gtt": "(none)", "match": "same"}, pred],
+                                   "fingerprint": fp_mapping()})
+        self.assertEqual(self.read()[0]["match"], "")                           # (none): never a match
+        v = get("/api/mapping")
+        self.assertEqual(v["match_values"], ["same", "narrower", "broader", "overlap"])
+        self.assertNotIn(component_class_mapping.NO_MATCH, v["rows"][0]["states"])   # (none)
+        self.assertIn(component_class_mapping.NO_MATCH, v["rows"][1]["states"])      # checked, ABOARD, no match
+
     def test_stale_gtt(self):
         """The ground truth schema defines Spacecraft as "a vehicle in space"; the row stored another definition."""
-        cols = component_class_mapping.COLUMNS
+        cols = BEFORE_MATCH
         with open(self.path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(cols)
@@ -786,7 +820,7 @@ class D_Mapping(unittest.TestCase):
     def test_now_exists_kept_on_purpose(self):
         """A (none) row of Spacecraft, checked before the ground truth schema had Spacecraft, now exists (a row to
         check); saved untouched it stays so; ticked again it stores Spacecraft's definition, and no longer is."""
-        cols = component_class_mapping.COLUMNS
+        cols = BEFORE_MATCH
         with open(self.path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(cols)
@@ -818,7 +852,7 @@ class D_Mapping(unittest.TestCase):
 
     def test_automatic_row_can_be_changed(self):
         # a row accepted automatically (same spelling) keeps that status unchanged; changed by hand, it needs checking
-        cols = component_class_mapping.COLUMNS
+        cols = BEFORE_MATCH
         with open(self.path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(cols)
@@ -846,7 +880,7 @@ class D_Mapping(unittest.TestCase):
             w = csv.DictWriter(fh, ground_truth.FILE_COLUMNS)
             w.writeheader()
             w.writerows(rows)
-        cols = component_class_mapping.COLUMNS
+        cols = BEFORE_MATCH
         with open(self.path, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(cols)
@@ -969,7 +1003,7 @@ class G_Vocabulary(unittest.TestCase):
         server.GROUND_TRUTH_SCHEMA.write_text(self.HAND.replace("Dataset           a collection of data",
                                                         "Dataset           a collection of data\n"
                                                         "Satelite          a craft in orbit"), encoding="utf-8")
-        cols = component_class_mapping.COLUMNS
+        cols = BEFORE_MATCH
         with open(server.MAPPING_PATH, "w", encoding="utf-8", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(cols)

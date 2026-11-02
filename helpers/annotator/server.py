@@ -42,7 +42,7 @@ changes).
 The translation table (step 070's, common/common_helpers/component_class_mapping.py) is shown row by
 row, each component class with its definition, and a person's choices are saved to it
 at once: component_class_in_gtt (a component class of the ground truth schema, or (none)),
-swap_subject_and_object (predicates only) and checked. Rows can't be added
+swap_subject_and_object (predicates only), match (empty on a (none) row) and checked. Rows can't be added
 or reordered here, and the only rows that can be removed are a component class's
 repeated ones (common/common_helpers/component_class_mapping.repeats), and a save keeps any rows step 070 added since
 the page was loaded; if the rows the page shows have changed in the file, the
@@ -146,8 +146,9 @@ from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTE
                                  NUMBERED, PATTERN, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
                                  ground_truth_schema_gaps as schema_gaps, ground_truth_schema_view, marks_state,
                                  pattern_of, pattern_uses, read_ground_truth, read_pool, uses_of, with_coined)
-from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH,
-                                            MISSING_TARGET, NONE, NOW_EXISTS, REPEATED, SHARED, STALE, SUGGESTED,
+from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH, MATCHES,
+                                            MISSING_TARGET, NO_MATCH, NONE, NOW_EXISTS, REPEATED, SHARED, STALE,
+                                            SUGGESTED,
                                             VALUES as MAPPING_VALUES, checked_against, crt_definitions,
                                             gtt_definitions, is_checked, is_missing_target, is_stale_gtt,
                                             read_mapping, repeats, row_states, sharing, stale_in, condition_text)
@@ -926,16 +927,20 @@ def mapping_view(data: Data) -> dict:
     repeated = repeats(table)
     extra = {line for r in repeated for line in r["lines"]}
     same_name = {kind: {component_class_key(n): n for n in names} for kind, names in gtt.items()}
-    suggested = {}                                    # evaluation's last suggestions for (none) rows
+    suggested, beside = {}, {}                        # evaluation's last suggestions for (none), broader and overlap rows
     if METRICS.exists():
         for s in read_json(METRICS).get("translation_suggestions", []):
-            suggested[(s["kind"], component_class_key(s["component_class_from_past_or_crt_schema"]))] = s["component_class_in_gtt"]
+            key = (s["kind"], component_class_key(s["component_class_from_past_or_crt_schema"]))
+            suggested[key] = s["component_class_in_gtt"]
+            if s.get("beside"):
+                beside[key] = s["beside"]
     shared = sharing(table, crt)
     rows = []
     for r in table:
         key = component_class_key(r["component_class_from_past_or_crt_schema"])
         same, hint = same_name.get(r["kind"], {}).get(key), suggested.get((r["kind"], key))
-        rows.append({**r, "same_component_class_in_gtt": same, "suggested_gtt": hint, "condition": condition_text(r),
+        rows.append({**r, "same_component_class_in_gtt": same, "suggested_gtt": hint,
+                     "suggested_beside": beside.get((r["kind"], key)), "condition": condition_text(r),
                      "in_crt": crt is not None and key in crt.get(r["kind"], {}),
                      "crt_definition": (crt or {}).get(r["kind"], {}).get(key),
                      # its row states (common/common_helpers/component_class_mapping.row_states), whose definition
@@ -947,9 +952,11 @@ def mapping_view(data: Data) -> dict:
     return {"found": True, "file": f"annotations/{MAPPING_PATH.name}", "schema_found": SCHEMA_USED.exists(),
             "fingerprint": fingerprint(MAPPING_PATH),
             "rows": rows, "none": NONE, "repeats": repeated, "checked_values": list(CHECKED),
+            "match_values": list(MATCHES),
             # the names the page compares with: each row state (ROW_STATES) and whose definition changed (stale_in)
             "state_names": {"REPEATED": REPEATED, "STALE": STALE, "MISSING_TARGET": MISSING_TARGET,
-                            "NOW_EXISTS": NOW_EXISTS, "SUGGESTED": SUGGESTED, "SHARED": SHARED},
+                            "NOW_EXISTS": NOW_EXISTS, "NO_MATCH": NO_MATCH, "SUGGESTED": SUGGESTED,
+                            "SHARED": SHARED},
             "stale_in_names": {"IN_CRT": IN_CRT, "IN_GTT": IN_GTT},
             "gtt": {kind: [{"component_class": n, "definition": d} for n, d in sorted(names.items())]
                     for kind, names in gtt.items()}}
@@ -998,6 +1005,11 @@ def save_mapping(data: Data, sent: list, loaded: str | None = None) -> str:
         row["component_class_in_gtt"] = name
         swap = row["kind"] == "predicate" and s.get("swap_subject_and_object") == "yes"
         row["swap_subject_and_object"] = "yes" if swap else "no"
+        if "match" in s:                               # a page that doesn't send it keeps the row's own
+            match = " ".join(str(s.get("match") or "").lower().split())
+            row["match"] = match if match in MATCHES else ""
+        if name == NONE:
+            row["match"] = ""                          # (none) has no counterpart to match
         checked = str(s.get("checked") or "no")
         row["checked"] = checked if checked in MAPPING_VALUES["checked"] else "no"
         if row["checked"] == "same component class" and (name == NONE or component_class_key(name) !=

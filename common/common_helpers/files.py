@@ -235,11 +235,15 @@ def append_csv(path, columns: list, rows) -> None:
     """Add rows at the end of a CSV file, leaving every byte already in it as
     it is (the file is created with its header if missing). For the files a
     step may only ADD to, never change: 070's annotations/component_class_mapping.csv
-    and annotations/held_out_looks.csv."""
+    and annotations/held_out_looks.csv. The rows are written in the columns of the file's own header line, so a file
+    whose header lacks a column (a translation table from before its match column) or orders them otherwise still
+    gets each value under its own column (a value whose column the file lacks is left out)."""
     path = Path(path)
     if not path.exists():
         write_csv(path, columns, [])
     text = _decode(path)
+    header = next(csv.reader(io.StringIO(text.split("\n", 1)[0])), None) if text.strip() else None
     buf = io.StringIO()
-    csv.DictWriter(buf, columns, extrasaction="ignore", lineterminator="\n").writerows(rows)
+    csv.DictWriter(buf, [c.strip() for c in header] if header else columns, extrasaction="ignore",
+                   lineterminator="\n").writerows(rows)
     append_text(path, ("\n" if text and not text.endswith("\n") else "") + buf.getvalue())

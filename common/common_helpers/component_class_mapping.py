@@ -3,10 +3,10 @@ common/common_helpers/component_class_mapping.py -- the translation table, annot
 which component class of the ground truth schema each component class of
 the current schema (the one step 060 used) means.
 
-    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
-    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
-    predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema to translate it to
+    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,match,checked,definition_from_past_or_crt_schema,definition_in_gtt
+    entity class,Satellite,Spacecraft,no,narrower,yes,A craft that orbits a body.,A vehicle in space.
+    predicate,CARRIES,ABOARD,yes,same,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
+    entity class,Gadget,(none),no,,yes,A small device.,            <- nothing in the ground truth schema to translate it to
 
     kind                     "entity class" or "predicate"
     component_class_from_past_or_crt_schema
@@ -17,6 +17,15 @@ the current schema (the one step 060 used) means.
                              (gtt: ground truth triples), or (none)
     swap_subject_and_object  predicates only: "yes" when the ground truth's
                              predicate states the relationship the other way round
+    match                    how the row's component class relates to
+                             component_class_in_gtt (MATCHES): "same",
+                             "narrower" (the row's is the narrower one),
+                             "broader" (the row's is the broader one), "overlap"
+                             (neither); empty only on a (none) row. Set by the
+                             person when checking; "same" by code on a row it
+                             adds as "same component class". The values and
+                             their SKOS and Alignment API equivalents:
+                             docs/terminology.md, *match*
     checked                  "same component class" (added by code: the two
                              component classes are equal),
                              "no" (proposed by the model, not checked yet),
@@ -39,9 +48,9 @@ the current schema (the one step 060 used) means.
 A conditional row lets a predicate whose meaning splits between several of the ground truth schema translate case by
 case, when the entity class of its subject or object tells the meanings apart:
 
-    predicate,SOURCED_FROM,(none),no,yes,...,,,                 <- any other subject and object
-    predicate,SOURCED_FROM,FROM_MISSION,no,yes,...,,,Mission     <- an object of entity class Mission
-    predicate,SOURCED_FROM,FROM_SPACECRAFT,no,yes,...,,,Spacecraft
+    predicate,SOURCED_FROM,(none),no,,yes,...,,,                      <- any other subject and object
+    predicate,SOURCED_FROM,FROM_MISSION,no,same,yes,...,,,Mission     <- an object of entity class Mission
+    predicate,SOURCED_FROM,FROM_SPACECRAFT,no,same,yes,...,,,Spacecraft
 
 Every predicate keeps its unconditional row (the one step 070 adds); conditional rows are added by hand and follow
 the same rule for a row and the same checking. For an extracted triple, the matching row with the most conditions
@@ -50,7 +59,16 @@ and step 070 stops on it. The idea, a correspondence restricted to an entity cla
 EDOAL's (the Alignment API's Expressive and Declarative Ontology Alignment Language: RelationDomainRestriction,
 RelationCoDomainRestriction); its home here is docs/terminology.md, *conditional row*.
 
-The three columns of fixed values (kind, swap_subject_and_object, checked) are read ignoring case and spaces at
+A conditional row's match is judged within its condition (SOURCED_FROM if its object is a Mission means the same as
+FROM_MISSION, though SOURCED_FROM alone is broader).
+
+A checked row not (none) with no match value (a table from before the column, 2026-11-01) is read and used, but
+step 070 warns, listing it (missing_match), and the annotation tool and the status count it as to check (row state
+NO_MATCH) until a person sets it. Step 070 also warns about a predicate's unconditional row marked broader or overlap
+with no conditional row under it (inexact_alone: its occurrences outside the target's meaning are counted as wrong),
+and notes a swap on a symmetric target (symmetric_swaps: it changes nothing).
+
+The four columns of fixed values (kind, swap_subject_and_object, match, checked) are read ignoring case and spaces at
 either end, here (read_mapping), so step 070, the annotation tool and the status read them alike; any other
 value (value_problems) stops step 070, naming the line. swap_subject_and_object is "no" for an entity class.
 The values, for a person: docs/terminology.md, *translation table*.
@@ -101,17 +119,28 @@ from common.files import read_csv_table
 from common.audit import ref_path
 from common.step import ANNOTATIONS_DIR
 from common.stop import Stop
-from common.triples_io import KIND_KEYS, component_class_key
+from common.triples_io import KIND_KEYS, component_class_key, is_symmetric
 
 MAPPING_PATH = ANNOTATIONS_DIR / "component_class_mapping.csv"
-COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt", "swap_subject_and_object", "checked",
-           "definition_from_past_or_crt_schema", "definition_in_gtt", "if_subject_class", "if_object_class"]
+COLUMNS = ["kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt", "swap_subject_and_object", "match",
+           "checked", "definition_from_past_or_crt_schema", "definition_in_gtt", "if_subject_class", "if_object_class"]
 CONDITIONS = ("if_subject_class", "if_object_class")                     # the condition columns, subject first
 KINDS = KIND_KEYS                                                       # {kind: the schema's key}
 NONE = "(none)"
 CHECKED = ("yes", "same component class")                                          # what 070 accepts as checked
-#: Every value each column of fixed values may hold (read_mapping lowercases them first).
-VALUES = {"kind": tuple(KINDS), "swap_subject_and_object": ("yes", "no"), "checked": ("no",) + CHECKED}
+#: The kinds of match (docs/terminology.md, *match*), from the closest: the row's component class means the same as
+#: component_class_in_gtt; is the narrower one (each of its instances is one of the target's); is the broader one
+#: (some of its instances are not the target's); overlaps it (neither).
+SAME, NARROWER, BROADER, OVERLAP = "same", "narrower", "broader", "overlap"
+MATCHES = (SAME, NARROWER, BROADER, OVERLAP)
+#: The kinds whose row is right only for the part of its meaning the target covers.
+INEXACT = (BROADER, OVERLAP)
+#: Columns a table may lack: one from before conditional rows (2026-10-30) or the match column (2026-11-01).
+OPTIONAL_COLUMNS = CONDITIONS + ("match",)
+#: Every value each column of fixed values may hold (read_mapping lowercases them first). match: empty only on a
+#: (none) row (value_problems), or, on a checked row, until a person sets it (missing_match).
+VALUES = {"kind": tuple(KINDS), "swap_subject_and_object": ("yes", "no"), "match": ("",) + MATCHES,
+          "checked": ("no",) + CHECKED}
 
 
 def crt_definitions(schema_used: dict) -> dict:
@@ -191,9 +220,9 @@ def is_stale_gtt(row: dict, gtt: dict) -> bool:
 
 #: The row states, in the order of their home, docs/terminology.md, *row state* (what each means, how they relate,
 #: and which step 070 stops on in which order).
-REPEATED, STALE, MISSING_TARGET, NOW_EXISTS, SUGGESTED, SHARED = (
-    "repeated", "stale", "missing target", "now exists", "suggested", "shared")
-ROW_STATES = (REPEATED, STALE, MISSING_TARGET, NOW_EXISTS, SUGGESTED, SHARED)
+REPEATED, STALE, MISSING_TARGET, NOW_EXISTS, NO_MATCH, SUGGESTED, SHARED = (
+    "repeated", "stale", "missing target", "now exists", "no match value", "suggested", "shared")
+ROW_STATES = (REPEATED, STALE, MISSING_TARGET, NOW_EXISTS, NO_MATCH, SUGGESTED, SHARED)
 #: Whose definition changed, for a stale row: the current schema's (of its component class), or the ground truth
 #: schema's (of the one it translates to).
 IN_CRT, IN_GTT = "current schema", "ground truth schema"
@@ -202,6 +231,12 @@ IN_CRT, IN_GTT = "current schema", "ground truth schema"
 def is_checked(row: dict) -> bool:
     """True if a person checked the row, or it was accepted automatically (CHECKED)."""
     return row["checked"] in CHECKED
+
+
+def is_missing_match(row: dict) -> bool:
+    """True if the row is checked, translates to a component class (not (none)), and has no match value: a row
+    checked before the match column (2026-11-01), until a person sets it."""
+    return is_checked(row) and row["component_class_in_gtt"] != NONE and not row.get("match")
 
 
 def stale_in(row: dict, crt: dict | None, gtt: dict) -> list:
@@ -236,12 +271,13 @@ def row_states(row: dict, crt: dict | None, gtt: dict, repeated: bool = False, s
                shared: list = ()) -> list:
     """The row's states, in ROW_STATES' order (docs/terminology.md, *row state*). crt: crt_definitions' result (None
     without one); gtt: gtt_definitions' result; repeated: the row is one of repeats(); suggested: the model's
-    suggestion for a (none) row, if any; shared: sharing()'s list for the row. A (none) row with an entry spelled like
-    it in the ground truth schema is never suggested (now exists, or kept against that entry)."""
+    suggestion for a (none) row or a row marked broader or overlap, if any; shared: sharing()'s list for the row. A
+    (none) row with an entry spelled like it in the ground truth schema is never suggested (now exists, or kept
+    against that entry)."""
     none = row["component_class_in_gtt"] == NONE
     found = {REPEATED: repeated, STALE: bool(stale_in(row, crt, gtt)), MISSING_TARGET: is_missing_target(row, gtt),
-             NOW_EXISTS: is_now_exists(row, gtt),
-             SUGGESTED: none and bool(suggested) and same_named(row, gtt) is None,
+             NOW_EXISTS: is_now_exists(row, gtt), NO_MATCH: is_missing_match(row),
+             SUGGESTED: bool(suggested) and ((none and same_named(row, gtt) is None) or row.get("match") in INEXACT),
              SHARED: bool(shared)}
     return [state for state in ROW_STATES if found[state]]
 
@@ -317,8 +353,9 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
     never written back). Stops if a column is missing."""
     if True:                                  # (the block's shape kept: one reader, common.files.read_csv_table)
         columns, raw_rows = read_csv_table(path)
-        missing = [c for c in COLUMNS if c not in columns and c not in CONDITIONS]   # a table
-        # from before conditional rows (2026-10-30) has no condition columns: read as unconditional rows
+        missing = [c for c in COLUMNS if c not in columns and c not in OPTIONAL_COLUMNS]   # a table
+        # from before conditional rows (2026-10-30) has no condition columns: read as unconditional rows; one from
+        # before the match column (2026-11-01) has none: read as empty (missing_match)
         if missing:
             raise Stop(f"{ref_path(path)} lacks the column(s) {', '.join(missing)}, so the translation table can't "
                        f"be read. Restore its header line, which names the columns: {', '.join(COLUMNS)}.")
@@ -335,19 +372,46 @@ def read_mapping(path: Path = MAPPING_PATH) -> list:
 
 def value_problems(rows: list) -> list:
     """Each row whose column of fixed values holds a value outside VALUES (or "yes" in swap_subject_and_object for an
-    entity class), as "line N (component class): column 'value'", in the file's order."""
+    entity class, or a match value on a (none) row), as "line N (component class): column 'value'", in the file's
+    order."""
     out = []
     for r in rows:
-        bad = [c for c, allowed in VALUES.items() if r[c] not in allowed]
+        bad = [c for c, allowed in VALUES.items() if r.get(c, "") not in allowed]
+        if r["component_class_in_gtt"] == NONE and r.get("match") in MATCHES:
+            bad.append("match")                                          # (none) has no counterpart to match
         if r["kind"] == "entity class" and r["swap_subject_and_object"] == "yes":
             bad.append("swap_subject_and_object")
         if r["kind"] == "entity class":
             bad += [c for c in CONDITIONS if r[c]]                       # a condition belongs to a predicate's row
-        out += [f"line {r['_line']} ({r['component_class_from_past_or_crt_schema']}): {c} '{r[c]}'" for c in bad]
+        out += [f"line {r['_line']} ({r['component_class_from_past_or_crt_schema']}): {c} '{r.get(c, '')}'" for c in bad]
     return out
+
+
+def missing_match(rows: list) -> list:
+    """The rows is_missing_match holds for, in the file's order."""
+    return [r for r in rows if is_missing_match(r)]
+
+
+def inexact_alone(rows: list) -> list:
+    """The unconditional rows of a predicate marked broader or overlap (INEXACT), not (none), with no conditional row
+    of the same predicate: every occurrence outside the target's meaning is translated to it anyway, and counts as
+    wrong. In the file's order."""
+    conditioned = {component_class_key(r["component_class_from_past_or_crt_schema"]) for r in rows
+                   if r["kind"] == "predicate" and is_conditional(r)}
+    return [r for r in rows if r["kind"] == "predicate" and not is_conditional(r) and r["component_class_in_gtt"] != NONE
+            and r.get("match") in INEXACT
+            and component_class_key(r["component_class_from_past_or_crt_schema"]) not in conditioned]
+
+
+def symmetric_swaps(rows: list) -> list:
+    """The predicate rows with swap_subject_and_object "yes" whose target is a symmetric predicate (common.triples_io
+    SYMMETRIC_PREDICATES: the same fact either way round), where the swap changes nothing. In the file's order."""
+    return [r for r in rows if r["kind"] == "predicate" and r["swap_subject_and_object"] == "yes"
+            and r["component_class_in_gtt"] != NONE and is_symmetric(r["component_class_in_gtt"])]
 
 
 def values_text() -> str:
     """The allowed values, for messages."""
-    return ("kind: entity class or predicate; swap_subject_and_object: yes or no (no for an entity class); checked: "
-            "no, yes, or same component class; if_subject_class and if_object_class: empty for an entity class")
+    return ("kind: entity class or predicate; swap_subject_and_object: yes or no (no for an entity class); match: "
+            "same, narrower, broader or overlap (empty on a (none) row); checked: no, yes, or same component class; "
+            "if_subject_class and if_object_class: empty for an entity class")

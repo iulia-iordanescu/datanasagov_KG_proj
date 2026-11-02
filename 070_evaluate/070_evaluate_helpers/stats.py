@@ -32,7 +32,7 @@ import collections
 import math
 from functools import lru_cache
 
-from pairing import DRAFTED_BY_PERSON, GROUPINGS, LEVELS, PER_COMPONENT_CLASS, SECOND_OPINION_GROUPS
+from pairing import NO_DRAFTING_MODEL, GROUPINGS, LEVELS, MATCH_KINDS, PER_COMPONENT_CLASS, REACH_BUCKETS, SECOND_OPINION_GROUPS
 from common.ground_truth import HELD_OUT, PARTS, TUNING
 from common.triples_io import component_class_key
 
@@ -73,6 +73,16 @@ def numbers(records: list) -> dict:
     for path, (a, b) in RATIO_PARTS.items():         # every number with a margin, from its one definition
         if path[0] != "describes":
             _put(out, path, _ratio(a(total), b(total)))
+    # by match kind (pairing.py, BY MATCH KIND and PIN MISFITS): counts only, no margins, part of no metric
+    key = lambda k: k.replace(" ", "_")                                       # noqa: E731
+    out["by_match"] = {
+        "occurrences": {k: total[f"occurrences_match_{key(k)}"] for k in MATCH_KINDS},
+        "extracted_only": {k: total[f"extracted_only_match_{key(k)}"] for k in MATCH_KINDS},
+        "entity_classes": {**{k: total[f"entity_classes_match_{key(k)}"] for k in MATCH_KINDS},
+                           "(none)": total["entity_classes_to_none"]},
+        "within_reach": {b: total[f"within_reach_{key(b)}"] for b in REACH_BUCKETS},
+        "recall_upper_bound": {b: _ratio(total[f"within_reach_{key(b)}"], total["gt"]) for b in REACH_BUCKETS},
+        "pin_checked": total["pin_checked"], "pin_misfits": total["pin_misfits"]}
     out["second_opinion_repeats"] = _second_opinion_repeats(records)
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     describes_classes = collections.Counter(component_class_key(d["truth"]) for d in known)
@@ -105,8 +115,8 @@ def by_group(records: list, grouping: str) -> dict | None:
       exact share             = g's exact pairs ÷ g's partial pairs (every pair, both levels)
     The groups split the same records, so their ranges aren't independent of each other. None when the records have
     no group counts (a run kept from before 2026-11-01), no ground truth triple, or, for "second_opinion", no ground
-    truth triple was checked. Groups in order: the most ground truth triples first; for "drafted_by", the rows a
-    person wrote (pairing.DRAFTED_BY_PERSON) last."""
+    truth triple was checked. Groups in order: the most ground truth triples first; for "drafted_by", the rows
+    with no drafting model recorded (pairing.NO_DRAFTING_MODEL) last."""
     per = [((r["compared"].get("groups") or {}).get(grouping), r) for r in records]
     if not per or any(g is None for g, _ in per):
         return None
@@ -119,7 +129,7 @@ def by_group(records: list, grouping: str) -> dict | None:
     if grouping == "second_opinion":
         order = list(SECOND_OPINION_GROUPS)
     else:
-        order = sorted(keys, key=lambda k: (k == DRAFTED_BY_PERSON, -keys[k], k))
+        order = sorted(keys, key=lambda k: (k == NO_DRAFTING_MODEL, -keys[k], k))
     empty = collections.Counter()
 
     def margin(parts):

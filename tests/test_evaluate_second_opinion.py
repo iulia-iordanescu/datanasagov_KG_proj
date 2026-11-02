@@ -4,7 +4,7 @@ repeat, found in none, not checked) and by who drafted the ground truth (its col
 and the numbers (recall, exact share, entity-class accuracy, attributed precision, F1, by the stated formulas, each
 with its clustered Wilson interval), how many triples were found in 0, 1, ..., N repeats, the report's tables, nothing
 when no triple was checked, and a wrong grouping refused; spellings of one model name together, other versions apart,
-an empty or blank drafted_by as a person's row, a group with no pairs. The helper that writes the second-opinion file:
+an empty or blank drafted_by as no drafting model recorded, a group with no pairs. The helper that writes the second-opinion file:
 tests/test_second_opinion.py."""
 import unittest
 
@@ -126,7 +126,7 @@ class Evaluation(unittest.TestCase):
 
 class DraftedBy(unittest.TestCase):
     """The numbers by who drafted the ground truth (column drafted_by): spellings of one model name together, other
-    versions apart, an empty or blank cell as a person's row, a group with no pairs, the ranges, and the report."""
+    versions apart, an empty or blank cell as no drafting model recorded, a group with no pairs, the ranges, and the report."""
 
     def compared(self, drafted, rid="r1", ex=None):
         names = ("MODIS", "AIRS", "CERES", "AMSU")
@@ -142,8 +142,8 @@ class DraftedBy(unittest.TestCase):
     def test_spellings_and_people(self):
         r = self.compared(["claude-opus-5.5", "Claude-Opus-5-5", "", "  "])
         g = r["compared"]["groups"]["drafted_by"]
-        self.assertEqual(set(g), {"claude-opus-5-5", pairing.DRAFTED_BY_PERSON})            # two spellings, one model
-        self.assertEqual((g["claude-opus-5-5"]["gt"], g[""]["gt"]), (2, 2))                # blank = empty: a person
+        self.assertEqual(set(g), {"claude-opus-5-5", pairing.NO_DRAFTING_MODEL})            # two spellings, one model
+        self.assertEqual((g["claude-opus-5-5"]["gt"], g[""]["gt"]), (2, 2))                # blank = empty: no drafting model recorded
         self.assertEqual(r["compared"]["drafted_by_spellings"]["claude-opus-5-5"], ["Claude-Opus-5-5", "claude-opus-5.5"])
 
     def test_near_misses_stay_apart(self):
@@ -195,7 +195,7 @@ class DraftedBy(unittest.TestCase):
         self.assertIn(moves.GROUP_FORMULA, lines)
         self.assertIn("| drafted by `claude-opus-5-5` or `claude-opus-5.5` (the extraction model's name) | 2 | 1 |", lines)
         self.assertIn("| drafted by `gemini-2.5-pro` | 1 | 1 |", lines)
-        self.assertIn("| written by a person (`drafted_by` empty) | 1 | 1 | 0% | 0% |", lines)
+        self.assertIn("| no drafting model recorded (`drafted_by` empty) | 1 | 1 | 0% | 0% |", lines)
         self.assertNotIn("extraction model's name", "\n".join(moves._drafted_by_lines(n, "gpt-4o")))
         self.assertEqual(moves._drafted_by_lines({"drafted_by": None}, ""), [])
 

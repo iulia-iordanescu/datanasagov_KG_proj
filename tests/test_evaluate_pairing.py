@@ -575,7 +575,9 @@ class RowStates(unittest.TestCase):
         from common import component_class_mapping as m
         tmp = Path(tempfile.mkdtemp())
         try:
-            write_csv(tmp / "map.csv", m.COLUMNS, [dict(zip(m.COLUMNS, r)) for r in rows])
+            # rows given in the columns before match (2026-11-01): their match reads as empty
+            before_match = [c for c in m.COLUMNS if c != "match"]
+            write_csv(tmp / "map.csv", m.COLUMNS, [dict(zip(before_match, r)) for r in rows])
             (tmp / "gts.txt").write_text(gts_text, encoding="utf-8")
             evaluated = type("E", (), {"schema_used": {"entity_classes": [{"component_class": r[1], "definition": "d"}
                                                                           for r in rows], "predicates": []}})()

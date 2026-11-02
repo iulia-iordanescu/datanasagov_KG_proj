@@ -10,16 +10,17 @@ current schema's entity classes and predicates is translated to a component clas
 the ground truth schema, through the table a person checks:
 
     annotations/component_class_mapping.csv
-    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,checked,definition_from_past_or_crt_schema,definition_in_gtt
-    entity class,Satellite,Spacecraft,no,yes,A craft that orbits a body.,A vehicle in space.
-    predicate,CARRIES,ABOARD,yes,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
-    entity class,Gadget,(none),no,yes,A small device.,            <- nothing in the ground truth schema to translate it to
+    kind,component_class_from_past_or_crt_schema,component_class_in_gtt,swap_subject_and_object,match,checked,definition_from_past_or_crt_schema,definition_in_gtt
+    entity class,Satellite,Spacecraft,no,narrower,yes,A craft that orbits a body.,A vehicle in space.
+    predicate,CARRIES,ABOARD,yes,same,yes,Has on board.,Is carried on.   <- "A CARRIES B" is "B ABOARD A"
+    entity class,Gadget,(none),no,,yes,A small device.,            <- nothing in the ground truth schema to translate it to
 
 (columns: common/common_helpers/component_class_mapping.py)
 
 For every component class of schema_used.json without a row:
   - a component class equal to one of the ground truth schema (ignoring
-    case and punctuation) gets a row at once, checked "same component class";
+    case and punctuation) gets a row at once, checked "same component class",
+    match "same";
   - the others are proposed by the model (paid calls, after the usual
     confirmation), as rows with checked "no".
 The new rows are ADDED at the end of the file; a row already there is never
@@ -31,6 +32,12 @@ current schema's definition of its component class and the ground truth schema's
 definition of its component class of the ground truth schema (else it is
 stale: either may since mean something else), and names a component class of
 the ground truth schema or (none).
+
+Then it warns, without stopping (Translation.notes, the report's warnings), about: checked rows with no match value
+(missing_match: a row checked before the match column, 2026-11-01); a predicate's unconditional row marked broader or
+overlap with no conditional row under it (inexact_alone); a swap on a symmetric target (symmetric_swaps). Each row's
+match is kept (Translation.match, match_conditional, reach_kind) for the report's counts by match kind
+(docs/terminology.md, *match*), which change no metric.
 
 Every message names where each component class comes from: the current schema, the
 ground truth schema, or a row of the table (a past or the current
@@ -56,10 +63,11 @@ from pathlib import Path
 from common.audit import ref_path
 from common.cache import Cache, ask_cached, needs
 from common.files import append_csv
-from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, KINDS, NONE, condition, condition_text,
-                                            conflicts, crt_definitions, gtt_definitions, is_checked, is_conditional,
+from common.component_class_mapping import (COLUMNS, IN_CRT, IN_GTT, INEXACT, KINDS, NONE, SAME, condition,
+                                            condition_text, conflicts, crt_definitions, gtt_definitions,
+                                            inexact_alone, is_checked, is_conditional, is_missing_match,
                                             is_missing_target, is_now_exists, read_mapping, repeats, stale_in,
-                                            value_problems, values_text)
+                                            symmetric_swaps, value_problems, values_text)
 from common.prompt_files import fill, load
 from common.report import named
 from common.schema_io import read_ground_truth_schema, without_held_out_only
@@ -95,12 +103,24 @@ class Translation:
                                                            # None, gtt object class key or None)]}: what a conditional row
                                                            # reaches, its condition translated (pairing.within_reach)
     gtt: dict = field(default_factory=dict)         # the ground truth schema: {kind: {component class: definition}}
+    match: dict = field(default_factory=dict)       # {kind: {component_class_key(current schema's component class): its
+                                                    # unconditional row's match ("" when not set yet)}}
+    match_conditional: dict = field(default_factory=dict)  # {component_class_key(current schema's predicate): [match of
+                                                           # each conditional row, in conditional's order]}
+    reach_kind: dict = field(default_factory=dict)  # {kind: {component_class_key(gtt component class): [match of each
+                                                    # unconditional row translating to it]}}
+    reach_conditional_kind: dict = field(default_factory=dict)  # {component_class_key(gtt predicate): [match of each
+                                                                # entry of reach_conditional, in its order]}
+    pinned: dict = field(default_factory=dict)      # {component_class_key(gtt predicate): [(subject class key or "any",
+                                                    # object class key or "any")]}: the ground truth schema's pins
+    notes: list = field(default_factory=list)       # warnings about rows, without stopping (the report's warnings)
     rows_used: int = 0
     to_none: dict = field(default_factory=dict)     # {kind: [060's component classes whose row says (none)]}
     untranslated: dict = field(default_factory=dict)  # {kind: [ground truth schema's component classes nothing translates to]}
     merged: dict = field(default_factory=dict)      # {kind: {gtt component class: [current schema's component classes that translate to it]}}, 2+ only
-    suggested: list = field(default_factory=list)   # {"kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt"}: the
-                                                    # model thinks a (none) row may now have a counterpart
+    suggested: list = field(default_factory=list)   # {"kind", "component_class_from_past_or_crt_schema", "component_class_in_gtt"
+                                                    # (, "beside": the row's target)}: the model thinks a (none) row may
+                                                    # now have a counterpart, or a broader or overlap row's remainder may
     suggest_calls: int = 0
     suggest_reused: int = 0                         # the suggestion call answered from the cache (0 or 1)
     reversed_used: int = 0
@@ -116,6 +136,14 @@ def gtt_schema(ground_truth_schema_path) -> dict:
     vocab = without_held_out_only(read_ground_truth_schema(ground_truth_schema_path))
     return {kind: {name: definition for name, definition in vocab[key].items()}
             for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates"))}
+
+
+def gtt_pins(ground_truth_schema_path) -> dict:
+    """The ground truth schema's pins (common.schema_io, schema["pinned"]), without its held-out-only entries:
+    {component_class_key(predicate): [(subject class key or "any", object class key or "any")]}."""
+    pinned = without_held_out_only(read_ground_truth_schema(ground_truth_schema_path)).get("pinned", {})
+    any_ = lambda c: "any" if c.strip().lower() == "any" else component_class_key(c)          # noqa: E731
+    return {component_class_key(p): [(any_(s), any_(o)) for s, o in pairs] for p, pairs in pinned.items()}
 
 
 #: The shapes of the two prompts' answers (their reply formats): a "mapping" list, a "suggestions" list. One of another
@@ -222,6 +250,8 @@ def identity(translation: Translation) -> Translation:
         else:
             translation.predicate = {component_class_key(n): (n, False) for n in names}
         translation.reachable[kind] = keys
+        translation.match[kind] = {k: SAME for k in keys}
+        translation.reach_kind[kind] = {k: [SAME] for k in keys}
         translation.to_none[kind], translation.untranslated[kind], translation.merged[kind] = [], [], {}
     translation.rows_used = sum(len(v) for v in translation.gtt.values())
     return translation
@@ -229,7 +259,7 @@ def identity(translation: Translation) -> Translation:
 
 def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     path = Path(inputs["component_class_mapping"])
-    translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]))
+    translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]), pinned=gtt_pins(inputs["ground_truth_schema"]))
     same_schema, why = identity_problem(evaluated.schema_used, translation.gtt)
     if same_schema:
         return identity(translation)
@@ -285,7 +315,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         mine = gtt_key[kind].get(component_class_key(name))
         if mine:
             same.append({"kind": kind, "component_class_from_past_or_crt_schema": name, "component_class_in_gtt": mine, "swap_subject_and_object": "no",
-                         "checked": "same component class",
+                         "checked": "same component class", "match": SAME,
                          "definition_from_past_or_crt_schema": now[kind].get(component_class_key(name), ""),
                          "definition_in_gtt": gtt_now[kind].get(component_class_key(mine), "")})
         else:
@@ -370,7 +400,10 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
                          f"right, and 070 can't evaluate with them: {named(stale_gtt, 5, '; ')}. Check them again: "
                          f"{TABLE}, shows the old and new definitions; {AGAIN}")
 
+    translation.notes = _row_notes(list({id(r): r for _, r in rows_to_check}.values()), path)
     translation.reachable = {"entity class": set(), "predicate": set()}
+    translation.match = {"entity class": {}, "predicate": {}}
+    translation.reach_kind = {"entity class": {}, "predicate": {}}
     for kind, name in needed:
         r = have[(kind, component_class_key(name))]
         mine = None if r["component_class_in_gtt"] == NONE else gtt_key[kind][component_class_key(r["component_class_in_gtt"])]
@@ -380,14 +413,17 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
             flipped = r["swap_subject_and_object"].lower() == "yes"
             translation.predicate[component_class_key(name)] = (mine, flipped)
             translation.reversed_used += flipped
+        translation.match[kind][component_class_key(name)] = r.get("match", "") if mine else ""
         if mine:
             translation.reachable[kind].add(component_class_key(mine))
+            translation.reach_kind[kind].setdefault(component_class_key(mine), []).append(r.get("match", ""))
     for kind, name in needed:
         for r in conditional_rows.get(component_class_key(name), []) if kind == "predicate" else []:
             mine = None if r["component_class_in_gtt"] == NONE else gtt_key[kind][component_class_key(r["component_class_in_gtt"])]
             flipped = r["swap_subject_and_object"].lower() == "yes"
             subject, obj = condition(r)
             translation.conditional.setdefault(component_class_key(name), []).append((subject, obj, mine, flipped))
+            translation.match_conditional.setdefault(component_class_key(name), []).append(r.get("match", "") if mine else "")
             if not mine:
                 continue
             # what it reaches: its condition's entity classes, translated, in the ground truth triple's slots (swapped
@@ -399,6 +435,7 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
             if flipped:
                 ends.reverse()
             translation.reach_conditional.setdefault(component_class_key(mine), []).append(tuple(ends))
+            translation.reach_conditional_kind.setdefault(component_class_key(mine), []).append(r.get("match", ""))
     translation.rows_used = len(needed)
     translation.conditional_rows_used = sum(len(v) for v in translation.conditional.values())
     # The ground truth schema grows as you annotate: a row checked as (none) may since have
@@ -432,44 +469,110 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
     return translation
 
 
+def _row_notes(rows: list, path) -> list:
+    """The warnings about the rows step 070 translates with (rows of the current schema), without stopping: no match
+    value yet (missing_match), a broader or overlap unconditional predicate row with no conditional row under it
+    (inexact_alone), a swap on a symmetric target (symmetric_swaps). docs/terminology.md, *match*."""
+    out = []
+    missing = [r for r in rows if is_missing_match(r)]
+    if missing:
+        out.append(f"{len(missing)} checked row(s) of {ref_path(path)} have no match value (rows checked before the "
+                   f"match column, 2026-11-01), so the report counts their occurrences and the ground truth triples "
+                   f"they reach under \"no match value\" (no metric changes): "
+                   + named([f"line {r['_line']}: {_row(r['component_class_from_past_or_crt_schema'], r)}" for r in missing],
+                           5, "; ")
+                   + f". Set each row's match ({TABLE}: same, narrower, broader or overlap, comparing the two "
+                     f"definitions shown; docs/terminology.md, *match*), {AGAIN}")
+    alone = inexact_alone(rows)
+    if alone:
+        out.append(f"{len(alone)} row(s) of {ref_path(path)} translate a predicate of the current schema, with no "
+                   f"conditional row under it, to a predicate of the ground truth schema it is broader than or only "
+                   f"overlaps, so its occurrences outside that predicate's meaning are translated to it anyway and "
+                   f"count against precision: "
+                   + named([f"line {r['_line']}: {_row(r['component_class_from_past_or_crt_schema'], r)} "
+                            f"({r['match']})" for r in alone], 5, "; ")
+                   + f". If an entity class of the subject or object tells the meanings apart, add a conditional row "
+                     f"for each (docs/terminology.md, *conditional row*) and set this row to (none); else keep it: the "
+                     f"report counts its occurrences (section *Through which kind of row*). Nothing stops.")
+    swaps = symmetric_swaps(rows)
+    if swaps:
+        out.append(f"{len(swaps)} row(s) of {ref_path(path)} say swap_subject_and_object yes for a symmetric predicate "
+                   f"of the ground truth schema (the same fact either way round), so the swap changes no pair: "
+                   + named([f"line {r['_line']}: {_row(r['component_class_from_past_or_crt_schema'], r)}" for r in swaps],
+                           5, "; ")
+                   + f". Nothing to do; to tidy, untick *Swap subject and object* ({TABLE}).")
+    return out
+
+
 def _suggest(translation: Translation, schema_used: dict, calls) -> tuple:
-    """Rows that say (none) whose component class may since have gained a
-    counterpart in the ground truth schema: a DIFFERENT component class
-    (the same one is a row that now exists, which stopped the step before this, free). One model call, only when
-    there are both (none) rows of the current schema and component classes of
-    the ground truth schema nothing translates
-    to; the answer is cached by the lists asked about, so the same lists are
-    never paid for twice. Rows are never changed: these are suggestions for
-    the person (report warnings; the annotation tool reads them from
-    metrics.json). Returns (suggestions, calls made, calls answered from the cache)."""
+    """Rows that may since have gained a better counterpart in the ground truth schema, among the component classes
+    of the ground truth schema nothing translates to: a row that says (none), a DIFFERENT component class (the same
+    one is a row that now exists, which stopped the step before this, free); an unconditional row marked broader or
+    overlap (docs/terminology.md, *match*), one for the part of its meaning its target doesn't cover ("beside": its
+    target). One model call, only when there are such rows of the current schema and component classes of the ground
+    truth schema nothing translates to; the answer is cached by the lists asked about, so the same lists are never
+    paid for twice. Rows are never changed: these are suggestions for the person (report warnings; the annotation
+    tool reads them from metrics.json). Returns (suggestions, calls made, calls answered from the cache)."""
     same = {kind: {component_class_key(n) for n in translation.gtt[kind]} for kind in KINDS}
     schema_side = [(k, n) for k in KINDS for n in translation.to_none[k] if component_class_key(n) not in same[k]]
+    targets = {}                                      # (kind, current schema's component class): its row's target
+    for k, n in _inexact_rows(translation, schema_used):
+        targets[(k, n)] = (translation.entity.get(component_class_key(n)) if k == "entity class"
+                           else translation.predicate.get(component_class_key(n), (None, False))[0])
     gtt_side = {k: [n for n in translation.untranslated[k]] for k in KINDS}
-    kinds = {k for k, _ in schema_side if gtt_side[k]}
+    kinds = {k for k, _ in schema_side + list(targets) if gtt_side[k]}
     schema_side = [(k, n) for k, n in schema_side if k in kinds]
-    if not schema_side:
+    inexact_side = [(k, n) for k, n in targets if k in kinds]
+    if not schema_side and not inexact_side:
         return [], 0, 0
     now = crt_definitions(schema_used)
     prompt = fill(SUGGEST_PROMPT,
                   ground_truth=json.dumps({k: [{"component_class": n, "definition": translation.gtt[k][n]} for n in gtt_side[k]]
                                            for k in kinds}, ensure_ascii=False, indent=0),
                   schema=json.dumps([{"kind": k, "component_class": n, "definition": now[k].get(component_class_key(n), "")}
-                                     for k, n in schema_side], ensure_ascii=False, indent=0))
+                                     for k, n in schema_side], ensure_ascii=False, indent=0),
+                  inexact=json.dumps([{"kind": k, "component_class": n, "definition": now[k].get(component_class_key(n), ""),
+                                       "translated_to": targets[(k, n)],
+                                       "translated_to_definition": translation.gtt[k].get(targets[(k, n)], "")}
+                                      for k, n in inexact_side], ensure_ascii=False, indent=0))
     cache = Cache(calls.cache_dir, "suggest_component_classes")
     before = calls.paid.made
     reply = ask_cached(cache, calls, prompt, f"  070 will ask the model whether {len(schema_side)} component class(es) "
-                                             f"of the current schema translated to (none) now have a counterpart in the "
-                                             f"ground truth schema: 1 model call", check=SUGGEST_SHAPE)
+                                             f"of the current schema translated to (none), and {len(inexact_side)} "
+                                             f"translated to a component class they are broader than or overlap, now "
+                                             f"have a counterpart in the ground truth schema: 1 model call",
+                       check=SUGGEST_SHAPE)
     made = calls.paid.made - before
     asked = {(kind, component_class_key(n)): n for kind, n in schema_side}
+    asked_inexact = {(kind, component_class_key(n)): n for kind, n in inexact_side}
     offered = {kind: {component_class_key(n): n for n in gtt_side[kind]} for kind in kinds}
     out = []
     for item in reply["suggestions"]:
         if not isinstance(item, dict) or item.get("kind") not in kinds:
             continue
         kind = item["kind"]
-        crt = asked.get((kind, component_class_key(item.get("schema"))))
+        key = (kind, component_class_key(item.get("schema")))
         gtt = offered[kind].get(component_class_key(item.get("ground_truth")))
-        if crt and gtt:                                   # only component classes that were asked about
-            out.append({"kind": kind, "component_class_from_past_or_crt_schema": crt, "component_class_in_gtt": gtt})
+        if not gtt:                                       # only component classes that were offered
+            continue
+        if key in asked:                                  # only component classes that were asked about
+            out.append({"kind": kind, "component_class_from_past_or_crt_schema": asked[key], "component_class_in_gtt": gtt})
+        elif key in asked_inexact:
+            crt = asked_inexact[key]
+            out.append({"kind": kind, "component_class_from_past_or_crt_schema": crt, "component_class_in_gtt": gtt,
+                        "beside": targets[(kind, crt)]})
     return out, made, cache.reused
+
+
+def _inexact_rows(translation: Translation, schema_used: dict) -> list:
+    """(kind, component class) of the current schema whose unconditional row translates to a component class of the
+    ground truth schema and is marked broader or overlap, in the schema's order."""
+    out = []
+    for kind, key in (("entity class", "entity_classes"), ("predicate", "predicates")):
+        seen = set()
+        for e in schema_used.get(key, []):
+            k = component_class_key(e["component_class"])
+            if k not in seen and translation.match.get(kind, {}).get(k) in INEXACT:
+                seen.add(k)
+                out.append((kind, e["component_class"]))
+    return out

@@ -110,7 +110,7 @@ class Status(unittest.TestCase):
         self.manifest("070_evaluate", [("component_class_mapping", "annotations/component_class_mapping.csv",
                                         hashlib.sha256(mapping.read_bytes()).hexdigest())])
         self.assertEqual(self.status()["steps"][6]["state"], "ran")
-        mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Gadget,Device,,yes,,\n", encoding="utf-8")
+        mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Gadget,Device,,,yes,,\n", encoding="utf-8")
         st = self.status()
         self.assertEqual(st["steps"][6]["state"], "out of date")
         self.assertTrue(any("to see the numbers with those changes" in t for t in self.texts(st, "Steps")))
@@ -182,13 +182,13 @@ class Status(unittest.TestCase):
                                {"component_class": "Probe", "definition": "a craft sent to explore"}],
             "predicates": []}))
         mapping = self.tmp / "annotations" / "component_class_mapping.csv"
-        mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Gadget,Device,,no,a small device,\n",
+        mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Gadget,Device,,,no,a small device,\n",
                            encoding="utf-8")
         texts = self.texts(self.status(), "Translation table")
         self.assertTrue(any("1 row(s) of the translation table still to check: Gadget (current schema)" in t
                             for t in texts), texts)
         self.assertTrue(any("1 component class(es) of the current schema have no row" in t for t in texts), texts)
-        mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Probe,Gizmoid,,yes,a craft sent to explore,\n",
+        mapping.write_text(mapping.read_text(encoding="utf-8") + "entity class,Probe,Gizmoid,,narrower,yes,a craft sent to explore,\n",
                            encoding="utf-8")                              # checked, but Gizmoid was never in it
         texts = self.texts(self.status(), "Translation table")
         self.assertTrue(any("with a missing target (translating to an entity class or predicate the ground truth schema "
@@ -206,15 +206,15 @@ class Status(unittest.TestCase):
         mapping = self.tmp / "annotations" / "component_class_mapping.csv"
         header = mapping.read_text(encoding="utf-8")
         listed = lambda: [t for t in self.texts(self.status(), "Translation table") if "(now exists)" in t]   # noqa: E731
-        mapping.write_text(header + "entity class,Platform,(none),no,yes,a carrier,\n"
-                                    "predicate,Platform,(none),no,yes,is carried by,\n", encoding="utf-8")
+        mapping.write_text(header + "entity class,Platform,(none),no,,yes,a carrier,\n"
+                                    "predicate,Platform,(none),no,,yes,is carried by,\n", encoding="utf-8")
         found = listed()
         self.assertEqual(len(found), 1, found)
         self.assertIn("1 row(s) of the translation table that say (none) though the ground truth schema now has an "
                       "entry spelled the same (now exists)", found[0])
         self.assertIn("Platform (current schema)", found[0])
-        mapping.write_text(header + f"entity class,Platform,(none),no,yes,a carrier,\"{platform}\"\n"
-                                    "predicate,Platform,(none),no,yes,is carried by,\n", encoding="utf-8")
+        mapping.write_text(header + f"entity class,Platform,(none),no,,yes,a carrier,\"{platform}\"\n"
+                                    "predicate,Platform,(none),no,,yes,is carried by,\n", encoding="utf-8")
         self.assertEqual(listed(), [])
 
     def test_partial_pairs_waiting_tuning_only(self):

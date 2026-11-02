@@ -65,6 +65,19 @@ but a component class differs:
 Each mismatch (current schema's component class, ground truth schema's
 component class) is counted; the frequent ones point at rows to look at. A single
 one may just be extraction choosing the wrong component class.
+
+BY MATCH KIND (docs/terminology.md, *match*; reported, never part of a metric): each occurrence is counted under the
+match of the predicate's row that translated it (match_of: same, narrower, broader, overlap, or no match value yet;
+an untranslatable occurrence stays under "untranslatable"), and, of those, the ones left extracted only; each of its
+two entity classes under its row's match; each ground truth triple within reach under the best match among the rows
+that reach it (reach_bucket: through a same or narrower row; else through a row with no match value yet; else only
+through broader or overlap rows). The recall upper bound is unchanged; these split it.
+
+PIN MISFITS (pin_fits): a translated occurrence whose predicate the ground truth schema pins ("only: any -> Instrument",
+common.schema_io, schema["pinned"]) and whose translated entity classes fit none of the pin's pairs ("any" fits any
+entity class; an entity class translated to (none) fits no named one): a triple the ground truth schema can't hold,
+so the pair of rows that made it (the predicate's, the entity class's), not extraction alone, may be at fault. Counted
+and listed per pair of rows (translation_disagreements); left in precision's denominator.
 """
 from __future__ import annotations
 
@@ -128,19 +141,101 @@ def is_untranslatable(t: dict) -> bool:
     return str(t["predicate"]).endswith(NO_TRANSLATION)
 
 
+def _rule_index(triple: dict, translation):
+    """Which of the predicate's rows applies to an extracted triple: the index of its conditional row with the most
+    conditions that hold for the triple's own entity classes (current schema), or None for its unconditional row."""
+    key = component_class_key(triple["predicate"])
+    have = (component_class_key(triple["subject_class"]), component_class_key(triple["object_class"]))
+    best = None
+    for i, (subject, obj, mine, flipped) in enumerate(getattr(translation, "conditional", {}).get(key, [])):
+        if all(c is None or c == h for c, h in zip((subject, obj), have)):
+            n = (subject is not None) + (obj is not None)
+            if best is None or n > best[0]:
+                best = (n, i)
+    return best[1] if best else None
+
+
 def predicate_rule(triple: dict, translation) -> tuple:
     """(ground truth schema's predicate or None, reversed) for an extracted triple's predicate: through its conditional
     row with the most conditions that hold for the triple's own entity classes (current schema), if any, else its
     unconditional row (docs/terminology.md, *conditional row*; common.component_class_mapping.rule_for)."""
     key = component_class_key(triple["predicate"])
-    have = (component_class_key(triple["subject_class"]), component_class_key(triple["object_class"]))
-    best = None
-    for subject, obj, mine, flipped in getattr(translation, "conditional", {}).get(key, []):
-        if all(c is None or c == h for c, h in zip((subject, obj), have)):
-            n = (subject is not None) + (obj is not None)
-            if best is None or n > best[0]:
-                best = (n, (mine, flipped))
-    return best[1] if best else translation.predicate.get(key, (None, False))
+    i = _rule_index(triple, translation)
+    if i is not None:
+        return tuple(translation.conditional[key][i][2:])
+    return translation.predicate.get(key, (None, False))
+
+
+#: The match kinds an occurrence or a ground truth triple is counted under (docs/terminology.md, *match*), each with
+#: the key its counts use: a row's match, or NO_MATCH_VALUE for a checked row whose match isn't set yet.
+NO_MATCH_VALUE = "no match value"
+MATCH_KINDS = ("same", "narrower", "broader", "overlap", NO_MATCH_VALUE)
+_MATCH_KEY = {k: k.replace(" ", "_") for k in MATCH_KINDS}
+#: A ground truth triple within reach is counted under the best match among the rows that reach it, in this order.
+REACH_BUCKETS = ("same or narrower", NO_MATCH_VALUE, "only broader or overlap")
+_REACH_KEY = {"same or narrower": "within_reach_same_or_narrower", NO_MATCH_VALUE: "within_reach_no_match_value",
+              "only broader or overlap": "within_reach_only_broader_or_overlap"}
+_RANK = {"same": 0, "narrower": 0, "": 1, "broader": 2, "overlap": 2}
+
+
+def _kind(match) -> str:
+    return match if match in _MATCH_KEY and match != NO_MATCH_VALUE else NO_MATCH_VALUE
+
+
+def match_of(triple: dict, translation) -> str:
+    """The match (MATCH_KINDS) of the predicate's row that translates an extracted triple (as predicate_rule picks
+    it); None when that row says (none)."""
+    key = component_class_key(triple["predicate"])
+    i = _rule_index(triple, translation)
+    if i is not None:
+        mine = translation.conditional[key][i][2]
+        kinds = getattr(translation, "match_conditional", {}).get(key, [])
+        m = kinds[i] if i < len(kinds) else ""
+    else:
+        mine = translation.predicate.get(key, (None, False))[0]
+        m = getattr(translation, "match", {}).get("predicate", {}).get(key, "")
+    return _kind(m) if mine else None
+
+
+def entity_match_of(entity_class, translation) -> str:
+    """The match (MATCH_KINDS) of an entity class's row (current schema); None when it says (none)."""
+    key = component_class_key(entity_class)
+    if not translation.entity.get(key):
+        return None
+    return _kind(getattr(translation, "match", {}).get("entity class", {}).get(key, ""))
+
+
+def reach_bucket(g: dict, translation):
+    """For a ground truth triple: None when it isn't within reach (_within_reach), else its REACH_BUCKETS entry, by the
+    best match among the rows that reach it (unconditional rows to its predicate; conditional rows to its predicate
+    whose condition, translated, fits its slots)."""
+    if not _within_reach(g, translation):
+        return None
+    key = component_class_key(g["predicate"])
+    kinds = list(getattr(translation, "reach_kind", {}).get("predicate", {}).get(key, []))
+    if key not in translation.reachable["predicate"]:
+        kinds = []
+    have = (component_class_key(g["subject_class"]), component_class_key(g["object_class"]))
+    conditional_kinds = getattr(translation, "reach_conditional_kind", {}).get(key, [])
+    for i, ends in enumerate(getattr(translation, "reach_conditional", {}).get(key, [])):
+        if all(c is None or c == h for c, h in zip(ends, have)):
+            kinds.append(conditional_kinds[i] if i < len(conditional_kinds) else "")
+    best = min((_RANK.get(k, 1) for k in kinds), default=1)
+    return REACH_BUCKETS[best]
+
+
+def pin_fits(t: dict, pinned: dict):
+    """For a translated occurrence: None when its predicate isn't pinned in the ground truth schema (or it is
+    untranslatable); else whether its translated (subject class, object class) fits one of the pin's pairs ("any" fits
+    any entity class; an entity class translated to (none) fits no named one). pinned: Translation.pinned."""
+    if is_untranslatable(t):
+        return None
+    pairs = (pinned or {}).get(component_class_key(t["predicate"]))
+    if not pairs:
+        return None
+    have = (component_class_key(t["subject_class"]), component_class_key(t["object_class"]))
+    marked = (str(t["subject_class"]).endswith(NO_TRANSLATION), str(t["object_class"]).endswith(NO_TRANSLATION))
+    return any(all(want == "any" or (not m and want == h) for want, h, m in zip(pair, have, marked)) for pair in pairs)
 
 
 def translate(triple: dict, translation) -> dict:
@@ -377,9 +472,10 @@ SECOND_OPINION_GROUPS = ("found", "not found", "not checked")
 #: The ground truth's provenance groupings (070_evaluate/070_evaluate.md, *Shared-model bias*): each ground truth
 #: triple falls in one group of each. "second_opinion": its group by the second opinion (SECOND_OPINION_GROUPS);
 #: "drafted_by": who drafted its row (the ground truth's column drafted_by), every spelling of one model name in one
-#: group (common.llm.model_name_key), an empty cell (a row a person wrote) in DRAFTED_BY_PERSON.
+#: group (common.llm.model_name_key), an empty cell in NO_DRAFTING_MODEL: no drafting model recorded (as on a row a
+#: person adds in the annotation tool).
 GROUPINGS = ("second_opinion", "drafted_by")
-DRAFTED_BY_PERSON = ""
+NO_DRAFTING_MODEL = ""
 #: The counts kept for each group (record["compared"]["groups"][grouping][group]): its ground truth triples, and at
 #: each level its pairs and strict pairs.
 GROUP_COUNTS = ("gt", *(f"{level}_{k}" for level in ("exact", "partial") for k in ("pairs", "strict_pairs")))
@@ -393,7 +489,7 @@ def provenance_groups(record: dict) -> dict:
     if len(second) != len(gt) or any(g not in SECOND_OPINION_GROUPS for g in second):
         raise ValueError(f"record {record['id']}: second_opinion must give one of {SECOND_OPINION_GROUPS} for each of "
                          f"its {len(gt)} ground truth triples, got {second!r}")
-    drafted = [model_name_key(str(g.get(DRAFTED_BY) or "")) or DRAFTED_BY_PERSON for g in gt]
+    drafted = [model_name_key(str(g.get(DRAFTED_BY) or "")) or NO_DRAFTING_MODEL for g in gt]
     return {"second_opinion": list(second), "drafted_by": drafted}
 
 
@@ -443,6 +539,27 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     counts = {"extracted": len(ex), "untranslatable": sum(untranslatable), "gt": len(gt), "within_reach": sum(reach),
               "within_strict_reach": sum(strict_reach),
               "occurrences_multiplicity_above_1": sum(m > 1 for m in multiplicity)}
+    # by match kind (reported, never part of a metric): the module docstring, BY MATCH KIND
+    paired_e = {ei for _, ei, _ in pairs} | {ei for _, ei, _ in pending_pairs}
+    for k in MATCH_KINDS:
+        counts[f"occurrences_match_{_MATCH_KEY[k]}"] = 0
+        counts[f"extracted_only_match_{_MATCH_KEY[k]}"] = 0
+        counts[f"entity_classes_match_{_MATCH_KEY[k]}"] = 0
+    counts["entity_classes_to_none"] = 0
+    for ei, f in enumerate(record["extracted"]):
+        m = match_of(f, translation)
+        if m is not None:
+            counts[f"occurrences_match_{_MATCH_KEY[m]}"] += 1
+            counts[f"extracted_only_match_{_MATCH_KEY[m]}"] += ei not in paired_e
+        for slot in ("subject_class", "object_class"):
+            e = entity_match_of(f[slot], translation)
+            counts["entity_classes_to_none" if e is None else f"entity_classes_match_{_MATCH_KEY[e]}"] += 1
+    buckets = [reach_bucket(g, translation) for g in gt]
+    for b in REACH_BUCKETS:
+        counts[_REACH_KEY[b]] = sum(x == b for x in buckets)
+    fits = [pin_fits(t, getattr(translation, "pinned", {})) for t in ex]
+    counts["pin_checked"] = sum(x is not None for x in fits)
+    counts["pin_misfits"] = sum(x is False for x in fits)
     provenance = provenance_groups(record)
     strict_all = {(gi, ei) for gi, ei, _ in pairs if classes_agree(gt[gi], paired(gi, ei))}
     for level in LEVELS:
@@ -475,6 +592,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
                      if lv == "partial" and pair_key(record["id"], gt[gi], ex[ei]) not in reviews)
     record["compared"] = {
         "translated": ex, "untranslatable": untranslatable, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
+        "pin_misfits": [ei for ei, x in enumerate(fits) if x is False],
         "pending": pending, "pending_pairs": pending_pairs, "pending_swapped": pending_turned,
         # each provenance grouping's counts per group (GROUPINGS, group_counts), and the spellings of drafted_by
         "groups": {name: group_counts(record, provenance[name], pairs, strict_all) for name in GROUPINGS},
@@ -610,6 +728,23 @@ def component_class_mismatches(records: list) -> list:
                     break                             # one mismatch per ground truth triple
     return [{"kind": k, "crt_component_class": c, "translated_to": t, "gtt_component_class": g, "swapped": s, "count": n}
             for (k, c, t, g, s), n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def translation_disagreements(records: list) -> list:
+    """The pin misfits (pin_fits) of compared records, per pair of rows that made them: [{"predicate" (current schema),
+    "translated_predicate", "subject_class" (current schema), "translated_subject_class", "object_class" (current
+    schema), "translated_object_class" (each translated one in the ground truth schema, or marked NO_TRANSLATION),
+    "count"}], most frequent first."""
+    found = collections.Counter()
+    for rec in records:
+        c = rec["compared"]
+        for ei in c.get("pin_misfits", []):
+            t = c["translated"][ei]
+            found[(t["crt"]["predicate"], t["predicate"], t["crt"]["subject_class"], t["subject_class"],
+                   t["crt"]["object_class"], t["object_class"])] += 1
+    keys = ("predicate", "translated_predicate", "subject_class", "translated_subject_class", "object_class",
+            "translated_object_class")
+    return [dict(zip(keys, k), count=n) for k, n in sorted(found.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
 def compare_all(evaluated, translation):

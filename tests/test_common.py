@@ -692,7 +692,7 @@ class TranslationTable(unittest.TestCase):
         import re
         text = (ROOT / "docs" / "terminology.md").read_text(encoding="utf-8")
         row = next(line for line in text.splitlines() if line.startswith("| **row state** |"))
-        listed = row.split("one of six", 1)[1].split("How they relate", 1)[0]
+        listed = row.split("one of seven", 1)[1].split("How they relate", 1)[0]
         named = list(dict.fromkeys(re.findall(r"\*\*([a-z ]+)\*\*", listed)))
         self.assertEqual(tuple(named), component_class_mapping.ROW_STATES)
 
@@ -764,7 +764,7 @@ class TranslationTable(unittest.TestCase):
                 self.assertEqual(component_class_mapping.is_missing_target(r, gtt), missing)
 
     def test_read_stale_repeats(self):
-        cols = component_class_mapping.COLUMNS
+        cols = [c for c in component_class_mapping.COLUMNS if c != "match"]      # the rows' values in this order
         path = self.tmp / "m.csv"
         write_csv(path, cols, [
             dict(zip(cols, ["entity class", "Satellite", "Spacecraft", "", "yes", "an  orbiting craft"])),
@@ -794,7 +794,7 @@ class TranslationTable(unittest.TestCase):
     def test_fixed_values(self):
         """kind, swap_subject_and_object and checked are read ignoring case and spaces at either end; any other value
         (or "yes" to swap an entity class) is a problem, naming its line."""
-        cols = component_class_mapping.COLUMNS
+        cols = [c for c in component_class_mapping.COLUMNS if c != "match"]      # the rows' values in this order
         path = self.tmp / "m.csv"
         write_csv(path, cols, [
             dict(zip(cols, ["Entity Class", "Satellite", "Spacecraft", " No", "YES", "", ""])),

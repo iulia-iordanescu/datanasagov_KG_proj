@@ -310,18 +310,82 @@ def _drafted_by_lines(n: dict, extraction_model: str = "") -> list:
         return []
 
     def label(group, e):
-        if group == pairing.DRAFTED_BY_PERSON:
-            return "written by a person (`drafted_by` empty)"
+        if group == pairing.NO_DRAFTING_MODEL:
+            return "no drafting model recorded (`drafted_by` empty)"
         names = " or ".join(f"`{s}`" for s in e.get("spellings") or [group])
         same = " (the extraction model's name)" if extraction_model and llm.same_model_name(group, extraction_model) else ""
         return f"drafted by {names}{same}"
     return [f"#### {DRAFTED_BY_SECTION}", "",
             "Each ground truth triple by who drafted its row (the ground truth's column `drafted_by`: the model whose "
-            "drafted triple a person corrected, every spelling of one name together; empty for a row a person wrote). "
+            "drafted triple a person corrected, every spelling of one name together; empty: no drafting model recorded, "
+            "as on a row a person adds in the annotation tool). "
             "A model that drafted the ground truth and extracts too can share its blind spots (raising recall), its "
             "mistakes (raising precision) and its phrasing (raising the exact share and entity-class accuracy) with "
             f"the extraction: `070_evaluate/070_evaluate.md`, *Shared-model bias*. {GROUP_FORMULA} {GROUP_MARGINS}", "",
             *_group_table(by, label), ""]
+
+
+#: The report's subsection on the counts by match kind (_match_lines), named once.
+MATCH_SECTION = "Through which kind of row"
+
+
+def _match_lines(n: dict) -> list:
+    """The counts by match kind of one part (stats.numbers' by_match; pairing.py, BY MATCH KIND and PIN MISFITS): no
+    metric changes."""
+    b = n.get("by_match")
+    if not b:
+        return []
+    E, G = n["extracted"], n["gt_triples"]
+    occ = "; ".join(f"{k}: {b['occurrences'][k]}" for k in pairing.MATCH_KINDS)
+    only = "; ".join(f"{k}: {b['extracted_only'][k]} of {b['occurrences'][k]}" for k in pairing.MATCH_KINDS)
+    ent = "; ".join(f"{k}: {v}" for k, v in b["entity_classes"].items())
+    reach = "; ".join(f"{k}: {b['within_reach'][k]} ({readings.pct(b['recall_upper_bound'][k])} of the {G})"
+                      for k in pairing.REACH_BUCKETS)
+    return [f"#### {MATCH_SECTION}", "",
+            "Each row of the translation table records its match: how its component class (current schema) relates to "
+            "the one it translates to (ground truth schema): same, narrower, broader or overlap "
+            "(`docs/terminology.md`, *match*). A broader or overlap row is right only for the part of its meaning its "
+            "target covers, so an occurrence through it, left extracted only, may be the table's doing, not "
+            "extraction's. Counts only: no metric changes.", "",
+            f"- **Occurrences, by the match of their predicate's row** (the row that translated it; the other "
+            f"{n.get('untranslatable', 0)} of the {E} are untranslatable): {occ}.",
+            f"- **Of those, left extracted only:** {only}.",
+            f"- **Entity classes of the occurrences (subject and object, two per occurrence), by their row's match:** "
+            f"{ent}.",
+            f"- **Recall upper bound, split** (the ground truth triples within reach, by the best match among the rows "
+            f"that reach them; the headline recall upper bound counts them all): {reach}. Through same or narrower "
+            f"rows, the current schema can say the fact; only through broader or overlap rows, it says something "
+            f"wider, which the table files under that predicate.",
+            f"- **Pin misfits:** {b['pin_misfits']} of the {b['pin_checked']} translated occurrences whose predicate "
+            f"the ground truth schema pins (`annotations/ground_truth_schema.txt`, \"only:\") have entity classes "
+            f"the pin doesn't allow: a triple the ground truth schema can't hold, so it can only be a pair that isn't "
+            f"strict, or extracted only. Left in precision; the pairs of rows that made them, tuning part: section "
+            f"*Translation disagreements*.", ""]
+
+
+def _disagreement_lines(found: list) -> list:
+    """The report's list of translation disagreements (pairing.translation_disagreements), tuning records only."""
+    lines = ["### Translation disagreements", "",
+             "Counted over the tuning records only: held-out records never say what to change.", "",
+             "Translated occurrences whose predicate the ground truth schema pins (a line \"only: Subject -> Object\" "
+             "under it in `annotations/ground_truth_schema.txt`) and whose translated entity classes the pin doesn't "
+             "allow (\"any\" allows any entity class; an entity class translated to (none) fits no named one). The "
+             "ground truth schema can't hold such a triple, so the predicate's row and an entity class's row of the "
+             "translation table disagree, or extraction chose a wrong entity class. They stay in precision's "
+             "denominator. Seen often, check the two rows first (`py helpers/annotate.py`, view *Translation "
+             "table*).", ""]
+    if not found:
+        return lines + ["None.", ""]
+    show = lambda x: "(none)" if str(x).endswith(pairing.NO_TRANSLATION) else x     # noqa: E731
+    lines += ["| Predicate (current schema) | Translated to | Subject class (current schema) | Translated to | "
+              "Object class (current schema) | Translated to | Times |", "|---|---|---|---|---|---|---:|"]
+    for d in found[:SHOW]:
+        lines.append(f"| {cell(d['predicate'])} | {cell(show(d['translated_predicate']))} | {cell(d['subject_class'])} | "
+                     f"{cell(show(d['translated_subject_class']))} | {cell(d['object_class'])} | "
+                     f"{cell(show(d['translated_object_class']))} | {d['count']} |")
+    if len(found) > SHOW:
+        lines.append(f"| … {len(found) - SHOW} more, in `{METRICS_NAME}` | | | | | | |")
+    return lines + [""]
 
 
 def _second_opinion_lines(n: dict, models: list) -> list:
@@ -814,6 +878,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     # Mismatches say which rows of the translation table to change, so they come from tuning records only: changing
     # a row because of a held-out record would let the held-out records influence the pipeline.
     mismatches = pairing.component_class_mismatches(tuning)
+    disagreements = pairing.translation_disagreements(tuning)
     unreviewed = sum(r["compared"]["partial_review"]["unreviewed"] for r in tuning)
     rejected = sum(r["compared"]["partial_review"]["rejected"] for r in tuning)
     compared_rows = _compared_rows(shown)
@@ -835,6 +900,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                   for p, v in metrics.items() if p != "kept_aside"},
         "held_out_looks": looks and {"count": looks["count"], "changed_since_previous": looks["changed"]},
         "component_class_mismatches": mismatches,
+        "translation_disagreements": disagreements,
         "translation_suggestions": translation.suggested,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
@@ -842,7 +908,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     kept_path = _keep_evaluation(evaluated, translation, output, tuning, evaluated.extraction_manifest)
     log.info(f"  kept this run's tuning counts in {EVALUATIONS_DIR}/{kept_path.name}")
 
-    warnings = list(evaluated.notes)
+    warnings = list(evaluated.notes) + list(getattr(translation, "notes", []))
     for part, v in metrics.items():
         if part == "kept_aside" or v["numbers"] is None:
             continue
@@ -878,14 +944,25 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             warnings.append(f"The {part} part: an assumption of the margin of error doesn't hold, so some ranges are "
                             f"less trustworthy: {'; and '.join(why)}. Details: {this_report()}, section *Results*, subsection *Metrics: {part} part*, table *The margin of error's "
                             f"assumptions, checked*.")
-    if translation.suggested:
-        warnings.append(f"The model suggests {len(translation.suggested)} row(s) of annotations/component_class_mapping.csv that say (none) may "
+    to_none = [s for s in translation.suggested if not s.get("beside")]
+    beside = [s for s in translation.suggested if s.get("beside")]
+    if to_none:
+        warnings.append(f"The model suggests {len(to_none)} row(s) of annotations/component_class_mapping.csv that say (none) may "
                         f"now have a counterpart in the ground truth schema: "
                         + named([f"{s['component_class_from_past_or_crt_schema']} (current schema) --> {s['component_class_in_gtt']} "
-                                 f"(ground truth schema)" for s in translation.suggested], 5, "; ")
+                                 f"(ground truth schema)" for s in to_none], 5, "; ")
                         + f". While a row says (none), the occurrences of extracted triples that use its component class can't form "
                           f"pairs (a predicate) or strict pairs (an entity class). Rows aren't changed: check them "
                           f"({TABLE}, shows the suggestion), take the suggestion if right, else keep (none); {AGAIN}")
+    if beside:
+        warnings.append(f"The model suggests that {len(beside)} row(s) of annotations/component_class_mapping.csv marked broader "
+                        f"or overlap have, for the part of their meaning their target doesn't cover, a counterpart the "
+                        f"ground truth schema has gained: "
+                        + named([f"{s['component_class_from_past_or_crt_schema']} (current schema), translated to "
+                                 f"{s['beside']}, also {s['component_class_in_gtt']} (ground truth schema)" for s in beside], 5, "; ")
+                        + f". Rows aren't changed. If an entity class of the subject or object tells the two meanings "
+                          f"apart, a predicate's row can become (none) with a conditional row for each (docs/terminology.md, "
+                          f"*conditional row*); else keep the row as it is ({TABLE}, shows the suggestion); {AGAIN}")
     if unreviewed:
         waiting = [r["id"] for r in tuning if r["compared"]["partial_review"]["unreviewed"]]
         warnings.append(f"{unreviewed} partial pair(s) of the tuning part aren't reviewed yet, in {len(waiting)} "
@@ -968,6 +1045,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         lines += [f"| {kind} | {cell(mine)} | {cell(', '.join(theirs))} |" for kind, mine, theirs in merged]
         lines.append("")
     lines += _mismatch_lines(mismatches)
+    lines += [] if identity else _disagreement_lines(disagreements)
     if evaluated.left_out:
         lines += ["Left out: " + "; ".join(f"{len(v)} {k}" for k, v in evaluated.left_out.items())
                   + f". Not finished yet in the ground truth: {evaluated.unfinished}.", ""]
@@ -1029,6 +1107,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                       "truth schema) | Records |", "|---|---|---:|"]
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
+        lines += _match_lines(n)
         lines += _second_opinion_lines(n, evaluated.second_opinion_models)
         lines += _drafted_by_lines(n, (evaluated.extraction_made or {}).get("model") or "")
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
@@ -1060,7 +1139,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     lines += dropped.reasks_lines(llm.REASKS)
     lines += model_calls([(f"stage 2: propose component class translations (batches of up to {component_classes_stage.TRANSLATE_BATCH})", translation.calls,
                            translation.reused),
-                          ("stage 2: suggest counterparts for (none) rows (one call)", translation.suggest_calls,
+                          ("stage 2: suggest counterparts for (none), broader and overlap rows (one call)", translation.suggest_calls,
                            translation.suggest_reused)],
                          calls.paid.test_calls, llm.model_label())
 
