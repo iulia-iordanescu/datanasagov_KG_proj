@@ -64,11 +64,14 @@ def pick_records(inputs, settings):
 
 
 def paid_calls(evaluated, settings, output) -> llm.Calls:
+    if not settings.get("suggest", True):           # free by code: no suggestion, and a missing row stops before paying
+        llm.forbid_model_calls(component_classes_stage.FREE_WHY)
     return llm.paid_calls(settings, output)         # evaluated.notes were shown, and asked about, by pick_records
 
 
-def translate_component_classes(inputs, evaluated, calls):
-    return component_classes_stage.translate_component_classes(inputs, evaluated, calls)
+def translate_component_classes(inputs, evaluated, calls, settings=None):
+    return component_classes_stage.translate_component_classes(inputs, evaluated, calls,
+                                                               suggest=(settings or {}).get("suggest", True))
 
 
 def compare(evaluated, translation):
@@ -902,6 +905,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
         "component_class_mismatches": mismatches,
         "translation_disagreements": disagreements,
         "translation_suggestions": translation.suggested,
+        "translation_suggestions_asked": translation.suggestions,
         "partial_pairs_tuning": {"unreviewed": unreviewed, "rejected_by_review": rejected},
     })
     log.info(f"  wrote {METRICS_NAME}, {PER_RECORD_NAME}, {COMPARED_NAME}")
@@ -1014,7 +1018,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
               f"through `annotations/component_class_mapping.csv` "
               f"({translation.rows_used} component classes; {translation.reversed_used} predicate(s) reversed"
               + (f"; {translation.conditional_rows_used} conditional row(s)" if getattr(translation, "conditional_rows_used", 0) else "")
-              + ")."), "",
+              + ")."), "", f"Suggestions: {translation.suggestions}.", "",
              "| Part | Records evaluated |", "|---|---:|"]
     for part in PARTS:
         count = sum(r["part"] == part for r in evaluated.records)
@@ -1139,7 +1143,9 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
     lines += dropped.reasks_lines(llm.REASKS)
     lines += model_calls([(f"stage 2: propose component class translations (batches of up to {component_classes_stage.TRANSLATE_BATCH})", translation.calls,
                            translation.reused),
-                          ("stage 2: suggest counterparts for (none), broader and overlap rows (one call)", translation.suggest_calls,
+                          ("stage 2: suggest counterparts for (none), broader and overlap rows (one call)"
+                           + ("" if translation.suggestions != component_classes_stage.NOT_ASKED else f": {component_classes_stage.NOT_ASKED}"),
+                           translation.suggest_calls,
                            translation.suggest_reused)],
                          calls.paid.test_calls, llm.model_label())
 

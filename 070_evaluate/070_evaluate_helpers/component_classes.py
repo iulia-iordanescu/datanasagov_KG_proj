@@ -87,6 +87,12 @@ SUGGEST_PROMPT = load(PROMPTS_DIR / "suggest_component_classes.txt")
 #: How 070 translated, as the report, metrics.json and the recipe say it (helpers/compare_runs.py reads the recipe's).
 IDENTITY = "identity (060 used the ground truth schema)"
 TABLE_TRANSLATION = "the translation table (annotations/component_class_mapping.csv)"
+#: Whether 070 asked the model for suggestions on (none), broader and overlap rows, as the report and metrics.json say
+#: it (metrics.json, translation_suggestions_asked). Suggestions never change a row, so never a number.
+ASKED, NOTHING_TO_ASK, NOT_ASKED = "asked", "nothing to ask about", "not asked (--suggest false)"
+#: Why a run with --suggest false calls no model (llm.forbid_model_calls): its message if one were ever sent.
+FREE_WHY = ("py 070_evaluate/run.py --suggest false asks no suggestion, and stops before proposing a row for a "
+            "component class without one")
 
 
 @dataclass
@@ -123,6 +129,7 @@ class Translation:
                                                     # now have a counterpart, or a broader or overlap row's remainder may
     suggest_calls: int = 0
     suggest_reused: int = 0                         # the suggestion call answered from the cache (0 or 1)
+    suggestions: str = NOTHING_TO_ASK               # ASKED, NOTHING_TO_ASK or NOT_ASKED (setting suggest false)
     reversed_used: int = 0
     conditional_rows_used: int = 0
     calls: int = 0
@@ -257,9 +264,13 @@ def identity(translation: Translation) -> Translation:
     return translation
 
 
-def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
+def translate_component_classes(inputs: dict, evaluated, calls, suggest: bool = True) -> Translation:
+    """suggest: the setting suggest; false asks no suggestion and stops, before paying, on a component class of the
+    current schema with no row whose row the model would have to propose (a same-named one is still added, free)."""
     path = Path(inputs["component_class_mapping"])
     translation = Translation(gtt=gtt_schema(inputs["ground_truth_schema"]), pinned=gtt_pins(inputs["ground_truth_schema"]))
+    if not suggest:
+        translation.suggestions = NOT_ASKED
     same_schema, why = identity_problem(evaluated.schema_used, translation.gtt)
     if same_schema:
         return identity(translation)
@@ -321,6 +332,16 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         else:
             missing.append((kind, name))
     proposed, notes = [], []
+    if missing and not suggest:
+        raise Stop(f"{len(missing)} component class(es) of the current schema have no row in {ref_path(path)}, and "
+                   f"the ground truth schema has none of the same name: "
+                   + named([f"{kind} {name} (current schema)" for kind, name in missing], 5, "; ")
+                   + f". With --suggest false 070 calls no model, so it can't propose their rows, and it can't "
+                     f"evaluate without them: every component class translates only through a checked row. Nothing "
+                     f"was paid and the table wasn't changed. Either run `py 070_evaluate/run.py` (the model proposes "
+                     f"those rows: up to {-(-len(missing) // TRANSLATE_BATCH)} paid call(s), asked about first) and check "
+                     f"them ({TABLE}), or add a row for each to {ref_path(path)} yourself (checked = yes); then run "
+                     f"`py 070_evaluate/run.py --suggest false` again.")
     if missing:
         proposed, notes, translation.calls, translation.reused = _propose(missing, translation.gtt, evaluated.schema_used, calls, gtt_now)
     if same or proposed:
@@ -465,7 +486,9 @@ def translate_component_classes(inputs: dict, evaluated, calls) -> Translation:
         translation.to_none[kind] = sorted(n for k, n in needed if k == kind and translates_to_none(kind, n))
         translation.untranslated[kind] = sorted(n for n in translation.gtt[kind] if component_class_key(n) not in translation.reachable[kind]
                                                 and (kind != "predicate" or component_class_key(n) not in translation.reach_conditional))
-    translation.suggested, translation.suggest_calls, translation.suggest_reused = _suggest(translation, evaluated.schema_used, calls)
+    if suggest:
+        translation.suggested, translation.suggest_calls, translation.suggest_reused = _suggest(translation, evaluated.schema_used, calls)
+        translation.suggestions = ASKED if translation.suggest_calls + translation.suggest_reused else NOTHING_TO_ASK
     return translation
 
 

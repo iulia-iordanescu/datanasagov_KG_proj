@@ -3,6 +3,7 @@
 by match kind, the recall upper bound split, the pin misfits (pairing.py), the suggestions for broader and overlap rows,
 and the report's lines, with the near-misses. No metric changes."""
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -139,7 +140,7 @@ class Stage(unittest.TestCase):
         {"kind": "entity class", "schema": "Dataset", "ground_truth": "Region"},               # not asked: dropped
         {"kind": "entity class", "schema": "Place", "ground_truth": "Region"}]}                # a (none) row: kept
 
-    def run_stage(self, rows=ROWS, schema_used=SCHEMA_USED):
+    def run_stage(self, rows=ROWS, schema_used=SCHEMA_USED, suggest=True):
         tmp = Path(tempfile.mkdtemp())
         prompts = []
         try:
@@ -156,7 +157,7 @@ class Stage(unittest.TestCase):
             with mock.patch.object(llm, "call_llm_json", answer):
                 t = component_classes.translate_component_classes(
                     {"component_class_mapping": str(tmp / "map.csv"), "ground_truth_schema": str(tmp / "gts.txt")},
-                    type("E", (), {"schema_used": schema_used})(), calls)
+                    type("E", (), {"schema_used": schema_used})(), calls, suggest=suggest)
             return t, prompts, tmp / "map.csv"
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
@@ -190,6 +191,58 @@ class Stage(unittest.TestCase):
             {"kind": "predicate", "component_class_from_past_or_crt_schema": "COVERS",
              "component_class_in_gtt": "HAS_SPATIAL_COVERAGE", "beside": "HAS_TIME_SPAN"},
             {"kind": "entity class", "component_class_from_past_or_crt_schema": "Place", "component_class_in_gtt": "Region"}])
+
+    def test_suggest_false_asks_nothing_and_translates_the_same(self):
+        """--suggest false (2026-11-02, re-scoring with no model budget): no suggestion call, the status says so, and
+        every translation 070 scores with is the same as with suggestions asked (suggestions never change a row)."""
+        asked, _, _ = self.run_stage()
+        t, prompts, _ = self.run_stage(suggest=False)
+        self.assertEqual(prompts, [])
+        self.assertEqual((t.suggested, t.suggest_calls, t.suggestions), ([], 0, "not asked (--suggest false)"))
+        self.assertEqual(asked.suggestions, "asked")                        # near miss: asked by default
+        for f in ("entity", "predicate", "reachable", "conditional", "reach_conditional", "match", "match_conditional",
+                  "reach_kind", "reach_conditional_kind", "pinned", "rows_used", "to_none", "untranslated",
+                  "merged", "reversed_used", "conditional_rows_used"):
+            self.assertEqual(getattr(t, f), getattr(asked, f), f)
+        tmp_dir = lambda notes: [re.sub(r"tmp\w+", "tmp", n) for n in notes]          # noqa: E731  (each run's own folder)
+        self.assertEqual(tmp_dir(t.notes), tmp_dir(asked.notes))
+        ex = [triple("D", "Dataset", "COVERS", "2001", "Period"), triple("D", "Dataset", "SOURCED_FROM", "R", "Mission")]
+        gt = [triple("D", "Dataset", "HAS_TIME_SPAN", "2001", "Time")]
+        self.assertEqual(pairing.compare_record(record(gt, ex), t)["compared"],
+                         pairing.compare_record(record(gt, ex), asked)["compared"])
+
+    def test_suggest_false_stops_on_a_missing_row_before_paying(self):
+        """A component class of the current schema with no row, and none of its name in the ground truth schema: with
+        --suggest false 070 stops before any call, names it and both ways on, and leaves the table as it was. Near
+        miss: one whose name the ground truth schema has still gets its row, free (no model)."""
+        used = dict(SCHEMA_USED, entity_classes=SCHEMA_USED["entity_classes"] + [{"component_class": "Gizmo",
+                                                                                 "definition": "d"}])
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            write_csv(tmp / "map.csv", m.COLUMNS, ROWS)
+            (tmp / "gts.txt").write_text(GTS, encoding="utf-8")
+            before = (tmp / "map.csv").read_bytes()
+            inputs = {"component_class_mapping": str(tmp / "map.csv"), "ground_truth_schema": str(tmp / "gts.txt")}
+            sent = []
+            with mock.patch.object(llm, "call_llm_json", lambda *a, **k: sent.append(1)), self.assertRaises(Stop) as caught:
+                component_classes.translate_component_classes(inputs, type("E", (), {"schema_used": used})(), None,
+                                                              suggest=False)
+            said = str(caught.exception)
+            for words in ("1 component class(es) of the current schema have no row", "entity class Gizmo (current schema)",
+                          "With --suggest false 070 calls no model", "Nothing was paid and the table wasn't changed",
+                          "run `py 070_evaluate/run.py` (the model proposes those rows: up to 1 paid call(s)",
+                          "then run `py 070_evaluate/run.py --suggest false` again"):
+                self.assertIn(words, said)
+            self.assertEqual((sent, (tmp / "map.csv").read_bytes()), ([], before))
+            near = dict(SCHEMA_USED, entity_classes=SCHEMA_USED["entity_classes"] + [{"component_class": "Spacecraft",
+                                                                                     "definition": "d"}])
+            with self.assertRaises(Stop) as caught:
+                component_classes.translate_component_classes(inputs, type("E", (), {"schema_used": near})(), None,
+                                                              suggest=False)
+            self.assertIn("Added 1 row(s)", str(caught.exception))
+            self.assertEqual(m.read_mapping(tmp / "map.csv")[-1]["component_class_from_past_or_crt_schema"], "Spacecraft")
+        finally:
+            shutil.rmtree(tmp)
 
     def test_automatic_rows_get_same(self):
         used = dict(SCHEMA_USED, entity_classes=SCHEMA_USED["entity_classes"] + [{"component_class": "Spacecraft",

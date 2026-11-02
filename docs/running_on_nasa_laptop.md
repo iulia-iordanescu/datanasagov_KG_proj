@@ -334,4 +334,6 @@ What happens: no worker sends another call (not even a retry already waiting); t
 
 What to do: ask the LiteLLM administrators (the people who issued the key in `.env`) to raise or reset the budget, quoting the message's user, team and numbers; there is nothing to retry before that. Then run the same command again: the answers already received are reused, so it pays only for the calls not yet answered.
 
+**Re-scoring without budget.** Step 070 calls the model only about the [translation table](terminology.md#7-evaluating-extraction-step-070), so it can score the [extracted triples](terminology.md#6-extracting-with-a-schema-step-060) again with no budget: `py 070_evaluate/run.py --suggest false`. It skips the suggestions for `(none)`, broader and overlap rows (they never change a number) and makes no model call at all; if a [component class](terminology.md#3-schemas) of the [current schema](terminology.md#6-extracting-with-a-schema-step-060) has no row yet, it stops before paying and says what to do. Use it after changing the [ground truth](terminology.md#4-ground-truth-and-samples), the translation table or the partial-pair verdicts (`070_evaluate/070_evaluate.md`, *Settings*, `suggest`).
+
 *(New items go here.)*

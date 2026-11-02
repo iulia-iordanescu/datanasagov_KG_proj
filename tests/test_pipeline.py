@@ -326,6 +326,22 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(sorted(metrics["parts"]), ["tuning"])                  # held-out: kept aside
         self.assertEqual(len(metrics["evaluated"]["held-out"]), 1)
         self.check_counts(metrics)
+        # --suggest false (2026-11-02, re-scoring with no model budget): with every row there, no model call even with
+        # the cache gone (free by code: a call would stop the run), and the same metrics; only the suggestions differ
+        shutil.rmtree(self.output("070_evaluate", "cache"), ignore_errors=True)
+        out, prompts = self.run_step("070_evaluate", *NO_CONFIRM, "--suggest", "false")
+        self.assertEqual(prompts, 0)
+        self.assertNotIn("A model call was about to be sent", out)
+        free = json.loads(self.output("070_evaluate", "metrics.json").read_text(encoding="utf-8"))
+        self.assertEqual(free["translation_suggestions_asked"], "not asked (--suggest false)")
+        self.assertEqual(free["translation_suggestions"], [])
+        scores = lambda m: {k: v for k, v in m.items() if k not in (                                # noqa: E731
+            "made", "translation_suggestions", "translation_suggestions_asked")}               # made: the run's id, what served it
+        self.assertEqual(scores(free), scores(metrics))
+        report = max((self.repo / "outputs" / "reports").glob("070_evaluate_*.md"), key=lambda p: p.stat().st_mtime)
+        self.assertIn("Suggestions: not asked (--suggest false).", report.read_text(encoding="utf-8"))
+        out, _ = self.run_step("070_evaluate", *NO_CONFIRM, "--suggest", "maybe", expect=2)     # a true/false setting
+        self.assertIn("argument --suggest/--suggest: expected true or false, got 'maybe'", out)
 
     def check_counts(self, metrics):
         """metrics.json's counts agree with compared_triples.csv, row by row."""

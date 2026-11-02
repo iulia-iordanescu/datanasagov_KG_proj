@@ -261,7 +261,7 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
 
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does
 #: pick_records, with the same table (the shared settings' rules: common.step.shared_specs).
-SPECS = {"evaluate_held_out": Spec(bool)}
+SPECS = {"evaluate_held_out": Spec(bool), "suggest": Spec(bool)}
 
 
 def pick_records(inputs: dict, settings: dict) -> Evaluated:

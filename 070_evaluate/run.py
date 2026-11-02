@@ -59,6 +59,7 @@ SETTINGS = {
     "thinking":           THINKING, # how much a model that thinks may think: low, medium, high, or model_default
     "repeat":             1,      # which repeat of this recipe: 1 reuses saved answers; 2, 3, ... ask again, each into answers of its own
     "confirm_paid_calls": True,   # stop and ask before evaluating with warnings, and before the first model call; false for unattended runs
+    "suggest":            True,   # ask the model to suggest counterparts for (none), broader and overlap rows; false: no model call (re-scoring with no budget)
 }
 
 evaluate = load_moves("070_evaluate")
@@ -67,7 +68,7 @@ evaluate = load_moves("070_evaluate")
 def main(inputs, settings, output):
     evaluated   = evaluate.pick_records(inputs, settings)                      # code: finished, extracted, in the fair sample
     calls       = evaluate.paid_calls(evaluated, settings, output)             # code: asks before paying; keeps every answer in cache/
-    translation = evaluate.translate_component_classes(inputs, evaluated, calls)  # LLM: Satellite → Spacecraft, new ones only; you check
+    translation = evaluate.translate_component_classes(inputs, evaluated, calls, settings)  # LLM: Satellite → Spacecraft, new ones only; you check
     evaluated   = evaluate.compare(evaluated, translation)                     # code: per record, exact pairs / partial pairs / extracted only / ground truth only; then facts waiting on an expert
     metrics     = evaluate.compute_metrics(evaluated, settings)                # code: the numbers, with margins, per part and stratum
     # writes metrics.json, per_record.md, and compared_triples.csv, and with --evaluate_held_out true a line of annotations/held_out_looks.csv; the report
