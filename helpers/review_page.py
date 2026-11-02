@@ -59,7 +59,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 
-from common import console  # noqa: E402
+from common import console, llm  # noqa: E402
 from common.component_class_mapping import MAPPING_PATH, NONE, is_checked     # noqa: E402
 from common.expert_questions import (ANSWERED, GUIDELINES_PATH, OPEN, PRIORITIES, QUESTION_KIND_WORDS,  # noqa: E402
                                      QUESTIONS_PATH, RECORDS_PATH, WITHDRAWN,
@@ -551,6 +551,7 @@ def read_and_summarize(paths, out_dir: Path = OUT_DIR, schema_path: Path = SCHEM
 
 def main() -> None:
     console.setup()                                   # what the console can't show is replaced, never a crash
+    llm.forbid_model_calls("py helpers/review_page.py is free: it reads files of the repository")
     parser = argparse.ArgumentParser(prog="py helpers/review_page.py",
                                      description="Write a read-only review page of the ground truth schema, the "
                                                  "translation table and my questions for experts, publish it at its "

@@ -46,7 +46,7 @@ the ground truth and its rules (annotations/guidelines.md, Before you start). Co
     decision                  the reviewer's, empty until reviewed: one of DECISIONS (below)
 
 `py helpers/second_opinion.py --apply true` writes it beside second_opinion.csv, and nothing else does; a rerun
-replaces the model's rows on the records drafted again, and keeps every decision already filled for the same record
+replaces the model's rows on the records applied again, and keeps every decision already filled for the same record
 and classed triple.
 
     from common.second_opinion import read_candidates, write_candidates, decision_problem

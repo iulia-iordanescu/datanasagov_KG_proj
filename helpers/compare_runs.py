@@ -48,7 +48,7 @@ import pairing                                                                 #
 from component_classes import IDENTITY, TABLE_TRANSLATION                      # noqa: E402
 import stats                                                                   # noqa: E402
 from moves import EVALUATIONS_DIR                                              # noqa: E402
-from common import console  # noqa: E402
+from common import console, llm  # noqa: E402
 from common import audit                                                      # noqa: E402
 from common.files import read_json, write_text                                            # noqa: E402
 from common.step import REPORTS_DIR, RESULTS_DIR, repo_path                    # noqa: E402
@@ -805,6 +805,7 @@ def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
 
 def main() -> int:
     console.setup()                                   # what the console can't show is replaced, never a crash
+    llm.forbid_model_calls("py helpers/compare_runs.py is free: it reads 070's saved results")
     ap = argparse.ArgumentParser(prog="py helpers/compare_runs.py", description=__doc__.split("\n\n")[1])
     ap.add_argument("runs", nargs="*", help="070's run ids (or evaluation files), the baseline first")
     ap.add_argument("--across_schemas", choices=("true", "false"), default="false",

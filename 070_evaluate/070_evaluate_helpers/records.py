@@ -255,8 +255,8 @@ def _note_second_opinion(evaluated: Evaluated, table: dict, inputs: dict) -> Non
                                f"triple of its record (reworded or deleted since the second opinion was applied), so "
                                f"they count for nothing, and the triple that replaced it counts as not checked: "
                                + named([f"line {r['_line']} (record {r['id']})" for r in stale], 5, "; ")
-                               + ". Run `py helpers/second_opinion.py --apply true` (it pays nothing for answers already "
-                                 "cached) to rewrite those records' rows, " + AGAIN)
+                               + ". Run `py helpers/second_opinion.py --apply true` (free: it calls no model; it matches the "
+                                 "drafts already saved) to rewrite those records' rows, " + AGAIN)
 
 
 #: The step's settings' rules (common.step.Spec); run_step checks them before any input is read, and so does

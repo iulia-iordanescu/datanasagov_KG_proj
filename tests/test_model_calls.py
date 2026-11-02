@@ -1046,5 +1046,89 @@ class Budget(unittest.TestCase):
                         self.assertEqual(len(posts), 4)                          # retried
 
 
+
+class FreeCommands(unittest.TestCase):
+    """A command whose docs say it is free is free by code: it calls llm.forbid_model_calls first, after which
+    call_llm and litellm_post stop the run before any request leaves (found on 2026-11-02: `py
+    helpers/second_opinion.py --apply true`, documented as free, drafted 60 calls again after the ground truth changed).
+    And a run that pays shows the count to pay in the question itself, before Enter; one that pays nothing never asks."""
+
+    calls, ask = Guards.calls, Guards.ask
+
+    def setUp(self):
+        Guards.setUp(self)
+
+    def tearDown(self):
+        llm.allow_model_calls()
+        Guards.tearDown(self)
+
+    def test_nothing_leaves_once_forbidden(self):
+        posts, asked = [], []
+        llm.forbid_model_calls("the command under test is free: a test")
+        with mock.patch.object(llm, "_post", lambda *a, **k: posts.append(1)), \
+                mock.patch.object(llm, "_ask_asksage", lambda *a, **k: asked.append(1)):
+            for service in ("litellm", "asksage"):
+                with self.subTest(service=service), self.assertRaises(llm.ModelCallForbidden) as caught:
+                    llm.call_llm("x", model="gemini-2.5-pro", service=service)
+                said = str(caught.exception.code)
+                for words in ("the command under test is free: a test", "nothing was sent and nothing was paid",
+                              "a mistake in the code"):
+                    self.assertIn(words, said)
+            with self.assertRaises(llm.ModelCallForbidden):
+                llm.litellm_post("http://x.invalid/chat/completions", {}, {}, 5)   # the helpers' direct requests too
+            self.assertFalse(issubclass(llm.ModelCallForbidden, Exception))         # no `except Exception` swallows it
+        self.assertEqual((posts, asked), ([], []))
+        # near miss: allowed again (the tests' reset), the same call is sent
+        llm.allow_model_calls()
+        self.calls()
+        self.assertEqual(llm.call_llm(llm.TEST_PROMPT, model="gemini-2.5-pro", service="litellm").strip()[:1], "{")
+
+    def test_every_free_command_forbids_first(self):
+        """Each command documented as free calls llm.forbid_model_calls before anything else it does (the listing of
+        py helpers/models.py: before listing; py helpers/second_opinion.py: first thing when --apply true)."""
+        import ast
+        for rel, where in (("helpers/compare_runs.py", "main"), ("helpers/partial_pairs.py", "main"),
+                           ("helpers/review_page.py", "main"), ("helpers/models.py", "if not args.wanted"),
+                           ("helpers/second_opinion.py", "if settings['apply']")):
+            with self.subTest(command=rel):
+                tree = ast.parse((support.ROOT / rel).read_text(encoding="utf-8"))
+                main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+                body = main.body
+                if where != "main":
+                    body = next(n for n in ast.walk(main) if isinstance(n, ast.If)
+                                and ast.unparse(n.test) == where.removeprefix("if ")).body
+                calls = [ast.unparse(s.value.func) for s in body if isinstance(s, ast.Expr) and isinstance(s.value, ast.Call)]
+                first = [ast.unparse(s) for s in body[:2]]
+                self.assertIn("llm.forbid_model_calls", calls, rel)
+                self.assertTrue(any("llm.forbid_model_calls" in s for s in first), (rel, first))
+
+    def test_steps_that_cost_nothing_never_import_the_model_client(self):
+        """Steps 010, 020 and 030 say they make no model calls: none of their code imports common/common_helpers/llm.py
+        (nor anything that sends requests to a model), so none can."""
+        import ast
+        for step_dir in ("010_harvest", "020_clean", "030_split"):
+            for path in sorted((support.ROOT / step_dir).rglob("*.py")):
+                with self.subTest(file=path.relative_to(support.ROOT).as_posix()):
+                    tree = ast.parse(path.read_text(encoding="utf-8"))
+                    names = {a.name for n in ast.walk(tree) if isinstance(n, (ast.Import, ast.ImportFrom)) for a in n.names}
+                    modules = {n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
+                    self.assertNotIn("llm", names)
+                    self.assertFalse(any(m.endswith("llm") or m.endswith("cache") for m in modules | names), names)
+
+    def test_the_count_to_pay_is_in_the_question(self):
+        questions = []
+        with mock.patch.object(llm, "confirm", lambda q, *a, **k: questions.append(q)):
+            calls = self.calls(confirm_paid_calls=True)
+            self.ask(calls, ["a", "b"])
+            self.assertEqual(len(questions), 1)
+            self.assertIn("2 model call(s) to pay for, and 1 test call first", questions[0])
+            # near misses: every answer in the cache: no question at all; one new piece: the question says 1
+            calls = self.calls(confirm_paid_calls=True)
+            self.ask(calls, ["a", "b"])
+            self.assertEqual(len(questions), 1)
+            calls = self.calls(confirm_paid_calls=True)
+            self.ask(calls, ["a", "b", "c"])
+            self.assertIn("1 model call(s) to pay for, and 1 test call first", questions[1])
+
 if __name__ == "__main__":
     unittest.main()

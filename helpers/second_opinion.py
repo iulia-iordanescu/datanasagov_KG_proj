@@ -14,20 +14,27 @@ its own, cache keys of their own), and combines them: each ground truth triple f
 facts the ground truth lacks, the union over the repeats, each with the repeats that proposed it. The ground truth is never
 changed:
 
-    py helpers/second_opinion.py                       draft every finished record in 3 repeats (asks once before paying), match, report
-    py helpers/second_opinion.py --apply true          the same, and record what was found in annotations/second_opinion.csv
+    py helpers/second_opinion.py                       draft every finished record in 3 repeats (paid: asks once before paying), match, report
+    py helpers/second_opinion.py --apply true          free: match the drafts already saved against the ground truth as it is now,
+                                                       and record what was found in annotations/second_opinion.csv
     py helpers/second_opinion.py --repeats <n>         another number of repeats
     py helpers/second_opinion.py --ids <id>,<id>       only these finished records
     py helpers/second_opinion.py --model <name>        another model (the default: SECOND_OPINION_MODEL, below)
 
-It runs in the frame every step runs in (common/common_helpers/step.py, run_step): its run id, log, report and
-manifest (the model, its settings, the prompts' fingerprints), and the answers cached in its own output folder, so a
-rerun with the same repeats pays nothing. It writes no drafted batch, and nothing in annotations/ unless --apply true,
-which writes only annotations/second_opinion.csv (common/common_helpers/second_opinion.py: for each ground truth
-triple and model, in how many repeats it was found) and annotations/second_opinion_candidates.csv (the draft's facts
-the ground truth lacks, tuning records only, each with an empty column decision for the reviewer; a rerun keeps
-every decision already filled). Step 070 then reports recall and partial F1 for the ground truth
-triples found in at least one repeat and for those found in none, and how many were found in 0, 1, ..., N repeats.
+Two jobs, kept apart. DRAFTING (without --apply true) is the only one that calls a model: it runs in the frame every
+step runs in (common/common_helpers/step.py, run_step): its run id, log, report and manifest (the model, its
+settings, the prompts' fingerprints), the answers cached in its own output folder, and it asks before its first paid
+call, showing how many calls it will pay for. It saves each record's draft per repeat in
+saved_drafts/<model>.json, in its output folder. APPLYING (--apply true) calls no model, ever (llm.forbid_model_calls
+guarantees it): it builds no prompt and never reads the answer cache; it matches the saved drafts of the model and
+repeats asked against the ground truth as it is now, so a ground truth changed since drafting costs nothing to apply
+again. With no saved drafts for them, it stops, saying which drafting command to run (paid). Drafting writes nothing
+in annotations/; applying writes only annotations/second_opinion.csv (common/common_helpers/second_opinion.py: for
+each ground truth triple and model, in how many repeats it was found) and annotations/second_opinion_candidates.csv
+(the draft's facts the ground truth lacks, tuning records only, each with an empty column decision for the reviewer;
+a rerun keeps every decision already filled). Neither writes a drafted batch. Step 070 then reports recall and
+partial F1 for the ground truth triples found in at least one repeat and for those found in none, and how many were
+found in 0, 1, ..., N repeats.
 
 Held-out records are drafted too (so step 070 can group their triples), but the draft's facts the ground truth lacks
 are listed, for review, for TUNING records only: reviewing a held-out record's would let it shape the ground truth
@@ -36,8 +43,9 @@ and the rules (annotations/guidelines.md, Before you start). For held-out record
 Reads:   records.jsonl (020), splits.json (030), annotations/ground_truth_schema.txt, annotations/ground_truth/
 Writes:  second_opinion_triples.csv (every repeat's draft, in a drafted batch's columns and the column repeat),
          second_opinion_matches.csv (each ground truth triple with the repeats that found it; the draft's facts the
-         ground truth lacks, tuning records only), second_opinion_details.json; with --apply true,
-         annotations/second_opinion.csv and annotations/second_opinion_candidates.csv
+         ground truth lacks, tuning records only), second_opinion_details.json; drafting also
+         saved_drafts/<model>.json (the drafts applying reads); with --apply true, annotations/second_opinion.csv and
+         annotations/second_opinion_candidates.csv
 Details: helpers/second_opinion.md
 """
 from __future__ import annotations
@@ -53,7 +61,7 @@ sys.path.insert(0, str(ROOT))                                                  #
 
 from common import audit, dropped, extraction, llm                            # noqa: E402
 from common.audit import ORIGIN_COLUMN, check_origins, log                    # noqa: E402
-from common.files import write_csv, write_json                                # noqa: E402
+from common.files import read_json, write_csv, write_json                     # noqa: E402
 from common.ground_truth import DRAFTED_BY, EVALUABLE, HELD_OUT, TO_FIX, TUNING  # noqa: E402
 from common.records_io import NOT_IN_CATALOG, WITHOUT_TEXT, WITHOUT_TEXT_TO_DO, has_text, read_ids  # noqa: E402
 from common.report import cell, model_calls, named                            # noqa: E402
@@ -92,7 +100,7 @@ SETTINGS = {
     "thinking":           "medium",  # how much a model that thinks may think: low, medium, high, or model_default (050's setting)
     "repeats":            REPEATS,  # how many times each record is drafted: repeats 1, 2, ..., N, each with answers of its own
     "confirm_paid_calls": True,  # stop and ask before the first model call; false for unattended runs
-    "apply":              False,  # also write annotations/second_opinion.csv and second_opinion_candidates.csv (the only writes to annotations/)
+    "apply":              False,  # true: no drafting, no model call: match the saved drafts and write annotations/second_opinion.csv and second_opinion_candidates.csv (the only writes to annotations/)
 }
 
 #: This helper's own settings' rules (common.step.Spec); the shared ones come with check_settings.
@@ -117,6 +125,9 @@ pairing = _load_pairing()
 DRAFT_NAME = "second_opinion_triples.csv"
 MATCHES_NAME = "second_opinion_matches.csv"
 DETAILS_NAME = "second_opinion_details.json"
+#: The folder, in the output folder, where drafting saves each model's drafts (saved_drafts/<model>.json), and the
+#: only place applying reads drafts from. Not one run's output file: every drafting run of that model adds to it.
+SAVED_DRAFTS = "saved_drafts"
 #: second_opinion_matches.csv's statuses: a ground truth triple found in at least one repeat, found in none; a draft
 #: triple that paired with no ground truth triple, in any repeat that proposed it.
 FOUND_STATUS, NOT_FOUND_STATUS, DRAFT_ONLY = FOUND, NOT_FOUND, "draft only"
@@ -194,12 +205,18 @@ def pick_records(inputs: dict, settings: dict, output: Path):
     chosen.items = records_stage.items_for(chosen, picked, settings["max_chars"])
     parts = collections.Counter(chosen.parts.get(r, "outside the pool") for r in picked)
     repeats = settings["repeats"]
-    chosen.notes.append(f"This run drafts {len(picked)} finished record(s) again ("
-                        + ", ".join(f"{n} {p}" for p, n in sorted(parts.items())) + f") with {settings['model']}, "
-                        f"in {repeats} repeat(s) (repeats 1 to {repeats}), to match the drafts against the ground truth. It "
-                        f"writes no drafted batch and changes nothing in annotations/"
-                        + (" except annotations/second_opinion.csv and annotations/second_opinion_candidates.csv "
-                           "(--apply true)." if settings["apply"] else "."))
+    which = ", ".join(f"{n} {p}" for p, n in sorted(parts.items()))
+    if settings["apply"]:
+        chosen.notes.append(f"This run applies the saved drafts of {settings['model']}, repeats 1 to {repeats}, of "
+                            f"{len(picked)} finished record(s) ({which}): it matches them against the ground truth as "
+                            f"it is now and calls no model. It writes no drafted batch and changes nothing in "
+                            f"annotations/ except annotations/second_opinion.csv and "
+                            f"annotations/second_opinion_candidates.csv.")
+    else:
+        chosen.notes.append(f"This run drafts {len(picked)} finished record(s) again ({which}) with {settings['model']}, "
+                            f"in {repeats} repeat(s) (repeats 1 to {repeats}), to match the drafts against the ground "
+                            f"truth. It writes no drafted batch and changes nothing in annotations/: to record what "
+                            f"it finds, run `{COMMAND} --apply true` afterwards (free: it calls no model).")
     if settings["apply"]:
         try:                                             # a mistake in the files stops here, before any paid call
             read_table(TABLE_PATH)
@@ -212,7 +229,8 @@ def pick_records(inputs: dict, settings: dict, output: Path):
         chosen.notes.append(f"{len(same)} ground truth triple(s) of these records were drafted by {settings['model']} "
                             f"itself (column {DRAFTED_BY}), so for them this isn't an independent second opinion. "
                             f"Nothing to do unless you want one: give another model with --model <name>.")
-    if repeats > 1 and str(settings["service"]).strip().lower() == "litellm" and not llm.answer_cache_bypassed():
+    if (repeats > 1 and not settings["apply"] and str(settings["service"]).strip().lower() == "litellm"
+            and not llm.answer_cache_bypassed()):
         chosen.notes.append(f"The {repeats} repeats may get the same answers: {llm.ANSWER_CACHE_SWITCH}=1 isn't set in .env, so "
                             f"LiteLLM may answer a repeated request from its own cache, and then the repeats are copies of "
                             f"one repeat. Set {llm.ANSWER_CACHE_SWITCH}=1 in .env (`py helpers/check_answer_cache.py` "
@@ -222,7 +240,8 @@ def pick_records(inputs: dict, settings: dict, output: Path):
         chosen.notes.append(f"{unfinished} record(s) of the ground truth aren't finished, so they get no second opinion "
                             f"until they are (finish them in `py helpers/annotate.py`, then run this again).")
     if not chosen.items:
-        raise Stop("Nothing to draft: no finished record can be drafted again, so no second opinion is made. "
+        raise Stop(("Nothing to apply: no finished record can be matched, so nothing is written. " if settings["apply"]
+                    else "Nothing to draft: no finished record can be drafted again, so no second opinion is made. ")
                    + " ".join(chosen.notes))
     return chosen
 
@@ -247,7 +266,8 @@ def draft_repeats(chosen, calls, settings) -> list:
             calls.paid.start(f"  the second opinion will draft {len(chosen.items)} finished record(s) again in {n} "
                              f"repeat(s): {n} repeat(s) × {pieces} text piece(s) = {n * pieces} model call(s), "
                              f"{n * pieces - sum(to_ask)} of them already in the cache, so {sum(to_ask)} to pay for ("
-                             + ", ".join(f"repeat {r}: {k}" for r, k in enumerate(to_ask, 1)) + ")")
+                             + ", ".join(f"repeat {r}: {k}" for r, k in enumerate(to_ask, 1)) + ")",
+                             to_pay=sum(to_ask))
         repeats = []
         for r in range(1, n + 1):
             llm.REPEAT = r
@@ -260,6 +280,106 @@ def draft_repeats(chosen, calls, settings) -> list:
     finally:
         llm.REPEAT = 1                                   # the repeats are this helper's; nothing after them is a repeat
     return repeats
+
+
+def saved_drafts_path(output: Path, model: str) -> Path:
+    """saved_drafts/<model>.json in the output folder: the one file per model that drafting adds to and applying reads
+    (one name for every spelling of the model's name: llm.model_name_key)."""
+    return Path(output) / SAVED_DRAFTS / f"{llm.model_name_key(model) or 'model'}.json"
+
+
+def save_drafts(chosen, repeats: list, settings: dict, output: Path) -> Path:
+    """After drafting: each drafted record's draft per repeat (050's checked rows, and the items its checks removed),
+    or why its model call failed, goes into saved_drafts/<model>.json, replacing what an earlier drafting run saved for
+    the same record and repeat; every other record and repeat is kept. With each, the run that drafted it, whose model,
+    service and settings are kept under "runs". Applying reads only this file."""
+    path = saved_drafts_path(output, llm.MODEL)
+    store = read_json(path) if path.is_file() else {}
+    store = {"model": llm.MODEL, "runs": store.get("runs", {}), "records": store.get("records", {})}
+    run_id = audit.current_run_id()
+    made = {**llm.describe(), "settings": {k: settings[k] for k in ("service", "model", "thinking", "max_chars")}}
+    made.pop("repeat", None)
+    store["runs"][run_id] = made
+    for item in chosen.items:
+        rid = item["id"]
+        saved = store["records"].setdefault(rid, {})
+        for repeat in repeats:
+            if rid in repeat.drafts.rows:
+                saved[str(repeat.number)] = {"run_id": run_id, "rows": repeat.drafts.rows[rid],
+                                             "removed": repeat.drafts.removed.get(rid, [])}
+            else:
+                saved[str(repeat.number)] = {"run_id": run_id, "failed": repeat.replies.failed.get(rid, "not drafted"),
+                                             "kind": repeat.replies.kinds.get(rid)}
+    used = {e["run_id"] for saved in store["records"].values() for e in saved.values()}
+    store["runs"] = {r: m for r, m in store["runs"].items() if r in used}
+    write_json(path, store)
+    log.info(f"  saved the drafts in {repo_path(path)}, for `{COMMAND} --apply true` (free: it calls no model)")
+    return path
+
+
+def draft_command(settings: dict, ids: list | None = None) -> str:
+    """The drafting command for the same model and repeats (and these ids), as messages show it."""
+    return (f"`{COMMAND}"
+            + ("" if llm.same_model_name(settings["model"], SECOND_OPINION_MODEL) else f" --model {settings['model']}")
+            + ("" if settings["repeats"] == REPEATS else f" --repeats {settings['repeats']}")
+            + (f" --ids {','.join(ids)}" if ids else "") + "`")
+
+
+#: How messages say the drafting command costs.
+PAID = ("(paid: it asks before paying, showing how many model calls it will pay for; answers already in its cache "
+        "cost nothing)")
+
+
+def saved_repeats(chosen, settings: dict, output: Path) -> tuple:
+    """Applying: the repeats 1 to `repeats` of the drafts saved for the model (saved_drafts/<model>.json), as drafting
+    left them, without any model call, prompt or cache: each record's saved rows matched against the ground truth as
+    it is now. A record is applied when each of the repeats 1 to `repeats` has a saved entry (a draft, or the failure
+    of its model call: the record is then matched on its other repeats, as drafting matched it); a record without
+    them is left out, named in a note with the drafting command (paid). Stop when no record has them. Returns (the
+    repeats, {run id: its model, service and settings} of the drafting runs whose drafts are applied)."""
+    n, model = settings["repeats"], str(settings["model"]).strip()
+    path = saved_drafts_path(output, model)
+    store = read_json(path) if path.is_file() else {}
+    saved_of = store.get("records", {})
+    wanted = [str(r) for r in range(1, n + 1)]
+    complete = [item for item in chosen.items if all(r in saved_of.get(item["id"], {}) for r in wanted)]
+    missing = [item["id"] for item in chosen.items if item not in complete]
+    if not complete:
+        what = (f"{repo_path(path)} doesn't exist" if not path.is_file() else
+                f"{repo_path(path)} has no record with every one of the repeats 1 to {n} saved")
+        raise Stop(f"Nothing to apply: no drafts of {model} are saved for repeats 1 to {n} of the records asked ({what}), "
+                   f"so nothing was matched and nothing written. Applying calls no model: it only matches drafts that "
+                   f"a drafting run saved. Draft them first with {draft_command(settings, read_ids(settings['ids']))} "
+                   f"{PAID}, then run `{COMMAND} --apply true"
+                   + ("" if llm.same_model_name(model, SECOND_OPINION_MODEL) else f" --model {model}")
+                   + ("" if n == REPEATS else f" --repeats {n}") + "` again.")
+    if missing:
+        chosen.notes.append(f"{len(missing)} finished record(s) have no saved drafts of {model} for every one of the "
+                            f"repeats 1 to {n}, so they aren't applied now (their rows in annotations/ stay as they "
+                            f"are): {named(missing)}. To apply them too, draft them with "
+                            f"{draft_command(settings, missing)} {PAID}, then apply again.")
+    chosen.items = complete
+    llm.MODEL = store.get("model") or model              # the name the drafting run used, for the rows written
+    repeats = [Repeat(r, extraction.Replies(), annotate.Drafts(), Matched()) for r in range(1, n + 1)]
+    runs = set()
+    for item in complete:
+        for repeat in repeats:
+            e = saved_of[item["id"]][str(repeat.number)]
+            runs.add(e["run_id"])
+            if "rows" in e:
+                repeat.drafts.rows[item["id"]] = e["rows"]
+                if e.get("removed"):
+                    repeat.drafts.removed[item["id"]] = e["removed"]
+            else:
+                repeat.replies.failed[item["id"]] = e.get("failed") or "not drafted"
+                if e.get("kind"):
+                    repeat.replies.kinds[item["id"]] = e["kind"]
+    for repeat in repeats:
+        log.info(f"  repeat {repeat.number} of {n} (saved)")
+        repeat.matched = match(chosen, repeat.drafts)
+    drafted_by = {r: store.get("runs", {}).get(r, {}) for r in sorted(runs)}
+    log.info(f"  applying the drafts of {llm.MODEL} saved in {repo_path(path)} by run(s) {', '.join(drafted_by)}")
+    return repeats, drafted_by
 
 
 # --------------------------------------------------------------------------
@@ -358,7 +478,7 @@ def combine(chosen, repeats: list, n: int) -> Combined:
 
 
 def apply(chosen, combined: Combined, settings: dict, path: Path = TABLE_PATH) -> dict | None:
-    """With --apply true: annotations/second_opinion.csv gets, for every record drafted this run, one row per ground
+    """With --apply true: annotations/second_opinion.csv gets, for every record applied this run, one row per ground
     truth triple for this run's model, with its repeats, found_in_repeats and found_exact_in_repeats (replacing that model's
     earlier row, keeping every other model's); rows of those records that match no ground truth triple any more are
     dropped; every other record's rows are kept as they are. Then the draft's facts the ground truth lacks go to the
@@ -399,7 +519,7 @@ def apply(chosen, combined: Combined, settings: dict, path: Path = TABLE_PATH) -
 
 
 def apply_candidates(chosen, combined: Combined, model: str, old: list, path: Path) -> dict:
-    """annotations/second_opinion_candidates.csv (old: its rows as read): for every TUNING record drafted this run,
+    """annotations/second_opinion_candidates.csv (old: its rows as read): for every TUNING record applied this run,
     this model's rows are replaced by its draft-only classed triples (the union over the repeats), each with the
     decision already filled for the same record and classed triple (by any model), else an empty one; a row of this
     model on those records with a decision filled whose classed triple this run no longer proposes is kept as it was,
@@ -466,8 +586,12 @@ def _left_out(repeats: list, items: list) -> list:
     return out
 
 
-def results(chosen, repeats: list, combined: Combined, applied, calls, settings, output) -> Results:
+def results(chosen, repeats: list, combined: Combined, applied, calls, settings, output, drafted_by=None,
+            saved=None) -> Results:
+    """The run's files and report. Drafting: calls is the run's Calls, saved the file the drafts were saved in.
+    Applying: calls is None (no model was called), drafted_by the drafting runs whose saved drafts were applied."""
     n = combined.repeats
+    applying = calls is None
     draft_path, matches_path, details_path = output / DRAFT_NAME, output / MATCHES_NAME, output / DETAILS_NAME
     left_out = _left_out(repeats, chosen.items)
     draft_rows = [{**{c: r.get(c, "") for c in annotate.GROUND_TRUTH_COLUMNS}, "all_facts_extracted": "0",
@@ -496,8 +620,13 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
                                "draft_only": len(e["draft_only"]) if e else None,
                                "removed": {repeat.number: repeat.drafts.removed.get(item["id"], []) for repeat in repeats
                                            if repeat.drafts.removed.get(item["id"])}})
-        made = {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings}
-        made.pop("repeat", None)
+        if applying:                                     # no model was called: the drafting runs say how it was
+            made = {"run_id": audit.current_run_id(), "model": llm.MODEL, "settings": settings, "model_calls": 0,
+                    "drafts_saved_by": drafted_by}
+        else:
+            made = {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings,
+                    "drafts_saved_in": repo_path(saved) if saved else None}
+            made.pop("repeat", None)
         made["repeats"] = [repeat.number for repeat in repeats]
         write_json(details_path, {
             "made": made, "chosen": chosen.how, "repeats": n, "records": per_record,
@@ -507,13 +636,25 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
         if applied:
             files += [TABLE_PATH, CANDIDATES_PATH]
         log.info(f"  wrote {DRAFT_NAME}, {MATCHES_NAME} and {DETAILS_NAME}")
+    if saved:
+        files.append(saved)
 
     warnings = list(chosen.notes)
     for repeat in repeats:
-        if repeat.replies.failed:
+        if repeat.replies.failed and not applying:
             warnings.append(f"Repeat {repeat.number} of {n}: " + extraction.failed_note(
                 repeat.replies, f"repeat {repeat.number} of the second opinion (its other repeats still count for it)"))
-    if not combined.per_record:
+    failed_saved = sorted({rid for repeat in repeats for rid in repeat.replies.failed}) if applying else []
+    if failed_saved:
+        warnings.append(f"{len(failed_saved)} record(s) had a model call fail in some repeats when they were drafted, so "
+                        f"each is matched on the repeats that drafted it (column repeats): "
+                        f"{named(failed_saved)}. To draft them again: {draft_command(settings, failed_saved)} {PAID}, "
+                        f"then apply again.")
+    if not combined.per_record and applying:
+        warnings.append(f"No record was matched, so nothing was written: the saved drafts of {llm.MODEL} hold only "
+                        f"failed model calls for the {len(chosen.items)} record(s). Draft them again with "
+                        f"{draft_command(settings)} {PAID}, then apply again.")
+    elif not combined.per_record:
         warnings.append(f"No record was drafted, so nothing was matched and nothing written: the model calls for all "
                         f"{len(chosen.items)} record(s) failed in every repeat (the warnings before this one say why). "
                         f"Fix the cause if it's yours, then run `py helpers/second_opinion.py` again.")
@@ -555,13 +696,19 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
     def share(k: int, of: int) -> str:
         return f"{k} of {of}" + (f" ({100 * k / of:.0f}%)" if of else "")
 
+    if applying:
+        how = (f"{len(combined.per_record)} finished record(s) ({chosen.how}): the drafts of `{llm.MODEL}` saved by the "
+               f"drafting run(s) " + ", ".join(f"`{r}`" for r in (drafted_by or {})) + f", repeats 1 to {n}, applied "
+               f"without any model call: no prompt was built and no cached answer read. Each repeat's saved draft "
+               f"matched against the record's ground truth triples as they are now")
+    else:
+        how = (f"{len(combined.per_record)} finished record(s) drafted again by `{llm.MODEL}` ({chosen.how}) in {n} "
+               f"repeat(s), each with answers of its own (repeats 1 to {n}), with step 050's prompt, schema view, "
+               f"parsing and checks; each repeat's draft matched against the record's ground truth triples")
     lines = ["### What this run worked on", "",
-             f"{len(combined.per_record)} finished record(s) drafted again by `{llm.MODEL}` ({chosen.how}) in {n} "
-             f"repeat(s), each with answers of its own (repeats 1 to {n}), with step 050's prompt, schema view, "
-             f"parsing and checks; each repeat's draft matched against the record's ground truth triples with step 070's "
-             f"pairing (exact, then partial; no translation: both use the ground truth schema; no partial pair review "
-             f"applies). A ground truth triple is *found* when at least one repeat paired it, *found in none* otherwise. "
-             f"The ground truth is unchanged.", "",
+             how + f" with step 070's pairing (exact, then partial; no translation: both use the ground truth schema; "
+             f"no partial pair review applies). A ground truth triple is *found* when at least one repeat paired it, "
+             f"*found in none* otherwise. The ground truth is unchanged.", "",
              "| Pool position | Part | Record | Repeats that drafted it | Ground truth triples | Found in at least one repeat "
              "| Found in every repeat | Found in none | Draft only (over the repeats) |",
              "|---:|---|---|---:|---:|---:|---:|---:|---:|"]
@@ -642,30 +789,48 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
                   f"(helpers/second_opinion.md, *The draft's facts to review*). The {c['held_out_not_written']} of the "
                   f"held-out records are not written. Commit both files.", ""]
     else:
-        lines += ["Nothing written to `annotations/`. To record which ground truth triples this second opinion found "
-                  "(`annotations/second_opinion.csv`, read by step 070), and the draft's facts the ground truth lacks "
-                  "for review (`annotations/second_opinion_candidates.csv`), run `py helpers/second_opinion.py --apply "
-                  "true` with the same repeats: it pays nothing for the answers already cached.", ""]
+        lines += [f"Nothing written to `annotations/`: drafting never writes there. The drafts are saved in "
+                  f"`{repo_path(saved) if saved else SAVED_DRAFTS + '/'}`. To record which ground truth triples this "
+                  f"second opinion found (`annotations/second_opinion.csv`, read by step 070), and the draft's facts the "
+                  f"ground truth lacks for review (`annotations/second_opinion_candidates.csv`), run "
+                  f"`{COMMAND} --apply true` with the same model and repeats: free, it calls no model, and it matches "
+                  f"these saved drafts against the ground truth as it is then.", ""]
     lines += dropped.section(left_out, chosen.items, "at least one repeat (each record is matched on the repeats that "
                              "drafted it)", repo_path(details_path) if files else None)
-    lines += dropped.reasks_lines(llm.REASKS)
-    lines += model_calls([(f"draft classed triples, repeat {repeat.number} of {n} (one call per text piece; step 050's "
-                           f"prompt)", repeat.replies.calls, repeat.replies.reused) for repeat in repeats],
-                         calls.paid.test_calls, llm.model_label())
+    if applying:
+        lines += ["### Model calls", "", "None: applying reads the saved drafts and calls no model (`--apply true` "
+                  "stops before any request could leave). The drafting run(s) whose drafts were applied:", "",
+                  "| Run | Model | Service | Settings |", "|---|---|---|---|"]
+        lines += [f"| `{r}` | {cell(str(m.get('model', '')))} | {cell(str(m.get('service', '')))} | "
+                  + cell(", ".join(f"{k} {v}" for k, v in (m.get("settings") or {}).items() if k not in ("model", "service")))
+                  + " |" for r, m in (drafted_by or {}).items()]
+        lines.append("")
+    else:
+        lines += dropped.reasks_lines(llm.REASKS)
+        lines += model_calls([(f"draft classed triples, repeat {repeat.number} of {n} (one call per text piece; step "
+                               f"050's prompt)", repeat.replies.calls, repeat.replies.reused) for repeat in repeats],
+                             calls.paid.test_calls, llm.model_label())
     headline = {"records drafted again": len(combined.per_record), "repeats": n, "ground truth triples": total["gt"],
                 "found in at least one repeat": total["found"], "found in every repeat": total["every"],
                 "draft's facts the ground truth lacks (tuning, over the repeats)": draft_only[TUNING],
-                **dropped.reasks_headline(llm.REASKS)}
+                **({"model calls": 0} if applying else dropped.reasks_headline(llm.REASKS))}
     return Results(files=files, headline=headline, details="\n".join(lines), warnings=warnings)
 
 
 def main(inputs, settings, output):
+    if settings["apply"]:                               # applying: free, guaranteed by code (no request can leave)
+        llm.forbid_model_calls(f"`{COMMAND} --apply true` is free: it matches the drafts already saved")
+        chosen   = pick_records(inputs, settings, output)    # code: every finished record (or the ids given)
+        repeats, drafted_by = saved_repeats(chosen, settings, output)   # code: the saved drafts, matched with 070's pairing
+        combined = combine(chosen, repeats, settings["repeats"])   # code: each ground truth triple found in k of the repeats
+        applied  = apply(chosen, combined, settings)         # code: annotations/second_opinion.csv and the candidates file
+        return results(chosen, repeats, combined, applied, None, settings, output, drafted_by=drafted_by)
     chosen   = pick_records(inputs, settings, output)   # code: every finished record (or the ids given), 050's view of the schema
     calls    = paid_calls(chosen, settings, output)     # code: asks once before paying, for every repeat; keeps every answer in cache/
     repeats  = draft_repeats(chosen, calls, settings)   # LLM + code: each repeat's facts with 050's prompt, parsing and checks; 070's pairing
     combined = combine(chosen, repeats, settings["repeats"])   # code: each ground truth triple found in k of the repeats; the draft-only union
-    applied  = apply(chosen, combined, settings)        # code: annotations/second_opinion.csv, only with --apply true
-    return results(chosen, repeats, combined, applied, calls, settings, output)
+    saved    = save_drafts(chosen, repeats, settings, output)  # code: saved_drafts/<model>.json, what applying reads
+    return results(chosen, repeats, combined, None, calls, settings, output, saved=saved)
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 
 
 import pairing                                                                 # noqa: E402
 from moves import COMPARED_NAME, _triple                                       # noqa: E402
-from common import audit, console                                              # noqa: E402
+from common import audit, console, llm                                              # noqa: E402
 from common.files import locked, read_csv, read_csv_table, read_json, write_csv  # noqa: E402
 from common.ground_truth import TUNING                                         # noqa: E402
 from common.latest import latest_by_key                                        # noqa: E402
@@ -298,6 +298,7 @@ def delete_stale(run_ids: list, output: Path = OUTPUT, reviews_path: Path = REVI
 
 def main(argv=None) -> int:
     console.setup()                                   # what the console can't show is replaced, never a crash
+    llm.forbid_model_calls(f"{COMMAND} is free: it reads 070's saved pairs and the verdict files")
     ap = argparse.ArgumentParser(prog=COMMAND, description=__doc__.split("\n\n")[1])
     ap.add_argument("--runs", nargs="+", metavar="RUN_ID", help="070's run ids: collect their partial pairs with no verdict")
     ap.add_argument("--apply", choices=("true", "false"), default="false",

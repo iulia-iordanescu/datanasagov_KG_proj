@@ -357,7 +357,7 @@ def ask(items: list, calls, settings: dict) -> dict:
     by_task = collections.Counter(item["task"] for _, item in todo.values())
     calls.paid.start(f"  the second judge will judge {len(todo)} row(s) ("
                      + ", ".join(f"{n} {t}" for t, n in by_task.items()) + f"), one model call each; {len(answers)} "
-                     f"answered from the cache")
+                     f"answered from the cache", to_pay=len(todo))
     before = calls.paid.made
     calls.paid.expect(len(todo))
 

@@ -544,10 +544,10 @@ class WholeRun(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.repo)
 
-    def run_helper(self, *args, expect=0, counted=True):
+    def run_helper(self, *args, expect=0, counted=True, confirm="false"):
         env = {k: v for k, v in os.environ.items() if k != llm.ANSWER_CACHE_SWITCH}
         r = subprocess.run([sys.executable, str(HERE / "stand_in_run.py"), str(self.repo), "helpers/second_opinion.py",
-                            "--confirm_paid_calls", "false", *args],
+                            "--confirm_paid_calls", confirm, *args],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
                            env={**env, "KG_STAND_IN_VARY": "1"})
         out = r.stdout + r.stderr
@@ -662,6 +662,62 @@ class WholeRun(unittest.TestCase):
             return c["repeats"], c["found_in_repeats"], c["found_exact_in_repeats"]
         self.assertEqual((by("rec-1", "Aqua"), by("rec-1", "Terra"), by("rec-2", "Aqua")), ((3, 2, 2), (3, 1, 1), (3, 2, 2)))
         self.assertEqual(list((self.repo / "outputs").rglob("drafted_triples_batch*")), [])   # never a drafted batch
+
+        # Applying is free whatever changed since drafting (found on 2026-11-02: a ground truth change altered the
+        # drafting prompt's schema view, so an apply that drafted again paid for every call). A new ground truth triple
+        # and a new pattern in the schema: the drafting prompt is no longer the one cached, yet applying sends nothing,
+        # reads no cached answer, and matches the saved drafts against the ground truth as it is now.
+        gt_file = self.repo / "annotations" / "ground_truth" / "batch_001.csv"
+        gt_before = gt_file.read_bytes()
+        schema_file = self.repo / "annotations" / "ground_truth_schema.txt"
+        schema_before = schema_file.read_bytes()
+        rows = read_csv(gt_file)
+        rows.insert(3, gt_row("rec-1", triple("MODIS", "Instrument", "ABOARD", "Moon", "Spacecraft", "MODIS aboard Aqua")))
+        write_csv(gt_file, FILE_COLUMNS, rows)
+        schema_file.write_text(schema_before.decode("utf-8") + "\nORBITS               goes around\n"
+                               "                     Spacecraft -> Spacecraft\n", encoding="utf-8")
+        cache = {p: p.read_bytes() for p in (self.folder / "cache").rglob("*") if p.is_file()}
+        saved = self.folder / "saved_drafts" / "gemini-4-argon.json"
+        saved_bytes = saved.read_bytes()
+        out, prompts = self.run_helper("--apply", "true")
+        self.assertEqual(prompts, 0)
+        self.assertNotIn("test call", out)
+        self.assertEqual({p: p.read_bytes() for p in (self.folder / "cache").rglob("*") if p.is_file()}, cache)
+        self.assertEqual(saved.read_bytes(), saved_bytes)                         # applying never changes the saved drafts
+        table = read_table(self.repo / "annotations" / "second_opinion.csv")
+        moon = table[key_of("rec-1", triple("MODIS", "Instrument", "ABOARD", "Moon", "Spacecraft"))]["by"]["gemini-4-argon"]
+        self.assertEqual((moon["repeats"], moon["found_in_repeats"]), (3, 3))   # the new triple, found by the saved drafts
+        report = self.report()
+        self.assertIn("applied without any model call", report)
+        self.assertIn("None: applying reads the saved drafts and calls no model", report)
+        self.assertNotIn("| the one-line test", report)
+        # the drafting command, by contrast, would pay now, and asks first with the count to pay before Enter
+        # (stdin closed: the question is answered by nobody, so it stops having sent nothing)
+        out = self.run_helper(expect=2, counted=False, confirm="true")
+        self.assertIn("6 model call(s) to pay for, and 1 test call first", out)
+        self.assertIn("so 6 to pay for (repeat 1: 2, repeat 2: 2, repeat 3: 2)", out)
+        self.assertIn("Cancelled", out)
+        self.assertIn("stand-in model answered 0 prompt(s)", out)
+        gt_file.write_bytes(gt_before)
+        schema_file.write_bytes(schema_before)
+
+        # near misses: drafts saved for another model, or for fewer repeats than asked, are not applied; with none
+        # usable it stops, naming the drafting command (paid), and writes nothing
+        table_bytes = (self.repo / "annotations" / "second_opinion.csv").read_bytes()
+        out = self.run_helper("--apply", "true", "--model", "gemini-3.1-pro-preview", expect=2, counted=False)
+        self.assertIn("Nothing to apply: no drafts of gemini-3.1-pro-preview are saved", out)
+        self.assertIn("`py helpers/second_opinion.py --model gemini-3.1-pro-preview` (paid", out)
+        self.assertIn("stand-in model answered 0 prompt(s)", out)
+        out = self.run_helper("--apply", "true", "--repeats", "4", expect=2, counted=False)
+        self.assertIn("no record with every one of the repeats 1 to 4 saved", out)
+        self.assertIn("`py helpers/second_opinion.py --repeats 4` (paid", out)
+        self.assertEqual((self.repo / "annotations" / "second_opinion.csv").read_bytes(), table_bytes)
+        # fewer repeats than saved: repeats 1 and 2 of the saved drafts, still no call
+        _, prompts = self.run_helper("--apply", "true", "--repeats", "2")
+        self.assertEqual(prompts, 0)
+        aqua = read_table(self.repo / "annotations" / "second_opinion.csv")[
+            key_of("rec-1", triple("MODIS", "Instrument", "ABOARD", "Aqua", "Spacecraft"))]["by"]["gemini-4-argon"]
+        self.assertEqual((aqua["repeats"], aqua["found_in_repeats"]), (2, 1))  # repeat 2 leaves it out
 
 
 class ModelSettings(unittest.TestCase):

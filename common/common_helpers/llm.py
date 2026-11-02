@@ -19,6 +19,7 @@ It holds, in this order:
         call_llm          send a prompt, get the reply text; retries rate
                           limits and server errors with backoff; a used-up
                           budget (budget_exhausted) stops the whole run
+        forbid_model_calls  a free command's guarantee: from then on, no request is sent
         try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         classify_reply    what a reply is (complete, cut off, refused, empty, malformed), judged by
                           the service's finish reason AND the answer's content, the same for both
@@ -511,6 +512,38 @@ def stop_if_budget_gone(service: str, status: int | None = None, text=None, said
         raise BudgetExhausted(gone.code, gone.status, gone.body, answered)
 
 
+class ModelCallForbidden(SystemExit):
+    """A model call in a run that promised to call none (forbid_model_calls). A SystemExit, like BudgetExhausted, so
+    no `except Exception` takes it for one failed call: the run stops at once, before the request is sent."""
+
+
+#: Why this process may send no model call (forbid_model_calls), or None: model calls are allowed.
+FORBIDDEN = {"why": None}
+
+
+def forbid_model_calls(why: str) -> None:
+    """From now on, this process sends no model call: call_llm and litellm_post stop the run (ModelCallForbidden)
+    before a request leaves. Called first by every command whose docs say it is free (py helpers/second_opinion.py
+    --apply true, py helpers/partial_pairs.py, py helpers/compare_runs.py, py helpers/review_page.py, the listing of
+    py helpers/models.py), so "free" is guaranteed by code, not only by how the command is written. why: the command
+    and why it is free, for the message."""
+    FORBIDDEN["why"] = why
+
+
+def allow_model_calls() -> None:
+    """Undo forbid_model_calls (only the tests, which run several commands in one process)."""
+    FORBIDDEN["why"] = None
+
+
+def stop_if_forbidden() -> None:
+    """Raise ModelCallForbidden when this process may send no model call (forbid_model_calls); else nothing."""
+    why = FORBIDDEN["why"]
+    if why is not None:
+        raise ModelCallForbidden(f"A model call was about to be sent, but this command calls no model ({why}), so "
+                                 f"the run stopped before the request left: nothing was sent and nothing was paid. "
+                                 f"This is a mistake in the code, not in your files: report it with this message.")
+
+
 class CutOff(ApiError):
     """The answer was cut off: at the longest length allowed (MAX_ANSWER_TOKENS, which LiteLLM takes), or, where the
     service takes no limit and reports no finish reason (Ask Sage), at the model's own limit, seen in the answer
@@ -836,6 +869,7 @@ def litellm_post(url, headers, json, timeout):
     """One LiteLLM request, as every LiteLLM request is sent (the steps', and those of py helpers/check_effort.py and
     py helpers/check_answer_cache.py): none after a used-up budget, and an answer saying the budget is used up stops
     the run (stop_if_budget_gone)."""
+    stop_if_forbidden()                                     # a free command sends nothing
     stop_if_budget_gone("litellm")
     resp = _post(url, headers=headers, json=json, timeout=timeout)
     if resp.status_code >= 400:
@@ -924,6 +958,7 @@ def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=
     ask = _ask_litellm if service == "litellm" else _ask_asksage
     began, _last.reply = time.monotonic(), {}
     for attempt in range(attempts):
+        stop_if_forbidden()                                 # a free command sends nothing (forbid_model_calls)
         stop_if_budget_gone(service)                        # none after a used-up budget, retries included
         with _requests_lock:
             REQUESTS["sent"] += 1
@@ -1218,7 +1253,10 @@ class PaidCalls:
         self.stopped = False
         self._batch = {"total": None, "done": 0, "failed": 0, "cut": 0, "began": 0.0, "shown": None}
 
-    def start(self, plan: str) -> None:
+    def start(self, plan: str, to_pay: int | None = None) -> None:
+        """plan: what the run will ask, in words; to_pay: how many model calls it will pay for (those the cache can't
+        answer), shown in the question itself, so the count is read before Enter. None only where a stage can't
+        count them before its first answer."""
         if self.started:
             return
         log.info(plan)
@@ -1226,10 +1264,12 @@ class PaidCalls:
                  + (f", thinking {thinking_sent()}" if thinking_sent() else ""))
         if self.notes:
             show_warnings(self.step, self.notes)
+        count = (f"{to_pay:,} model call(s) to pay for, and 1 test call first" if to_pay is not None
+                 else "1 test call first")
         if self.confirm:
-            confirm("Press Enter to start (1 test call first), or anything else to cancel."
+            confirm(f"Press Enter to start ({count}), or anything else to cancel."
                     if not self.notes else
-                    "Press Enter to go ahead anyway (1 test call first), or anything else to cancel.")
+                    f"Press Enter to go ahead anyway ({count}), or anything else to cancel.")
         again = f"`{self.command}`" if self.command else "the step"
         service = SERVICES.get(SERVICE, SERVICE)
         try:

@@ -305,7 +305,8 @@ def ask_model(items: list, prompt_for, calls, workers: int, stage: str, plan: st
     if todo:
         n_records = len({rid for rid, _ in todo})
         calls.paid.start(f"  {plan}: {len(todo)} model call(s) for {n_records} record(s)"
-                         + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""))
+                         + (f", {len(answers)} text piece(s) answered from the cache" if answers else ""),
+                         to_pay=len(todo))
         before = calls.paid.made
         calls.paid.expect(len(todo))
 

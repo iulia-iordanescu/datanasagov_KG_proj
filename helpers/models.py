@@ -60,6 +60,8 @@ def main() -> None:
     p.add_argument("--try", dest="wanted", nargs="+", metavar="NAME",
                    help="model names to try (one tiny paid call each), or all")
     args = p.parse_args()
+    if not args.wanted:                               # listing is free: never a model call
+        llm.forbid_model_calls("py helpers/models.py without --try is free: listing is not a model call")
     names = llm.list_models(args.service)
     where = llm.SERVICES[args.service]
     if not args.wanted:
