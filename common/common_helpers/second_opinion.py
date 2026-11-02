@@ -18,8 +18,9 @@ model that drafted it, keyed by the record's id and the classed triple as the gr
 
 A ground truth triple's GROUP by the second opinion (groups_of): FOUND when a model found it in at least one repeat,
 NOT_FOUND when its record was drafted and no model found it in any repeat, NOT_CHECKED when the triple has no row (the
-record wasn't drafted, or the triple was reworded since). Step 070 reports recall and partial F1 for each group, and
-how many triples were found in 0, 1, ..., N repeats (repeats_of). The file starts with its header only;
+record wasn't drafted, or the triple was reworded since). Step 070 reports for each group recall, the exact share,
+entity-class accuracy, attributed precision and F1 (070_evaluate/070_evaluate.md, *By the second opinion*), and how
+many triples were found in 0, 1, ..., N repeats (repeats_of). The file starts with its header only;
 `py helpers/second_opinion.py --apply true` writes it, and nothing else does.
 
     from common.second_opinion import read_table, groups_of, repeats_of, write_table

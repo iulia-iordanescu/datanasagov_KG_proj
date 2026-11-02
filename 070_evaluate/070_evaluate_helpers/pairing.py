@@ -74,6 +74,8 @@ import re
 from common.audit import log
 from common.partial_reviews import NOT_SAME, pair_key
 from common.text_match import instance_key, norm_text, quantity_words
+from common.ground_truth import DRAFTED_BY
+from common.llm import model_name_key
 from common.triples_io import SYMMETRIC_PREDICATES, component_class_key, is_symmetric as _symmetric, is_undecided
 
 LEVELS = ("exact", "partial")
@@ -364,6 +366,42 @@ def pair_triples(gt: list, ex: list) -> list:
 #: Each ground truth triple's group by the second opinion (common/common_helpers/second_opinion.py, GROUPS), under
 #: record["second_opinion"]; a record without that key has every ground truth triple in NOT_CHECKED.
 SECOND_OPINION_GROUPS = ("found", "not found", "not checked")
+#: The ground truth's provenance groupings (070_evaluate/070_evaluate.md, *Shared-model bias*): each ground truth
+#: triple falls in one group of each. "second_opinion": its group by the second opinion (SECOND_OPINION_GROUPS);
+#: "drafted_by": who drafted its row (the ground truth's column drafted_by), every spelling of one model name in one
+#: group (common.llm.model_name_key), an empty cell (a row a person wrote) in DRAFTED_BY_PERSON.
+GROUPINGS = ("second_opinion", "drafted_by")
+DRAFTED_BY_PERSON = ""
+#: The counts kept for each group (record["compared"]["groups"][grouping][group]): its ground truth triples, and at
+#: each level its pairs and strict pairs.
+GROUP_COUNTS = ("gt", *(f"{level}_{k}" for level in ("exact", "partial") for k in ("pairs", "strict_pairs")))
+
+
+def provenance_groups(record: dict) -> dict:
+    """Each ground truth triple's group in each of GROUPINGS, in order: {grouping: [group]}. A record without
+    "second_opinion" has every triple not checked; a wrong second_opinion list raises ValueError."""
+    gt = record["gt"]
+    second = record.get("second_opinion") or [SECOND_OPINION_GROUPS[-1]] * len(gt)
+    if len(second) != len(gt) or any(g not in SECOND_OPINION_GROUPS for g in second):
+        raise ValueError(f"record {record['id']}: second_opinion must give one of {SECOND_OPINION_GROUPS} for each of "
+                         f"its {len(gt)} ground truth triples, got {second!r}")
+    drafted = [model_name_key(str(g.get(DRAFTED_BY) or "")) or DRAFTED_BY_PERSON for g in gt]
+    return {"second_opinion": list(second), "drafted_by": drafted}
+
+
+def group_counts(record: dict, groups: list, pairs: list, strict: set) -> dict:
+    """{group: Counter of GROUP_COUNTS} for one grouping: groups gives each ground truth triple's group; pairs is
+    [(gt index, other index, level)], strict the set of (gt index, other index) that are strict pairs. Every group
+    that has a ground truth triple of the record is a key."""
+    out = {g: collections.Counter({k: 0 for k in GROUP_COUNTS}) for g in groups}
+    for g in groups:
+        out[g]["gt"] += 1
+    for gi, ei, lv in pairs:
+        for level in LEVELS:
+            if level == "partial" or lv == "exact":
+                out[groups[gi]][f"{level}_pairs"] += 1
+                out[groups[gi]][f"{level}_strict_pairs"] += (gi, ei) in strict
+    return out
 
 
 def compare_record(record: dict, translation, reviews: dict | None = None) -> dict:
@@ -397,10 +435,8 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     counts = {"extracted": len(ex), "untranslatable": sum(untranslatable), "gt": len(gt), "within_reach": sum(reach),
               "within_strict_reach": sum(strict_reach),
               "occurrences_multiplicity_above_1": sum(m > 1 for m in multiplicity)}
-    groups = record.get("second_opinion") or [SECOND_OPINION_GROUPS[-1]] * len(gt)
-    if len(groups) != len(gt) or any(g not in SECOND_OPINION_GROUPS for g in groups):
-        raise ValueError(f"record {record['id']}: second_opinion must give one of {SECOND_OPINION_GROUPS} for each of "
-                         f"its {len(gt)} ground truth triples, got {groups!r}")
+    provenance = provenance_groups(record)
+    strict_all = {(gi, ei) for gi, ei, _ in pairs if classes_agree(gt[gi], paired(gi, ei))}
     for level in LEVELS:
         used = [(gi, ei) for gi, ei, lv in pairs if level == "partial" or lv == "exact"]
         counts[f"{level}_pairs"] = len(used)
@@ -413,12 +449,7 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
         counts[f"{level}_strict_pairs_within_strict_reach"] = sum(strict_reach[gi] for gi, _ in strict)
         # occurrences paired, at this level, with a fact that waits on an expert: out of precision's denominator
         counts[f"{level}_pending_pairs"] = sum(1 for _, _, lv in pending_pairs if level == "partial" or lv == "exact")
-        # the pairs whose ground truth triple is in each group by the second opinion (SECOND_OPINION_GROUPS)
-        for group in SECOND_OPINION_GROUPS:
-            counts[f"{level}_pairs_{group.replace(' ', '_')}"] = sum(1 for gi, _ in used if groups[gi] == group)
     counts["pending"] = len(pending)
-    for group in SECOND_OPINION_GROUPS:
-        counts[f"gt_{group.replace(' ', '_')}"] = sum(1 for g in groups if g == group)
 
     gd, ed = record["gt_describes"], record["extracted_describes"]
     truth = gd["object_class"] if gd and not is_undecided(gd["object_class"]) else None
@@ -438,6 +469,11 @@ def compare_record(record: dict, translation, reviews: dict | None = None) -> di
     record["compared"] = {
         "translated": ex, "untranslatable": untranslatable, "multiplicity": multiplicity, "pairs": pairs, "swapped": turned, "within_reach": reach, "within_strict_reach": strict_reach, "counts": counts,
         "pending": pending, "pending_pairs": pending_pairs, "pending_swapped": pending_turned,
+        # each provenance grouping's counts per group (GROUPINGS, group_counts), and the spellings of drafted_by
+        "groups": {name: group_counts(record, provenance[name], pairs, strict_all) for name in GROUPINGS},
+        "drafted_by_spellings": {k: sorted({str(g.get(DRAFTED_BY) or "").strip() for g, gk in
+                                            zip(gt, provenance["drafted_by"]) if gk == k})
+                                 for k in set(provenance["drafted_by"])},
         "partial_review": {"rejected": rejected, "unreviewed": unreviewed, "applied": len(applied),
                            "not_applying": stale_reviews},
         "describes": {"truth": truth, "said": said,

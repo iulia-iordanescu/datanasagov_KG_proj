@@ -32,7 +32,7 @@ import collections
 import math
 from functools import lru_cache
 
-from pairing import LEVELS, PER_COMPONENT_CLASS, SECOND_OPINION_GROUPS
+from pairing import DRAFTED_BY_PERSON, GROUPINGS, LEVELS, PER_COMPONENT_CLASS, SECOND_OPINION_GROUPS
 from common.ground_truth import HELD_OUT, PARTS, TUNING
 from common.triples_io import component_class_key
 
@@ -73,7 +73,6 @@ def numbers(records: list) -> dict:
     for path, (a, b) in RATIO_PARTS.items():         # every number with a margin, from its one definition
         if path[0] != "describes":
             _put(out, path, _ratio(a(total), b(total)))
-    out["second_opinion"] = _by_second_opinion(total)
     out["second_opinion_repeats"] = _second_opinion_repeats(records)
     known = [r["compared"]["describes"] for r in records if r["compared"]["describes"]["truth"]]
     describes_classes = collections.Counter(component_class_key(d["truth"]) for d in known)
@@ -87,28 +86,63 @@ def numbers(records: list) -> dict:
     return out
 
 
-def _by_second_opinion(total: collections.Counter) -> dict | None:
-    """Recall, precision and F1 at each level for each group of ground truth triples by the second opinion
-    (pairing.SECOND_OPINION_GROUPS: found, not found, not checked; 070_evaluate/070_evaluate.md, *By the second
-    opinion*): {group: {"gt_triples", level: {"pairs", "recall", "precision", "f1"}}}, or None when no ground truth
-    triple was checked (annotations/second_opinion.csv empty, or none of these records in it). For a group, recall =
-    its pairs ÷ its ground truth triples; precision = its pairs ÷ (counted occurrences − the pairs of the other
-    groups − the untranslatable occurrences), so an occurrence paired with another group's triple is left out, as an
-    untranslatable one and one paired with a fact that waits on an expert are, and every unpaired occurrence counts against each group alike; F1 from the two. Without a margin
-    of error: the groups split the same records, so the margins of the whole part apply to neither group alone."""
-    groups = [g.replace(" ", "_") for g in SECOND_OPINION_GROUPS]
-    if not any(total[f"gt_{g}"] for g in groups if g != "not_checked"):
+def by_group(records: list, grouping: str) -> dict | None:
+    """The numbers of each group of ground truth triples by one provenance grouping (pairing.GROUPINGS:
+    "second_opinion" or "drafted_by"; 070_evaluate/070_evaluate.md, *Shared-model bias*), each with its margin of
+    error by clustered_wilson over the records, from the records' group counts (record["compared"]["groups"]).
+    {group: {"gt_triples", "records" (records with a ground truth triple in it), "spellings" (drafted_by only: the
+    names as the ground truth writes them), "exact_share", level: {"pairs", "strict_pairs", "recall", "precision",
+    "f1", "entity_class_accuracy"}}}, each number a {"value", "low", "high", "n_eff", "deff", "few_records"}.
+    For a group g, at a level, with each record's sums:
+      recall                  = g's pairs ÷ g's ground truth triples
+      precision (attributed)  = g's pairs ÷ (counted occurrences − the pairs of the other groups): an occurrence
+                                paired with another group's triple is left out, as an untranslatable one and one
+                                paired with a fact that waits on an expert are; every unpaired occurrence counts
+                                against each group alike, since it belongs to no group. An attribution, not a true
+                                per-group precision.
+      F1                      = 2 × g's pairs ÷ (that denominator + g's ground truth triples)
+      entity-class accuracy   = g's strict pairs ÷ g's pairs
+      exact share             = g's exact pairs ÷ g's partial pairs (every pair, both levels)
+    The groups split the same records, so their ranges aren't independent of each other. None when the records have
+    no group counts (a run kept from before 2026-11-01), no ground truth triple, or, for "second_opinion", no ground
+    truth triple was checked. Groups in order: the most ground truth triples first; for "drafted_by", the rows a
+    person wrote (pairing.DRAFTED_BY_PERSON) last."""
+    per = [((r["compared"].get("groups") or {}).get(grouping), r) for r in records]
+    if not per or any(g is None for g, _ in per):
         return None
+    keys = collections.Counter()
+    for g, _ in per:
+        for k, c in g.items():
+            keys[k] += c["gt"]
+    if not keys or (grouping == "second_opinion" and not any(keys[k] for k in SECOND_OPINION_GROUPS[:-1])):
+        return None
+    if grouping == "second_opinion":
+        order = list(SECOND_OPINION_GROUPS)
+    else:
+        order = sorted(keys, key=lambda k: (k == DRAFTED_BY_PERSON, -keys[k], k))
+    empty = collections.Counter()
+
+    def margin(parts):
+        ci = clustered_wilson(parts)
+        return {"value": ci["value"], "low": ci["low"], "high": ci["high"], "n_eff": ci["n_eff"], "deff": ci["deff"],
+                "few_records": ci["n_records"] < FEW_RECORDS}
     out = {}
-    for g in groups:
-        entry = {"gt_triples": total[f"gt_{g}"]}
+    for k in order:
+        rows = [(g.get(k, empty), r["compared"]["counts"]) for g, r in per]
+        entry = {"gt_triples": keys[k], "records": sum(1 for c, _ in rows if c["gt"])}
+        if grouping == "drafted_by":
+            entry["spellings"] = sorted({s for _, r in per for s in r["compared"].get("drafted_by_spellings", {}).get(k, [])})
+        entry["exact_share"] = margin([(c["exact_pairs"], c["partial_pairs"]) for c, _ in rows])
         for level in LEVELS:
-            m = total[f"{level}_pairs_{g}"]
-            others = sum(total[f"{level}_pairs_{o}"] for o in groups if o != g)
-            counted = total["extracted"] - total["untranslatable"] - total[f"{level}_pending_pairs"] - others
-            entry[level] = {"pairs": m, "recall": _ratio(m, entry["gt_triples"]), "precision": _ratio(m, counted),
-                            "f1": _ratio(2 * m, counted + entry["gt_triples"])}
-        out[g.replace("_", " ")] = entry
+            denom = [_counted(t, level) - t[f"{level}_pairs"] + c[f"{level}_pairs"] for c, t in rows]
+            entry[level] = {
+                "pairs": sum(c[f"{level}_pairs"] for c, _ in rows),
+                "strict_pairs": sum(c[f"{level}_strict_pairs"] for c, _ in rows),
+                "recall": margin([(c[f"{level}_pairs"], c["gt"]) for c, _ in rows]),
+                "precision": margin([(c[f"{level}_pairs"], d) for (c, _), d in zip(rows, denom)]),
+                "f1": margin([(2 * c[f"{level}_pairs"], d + c["gt"]) for (c, _), d in zip(rows, denom)]),
+                "entity_class_accuracy": margin([(c[f"{level}_strict_pairs"], c[f"{level}_pairs"]) for c, _ in rows])}
+        out[k] = entry
     return out
 
 
@@ -303,11 +337,15 @@ def _with_zeros(c) -> collections.Counter:
     return c if isinstance(c, collections.Counter) else collections.Counter(c)
 
 
-def with_margins(records: list) -> dict:
+def with_margins(records: list, provenance: bool = False) -> dict:
     """numbers(records), each number in WITH_MARGIN turned into {"value", "low", "high", "n_eff", "deff",
     "few_records"} by clustered_wilson over the records; point["interval"] says how ({"method", "records",
-    "few_records": fewer than FEW_RECORDS records})."""
+    "few_records": fewer than FEW_RECORDS records}). provenance: also the numbers by each provenance grouping
+    (by_group: point["second_opinion"], point["drafted_by"]), for a part's numbers."""
     point = numbers(records)
+    for grouping in GROUPINGS:
+        if provenance:
+            point[grouping] = by_group(records, grouping)
     for path, _ in WITH_MARGIN:
         ci = clustered_wilson(record_parts(records, path))
         assert ci["value"] == _get(point, path) or (ci["value"] is not None and _get(point, path) is not None
@@ -518,7 +556,7 @@ def compute_metrics(evaluated, settings: dict) -> dict:
     result = {}
     for part in shown:
         recs = parts[part]
-        numbers = with_margins(recs) if recs else None
+        numbers = with_margins(recs, provenance=True) if recs else None
         result[part] = {"numbers": numbers,
                         "strata": strata_table(recs, evaluated.pool_strata) if recs else [],
                         "confusion": describes_confusion(recs),

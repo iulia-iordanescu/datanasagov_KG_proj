@@ -274,17 +274,60 @@ PER_RECORD_COLUMNS = (("pairs", "Pairs ({})"), ("strict_pairs", "Strict pairs ({
                       ("strict_recall_within_reach", "Recall within reach (strict {})"))
 
 
-#: The report's subsection on recall by the second opinion, named once.
+#: The report's subsections on the ground truth's provenance (stats.by_group), each named once.
 SECOND_OPINION_SECTION = "By the second opinion"
-SECOND_OPINION_FORMULA = ("For a group: recall = its pairs ÷ its ground truth triples; precision = its pairs ÷ (counted "
-                          "occurrences − the pairs of the other groups); F1 = 2 × pairs ÷ (that denominator + its "
-                          "ground truth triples).")
+DRAFTED_BY_SECTION = "By who drafted the ground truth"
+#: The formulas of both subsections, said once (070_evaluate/070_evaluate.md, *Shared-model bias*).
+GROUP_FORMULA = ("For a group: recall = its pairs ÷ its ground truth triples; exact share = its exact pairs ÷ its "
+                 "pairs (partial level, so every pair); entity-class accuracy = its strict pairs ÷ its pairs; precision "
+                 "(attributed) = its pairs ÷ (counted occurrences − the pairs of the other groups), an attribution, not "
+                 "a true per-group precision, since an unpaired occurrence belongs to no group and counts against each "
+                 "group alike; F1 = 2 × pairs ÷ (that denominator + its ground truth triples).")
+GROUP_MARGINS = (f"Each range is the clustered Wilson interval over the records (from 2 records with something to "
+                 f"divide by; marked{FEW_MARK} below {stats.FEW_RECORDS}); the groups split the same records, so their "
+                 f"ranges aren't independent of each other, and two groups' ranges that overlap don't show the groups "
+                 f"alike, nor do ranges apart prove them different.")
+
+
+def _group_table(by: dict, label) -> list:
+    """The table of one provenance grouping's numbers (stats.by_group): label(group, entry) names a row."""
+    lines = ["| Ground truth triples | Count | Records | Recall (exact) | Recall (partial) | Exact share of pairs | "
+             "Entity-class accuracy (partial) | Precision, attributed (partial) | F1 (partial) |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for group, e in by.items():
+        lines.append(f"| {label(group, e)} | {e['gt_triples']} | {e['records']} | {_with_margin(e['exact']['recall'])} | "
+                     f"{_with_margin(e['partial']['recall'])} | {_with_margin(e['exact_share'])} | "
+                     f"{_with_margin(e['partial']['entity_class_accuracy'])} | "
+                     f"{_with_margin(e['partial']['precision'])} | {_with_margin(e['partial']['f1'])} |")
+    return lines
+
+
+def _drafted_by_lines(n: dict, extraction_model: str = "") -> list:
+    """The table of the numbers for the ground truth triples by who drafted their rows (stats.by_group,
+    "drafted_by"), when there is any; else nothing."""
+    by = n.get("drafted_by")
+    if not by:
+        return []
+
+    def label(group, e):
+        if group == pairing.DRAFTED_BY_PERSON:
+            return "written by a person (`drafted_by` empty)"
+        names = " or ".join(f"`{s}`" for s in e.get("spellings") or [group])
+        same = " (the extraction model's name)" if extraction_model and llm.same_model_name(group, extraction_model) else ""
+        return f"drafted by {names}{same}"
+    return [f"#### {DRAFTED_BY_SECTION}", "",
+            "Each ground truth triple by who drafted its row (the ground truth's column `drafted_by`: the model whose "
+            "drafted triple a person corrected, every spelling of one name together; empty for a row a person wrote). "
+            "A model that drafted the ground truth and extracts too can share its blind spots (raising recall), its "
+            "mistakes (raising precision) and its phrasing (raising the exact share and entity-class accuracy) with "
+            f"the extraction: `070_evaluate/070_evaluate.md`, *Shared-model bias*. {GROUP_FORMULA} {GROUP_MARGINS}", "",
+            *_group_table(by, label), ""]
 
 
 def _second_opinion_lines(n: dict, models: list) -> list:
-    """The table of recall and partial F1 for the ground truth triples found, not found, and not checked by the second
-    opinion (stats._by_second_opinion), when any was checked, and how many were found in 0, 1, ..., N repeats
-    (stats._second_opinion_repeats); else nothing."""
+    """The table of the numbers for the ground truth triples found, not found, and not checked by the second
+    opinion (stats.by_group, "second_opinion"), when any was checked, and how many were found in 0, 1, ..., N
+    repeats (stats._second_opinion_repeats); else nothing."""
     by = n.get("second_opinion")
     if not by:
         return []
@@ -295,14 +338,8 @@ def _second_opinion_lines(n: dict, models: list) -> list:
              f"truth with the pairing above. A ground truth triple a draft also stated in at least one repeat is *found*; "
              f"one no repeat stated is *not found* (stated by one annotator only: possibly a fact a model misses, or a "
              f"rule the ground truth applies and the draft doesn't); a record no repeat drafted is *not checked*. "
-             f"{SECOND_OPINION_FORMULA} No margin of error: the groups split the same records, so the whole part's "
-             f"margins apply to neither alone.", "",
-             "| Ground truth triples | Count | Recall (exact) | Recall (partial) | Pairs (partial) | Precision (partial) | F1 (partial) |",
-             "|---|---:|---:|---:|---:|---:|---:|"]
-    for group, e in by.items():
-        lines.append(f"| {group} by the second opinion | {e['gt_triples']} | {readings.pct(e['exact']['recall'])} | "
-                     f"{readings.pct(e['partial']['recall'])} | {e['partial']['pairs']} | "
-                     f"{readings.pct(e['partial']['precision'])} | {readings.pct(e['partial']['f1'])} |")
+             f"{GROUP_FORMULA} {GROUP_MARGINS}", "",
+             *_group_table(by, lambda group, e: f"{group} by the second opinion")]
     spread = n.get("second_opinion_repeats") or []
     if spread:
         most = max(s["repeats"] for s in spread)
@@ -992,6 +1029,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
             lines += [f"| {cell(t)} | {cell(s)} | {k} |" for (t, s), k in sorted(v["confusion"].items())]
             lines.append("")
         lines += _second_opinion_lines(n, evaluated.second_opinion_models)
+        lines += _drafted_by_lines(n, (evaluated.extraction_made or {}).get("model") or "")
         lines += readings.readings(part, n, recs, evaluated, translation, looks, v["confusion"])
         lines += ["#### Per stratum", "", f"Each stratum's numbers with their margins of error, from 2 records on (one "
                   f"record: no range; a range marked{FEW_MARK}: from fewer than {stats.FEW_RECORDS} records, so it may "

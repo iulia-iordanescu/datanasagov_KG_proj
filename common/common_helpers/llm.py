@@ -1383,6 +1383,12 @@ def same_model_name(a: str, b: str) -> bool:
     return bool(a) and bool(b) and _name_words(a) == _name_words(b)
 
 
+def model_name_key(model: str) -> str:
+    """One key for every spelling of a model name, as same_model_name compares them: its words joined by "-"
+    ("claude-opus-5.5" and "Claude-Opus-5-5" -> "claude-opus-5-5"); "" for an empty name."""
+    return "-".join(_name_words(model))
+
+
 def _name_words(model: str) -> list:
     """The words of a model name: cut at - _ . / : and spaces, lowercased, empty words dropped."""
     return [w for w in re.split(r"[-_./: ]+", (model or "").lower()) if w]
