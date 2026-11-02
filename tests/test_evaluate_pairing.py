@@ -1503,8 +1503,9 @@ class DecisionRule(unittest.TestCase):
                       "is possible, whatever the numbers; a verdict needs at least 6 records.", five)
 
     def test_stops(self):
-        """The runs must share the evaluation version, the records and the kind of translation; a run given twice, or
-        in both recipes, one recipe alone, and --across_schemas true with the rule are refused."""
+        """The runs must share the evaluation version, the records and the kind of translation (unless
+        --across_schemas true: test_across_schemas); a run given twice, or in both recipes, and one recipe alone are
+        refused."""
         import sys
         from unittest import mock
         cr = self.cr
@@ -1524,8 +1525,6 @@ class DecisionRule(unittest.TestCase):
         self.assertIn("give the baseline's runs and the changed recipe's runs", stop(["--baseline", "A1", "A2"]))
         self.assertIn("give the baseline's runs and the changed recipe's runs", stop(["B1", "--baseline", "A1",
                                                                                      "--changed", "B2"]))
-        self.assertIn("can't go with `--baseline`", stop(["--across_schemas", "true", "--baseline", "A1",
-                                                          "--changed", "B1"]))
 
         def version(d):
             d["B1"]["recipe"]["evaluation (070)"]["evaluation_version"] = 2
@@ -1540,6 +1539,56 @@ class DecisionRule(unittest.TestCase):
             d["B2"]["records"].pop()
         self.assertIn("didn't all evaluate the same tuning records (r24 not in every run)",
                       stop(["--baseline", "A1", "A2", "--changed", "B1", "B2"], fewer))
+
+    def test_across_schemas(self):
+        """Two groups translated differently (the induced schema's repeats through the translation table, the ground
+        truth schema's by identity): refused without --across_schemas true; with it, decided on every record (none
+        left out for its different translation), and the report titled and labelled as a comparison across schemas.
+        Near misses: a group whose own runs are translated two ways is refused even with the flag; the flag on groups
+        translated the same way changes nothing."""
+        import copy
+        import sys
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        cr = self.cr
+        kept = CompareRuns.kept
+        runs = {r: kept(r, lambda i: 2 if r[0] == "A" else 3, "m") for r in ("A1", "A2", "A3", "B1", "B2", "B3")}
+        for r in ("B1", "B2", "B3"):
+            runs[r]["recipe"]["evaluation (070)"]["translation"] = cr.IDENTITY
+            for rec in runs[r]["records"]:
+                rec["translation"] = {"Instrument | ABOARD | Platform": "Instrument | ABOARD | Platform"}
+
+        def run(argv):
+            data = copy.deepcopy(runs)
+            with tempfile.TemporaryDirectory() as tmp, mock.patch.object(cr, "load", lambda r: data[r]), \
+                    mock.patch.object(cr, "REPORTS_DIR", Path(tmp)), mock.patch.object(sys, "argv", ["x", *argv]):
+                try:
+                    code = cr.main()
+                except SystemExit as e:
+                    return None, str(e.code)
+                return code, next(Path(tmp).glob("*.md")).read_text(encoding="utf-8")
+
+        groups = ["--baseline", "A1", "A2", "A3", "--changed", "B1", "B2", "B3"]
+        code, said = run(groups)
+        self.assertIsNone(code)
+        self.assertIn("translated differently", said)
+        self.assertIn("add `--across_schemas true`", said)
+        code, report = run(["--across_schemas", "true"] + groups)
+        self.assertEqual(code, 0)
+        self.assertIn("# Did the change help? A comparison across schemas\n", report)
+        self.assertIn("`py helpers/compare_runs.py --across_schemas true --baseline … --changed …`", report)
+        self.assertIn(cr.ACROSS_SCHEMAS_DECISION.format(baseline=cr.TABLE_TRANSLATION, changed=cr.IDENTITY), report)
+        self.assertIn("on the same 25 tuning records", report)
+        self.assertIn("**Verdict: helped.**", report)                   # 3 of 8 against 2 of 8 on every record
+        self.assertIn("the same facts waiting on an expert in every run", report)
+        self.assertNotIn("Left out, translation changed", report)
+        code, said = run(["--across_schemas", "true", "--baseline", "A1", "B1", "--changed", "A2", "A3"])
+        self.assertIn("The baseline's runs were translated differently", said)
+        code, report = run(["--across_schemas", "true", "--baseline", "A1", "A2", "--changed", "A3"])
+        self.assertEqual(code, 0)
+        self.assertIn("# Did the change help?\n", report)
+        self.assertNotIn("A comparison across schemas", report)
 
 
 class HeldOutSources(unittest.TestCase):

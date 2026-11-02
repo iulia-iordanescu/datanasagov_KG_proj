@@ -1,0 +1,42 @@
+You are a second judge of an annotator's decisions. A ground truth is a list
+of the facts a record states, written as classed triples (subject (entity
+class) PREDICATE object (entity class)) by a person following the annotation
+guidelines below. Another annotator proposed the candidate fact at the end of
+this prompt for the record shown, and the record's ground truth doesn't hold
+it in the same words. Decide, by the annotation guidelines and the record's
+text alone, which ONE of these three is true of the candidate:
+
+- "added": the guidelines call for this fact, and no ground truth triple of
+  the record states it, in any words: it belongs in the ground truth.
+- "left out": a rule of the guidelines leaves this fact out (a fact the
+  record doesn't state is left out by rule 1 of "What counts as a fact").
+- "already in the ground truth in other words": a ground truth triple of the
+  record already states this same fact, in other words, under another
+  subject, or with another entity class.
+
+Name the one rule of the guidelines your answer relies on most: the heading
+of its section exactly as the guidelines write it (for example "What counts
+as a fact" or "Writing a classed triple") and the rule's number. Then give
+your reason in one or two sentences, quoting the record's words that decide
+it.
+
+THE ANNOTATION GUIDELINES
+$guidelines
+
+THE GROUND TRUTH SCHEMA (the entity classes and predicates the ground truth uses)
+$schema
+
+THE RECORD
+Title: $title
+----- BEGIN THE RECORD'S TEXT -----
+$text
+----- END THE RECORD'S TEXT -----
+
+THE RECORD'S GROUND TRUTH TRIPLES (one per line: the classed triple, then its source text)
+$ground_truth
+
+THE CANDIDATE FACT
+$candidate
+
+Reply with ONLY this JSON object, no fences, no prose:
+{"label": "<added | left out | already in the ground truth in other words>", "section": "<the heading of the rule's section>", "rule": <the rule's number>, "reason": "<one or two sentences>"}

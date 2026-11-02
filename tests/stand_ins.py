@@ -7,9 +7,10 @@ with the faults a real harvest meets: a record with no id, a repeated id,
 HTML-escaped notes, maintainer spellings to join, and, when asked, a busy
 page (503 once), a failing page (404), or a page that isn't JSON.
 
-stand_in_model(prompt) answers every prompt of steps 040 to 070, from the
-prompt's own text, deterministically, with deliberate faults the steps must
-catch (see each branch). A test sets common.llm.call_llm = stand_in_model.
+stand_in_model(prompt) answers every prompt of steps 040 to 070 and of the
+second judge (helpers/second_judge.py), from the prompt's own text,
+deterministically, with deliberate faults the steps must catch (see each
+branch). A test sets common.llm.call_llm = stand_in_model.
 
 stand_in_post(url, headers, json, timeout) is the same model behind
 LiteLLM's reply shape (finish_reason, usage with reasoning tokens), so the
@@ -258,8 +259,31 @@ def _mapping(prompt: str) -> dict:
                          "reversed": False} for i in schema]}
 
 
+def _judge(prompt: str) -> dict:
+    """The second judge (helpers/second_judge.py), deterministically. Facts: a candidate whose object instance is in
+    one of the record's ground truth triples is already there in other words; one whose object is "Moon" is left out
+    (rule 21 of Writing a classed triple); any other is added. Partial pairs: a pair whose extracted triple names
+    "Terra" is not the same fact; any other is the same fact."""
+    if "\nTHE CANDIDATE FACT\n" in prompt:
+        gt = _between(prompt, "THE RECORD'S GROUND TRUTH TRIPLES", "THE CANDIDATE FACT")
+        candidate = prompt.split("\nTHE CANDIDATE FACT\n", 1)[1].split("\n", 1)[0]
+        obj = re.match(r".* [A-Z_]+ (.+) \(\w+\)$", candidate).group(1)
+        if f" {obj} (" in gt:
+            return {"label": "already in the ground truth in other words", "section": "Writing a classed triple",
+                    "rule": 16, "reason": f"the ground truth states {obj} already"}
+        if obj == "Moon":
+            return {"label": "left out", "section": "Writing a classed triple", "rule": 21,
+                    "reason": "a fact of another dataset"}
+        return {"label": "added", "section": "What counts as a fact", "rule": 2, "reason": "the record states it"}
+    extracted = prompt.split("\nTHE EXTRACTED TRIPLE", 1)[1].split("\n", 2)[1]
+    return ({"label": "not the same fact", "reason": "another instrument"} if "Terra" in extracted else
+            {"label": "same fact", "reason": "the same instrument, named more fully"})
+
+
 def stand_in_model(prompt, attempts=4, read_timeout=180, model=None, cache_until=None, **_):
     CALLS.append(prompt)
+    if "----- BEGIN THE RECORD'S TEXT -----" in prompt:              # the second judge
+        return json.dumps(_judge(prompt))
     if "----- BEGIN RECORD -----" in prompt and '"subject_class"' not in prompt:   # 040: no entity classes asked
         return json.dumps(_induce_texts(prompt))
     if "----- BEGIN RECORD -----" in prompt:
@@ -326,11 +350,12 @@ def stand_in_post(url, headers=None, json=None, timeout=None, **_):
         # The tokens reach the limit: what KG_STAND_IN_REASONING doesn't give to thinking went to the answer; when it
         # gives no number, thinking took them.
         answer, reason = answer[:len(answer) // 2], "length"
+        limit = json.get("max_tokens") or json.get("max_completion_tokens")   # the latter: OpenAI's GPT-6 models
         if given.isdigit():
-            answer_tokens = json["max_tokens"] - thought
+            answer_tokens = limit - thought
         else:
             answer_tokens = len(answer) // 4
-            thought = json["max_tokens"] - answer_tokens
+            thought = limit - answer_tokens
     usage = {"prompt_tokens": len(prompt) // 4, "completion_tokens": answer_tokens + thought}
     if given != "unreported":
         usage["completion_tokens_details"] = {"reasoning_tokens": thought}

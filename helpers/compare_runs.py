@@ -23,6 +23,10 @@ report and prints where it is.
                                                         induced schema, through the translation table)
     py helpers/compare_runs.py --baseline <run id> ... --changed <run id> ...
                                                         did the change help? (the decision rule)
+    py helpers/compare_runs.py --across_schemas true --baseline <run id> ... --changed <run id> ...
+                                                        the decision rule for two groups translated differently
+                                                        (each group's runs translated one way), as a
+                                                        comparison across schemas
 
 Details: helpers/compare_runs.md
 """
@@ -218,6 +222,16 @@ def translations_mixed(runs: list, across_schemas: bool) -> str | None:
             f"a comparison across schemas (labelled so in the report), add `--across_schemas true`; to compare "
             f"repeats or versions of one recipe, give runs translated the same way.")
 
+
+#: The label of a decision across schemas, at the top of its report: the two groups' translations go in {baseline} and
+#: {changed}.
+ACROSS_SCHEMAS_DECISION = ("**A comparison across schemas.** The baseline's runs were translated by {baseline}; the "
+                           "changed recipe's by {changed}. So the verdict measures the schema and its translation "
+                           "together, not extraction alone: *helped* means the changed recipe's schema and translation "
+                           "scored higher on these records, not that its extraction is better. A run with the ground "
+                           "truth schema is a reference, not a competitor: that schema was shaped while annotating "
+                           "these very tuning records. Records are not left out for a different translation here: that "
+                           "difference is what is compared.")
 
 #: The label of a comparison across schemas, at the top of its report.
 ACROSS_SCHEMAS = ("**A comparison across schemas.** Some of these runs extracted with the ground truth schema and "
@@ -644,17 +658,24 @@ def p_text(v) -> str:
     return "–" if v is None else f"{float(v):.4g}"
 
 
-def decision_report(baseline: list, changed: list, ids: list, left: dict, notes: list = ()) -> str:
+def decision_report(baseline: list, changed: list, ids: list, left: dict, notes: list = (),
+                    across_schemas: bool = False) -> str:
     """The report of the decision rule: the verdict on partial F1 first, then the records one by one, the other numbers
-    (shown, not tested), the runs, what differs, the records compared and what this can't see."""
+    (shown, not tested), the runs, what differs, the records compared and what this can't see. across_schemas: the
+    two groups may be translated differently; when they are, the title and a label (ACROSS_SCHEMAS_DECISION) say so."""
     base, other = paired_parts(baseline, changed, ids)
     test = sign_flip(base, other)
     n, k_a, k_b = test["n"], len(baseline), len(changed)
-    lines = ["# Did the change help?", "",
-             f"Made {dt.datetime.now():%Y-%m-%d %H:%M} by `py helpers/compare_runs.py --baseline … --changed …` "
+    across = across_schemas and translation_of(baseline[0]) != translation_of(changed[0])
+    lines = ["# Did the change help?" + (" A comparison across schemas" if across else ""), "",
+             f"Made {dt.datetime.now():%Y-%m-%d %H:%M} by `py helpers/compare_runs.py "
+             + ("--across_schemas true " if across else "") + "--baseline … --changed …` "
              f"(helpers/compare_runs.md, *Did a change help?*): the baseline's {k_a} run(s) against the changed "
-             f"recipe's {k_b} run(s), on the same {len(ids)} tuning records. Held-out records are never compared.", "",
-             "## The rule, fixed before the runs", ""] + RULE + ["", "## The answer", ""]
+             f"recipe's {k_b} run(s), on the same {len(ids)} tuning records. Held-out records are never compared.", ""]
+    if across:
+        lines += [ACROSS_SCHEMAS_DECISION.format(baseline=translation_of(baseline[0]),
+                                                 changed=translation_of(changed[0])), ""]
+    lines += ["## The rule, fixed before the runs", ""] + RULE + ["", "## The answer", ""]
     if test["diff"] is None:
         lines.append(f"**Verdict: {decide(test)}.** No test: {DECIDING_LABEL} is undefined for a recipe on these "
                      f"records (no occurrence counted and no ground truth triple).")
@@ -723,8 +744,9 @@ def decision_report(baseline: list, changed: list, ids: list, left: dict, notes:
         lines.append("Nothing recorded differs.")
     lines += ["", "## The records compared", "",
               f"{len(ids)} tuning records, evaluated in every run, with the same ground truth, the same facts waiting "
-              f"on an expert and the same translation of their classed triples' shapes in every run, and still the "
-              f"first records of the pool (a fair sample: the set ends before the first record left out)."]
+              f"on an expert" + ("" if across else " and the same translation of their classed triples' shapes")
+              + " in every run, and still the first records of the pool (a fair sample: the set ends before the first "
+              "record left out)."]
     for why, which in left.items():
         lines.append(f"Left out, {why}: {len(which)} ({', '.join(f'`{i}`' for i in which[:20])}"
                      f"{', …' if len(which) > 20 else ''}).")
@@ -734,12 +756,21 @@ def decision_report(baseline: list, changed: list, ids: list, left: dict, notes:
     return "\n".join(lines) + "\n"
 
 
+def groups_mixed(baseline: list, changed: list) -> str | None:
+    """With --across_schemas true: why the groups can't be compared when a group's own runs were translated in more
+    than one way (each group must be one recipe), else None."""
+    for name, group in (("baseline", baseline), ("changed recipe", changed)):
+        if len({translation_of(r) for r in group}) > 1:
+            named = "; ".join(f"`{r['run_id']}`: {translation_of(r)}" for r in group)
+            return (f"The {name}'s runs were translated differently ({named}), so they aren't repeats of one recipe. "
+                    f"With `--across_schemas true` the two groups may differ in translation, but each group's runs "
+                    f"must be translated the same way: put each run in the group of its schema.")
+    return None
+
+
 def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
-    """--baseline … --changed …: check the runs, apply the decision rule, write its report."""
-    if across:
-        sys.exit("The decision rule compares runs translated the same way, so `--across_schemas true` can't go with "
-                 "`--baseline` and `--changed`. To compare across schemas, give the runs without them: "
-                 "`py helpers/compare_runs.py --across_schemas true <run id> <run id> ...`.")
+    """--baseline … --changed …: check the runs, apply the decision rule, write its report. across (--across_schemas
+    true): the two groups may differ in translation, each group's own runs translated one way."""
     given = baseline_ids + changed_ids
     twice = sorted({r for r in given if given.count(r) > 1})
     if twice:
@@ -747,10 +778,11 @@ def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
                  f"both the baseline and the change. Give each run once: `py helpers/compare_runs.py` lists them.")
     baseline, changed = [load(r) for r in baseline_ids], [load(r) for r in changed_ids]
     runs = baseline + changed
-    problem = evaluation_versions_differ(runs) or translations_mixed(runs, False)
+    problem = evaluation_versions_differ(runs) or (groups_mixed(baseline, changed) if across else
+                                                   translations_mixed(runs, False))
     if problem:
         sys.exit(problem)
-    ids, left, notes = common_records(runs)
+    ids, left, notes = common_records(runs, across)
     if left.get("not evaluated in every run"):
         missing = left["not evaluated in every run"]
         sys.exit(f"These runs didn't all evaluate the same tuning records ({', '.join(missing[:10])}"
@@ -763,7 +795,7 @@ def decide_groups(baseline_ids: list, changed_ids: list, across: bool) -> int:
                  "waiting on an expert and the same translation, so there is nothing to compare."
                  + "".join(f"\nLeft out, {why}: {len(which)} ({', '.join(which[:10])})." for why, which in left.items()))
     path = REPORTS_DIR / f"compare_runs_decision_{dt.datetime.now():%Y-%m-%d_%H%M%S}.md"
-    text = decision_report(baseline, changed, ids, left, notes)
+    text = decision_report(baseline, changed, ids, left, notes, across)
     write_text(path, text)
     verdict_line = next(line for line in text.splitlines() if line.startswith("**Verdict:"))
     print(f"{verdict_line.replace('**', '').replace('*', '')}\nReport: {repo_path(path)}"

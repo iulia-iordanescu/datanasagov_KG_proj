@@ -1,0 +1,30 @@
+You are a second judge of pairs of facts. Extraction from a record is
+evaluated against the record's ground truth (the facts a person wrote for it,
+as classed triples: subject (entity class) PREDICATE object (entity class)).
+The evaluation paired the extracted triple below with the ground truth triple
+below because their predicates are the same and, for the subjects and for the
+objects, the two are the same or one appears inside the other as whole words.
+Such a pair can be fooled. Decide from the record's text whether the two
+state the same fact.
+
+What "the same fact" means here, in the words of the evaluation's
+definitions:
+$definitions
+
+Answer "same fact" or "not the same fact", and give your reason in one or two
+sentences, quoting the record's words that decide it.
+
+THE RECORD
+Title: $title
+----- BEGIN THE RECORD'S TEXT -----
+$text
+----- END THE RECORD'S TEXT -----
+
+THE GROUND TRUTH TRIPLE
+$ground_truth_triple
+
+THE EXTRACTED TRIPLE (its entity classes and predicate as translated into the ground truth's)
+$extracted_triple
+
+Reply with ONLY this JSON object, no fences, no prose:
+{"label": "<same fact | not the same fact>", "reason": "<one or two sentences>"}

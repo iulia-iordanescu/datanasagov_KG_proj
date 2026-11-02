@@ -103,7 +103,11 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM"}
 #: Gemini 3's temperature at its default 1.0 ("Setting temperature below 1.0 may lead to unexpected behavior, such as
 #: looping or degraded performance": https://ai.google.dev/gemini-api/docs/gemini-3), and for Gemini 4 Argon says
 #: "Remove `temperature`, `top_p`, and `top_k` from your requests. If provided, they are ignored"
-#: (https://ai.google.dev/gemini-api/docs/latest-model, read 2026-11-01). Not part of the cache key.
+#: (https://ai.google.dev/gemini-api/docs/latest-model, read 2026-11-01). OpenAI says of its GPT-6 models (GPT-6 Astra,
+#: GPT-6.1 Sol, ...): "When reasoning effort is not `none`, remove `temperature`, `top_p`, and `top_logprobs`", and
+#: "GPT-6 Astra and GPT-6.1 Sol do not support the `none` reasoning effort"
+#: (https://developers.openai.com/api/docs/guides/latest-model, read 2026-11-02), so they are sent none either.
+#: Not part of the cache key.
 TEMPERATURE = 0
 
 #: How much a model that thinks before answering may think: the default of every step's `thinking` setting, which
@@ -114,8 +118,13 @@ TEMPERATURE = 0
 #: documents it (thinking_sent): for Gemini 2.5 Pro, LiteLLM turns "low" into a thinking budget of 1,024 tokens, so
 #: the answer keeps about 15,000 of MAX_ANSWER_TOKENS; for Gemini 3 and 4, into its thinking level of the same name
 #: (https://docs.litellm.ai/docs/providers/gemini, "Mapping for Gemini 3+ models"; Gemini 4 Argon takes low, medium
-#: and high, medium being its default: https://ai.google.dev/gemini-api/docs/thinking). "model_default"
-#: sends nothing, so the model thinks as it would by default.
+#: and high, medium being its default: https://ai.google.dev/gemini-api/docs/thinking). For OpenAI's GPT-6 models, as
+#: the same level: OpenAI's Chat Completions take `reasoning_effort` ("Use `reasoning.effort` in Responses or
+#: `reasoning_effort` in Chat Completions": https://developers.openai.com/api/docs/guides/latest-model), GPT-6 Astra
+#: supports "`low`, `medium`, `high`, `xhigh`, and `max`" (https://developers.openai.com/api/docs/models/gpt-6-astra),
+#: GPT-6.1 Sol low, medium (its default), high, xhigh and max; LiteLLM passes it on for gpt-6-astra
+#: (https://docs.litellm.ai/blog/gpt_6_astra; all read 2026-11-02). "model_default" sends nothing, so the model
+#: thinks as it would by default.
 THINKING = "low"
 THINKING_LEVELS = ("low", "medium", "high", "model_default")
 
@@ -137,6 +146,8 @@ REPEAT = 1
 #: (https://platform.claude.com/docs/en/models/opus-5-5/overview), Gemini 2.5 Pro's 65,536
 #: (https://ai.google.dev/gemini-api/docs/models/gemini-2.5-pro). Not part of the cache key: answers that finished
 #: stay valid; an answer stored as cut off at a lower limit is asked again (common/common_helpers/cache.py).
+#: Sent as `max_tokens`, except to OpenAI's GPT-6 models, which get `max_completion_tokens` (answer_limit_name).
+#: GPT-6 Astra's max output is 128,000 tokens (https://developers.openai.com/api/docs/models/gpt-6-astra).
 MAX_ANSWER_TOKENS = 32000
 
 #: How long a call waits for its answer, in seconds, every call alike: long enough for an answer of
@@ -241,6 +252,25 @@ def call_settings(model: str | None = None, service: str | None = None) -> dict:
             "detected)", "thinking": thinking, "thinking_sent": sent, "effort": effort_note(model)}
 
 
+def answer_limit_name(model: str | None = None) -> str:
+    """The name the answer limit is sent under, through LiteLLM: `max_completion_tokens` for OpenAI's GPT-6 models
+    (OpenAI's Chat Completions reference: `max_tokens` "is now deprecated in favor of `max_completion_tokens`, and is
+    not compatible with o-series models", and `max_completion_tokens` includes the reasoning tokens; LiteLLM: for
+    gpt-6-astra, "`max_completion_tokens` instead of `max_tokens`", and a LiteLLM version before its fix sends
+    `max_tokens` on unchanged, which OpenAI rejects: https://docs.litellm.ai/blog/gpt_6_astra, read 2026-11-02);
+    `max_tokens` for every other model, as before."""
+    return "max_completion_tokens" if _gpt_version(model or MODEL) >= 6 else "max_tokens"
+
+
+def _gpt_version(model: str) -> float:
+    """The version of an OpenAI GPT model from its name ("gpt-6-astra" -> 6, "gpt-6.1-sol" -> 6.1); 0 for any other
+    model."""
+    if maker(model) != "OpenAI":
+        return 0
+    version = re.search(r"gpt-(\d+(?:\.\d+)?)", model.lower())
+    return float(version.group(1)) if version else 0
+
+
 def max_tokens_sent(service: str | None = None) -> int | None:
     """The answer limit a call sends (MAX_ANSWER_TOKENS), or None when it sends none: LiteLLM takes it; Ask Sage's
     query has no such parameter (_ask_asksage)."""
@@ -260,9 +290,10 @@ def effort_note(model: str | None = None) -> str | None:
 def temperature_sent(model: str | None = None, service: str | None = None) -> bool:
     """Whether calls to this model are sent TEMPERATURE: not to Anthropic's Claude models, which take no sampling
     parameters, nor to Google's Gemini 3 and later (Gemini 4 Argon ignores it; Gemini 3's maker advises keeping the
-    default: TEMPERATURE cites both); to every other model, Gemini 2.5 among them. The same through either service."""
+    default), nor to OpenAI's GPT-6 models (their maker says to remove it when reasoning, which they always do:
+    TEMPERATURE cites all three); to every other model, Gemini 2.5 among them. The same through either service."""
     model = model or MODEL
-    if maker(model) == "Anthropic":
+    if maker(model) == "Anthropic" or _gpt_version(model) >= 6:
         return False
     version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
     return not (maker(model) == "Google" and version and float(version.group(1)) >= 3)
@@ -270,7 +301,8 @@ def temperature_sent(model: str | None = None, service: str | None = None) -> bo
 
 def thinking_sent(model: str | None = None, service: str | None = None) -> str | None:
     """The `reasoning_effort` a call sends (THINKING), or None when it sends none. Sent only through LiteLLM, and only
-    to the models LiteLLM documents it for: Google's Gemini 2.5 and later (https://docs.litellm.ai/docs/providers/gemini).
+    to the models LiteLLM documents it for: Google's Gemini 2.5 and later (https://docs.litellm.ai/docs/providers/gemini),
+    and OpenAI's GPT-6 models (THINKING cites OpenAI's and LiteLLM's pages).
     Not to Anthropic's Claude models: on Claude Opus 5.5 adaptive thinking is always on, and the model decides whether
     and how much to think, at the effort sent, or at its default, medium, when none is sent (https://platform.claude.com/docs/en/models/opus-5-5/whats-new-opus-5-5), and whether LiteLLM
     passes an effort setting on to it isn't shown yet (py helpers/check_effort.py; docs/running_on_nasa_laptop.md,
@@ -283,6 +315,8 @@ def takes_thinking_cap(model: str | None = None, service: str | None = None) -> 
     """Whether the thinking cap is sent to this model through this service, whatever `thinking` is (thinking_sent
     says where, and why)."""
     model, service = model or MODEL, service or SERVICE
+    if service == "litellm" and _gpt_version(model) >= 6:
+        return True
     if service != "litellm" or maker(model) != "Google":
         return False
     version = re.search(r"gemini-(\d+(?:\.\d+)?)", model.lower())
@@ -723,7 +757,8 @@ def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | 
     url, headers = _litellm("/v1/chat/completions")
     if SESSION_ID:
         headers[SESSION_HEADER] = SESSION_ID                # one deployment per run, where the proxy pins sessions
-    payload = {"model": model, "messages": _messages(prompt, model, cache_until), "max_tokens": max_tokens_sent("litellm")}
+    payload = {"model": model, "messages": _messages(prompt, model, cache_until),
+               answer_limit_name(model): max_tokens_sent("litellm")}
     if temperature_sent(model, "litellm"):
         payload["temperature"] = TEMPERATURE
     if thinking_sent(model, "litellm"):

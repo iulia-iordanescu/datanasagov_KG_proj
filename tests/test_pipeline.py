@@ -586,7 +586,7 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(written, ["README.md", "component_class_mapping.csv", "ground_truth/batch_001.csv",
                                    "ground_truth_candidates.csv", "ground_truth_schema.txt", "guidelines.md", "held_out_looks.csv",
                                    "left_out.md", "partial_pair_reviews.csv", "pending_triples.csv", "schema_additions.txt",
-                               "second_opinion.csv", "second_opinion_candidates.csv"])
+                               "second_judge.csv", "second_opinion.csv", "second_opinion_candidates.csv"])
 
 
 if __name__ == "__main__":
