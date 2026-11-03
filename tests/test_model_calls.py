@@ -841,6 +841,11 @@ class Budget(unittest.TestCase):
     An ordinary rate limit still retries. Near-misses included."""
 
     NASA = "Budget has been exceeded! User=iiordane in Team=trial-moderate Current cost: 25.0, Max budget: 25.0"
+    # Ask Sage's answers through gpt-5.6-sol-gov on 2026-11-03, word for word: HTTP 200, status 200, in prose
+    ASK_SAGE_WOULD = ("Sorry, if we executed this query (up to 4096 tokens), you would be above your monthly token "
+                      "limit (1003014 out of 1000000), please contact your organization admin to get it increased.")
+    ASK_SAGE_ABOVE = ("Sorry, you are above your monthly token limit (1011372 out of 1000000), please contact your "
+                      "organization admin to get it increased.")
 
     calls, entries, ask = Guards.calls, Guards.entries, Guards.ask      # Guards' set-up, without its tests
 
@@ -872,7 +877,14 @@ class Budget(unittest.TestCase):
                 (400, "max_tokens must be greater than thinking.budget_tokens", False),
                 (400, "thinking: you exceeded budget_tokens", False),
                 (200, self.NASA, False),                                   # an answer, whatever its words
-                (500, "internal error while computing the budget", False)):
+                (500, "internal error while computing the budget", False),
+                # Ask Sage's two answers in prose, HTTP 200 (2026-11-03), and their near-misses
+                (200, self.ASK_SAGE_WOULD, True),
+                (200, self.ASK_SAGE_ABOVE, True),
+                (200, '{"label": "added", "reason": "you are above your monthly token limit"}', False),   # JSON
+                (200, "The record says the data stay above a token limit of 1000000.", False),        # no "monthly"
+                (200, "Sorry, the monthly token limit of this record is not stated, so it is left out.", False),
+                (200, "x" * 700 + " you are above your monthly token limit", False)):              # too long
             with self.subTest(text=text):
                 self.assertEqual(llm.budget_exhausted(status, text), gone)
 
@@ -1001,6 +1013,75 @@ class Budget(unittest.TestCase):
         finally:
             logging.shutdown()
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def ask_sage_answers(self, budget_at: str, budget: str):
+        """requests.post standing in for Ask Sage: every query answered with a JSON object, except the one whose
+        prompt holds budget_at, answered with budget (HTTP 200, status 200), and every one after it the same."""
+        sent, gone = [], []
+
+        class Reply:
+            status_code, headers = 200, {}
+
+            def __init__(self, message):
+                self.message = message
+                self.text = json.dumps({"status": 200, "message": message})
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"status": 200, "message": self.message}
+
+        def post(url, json=None, **k):
+            sent.append(json["message"])
+            if budget_at in json["message"] or gone:
+                gone.append(1)
+                return Reply(budget)
+            return Reply(ReplyKinds.OBJECT)
+        return sent, post
+
+    def test_ask_sage_budget_in_prose_stops_at_once(self):
+        """Ask Sage's used-up monthly token limit comes as an answer in prose, HTTP 200 (2026-11-03: 67 rows of a
+        second-judge run failed as "refused" one after another). Both forms stop the run at the first: no call
+        after it, none cached, never counted as a refusal, and the message gives the numbers and who raises the
+        limit."""
+        for budget in (self.ASK_SAGE_WOULD, self.ASK_SAGE_ABOVE):
+            llm.BUDGET_GONE["error"] = None
+            sent, post = self.ask_sage_answers("#r03#", budget)
+            ids = [f"r{i:02}" for i in range(10)]
+            with self.subTest(budget=budget[:40]), mock.patch.object(llm.requests, "post", post),                     mock.patch.object(llm, "_asksage_token", lambda: "t"):
+                llm.SERVICE = "asksage"
+                with self.assertRaises(llm.BudgetExhausted) as caught:
+                    self.ask(self.calls(service="asksage", model="gpt-5.6-sol-gov"), ids)
+                records = [m for m in sent if "#r" in m]
+                self.assertEqual(len(records), 4)                                    # r00 to r03; none after
+                said = str(caught.exception.code)
+                used = "1,003,014" if budget is self.ASK_SAGE_WOULD else "1,011,372"
+                for words in ("Ask Sage answered that the budget for this account is used up", "in its answer",
+                              f"{used} tokens used against this account's monthly limit of 1,000,000",
+                              "ask the Ask Sage administrators to raise", "kept in the cache", "pays only for the calls"):
+                    self.assertIn(words, said)
+                cache = cache_module.Cache(self.tmp / "050_annotate" / "cache", "draft")
+                self.assertEqual(len(cache.answers), 3)                              # r00 to r02; not the budget answer
+                self.assertFalse(any("monthly token limit" in json.dumps(v) for v in cache.answers.values()))
+                refused = [e for e in (self.entries() or []) if e["outcome"] == "failed" and e["record"] == "r03"]
+                self.assertEqual([e["error_type"] for e in refused][-1:], ["BudgetExhausted"])
+                sent.clear()
+                with self.assertRaises(llm.BudgetExhausted):                         # a rerun in this process: nothing sent
+                    llm.call_llm("y", model="gpt-5.6-sol-gov", service="asksage")
+                self.assertEqual(sent, [])
+            shutil.rmtree(self.tmp / "050_annotate", ignore_errors=True)
+
+    def test_ask_sage_prose_that_only_looks_alike_is_an_answer(self):
+        """Near-miss: a model's ordinary answer that quotes "monthly token limit" inside its JSON is an answer."""
+        quoted = '{"triples": [{"subject": "plan", "predicate": "HAS", "object": "above your monthly token limit"}]}'
+        sent, post = self.ask_sage_answers("#never#", "unused")
+        with mock.patch.object(llm.requests, "post", lambda url, json=None, **k: (sent.append(1), type(
+                "R", (), {"status_code": 200, "headers": {}, "text": quoted, "raise_for_status": lambda s: None,
+                          "json": lambda s: {"status": 200, "message": quoted}})())[1]),                 mock.patch.object(llm, "_asksage_token", lambda: "t"):
+            llm.SERVICE = "asksage"
+            self.assertEqual(llm.call_llm("x", model="gpt-5.6-sol-gov", service="asksage"), quoted)
+        self.assertIsNone(llm.BUDGET_GONE["error"])
 
     def test_ask_sage(self):
         """Ask Sage documents no form for a used-up allowance; the same words stop the run, as an HTTP error or as

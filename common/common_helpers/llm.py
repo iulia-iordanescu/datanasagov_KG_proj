@@ -451,21 +451,40 @@ def _retry_after(resp) -> float | None:
 #:   (https://platform.openai.com/docs/guides/error-codes); Anthropic's "Your credit balance is too low to access the
 #:   Anthropic API" (https://docs.anthropic.com/en/api/errors).
 #: Ask Sage's API documentation gives no form for a used-up monthly token allowance, so its errors are read with the
-#: same words. "budget" alone is not enough: a rate limit's "token budget per minute" or Anthropic's thinking
-#: "budget_tokens" is something else.
+#: same words, and its answers with ANSWER_BUDGET_WORDS. "budget" alone is not enough: a rate limit's "token budget per
+#: minute" or Anthropic's thinking "budget_tokens" is something else.
 BUDGET_WORDS = re.compile(r"budget has been exceeded|budget_exceeded|exceeded[ _]?(?:token)?budget(?!_tokens)|"
                           r"\bover budget\b|insufficient_quota|exceeded your current quota|credit balance is too low",
                           re.I)
+#: How Ask Sage says the account's monthly token allowance is used up: not as an error but as an answer, HTTP 200 with
+#: status 200, in prose (seen on 2026-11-03, through gpt-5.6-sol-gov: "Sorry, if we executed this query (up to 4096
+#: tokens), you would be above your monthly token limit (1003014 out of 1000000), please contact your organization
+#: admin to get it increased." and "Sorry, you are above your monthly token limit (1011372 out of 1000000), please
+#: contact your organization admin to get it increased."). Read only in a short answer that isn't JSON
+#: (budget_answer), so a model's answer quoting such words, inside its JSON, is not taken for it.
+ANSWER_BUDGET_WORDS = re.compile(r"\babove\b[^.]{0,80}?\bmonthly token limit\b", re.I)
+#: The numbers Ask Sage's answer reports: "monthly token limit (1003014 out of 1000000)", tokens used and the limit.
+ANSWER_BUDGET_NUMBERS = re.compile(r"monthly token limit\s*\(\s*([0-9][0-9,]*)\s+out of\s+([0-9][0-9,]*)\s*\)", re.I)
+#: The longest answer read for ANSWER_BUDGET_WORDS: Ask Sage's two forms have 131 and 183 characters.
+ANSWER_BUDGET_CHARS = 600
 #: The numbers a budget answer reports: LiteLLM's "Current cost: 25.0, Max budget: 25.0" or "Spend=…, Budget=…".
 BUDGET_NUMBERS = re.compile(r"(?:current cost|spend)\s*[:=]\s*([0-9][0-9.eE+-]*?)[,;\s]+(?:max budget|budget)\s*[:=]\s*"
                             r"([0-9][0-9.eE+-]*?)(?=[,;\s]|\.?$|\.\s)", re.I)
 
 
+def budget_answer(text) -> bool:
+    """Whether an answer's whole text is a service saying the account's token allowance is used up
+    (ANSWER_BUDGET_WORDS, Ask Sage's form): a short answer, not JSON, with those words."""
+    words = str(text or "").strip()
+    return (0 < len(words) <= ANSWER_BUDGET_CHARS and not words.startswith(("{", "[", "`"))
+            and bool(ANSWER_BUDGET_WORDS.search(words)))
+
+
 def budget_exhausted(status: int, text) -> bool:
-    """Whether a service's error answer (HTTP status, its text) says the account's budget or quota is used up
-    (BUDGET_WORDS): never retried, it stops the run (stop_if_budget_gone). The one place that decides it, beside
-    RETRY_STATUSES."""
-    return status >= 400 and bool(BUDGET_WORDS.search(str(text or "")))
+    """Whether a service's answer (HTTP status, its text) says the account's budget or quota is used up: an error
+    with BUDGET_WORDS, or, whatever the status, an answer that is only the service saying so (budget_answer). Never
+    retried, it stops the run (stop_if_budget_gone). The one place that decides it, beside RETRY_STATUSES."""
+    return status >= 400 and bool(BUDGET_WORDS.search(str(text or ""))) or budget_answer(text)
 
 
 class BudgetExhausted(SystemExit):
@@ -487,10 +506,14 @@ BUDGET_GONE = {"error": None}
 def budget_message(service: str, status: int, text) -> str:
     """The one message for a used-up budget: the service, its words and the numbers they report, what to do."""
     words = " ".join(str(text or "").split())[:400]
-    found = BUDGET_NUMBERS.search(words)
+    found, tokens = BUDGET_NUMBERS.search(words), ANSWER_BUDGET_NUMBERS.search(words)
     numbers = f" It reports a cost of {found.group(1)} against a budget of {found.group(2)}." if found else ""
+    if tokens:
+        used, limit = (int(n.replace(",", "")) for n in tokens.groups())
+        numbers = f" It reports {used:,} tokens used against this account's monthly limit of {limit:,}."
     where = SERVICES.get(service, service)
-    return (f"{where} answered that the budget for this account is used up (HTTP {status}: {words}).{numbers} The run "
+    said = f"HTTP {status}: {words}" if status >= 400 else f"in its answer: {words}"
+    return (f"{where} answered that the budget for this account is used up ({said}).{numbers} The run "
             f"stopped at once: no other model call was sent, and none will be until the budget changes. Answers "
             f"already received are kept in the cache, so nothing is paid for twice. What to do: ask the {where} "
             f"administrators to raise or reset the budget (docs/running_on_nasa_laptop.md, *The budget is used up*); "
@@ -814,8 +837,11 @@ def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | 
     # .get("message") can be absent OR present-and-null; either way
     # callers must never receive None and call .strip() on it. Ask Sage sends no finish reason and takes no answer
     # limit, so the answer is judged by its content alone (classify_reply): one stopping inside an unfinished JSON
-    # object was cut off at the model's own limit; prose declining the task is a refusal.
-    return _raise_unless_complete((body or {}).get("message") or "", body or {}, "asksage")
+    # object was cut off at the model's own limit; prose declining the task is a refusal. Before that: an answer that
+    # is Ask Sage saying the monthly token limit is reached stops the run (budget_answer), never a refusal.
+    message = (body or {}).get("message") or ""
+    stop_if_budget_gone("asksage", 200, message)
+    return _raise_unless_complete(message, body or {}, "asksage")
 
 
 # ------------------------------ the LiteLLM client --------------------------
