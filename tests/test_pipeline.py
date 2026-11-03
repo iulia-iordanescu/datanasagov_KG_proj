@@ -604,6 +604,70 @@ class Pipeline(unittest.TestCase):
                                    "left_out.md", "partial_pair_reviews.csv", "pending_triples.csv", "schema_additions.txt",
                                "second_judge.csv", "second_opinion.csv", "second_opinion_candidates.csv"])
 
+    def reproduce(self, expected, expect=0):
+        """py helpers/reproduce_results.py --expected <expected>, each step run by stand_in_run.py; (output, prompts the
+        stand-in model answered in all its steps)."""
+        driver = (
+            "import importlib.util, sys\n"
+            f"repo, here = {str(self.repo)!r}, {str(HERE)!r}\n"
+            "sys.path[:0] = [repo]\n"
+            "spec = importlib.util.spec_from_file_location('reproduce_results', repo + '/helpers/reproduce_results.py')\n"
+            "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+            "m.step_command = lambda target, args: ([sys.executable, here + '/stand_in_run.py', repo, target.split('/')[0],"
+            " *args] if target.endswith('/run.py') else [sys.executable, repo + '/' + target, *args])\n"
+            f"sys.exit(m.main(['--expected', {str(expected)!r}]))\n")
+        r = subprocess.run([sys.executable, "-c", driver], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", stdin=subprocess.DEVNULL, cwd=self.repo)
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, expect, out[-3000:])
+        self.assertNotIn("Traceback", out, out[-3000:])
+        return out, sum(int(n) for n in re.findall(r"stand-in model answered (\d+) prompt", out))
+
+    def test_t12_reproduce_results(self):
+        """py helpers/reproduce_results.py (2026-11-02): the report's six runs made again with no model call, each
+        number beside the report's, the same or not; an answer missing from 060's cache stops before asking or paying,
+        saying what to do."""
+        for schema in ([], ["--schema", str(self.annotations / "ground_truth_schema.txt")]):  # the answers, paid once
+            for n in (1, 2, 3):
+                self.run_step("060_extract", *NO_CONFIRM, *schema, "--repeat", str(n))
+        expected = self.repo / "reported_numbers.json"
+        numbers = [{"number": "partial: f1", "kind": "pooled", "value": 0.1, "low": 0.1, "high": 0.1},   # none can be right
+                   {"number": "recall upper bound", "kind": "pooled", "value": 0.1},
+                   {"number": "partial: f1", "kind": "repeat", "repeat": 2, "value": 0.1},
+                   {"number": "D", "kind": "decision", "value": -99.9}, {"number": "p", "kind": "decision", "value": "0.1234"}]
+        doc = {"report": "a test report", "as_of": "2026-11-02", "annotations_at": "abc1234", "repeats": 3,
+               "runs": {"induced schema": ["070_evaluate_x"]}, "numbers": numbers}
+        expected.write_text(json.dumps(doc), encoding="utf-8")
+        out, prompts = self.reproduce(expected)
+        self.assertEqual(prompts, 0, "reproducing called the model")
+        self.assertIn("0 of 6 numbers are the same as the report's; 6 differ", out)
+        report = max((self.repo / "outputs" / "reports").glob("reproduce_results_*.md"), key=lambda p: p.stat().st_mtime)
+        text = report.read_text(encoding="utf-8")
+        self.assertEqual(len(re.findall(r"^\| (induced|ground truth) schema \| \d \| `060_extract_", text, re.M)), 6)
+        self.assertIn("| `070_evaluate_x` |", text)                            # the report's own run id beside the new one
+        now = dict(re.findall(r"^\| (.+?) \| [^|]+ \| ([^|]+) \| \*\*differs\*\* \|$", text, re.M))
+        self.assertEqual(len(now), 6)
+        for e in numbers:                                                       # the values now, as the report would quote them
+            label = {"pooled": f"{e['number']}, pooled over the repeats", "repeat": f"{e['number']}, repeat 2",
+                     "decision": f"{e['number']} (decision rule, across schemas)"}[e["kind"]]
+            e["value"] = now[label].strip()
+            if "low" in e:
+                e["low"], e["high"] = now[f"{label}: 95% range"].strip().split(" to ")
+        expected.write_text(json.dumps(doc), encoding="utf-8")
+        out, prompts = self.reproduce(expected)
+        self.assertEqual(prompts, 0)
+        self.assertIn("6 of 6 numbers are the same as the report's.", out)
+        # near miss: one answer gone from 060's cache: the run stops before the question and the test call
+        cache = self.output("060_extract", "cache")
+        shutil.rmtree(cache)
+        out, prompts = self.reproduce(expected, expect=1)
+        self.assertEqual(prompts, 0)
+        self.assertIn("060_extract would pay for", out)
+        self.assertIn("nothing was sent and nothing was paid", out)
+        self.assertIn("The answers this needs aren't in 060's cache on this computer", out)
+        self.assertNotIn("Press Enter", out)
+        self.assertIn("py 060_extract/run.py --repeat 1` didn't finish", out)
+
 
 if __name__ == "__main__":
     unittest.main()

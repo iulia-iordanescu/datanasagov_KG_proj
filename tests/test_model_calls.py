@@ -1083,12 +1083,37 @@ class FreeCommands(unittest.TestCase):
         self.calls()
         self.assertEqual(llm.call_llm(llm.TEST_PROMPT, model="gemini-2.5-pro", service="litellm").strip()[:1], "{")
 
+    def test_the_processes_it_starts_are_free_too(self):
+        """py helpers/reproduce_results.py runs the steps in their own processes (2026-11-02): forbid_model_calls
+        reaches them through the environment, and a stage about to pay stops before its question and test call,
+        with the command's advice; allowed again, a new process may call."""
+        import subprocess
+        import sys
+        probe = ("import sys; sys.path.insert(0, sys.argv[1]); from common import llm; "
+                 "print(llm.FORBIDDEN['why'], '|', llm.FORBIDDEN['advice'])")
+        child = lambda: subprocess.run([sys.executable, "-c", probe, str(support.ROOT)], capture_output=True,
+                                       text=True).stdout.strip()
+        llm.forbid_model_calls("a free test command", "restore the cache first")
+        self.assertEqual(child(), "a free test command | restore the cache first")
+        questions = []
+        with mock.patch.object(llm, "confirm", lambda q, *a, **k: questions.append(q)),                 self.assertRaises(llm.ModelCallForbidden) as caught:
+            llm.PaidCalls(confirm=True, step="060_extract").start("extract 2 text pieces", to_pay=2)
+        said = str(caught.exception.code)
+        for words in ("060_extract would pay for 2 model call(s) the cache can't answer (extract 2 text pieces)",
+                      "a free test command", "nothing was sent and nothing was paid", "restore the cache first"):
+            self.assertIn(words, said)
+        self.assertNotIn("a mistake in the code", said)
+        self.assertEqual(questions, [])                                          # stopped before the question
+        llm.allow_model_calls()                                                  # near miss: allowed again
+        self.assertEqual(child(), "None | None")
+
     def test_every_free_command_forbids_first(self):
         """Each command documented as free calls llm.forbid_model_calls before anything else it does (the listing of
         py helpers/models.py: before listing; py helpers/second_opinion.py: first thing when --apply true)."""
         import ast
         for rel, where in (("helpers/compare_runs.py", "main"), ("helpers/partial_pairs.py", "main"),
-                           ("helpers/review_page.py", "main"), ("helpers/models.py", "if not args.wanted"),
+                           ("helpers/review_page.py", "main"), ("helpers/reproduce_results.py", "main"),
+                           ("helpers/models.py", "if not args.wanted"),
                            ("helpers/second_opinion.py", "if settings['apply']")):
             with self.subTest(command=rel):
                 tree = ast.parse((support.ROOT / rel).read_text(encoding="utf-8"))

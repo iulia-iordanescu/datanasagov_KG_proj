@@ -19,7 +19,7 @@ It holds, in this order:
         call_llm          send a prompt, get the reply text; retries rate
                           limits and server errors with backoff; a used-up
                           budget (budget_exhausted) stops the whole run
-        forbid_model_calls  a free command's guarantee: from then on, no request is sent
+        forbid_model_calls  a free command's guarantee: from then on, no request is sent, in its processes too
         try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
         classify_reply    what a reply is (complete, cut off, refused, empty, malformed), judged by
                           the service's finish reason AND the answer's content, the same for both
@@ -517,31 +517,55 @@ class ModelCallForbidden(SystemExit):
     no `except Exception` takes it for one failed call: the run stops at once, before the request is sent."""
 
 
-#: Why this process may send no model call (forbid_model_calls), or None: model calls are allowed.
-FORBIDDEN = {"why": None}
+#: The environment variable that carries forbid_model_calls into the processes a free command starts (py
+#: helpers/reproduce_results.py runs the steps, each in its own process): JSON {"why", "advice"}.
+FORBID_ENV = "KG_NO_MODEL_CALLS"
 
 
-def forbid_model_calls(why: str) -> None:
-    """From now on, this process sends no model call: call_llm and litellm_post stop the run (ModelCallForbidden)
-    before a request leaves. Called first by every command whose docs say it is free (py helpers/second_opinion.py
-    --apply true, py helpers/partial_pairs.py, py helpers/compare_runs.py, py helpers/review_page.py, the listing of
-    py helpers/models.py), so "free" is guaranteed by code, not only by how the command is written. why: the command
-    and why it is free, for the message."""
-    FORBIDDEN["why"] = why
+def _forbidden_from_env() -> dict:
+    """forbid_model_calls as a parent process set it (FORBID_ENV), or nothing forbidden."""
+    try:
+        got = json.loads(os.environ.get(FORBID_ENV) or "null")
+    except ValueError:
+        got = None
+    return {"why": got.get("why"), "advice": got.get("advice")} if isinstance(got, dict) else {"why": None, "advice": None}
+
+
+#: Why this process may send no model call (forbid_model_calls), or None: model calls are allowed; and advice, what
+#: to do when a step would need one (None: such a call is a mistake in the code).
+FORBIDDEN = _forbidden_from_env()
+
+
+def forbid_model_calls(why: str, advice: str | None = None) -> None:
+    """From now on, this process and every process it starts send no model call: PaidCalls.start, call_llm and
+    litellm_post stop the run (ModelCallForbidden) before a request leaves. Called first by every command whose docs
+    say it is free (py helpers/second_opinion.py --apply true, py helpers/partial_pairs.py, py helpers/compare_runs.py,
+    py helpers/review_page.py, py helpers/reproduce_results.py, the listing of py helpers/models.py), so "free" is
+    guaranteed by code, not only by how the command is written. why: the command and why it is free, for the message.
+    advice: what to do when a step it runs would need a model call (an answer missing from a cache); None when no call
+    can be meant, so one is a mistake in the code."""
+    FORBIDDEN.update(why=why, advice=advice)
+    os.environ[FORBID_ENV] = json.dumps({"why": why, "advice": advice})
 
 
 def allow_model_calls() -> None:
     """Undo forbid_model_calls (only the tests, which run several commands in one process)."""
-    FORBIDDEN["why"] = None
+    FORBIDDEN.update(why=None, advice=None)
+    os.environ.pop(FORBID_ENV, None)
+
+
+def _forbidden_message(what: str) -> str:
+    """Why the run stopped before a model call: what (the call, or the calls a stage was about to pay for), why the
+    command calls no model, and what to do."""
+    return (f"{what}, but this command calls no model ({FORBIDDEN['why']}), so the run stopped before any request "
+            f"left: nothing was sent and nothing was paid. "
+            + (FORBIDDEN["advice"] or "This is a mistake in the code, not in your files: report it with this message."))
 
 
 def stop_if_forbidden() -> None:
     """Raise ModelCallForbidden when this process may send no model call (forbid_model_calls); else nothing."""
-    why = FORBIDDEN["why"]
-    if why is not None:
-        raise ModelCallForbidden(f"A model call was about to be sent, but this command calls no model ({why}), so "
-                                 f"the run stopped before the request left: nothing was sent and nothing was paid. "
-                                 f"This is a mistake in the code, not in your files: report it with this message.")
+    if FORBIDDEN["why"] is not None:
+        raise ModelCallForbidden(_forbidden_message("A model call was about to be sent"))
 
 
 class CutOff(ApiError):
@@ -1259,6 +1283,11 @@ class PaidCalls:
         count them before its first answer."""
         if self.started:
             return
+        if FORBIDDEN["why"] is not None:                    # a free command: stop before the question and the test call
+            raise ModelCallForbidden(_forbidden_message(
+                f"{self.step or 'This run'} would pay for "
+                + (f"{to_pay:,} model call(s) the cache can't answer" if to_pay is not None else "model calls")
+                + f" ({plan.strip().rstrip('.')})"))
         log.info(plan)
         log.info(f"model: {MODEL}, through {SERVICES.get(SERVICE, SERVICE)}"
                  + (f", thinking {thinking_sent()}" if thinking_sent() else ""))
