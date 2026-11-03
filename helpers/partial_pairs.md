@@ -48,5 +48,6 @@ Step 070 warns when verdicts *no longer match a partial pair* (`070_evaluate/070
 
 ## Known limits
 
+- **One rater's verdicts:** I write every verdict. A [second judge](../docs/terminology.md#4-ground-truth-and-samples) (`helpers/second_judge.md`), a model of another maker, decides each one again without seeing mine, and reports how often we agree.
 - **A rename or merge in the annotation tool** changes the predicates' spellings in `annotations/partial_pair_reviews.csv`, not in the file to review: move the filled verdicts before one, and collect again after it.
 - **The test for deleting** is today's code applied to each run's kept triples: if the code that evens out or pairs changed since a run, a verdict is judged as step 070 would judge it now on that run's triples.
