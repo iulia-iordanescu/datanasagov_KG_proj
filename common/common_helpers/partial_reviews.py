@@ -105,6 +105,17 @@ def read_reviews(path: Path = REVIEWS_PATH) -> dict:
     return {k: verdict_of(r) for k, r in chosen.items()}
 
 
+def review_conflicts(path: Path = REVIEWS_PATH) -> list:
+    """Each conflict of the file: two rows for one pair with different verdicts (neither counts), named by line."""
+    return _chosen(path)[1]
+
+
+def pair_text(row: dict, side: str) -> str:
+    """One side of a pair as its verdict is filed: "subject PREDICATE object" from the row's cells ground_truth_* or
+    translated_* (side "ground_truth" or "translated"). Entity classes aren't part of the key, nor of this file."""
+    return " ".join((row.get(f"{side}_{s}") or "").strip() for s in SLOTS)
+
+
 def review_problems(path: Path = REVIEWS_PATH) -> list:
     """Each row whose verdict is neither SAME nor NOT_SAME (case and spacing aside), as "line N (record id):
     'verdict'", then each conflict (two rows for one pair with different verdicts: neither counts)."""

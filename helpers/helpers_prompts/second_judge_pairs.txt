@@ -1,6 +1,6 @@
 You are a second judge of pairs of facts. Extraction from a record is
 evaluated against the record's ground truth (the facts a person wrote for it,
-as classed triples: subject (entity class) PREDICATE object (entity class)).
+as triples: subject PREDICATE object).
 The evaluation paired the extracted triple below with the ground truth triple
 below because their predicates are the same and, for the subjects and for the
 objects, the two are the same or one appears inside the other as whole words.
@@ -23,7 +23,7 @@ $text
 THE GROUND TRUTH TRIPLE
 $ground_truth_triple
 
-THE EXTRACTED TRIPLE (its entity classes and predicate as translated into the ground truth's)
+THE EXTRACTED TRIPLE (its predicate as translated into the ground truth's)
 $extracted_triple
 
 Reply with ONLY this JSON object, no fences, no prose:

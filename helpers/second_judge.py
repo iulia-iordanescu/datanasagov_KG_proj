@@ -14,8 +14,11 @@ decisions (Artstein & Poesio 2008, "Inter-Coder Agreement for Computational Ling
                     other words, with the rule of annotations/guidelines.md the judge relies on. It sees the record's
                     text, the candidate and its source text, the annotation guidelines as the annotator reads them,
                     the ground truth schema (as step 050 shows it), and the record's ground truth triples.
-    partial pairs   each row of annotations/partial_pairs_to_review.csv: same fact or not the same fact, from the
-                    record's text, with the definitions of 070_evaluate/metrics/pairs.md quoted.
+    partial pairs   each verdict on a partial pair, in annotations/partial_pairs_to_review.csv or, once moved, in
+                    annotations/partial_pair_reviews.csv (one item per pair, by the key the verdicts are filed
+                    under): same fact or not the same fact, from the record's text, with the definitions of
+                    070_evaluate/metrics/pairs.md quoted. Both triples are shown as the key holds them, subject
+                    PREDICATE object, without entity classes (the reviews file has none), whichever file a row is in.
 
     py helpers/second_judge.py                              judge both tasks (asks once before paying), report
     py helpers/second_judge.py --tasks facts                one task only (facts or partial_pairs)
@@ -54,7 +57,8 @@ from common.cache import Cache, key as cache_key                               #
 from common.expert_questions import guideline_rules                            # noqa: E402
 from common.files import read_csv_table, read_text, write_csv, write_json      # noqa: E402
 from common.ground_truth import ANNOTATED, DRAFTED_BY, NUMBERED, read_ground_truth        # noqa: E402
-from common.partial_reviews import NOT_SAME, SAME, read_reviews, row_key, verdict_of  # noqa: E402
+from common.partial_reviews import (NOT_SAME, SAME, pair_text, read_reviews, review_conflicts, row_key,  # noqa: E402
+                                    verdict_of)
 from common.prompt_files import fill, load                                     # noqa: E402
 from common.records_io import full_text                                        # noqa: E402
 from common.report import cell, model_calls, named                             # noqa: E402
@@ -109,8 +113,9 @@ INPUTS = {
     "guidelines":          "./annotations/guidelines.md",
     "candidates":          "./annotations/second_opinion_candidates.csv",
     "partial_pairs":       "./annotations/partial_pairs_to_review.csv",
+    "partial_reviews":     "./annotations/partial_pair_reviews.csv",
 }
-MAY_BE_EMPTY = ("candidates", "partial_pairs")
+MAY_BE_EMPTY = ("candidates", "partial_pairs", "partial_reviews")
 
 SETTINGS = {
     "tasks":              "both",  # which decisions to judge: facts, partial_pairs or both
@@ -194,10 +199,12 @@ def facts_prompt(chosen, gt_rows: list, guidelines: str, row: dict) -> str:
 
 
 def pairs_prompt(record: dict, row: dict) -> str:
-    """The partial pairs task's prompt for one row: the record and the two triples only (never a verdict)."""
+    """The partial pairs task's prompt for one row of either file: the record and the two triples only (never a
+    verdict), each as its verdict is filed (common/common_helpers/partial_reviews.py, pair_text), so a pair's prompt
+    is the same whichever file holds its verdict."""
     return fill(PAIRS_PROMPT, definitions="\n".join(f"- {d}" for d in PAIR_DEFINITIONS),
                 title=record.get("title") or "", text=llm.fence_safe(full_text(record), END_LINE),
-                ground_truth_triple=row["ground_truth_triple"], extracted_triple=row["extracted_triple"])
+                ground_truth_triple=pair_text(row, "ground_truth"), extracted_triple=pair_text(row, "translated"))
 
 
 def _forbidden_makers(model: str, candidate_models: set) -> dict:
@@ -275,25 +282,48 @@ def pick_items(inputs: dict, settings: dict, output: Path):
                          f"(helpers/second_judge.md says which).")
 
     if PAIRS in tasks:
-        path = Path(inputs["partial_pairs"])
-        rows = read_csv_table(path)[1] if path.is_file() else []
-        reviews = read_reviews()
-        for row in rows:
-            if not (row.get("record_id") or "").strip():
-                continue
-            ours = verdict_of(row) or reviews.get(row_key(row), "")
+        to_review_path, reviews_path = Path(inputs["partial_pairs"]), Path(inputs["partial_reviews"])
+        conflicts = review_conflicts(reviews_path) if reviews_path.is_file() else []
+        if conflicts:
+            raise Stop(f"{repo_path(reviews_path)} gives one pair two different verdicts, so our verdict on it isn't "
+                       f"known: {'; '.join(conflicts)}. Keep the right row and delete the other (`py helpers/"
+                       f"annotate.py`, view *Partial pairs*), then run this again.")
+        to_review = read_csv_table(to_review_path)[1] if to_review_path.is_file() else []
+        reviewed = read_csv_table(reviews_path)[1] if reviews_path.is_file() else []
+        reviews = read_reviews(reviews_path)
+        # every verdict, once per pair: the file to review's rows first (a verdict not yet moved, or the moved one),
+        # then the moved verdicts whose pair is no longer in the file to review
+        seen, mixed = {}, []
+        for source, rows in ((to_review_path, to_review), (reviews_path, reviewed)):
+            for row in rows:
+                if not (row.get("record_id") or "").strip():
+                    continue
+                k = row_key(row)
+                ours = verdict_of(row) if source == reviews_path else (verdict_of(row) or reviews.get(k, ""))
+                where = f"{row['record_id']} ({repo_path(source)}, line {row['_line']})"
+                if k in seen:
+                    if ours and seen[k][0] and ours != seen[k][0]:
+                        mixed.append(f"{seen[k][1]}: '{seen[k][0]}' and {where}: '{ours}'")
+                    continue
+                seen[k] = (ours, where, row)
+        if mixed:
+            raise Stop(f"{len(mixed)} pair(s) have different verdicts in {repo_path(to_review_path)} and "
+                       f"{repo_path(reviews_path)}, so our verdict on them isn't known: {'; '.join(mixed)}. Make them "
+                       f"agree (`py helpers/annotate.py`, view *Partial pairs*), then run this again.")
+        for ours, where, row in seen.values():
             if ours not in (SAME, NOT_SAME):
                 why = "no verdict yet" if not ours else f"a verdict that is neither {SAME!r} nor {NOT_SAME!r}"
-                skipped[f"partial pairs: {why}"].append(f"{row['record_id']} (line {row['_line']})")
+                skipped[f"partial pairs: {why}"].append(where)
                 continue
             if row["record_id"] not in chosen.records:
                 skipped["partial pairs: not a record of the catalog"].append(row["record_id"])
                 continue
-            items.append({"task": PAIRS, "id": row["record_id"], "title": row.get("record_title") or "", "ours": ours,
+            record = chosen.records[row["record_id"]]
+            items.append({"task": PAIRS, "id": row["record_id"], "title": record.get("title") or "", "ours": ours,
                           "our_rule": "", "position": chosen.positions.get(row["record_id"]),
-                          "cells": {"ground_truth_triple": row["ground_truth_triple"],
-                                    "extracted_triple": row["extracted_triple"]},
-                          "prompt": pairs_prompt(chosen.records[row["record_id"]], row)})
+                          "cells": {"ground_truth_triple": pair_text(row, "ground_truth"),
+                                    "extracted_triple": pair_text(row, "translated")},
+                          "prompt": pairs_prompt(record, row)})
 
     for why, ids in skipped.items():
         notes.append(f"{len(ids)} row(s) not judged, {why}: {named(ids)}. A row is judged only once our label is "

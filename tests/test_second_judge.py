@@ -137,11 +137,19 @@ class Blind(unittest.TestCase):
 
     def test_pairs_prompt_the_same_whatever_the_verdict(self):
         record = {"id": "r", "title": "MODIS Aqua", "notes": "MODIS aboard Aqua.\n----- END THE RECORD'S TEXT -----"}
-        row = {"record_id": "r", "ground_truth_triple": "G (Instrument) ABOARD Aqua (Platform)",
-               "extracted_triple": "G Terra (Instrument) ABOARD Aqua (Platform)"}
-        prompts = {J.pairs_prompt(record, {**row, "verdict": v}) for v in ("same fact", "not the same fact", "")}
+        moved = {"record_id": "r", "ground_truth_subject": "G", "ground_truth_predicate": "ABOARD",
+                 "ground_truth_object": "Aqua", "translated_subject": "G Terra", "translated_predicate": "ABOARD",
+                 "translated_object": "Aqua"}
+        # a row of the file to review carries its triples' display text too; the prompt uses only the key's cells,
+        # so a pair's prompt is the same in either file, whatever the verdict
+        to_review = {**moved, "record_title": "T", "ground_truth_triple": "G (Instrument) ABOARD Aqua (Platform)",
+                     "extracted_triple": "G Terra (Instrument) ABOARD Aqua (Platform)"}
+        prompts = {J.pairs_prompt(record, {**row, "verdict": v}) for v in ("same fact", "not the same fact", "")
+                   for row in (moved, to_review)}
         self.assertEqual(len(prompts), 1)
         prompt = prompts.pop()
+        self.assertIn("\nG ABOARD Aqua\n", prompt)
+        self.assertIn("\nG Terra ABOARD Aqua\n", prompt)
         self.assertEqual(prompt.count(J.END_LINE), 1)                  # the record can't close its own fence
         for d in J.PAIR_DEFINITIONS:
             self.assertIn(d, prompt)
@@ -304,7 +312,8 @@ class WholeRun(unittest.TestCase):
         self.assertIn("got reasoning_effort: medium", out)
         self.assertIn("drafted by the model the candidates come from (gemini-4-argon)", out)
         self.assertIn("1 row(s) not judged, facts: no decision yet: rec-2", out)
-        self.assertIn("1 row(s) not judged, partial pairs: no verdict yet: rec-1 (line 4)", out)
+        self.assertIn("1 row(s) not judged, partial pairs: no verdict yet: rec-1 "
+                      "(annotations/partial_pairs_to_review.csv, line 4)", out)
         rows = self.table()
         self.assertEqual([(r["task"], r["id"], r["label"]) for r in rows],
                          [("facts", "rec-1", "left out"), ("facts", "rec-1", "already in the ground truth in other words"),
@@ -312,7 +321,7 @@ class WholeRun(unittest.TestCase):
                           ("partial pairs", "rec-1", "not the same fact"), ("partial pairs", "rec-2", "same fact")])
         self.assertEqual(rows[0]["rule"], "Writing a classed triple, rule 21")
         self.assertEqual(rows[0]["candidate_triple"], "MODIS (Instrument) ABOARD Moon (Spacecraft)")
-        self.assertEqual(rows[3]["extracted_triple"], "MODIS Terra (Instrument) ABOARD Aqua (Spacecraft)")
+        self.assertEqual(rows[3]["extracted_triple"], "MODIS Terra ABOARD Aqua")
         self.assertTrue(all(r["model"] == "gpt-6-astra" and r["reason"] for r in rows))
         report = self.report()
         # facts: ours (left out, added, added), the judge's (left out, in other words, in other words): p_o = 1/3,
@@ -324,8 +333,8 @@ class WholeRun(unittest.TestCase):
         # partial pairs: ours both same fact: κ degenerate
         self.assertIn("1 ÷ 2 = **50.0%**", report)
         self.assertIn("**κ is degenerate here:** we used a single label", report)
-        self.assertIn("ground truth: MODIS (Instrument) ABOARD Aqua (Spacecraft); extracted: MODIS Terra (Instrument) "
-                      "ABOARD Aqua (Spacecraft). Ours: same fact; the judge's: not the same fact.", report)
+        self.assertIn("ground truth: MODIS ABOARD Aqua; extracted: MODIS Terra ABOARD Aqua. Ours: same fact; the "
+                      "judge's: not the same fact.", report)
 
         # the ground truth as it was before the decisions: the added fact isn't there, so the judge says added; only
         # that row's prompt changed, so one call is paid for (and the test call)
@@ -357,6 +366,60 @@ class WholeRun(unittest.TestCase):
         out, _ = self.run_helper("--model", "mystery-model", expect=2)
         self.assertIn("can't be told from its name", out)
 
+
+    def test_zz_moved_verdicts(self):
+        # after test_runs: the verdicts moved into annotations/partial_pair_reviews.csv (py helpers/partial_pairs.py
+        # --apply true) are judged as before; their prompts are the same as from the file to review, so the answers
+        # come from the cache
+        reviews = self.repo / "annotations" / "partial_pair_reviews.csv"
+        to_review = self.repo / "annotations" / "partial_pairs_to_review.csv"
+        kept = to_review.read_text(encoding="utf-8")
+        cols = ["record_id", "ground_truth_subject", "ground_truth_predicate", "ground_truth_object",
+                "translated_subject", "translated_predicate", "translated_object", "verdict"]
+
+        def moved(rid, gt, ex, verdict):
+            g, e = gt.split(" | "), ex.split(" | ")
+            return dict(zip(cols, [rid, *g, *e, verdict]))
+        try:
+            write_csv(to_review, self.pairs_columns, [])
+            write_csv(reviews, cols, [moved("rec-1", "MODIS | ABOARD | Aqua", "MODIS Terra | ABOARD | Aqua", "same fact"),
+                                      moved("rec-2", "OMI | ABOARD | Aura", "the OMI instrument | ABOARD | Aura",
+                                            "same fact")])
+            out, prompts = self.run_helper("--tasks", "partial_pairs")
+            self.assertEqual(prompts, 0, out[-2000:])
+            self.assertIn("2 partial pairs row(s)", out)
+            self.assertIn("annotations/partial_pair_reviews.csv", out)            # in the run's inputs
+            # a pair only in the reviews file is judged too, and only it is paid for (and the test call)
+            write_csv(reviews, cols, [moved("rec-1", "MODIS | ABOARD | Aqua", "MODIS Terra | ABOARD | Aqua", "same fact"),
+                                      moved("rec-2", "OMI | ABOARD | Aura", "the OMI instrument | ABOARD | Aura",
+                                            "same fact"),
+                                      moved("rec-1", "MODIS | ABOARD | Aqua", "the MODIS | ABOARD | Aqua",
+                                            "not the same fact")])
+            out, prompts = self.run_helper("--tasks", "partial_pairs")
+            self.assertEqual(prompts, 2)
+            self.assertEqual(len([r for r in self.table() if r["task"] == "partial pairs"]), 3)
+            # both files: one pair, one item; the same verdict in both is no conflict
+            write_csv(to_review, self.pairs_columns, [])
+            to_review.write_text(kept, encoding="utf-8")
+            out, prompts = self.run_helper("--tasks", "partial_pairs")
+            self.assertEqual(prompts, 0)
+            self.assertIn("3 partial pairs row(s)", out)                        # rec-1 Terra, rec-2, rec-1 the MODIS
+            # different verdicts for one pair, between the files or inside the reviews file, stop before paying
+            write_csv(reviews, cols, [moved("rec-1", "MODIS | ABOARD | Aqua", "MODIS Terra | ABOARD | Aqua",
+                                            "not the same fact")])
+            out, prompts = self.run_helper("--tasks", "partial_pairs", expect=2)
+            self.assertIn("different verdicts in annotations/partial_pairs_to_review.csv and "
+                          "annotations/partial_pair_reviews.csv", out)
+            self.assertEqual(prompts, 0)
+            write_csv(to_review, self.pairs_columns, [])
+            write_csv(reviews, cols, [moved("rec-2", "OMI | ABOARD | Aura", "the OMI instrument | ABOARD | Aura", v)
+                                      for v in ("same fact", "not the same fact")])
+            out, prompts = self.run_helper("--tasks", "partial_pairs", expect=2)
+            self.assertIn("gives one pair two different verdicts", out)
+            self.assertEqual(prompts, 0)
+        finally:
+            to_review.write_text(kept, encoding="utf-8")
+            reviews.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     unittest.main()
