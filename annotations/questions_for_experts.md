@@ -1030,7 +1030,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
 - predicate HAS_TIME_RESOLUTION -> HAS_TEMPORAL_RESOLUTION: The subject (a dataset or measurement) has the object as its temporal resolution, averaging interval, cycle or file time-period.
 - predicate COVERS -> HAS_TIME_SPAN: The subject (a dataset, campaign, flight series or technique) spans the object, a time period, geographic area or measured variable.
-- predicate HAS_DURATION -> HAS_GRANULE_DURATION: The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.
+- predicate HAS_DURATION -> HAS_DURATION: The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
@@ -1042,7 +1042,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 
 - No change to the ground truth triples listed under Affects.
 - "daily" for a dataset of 5-minute swath files and "daily" for a dataset with one value per place per day look the same, though they may mean different things (the expert's answer to (a)).
-- Until the old option 4 (in My notes) is done, an area or a variable the model writes with COVERS, a whole series' duration written with HAS_DURATION, and a radio band filed under Frequency are compared with the wrong ground truth predicate or entity class, and counted wrong.
+- Until the old option 4 (in My notes) is done, an area or a variable the model writes with COVERS and a radio band filed under Frequency are compared (since 2026-11-04 the row of HAS_DURATION translates to the ground truth schema's HAS_DURATION, which has the same meaning) with the wrong ground truth predicate or entity class, and counted wrong.
 
 #### Option 2: Tell apart how often from the period a value averages over
 
