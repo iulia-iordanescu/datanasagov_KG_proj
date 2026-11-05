@@ -1,26 +1,26 @@
 {
   "report": "NASA Technical Memorandum NASA/TM-20260010350 (revised 2026-11-05)",
   "as_of": "2026-11-05",
-  "annotations_at": "969ddb8",
+  "annotations_at": "HEAD",
   "repeats": 3,
   "runs": {
-    "induced schema": ["070_evaluate_2026-11-05_1407", "070_evaluate_2026-11-05_1407-2", "070_evaluate_2026-11-05_1408"],
-    "ground truth schema": ["070_evaluate_2026-11-05_1408-2", "070_evaluate_2026-11-05_1408-3", "070_evaluate_2026-11-05_1409"]
+    "induced schema": ["070_evaluate_2026-11-05_1816", "070_evaluate_2026-11-05_1816-2", "070_evaluate_2026-11-05_1816-3"],
+    "ground truth schema": ["070_evaluate_2026-11-05_1817", "070_evaluate_2026-11-05_1817-2", "070_evaluate_2026-11-05_1817-3"]
   },
   "numbers": [
-    {"number": "partial: f1", "kind": "pooled", "value": 52.3, "low": 44.2, "high": 60.2},
-    {"number": "partial: precision", "kind": "pooled", "value": 59.9},
+    {"number": "partial: f1", "kind": "pooled", "value": 51.9, "low": 43.7, "high": 60.0},
+    {"number": "partial: precision", "kind": "pooled", "value": 58.8},
     {"number": "partial: recall", "kind": "pooled", "value": 46.4},
-    {"number": "exact: f1", "kind": "pooled", "value": 46.2},
+    {"number": "exact: f1", "kind": "pooled", "value": 45.8},
     {"number": "recall upper bound", "kind": "pooled", "value": 74.3},
     {"number": "partial: recall_within_reach", "kind": "pooled", "value": 62.5},
     {"number": "exact: recall_within_reach", "kind": "pooled", "value": 55.1},
-    {"number": "schema fit", "kind": "pooled", "value": 85.6},
-    {"number": "partial: f1", "kind": "repeat", "repeat": 1, "value": 52.7},
-    {"number": "partial: f1", "kind": "repeat", "repeat": 2, "value": 52.8},
-    {"number": "partial: f1", "kind": "repeat", "repeat": 3, "value": 51.3},
+    {"number": "schema fit", "kind": "pooled", "value": 87.2},
+    {"number": "partial: f1", "kind": "repeat", "repeat": 1, "value": 52.4},
+    {"number": "partial: f1", "kind": "repeat", "repeat": 2, "value": 52.3},
+    {"number": "partial: f1", "kind": "repeat", "repeat": 3, "value": 51.0},
     {"number": "partial F1 with the ground truth schema", "kind": "decision", "value": 81.3},
-    {"number": "D", "kind": "decision", "value": 29.0},
+    {"number": "D", "kind": "decision", "value": 29.4},
     {"number": "p", "kind": "decision", "value": "1.907e-06"}
   ]
 }

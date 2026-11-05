@@ -74,3 +74,9 @@ ec41fd5d-1159-4aa8-9803-5346e2324a20,PWS spectrum analyzer,HAS_NUMBER_OF,16 freq
 ec41fd5d-1159-4aa8-9803-5346e2324a20,PWS spectrum analyzer,HAS_NUMBER_OF,16 frequency channels,spectrum analyzer,HAS_NUMBER_OF,16,not the same fact
 ec41fd5d-1159-4aa8-9803-5346e2324a20,PWS spectrum analyzer,HAS_NUMBER_OF,16 frequency channels,spectrum analyzer,HAS_NUMBER_OF,16 frequency channels,same fact
 0eedd2bc-b2e2-4cc1-a94d-41c141169334,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,HAS_NUMBER_OF,one data layer,VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002,HAS_NUMBER_OF,one,not the same fact
+6f63dd10-376e-4d17-9156-f2155637e74d,August 2015 BARREL campaign,HAS_NUMBER_OF,Seven balloon launches,August 2015 BARREL campaign,HAS_NUMBER_OF,Seven,not the same fact
+6f63dd10-376e-4d17-9156-f2155637e74d,BARREL,HAS_NUMBER_OF,"over 50 small, approximately 20 kg, stratospheric balloons",four BARREL campaigns,HAS_NUMBER_OF,over 50,not the same fact
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,HAS_NUMBER_OF,"262,902 unique X-ray sources",2XMMi-DR3,HAS_NUMBER_OF,"262,902",not the same fact
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,HAS_NUMBER_OF,"353,191 detections (above the processing likelihood threshold of 6)",2XMMi-DR3,HAS_NUMBER_OF,"353,191",not the same fact
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,HAS_NUMBER_OF,412 quasars,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,HAS_NUMBER_OF,412,not the same fact
+dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,HAS_DURATION,~40 minute,encounter data,HAS_DURATION,~40 minute period,same fact

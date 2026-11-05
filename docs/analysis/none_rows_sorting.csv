@@ -1,0 +1,72 @@
+kind,induced entry,category,ground truth entries or rule quote,reason,untranslatable occurrences per repeat (1/2/3),all occurrences per repeat (entity classes: as subject or object class)
+entity class,DataTable,D,Dataset; Variable,"a table is a Dataset and its columns are Variables (rule 8 keeps ""only what the table is about"")",0/0/0,0/2/2
+entity class,DocumentArchive,D,Dataset; Document,"an archive of data products is a Dataset, an archive of documents a Document",0/0/0,0/0/0
+entity class,Location,D,SpatialExtent; Organization; CelestialBody,"examples mix places (Halley Bay), facilities and sky fields, each a different ground truth entity class",1/4/0,13/12/8
+entity class,Program,D,Mission; Campaign,telescope legacy and key programs are Missions or Campaigns depending on the record,0/1/1,2/3/4
+entity class,Study,D,Mission; Campaign; Dataset,"named surveys and projects (SWIRE, COSMOS) are Missions in some records, Datasets in others",0/0/0,0/0/0
+entity class,Disease,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.","examples are findings of studies (""endothelial dysfunction"", ""impaired immune responses"")",0/0/0,0/0/0
+entity class,Status,E,"Leave out ""latest"", ""current"", ""now"", ""then available"", and words like them.","""complete"" and ""ongoing"" are true only as of when the record was written (rule 10)",1/1/0,1/1/0
+entity class,Chemical,F,,"biology records state chemicals and reagents; the ground truth schema, written on 20 records without such facts, has no entity class for them",0/0/0,0/0/0
+entity class,Experiment,F,,no ground truth entity class for laboratory experiments,0/0/0,0/0/0
+entity class,ExperimentalGroup,F,,no ground truth entity class for experimental groups,0/0/0,0/0/0
+entity class,Organism,F,,as for Chemical: no ground truth entity class for organisms,0/0/0,0/0/0
+entity class,Tissue,F,,no ground truth entity class for tissues,0/0/0,0/0/0
+entity class,Acknowledgement,S,,"support 3, one maintainer; mixes credit statements with permission requirements (the latter are AccessRights)",0/0/0,0/0/0
+entity class,Container,S,,"mixes a sample plate, a chamber and a CD-ROM: no single meaning",0/0/0,0/0/0
+entity class,Observation,S,,"examples are unnamed common nouns (""The observations""), which get no instance under rule 9: ""A ground truth triple needs a subject and an object the record names.""",1/3/1,4/5/4
+predicate,AFFECTS,D,HAS_ISSUE (reversed); LIMITED_BY (reversed),a factor or flag that impacts a measurement or product,0/1/0,0/1/0
+predicate,AVAILABLE_AT,D,AVAILABLE_AT (a WebPage); PROVIDED_BY_PARTY (a data center); DOCUMENTED_AT,"a URL, repository, website or data center",2/2/2,2/2/2
+predicate,CAUSED_BY,D,HAS_ISSUE; PRODUCTION_DISCONTINUED_DUE_TO,a property or limitation explained by a cause,1/0/0,1/0/0
+predicate,DESCRIBES,D,DOCUMENTED_AT (reversed); PROVIDES_ACCESS_TO_DOCUMENT,a document or label pertains to a topic or content,0/1/1,0/1/1
+predicate,ENTERED,D,HAS_ORBIT; HAS_MISSION_PHASE,"""SWOT entered 21-day repeat orbit"" is HAS_ORBIT; entering a phase is HAS_MISSION_PHASE",1/0/1,1/0/1
+predicate,EXCLUDED_FROM,D,CLEANED_OF (reversed); PRODUCTION_DISCONTINUED_ON,an item omitted or discontinued from a dataset or version,0/0/0,0/0/0
+predicate,EXCLUDES,D,CLEANED_OF; findings (left out),a version removing corrupted files is CLEANED_OF; samples that missed sources are findings,0/0/0,0/0/0
+predicate,HAS_CONTACT,D,HAS_CONTACT_POINT (its conditional row); INFORMED_BY,"reached at an email address, or should contact a responsible person",0/0/0,0/0/0
+predicate,HAS_DATA_TYPE,D,HAS_FILE_FORMAT; HAS_PROCESSING_LEVEL,"product type, data type, measurement type or storage format",1/0/0,1/0/0
+predicate,HAS_END_DATE,D,ENDED_ON; DECOMMISSIONED_ON; PRODUCTION_DISCONTINUED_ON,"ends, was decommissioned or stopped being acquired",2/2/2,2/2/2
+predicate,HAS_FREQUENCY,D,HAS_TEMPORAL_RESOLUTION (its conditional row); HAS_FREQUENCY_RANGE; CHANNEL_OF,"an operating frequency or band, or a rate such as orbits per day",2/2/1,2/2/1
+predicate,HAS_PI,D,"SERVES_AS (reversed, a Role); RESPONSIBLE_FOR",a team led by its principal investigator,1/1/1,1/1/1
+predicate,HAS_PROPERTY,D,HAS_SPATIAL_RESOLUTION; HAS_PROCESSING_LEVEL; HAS_VERSION; HAS_SPATIAL_COVERAGE (its four conditional rows),"a catch-all ""is characterized by""; conditional rows already split four meanings",4/5/4,4/5/4
+predicate,HAS_REDSHIFT,D,HAS_REDSHIFT_RANGE; none for means and fractions,"a redshift value, mean, range, change or fraction",1/1/1,1/1/1
+predicate,HAS_SOURCE_COUNT,D,"HAS_NUMBER_OF; left out by rule 7 when ""expected to detect""","counts of sources or measurements; HAS_NUMBER_OF fits the stated counts, so the (none) may be a row error",3/5/3,3/5/3
+predicate,HAS_START_DATE,D,PRODUCTION_STARTED_ON; LAUNCHED_ON; HAS_TIME_SPAN,"start of a campaign, dataset, phase or event",2/2/2,2/2/2
+predicate,HAS_WAVELENGTH,D,FOR_CHANNEL; CHANNEL_OF,"in the runs it joins a Variable, dataset or instrument to a band (""band 31"", ""VIIRS band M4 (0.555 μm)""), which the ground truth writes with FOR_CHANNEL or CHANNEL_OF",8/6/12,8/6/12
+predicate,IMPROVES,D,CLEANED_OF; SUPERSEDES,a version improving handling or correcting errors; a technique enhancing an application is a finding,1/1/1,1/1/1
+predicate,OBSERVED_BY,D,ACQUIRED_BY_INSTRUMENT; FROM_PLATFORM (its conditional rows),observed by an instrument or an observatory,0/1/1,0/1/1
+predicate,OBSERVES,D,HAS_TARGET; MEASURES; HAS_SPATIAL_COVERAGE,"observes a field, region, target or medium",1/1/1,1/1/1
+predicate,PI_OF,D,SERVES_AS (a Role); RESPONSIBLE_FOR,the reverse of HAS_PI,0/0/0,0/0/0
+predicate,RELEASE_DATE,D,CREATED_ON; none for the place or event of release,"date, place or event of a formal release",1/0/0,1/0/0
+predicate,SOURCED_FROM,D,FROM_MISSION; FROM_PLATFORM; ACQUIRED_BY_INSTRUMENT; COMPUTED_FROM,the TM's own example of a divided meaning,1/2/4,1/2/4
+predicate,SUPPORTS,D,SPONSORED_BY_PARTY (reversed); COMPUTED_FROM (reversed); COORDINATED_WITH,"aids, funds, augments or serves as input",1/1/2,1/1/2
+predicate,USES,D,PRODUCED_USING_ALGORITHM; ACQUIRED_BY_INSTRUMENT; USES_TECHNIQUE,"employs an instrument, band, tool or data version",7/9/7,7/9/7
+predicate,CAUSES,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",causal explanations of effects are findings of studies,0/1/0,0/1/0
+predicate,COMPARED_WITH,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.","comparisons such as ""WR89 is much softer than WR87"" are findings; rule 1's comparison test covers only a record's comparison without its second term",0/0/0,0/0/0
+predicate,CONSISTENT_WITH,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",agreement of a result with an expectation is a finding,0/0/0,0/0/0
+predicate,ELIMINATES_NEED_FOR,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",what suborbital flights make unnecessary is background of a study,0/0/0,0/0/0
+predicate,FOLLOWED_BY,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",the order of laboratory steps is a method detail beyond rule 24,0/0/0,0/0/0
+predicate,HAS_EFFICIENCY,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",a survey's efficiency at finding sources is a finding,0/0/0,0/0/0
+predicate,IDENTIFIED,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",catalogs and analyses detecting or classifying sources: results of studies,0/0/0,0/0/0
+predicate,IMPROVED_BY,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",what enhances an identification technique is a finding,0/0/0,0/0/0
+predicate,INDICATES,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",what a spectrum or value shows or suggests is a finding,0/0/0,0/0/0
+predicate,IS_A,E,"Not ""is a"" facts.",rule 4: what type of thing something is belongs in its entity class,0/1/0,0/1/0
+predicate,LAUNCHED_FROM,E,"Every fact the record states, unless a rule leaves it out: ... or it waits on an expert's answer",the BARREL launch stations are left out while they wait on expert question Q8 (annotations/left_out.md),6/6/6,6/6/6
+predicate,PRESERVES,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.","""artificial gravity partially protects"" is a finding; fixation of samples is a method detail beyond rule 24",0/0/0,0/0/0
+predicate,REQUIRED_FOR,E,"Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.",rule 7: needs and requirements are not asserted facts,0/0/0,0/0/0
+predicate,RESPONDS_TO,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",responses of organisms or pathways are findings,0/0/0,0/0/0
+predicate,RETURNED_TO,E,"The rest of the study is not: its background, its findings, what it says about methods it did not use, and the details of its method beyond what rule 24 of *Writing a classed triple* takes.",returning samples to normal gravity is a method detail beyond rule 24,0/0/0,0/0/0
+predicate,CONTACT_FOR,F,,the topic a contact person answers for: no ground truth predicate,0/0/0,0/0/0
+predicate,DEPENDS_ON,F,,"""black-sky albedo is a function of solar zenith angle"": a general fact about a Variable, with no ground truth predicate",0/0/0,0/0/0
+predicate,HAS_DISTANCE,F,,"distances of astronomical objects, general facts that rule 21 admits; no ground truth predicate",0/0/0,0/0/0
+predicate,HAS_DOSE,F,,radiation doses: no ground truth predicate,0/0/0,0/0/0
+predicate,HAS_ENERGY,F,,particle energies and energy settings: no ground truth predicate,0/1/1,0/1/1
+predicate,HAS_ENERGY_RANGE,F,,energy ranges of instrument channels: no ground truth predicate,0/0/0,0/0/0
+predicate,HAS_EXPOSURE_TIME,F,,exposure durations: no ground truth predicate,0/0/0,0/0/0
+predicate,HAS_FILE_NAME_PATTERN,F,,file naming conventions: no ground truth predicate,0/0/0,0/0/0
+predicate,HAS_FILE_SIZE,F,,file sizes: no ground truth predicate,0/0/0,0/0/0
+predicate,HAS_LAUNCH_COUNT,F,HAS_NUMBER_OF (broader) fits,"number of balloon launches; by the table's rule (a broader target when none has the same meaning) the row should probably translate to HAS_NUMBER_OF, so the (none) looks like a row error",2/3/2,2/3/2
+predicate,HAS_SENSITIVITY,F,,detection limits and sensitivities: no ground truth predicate,0/1/1,0/1/1
+predicate,LAST_UPDATED,F,,"date of the latest update; rule 10 drops only the word ""latest"", and the ground truth schema has no ""updated on"" predicate",0/0/0,0/0/0
+predicate,SENT_TO,F,,a mission or sample sent to a facility: no ground truth predicate,0/0/0,0/0/0
+predicate,SIMULATES,F,,a control group or model that mimics a condition: no ground truth predicate,0/0/0,0/0/0
+predicate,AFFECTED_BY,S,,"support 1; one example, about the future exposure of astronauts",0/0/0,0/0/0
+predicate,HAS_PARAMETER,S,,"""characterized, sampled or adjusted by a parameter, keyword, setting or condition"": no single meaning",3/0/0,3/0/0
