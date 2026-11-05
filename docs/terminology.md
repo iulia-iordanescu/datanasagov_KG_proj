@@ -48,7 +48,7 @@ notes: The MODIS instrument aboard Aqua …
 |---|---|
 | **fact** | Something a record's text states, e.g. that MODIS is aboard Aqua. A triple, a triple instance, or a classed triple writes one fact down; different ones can write the same fact (e.g. "MODIS" and "Moderate Resolution Imaging Spectroradiometer" as subject). |
 | **triple instance** | One fact, written in three pieces: a subject, a predicate, and an object, e.g. "MODIS" – "is aboard" – "Aqua" (compare **classed triple**). |
-| **triple** | A fact written as a subject, a predicate of a schema, and an object, e.g. "MODIS" ABOARD "Aqua"; a classed triple adds the entity class of the subject and of the object (compare **triple instance**). |
+| **triple** | A fact written as a subject, a predicate of a schema, and an object, e.g. "MODIS" ABOARD "Aqua". In this pipeline, the subject and the object are written in the text's words, as a subject instance and an object instance. A classed triple adds the entity class of each (compare **triple instance**). |
 | **classed triple** | A fact written as a subject instance with its subject class, a predicate of a schema, and an object instance with its object class, e.g. "MODIS" (`Instrument`) ABOARD "Aqua" (`Platform`). What annotation (step 050) and extraction (step 060) write: every ground truth triple and every extracted triple is a classed triple. |
 | **component** | One of the three pieces of a triple, a triple instance, or a classed triple: **subject**, **predicate**, or **object**. |
 | **slot** | Where a component sits in a triple, a triple instance, or a classed triple. |
