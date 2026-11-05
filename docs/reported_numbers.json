@@ -1,7 +1,7 @@
 {
   "report": "NASA Technical Memorandum NASA/TM-20260010350 (revised 2026-11-05)",
   "as_of": "2026-11-05",
-  "annotations_at": "HEAD",
+  "annotations_at": "5b958ce",
   "repeats": 3,
   "runs": {
     "induced schema": ["070_evaluate_2026-11-05_1816", "070_evaluate_2026-11-05_1816-2", "070_evaluate_2026-11-05_1816-3"],
