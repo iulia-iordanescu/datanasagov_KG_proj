@@ -14,7 +14,8 @@ over all orders: no random draw, no seed. What the last CHECKPOINT texts added (
 that at N - CHECKPOINT) shows whether the sample has stopped finding entries: near 0, more texts of the same
 kind would barely change the schema.
 
-It is the sample-based species accumulation curve of ecology (Gotelli & Colwell 2011, "Estimating species
+It is the sample-based rarefaction curve of ecology, the expected sample-based species accumulation curve
+over all orders of the samples (Gotelli & Colwell 2011, "Estimating species
 richness", in Magurran & McGill (eds), Biological Diversity, ch. 4): a text is a sample, an entry a species,
 counted by incidence; here an entry counts only once it reaches min_support texts. As there, it speaks only for
 what the sample was drawn from (here: 040's maintainers, 15 texts each by default), and it is descriptive: it
