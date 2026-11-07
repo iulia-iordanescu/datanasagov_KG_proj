@@ -46,7 +46,7 @@ EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY = "exact pair", "par
 #: An occurrence paired, after the ground truth triples, with a fact that waits on an expert (annotations/
 #: pending_triples.csv): neither a pair nor extracted only, and left out of precision (070_evaluate/metrics/precision.md).
 MATCHES_WAITING = "matches a fact that waits on an expert"
-#: An untranslatable occurrence (its predicate translates to (none): 070_evaluate/070_evaluate_helpers/pairing.py,
+#: An untranslatable extracted triple (its predicate translates to (none): 070_evaluate/070_evaluate_helpers/pairing.py,
 #: is_untranslatable): it can pair with nothing, is left out of precision, and counts in schema fit.
 UNTRANSLATABLE = "untranslatable: its predicate translates to (none)"
 COMPARED_STATUSES = (EXACT_PAIR, PARTIAL_PAIR, EXTRACTED_ONLY, GROUND_TRUTH_ONLY, MATCHES_WAITING, UNTRANSLATABLE)

@@ -1249,7 +1249,7 @@ class QuantitiesPair(unittest.TestCase):
 
 
 class Untranslatable(unittest.TestCase):
-    """An untranslatable occurrence (docs/terminology.md; 070_evaluate/metrics/schema_fit.md): its predicate translates
+    """An untranslatable extracted triple (docs/terminology.md; 070_evaluate/metrics/schema_fit.md): its predicate translates
     to (none) through the row that applies to it. It leaves precision's denominator (and F1's), counts in schema fit,
     and can pair with nothing; an entity class translating to (none) doesn't make an occurrence untranslatable."""
 
@@ -1274,7 +1274,7 @@ class Untranslatable(unittest.TestCase):
                 self.assertEqual(pairing.is_untranslatable(pairing.translate(f, t)), expected)
 
     def test_never_paired_nor_waiting(self):
-        """U ∩ pairs = U ∩ W = ∅: an untranslatable occurrence with the very words of a ground truth triple and of a
+        """U ∩ pairs = U ∩ W = ∅: an untranslatable extracted triple with the very words of a ground truth triple and of a
         fact that waits on an expert pairs with neither."""
         gt = [triple("MODIS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft")]
         ex = [triple("MODIS", "Instrument", "GADGET_OF", "Aqua", "Spacecraft"),

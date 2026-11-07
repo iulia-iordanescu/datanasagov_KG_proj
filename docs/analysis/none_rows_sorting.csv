@@ -1,4 +1,4 @@
-kind,induced entry,category,ground truth entries or rule quote,reason,untranslatable occurrences per repeat (1/2/3),all occurrences per repeat (entity classes: as subject or object class)
+kind,induced entry,category,ground truth entries or rule quote,reason,untranslatable extracted triples per repeat (1/2/3),all occurrences per repeat (entity classes: as subject or object class)
 entity class,DataTable,D,Dataset; Variable,"a table is a Dataset and its columns are Variables (rule 8 keeps ""only what the table is about"")",0/0/0,0/2/2
 entity class,DocumentArchive,D,Dataset; Document,"an archive of data products is a Dataset, an archive of documents a Document",0/0/0,0/0/0
 entity class,Location,D,SpatialExtent; Organization; CelestialBody,"examples mix places (Halley Bay), facilities and sky fields, each a different ground truth entity class",1/4/0,13/12/8

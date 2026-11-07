@@ -68,7 +68,7 @@ one may just be extraction choosing the wrong component class.
 
 BY MATCH KIND (docs/terminology.md, *match*; reported, never part of a metric): each occurrence is counted under the
 match of the predicate's row that translated it (match_of: same, narrower, broader, overlap, or no match value yet;
-an untranslatable occurrence stays under "untranslatable"), and, of those, the ones left extracted only; each of its
+an untranslatable extracted triple stays under "untranslatable"), and, of those, the ones left extracted only; each of its
 two entity classes under its row's match; each ground truth triple within reach under the best match among the rows
 that reach it (reach_bucket: through a same or narrower row; else through a row with no match value yet; else only
 through broader or overlap rows). The recall upper bound is unchanged; these split it.
@@ -132,10 +132,10 @@ NO_TRANSLATION = " (current schema; translates to (none))"
 
 
 def is_untranslatable(t: dict) -> bool:
-    """Whether a translated extracted triple is an untranslatable occurrence (docs/terminology.md): its predicate
+    """Whether a translated extracted triple is an untranslatable extracted triple (docs/terminology.md): its predicate
     translates to (none) through the row that applies to it (predicate_rule: its conditional row with the most
     conditions that hold, else its unconditional row). An entity class whose row says (none) doesn't make it one:
-    such an occurrence can still pair, and fails only strictness. An untranslatable occurrence can pair with nothing
+    such an occurrence can still pair, and fails only strictness. An untranslatable extracted triple can pair with nothing
     (its marked predicate equals no predicate of the ground truth schema), so it is left out of precision and counted
     in schema fit (070_evaluate/metrics/schema_fit.md)."""
     return str(t["predicate"]).endswith(NO_TRANSLATION)

@@ -41,6 +41,12 @@ COMPARED_NAME = "compared_triples.csv"
 #: Each run's tuning records' counts and recipe, one file per run, never overwritten: what py helpers/compare_runs.py
 #: compares (helpers/compare_runs.md).
 EVALUATIONS_DIR = "evaluations"
+#: The recipe's field for the untranslatable extracted triples (that they were left out of precision, and the (none)
+#: predicate rows by fingerprint), and the name a run before 2026-11-06 wrote it under. Written under the current
+#: name only; py helpers/compare_runs.py reads either name as this field (compare_runs.recipe_of), so a past run
+#: and a new one compare as the same recipe.
+UNTRANSLATABLE_FIELD = "untranslatable_extracted_triples"
+UNTRANSLATABLE_FIELD_OLD = "untranslatable_occurrences"
 LOOKS = ANNOTATIONS_DIR / "held_out_looks.csv"
 LOOKS_COLUMNS = ["date", "run_id", "schema", "held_out_records", "extraction_run_id", "translation_sha256",
                  "held_out_ground_truth_sha256"]
@@ -191,7 +197,7 @@ def _precision_cell(r: dict, key: str, x) -> str:
 #: The column counting occurrences whose element has multiplicity above 1 in its record's multiset of translated
 #: extracted triples (070_evaluate/metrics/pairs.md, Example, *A multiset of translated extracted triples*).
 MULTIPLIED = "Occurrences with multiplicity > 1"
-#: The column of the untranslatable occurrences (pairing.is_untranslatable), in the tables per record and per component
+#: The column of the untranslatable extracted triples (pairing.is_untranslatable), in the tables per record and per component
 #: class: left out of precision, and of *Counted against it (exact)*.
 UNTRANSLATABLE_COLUMN = "Untranslatable"
 MULTIPLIED_NOTE = ("*Occurrences with multiplicity > 1*: of the row's occurrences, the ones whose element of their "
@@ -575,7 +581,7 @@ def _recipe(evaluated, translation, inputs_manifest: dict) -> dict:
                                                                 "pending_triples": len(pending),
                                                                 "sha256": _fingerprint(pending)},
                                  # an occurrence whose predicate translates to (none) is left out of precision
-                                 "untranslatable_occurrences": {
+                                 UNTRANSLATABLE_FIELD: {
                                      "excluded_from_precision": True,
                                      "to_none_predicates_sha256": _fingerprint(sorted(translation.to_none.get("predicate", [])))},
                                  **{k: v for k, v in llm.describe().items() if k in ("service", "model")}}}
@@ -759,10 +765,10 @@ def _compared_rows(records: list) -> list:
 
 
 #: The formulas the report states above its table of precision, recall and F1 (070_evaluate/metrics/precision.md).
-PRECISION_FORMULA = ("Precision = pairs ÷ (occurrences − untranslatable occurrences − occurrences paired with a fact "
+PRECISION_FORMULA = ("Precision = pairs ÷ (occurrences − untranslatable extracted triples − occurrences paired with a fact "
                      "that waits on an expert), at each pair level; recall = pairs ÷ ground truth triples; F1 = 2 × "
                      "pairs ÷ (those occurrences + ground truth triples); schema fit = (occurrences − untranslatable "
-                     "occurrences) ÷ occurrences. An untranslatable occurrence's predicate translates to (none), so "
+                     "occurrences) ÷ occurrences. An untranslatable extracted triple's predicate translates to (none), so "
                      "the ground truth schema can't say it (`070_evaluate/metrics/schema_fit.md`). The facts that wait "
                      "on an expert (`annotations/pending_triples.csv`) are not ground truth triples, so recall doesn't "
                      "count them (`070_evaluate/metrics/precision.md`).")
@@ -1071,7 +1077,7 @@ def results(evaluated, translation, metrics, calls, settings, output) -> Results
                                               [len(r["compared"]["translated"]) for r in part_records])])
         lines += ["", "One text is one evaluated record's text; describes triples aren't counted.", ""]
         lines += [PRECISION_FORMULA + " Here: "
-                  f"{n.get('untranslatable', 0)} untranslatable occurrence(s) (schema fit "
+                  f"{n.get('untranslatable', 0)} untranslatable extracted triple(s) (schema fit "
                   f"{readings.pct(_value(n.get('schema_fit')))}), and "
                   f"{n['exact']['pending_pairs']} occurrence(s) at the exact level and {n['partial']['pending_pairs']} "
                   f"at the partial level matching a fact that waits on an expert (section *{WAITING_SECTION}*), are "

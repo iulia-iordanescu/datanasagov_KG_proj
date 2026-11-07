@@ -475,7 +475,7 @@ class RowReadings(unittest.TestCase):
         self.assertEqual(readings.record_reading(row),
                          "Record r1 (pool position 3): 5 occurrences and 3 ground truth triples (3 within reach, 3 "
                          "within strict reach); 2 exact pairs, 1 of them strict; exact recall 67%, exact precision 50% "
-                         "(1 untranslatable occurrence, left out of its precision: section *Schema fit* of the report). "
+                         "(1 untranslatable extracted triple, left out of its precision: section *Schema fit* of the report). "
                          "In 1 exact pair, the two triples differ in subject class or object class: every ground truth "
                          "triple of the record is within strict reach, so either step 060's extraction gave a wrong "
                          "entity class, or a row of the translation table translates one to the wrong one. 2 of its "

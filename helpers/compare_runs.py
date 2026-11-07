@@ -47,7 +47,7 @@ sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 
 import pairing                                                                 # noqa: E402
 from component_classes import IDENTITY, TABLE_TRANSLATION                      # noqa: E402
 import stats                                                                   # noqa: E402
-from moves import EVALUATIONS_DIR                                              # noqa: E402
+from moves import EVALUATIONS_DIR, UNTRANSLATABLE_FIELD, UNTRANSLATABLE_FIELD_OLD   # noqa: E402
 from common import console, llm  # noqa: E402
 from common import audit                                                      # noqa: E402
 from common.files import read_json, write_text                                            # noqa: E402
@@ -117,9 +117,23 @@ def flatten(d, prefix="") -> dict:
     return out
 
 
+def recipe_of(run: dict) -> dict:
+    """A run's recipe, its fields under their current names: a run before 2026-11-06 wrote the untranslatable
+    extracted triples' field as moves.UNTRANSLATABLE_FIELD_OLD, so that name is read as moves.UNTRANSLATABLE_FIELD
+    (the same field, the same values) and two runs that differ in the name alone show no difference. The run
+    itself is left as read."""
+    recipe = run.get("recipe", {})
+    evaluation = recipe.get("evaluation (070)")
+    if isinstance(evaluation, dict) and UNTRANSLATABLE_FIELD_OLD in evaluation and UNTRANSLATABLE_FIELD not in evaluation:
+        evaluation = {(UNTRANSLATABLE_FIELD if k == UNTRANSLATABLE_FIELD_OLD else k): v for k, v in evaluation.items()}
+        recipe = {**recipe, "evaluation (070)": evaluation}
+    return recipe
+
+
 def differences(runs: list) -> list:
-    """[(path, [value in each run])] of every part of the recipes that isn't the same in every run."""
-    flat = [flatten(r.get("recipe", {})) for r in runs]
+    """[(path, [value in each run])] of every part of the recipes that isn't the same in every run (the recipes as
+    recipe_of reads them, so a field's old name is no difference)."""
+    flat = [flatten(recipe_of(r)) for r in runs]
     keys = sorted(set().union(*flat))
     return [(k, [f.get(k, "(not recorded)") for f in flat]) for k in keys
             if len({f.get(k, "(not recorded)") for f in flat}) > 1]
@@ -189,7 +203,7 @@ def evaluation_versions_differ(runs: list) -> str | None:
     """Why the runs can't be compared when they were evaluated under different versions of what 070 counts
     (pairing.EVALUATION_VERSION, in the recipe's evaluation (070) / evaluation_version), else None. Why a stop and not
     a warning: the numbers here are recomputed from each run's kept counts by today's stats.numbers, and a count a
-    later version subtracts (e.g. version 3's untranslatable occurrences) is missing from an older run's counts (read
+    later version subtracts (e.g. version 3's untranslatable extracted triples) is missing from an older run's counts (read
     as 0), so that run would be recomputed under the old formula while labelled with the new one."""
     versions = [str(r.get("recipe", {}).get("evaluation (070)", {}).get("evaluation_version", "(not recorded)"))
                 for r in runs]
@@ -198,7 +212,7 @@ def evaluation_versions_differ(runs: list) -> str | None:
     named = " vs ".join(f"{v} (`{r['run_id']}`)" for v, r in zip(versions, runs))
     return (f"These runs were evaluated under different versions of what 070 counts (evaluation_version {named}), so "
             f"their numbers aren't comparable: a kept evaluation holds counts, and version 3 subtracts a count "
-            f"(untranslatable occurrences) that version 2 never recorded. Re-run `py 070_evaluate/run.py` on the same "
+            f"(untranslatable extracted triples) that version 2 never recorded. Re-run `py 070_evaluate/run.py` on the same "
             f"060 output to get a version-{pairing.EVALUATION_VERSION} evaluation, then compare.")
 
 

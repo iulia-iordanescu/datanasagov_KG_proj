@@ -2,6 +2,7 @@
 common/common_helpers/left_out.py's read_pending): an extracted triple matching one is left out of precision's
 denominator, never counted for recall, never paired across records, and never counted twice; the report says so,
 and the recipe records it, so py helpers/compare_runs.py shows it."""
+import json
 import shutil
 import tempfile
 import unittest
@@ -126,7 +127,7 @@ class Report(unittest.TestCase):
         self.assertIn("None: no fact of these records waits on an expert.", "\n".join(moves._waiting_lines(stats.numbers([r]), [r])))
 
     def test_formula_stated(self):
-        self.assertIn("Precision = pairs ÷ (occurrences − untranslatable occurrences − occurrences paired with a fact "
+        self.assertIn("Precision = pairs ÷ (occurrences − untranslatable extracted triples − occurrences paired with a fact "
                       "that waits on an expert)",
                       moves.PRECISION_FORMULA)
 
@@ -165,6 +166,66 @@ class Recipe(unittest.TestCase):
         old = {"recipe": {"evaluation (070)": {"git_commit": None}}}               # a run from before the exclusion
         self.assertIn("evaluation (070) / facts_waiting_on_an_expert / excluded_from_precision",
                       dict(cr.differences([old, {"recipe": b}])))
+
+
+class UntranslatableField(unittest.TestCase):
+    """The recipe's field for the untranslatable extracted triples, the sibling of facts_waiting_on_an_expert: the
+    writer (moves._recipe) names it moves.UNTRANSLATABLE_FIELD and nothing else; a kept evaluation from before
+    2026-11-06 names it moves.UNTRANSLATABLE_FIELD_OLD, and py helpers/compare_runs.py reads either name as the
+    same field, so a past run and a new one compare as one recipe."""
+    NEW, OLD = moves.UNTRANSLATABLE_FIELD, moves.UNTRANSLATABLE_FIELD_OLD
+
+    @staticmethod
+    def compare_runs():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("compare_runs", ROOT / "helpers" / "compare_runs.py")
+        cr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cr)
+        return cr
+
+    def recipe(self):
+        return moves._recipe(SimpleNamespace(extraction_made={}, schema_used={}, pending=[]),
+                             translation(CLASSES, PREDICATES), {})
+
+    def as_written_before(self, recipe: dict) -> dict:
+        """The same recipe as a run before 2026-11-06 kept it: the field under its old name, the same values."""
+        old = json.loads(json.dumps(recipe))
+        evaluation = old["evaluation (070)"]
+        evaluation[self.OLD] = evaluation.pop(self.NEW)
+        return old
+
+    def test_the_writer_names_the_field_the_new_way_only(self):
+        self.assertEqual((self.NEW, self.OLD), ("untranslatable_extracted_triples", "untranslatable_occurrences"))
+        evaluation = self.recipe()["evaluation (070)"]
+        self.assertIn(self.NEW, evaluation)
+        self.assertNotIn(self.OLD, evaluation)
+        self.assertEqual([k for k in evaluation if "occurrence" in k], [])
+        self.assertEqual(set(evaluation[self.NEW]), {"excluded_from_precision", "to_none_predicates_sha256"})
+        self.assertIs(evaluation[self.NEW]["excluded_from_precision"], True)
+
+    def test_the_reader_takes_either_name_as_the_same_field(self):
+        cr = self.compare_runs()
+        new = self.recipe()
+        old = self.as_written_before(new)
+        self.assertNotEqual(old, new)                                           # they differ in the name alone...
+        self.assertEqual(cr.recipe_of({"recipe": old}), cr.recipe_of({"recipe": new}))  # ...which the reader undoes
+        self.assertEqual(cr.recipe_of({"recipe": new}), new)                      # the new name is read as it is
+        self.assertEqual(cr.differences([{"recipe": old}, {"recipe": new}]), [])
+        path = f"evaluation (070) / {self.NEW} / to_none_predicates_sha256"
+        flat_old, flat_new = cr.flatten(cr.recipe_of({"recipe": old})), cr.flatten(cr.recipe_of({"recipe": new}))
+        self.assertEqual(flat_old, flat_new)
+        self.assertEqual(flat_old[path], new["evaluation (070)"][self.NEW]["to_none_predicates_sha256"])
+        self.assertIn(self.OLD, old["evaluation (070)"])                          # the run read is left as it was
+        # a different value still shows as a difference, under the current name, whichever name stored it
+        changed = self.as_written_before(new)
+        changed["evaluation (070)"][self.OLD]["to_none_predicates_sha256"] = "0" * 64
+        diffs = dict(cr.differences([{"recipe": changed}, {"recipe": new}]))
+        self.assertEqual(list(diffs), [path])
+        self.assertEqual(diffs[path], ["0" * 64, new["evaluation (070)"][self.NEW]["to_none_predicates_sha256"]])
+        # a run before evaluation version 3 (no such field) still shows the field as not recorded
+        before = {"recipe": {"evaluation (070)": {"git_commit": None}}}
+        self.assertEqual(dict(cr.differences([before, {"recipe": new}]))[f"evaluation (070) / {self.NEW} / excluded_from_precision"],
+                         ["(not recorded)", "True"])
 
 
 LEFT_OUT = """# Left out on purpose

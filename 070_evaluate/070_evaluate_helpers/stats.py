@@ -438,7 +438,7 @@ def _component_class_parts() -> dict:
     for level in LEVELS:
         m = lambda c, level=level: c[f"{level}_pairs"]                                          # noqa: E731
         s = lambda c, level=level: c[f"{level}_strict_pairs"]                                   # noqa: E731
-        # less the untranslatable occurrences and those matching a fact that waits on an expert
+        # less the untranslatable extracted triples and those matching a fact that waits on an expert
         counted = lambda c, level=level: c["occurrences"] - c["untranslatable"] - c[f"{level}_pending_pairs"]  # noqa: E731
         gt = lambda c: c["ground_truth_triples"]                                                  # noqa: E731
         out.update({(level, "precision"): (m, counted), (level, "recall"): (m, gt),
@@ -474,7 +474,7 @@ def per_component_class(records: list) -> dict:
     "within_strict_reach" (of those ground truth triples), "strict_recall_upper_bound",
     "pending_pairs" (occurrences paired exactly with a fact that waits on an expert, left out of precision),
     "counted_against" (occurrences and ground truth triples with no exact pair that counts for it, less the
-    untranslatable occurrences and those paired with a fact that waits), "<level>":
+    untranslatable extracted triples and those paired with a fact that waits), "<level>":
     {"pairs", "strict_pairs", "precision", "recall", "f1", "strict_precision", "strict_recall", "strict_f1",
     "strict_recall_within_reach"}} (each number a {"value", "low", "high", "n_eff", "deff", "few_records"}), sorted by
     counted_against, most first: what the component class costs at the exact level, so the frequent and badly
@@ -526,7 +526,7 @@ def per_record(records: list) -> list:
     out of its precision), "ground_truth_triples", "within_reach",
     "within_strict_reach" (of those ground truth triples), "pending_pairs" (occurrences paired exactly with a fact that
     waits on an expert), "counted_against" (occurrences and ground truth triples with no exact pair, less the
-    untranslatable occurrences and those paired with a fact that waits), "recall_upper_bound", "strict_recall_upper_bound", "<level>": {"pairs", "strict_pairs", and each of
+    untranslatable extracted triples and those paired with a fact that waits), "recall_upper_bound", "strict_recall_upper_bound", "<level>": {"pairs", "strict_pairs", and each of
     PER_RECORD_NUMBERS}}], sorted by counted_against, most first (as per_component_class), then by pool position."""
     rows = []
     for r in records:
