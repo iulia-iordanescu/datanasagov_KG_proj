@@ -21,9 +21,10 @@ with a button. Press Ctrl+C here to stop the tool.
 It runs only on this computer: no internet, no model calls, nothing to
 install. It isn't a pipeline step: it writes nothing but the ground truth
 files, the translation table, the partial-pair verdicts, the schema
-additions, and the entity classes and predicates added to the ground truth
-schema. How it works: helpers/annotator/server.py; how to use
-it: annotations/README.md.
+additions, the entity classes and predicates added to the ground truth
+schema, and annotations/rules_by_triple.md (the generated doc of the rules
+each ground truth triple uses, written again when a batch is saved). How it
+works: helpers/annotator/server.py; how to use it: annotations/README.md.
 """
 import argparse
 import sys

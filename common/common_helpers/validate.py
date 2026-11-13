@@ -71,6 +71,7 @@ EMPTY = "empty"
 NOT_CONNECTED = "not_connected"
 SEVERAL_QUALIFIERS = "several_qualifiers"
 SLASH_LIST_SPLIT = "slash_list_split"
+RULES_NOT_VALID = "rules_not_valid"
 
 #: check_triple_instance's errors: the triple instance is unverified.
 ERRORS = (NO_SOURCE_TEXT, SOURCE_NOT_IN_TEXT)
@@ -90,8 +91,9 @@ ROWS_FLAGS = (CONFLICTING_CLASSES, DESCRIBES_CLASSES_DIFFER)
 #: The errors only stage 4 of 050 raises (ground_truth.check_rows; SEVERAL_DESCRIBES the annotation tool too); its
 #: others are ERRORS and DESCRIBES_ERRORS.
 GROUND_TRUTH_ERRORS = (ID_NOT_IN_RECORDS, INCOMPLETE, SEVERAL_DESCRIBES)
-#: The annotation tool's own checks: EMPTY an error, NOT_CONNECTED, SEVERAL_QUALIFIERS and SLASH_LIST_SPLIT flags.
-TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT)
+#: The annotation tool's own checks: EMPTY and RULES_NOT_VALID errors, NOT_CONNECTED, SEVERAL_QUALIFIERS and
+#: SLASH_LIST_SPLIT flags.
+TOOL_CHECKS = (EMPTY, NOT_CONNECTED, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT, RULES_NOT_VALID)
 # The qualifier predicates of rule 19 of "Writing a classed triple" (annotations/guidelines.md) have one home: their
 # "rule 19: qualifier, …" lines in annotations/ground_truth_schema.txt (schema_io.qualifier_predicates).
 #: Every check code, each once.

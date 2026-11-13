@@ -142,6 +142,16 @@
   .patterns button.patbtn { font-size: 12px; padding: 1px 8px; margin-right: 6px; }
   .patterns .patlist { margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--muted); }
   .patterns .patlist ul { margin: 4px 0; padding-left: 18px; }
+  /* the rules of annotations/guidelines.md a ground truth triple uses (the column rules): the Rules line under it */
+  .rules { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 6px; font-size: 13px; }
+  .rules .rule { display: inline-flex; align-items: center; }
+  .rules button.rulebtn { font-size: 12px; padding: 1px 8px; }
+  .rules button.rulebtn.open { background: var(--sky-bg); border-color: var(--sky); color: var(--navy); font-weight: 600; }
+  .rules button.ruledel { font-size: 12px; padding: 1px 6px; margin-left: 2px; }
+  .rules input.ruleadd { width: 3.6em; font: inherit; font-size: 12.5px; padding: 1px 4px; }
+  .rules .ruleraw { color: var(--error); }
+  .rules .rulelist { flex-basis: 100%; margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--muted); }
+  .rules .rulelist p { margin: 4px 0; }
   button.pill.jump:hover { filter: brightness(0.95); text-decoration: underline; }
   body.norecords main { grid-template-columns: 1fr; }
   body.norecords nav#records { display: none; }
@@ -683,6 +693,7 @@ async function openBatch(n, at, step = 0) {
   status("Opening…");
   batch = await api(`/api/batch?n=${n}`);
   await loadLeftOut();
+  await loadRules();
   tripleAt = step;                         // a newly opened batch: the row the address names, else the record's first
   status(`Editing annotations/ground_truth/${batch.file}`, "saved");
   current = Math.min(at || 0, Math.max(batch.records.length - 1, 0));   // so show() keeps tripleAt
@@ -1124,6 +1135,7 @@ function describesRow(rec, j, heading = true) {
       "subject (the record's id) and object (the record's title) are copied from the record by code, and the " +
       "object class (the describes class), the entity class of its object instance, is proposed by the drafting model (step 050) and needs to be " +
       "checked by you here in this tool. Click the field under “Object class (the describes class)” to edit it."),
+    describesRules(),
     problemList(r, j));
 }
 function tripleRow(rec, j, heading = true) {
@@ -1142,6 +1154,7 @@ function tripleRow(rec, j, heading = true) {
         field(rec, j, "object", "Object", { multiline: true }),
         field(rec, j, "object_class", "Object class", { multiline: true, class: "cls nobreak" }))),
     patternButtons(r, j),
+    rulesBar(rec, j),
     el("div", { class: "source" },
       el("label", { title: "Copied exactly from the record's text" }, "Source text",
         el("textarea", { "data-row": j, class: "grow", rows: 1, onfocus: () => { setActive(j); hideClasses(); },
@@ -1200,7 +1213,7 @@ function setActive(j) {
 }
 function addRow(rec) {
   rec.rows.push({ id: rec.id, subject: "", subject_class: "", predicate: "", object: "", object_class: "",
-                  source_text: "", all_facts_extracted: rec.finished ? "1" : "0",
+                  source_text: "", all_facts_extracted: rec.finished ? "1" : "0", rules: "",   // drafted_by, rules: empty on a row you add
                   problems: batch.new_row_problems.map(p => ({ ...p })) });
   shownRow = rec.rows.length - 1;          // the new one (last, until it gets a source text)
   show(current);
@@ -2303,6 +2316,86 @@ function drawReviews() {
       })));
   }
   $("record").replaceChildren(...cards);
+}
+
+// ---------------------------------------------------------------- the rules a ground truth triple uses
+// The rules of annotations/guidelines.md, read by the server from the file when the batch is opened (/api/rules), for
+// the Rules line under each ground truth triple: each rule's section, title and words, the numbers that apply to every
+// ground truth triple, and the section a describes triple follows instead of rules. The column rules holds the numbers
+// (ascending, "1, 19"); the server writes annotations/rules_by_triple.md from it on each save.
+let RULES = null;                        // {file, rules: {"1": {section, title, markdown}, …}, highest, always, describes}
+async function loadRules() {
+  try { RULES = await api("/api/rules"); } catch (_) { RULES = null; }   // the view works without it: no Rules line
+}
+// A rule's words, rendered, with its number and section.
+function ruleWords(n) {
+  const rule = RULES.rules[String(n)];
+  const box = el("div", { class: "rulewords" });
+  box.innerHTML = markdown(`**Rule ${n}** (*${rule.section}*, ${RULES.file}): ${rule.markdown}`, RULES.file);
+  return box;
+}
+// Under a ground truth triple: the rules it uses, one button per rule number; a click shows the rule's full words
+// under the line (one rule at a time), × takes the rule off the triple, and a box adds a rule by its number (only 1
+// to the highest the guidelines have; one already there isn't added twice; kept ascending). A value a hand edit of
+// the file left in another shape is shown as it is, with Clear; the server marks the row ✖ until it is fixed.
+function rulesBar(rec, j) {
+  if (!RULES) return null;
+  const r = rec.rows[j];
+  const bar = el("div", { class: "rules" });
+  const words = el("div", { class: "rulelist", hidden: true });
+  let open = null;
+  const valid = (v) => v === "" || /^\d+(, \d+)*$/.test(v);
+  const numbers = () => (r.rules || "").trim() ? r.rules.trim().split(", ").map(Number) : [];
+  const set = (nums) => { r.rules = [...new Set(nums)].sort((a, b) => a - b).join(", "); changed(); redraw(); };
+  const toggle = (n) => {
+    if (open === n) { open = null; words.hidden = true; return; }
+    open = n; words.hidden = false; words.replaceChildren(ruleWords(n));
+  };
+  const redraw = () => {
+    const v = (r.rules || "").trim();
+    const items = [el("span", { class: "meta", title: `The rules of ${RULES.file} this ground truth triple uses (the column rules). Rules ${RULES.always.join(", ")} apply to every ground truth triple and aren't listed.` }, "Rules: ")];
+    if (!valid(v)) {
+      items.push(el("span", { class: "ruleraw", title: "Not in the column's shape (rule numbers, ascending, separated by a comma and a space): a hand edit of the file" }, v),
+                 el("button", { class: "rulebtn", onclick: () => set([]), title: "Clear the value; then add the rules again by their numbers" }, "Clear"));
+    } else {
+      const nums = numbers();
+      if (!nums.length) items.push(el("span", { class: "empty" }, "none recorded yet"));
+      for (const n of nums) {
+        const rule = RULES.rules[String(n)];
+        items.push(el("span", { class: "rule" },
+          el("button", { class: "rulebtn" + (open === n ? " open" : ""), onclick: () => { toggle(n); redraw(); },
+                         title: rule ? `Rule ${n}: ${rule.title} Click to read it.` : `Rule ${n} isn't in ${RULES.file}: take it off, or add the rule to the guidelines` }, String(n)),
+          el("button", { class: "ruledel", title: `Take rule ${n} off this ground truth triple`,
+                         onclick: () => { if (open === n) { open = null; words.hidden = true; } set(nums.filter((x) => x !== n)); } }, "×")));
+      }
+      const input = el("input", { type: "number", min: 1, max: RULES.highest, class: "ruleadd", placeholder: "N",
+                                  title: `Add a rule by its number (1 to ${RULES.highest}), then press Add or Enter` });
+      const add = () => {
+        const n = Number(input.value);
+        if (!Number.isInteger(n) || n < 1 || n > RULES.highest) {
+          status(`Rule ${input.value || "?"} isn't one of ${RULES.file}'s: its rules are 1 to ${RULES.highest}. Type one of those numbers, then press Add.`, "failed");
+          return;
+        }
+        set([...nums, n]);
+      };
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
+      items.push(input, el("button", { class: "rulebtn", onclick: add, title: "Add the rule whose number is in the box" }, "Add"));
+    }
+    bar.replaceChildren(...items, words);
+  };
+  redraw();
+  return bar;
+}
+// Under the describes triple: it follows the guidelines' section The describes triple, not rules; a click reads it.
+function describesRules() {
+  if (!RULES) return null;
+  const words = el("div", { class: "rulelist", hidden: true });
+  const button = el("button", { class: "rulebtn", title: `Read the section "${RULES.describes.heading}" of ${RULES.file}`,
+    onclick: () => {
+      words.hidden = !words.hidden;
+      if (!words.hidden) { const box = el("div", { class: "rulewords" }); box.innerHTML = markdown(RULES.describes.markdown, RULES.file); words.replaceChildren(box); }
+    } }, RULES.describes.heading);
+  return el("div", { class: "rules" }, el("span", { class: "meta" }, "Rules: none; it follows the guidelines' section "), button, words);
 }
 
 // ---------------------------------------------------------------- left out on purpose (read-only)

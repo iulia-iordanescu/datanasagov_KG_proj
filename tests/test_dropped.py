@@ -164,8 +164,11 @@ class Step070(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         sys.modules["records_070_dropped"] = module
         spec.loader.exec_module(module)
+        schema = tmp / "ground_truth_schema.txt"     # without its held-out-only entries: the pool here is made up
+        schema.write_text(support.without_held_out_only_text(
+            (ROOT / "annotations" / "ground_truth_schema.txt").read_text(encoding="utf-8-sig")), encoding="utf-8")
         ev = module.pick_records({"ground_truth": tmp / "ground_truth" / "batch_*.csv",
-                                  "ground_truth_schema": ROOT / "annotations" / "ground_truth_schema.txt",
+                                  "ground_truth_schema": schema,
                                   "splits": tmp / "splits.json", "candidates": tmp / "candidates.csv",
                                   "extracted_triples_details": tmp / "details.json",
                                   "extracted_triples": tmp / "extracted.csv",

@@ -127,6 +127,10 @@ Technique         a way of making measurements, e.g. radio science
 Latency           a measure of how soon data are released after observation, e.g. Near Real Time (NRT)
                   rule 19: describing
                   source: ground truth tuning #6
+CollectionStatus  a state of a dataset's data collection, e.g. complete
+                  held-out only
+                  rule 19: describing
+                  source: ground truth held-out #23
 
 PREDICATES
 ----------
@@ -374,3 +378,21 @@ AVAILABLE_AT         can be got from this WebPage
                      only: any -> WebPage
 REVISED_AFTER        was corrected after this review
                      source: ground truth tuning #13
+LOCATED_AT           is at this place or position, or took place there, e.g. GEO Latitude 44.8, Longitude 271.4
+                     held-out only
+                     source: ground truth held-out #11, #23
+USES_PLATFORM        made use of this Platform for its work
+                     held-out only
+                     only: any -> Platform
+                     source: ground truth held-out #23
+DEPLOYED_BY_PARTY    was sent out to take measurements by this Person or Organization
+                     held-out only
+                     only: any -> Organization; any -> Person
+                     source: ground truth held-out #23
+HAS_COLLECTION_STATUS  its data collection is in this CollectionStatus
+                       held-out only
+                       only: any -> CollectionStatus
+                       source: ground truth held-out #23
+OBTAINED_FROM        was got from this source, e.g. a table got from a journal's web site
+                     held-out only
+                     source: ground truth held-out #32

@@ -23,14 +23,15 @@ from records import SPECS                               # noqa: F401  (the contr
 from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.ground_truth import (ANNOTATED, COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, check_rows, draft_name, fair_words,
-                                 file_name)
+from common.ground_truth import (ANNOTATED, COLUMNS as GROUND_TRUTH_COLUMNS, DRAFTED_BY, ROW_ERRORS, RULES, check_rows, draft_name,
+                                 fair_words, file_name)
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table, this_report
 from common.step import Results, repo_path
 from common.triples_io import is_describes
 
-#: A drafted batch's columns: the ground truth's, then the checks, then where each row came from.
-COLUMNS = GROUND_TRUTH_COLUMNS + [DRAFTED_BY, "flags", ORIGIN_COLUMN]
+#: A drafted batch's columns: the ground truth's (rules empty: a person records them), then the checks, then where
+#: each row came from.
+COLUMNS = GROUND_TRUTH_COLUMNS + [DRAFTED_BY, RULES, "flags", ORIGIN_COLUMN]
 SHOW = 20                        # rows listed in the report before "…"
 
 
@@ -94,7 +95,7 @@ def results(chosen, replies, drafts, typos, calls, settings, output) -> Results:
     for item in chosen.items:
         for r in drafts.rows.get(item["id"], []):
             csv_rows.append({**{c: r.get(c, "") for c in GROUND_TRUTH_COLUMNS}, "all_facts_extracted": "0",
-                             DRAFTED_BY: llm.MODEL, "flags": " ".join(r["errors"] + r["flags"]),
+                             DRAFTED_BY: llm.MODEL, RULES: "", "flags": " ".join(r["errors"] + r["flags"]),
                              ORIGIN_COLUMN: audit.origin("records", item["id"])})
     if csv_rows:
         write_csv(batch_path, COLUMNS, csv_rows, new=True)       # a drafted batch is never overwritten

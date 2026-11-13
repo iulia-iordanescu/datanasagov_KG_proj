@@ -32,8 +32,8 @@ How a dataset's data are laid out over the ground, its spatial representation, i
 - title: Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005
 - notes: This data set consists of weekly gridded Level-3 products of Aquarius L-band radiometer Sea Surface Salinity (SSS) retrievals from the Aquarius/Satélite de Aplicaciones Científicas (SAC-D) mission, developed collaboratively between the U.S. National Aeronautics and Space Administration (NASA) and Argentina's space agency, Comisión Nacional de Actividades Espaciales (CONAE).
 - source text: Polar
-- source text: gridded Level-3 products
-- classed triple: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
+- source text: gridded
+- classed triple: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_REPRESENTATION "Gridded" (SpatialRepresentation)
 - classed triple: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_COVERAGE "Polar" (SpatialExtent)
 
 ### Ground truth schema
@@ -55,13 +55,13 @@ A short list of layouts (swath, gridded, and the others your answer to (a) names
 
 ### My current reading
 
-Undecided, leaning towards option 2, a closed list, if your answer to (a) gives a list that covers the catalog. Until then, we keep each record's own words (option 1). The example writes its layout twice, "Polar-Gridded" in its title and "gridded" in its notes; we wrote it once, as "gridded", and wrote "Polar" as the area the data cover, a fact of its own: its data cover only the polar regions.
+Undecided, leaning towards option 2, a closed list, if your answer to (a) gives a list that covers the catalog. Until then, we keep each record's own words (option 1). The example writes its layout twice, "Polar-Gridded" in its title and "gridded" in its notes; we wrote it once, as "Gridded", and wrote "Polar" as the area the data cover, a fact of its own: its data cover only the polar regions.
 
 ### My notes
 
 Checked against sources on 2026-10-30: "Polar-Gridded" (record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005") is gridded on EASE-Grid 2.0 North and South, covering only latitudes poleward of 50 degrees (NSIDC user guide, https://nsidc.org/sites/default/files/aq3_sss-v005-userguide_0.pdf); "1,200 by 1,200 km" is one tile of the MODIS sinusoidal grid, the ground each file covers ("Each tile has fixed Earth-locations covering an area of approximately 1200 x 1200 km", https://landweb.modaps.eosdis.nasa.gov/help/prod_format); no source calls "Global 1km SIN Grid" the grid's name (MODLAND: "Sinusoidal Tile Grid", https://modis-land.gsfc.nasa.gov/MODLAND_grid.html); NASA's metadata standard UMM-C has closed lists for granule spatial representation and tiling systems, but none of swath versus gridded layouts.
 
-We have annotated the first six records of the pool, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and we have now also annotated the seventh. Of these seven, five state a spatial representation: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" ("5 minutes of swath data": "swath"), "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" ("Polar-Gridded", written as "gridded" since 2026-10-31), "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" ("spatially gridded (L3)": "spatially gridded"), "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" ("These data are maps": "map") and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" ("gridded Level 2 product": "gridded"). The example is the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"; all five, with their classed triples, are listed under Affects.
+We have annotated the first six records of the pool, all [tuning records](../docs/terminology.md#7-evaluating-extraction-step-070), and we have now also annotated the seventh. Of these seven, five state a spatial representation: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" ("5 minutes of swath data": "Swath", the title's form), "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" ("Polar-Gridded", written as "gridded" since 2026-10-31), "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" ("spatially gridded (L3)": "spatially gridded"), "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" ("These data are maps": "map") and "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" ("gridded Level 2 product": "gridded"). The example is the record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005"; all five, with their classed triples, are listed under Affects.
 
 Until the questions are answered, the ground truth keeps each record's own words: the record "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" keeps "spatially gridded" as written (rule 11 of *Writing a classed triple*, and its rule 19: "A qualifier stays in the instance, as written, if it is any other kind"). The record "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" states no area, so its ground truth has none. Changed on 2026-10-31: it now has the area "Polar", see below.
 
@@ -113,10 +113,10 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 
 ### Quoted for us
 
-- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5, 9 and 10 (opinion words, words that only say how another fact holds, and words true only as of writing, are left out); and rules 19, 20, 22, 23 and 24 below (rule 20: parentheses that hold the code of something else are not part of the instance; rule 24: the words for a processing step's input and method are not part of another instance).
-- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 says which wording to keep. Suppose: a record says "This dataset provides daily snow cover", and later "snow cover is given each day". Then: the two sentences state one fact, so one ground truth triple: the record's dataset HAS_TEMPORAL_RESOLUTION "daily", the wording the record gives first (rule 23).
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5, 9 and 10 (opinion words, words that only say how another fact holds, and words true only as of writing, are taken out); and rules 19, 20, 22, 23 and 24 below (rule 20: parentheses that hold the code of something else are taken out of the instance; rule 24: the words for a processing step's input and method are taken out of any other instance).
+- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 says which wording to use. Suppose: a record says "This dataset provides daily snow cover", and later "snow cover is given each day". Then: the two sentences state one fact, so one ground truth triple: the record's dataset HAS_TEMPORAL_RESOLUTION "daily", the wording the record gives first (rule 23).
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
 - Writing a classed triple, rule 22: A list: one ground truth triple per item.
 - Writing a classed triple, rule 23: One thing, one wording, within a record.
 
@@ -147,18 +147,19 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 - record at pool position 21: 264a9b23-9a86-46a7-ab61-9661230ea667
 - record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
 - record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
-- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
-- classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
+- classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_REPRESENTATION "Swath" (SpatialRepresentation)
+- classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_REPRESENTATION "Gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_SPATIAL_COVERAGE "Polar" (SpatialExtent)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_REPRESENTATION "spatially gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "map" (SpatialRepresentation)
+- classed triple of the record at pool position 5: "GRaND epithermal neutron map" (Dataset) HAS_SPATIAL_REPRESENTATION "map" (SpatialRepresentation)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) ON_GRID "SIN Grid" (Grid)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) ON_GRID "SIN Grid" (Grid)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
 - classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "raw near-IR spectral image cubes" (SpatialRepresentation)
-- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_SPATIAL_REPRESENTATION "zonal" (SpatialRepresentation)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_SPATIAL_REPRESENTATION "Zonal" (SpatialRepresentation)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_SPATIAL_REPRESENTATION "geographical mapping" (SpatialRepresentation)
 - ground truth schema entry: entity class SpatialRepresentation
 - ground truth schema entry: predicate HAS_SPATIAL_REPRESENTATION
@@ -203,7 +204,7 @@ NASA's own lists call Aqua "a NASA Earth Science satellite mission", one entry f
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -340,7 +341,6 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) FROM_PLATFORM "STARDUST" (Platform)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_PLATFORM "Rosetta Orbiter" (Platform)
 - classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Platform)
-- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
@@ -355,10 +355,7 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 19: "Radiation Belt Storm Probes, RBSP" (Mission) ALSO_KNOWN_AS "Van Allen Probes" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
 - classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
-- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "four BARREL campaigns" (Value)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "over 50 small, approximately 20 kg, stratospheric balloons" (Value)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
@@ -369,7 +366,6 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
 - classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
 - classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
-- classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
@@ -378,6 +374,7 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_PLATFORM "CH1-ORB" (Platform)
 - translation table row: entity class Mission
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -513,7 +510,7 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - predicate MEASURED_BY -> HAS_MEASUREMENTS_OF (swap subject and object): Links a measured quantity to the instrument, system or method used to measure it.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
 - Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
@@ -551,6 +548,7 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) COMPUTED_FROM "Normalized Difference Snow Index (NDSI)" (Variable)
 - classed triple of the record at pool position 2: "Normalized Difference Snow Index (NDSI)" (Variable) COMPUTED_FROM "radiance data" (Dataset)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_MEASUREMENTS_OF "snow cover" (PhysicalQuantity)
+- classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_MEASUREMENTS_OF "radiance" (PhysicalQuantity)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_MEASUREMENTS_OF "Sea Surface Salinity (SSS) retrievals" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 11 micron wavelength channel" (Channel)
 - classed triple of the record at pool position 4: "skin SST" (Variable) COMPUTED_FROM "long wave IR 12 micron wavelength channel" (Channel)
@@ -588,7 +586,7 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "spectral classifications" (PhysicalQuantity)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
-- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric trajectories" (PhysicalQuantity)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric Trajectories" (PhysicalQuantity)
 - classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) MEASURES "spectral densities" (PhysicalQuantity)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_MEASUREMENTS_OF "counts" (PhysicalQuantity)
 - classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) MEASURES "relativistic electron precipitation" (PhysicalQuantity)
@@ -596,17 +594,19 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - classed triple of the record at pool position 7: "band 31 emissivity" (Variable) FOR_CHANNEL "band 31" (Channel)
 - classed triple of the record at pool position 7: "band 32 emissivity" (Variable) FOR_CHANNEL "band 32" (Channel)
 - classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_VARIABLE "Solar Orbiter Ephemeris" (Variable)
+- classed triple of the record at pool position 15: "original trajectory data" (Dataset) HAS_MEASUREMENTS_OF "trajectory" (PhysicalQuantity)
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_VARIABLE "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable)
 - classed triple of the record at pool position 18: "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable) FOR_CHANNEL "VIIRS band M4 (0.555 μm)" (Channel)
-- classed triple of the record at pool position 18: "BRDF/Albedo values for VIIRS band M4" (Variable) COMPUTED_FROM "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable)
+- classed triple of the record at pool position 18: "BRDF/Albedo values for VIIRS band M4" (Variable) COMPUTED_FROM "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_VARIABLE "NaI Scintillator Diagnostics" (Variable)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_VARIABLE "sensor recordings" (Variable)
 - classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "sampling rate" (Variable)
 - classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "units" (Variable)
 - classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "parameter description" (Variable)
 - classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_ANCILLARY_DATA "parameter ID" (Variable)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_VARIABLE "Geopotential Height Zonal Fourier Coefficients" (Variable)
-- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) COMPUTED_FROM "HIRDLS profiles" (Dataset)
-- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) PRODUCED_USING_ALGORITHM "Kalman filter using both forward and backward passes in time" (Algorithm)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) COMPUTED_FROM "HIRDLS profiles" (Dataset)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) PRODUCED_USING_ALGORITHM "Kalman filter using both forward and backward passes in time" (Algorithm)
 - classed triple of the record at pool position 24: "mean" (Variable) PART_OF "Geopotential Height Zonal Fourier Coefficients" (Variable)
 - classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) HAS_NUMBER_OF "up to 7 sine coefficients" (Value)
 - classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) HAS_NUMBER_OF "up to 7 cosine coefficients" (Value)
@@ -661,7 +661,7 @@ A record often says where its data came from: an instrument, the craft that carr
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: products from the Moderate-resolution Imaging Spectroradiometer (MODIS)
 - source text: Aqua
-- source text: JPL acquires MODIS ocean L3 SST data from the OBPG
+- source text: NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG
 - source text: The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate-resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) FROM_PLATFORM "Aqua" (Platform)
@@ -810,6 +810,7 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 4" (MissionPhase)
 - classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TIME_SPAN "2015-10-22 to 2015-12-31" (Time)
+- classed triple of the record at pool position 1: "COMET ESCORT 4" (MissionPhase) HAS_TARGET "67P" (CelestialBody)
 - classed triple of the record at pool position 2: "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument) ABOARD "Aqua" (Platform)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
 - classed triple of the record at pool position 2: "radiance data" (Dataset) ACQUIRED_BY_INSTRUMENT "Moderate Resolution Imaging Spectroradiometer (MODIS)" (Instrument)
@@ -849,17 +850,18 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 9: "approach" (MissionPhase) HAS_TARGET "9P/Tempel 1" (CelestialBody)
 - classed triple of the record at pool position 9: "encounter" (MissionPhase) HAS_TARGET "9P/Tempel 1" (CelestialBody)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Dust Flux Monitor Instrument (DFMI)" (Instrument)
+- classed triple of the record at pool position 9: "encounter data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_PLATFORM "Rosetta Orbiter" (Platform)
 - classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Platform)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_MISSION_PHASE "comet escort 1" (MissionPhase)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TARGET "67P/Churyumov-Gerasimenko" (CelestialBody)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Rosetta Orbiter ALICE UV Spectrometer" (Instrument)
-- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 3" (MissionPhase)
+- classed triple of the record at pool position 13: "COMET ESCORT 3" (MissionPhase) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - classed triple of the record at pool position 16: "Plasma Wave Spectrometer (PWS)" (Instrument) ABOARD "Voyager 1" (Platform)
@@ -867,7 +869,6 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
 - classed triple of the record at pool position 19: "X-ray spectrometer" (Instrument) ABOARD "BARREL balloon" (Platform)
 - classed triple of the record at pool position 19: "DC magnetometer" (Instrument) ABOARD "BARREL balloon" (Platform)
-- classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
@@ -881,10 +882,7 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 19: "Radiation Belt Storm Probes, RBSP" (Mission) ALSO_KNOWN_AS "Van Allen Probes" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
 - classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
-- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "four BARREL campaigns" (Value)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "over 50 small, approximately 20 kg, stratospheric balloons" (Value)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
@@ -903,6 +901,7 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_PLATFORM "CH1-ORB" (Platform)
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
 - translation table row: entity class Mission
@@ -949,13 +948,13 @@ Records state time in several ways, and our schema has a predicate for each kind
 - notes: This global Level-2 (L2) data set provides daily snow cover detected using Normalized Difference Snow Index (NDSI) and a series of screens designed to alleviate errors and flag uncertain snow cover detections. The NDSI is derived from radiance data acquired by the Moderate Resolution Imaging Spectroradiometer (MODIS) on board the Aqua satellite: DOI:10.5067/MODIS/MYD02HKM.061 and DOI:10.5067/MODIS/MYD021KM.061. Each data granule contains 5 minutes of swath data observed at a resolution of 500 m.
 
   The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data.
-- source text: provides daily snow cover
+- source text: daily
 - source text: Each data granule contains 5 minutes of swath data
-- source text: 5 minutes of swath data
-- source text: This global Level-2 (L2) data set
+- source text: swath
+- source text: global
 - classed triple: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
 - classed triple: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
-- classed triple: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_REPRESENTATION "swath" (SpatialRepresentation)
+- classed triple: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_REPRESENTATION "Swath" (SpatialRepresentation)
 - classed triple: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_SPATIAL_COVERAGE "global" (SpatialExtent)
 
 ### Ground truth schema
@@ -1034,7 +1033,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they get no ground truth triple.
+- Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they give no ground truth triple.
 
 ### Consequences
 
@@ -1076,10 +1075,10 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_TIME_SPAN "2015-11-01T19:58:35.000 to 2015-11-02T04:59:27.000" (Time)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_GRANULE_DURATION "5 minutes" (Value)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
-- classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly" (TemporalResolution)
+- classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_TEMPORAL_RESOLUTION "Weekly" (TemporalResolution)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
-- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
-- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
+- classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_TEMPORAL_RESOLUTION "Daily" (TemporalResolution)
+- classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_TEMPORAL_RESOLUTION "Daily" (TemporalResolution)
 - classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_TIME_SPAN "from January, 2007 up to March, 2011" (Time)
 - classed triple of the record at pool position 10: "comet escort 1" (MissionPhase) HAS_TIME_SPAN "between 2014-11-19 and 2015-03-10" (Time)
 - classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) HAS_TIME_SPAN "between 2000 February 3 and 2008 October 08" (Time)
@@ -1087,7 +1086,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) PRODUCED_USING_ALGORITHM "Average" (Algorithm)
 - classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) HAS_MISSION_PHASE "encounter" (MissionPhase)
 - classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_TEMPORAL_RESOLUTION "Daily" (TemporalResolution)
-- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_TEMPORAL_RESOLUTION "daily" (TemporalResolution)
+- classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_TEMPORAL_RESOLUTION "Daily" (TemporalResolution)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_TEMPORAL_RESOLUTION "4 s" (TemporalResolution)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_TEMPORAL_RESOLUTION "between 6-12 days" (TemporalResolution)
 - classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) HAS_TIME_SPAN "January and February of 2013" (Time)
@@ -1096,7 +1095,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - classed triple of the record at pool position 19: "2016 campaign" (Campaign) HAS_TIME_SPAN "2016" (Time)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
 - classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) HAS_TIME_SPAN "from November 2008 through August 2009" (Time)
-- classed triple of the record at pool position 25: "Copernicus Sentinel data" (Dataset) HAS_TIME_SPAN "2024-2025" (Time)
+- classed triple of the record at pool position 25: "modified Copernicus Sentinel data" (Dataset) HAS_TIME_SPAN "2024-2025" (Time)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) HAS_GRANULE_DURATION "~3 years" (Value)
 - translation table row: entity class Frequency
 - translation table row: predicate HAS_TIME_RESOLUTION
@@ -1131,7 +1130,8 @@ Records write how far their data have been processed, the processing level, in m
 - title: MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid
 - notes: The Moderate Resolution Imaging Spectroradiometer (MODIS) Near Real Time (NRT) Combined Terra and Aqua Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N) produced daily at 1 kilometer (km) pixel resolutions. The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product.
 - source text: L2G
-- source text: gridded Level 2 product
+- source text: Level 2
+- source text: gridded
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 
@@ -1142,7 +1142,7 @@ Records write how far their data have been processed, the processing level, in m
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -1239,8 +1239,11 @@ Checked on 2026-10-31, the old (a): both readings are true. NASA's metadata trea
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
 - classed triple of the record at pool position 6: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_REPRESENTATION "gridded" (SpatialRepresentation)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
+- classed triple of the record at pool position 7: "MOD11_L2" (Dataset) HAS_PROCESSING_LEVEL "L2" (ProcessingLevel)
 - classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 2" (ProcessingLevel)
+- classed triple of the record at pool position 9: "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset) HAS_PROCESSING_LEVEL "Level 3" (ProcessingLevel)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 2" (ProcessingLevel)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_PROCESSING_LEVEL "CODMAC level 4" (ProcessingLevel)
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) HAS_PROCESSING_LEVEL "L3" (ProcessingLevel)
@@ -1352,7 +1355,7 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - predicate UNIQUE_TO_INSTRUMENT: is found only on this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
@@ -1410,14 +1413,14 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PRODUCED_USING_ALGORITHM "structure function (SF)" (Algorithm)
 - classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) COMPUTED_FROM "original trajectory data" (Dataset)
 - classed triple of the record at pool position 16: "calibrated values" (Dataset) COMPUTED_FROM "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset)
-- classed triple of the record at pool position 18: "BRDF/Albedo values for VIIRS band M4" (Variable) COMPUTED_FROM "BRDF geometric parameter for VIIRS band M4 (0.555 μm)" (Variable)
-- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) COMPUTED_FROM "HIRDLS profiles" (Dataset)
+- classed triple of the record at pool position 18: "BRDF/Albedo values for VIIRS band M4" (Variable) COMPUTED_FROM "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) COMPUTED_FROM "HIRDLS profiles" (Dataset)
 - classed triple of the record at pool position 24: "precision values" (Variable) COMPUTED_FROM "differences between the estimated fields and the input data" (Variable)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) COMPUTED_FROM "Sentinel-1 radar observations" (Dataset)
-- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) COMPUTED_FROM "Copernicus Sentinel data" (Dataset)
+- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) COMPUTED_FROM "modified Copernicus Sentinel data" (Dataset)
 - classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) PRODUCED_USING_ALGORITHM "Mean of Date" (Algorithm)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) PRODUCED_USING_ALGORITHM "accumulations" (Algorithm)
-- classed triple of the record at pool position 24: "Geopotential Height Zonal Fourier Coefficients" (Variable) PRODUCED_USING_ALGORITHM "Kalman filter using both forward and backward passes in time" (Algorithm)
+- classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) PRODUCED_USING_ALGORITHM "Kalman filter using both forward and backward passes in time" (Algorithm)
 - classed triple of the record at pool position 24: "precision values" (Variable) PRODUCED_USING_ALGORITHM "root-mean square" (Algorithm)
 - translation table row: predicate DERIVED_FROM
 - translation table row: predicate USES
@@ -1507,8 +1510,8 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
 - predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
-- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what kind of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a kind of thing.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 
@@ -1537,10 +1540,14 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PROVIDES_ACCESS_TO_DOCUMENT "NASA developed standards" (Document)
 - classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PROVIDES_ACCESS_TO_DOCUMENT "NASA developed handbooks" (Document)
 - classed triple of the record at pool position 0: "NASA Standards and and Technical Assistance Resource Tool" (WebTool) SPONSORED_BY_PARTY "NASA Technical Standards Program" (Organization)
+- classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PART_OF "NASA" (Organization)
+- classed triple of the record at pool position 0: "NASA developed handbooks" (Document) DEVELOPED_BY_PARTY "NASA" (Organization)
+- classed triple of the record at pool position 0: "NASA developed standards" (Document) DEVELOPED_BY_PARTY "NASA" (Organization)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "National Aeronautics and Space Administration (NASA)" (Organization)
 - classed triple of the record at pool position 3: "National Aeronautics and Space Administration (NASA)" (Organization) BASED_IN "U.S." (Country)
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization)
 - classed triple of the record at pool position 3: "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) SERVES_AS "Argentina's space agency" (Role)
+- classed triple of the record at pool position 3: "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization) BASED_IN "Argentina" (Country)
 - classed triple of the record at pool position 4: "Aqua" (Platform) LAUNCHED_BY_PARTY "NASA" (Organization)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) DEVELOPED_BY_PARTY "NASA Ocean Biology Processing Group (OBPG)" (Organization)
 - classed triple of the record at pool position 4: "Peter Minnett" (Person) AFFILIATED_WITH "Rosenstiel School of Marine and Atmospheric Science (RSMAS)" (Organization)
@@ -1549,19 +1556,22 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "sea surface temperature algorithm development" (Task)
 - classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "error statistics" (Task)
 - classed triple of the record at pool position 4: "Peter Minnett" (Person) RESPONSIBLE_FOR "quality flagging" (Task)
+- classed triple of the record at pool position 4: "NASA Ocean Biology Processing Group (OBPG)" (Organization) PART_OF "NASA" (Organization)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) DEVELOPED_BY_PARTY "NASA HEASARC" (Organization)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) PROVIDED_BY_PARTY "NASA HEASARC" (Organization)
+- classed triple of the record at pool position 12: "NASA HEASARC" (Organization) PART_OF "NASA" (Organization)
 - classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
 - classed triple of the record at pool position 19: "Robyn Millan" (Person) AFFILIATED_WITH "BARREL team" (Organization)
 - classed triple of the record at pool position 19: "South African National Antarctic Expedition" (Organization) ALSO_KNOWN_AS "SANAE" (Organization)
-- classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) DEVELOPED_BY_PARTY "OPERA" (Organization)
 - classed triple of the record at pool position 25: "OPERA" (Organization) INFORMED_BY "Satellite Needs Working Group (SNWG)" (Organization)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) PART_OF "U.S. Government" (Organization)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "identifying observation needs across U.S. civilian federal agencies" (Purpose)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_PURPOSE "addressing observation needs across U.S. civilian federal agencies" (Purpose)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) HAS_TARGET "Earth" (CelestialBody)
+- classed triple of the record at pool position 25: "U.S. Government" (Organization) BASED_IN "U.S." (Country)
 - classed triple of the record at pool position 19: "Robyn Millan" (Person) SERVES_AS "BARREL PI" (Role)
 - classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "NASA Living with a Star" (Organization) PART_OF "NASA" (Organization)
 - translation table row: entity class Program
 - translation table row: entity class Location
 - translation table row: entity class Organization
@@ -1597,6 +1607,9 @@ Our schema has an entity class Purpose and a predicate HAS_PURPOSE (both defined
 - pool position: 4
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
+- source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth
+- source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere
+- source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land
 - source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans
 - source text: using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors
 - classed triple: "Aqua" (Platform) HAS_TARGET "Earth" (CelestialBody)
@@ -1659,9 +1672,9 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - predicate HAS_OBJECTIVE -> HAS_PURPOSE: The subject (a mission, campaign, project or set of researchers) aims to achieve, study or address the object, a scientific goal, question or problem.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
 - Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans").
-- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask whether one of the things the words describe (one orbit, one balloon, one access) can have all the describing words at once. 1. Yes: keep them whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
+- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask whether one of the things the words describe (one orbit, one balloon, one access) can have all the describing words at once. 1. Yes: they stay whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
 - Writing a classed triple, rule 22: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 19 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
@@ -1804,7 +1817,7 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 - entity class Method -> Algorithm: A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.
 - entity class Topic -> Discipline: A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.
 - predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject (a set of observations or data) belongs to the object, a scientific discipline or category.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 
@@ -1862,6 +1875,7 @@ Our schema has an entity class SpatialExtent for the area the data cover, all of
 - title: MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid
 - notes: The Moderate Resolution Imaging Spectroradiometer (MODIS) Near Real Time (NRT) Combined Terra and Aqua Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N) produced daily at 1 kilometer (km) pixel resolutions. The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product.
 - source text: Land Aerosol Optical Depth
+- source text: Land
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_SPATIAL_COVERAGE "Land" (SpatialExtent)
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_MEASUREMENTS_OF "Aerosol Optical Depth" (PhysicalQuantity)
 
@@ -1927,7 +1941,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - entity class SpatialCoverage -> SpatialExtent: The geographic or sky extent covered by a dataset or observation, such as global, a swath width, or a number of square degrees or areas.
 - predicate HAS_SPATIAL_COVERAGE -> HAS_SPATIAL_COVERAGE: The subject (a dataset or survey) covers the object, a geographic region, latitude range, area extent or coverage descriptor.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
 
 ### Consequences
 
@@ -1999,7 +2013,7 @@ Our schema's Dataset is "a set of observations, measurements, or samples" (defin
 - notes: This global Level-2 (L2) data set provides daily snow cover detected using Normalized Difference Snow Index (NDSI) and a series of screens designed to alleviate errors and flag uncertain snow cover detections. The NDSI is derived from radiance data acquired by the Moderate Resolution Imaging Spectroradiometer (MODIS) on board the Aqua satellite: DOI:10.5067/MODIS/MYD02HKM.061 and DOI:10.5067/MODIS/MYD021KM.061. Each data granule contains 5 minutes of swath data observed at a resolution of 500 m.
 
   The terms "Version 61" and "Collection 6.1" are used interchangeably in reference to this release of MODIS data.
-- source text: The NDSI is derived from radiance data
+- source text: Normalized Difference Snow Index (NDSI) and a series of screens designed to alleviate errors and flag uncertain snow cover detections. The NDSI is derived from radiance data
 - source text: radiance data acquired by the Moderate Resolution Imaging Spectroradiometer (MODIS)
 - source text: radiance data acquired by the Moderate Resolution Imaging Spectroradiometer (MODIS) on board the Aqua satellite: DOI:10.5067/MODIS/MYD02HKM.061
 - source text: radiance data acquired by the Moderate Resolution Imaging Spectroradiometer (MODIS) on board the Aqua satellite: DOI:10.5067/MODIS/MYD02HKM.061 and DOI:10.5067/MODIS/MYD021KM.061
@@ -2115,8 +2129,8 @@ Checked on 2026-10-31, for the expert's (b): DCAT's notion of a dataset "is broa
 - classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_DOI "DOI:10.5067/MODIS/MYD021KM.061" (Identifier)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) COMPUTED_FROM "pixels" (Dataset)
 - classed triple of the record at pool position 4: "pixels" (Dataset) HAS_PROCESSING_LEVEL "L2" (ProcessingLevel)
-- classed triple of the record at pool position 4: "pixels" (Dataset) ON_GRID "integerized sinusoidal area grid (ISEAG)" (Grid)
-- classed triple of the record at pool position 4: "pixels" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) ON_GRID "integerized sinusoidal area grid (ISEAG)" (Grid)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
 - classed triple of the record at pool position 5: "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) COMPUTED_FROM "GRaND epithermal neutron map" (Dataset)
 - classed triple of the record at pool position 5: "GRaND epithermal neutron map" (Dataset) ACQUIRED_BY_INSTRUMENT "GRaND" (Instrument)
 - classed triple of the record at pool position 7: "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) COMPUTED_FROM "MOD11_L2" (Dataset)
@@ -2221,7 +2235,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true.
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
 
 ### Consequences
 
@@ -2385,7 +2399,7 @@ Our schema has an entity class MapProjection, "a way of drawing the curved Earth
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical
 - source text: an equidistant cylindrical (also known as Platte Carre projection
-- classed triple: "pixels" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
+- classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
 - classed triple: "equidistant cylindrical" (MapProjection) ALSO_KNOWN_AS "Platte Carre" (MapProjection)
 
 ### Ground truth schema
@@ -2462,7 +2476,7 @@ Checked on 2026-10-31: the standard agrees with our reading. OGC's Abstract Spec
 ### Affects
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
-- classed triple of the record at pool position 4: "pixels" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) MAPPED_INTO "equidistant cylindrical" (MapProjection)
 - classed triple of the record at pool position 4: "equidistant cylindrical" (MapProjection) ALSO_KNOWN_AS "Platte Carre" (MapProjection)
 - classed triple of the record at pool position 4: "equidistant cylindrical" (MapProjection) DOCUMENTED_AT "https://oceancolor.gsfc.nasa.gov/docs/format/" (WebPage)
 - translation table row: entity class CoordinateSystem
@@ -2542,7 +2556,7 @@ Checked on 2026-10-31, the rest of (a): NASA's own search uses the equator cross
 
 - Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or if taking it out would give a triple that isn't true. Suppose: a record says "an afternoon orbit". Then: taking "afternoon" out would give "orbit" OBSERVED_AT_TIME_OF_DAY "afternoon", which says the orbit comes from observations made in the afternoon. That isn't true, so the instance stays "afternoon orbit".
+- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state). Suppose: a record says "an afternoon orbit". Then: taking "afternoon" out would give "orbit" OBSERVED_AT_TIME_OF_DAY "afternoon", which says the orbit comes from observations made in the afternoon. That isn't true, so "afternoon orbit" stays whole.
 
 ### Consequences
 
@@ -2609,7 +2623,7 @@ We write only what a record states (rule 1 of *What counts as a fact*, quoted be
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -2736,7 +2750,7 @@ Settled on 2026-10-31: SST4 is a skin SST, as the OBPG's SST4 document says ("Th
 ### Quoted for us
 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
 - Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
@@ -2848,14 +2862,16 @@ Withdrawn on 2026-10-31: settled from sources, so it is no longer asked of the e
 
 Checked on 2026-10-31, the note left for us above on whether "V006", "Version 6" and "V6" are one version: they are. NASA's page for the product writes "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", "MOD11A1 Version 006" with the one DOI 10.5067/MODIS/MOD11A1.006, "The MOD11A1 Version 6 data product was decommissioned on July 31, 2023" and "Production of V6 Terra MODIS Land Surface Temperature and Emissivity (LST&E) data products was discontinued" (https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod11a1-006). So the ground truth's one "Version 6" stands (rule 23). The "R" of "R2019.0" (above): NASA's pages name the OBPG's reprocessings by these numbers, e.g. "Aqua MODIS Mini-reprocessing R2022.0.3" (https://www.earthdata.nasa.gov/data/alerts-outages/aqua-modis-mini-reprocessing-r2022.0.3); still no page defines the letter in words (strong secondary), and no ground truth triple depends on it.
 
+Changed on 2026-11-12 (found by both audits of the ground truth of that day): the ground truth writes this release as "R2019.0", and no longer as "V2019.0". The reading settled above stands: the two wordings name one release. Rule 23 decides which of the two wordings is written. Its test 1 picks neither, since neither wording contains the other, is more precise, or spells out the other. Its test 2 picks "R2019.0", the wording of the sentence that states a fact about the release with words for its predicate ("The R2019.0 supersedes the previous v2014.1 datasets"), while the title names the release only by its own words. So the record's dataset HAS_VERSION "R2019.0" (Version), with the source text "V2019.0 … The R2019.0 supersedes the previous v2014.1 datasets" (rule 17, *Words in different places*: the title and the notes), and "R2019.0" (Version) SUPERSEDES "v2014.1" (Version). Until then the ground truth had "V2019.0" in both, by rule 23 as it read when the record was annotated (the wording the record uses most often, or, on a tie, the one it gives first); the text above keeps "V2019.0" where it says what was written then.
+
 ### Quoted for us
 
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
-- What counts as a fact, rule 10: Not words that are true only as of when the record was written. Leave out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
+- What counts as a fact, rule 10: Not words that are true only as of when the record was written. Take out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
 - What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
-- Writing a classed triple, rule 20: Parentheses that hold the code of something else are not part of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. 2. Otherwise, the wording from a sentence that states a fact about the thing with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
+- Writing a classed triple, rule 20: Parentheses that hold the code of something else are taken out of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
+- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. When test 1 ties (one wording is more precise and the other spells out an abbreviation), the wording that says more is used. 2. Otherwise, the wording from a sentence that states a fact about the thing with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
 
 ### Consequences
 
@@ -2872,8 +2888,8 @@ Checked on 2026-10-31, the note left for us above on whether "V006", "Version 6"
 ### Affects
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
-- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VERSION "V2019.0" (Version)
-- classed triple of the record at pool position 4: "V2019.0" (Version) SUPERSEDES "v2014.1" (Version)
+- classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_VERSION "R2019.0" (Version)
+- classed triple of the record at pool position 4: "R2019.0" (Version) SUPERSEDES "v2014.1" (Version)
 - record at pool position 2: 6cfafd07-40f1-46da-9d92-36c2bb319f0b
 - record at pool position 7: d5477563-0415-4e65-ab7c-d4bc9ed809e5
 - record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
@@ -2909,8 +2925,9 @@ The example below, a MODIS aerosol product, has two passages we are not sure how
 - pool position: 6
 - title: MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid
 - notes: The Moderate Resolution Imaging Spectroradiometer (MODIS) Near Real Time (NRT) Combined Terra and Aqua Multi-Angle Implementation of Atmospheric Correction (MAIAC) Land Aerosol Optical Depth gridded Level 2 product (MCD19A2N) produced daily at 1 kilometer (km) pixel resolutions. The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product.
-- source text: gridded Level 2 product (MCD19A2N)
+- source text: product (MCD19A2N)
 - source text: The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product
+- source text: The MCD19A2N product provides the atmospheric properties
 - source text: The MCD19A2N product provides the atmospheric properties and view geometry
 - classed triple: "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_IDENTIFIER "MCD19A2N" (Identifier)
 - classed triple: "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset)
@@ -2999,7 +3016,7 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 - predicate ALSO_KNOWN_AS: is the same thing under another name
 - predicate HAS_LATENCY -> HAS_LATENCY: The subject (a data product or table) is made available or updated with the object, a latency or update delay.
 - predicate HAS_IDENTIFIER -> HAS_IDENTIFIER: The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gets no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
@@ -3201,6 +3218,7 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 3: "Aquarius/Satélite de Aplicaciones Científicas (SAC-D)" (Mission) DEVELOPED_BY_PARTY "Comisión Nacional de Actividades Espaciales (CONAE)" (Organization)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) HAS_VARIABLE "Global Gravity" (Variable)
 - classed triple of the record at pool position 2: "MODIS/Aqua Snow Cover 5-Min L2 Swath 500m V061" (Dataset) HAS_MEASUREMENTS_OF "snow cover" (PhysicalQuantity)
+- classed triple of the record at pool position 2: "radiance data" (Dataset) HAS_MEASUREMENTS_OF "radiance" (PhysicalQuantity)
 - classed triple of the record at pool position 3: "Aquarius L3 Weekly Polar-Gridded Sea Surface Salinity V005" (Dataset) HAS_MEASUREMENTS_OF "Sea Surface Salinity (SSS) retrievals" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_MEASUREMENTS_OF "skin sea surface temperature (SST)" (PhysicalQuantity)
 - classed triple of the record at pool position 4: "skin SST" (Variable) ESTIMATES "skin sea surface temperature (SST)" (PhysicalQuantity)
@@ -3226,7 +3244,6 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Rosetta Orbiter ALICE UV Spectrometer" (Instrument)
 - classed triple of the record at pool position 10: "Rosetta Orbiter ALICE UV Spectrometer" (Instrument) ABOARD "Rosetta Orbiter" (Platform)
 - classed triple of the record at pool position 10: "ROSETTA-ORBITER 67P/CAL ALICE 2 ESC1 V1.0" (Dataset) FROM_PLATFORM "Rosetta Orbiter" (Platform)
-- classed triple of the record at pool position 12: "2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_VARIABLE "Ensemble X-Ray Variability" (Variable)
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) HAS_MEASUREMENTS_OF "redshifts" (PhysicalQuantity)
@@ -3257,7 +3274,6 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 24: "HIRDLS profiles" (Dataset) ACQUIRED_BY_INSTRUMENT "HIRDLS" (Instrument)
 - classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) FROM_PLATFORM "Voyager 1" (Platform)
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
-- classed triple of the record at pool position 19: "BARREL balloon" (Platform) HAS_MASS "approximately 20 kg" (Value)
 - classed triple of the record at pool position 24: "HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH)" (Dataset) FROM_PLATFORM "Aura" (Platform)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
 - classed triple of the record at pool position 25: "Sentinel-1 radar observations" (Dataset) FROM_PLATFORM "Sentinel-1" (Platform)
@@ -3271,25 +3287,27 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 19: "Radiation Belt Storm Probes, RBSP" (Mission) ALSO_KNOWN_AS "Van Allen Probes" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
 - classed triple of the record at pool position 19: "2016 campaign" (Campaign) COORDINATED_WITH "Radiation Belt Storm Probes, RBSP" (Mission)
-- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "four BARREL campaigns" (Value)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_NUMBER_OF "over 50 small, approximately 20 kg, stratospheric balloons" (Value)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TIME_SPAN "from 2013 to 2016" (Time)
 - classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_MISSION "Chandrayaan-1" (Mission)
 - classed triple of the record at pool position 21: "Chandrayaan-1" (Mission) HAS_TARGET "Moon" (CelestialBody)
-- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric trajectories" (PhysicalQuantity)
+- classed triple of the record at pool position 21: "Moon Mineralogy Mapper (M3)" (Instrument) HAS_TARGET "Moon" (CelestialBody)
+- classed triple of the record at pool position 15: "Solar Orbiter Ephemeris, Heliocentric Trajectories, Heliographic, Heliographic Inertial, and Solar Ecliptic Coordinates, HelioWeb, Daily Data" (Dataset) HAS_MEASUREMENTS_OF "Heliocentric Trajectories" (PhysicalQuantity)
+- classed triple of the record at pool position 15: "original trajectory data" (Dataset) HAS_MEASUREMENTS_OF "trajectory" (PhysicalQuantity)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) HAS_MEASUREMENTS_OF "counts" (PhysicalQuantity)
 - classed triple of the record at pool position 25: "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) HAS_MEASUREMENTS_OF "surface water extent over land" (PhysicalQuantity)
 - classed triple of the record at pool position 7: "MODIS" (Instrument) ABOARD "Terra" (Platform)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) PART_OF "OSIRIS" (Instrument)
 - classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "Plasma Wave Spectrometer (PWS)" (Instrument)
 - classed triple of the record at pool position 18: "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument) ABOARD "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
 - classed triple of the record at pool position 18: "VIIRS band M4 (0.555 μm)" (Channel) CHANNEL_OF "Visible Infrared Imaging Radiometer Suite (VIIRS)" (Instrument)
 - classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 21: "CH1-ORB MOON M3 2 L0 RAW NEAR-IR SPECTRAL IMAGES V1.0" (Dataset) FROM_PLATFORM "CH1-ORB" (Platform)
+- classed triple of the record at pool position 22: "Flight Data For Tail 655" (Dataset) HAS_VARIABLE "sensor recordings" (Variable)
 - translation table row: entity class Instrument
 - translation table row: entity class Spacecraft
 - translation table row: entity class SpaceStation
@@ -3329,7 +3347,7 @@ The title of the example below says "4km", and its notes say the products "are a
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: 4km
-- source text: available at both 4.63 and 9.26 km spatial resolution
+- source text: 4.63 and 9.26 km
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution)
 
 ### Ground truth schema
@@ -3427,7 +3445,7 @@ The example below says Aqua was launched into its orbit "formation flying in the
 - pool position: 4
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
-- source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS)
+- source text: Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train
 - classed triple: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
 
 ### Ground truth schema
@@ -3472,6 +3490,7 @@ Withdrawn on 2026-10-31: settled from the field's practice, so it is no longer a
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
+- classed triple of the record at pool position 4: "Earth Observation Satellites (EOS)" (SatelliteFormation) HAS_TARGET "Earth" (CelestialBody)
 - ground truth schema entry: entity class SatelliteFormation
 - ground truth schema entry: predicate FLIES_IN
 
@@ -3496,8 +3515,10 @@ A record's notes often describe the family of products its dataset belongs to, n
 - title: MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0
 - notes: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products from the Moderate-resolution Imaging Spectroradiometer (MODIS) onboard the Aqua satellite. Average daily, weekly (8 day), monthly and annual skin SST products at are available at both 4.63 and 9.26 km spatial resolution. Aqua was launched by NASA on May 4, 2002, into a sun synchronous, polar orbit with a daylight ascending node at 13:30, formation flying in the A-train with other Earth Observation Satellites (EOS), to study the global dynamics of the Earth atmosphere, land and oceans. MODIS captures data in 36 spectral bands at a variety of spatial resolutions. Two SST products can be present in these files. The first is a skin SST produced for both day and night (NSST) observations, derived from the long wave IR 11 and 12 micron wavelength channels, using a modified nonlinear SST algorithm intended to provide continuity of SST derived from heritage and current NASA sensors. At night, a second SST product is generated using the mid-infrared 3.95 and 4.05 micron wavelength channels which are unique to MODIS; the SST derived from these measurements is identified as SST4. The SST4 product has lower uncertainty, but due to sun glint can only be used at night. To generate the L3 products the L2 pixels are binned into an integerized sinusoidal area grid (ISEAG) and mapped into an equidistant cylindrical (also known as Platte Carre projection. Additional projection detailed can be found at https://oceancolor.gsfc.nasa.gov/docs/format/ The NASA MODIS L3 SST data products are generated by the NASA Ocean Biology Processing Group (OBPG) and Peter Minnett and his team at the Rosenstiel School of Marine and Atmospheric Science (RSMAS) are responsible for sea surface temperature algorithm development, error statistics and quality flagging. JPL acquires MODIS ocean L3 SST data from the OBPG and is the official Physical Oceanography Data Archive (PO.DAAC) for SST. The R2019.0 supersedes the previous v2014.1 datasets which can be found at https://doi.org/10.5067/MODAM-8D4N4
 - source text: Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products
-- source text: Average daily, weekly (8 day), monthly and annual skin SST products
-- source text: available at both 4.63 and 9.26 km spatial resolution
+- source text: 8 Day
+- source text: 4km
+- source text: weekly (8 day)
+- source text: 4.63 and 9.26 km
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
 - classed triple: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution)
 
@@ -3585,7 +3606,7 @@ Checked on 2026-10-31, for the expert's (b), in NASA's metadata (it corrects the
 - record at pool position 6: 4c64f3ed-39b4-4f95-95a0-022898ba47a4
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_TEMPORAL_RESOLUTION "weekly (8 day)" (TemporalResolution)
 - classed triple of the record at pool position 4: "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (Dataset) HAS_SPATIAL_RESOLUTION "4.63 km" (SpatialResolution)
-- classed triple of the record at pool position 4: "V2019.0" (Version) SUPERSEDES "v2014.1" (Version)
+- classed triple of the record at pool position 4: "R2019.0" (Version) SUPERSEDES "v2014.1" (Version)
 - rule: Writing a classed triple, rule 21
 - pipeline method: common/common_prompts/extraction_rules.txt: the model's copy of the annotation guidelines' rules, which changes with a rule
 
@@ -3688,29 +3709,34 @@ Checked on 2026-10-31, for the expert's (b): the standards have one general part
 
 ### Affects
 
+- record at pool position 0: 3122be4c-b9d0-4cc9-b6d3-9b96c6e743da
+- record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - record at pool position 5: 99dff022-24ac-48cb-bc83-09fec8b90ad7
 - record at pool position 9: dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb
 - record at pool position 12: bb1fe4b0-6543-42e3-9386-acbab0b37ad4
+- record at pool position 13: ab33f184-95f4-4f33-8f3d-c4a09ec525d3
 - record at pool position 16: ec41fd5d-1159-4aa8-9803-5346e2324a20
 - record at pool position 19: 6f63dd10-376e-4d17-9156-f2155637e74d
 - record at pool position 24: 77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9
 - record at pool position 25: ed2cea26-ed6c-4138-be69-3d32d4ce4858
+- classed triple of the record at pool position 0: "NASA Technical Standards Program" (Organization) PART_OF "NASA" (Organization)
+- classed triple of the record at pool position 4: "NASA Ocean Biology Processing Group (OBPG)" (Organization) PART_OF "NASA" (Organization)
 - classed triple of the record at pool position 5: "GRaND plus Z boron loaded sensor" (Instrument) PART_OF "GRaND" (Instrument)
 - classed triple of the record at pool position 9: "encounter data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "RDR data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 9: "EDR (raw) sensor data" (Dataset) PART_OF "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" (Dataset)
 - classed triple of the record at pool position 12: "table1.dat" (Dataset) PART_OF "CDS Catalog J/A+A/536/A84" (Dataset)
+- classed triple of the record at pool position 12: "NASA HEASARC" (Organization) PART_OF "NASA" (Organization)
+- classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) PART_OF "OSIRIS" (Instrument)
 - classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) PART_OF "Plasma Wave Spectrometer (PWS)" (Instrument)
 - classed triple of the record at pool position 19: "BARREL" (Mission) PART_OF "NASA Living with a Star" (Organization)
-- classed triple of the record at pool position 19: "2013 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2014 balloon campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "August 2015 BARREL campaign" (Campaign) PART_OF "BARREL" (Mission)
-- classed triple of the record at pool position 19: "2016 campaign" (Campaign) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 24: "mean" (Variable) PART_OF "Geopotential Height Zonal Fourier Coefficients" (Variable)
 - classed triple of the record at pool position 25: "Satellite Needs Working Group (SNWG)" (Organization) PART_OF "U.S. Government" (Organization)
 - classed triple of the record at pool position 19: "BARREL instrumentation" (Instrument) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL balloon" (Platform) PART_OF "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL team" (Organization) PART_OF "BARREL" (Mission)
+- classed triple of the record at pool position 19: "NASA Living with a Star" (Organization) PART_OF "NASA" (Organization)
 - ground truth schema entry: predicate PART_OF
 - translation table row: predicate PART_OF
 - translation table row: predicate CONTAINS
@@ -3797,7 +3823,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - entity class Purpose: an aim something is meant to achieve
 - entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - predicate HAS_PURPOSE: is meant to achieve
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above, this rule's own part A fact inside a name, and rules 3 to 10 below, and rules 16, 20, 21, 22, 23 and 24 of Writing a classed triple (rule 22 for an item of a list that names no specific thing and for the abbreviation of a list of several things, rule 23 for a type word), or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
@@ -3877,7 +3903,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 - The example record, as it was: the record "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (ab33f184-95f4-4f33-8f3d-c4a09ec525d3), source text "The prime target is comet 67P/Churyumov-Gerasimenko 1 (1969 R1)", classed triple "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody).
 - The options and reading, as they were: Option 1: A new rule of *What counts as a fact*: "Not a word that only says how a fact holds. A ground truth triple has no place for it: the subject and object are things, and the predicate is the link." The ground truth stays as it is now. Option 2: Each word that people search on gets a ground truth triple of its own, with a predicate coined for it (for example, a predicate for a dataset's main target); the other words are left out by the rule of option 1. My current reading: Option 1, because in each case the ground truth triple already finds the dataset, and the word adds nothing a search would use. "prime" is the one we are least sure of, since a search for the other bodies in the images would need it.
 
-Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it. Decided: option 1, as a sentence of rule 9 of *What counts as a fact* (not a new rule, so that no rule is renumbered): "A word that only says how another fact holds gives no ground truth triple, and is not part of an instance: its subject would be that fact, not a thing the record names." Rule 11's exceptions now name rule 9 too, and the model's copy of the rules says the same. Why: saying how a fact holds needs a fact about a fact, a qualifier kept with the ground truth triple it holds for (as Wikidata's statement qualifiers do), which is future work (docs/improvements.md, *Rule 19 can lose which fact a qualifier went with*, option 4). The four items of annotations/left_out.md now cite that sentence.
+Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it. Decided: option 1, as a sentence of rule 9 of *What counts as a fact* (not a new rule, so that no rule is renumbered): "A word that only says how another fact holds gives no ground truth triple, and is taken out of the instance: its subject would be that fact, not a thing the record names." Rule 11's exceptions now name rule 9 too, and the model's copy of the rules says the same. Why: saying how a fact holds needs a fact about a fact, a qualifier kept with the ground truth triple it holds for (as Wikidata's statement qualifiers do), which is future work (docs/improvements.md, *Rule 19 can lose which fact a qualifier went with*, option 4). The four items of annotations/left_out.md now cite that sentence.
 
 Corrected on 2026-10-31 (the research of that day): the table's second row said, word for word: "| the record "STARDUST 9P/TEMPEL 1 DFMI 2/3 NEXT V1.0" | "The RDR data convert the EDR (raw) sensor data, from the entire comet encounter" | the RDR data were collected during the encounter | "entire": how much of the encounter the data come from |" "entire" fits the EDR (raw) data, not the RDR data: the RDR data cover the encounter "up to before the start of the anomaly" (the data set's catalog file; Q5's My notes). The fact we wrote stays true, since the RDR data come only from the encounter.
 
@@ -3888,7 +3914,7 @@ Corrected on 2026-10-31 (the research of that day): the table's second row said,
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above, this rule's own part A fact inside a name, and rules 3 to 10 below, and rules 16, 20, 21, 22, 23 and 24 of Writing a classed triple (rule 22 for an item of a list that names no specific thing and for the abbreviation of a list of several things, rule 23 for a type word), or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 
 ### Consequences
 
@@ -3978,7 +4004,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Task: a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
 - predicate REVISED_AFTER: was corrected after this review
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above and rules 3 to 10 below, and rules 16, 20, 21 and 24 of Writing a classed triple, or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above, this rule's own part A fact inside a name, and rules 3 to 10 below, and rules 16, 20, 21, 22, 23 and 24 of Writing a classed triple (rule 22 for an item of a list that names no specific thing and for the abbreviation of a list of several things, rule 23 for a type word), or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 
 ### Affects
 

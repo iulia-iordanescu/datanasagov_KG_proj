@@ -237,7 +237,12 @@ class FairSampleByPart(unittest.TestCase):
         write_csv(self.tmp / "candidates.csv", ["id", "stratum"], [{"id": i, "stratum": "s"} for i in self.ids])
         (self.tmp / "schema_used.json").write_text(json.dumps({"learned_from": {"known": True, "ids": []}}), encoding="utf-8")
         (self.tmp / "reviews.csv").write_text(",".join(partial_reviews.COLUMNS) + "\n", encoding="utf-8")
-        inputs = {"ground_truth": self.tmp / "ground_truth" / "batch_*.csv", "ground_truth_schema": ROOT / "annotations" / "ground_truth_schema.txt",
+        # the real ground truth schema without its held-out-only entries: their sources name held-out records of the
+        # real pool, which this made-up pool doesn't have (070 checks every held-out-only source against the pool)
+        schema = self.tmp / "ground_truth_schema.txt"
+        schema.write_text(support.without_held_out_only_text(
+            (ROOT / "annotations" / "ground_truth_schema.txt").read_text(encoding="utf-8-sig")), encoding="utf-8")
+        inputs = {"ground_truth": self.tmp / "ground_truth" / "batch_*.csv", "ground_truth_schema": schema,
                   "splits": self.tmp / "splits.json", "candidates": self.tmp / "candidates.csv",
                   "extracted_triples_details": self.tmp / "details.json", "extracted_triples": self.tmp / "extracted.csv",
                   "extracted_triples_removed": self.tmp / "removed.csv", "schema_used": self.tmp / "schema_used.json",

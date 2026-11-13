@@ -25,7 +25,7 @@ the current schema (the one step 060 used) means.
                              person when checking; "same" by code on a row it
                              adds as "same component class". The values and
                              their SKOS and Alignment API equivalents:
-                             docs/terminology.md, *match*
+                             070_evaluate/metrics/translation_table.md, *Match*
     checked                  "same component class" (added by code: the two
                              component classes are equal),
                              "no" (proposed by the model, not checked yet),
@@ -57,7 +57,7 @@ the same rule for a row and the same checking. For an extracted triple, the matc
 wins (rule_for); two matching rows with as many conditions that translate differently are a CONFLICT (conflicts),
 and step 070 stops on it. The idea, a correspondence restricted to an entity class of its subject or object, is
 EDOAL's (the Alignment API's Expressive and Declarative Ontology Alignment Language: RelationDomainRestriction,
-RelationCoDomainRestriction); its home here is docs/terminology.md, *conditional row*.
+RelationCoDomainRestriction); its home here is 070_evaluate/metrics/translation_table.md, *Sources*.
 
 A conditional row's match is judged within its condition (SOURCED_FROM if its object is a Mission means the same as
 FROM_MISSION, though SOURCED_FROM alone is broader).

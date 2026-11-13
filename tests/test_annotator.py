@@ -318,6 +318,68 @@ class B_Batch(unittest.TestCase):
     def test_3_missing_batch(self):
         self.assertIn("error", get("/api/batch?n=7"))
 
+    def test_4_rules(self):
+        """The column rules: kept on a save, empty on a row the page adds; a value a hand edit left in another shape is
+        an error, so the record is saved as not finished; /api/rules serves each rule's words from the copy's
+        annotations/guidelines.md; a save writes annotations/rules_by_triple.md from the files."""
+        from common.rules_by_triple import doc_text
+        doc = TMP / "annotations" / "rules_by_triple.md"
+        doc.unlink(missing_ok=True)
+        recs = get("/api/batch?n=0")["records"]
+        r0 = recs[0]
+        self.assertEqual([r["rules"] for r in r0["rows"]], ["", ""])                     # the column, read
+        r0["rows"][1]["rules"] = "1, 19"
+        r0["rows"].append({"subject": "Aqua", "subject_class": "Spacecraft", "predicate": "ABOARD", "object": "MODIS",
+                           "object_class": "Instrument", "source_text": "MODIS aboard Aqua"})   # no rules key at all
+        try:
+            saved = post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
+            self.assertEqual(saved["unfinished"], [])
+            rows = [r for r in gt_rows() if r["id"] == "r0"]
+            self.assertEqual([r["rules"] for r in rows], ["", "1, 19", ""])              # kept; empty on the row added
+            self.assertEqual([r["drafted_by"] for r in rows], ["test-model", "test-model", ""])
+            self.assertTrue(doc.exists())
+            text = doc.read_text(encoding="utf-8")
+            self.assertEqual(text, doc_text())                                          # the copy's files, as saved
+            self.assertIn('- "MODIS" (Instrument) ABOARD "Aqua" (Spacecraft): rules 1, 19.', text)
+            self.assertIn("### Rule 19 (part of the guidelines)", text)
+            # a hand edit of the file: not ascending, and a value on the describes triple
+            recs = get("/api/batch?n=0")["records"]
+            recs[0]["rows"][1]["rules"] = "19, 1"
+            recs[0]["rows"][0]["rules"] = "2"
+            saved = post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
+            self.assertEqual(saved["unfinished"], [{"index": 0, "id": "r0", "errors": ["rules_not_valid"]}])
+            codes = [[p["code"] for p in row] for row in saved["problems"][0]]
+            self.assertIn("rules_not_valid", codes[0])
+            self.assertIn("rules_not_valid", codes[1])
+            self.assertNotIn("rules_not_valid", codes[2])
+            messages = [p["message"] for p in saved["problems"][0][1] if p["code"] == "rules_not_valid"]
+            self.assertIn("isn't ascending", messages[0])
+            self.assertIn("The describes triple has rules", [p["message"] for p in saved["problems"][0][0]][0])
+            self.assertEqual({r["all_facts_extracted"] for r in gt_rows() if r["id"] == "r0"}, {"0"})
+            view = get("/api/batch?n=0")["records"][0]
+            self.assertEqual([r["rules"] for r in view["rows"]], ["2", "19, 1", ""])     # saved as sent, marked ✖
+            self.assertIn("rules_not_valid", [p["code"] for p in view["rows"][1]["problems"]])
+            self.assertIn('rules "19, 1" (not a valid value', doc.read_text(encoding="utf-8"))
+            # the rules, read from the copy's guidelines each time
+            rules = get("/api/rules")
+            self.assertEqual(rules["file"], "annotations/guidelines.md")
+            self.assertEqual(rules["always"], [2, 11, 13, 14, 17])
+            self.assertEqual(rules["rules"]["1"]["section"], "What counts as a fact")
+            self.assertTrue(rules["rules"]["1"]["title"].startswith("Only what the record states"))
+            self.assertTrue(rules["rules"]["19"]["markdown"].startswith("**A qualifier that is"))
+            self.assertIn("\n- **", rules["rules"]["19"]["markdown"])                    # its continuation lines
+            self.assertEqual(rules["highest"], max(int(n) for n in rules["rules"]))
+            self.assertEqual(rules["describes"]["heading"], "The describes triple")
+            self.assertIn("written by code", rules["describes"]["markdown"])
+        finally:
+            recs = get("/api/batch?n=0")["records"]
+            recs[0]["rows"] = recs[0]["rows"][:2]
+            for r in recs[0]["rows"]:
+                r["rules"] = ""
+            recs[0]["finished"] = True
+            post("/api/save", {"n": 0, "records": recs, "fingerprint": fp_batch(0)})
+        self.assertEqual([r["rules"] for r in gt_rows()], [""] * 6)
+
     def test_not_connected(self):
         """A record whose ground truth triples form two pieces: the piece not linked to the catalog entry is
         flagged, row by row, naming its component instances; the piece linked to it (as evened out: "the Aqua
@@ -372,23 +434,28 @@ class B_Batch(unittest.TestCase):
         self.assertEqual(server.qualifier_problems(rows, qualifiers)[1][0]["type"], "flag")
 
     def test_slash_list_split(self):
-        """Suppose a record's text has "RSI 1/2/3", whose items it never names alone, and "Level 2/3 (EDR/RDR) data",
-        whose items it names separately ("The RDR data convert the EDR data"). Then an instance "RSI 1" (one item of
-        the first list, not in the text as written) is flagged, naming the list. Not flagged: "RSI 1/2/3" whole, "RSI"
-        (in the text as written), "Level 3 (RDR)" (its list's items are named separately), "Terra" from
-        "Terra+Aqua" when the text says "Terra" alone too, and a web address's "/" ("https://doi.org/10.5067/X/Y")."""
+        """Suppose a record's notes have "RSI 1/2/3", whose items they never name alone, and "Level 2/3 (EDR/RDR) data",
+        whose items they name separately ("The RDR data convert the EDR data"), and its title has "KX/Halden". Then an
+        instance "RSI 1" (one item of the first list, not in the text as written) is flagged, naming the list. Not
+        flagged: "RSI 1/2/3" whole, "RSI" (in the text as written), "Level 3 (RDR)" (its list's items are named
+        separately), "Terra" from "Terra+Aqua" when the text says "Terra" alone too, a web address's "/"
+        ("https://doi.org/10.5067/X/Y"), and "KX" from the title's "KX/Halden", although the text never names "KX" or
+        "Halden" alone: a title's list is always split."""
         def row(s, p, o):
             return {**{c: "" for c in ground_truth.FILE_COLUMNS}, "id": "r1", "subject": s, "predicate": p, "object": o}
-        text = ("title: RSI 1/2/3 Level 2/3 (EDR/RDR) data Terra+Aqua\nnotes: The RDR data convert the EDR data. "
-                "Terra flies first. See https://doi.org/10.5067/X/Y for more.")
+        text = ("title: KX/Halden Lake Ice\n\nnotes: RSI 1/2/3 Level 2/3 (EDR/RDR) data Terra+Aqua. The RDR data "
+                "convert the EDR data. Terra flies first. See https://doi.org/10.5067/X/Y for more.")
         rows = [row("Title r1", "ACQUIRED_BY_INSTRUMENT", "RSI 1"),          # one item of a list never named alone
                 row("Title r1", "ACQUIRED_BY_INSTRUMENT", "RSI 1/2/3"),      # the whole list
                 row("Title r1", "ACQUIRED_BY_INSTRUMENT", "RSI"),            # in the text as written
                 row("RDR data", "HAS_PROCESSING_LEVEL", "Level 3 (RDR)"),    # items named separately
                 row("Title r1", "FROM_SPACECRAFT", "Terra"),                 # named alone too
-                row("Title r1", "HAS_DOI", "10.5067/X")]                     # an address, not a list
+                row("Title r1", "HAS_DOI", "10.5067/X"),                     # an address, not a list
+                row("Title r1", "ACQUIRED_BY_INSTRUMENT", "KX")]             # one item of a title's list: always split
         found = server.slash_list_problems(text, rows)
-        self.assertEqual([[p["code"] for p in f] for f in found], [["slash_list_split"], [], [], [], [], []])
+        self.assertEqual([[p["code"] for p in f] for f in found], [["slash_list_split"], [], [], [], [], [], []])
+        in_notes = text.replace("title: KX/Halden Lake Ice\n\nnotes: ", "title: Lake Ice\n\nnotes: KX/Halden. ")
+        self.assertEqual([p["code"] for p in server.slash_list_problems(in_notes, rows)[-1]], ["slash_list_split"])
         self.assertEqual(found[0][0]["type"], "flag")
         self.assertIn('"RSI 1" looks like one item of the list "1/2/3"', found[0][0]["message"])
         self.assertEqual(server.slash_list_problems("", rows), [[]] * len(rows))      # no text: nothing to match

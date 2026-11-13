@@ -21,6 +21,8 @@ Read them in this order: what they count first, then each metric, then why each 
 | [Describes accuracy](metrics/describes.md) | how often extraction names the right [describes class](../docs/terminology.md#2-triples), next to always naming the most common one |
 | [Why "approximately"](metrics/approximately.md) | the reasons every metric shares, including the [margin of error](../docs/terminology.md#7-evaluating-extraction-step-070) |
 
+How each [extracted triple](../docs/terminology.md#6-extracting-with-a-schema-step-060) is translated before any metric counts it, written as two functions, and per-entry coverage, the proportion of the ground truth schema's entries that the translation can reach: [The translation table](metrics/translation_table.md).
+
 ## Versions of each metric
 
 | Metric | Versions |

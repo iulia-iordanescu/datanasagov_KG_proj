@@ -15,6 +15,7 @@ or folder under the repository's annotations/ is refused with a
 PermissionError (an audit hook, so it holds however the test file was
 started: run_all.py, `python -m unittest`, or the file itself).
 """
+import codecs
 import os
 import shutil
 import sys
@@ -103,6 +104,23 @@ HEADER_ONLY = ("component_class_mapping.csv", "partial_pair_reviews.csv", "held_
 PENDING_HEADER = "id,subject,subject_class,predicate,object,object_class,source_text,left_out,question"
 
 
+def without_held_out_only_text(text: str) -> str:
+    """A ground truth schema file's text without its held-out-only entries: each entry line whose indented lines
+    under it hold "held-out only" is dropped, with those lines. Their sources name held-out records of the real pool,
+    which a temporary copy or a made-up pool doesn't have (step 070 checks every held-out-only source against the
+    pool it reads)."""
+    lines, out, i = text.split("\n"), [], 0
+    while i < len(lines):
+        j = i + 1
+        while j < len(lines) and lines[j].startswith(" ") and lines[j].strip():
+            j += 1
+        block = lines[i:j]
+        if lines[i].startswith(" ") or not any(line.strip() == "held-out only" for line in block[1:]):
+            out += block
+        i = j
+    return "\n".join(out)
+
+
 def temp_repo(annotations: bool = True) -> Path:
     """A temporary copy of the code. With annotations, annotations/ holds the
     README, the ground truth schema, the person-made CSV files with no rows
@@ -121,6 +139,11 @@ def temp_repo(annotations: bool = True) -> Path:
         real = ROOT / "annotations"
         for name in WHOLE:
             shutil.copy2(real / name, tmp / "annotations" / name)
+        # the ground truth schema without its held-out-only entries: the copy has none of the held-out records
+        schema = tmp / "annotations" / "ground_truth_schema.txt"
+        raw = schema.read_bytes()
+        bom = codecs.BOM_UTF8 if raw.startswith(codecs.BOM_UTF8) else b""
+        schema.write_bytes(bom + without_held_out_only_text(raw[len(bom):].decode("utf-8")).encode("utf-8"))
         for name in HEADER_ONLY:
             header = (real / name).read_text(encoding="utf-8-sig").splitlines()[0]
             (tmp / "annotations" / name).write_text(header + "\n", encoding="utf-8")

@@ -28,9 +28,11 @@ What it reads
 
 What it writes: ONLY annotations/ground_truth/batch_<NNN>.csv,
 annotations/component_class_mapping.csv, annotations/partial_pair_reviews.csv,
-annotations/schema_additions.txt, and additions to
+annotations/schema_additions.txt, additions to
 annotations/ground_truth_schema.txt (nothing else in it
-changes).
+changes), and annotations/rules_by_triple.md, the generated doc of the
+rules each ground truth triple uses (common/common_helpers/rules_by_triple.py),
+written again each time a batch is saved.
     - Opening drafted batch N for the first time copies it to
       annotations/ground_truth/batch_<NNN>.csv (N with three digits); from
       then on that copy is what's shown and edited. The drafted batch's file
@@ -38,6 +40,10 @@ changes).
     - Every edit is saved to that file at once (the page sends the batch, the
       server writes it under a temporary name and renames it).
     - The drafted batch's flags column isn't kept: the checks are recomputed live.
+    - The columns drafted_by and rules are kept as they are, and empty on a row the
+      person adds; the Rules line under a ground truth triple adds or removes rule
+      numbers (only rules the guidelines have, kept ascending), and shows each
+      rule's words, read from annotations/guidelines.md when the batch is opened.
 
 The translation table (step 070's, common/common_helpers/component_class_mapping.py) is shown row by
 row, each component class with its definition, and a person's choices are saved to it
@@ -90,9 +96,9 @@ the record's id is flagged (not_connected), so the fact that connects it is
 looked for. Another is too (qualifier_problems): a subject instance given two or
 more values by one of rule 19's predicates is flagged (several_qualifiers), since
 rule 19 may have lost which fact each value went with. A third (slash_list_problems):
-an instance holding one item of a "/" or "+" list whose items the record's text
-never names separately is flagged (slash_list_split), since rule 22 keeps such a
-list whole. The component classes
+an instance holding one item of a "/" or "+" list of the notes whose items the
+record's text never names alone is flagged (slash_list_split), since rule 22 keeps
+such a list whole (a title's list is always split, and is never flagged). The component classes
 suggested as you type are the ground truth schema's, plus those coined in the
 finished tuning records (the same view), so a coined component class a person
 checked is offered for reuse, and a model's never is. A coined component class is an error
@@ -143,7 +149,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 from common.chunking import full_text
 from common.files import fingerprint, locked, read_csv, read_csv_table, read_json, read_snapshot, read_text, write_csv, write_if_unchanged, write_text
 from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, FINISHED, GROUND_TRUTH_DIR,
-                                 NUMBERED, PATTERN, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
+                                 NUMBERED, PATTERN, RULES, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
                                  ground_truth_schema_gaps as schema_gaps, ground_truth_schema_view, marks_state,
                                  pattern_of, pattern_uses, read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH, MATCHES,
@@ -159,6 +165,8 @@ from common.review_comments import (CHANGED, GONE, NOT_VERIFIED, TOPIC_HEADINGS,
                                     UNCHANGED, read_all as read_reviewer_comments)
 from common.expert_questions import OPEN, QUESTIONS_PATH, read_questions
 from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
+from common.rules_by_triple import (ALWAYS, COMMAND as RULES_COMMAND, DESCRIBES_SECTION, DOC_PATH as RULES_DOC, guideline_section,
+                                    rule_count, rule_texts, rules_problem, write_doc as write_rules_doc)
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
     is_held_out_only, parse_source, pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, \
     redefine_in_ground_truth_schema, rename_in_ground_truth_schema, source_line, unmark_held_out_only, \
@@ -172,7 +180,7 @@ from common.validate import (OBJECT_CLASS_HELD_OUT_ONLY, PREDICATE_HELD_OUT_ONLY
 from common.validate import (DATASET_SUBJECT_NOT_TITLE, DESCRIBES_CLASS_NOT_IN_SCHEMA, DESCRIBES_SUBJECT_NOT_ID,
                              DESCRIBES_UNDECIDED, EMPTY, NOT_CONNECTED, NO_SOURCE_TEXT, OBJECT_CLASS_NOT_IN_SCHEMA,
                              OBJECT_NOT_IN_SOURCE, OBJECT_NOT_IN_TEXT, PATTERN_NOT_IN_SCHEMA, PATTERN_NOT_PINNED,
-                             PREDICATE_NOT_IN_SCHEMA, SEVERAL_DESCRIBES, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT,
+                             PREDICATE_NOT_IN_SCHEMA, RULES_NOT_VALID, SEVERAL_DESCRIBES, SEVERAL_QUALIFIERS, SLASH_LIST_SPLIT,
                              SOURCE_NOT_IN_TEXT,
                              SUBJECT_CLASS_NOT_IN_SCHEMA, SUBJECT_EQUALS_OBJECT, SUBJECT_NOT_IN_SOURCE,
                              SUBJECT_NOT_IN_TEXT, SchemaEntries, check_against_schema, check_describes,
@@ -285,11 +293,11 @@ MESSAGES = {
                      "record states it (annotations/guidelines.md, Finishing a record). Not connected: {piece}.",
     # the tool's own check (slash_list_problems), on a record's rows and its text
     SLASH_LIST_SPLIT: "The {slot} instance \"{instance}\" looks like one item of the list \"{group}\", joined by \"/\" or "
-                        "\"+\", but the record's text never names that list's items separately: {missing}. Rule 22 of "
-                        "\"Writing a classed triple\" splits such a list only when the text also names its items "
-                        "separately somewhere else; otherwise it stays whole, as written (\"RSI 1/2/3\"). Write "
-                        "the list whole, as written; if the item is named separately in words this check doesn't "
-                        "match, nothing to do.",
+                        "\"+\", but the record's text never names that list's items alone: {missing}. Rule 22 of "
+                        "\"Writing a classed triple\" splits a list of the notes only when every item is also named "
+                        "alone somewhere in the record; otherwise it stays whole, as written (a title's list is "
+                        "always split). Write the list whole, as written; if the item is named alone in words this "
+                        "check doesn't match, nothing to do.",
     # the tool's own check (qualifier_problems), on a record's rows together
     SEVERAL_QUALIFIERS: "\"{subject}\" has {count} ground truth triples with {predicate}: {values}. Rule 19 of "
                           "\"Writing a classed triple\" takes such a qualifier out of the instance it was in, so if "
@@ -299,6 +307,9 @@ MESSAGES = {
                           "which fact a qualifier went with): nothing to fix, since rule 19 always applies. Read the "
                           "record's text to see whether it happened here; if the values describe \"{subject}\" "
                           "together (a dataset observed at daytime and at nighttime), nothing was lost.",
+    # the tool's own check (rules_problems): {why} is common/common_helpers/rules_by_triple.rules_problem's words
+    RULES_NOT_VALID: "{why} (A hand edit of the file: the page writes only rule numbers the guidelines have, "
+                     "ascending. Use the Rules line under the ground truth triple, or clear the value.)",
 }
 
 
@@ -472,6 +483,20 @@ def describes_problems(rows: list) -> list:
     return out
 
 
+def rules_problems(rows: list) -> list:
+    """For each of a record's rows, its rules_not_valid error (a list of one), or []: a `rules` value that isn't the
+    numbers of rules the guidelines have, ascending, or any value on a describes triple or on the row of a record
+    that states no facts (common/common_helpers/rules_by_triple.rules_problem). The page writes only valid values,
+    so one comes from a hand edit of the file."""
+    highest = rule_count() if GUIDELINES.exists() else None
+    out = []
+    for row in rows:
+        why = rules_problem(row, highest) if highest else None
+        out.append([{"code": RULES_NOT_VALID, "type": "error", "add": None,
+                     "message": MESSAGES[RULES_NOT_VALID].format(why=why)}] if why else [])
+    return out
+
+
 def connection_problems(rid: str, rows: list) -> list:
     """For each of a record's rows, its not_connected flag (a list of one), or []. The rows form a graph: each
     ground truth triple joins its subject instance and its object instance (direction ignored; instances compared
@@ -544,10 +569,13 @@ def slash_lists(text: str) -> list:
     """The record's "/" or "+" lists, as groups: a list and the lists right after it with as many items (in
     parentheses or not) are one group, since they name the same items twice ("Level 2/3 (EDR/RDR)": items "2" and
     "EDR", "3" and "RDR"). Each group: (its words in the text, its items per position, whether the text names every
-    position's item separately, outside the group, the word right before it: "RSI" for "RSI 1/2/3")."""
+    position's item separately, outside the group, the word right before it: "RSI" for "RSI 1/2/3"). A list in the
+    title (the text's first line, when it starts with "title:") always counts as named: rule 22 of "Writing a classed
+    triple" reads a title's "/" or "+" as a list of the record's dataset's facts in every case."""
     def word(m):                                        # the whitespace-separated word the match is in
         return text[text.rfind(" ", 0, m.start()) + 1:(text.find(" ", m.end()) + 1 or len(text) + 1) - 1].lower()
     found = [m for m in SLASH_LIST.finditer(text) if not any(w in word(m) for w in NOT_A_LIST)]
+    title_end = (text.find("\n") if "\n" in text else len(text)) if text.startswith("title:") else 0
     groups, i = [], 0
     while i < len(found):
         group = [found[i]]
@@ -562,18 +590,19 @@ def slash_lists(text: str) -> list:
         named = all(any(re.search(rf"(?<![\w]){re.escape(item)}(?![\w])", rest, re.I) for item in items)
                     for items in positions)
         before = re.findall(r"[\w.\-]+", text[max(0, start - 40):start])
-        groups.append((text[start:end], positions, named, before[-1] if before else ""))
+        groups.append((text[start:end], positions, named, before[-1] if before else "", start < title_end))
     # the same list written twice ("DFMI 2/3" in the title, "Level 2/3 (EDR/RDR)" in the notes) is named separately
     # when either place's group is
     named_words = {words for g in groups if g[2] for words in re.split(r"[\s()\[\]]+", g[0]) if words}
-    return [(w, p, n or w in named_words, b) for w, p, n, b in groups]
+    return [(w, p, n or in_title or w in named_words, b) for w, p, n, b, in_title in groups]
 
 
 def slash_list_problems(text: str, rows: list) -> list:
     """For each of a record's rows, its slash_list_split flags, or []: a subject or object instance that isn't in the
     record's text as written (evened out, as norm_text does) but holds, as a word, one item of a "/" or "+" list
-    whose items the text never names separately (rule 22 of "Writing a classed triple": such a list stays whole). An
-    instance in the text as written, or holding the whole list, isn't flagged. A flag, since the item may be named
+    of the notes whose items the text never names separately (rule 22 of "Writing a classed triple": such a list stays
+    whole; a title's list is always split, so it is never flagged). An instance in the text as written, or holding the
+    whole list, isn't flagged. A flag, since the item may be named
     separately in words this check doesn't match."""
     whole = " ".join((text or "").lower().split())
     groups = [g for g in slash_lists(text or "") if not g[2]]
@@ -638,10 +667,11 @@ def record_view(data: Data, rid: str, rows: list, finished: bool, uses: collecti
         "title": title,
         "text": full_text(record) if record else None,
         "finished": finished,
-        "rows": [{**r, "problems": check_row(data, r, title, uses, counted) + twice + extra + several + slash}
-                 for r, twice, extra, several, slash in zip(rows, describes_problems(rows), connection_problems(rid, rows),
-                                                            qualifier_problems(rows, qualifier_predicates(data.hand)),
-                                                            slash_list_problems(full_text(record) if record else "", rows))],
+        "rows": [{**r, "problems": check_row(data, r, title, uses, counted) + twice + extra + several + slash + rules}
+                 for r, twice, extra, several, slash, rules in zip(rows, describes_problems(rows), connection_problems(rid, rows),
+                                                                   qualifier_problems(rows, qualifier_predicates(data.hand)),
+                                                                   slash_list_problems(full_text(record) if record else "", rows),
+                                                                   rules_problems(rows))],
     }
 
 
@@ -831,14 +861,14 @@ def save_batch(data: Data, n: int, records: list, loaded: str | None = None) -> 
         title = (data.records.get(rec["id"]) or {}).get("title") or ""
         rows = []
         for r in rec.get("rows", []):
-            row = {c: str(r.get(c) or "").strip() for c in FILE_COLUMNS}      # drafted_by: kept; empty on a row you add
+            row = {c: str(r.get(c) or "").strip() for c in FILE_COLUMNS}      # drafted_by, rules: kept; empty on a row you add
             row["id"] = rec["id"]
             if is_describes(row):
                 row["subject"], row["source_text"] = rec["id"], ENTRY_SOURCE
             rows.append(row)
         # ticked finished with an error on a row it writes: saved as not finished (a row not filled in isn't written)
-        errors = sorted({p["code"] for row, twice in zip(rows, describes_problems(rows)) if not _is_blank(row)
-                         for p in check_row(data, row, title) + twice if p["type"] == "error"})
+        errors = sorted({p["code"] for row, twice, rules in zip(rows, describes_problems(rows), rules_problems(rows))
+                         if not _is_blank(row) for p in check_row(data, row, title) + twice + rules if p["type"] == "error"})
         if rec.get("finished") and errors:
             unfinished.append({"index": index, "id": rec["id"], "errors": errors})
         mark = "1" if rec.get("finished") and not errors else "0"
@@ -855,10 +885,10 @@ def save_batch(data: Data, n: int, records: list, loaded: str | None = None) -> 
         title = (data.records.get(rec["id"]) or {}).get("title") or ""
         found = [check_row(data, row, title, uses, rec["id"] in counted) for row in rows]
         record = data.records.get(rec["id"])
-        found = [f + twice + extra + several + slash for f, twice, extra, several, slash in zip(
+        found = [f + twice + extra + several + slash + rules for f, twice, extra, several, slash, rules in zip(
             found, describes_problems(rows), connection_problems(rec["id"], rec.get("rows", [])),
             qualifier_problems(rec.get("rows", []), qualifier_predicates(data.hand)),
-            slash_list_problems(full_text(record) if record else "", rec.get("rows", [])))]
+            slash_list_problems(full_text(record) if record else "", rec.get("rows", [])), rules_problems(rows))]
         problems.append(found)
     # written only when its content changes: a save with nothing new in it leaves the file (and Git) alone; and only
     # if the file is still what the page loaded (else common.files.Changed: shown on the page, nothing saved)
@@ -868,7 +898,21 @@ def save_batch(data: Data, n: int, records: list, loaded: str | None = None) -> 
     now, fp = read_snapshot(path)
     if now != text or fp != loaded:         # new content, or the same content but not what the page loaded (refused)
         fp = write_if_unchanged(path, text, loaded)
+        # the generated doc of the rules each ground truth triple uses follows the files (written only when it changes)
+        if GUIDELINES.exists():
+            write_rules_doc(RULES_DOC)
     return {"problems": problems, "unfinished": unfinished, "fingerprint": fp}
+
+
+def rules_view() -> dict:
+    """The rules of annotations/guidelines.md, read from the file now, for the Rules line under each ground truth
+    triple: each rule's number, section, title and words (Markdown; common/common_helpers/rules_by_triple.rule_texts),
+    the numbers that apply to every ground truth triple (ALWAYS), the section a describes triple follows instead of
+    rules, and the doc the save writes."""
+    return {"file": f"annotations/{GUIDELINES.name}", "rules": {str(n): t for n, t in rule_texts(GUIDELINES).items()},
+            "highest": rule_count(GUIDELINES), "always": list(ALWAYS),
+            "describes": {"heading": DESCRIBES_SECTION, "markdown": guideline_section(DESCRIBES_SECTION, GUIDELINES)},
+            "doc": f"annotations/{RULES_DOC.name}", "command": RULES_COMMAND}
 
 
 # --------------------------------------------------------------------------
@@ -1614,6 +1658,8 @@ def make_handler(data: Data):
                     self._json(doc_text(q["path"][0]))
                 elif url.path == "/api/guidelines":
                     self._json({"file": f"annotations/{GUIDELINES.name}", "markdown": read_text(GUIDELINES)})
+                elif url.path == "/api/rules":
+                    self._json(rules_view())
                 elif url.path == "/api/additions":
                     self._json(additions_view(data))
                 elif url.path == "/api/vocab":

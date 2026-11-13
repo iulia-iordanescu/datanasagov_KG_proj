@@ -549,7 +549,8 @@ class WholeRun(unittest.TestCase):
         r = subprocess.run([sys.executable, str(HERE / "stand_in_run.py"), str(self.repo), "helpers/second_opinion.py",
                             "--confirm_paid_calls", confirm, *args],
                            capture_output=True, text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
-                           env={**env, "KG_STAND_IN_VARY": "1"})
+                           # the helper writes UTF-8 whatever the console's code page: "×" is read back as "×"
+                           env={**env, "KG_STAND_IN_VARY": "1", "PYTHONIOENCODING": "utf-8"})
         out = r.stdout + r.stderr
         self.assertEqual(r.returncode, expect, out[-3000:])
         self.assertNotIn("Traceback", out, out[-3000:])

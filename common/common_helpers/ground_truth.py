@@ -20,7 +20,10 @@ column drafted_by: the model that drafted the row (step 050 writes it; the
 annotation tool keeps it, and leaves it empty on a row a person adds);
 batch_000.csv, annotated before the pipeline, has it too (the model on the rows
 a model drafted, empty on the rest). A file without the column reads as
-written by a person. Any other column (e.g. the `flags` column of a drafted batch) is
+written by a person. A file may also have the column rules: the numbers of the
+rules of annotations/guidelines.md the row's ground truth triple uses ("1, 19";
+common/common_helpers/rules_by_triple.py), empty when none is recorded yet; a
+file without the column reads as none recorded. Any other column (e.g. the `flags` column of a drafted batch) is
 ignored, so a corrected drafted batch can be saved as it is. all_facts_extracted is 1 on every row of a record the
 person has finished (every fact of its text is there), 0 while it is in
 progress (FINISHED_MARKS; any other value is a problem, and the record isn't finished). A row with an id but an empty subject, predicate, and object says
@@ -199,11 +202,15 @@ COLUMNS = ["id", "subject", "subject_class", "predicate", "object", "object_clas
 #: The model that drafted a row (050's drafted batches; the annotation tool keeps it); empty when a person wrote it.
 #: Optional: a file without it reads as written by a person.
 DRAFTED_BY = "drafted_by"
+#: The rules of annotations/guidelines.md a ground truth triple uses, as their numbers ("1, 19"; the format and its
+#: checks: common/common_helpers/rules_by_triple.py); empty when none is recorded yet, and always on a describes
+#: triple and on the row of a record that states no facts. Optional: a file without it reads as none recorded.
+RULES = "rules"
 #: The two values of the column all_facts_extracted ("0": not finished, "1": finished), the only ones the annotation
 #: tool writes; any other value is a problem of the ground truth (read_ground_truth), and the record isn't finished.
 FINISHED_MARKS = ("0", "1")
 #: Every column a ground truth file may have, in this order.
-FILE_COLUMNS = COLUMNS + [DRAFTED_BY]
+FILE_COLUMNS = COLUMNS + [DRAFTED_BY, RULES]
 
 
 #: Each record's one state in the ground truth (GroundTruth.state). Every consumer asks for rows by purpose

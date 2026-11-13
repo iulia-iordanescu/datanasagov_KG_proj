@@ -541,9 +541,10 @@ def _plain_md(text: str) -> str:
     return squeeze(text.replace("**", "").replace("`", "").replace("*", ""))
 
 
-def guideline_rules(path: Path = GUIDELINES_PATH) -> dict:
-    """{(section heading, rule number): the rule's words, markup and links taken out}: each numbered rule of
-    annotations/guidelines.md, with the indented lines that continue it."""
+def guideline_rule_lines(path: Path = GUIDELINES_PATH) -> dict:
+    """{(section heading, rule number): the rule's lines, as the file has them}: each numbered rule of
+    annotations/guidelines.md (its "N. **Title.** …" line), with the indented lines that continue it. The one reader
+    of the rules: guideline_rules gives their words, and common/common_helpers/rules_by_triple.py their Markdown."""
     rules, section, cur = {}, "", None
     for line in read_text(path).split("\n"):
         h = re.match(r"^#{2,3} (.+)", line)
@@ -552,12 +553,19 @@ def guideline_rules(path: Path = GUIDELINES_PATH) -> dict:
             section, cur = h.group(1).strip(), None
         elif m:
             cur = (section, int(m.group(1)))
-            rules[cur] = [m.group(2)]
+            rules[cur] = [line]
         elif cur and line.startswith(" ") and line.strip():
-            rules[cur].append(line.strip())
+            rules[cur].append(line)
         elif line.strip():
             cur = None
-    return {k: _plain_md(" ".join(v)) for k, v in rules.items()}
+    return rules
+
+
+def guideline_rules(path: Path = GUIDELINES_PATH) -> dict:
+    """{(section heading, rule number): the rule's words, markup and links taken out}: each numbered rule of
+    annotations/guidelines.md, with the indented lines that continue it."""
+    return {k: _plain_md(" ".join([re.match(r"^\d+\. (.*)", v[0]).group(1)] + [l.strip() for l in v[1:]]))
+            for k, v in guideline_rule_lines(path).items()}
 
 
 def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_path: Path = SPLITS_PATH,

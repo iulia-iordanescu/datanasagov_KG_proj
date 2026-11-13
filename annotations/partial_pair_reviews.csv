@@ -80,3 +80,9 @@ bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,HAS_NUMBER_OF,"262,902 unique X-r
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,HAS_NUMBER_OF,"353,191 detections (above the processing likelihood threshold of 6)",2XMMi-DR3,HAS_NUMBER_OF,"353,191",not the same fact
 bb1fe4b0-6543-42e3-9386-acbab0b37ad4,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,HAS_NUMBER_OF,412 quasars,Ensemble X-Ray Variability of AGN in 2XMMi-DR3,HAS_NUMBER_OF,412,not the same fact
 dc4ff01b-12f0-4235-8c8a-afb4bfb3bdbb,encounter data,HAS_DURATION,~40 minute,encounter data,HAS_DURATION,~40 minute period,same fact
+bb1fe4b0-6543-42e3-9386-acbab0b37ad4,2XMMi-DR3,HAS_NUMBER_OF,"353,191 detections",2XMMi-DR3,HAS_NUMBER_OF,"353,191",not the same fact
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),COMPUTED_FROM,HIRDLS profiles,zonal Fourier coefficients,COMPUTED_FROM,HIRDLS profiles,same fact
+77a0cb5f-7d69-4f13-aeb1-ce1378d7f1a9,HIRDLS/Aura Level 3 Geopotential Height 1deg Lat Zonal Fourier Coefficients V007 (H3ZFCGPH),PRODUCED_USING_ALGORITHM,Kalman filter using both forward and backward passes in time,zonal Fourier coefficients,PRODUCED_USING_ALGORITHM,Kalman filter using both forward and backward passes in time,same fact
+03a09af3-081e-4db6-9e3b-ea7c0e3138bd,NASA Ocean Biology Processing Group (OBPG),PART_OF,NASA,Ocean Biology Processing Group (OBPG),PART_OF,NASA,same fact
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),COMPUTED_FROM,modified Copernicus Sentinel data,OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1),COMPUTED_FROM,Copernicus Sentinel data,same fact
+ed2cea26-ed6c-4138-be69-3d32d4ce4858,modified Copernicus Sentinel data,HAS_TIME_SPAN,2024-2025,Copernicus Sentinel data,HAS_TIME_SPAN,2024-2025,same fact

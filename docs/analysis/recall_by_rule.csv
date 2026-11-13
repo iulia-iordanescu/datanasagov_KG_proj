@@ -1,0 +1,21 @@
+rule,title,ground_truth_triples,within_reach_induced_schema,partial_recall_induced_schema,exact_recall_induced_schema,partial_recall_ground_truth_schema,exact_recall_ground_truth_schema,partial_recall_six_runs,exact_recall_six_runs,too_small
+1,Only what the record states.,98,87,0.5918,0.5442,0.7925,0.7483,0.6922,0.6463,no
+4,"Not ""is a"" facts.",8,4,0.0833,0.0833,1.0000,1.0000,0.5417,0.5417,yes
+5,Not opinions.,3,2,0.0000,0.0000,0.3333,0.3333,0.1667,0.1667,yes
+6,Not negated facts.,1,1,0.0000,0.0000,1.0000,1.0000,0.5000,0.5000,yes
+7,Not facts the record doesn't assert as true:,8,3,0.2500,0.1667,1.0000,0.8750,0.6250,0.5208,yes
+8,Not the values inside a data table; only what the table is about.,3,3,0.4444,0.4444,0.7778,0.6667,0.6111,0.5556,yes
+9,Not a fact without a specific thing.,47,24,0.3191,0.2837,0.8440,0.7234,0.5816,0.5035,no
+10,Not words that are true only as of when the record was written.,5,3,0.2000,0.2000,0.6667,0.6667,0.4333,0.4333,yes
+12,The subject instance is what the sentence is about,188,144,0.2837,0.2358,0.6312,0.5479,0.4574,0.3918,no
+15,One fact per ground truth triple.,99,66,0.3199,0.2761,0.8081,0.7239,0.5640,0.5000,no
+16,"Each fact once,",69,56,0.7729,0.6860,0.9130,0.8019,0.8430,0.7440,no
+18,"A number with a unit: the object instance is the number and its unit, as written; what the number measures goes in the predicate.",38,29,0.3158,0.2895,0.8509,0.7982,0.5833,0.5439,no
+19,"A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.",94,79,0.5355,0.4858,0.7092,0.6099,0.6223,0.5479,no
+20,"A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.",133,106,0.4812,0.4336,0.7820,0.6767,0.6316,0.5551,no
+21,"General facts: include them; about another dataset, only when the record links it to the record's dataset by ""part of"" or ""made from"".",176,139,0.3201,0.2595,0.6345,0.5455,0.4773,0.4025,no
+22,A list: one ground truth triple per item.,138,100,0.3768,0.3406,0.7246,0.6498,0.5507,0.4952,no
+23,"One thing, one wording, within a record.",176,137,0.5398,0.4621,0.8087,0.7216,0.6742,0.5919,no
+24,A processing step: output = method(input).,55,43,0.4606,0.3818,0.7939,0.7273,0.6273,0.5545,no
+none listed,(no rule recorded),1,1,1.0000,1.0000,1.0000,1.0000,1.0000,1.0000,yes
+all,"(all ground truth triples, for reference)",432,325,0.4475,0.3951,0.7716,0.6960,0.6096,0.5455,no

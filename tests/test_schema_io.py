@@ -412,16 +412,18 @@ class ExtractionWithTheGroundTruthSchema(unittest.TestCase):
         from support import use_step
         use_step("060_extract")
         import schema as extract_schema
-        from common.ground_truth import COLUMNS
+        from common.ground_truth import COLUMNS, GROUND_TRUTH_SCHEMA
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
         copy = tmp / "copy_of_the_ground_truth_schema.txt"
-        shutil.copy2(HAND, copy)
+        # the ground truth schema 060 compares with: the real file, or, when the annotation tool's tests run first in
+        # this process, their temporary copy (support.temp_repo leaves out the held-out-only entries)
+        shutil.copy2(GROUND_TRUTH_SCHEMA, copy)
         (tmp / "additions.txt").write_text("", encoding="utf-8")
         pool = [{"id": f"r{i}", "position": i, "part": "held-out" if i == 8 else "tuning"} for i in range(10)]
         (tmp / "splits.json").write_text(json.dumps({"ground_truth_candidates": {"records": pool}}), encoding="utf-8")
         (tmp / "ground_truth").mkdir()
-        hand = schema_io.read_ground_truth_schema(HAND)
+        hand = schema_io.read_ground_truth_schema(GROUND_TRUTH_SCHEMA)
         a, b = sorted(hand["entity_classes"])[:2]
         p = sorted(hand["predicates"])[0]
         new = [(a, p, b), (b, p, a), (a, p, a)]
