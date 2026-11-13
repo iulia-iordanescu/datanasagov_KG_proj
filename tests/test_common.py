@@ -1982,6 +1982,24 @@ class OneReader(unittest.TestCase):
                     found.append(f"{rel}:{n}: {line.strip()}")
         self.assertEqual(found, [])
 
+    def test_every_program_starts(self):
+        """Every program answers --help without an import error: helpers/annotate.py imported common/ before putting
+        the repository folder on the path, so `py helpers/annotate.py` stopped at once (fixed 2026-11-13), and no
+        test ran the program itself."""
+        import os
+        import subprocess
+        from support import ROOT
+        programs = ["run_pipeline.py"] + sorted(str(p.relative_to(ROOT)).replace("\\", "/") for p in
+                                                (ROOT / "helpers").glob("*.py"))             + sorted(str(p.relative_to(ROOT)).replace("\\", "/") for p in ROOT.glob("0*/run.py"))
+        env = {**os.environ, "KG_NO_MODEL_CALLS": "1", "PYTHONIOENCODING": "utf-8"}
+        broken = []
+        for rel in programs:
+            done = subprocess.run([sys.executable, rel, "--help"], cwd=ROOT, env=env, capture_output=True, text=True,
+                                  encoding="utf-8", timeout=120)
+            if "ModuleNotFoundError" in done.stderr or "ImportError" in done.stderr:
+                broken.append(f"{rel}: {done.stderr.strip().splitlines()[-1]}")
+        self.assertEqual(broken, [])
+
     def test_every_program_sets_the_console_up(self):
         from support import ROOT
         for rel in ("run_pipeline.py", "helpers/annotate.py", "helpers/audit.py", "helpers/models.py",

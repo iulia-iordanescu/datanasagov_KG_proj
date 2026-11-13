@@ -29,12 +29,12 @@ works: helpers/annotator/server.py; how to use it: annotations/README.md.
 import argparse
 import sys
 import webbrowser
-from common import console
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # the repository folder, for common/
 
-from annotator.server import serve
+from common import console                                      # noqa: E402
+from annotator.server import serve                              # noqa: E402
 
 
 def main() -> None:

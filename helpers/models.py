@@ -62,7 +62,16 @@ def main() -> None:
     args = p.parse_args()
     if not args.wanted:                               # listing is free: never a model call
         llm.forbid_model_calls("py helpers/models.py without --try is free: listing is not a model call")
-    names = llm.list_models(args.service)
+    try:
+        names = llm.list_models(args.service)
+    except llm.ApiError as e:
+        where = llm.SERVICES[args.service]
+        if llm.BUDGET_WORDS.search(str(e)):
+            sys.exit(f"{where} refused: the budget of your access key is used up ({e}). Nothing was run and nothing "
+                     f"was paid. Ask whoever manages the key to raise its budget, then run this again; until then, "
+                     f"no step can call a model through {where}.")
+        sys.exit(f"{where} refused to list the models ({e}). Nothing was run and nothing was paid. Check the key in "
+                 f".env and your connection, then run this again.")
     where = llm.SERVICES[args.service]
     if not args.wanted:
         print(f"{where} lists {len(names)} model(s) for your account (listed doesn't mean usable; "
