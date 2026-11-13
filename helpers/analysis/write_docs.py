@@ -15,17 +15,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "outputs" / "analysis"                                         # the working folder (not in Git)
 sys.path.insert(0, str(ROOT / "tests"))
-from doc_guard import create as _create, delete
+from doc_guard import create as _create, edit_block                          # noqa: E402
+sys.path.insert(0, str(ROOT))
+from common.files import read_json, read_text                                 # noqa: E402
 
 
 def create(rel, text):
-    delete(rel)
-    _create(rel, text)
+    """The page as one recorded edit of its last version (a page already in Git can't be created again), or created."""
+    path = ROOT / rel
+    if not path.exists():
+        _create(rel, text)
+    elif read_text(path) != text:
+        edit_block(rel, read_text(path), text)
 
-r = json.loads((HERE / "results.json").read_text(encoding="utf-8"))
-t = json.loads((HERE / "tables.json").read_text(encoding="utf-8"))
-s = json.loads((HERE / "scalability.json").read_text(encoding="utf-8"))
-made = json.loads((HERE / "runs.json").read_text(encoding="utf-8"))
+r = read_json(HERE / "results.json")
+t = read_json(HERE / "tables.json")
+s = read_json(HERE / "scalability.json")
+made = read_json(HERE / "runs.json")
 ids = [made[n] for n in ("1816", "1816-2", "1816-3", "1817", "1817-2", "1817-3")]
 ids_text = (", ".join(f"`{i}`" for i in ids[:3]) + " (induced schema) and " + ", ".join(f"`{i}`" for i in ids[3:])
             + " (ground truth schema)")

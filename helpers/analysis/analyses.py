@@ -26,13 +26,14 @@ sys.path.insert(0, str(ROOT / "helpers"))
 import compare_runs as c                                                       # noqa: E402
 from common import llm                                                         # noqa: E402
 from common.partial_reviews import read_reviews, row_key                       # noqa: E402
-from common.triples_io import canonical_row                                    # noqa: E402
+from common.triples_io import canonical_row
+from common.files import read_csv, read_json, read_jsonl, read_text, write_json                                    # noqa: E402
 
 llm.forbid_model_calls("py helpers/analysis/analyses.py is free: it reads saved files only")
 RECIPES = ("induced schema", "ground truth schema")
 SAVED = ["1816", "1816-2", "1816-3", "1817", "1817-2", "1817-3"]              # outputs/analysis/runs/<name>/
-OLD = json.loads((ROOT / "docs" / "reported_numbers.json").read_text(encoding="utf-8"))["runs"]
-_made = json.loads((HERE / "runs.json").read_text(encoding="utf-8"))
+OLD = read_json(ROOT / "docs" / "reported_numbers.json")["runs"]
+_made = read_json(HERE / "runs.json")
 NEW = {RECIPES[0]: [_made[n] for n in SAVED[:3]], RECIPES[1]: [_made[n] for n in SAVED[3:]]}
 RECIPE_OF = dict(zip(SAVED, ["induced schema"] * 3 + ["ground truth schema"] * 3))
 
@@ -57,8 +58,7 @@ def numbers(ids: dict) -> dict:
 
 
 def saved_rows(name: str) -> list:
-    with open(HERE / "runs" / name / "compared_triples.csv", encoding="utf-8-sig", newline="") as f:
-        return list(csv.DictReader(f))
+    return read_csv(HERE / "runs" / name / "compared_triples.csv")
 
 
 def unjudged() -> tuple:
@@ -92,7 +92,7 @@ def pooled_partial(ids: list, minus: dict) -> dict:
 
 
 def rule_titles() -> dict:
-    text = (ROOT / "annotations" / "guidelines.md").read_text(encoding="utf-8")
+    text = read_text(ROOT / "annotations" / "guidelines.md")
     return {int(n): re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t).strip()
             for n, t in re.findall(r"^(\d+)\. \*\*(.+?)\*\*", text, re.M)}
 
@@ -104,11 +104,10 @@ def ground_truth_rules() -> dict:
     """{(record id, the classed triple tidied as 070 tidies it): [rule numbers]} for every ground truth row."""
     out = {}
     for path in sorted((ROOT / "annotations" / "ground_truth").glob("batch_*.csv")):
-        with open(path, encoding="utf-8-sig", newline="") as f:
-            for raw in csv.DictReader(f):
-                row = canonical_row(raw, blank="")
-                key = (row["id"].strip(),) + tuple(" ".join(str(row[s]).split()) for s in SLOTS)
-                out[key] = [int(x) for x in re.findall(r"\d+", raw.get("rules") or "")]
+        for raw in read_csv(path):
+            row = canonical_row(raw, blank="")
+            key = (row["id"].strip(),) + tuple(" ".join(str(row[s]).split()) for s in SLOTS)
+            out[key] = [int(x) for x in re.findall(r"\d+", raw.get("rules") or "")]
     return out
 
 
@@ -135,13 +134,11 @@ def by_rule() -> dict:
 
 def by_kind() -> dict:
     records = {}
-    with open(ROOT / "outputs/intermediate_results/020_clean/records.jsonl", encoding="utf-8") as f:
-        for line in f:
-            r = json.loads(line)
-            records[r["id"]] = r
+    for _, r in read_jsonl(ROOT / "outputs/intermediate_results/020_clean/records.jsonl"):
+        records[r["id"]] = r
     per = {}
     for name in SAVED:
-        m = json.loads((HERE / "runs" / name / "metrics.json").read_text(encoding="utf-8"))
+        m = read_json(HERE / "runs" / name / "metrics.json")
         ev = {r["id"]: r for r in c.load(dict(zip(SAVED, NEW["induced schema"] + NEW["ground truth schema"]))[name])["records"]}
         for x in m["parts"]["tuning"]["per_record"]:
             r = records[x["id"]]
@@ -167,7 +164,7 @@ def main():
                        "ground truth schema, as scored": pooled_partial(new_ids[3:], {}),
                        "ground truth schema, unjudged pairs taken off": pooled_partial(new_ids[3:], minus)},
            "rule_titles": rule_titles(), "by_rule": by_rule(), "by_kind": by_kind()}
-    (HERE / "results.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
+    write_json(HERE / "results.json", out)
     print("wrote", HERE / "results.json")
 
 

@@ -9,12 +9,14 @@ length of text and per record, as Markdown, which write_docs.py places in the do
 
 No model call: it reads outputs/analysis/results.json and prompt_sizes.json only.
 """
-import csv, json, statistics
+import json, statistics, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from common.files import read_json, write_csv, write_json                      # noqa: E402
 HERE = ROOT / "outputs" / "analysis"                                         # the working folder (not in Git)
-r = json.loads((HERE / "results.json").read_text(encoding="utf-8"))
-sizes = json.loads((HERE / "prompt_sizes.json").read_text(encoding="utf-8"))
+r = read_json(HERE / "results.json")
+sizes = read_json(HERE / "prompt_sizes.json")
 IND, REF = ["1816", "1816-2", "1816-3"], ["1817", "1817-2", "1817-3"]
 pc = lambda v: f"{100 * v:.1f}%"
 out = {}
@@ -38,11 +40,8 @@ for g in order:
     rows.append(row)
     md.append(f"| {g} | {title} | {n}{' (too small)' if n < 10 else ''} | {row['within_reach_induced_schema']} | {pc(row['partial_recall_induced_schema'])} | "
               f"{pc(row['partial_recall_ground_truth_schema'])} | {pc(row['partial_recall_six_runs'])} | {pc(row['exact_recall_six_runs'])} |")
-with open(ROOT / "docs/analysis/recall_by_rule.csv", "w", encoding="utf-8", newline="") as f:
-    w = csv.DictWriter(f, fieldnames=list(rows[0]))
-    w.writeheader()
-    for row in rows:
-        w.writerow({k: (f"{x:.4f}" if isinstance(x, float) else x) for k, x in row.items()})
+write_csv(ROOT / "docs/analysis/recall_by_rule.csv", list(rows[0]),
+          [{k: (f"{x:.4f}" if isinstance(x, float) else x) for k, x in row.items()} for row in rows])
 out["by_rule_md"] = "\n".join(md)
 
 # ---- by kind of record
@@ -79,5 +78,5 @@ for i, e in sorted(recs.items(), key=lambda kv: kv[1]["position"]):
     a = [e["runs"][x]["f1"] or 0.0 for x in IND]
     per.append(f"| {e['position']} | {e['title']} | {e['stratum']} | {chars[i]} | {e['runs']['1816']['gt']} | {pc(statistics.mean(a))} |")
 out["per_record_md"] = "\n".join(per)
-(HERE / "tables.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
+write_json(HERE / "tables.json", out)
 print("wrote docs/analysis/recall_by_rule.csv and outputs/analysis/tables.json")

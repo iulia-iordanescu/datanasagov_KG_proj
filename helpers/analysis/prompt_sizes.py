@@ -26,6 +26,7 @@ tarfile.open(fileobj=io.BytesIO(archive)).extractall(HERE)
 sys.path.insert(0, str(HERE))
 from common import extraction, llm                                              # noqa: E402  (that commit's code)
 from common.chunking import pieces                                              # noqa: E402
+from common.files import read_json, read_jsonl, write_json                     # noqa: E402
 llm.forbid_model_calls("py helpers/analysis/prompt_sizes.py is free: it builds prompts and sends nothing")
 
 def load(name, path):
@@ -37,8 +38,8 @@ schema_stage = load("schema", HERE / "060_extract/060_extract_helpers/schema.py"
 extract = load("extract", HERE / "060_extract/060_extract_helpers/extract.py")
 RES = REPO / "outputs/intermediate_results"
 records = {}
-for line in open(RES / "020_clean/records.jsonl", encoding="utf-8"):
-    r = json.loads(line); records[r["id"]] = r
+for _, r in read_jsonl(RES / "020_clean/records.jsonl"):
+    records[r["id"]] = r
 out = {}
 for recipe, schema_path, run in (("induced schema", RES / "040_induce_schema/the_schema.json", "060_extract_2026-11-05_1816"),
                                  ("ground truth schema", HERE / "annotations/ground_truth_schema.txt", "060_extract_2026-11-05_1817")):
@@ -46,7 +47,7 @@ for recipe, schema_path, run in (("induced schema", RES / "040_induce_schema/the
               "splits": RES / "030_split/splits.json", "ground_truth": REPO / "annotations/ground_truth/batch_*.csv",
               "records": RES / "020_clean/records.jsonl"}
     schema = schema_stage.load_schema(inputs)
-    details = json.loads((REPO / "outputs/intermediate_results/060_extract/previous_runs" / run / "extracted_triples_details.json").read_text(encoding="utf-8"))
+    details = read_json(REPO / "outputs/intermediate_results/060_extract/previous_runs" / run / "extracted_triples_details.json")
     rows = []
     for d in details["records"]:
         rec = records[d["id"]]
@@ -73,5 +74,5 @@ sample = [sum(len(p) for p in pieces(records[x["id"]], 8000)) for x in details["
 out["sample"] = {"records": len(sample), "piece_chars_mean_per_record": statistics.mean(sample), "piece_chars_median_per_record": statistics.median(sample),
                  "piece_chars_min": min(sample), "piece_chars_max": max(sample)}
 print(out["catalog"]); print(out["sample"])
-(WORK / "prompt_sizes.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+write_json(WORK / "prompt_sizes.json", out)
 shutil.rmtree(HERE, ignore_errors=True)

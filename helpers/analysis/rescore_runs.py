@@ -24,6 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))                                                  # the repository folder, for common/
 from common import llm                                                         # noqa: E402
+from common.files import read_json, write_json                                 # noqa: E402
 
 WORK = ROOT / "outputs" / "analysis"
 EXTRACTIONS = ROOT / "outputs" / "intermediate_results" / "060_extract" / "previous_runs"
@@ -43,7 +44,7 @@ def main() -> int:
     made = {}
     for name, (extraction, _) in RUNS.items():
         folder = EXTRACTIONS / extraction
-        recorded = {o["file"]: o["sha256"] for o in json.loads((folder / "_manifest.json").read_text(encoding="utf-8"))["outputs"]}
+        recorded = {o["file"]: o["sha256"] for o in read_json(folder / "_manifest.json")["outputs"]}
         for f in GIVEN:
             if hashlib.sha256((folder / f).read_bytes()).hexdigest() != recorded[f]:
                 sys.exit(f"{folder / f} is not the file its run's manifest records: nothing was scored.")
@@ -53,11 +54,11 @@ def main() -> int:
         code = subprocess.run([sys.executable, str(ROOT / "070_evaluate" / "run.py"), *args], cwd=ROOT).returncode
         if code:
             sys.exit(f"step 070 didn't finish on {extraction} (exit code {code}): its messages above say why.")
-        made[name] = json.loads((EVALUATE / "_manifest.json").read_text(encoding="utf-8"))["run_id"]
+        made[name] = read_json(EVALUATE / "_manifest.json")["run_id"]
         (WORK / "runs" / name).mkdir(parents=True, exist_ok=True)
         for f in KEPT:
             shutil.copyfile(EVALUATE / f, WORK / "runs" / name / f)
-    (WORK / "runs.json").write_text(json.dumps(made, indent=1), encoding="utf-8")
+    write_json(WORK / "runs.json", made)
     print("070 runs:", " ".join(made.values()))
     return 0
 

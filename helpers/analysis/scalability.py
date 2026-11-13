@@ -13,11 +13,13 @@ million tokens (sent 4.00, received 20.00, read from the prompt cache 0.20, writ
 reference table of Claude Code's claude-api skill, cached 2026-11-03); what NASA's LiteLLM charges is not in the
 repository.
 """
-import csv, json, statistics, sys
+import json, statistics, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from common.files import read_csv, read_json, write_json                       # noqa: E402
 HERE = ROOT / "outputs" / "analysis"                                         # the working folder (not in Git)
-sizes = json.loads((HERE / "prompt_sizes.json").read_text(encoding="utf-8"))
+sizes = read_json(HERE / "prompt_sizes.json")
 RUNS = {"induced schema": ["1816", "1816-2", "1816-3"], "ground truth schema": ["1817", "1817-2", "1817-3"]}
 FIELDS = ("subject", "subject_class", "predicate", "object", "object_class", "source_text")
 IN, OUT, READ, WRITE, CH = 4.00, 20.00, 0.20, 5.00, 4
@@ -30,10 +32,9 @@ for recipe, runs in RUNS.items():
     per_run = []
     for run in runs:
         answer = {r["id"]: 0 for r in reqs}; triples = {r["id"]: 0 for r in reqs}
-        with open(ROOT / "outputs/intermediate_results/060_extract/previous_runs" / f"060_extract_2026-11-05_{run}" / "extracted_triples.csv", encoding="utf-8-sig", newline="") as f:
-            for row in csv.DictReader(f):
-                answer[row["id"]] += len(json.dumps({k: row[k] for k in FIELDS}, ensure_ascii=False)) + 2
-                triples[row["id"]] += 1
+        for row in read_csv(ROOT / "outputs/intermediate_results/060_extract/previous_runs" / f"060_extract_2026-11-05_{run}" / "extracted_triples.csv"):
+            answer[row["id"]] += len(json.dumps({k: row[k] for k in FIELDS}, ensure_ascii=False)) + 2
+            triples[row["id"]] += 1
         per_run.append({"run": run, "answer_chars": answer, "triples": triples})
     a = [statistics.mean(p["answer_chars"][i] for p in per_run) for i in per_run[0]["answer_chars"]]
     t = [statistics.mean(p["triples"][i] for p in per_run) for i in per_run[0]["triples"]]
@@ -66,5 +67,5 @@ for recipe, runs in RUNS.items():
                         "cost_input_rest": rest_tok * IN / 1e6, "cost_output_visible": out_tok * OUT / 1e6,
                         "cost_output_visible_scaled": out_tok_scaled * OUT / 1e6}
     out[recipe] = s
-(HERE / "scalability.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+write_json(HERE / "scalability.json", out)
 print("wrote outputs/analysis/scalability.json")
