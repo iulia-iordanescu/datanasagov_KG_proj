@@ -130,7 +130,7 @@ class Paths(unittest.TestCase):
 
 class Vocabulary(unittest.TestCase):
 
-    QUALIFIED = re.compile(r"(entity|subject|object|component|describes)[\s#*>`-]+$", re.I)
+    QUALIFIED = re.compile(r"(entity|subject|object|component|describes|entry)[\s#*>`-]+$", re.I)   # entry class: a term
     BARE = re.compile(r"(?<![\w-])([Cc]lass|[Cc]lasses)\b(?![\w-])")     # not CLASSES: the old section heading
 
     def test_no_bare_class(self):
@@ -186,6 +186,12 @@ class Vocabulary(unittest.TestCase):
             ("a.md", "an HTML entity, a word boundary, a code span", 0),
             ("a.txt", "too vague (e.g. \"Thing\", \"Entity\")", 0),               # a label, quoted
             ("a.py", "def f(argument):\n    \"\"\"Its argument's span.\"\"\"\n    return {\"entity\": argument}\n", 0),
+        ]
+        cases += [                                                     # the generated doc's triples quote records
+            ("annotations/rules_by_triple.md", '- "X" (Mission) HAS_PURPOSE "study the boundary layer" (Purpose): rule 22.', 0),
+            ("annotations/rules_by_triple.md", 'A line of prose about a boundary, outside a triple.', 1),
+            ("annotations/rules_by_triple.md", '- "X" (Mission) HAS_PURPOSE "y" (Purpose): a span, unquoted.', 1),
+            ("annotations/left_out.md", '- **Left out:** "the boundary layer" (notes)', 1),
         ]
         for rel, text, n in cases:
             with self.subTest(text=text):
@@ -254,6 +260,14 @@ def quotes_blanked(text: str) -> str:
     return "\n".join(out)
 
 
+def triples_blanked(text: str) -> str:
+    """annotations/rules_by_triple.md with the quoted instances of its triples blanked out (each line starting "- ",
+    a ground truth triple or a describes triple), line numbers kept: they are the records' own words, which the
+    generated doc copies from the ground truth and can't gloss ("marine boundary layer properties")."""
+    return "\n".join(re.sub(r"\"[^\"\n]*\"", lambda m: " " * len(m.group(0)), line) if line.startswith("- ") else line
+                     for line in text.split("\n"))
+
+
 def field_word_texts(rel: str, text: str) -> list:
     """[(first line, text)]: the parts of a file a person reads. A doc or prompt: all of it, with code and link
     targets blanked out in a doc (line numbers kept). Python: each comment (a run of comment lines joined) and each
@@ -263,6 +277,8 @@ def field_word_texts(rel: str, text: str) -> list:
     blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))           # noqa: E731
     if rel == "annotations/questions_for_experts.md":                  # its quotes are others' words, checked
         text = quotes_blanked(text)                                    # against their sources by the review page
+    if rel == "annotations/rules_by_triple.md":                        # its triples quote the ground truth's
+        text = triples_blanked(text)                                   # instances, the records' own words
     if rel.endswith(".md"):
         text = re.sub(r"```.*?```", blank, text, flags=re.S)
         text = re.sub(r"`[^`\n]*`", blank, text)

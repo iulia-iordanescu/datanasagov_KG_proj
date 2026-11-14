@@ -128,9 +128,24 @@ Latency           a measure of how soon data are released after observation, e.g
                   rule 19: describing
                   source: ground truth tuning #6
 CollectionStatus  a state of a dataset's data collection, e.g. complete
-                  held-out only
                   rule 19: describing
-                  source: ground truth held-out #23
+                  source: ground truth tuning #49
+DesignFeature     a property a built thing was designed to have, other than an amount (a Value), e.g. fore-and-aft tilt capability; low polarization sensitivity
+                  rule 19: describing
+                  source: ground truth tuning #34, #40
+Project           a named effort to develop or build something, other than a Mission (a named effort to collect data), e.g. Drilling Automation for Mars Environment (DAME)
+                  rule 19: standalone
+                  source: ground truth tuning #40
+Device            a built machine or piece of equipment that is neither an Instrument nor a Platform, e.g. DAME drill system
+                  rule 19: standalone
+                  source: ground truth tuning #40
+Place             a named place on a CelestialBody, such as a site, a crater, an island or a region, other than an area the data cover (a SpatialExtent), e.g. Haughton Crater; Devon Island
+                  rule 19: standalone
+                  source: ground truth tuning #40
+Taxon             a named group of living things in biological classification, at any rank, e.g. Tremellomycetes
+                  held-out only
+                  rule 19: standalone
+                  source: ground truth held-out #104
 
 PREDICATES
 ----------
@@ -378,24 +393,21 @@ AVAILABLE_AT         can be got from this WebPage
                      only: any -> WebPage
 REVISED_AFTER        was corrected after this review
                      source: ground truth tuning #13
-LOCATED_AT           is at this place or position, or took place there, e.g. GEO Latitude 44.8, Longitude 271.4
-                     held-out only
-                     source: ground truth held-out #11, #23, #41
+LOCATED_AT           is at this place or position, or took place there, e.g. Haughton Crater
+                     source: ground truth tuning #40, #54
 USES_PLATFORM        made use of this Platform for its work
-                     held-out only
                      only: any -> Platform
-                     source: ground truth held-out #23
+                     source: ground truth tuning #49
 DEPLOYED_BY_PARTY    was sent out to take measurements by this Person or Organization
                      held-out only
                      only: any -> Organization; any -> Person
                      source: ground truth held-out #23
 HAS_COLLECTION_STATUS  its data collection is in this CollectionStatus
-                       held-out only
                        only: any -> CollectionStatus
-                       source: ground truth held-out #23
+                       source: ground truth tuning #49
 OBTAINED_FROM        was got from this source, e.g. a table got from a journal's web site
                      held-out only
-                     source: ground truth held-out #32
+                     source: ground truth held-out #32, #104
 HAS_CHANGE           its release brings this change from the release before, e.g. adding of the FITS version
                      held-out only
                      only: any -> Task
@@ -414,3 +426,22 @@ HAS_ORBIT_LOWERING   its orbit was lowered, or began to be lowered, over this ra
 ROUGHLY_PROPORTIONAL_TO  its values are roughly in proportion to this quantity
                          held-out only
                          source: ground truth held-out #59
+HAS_ENERGY_RANGE     its energies lie in this range, e.g. from 0 MeV to 4 MeV
+                     source: ground truth tuning #51
+DISPLAYS             shows this to its users, e.g. an entry for each separate detection
+                     held-out only
+                     source: ground truth held-out #77
+HAS_WAVELENGTH_RANGE  its wavelengths lie in this range, e.g. 450-750 nm
+                      source: ground truth tuning #27, #34, #36
+HAS_DESIGN_FEATURE   was designed to have this DesignFeature
+                     source: ground truth tuning #34, #40
+                     only: any -> DesignFeature
+LED_BY_PARTY         is led by this Person or Organization
+                     source: ground truth tuning #40
+                     only: any -> Organization; any -> Person
+METADATA_FOR         holds the metadata of this one: information that describes its data, e.g. metadata for a level zero product
+                     source: ground truth tuning #52
+FROM_CAMPAIGN        was collected during this Campaign
+                     held-out only
+                     only: any -> Campaign
+                     source: ground truth held-out #98
