@@ -31,7 +31,7 @@ and among the largest sets, one with the most strict pairs:
              the same fact" are never paired.
 
 A SYMMETRIC predicate of the ground truth schema (SYMMETRIC_PREDICATES:
-ALSO_KNOWN_AS, "is the same thing under another name") says the same fact
+ALSO_KNOWN_AS, "is the same entity under another name") says the same fact
 either way round, so for it both passes also try the occurrence with its
 subject and object swapped (and its subject class and object class with them):
 a pair "matched with subject and object swapped" (record["compared"]["swapped"]).

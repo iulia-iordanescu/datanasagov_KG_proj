@@ -1249,8 +1249,8 @@ class TwoPasses(unittest.TestCase):
                 first = prompt.index("Work in two passes")
                 self.assertIn("Completeness comes first.", prompt)
                 self.assertLess(prompt.index("Completeness comes first."), first)
-                self.assertIn("1. Find every thing the record names", prompt)
-                self.assertIn("2. Take the things one at a time.", prompt)
+                self.assertIn("1. Find every entity the record names", prompt)
+                self.assertIn("2. Take the entities one at a time.", prompt)
                 self.assertIn("this list in your answer.", prompt)
                 self.assertLess(first, prompt.index(extraction.BEGIN_LINE))        # in the part sent for prompt caching
                 self.assertIn(extraction.reply(True), prompt)                      # the shared reply format, unchanged

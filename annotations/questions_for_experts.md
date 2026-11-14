@@ -113,12 +113,14 @@ Checked on 2026-10-31, for the expert's (a) (the research of 2026-10-31 on NASA'
 
 ### Quoted for us
 
-- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. Exceptions: What counts as a fact, rules 5, 9 and 10 (opinion words, words that only say how another fact holds, and words true only as of writing, are taken out); and rules 19, 20, 22, 23 and 24 below (rule 20: parentheses that hold the code of something else are taken out of the instance; rule 24: the words for a processing step's input and method are taken out of any other instance).
-- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 says which wording to use. Suppose: a record says "This dataset provides daily snow cover", and later "snow cover is given each day". Then: the two sentences state one fact, so one ground truth triple: the record's dataset HAS_TEMPORAL_RESOLUTION "daily", the wording the record gives first (rule 23).
+- Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded. The exceptions are the words that rules 5 (opinions), 9 (a specific entity), 10 (words true only as of writing), 19 (qualifiers), 20 (parentheses), 22 (lists), 23 (one wording) and 24 (a processing step) take out.
+- Writing a classed triple, rule 16: Each fact once, even if the record states it twice or in other words. Rule 23 (one wording) says which wording to use.
+- Writing a classed triple, rule 16: Suppose: a record says "This dataset provides daily snow cover", and later "snow cover is given each day". Then: the two sentences state one fact, so one ground truth triple: the record's dataset HAS_TEMPORAL_RESOLUTION "daily", the wording the record gives first (rule 23).
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
+- Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
+- Writing a classed triple, rule 19: Suppose: a record says "sea surface salinity". Then: it stays whole, and the words "sea surface" say which salinity is measured and state no fact about another entity, so they give no ground truth triple.
 - Writing a classed triple, rule 22: A list: one ground truth triple per item.
-- Writing a classed triple, rule 23: One thing, one wording, within a record.
+- Writing a classed triple, rule 23: One entity, one wording, within a record.
 
 ### Consequences
 
@@ -218,7 +220,7 @@ NASA's own lists call Aqua "a NASA Earth Science satellite mission", one entry f
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 
 ### Options
 
@@ -281,8 +283,8 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
 - entity class Spacecraft -> Platform: A vehicle or platform, such as a satellite, aircraft, or balloon, that carries instruments to collect observations.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
-- Writing a classed triple, rule 23: One thing, one wording, within a record.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
+- Writing a classed triple, rule 23: One entity, one wording, within a record.
 
 ### Consequences
 
@@ -613,9 +615,10 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 - predicate MEASURES -> HAS_MEASUREMENTS_OF: The subject (an instrument, mission, dataset or product) measures or provides data on the object, a physical quantity, variable or phenomenon.
 - predicate PROVIDES -> HAS_MEASUREMENTS_OF: The subject (an instrument, data center, product or dataset) supplies or produces the object, a data product, measurement, variable or information layer.
 - predicate MEASURED_BY -> HAS_MEASUREMENTS_OF (swap subject and object): Links a measured quantity to the instrument, system or method used to measure it.
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
+- Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
+- Writing a classed triple, rule 19: Suppose: a record says "sea surface salinity". Then: it stays whole, and the words "sea surface" say which salinity is measured and state no fact about another entity, so they give no ground truth triple.
 - Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
@@ -896,7 +899,7 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - entity class Mission -> Mission: A planned space or flight undertaking, such as a satellite mission, balloon program, or spaceflight of a given duration, carried out to accomplish scientific objectives.
 - entity class Campaign -> Campaign: A coordinated period of field or flight measurement activity, such as an aircraft or balloon campaign, conducted to collect data.
 - entity class Program -> (none): A named organized scientific initiative, often a telescope legacy or key program, encompassing coordinated observations and data products.
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
 
 ### Consequences
@@ -1300,7 +1303,7 @@ Added on 2026-10-31, for the expert's (a) (the research of 2026-10-31): the reco
 - predicate HAS_DURATION -> HAS_DURATION: The subject (a dataset, granule, orbit portion or observation series) lasts for or spans the object, a time length or period.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
 - Writing a classed triple, rule 21: Suppose: a record's title says "8 Day", and its notes say "daily, weekly (8 day), and monthly products are available from this instrument's output". Then: the record's dataset HAS_TEMPORAL_RESOLUTION "weekly (8 day)", its own (by rule 23, it says more than "8 Day"); the daily and monthly products are variants of the record's dataset, and the record states no connection beyond that, so they give no ground truth triple.
 
 ### Consequences
@@ -1446,7 +1449,7 @@ Records write how far their data have been processed, the processing level, in m
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 
 ### Options
 
@@ -1498,8 +1501,9 @@ Checked on 2026-10-31, the old (a): both readings are true. NASA's metadata trea
 - predicate HAS_PROCESSING_LEVEL -> HAS_PROCESSING_LEVEL: The subject (a data product) has the object as its data processing level, such as L0, Level-2 or Level-3.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
-- Writing a classed triple, rule 23: One thing, one wording, within a record.
+- Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
+- Writing a classed triple, rule 20: Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
+- Writing a classed triple, rule 23: One entity, one wording, within a record.
 
 ### Consequences
 
@@ -1665,8 +1669,9 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - predicate UNIQUE_TO_INSTRUMENT: is found only on this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
-- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
+- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 (qualifiers) first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" becomes "channel"; "are" becomes "is"); an item's own words stay as written ("rivers"). An item that names no specific entity ("his team") gives no ground truth triple (rule 9, a specific entity).
+- Writing a classed triple, rule 22: Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
 ### Consequences
@@ -1835,9 +1840,10 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
 - predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
-- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type of thing.
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
+- What counts as a fact, rule 4: Not "is a" facts. A sentence that says what type of entity an instance refers to ("Kestrel is an imager") gives no ground truth triple: the instance's entity class says it. A sentence that names one specific role is not an "is a" fact, though, and gives a ground truth triple ("X is the official … archive for Y").
+- What counts as a fact, rule 4: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, since it names a role only JPL holds, not a type of entity.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 
 ### Consequences
@@ -2017,9 +2023,10 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 - predicate HAS_OBJECTIVE -> HAS_PURPOSE: The subject (a mission, campaign, project or set of researchers) aims to achieve, study or address the object, a scientific goal, question or problem.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
-- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans").
-- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask whether one of the things the words describe (one orbit, one balloon, one access) can have all the describing words at once. 1. Yes: they stay whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
+- Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
+- Writing a classed triple, rule 19: Suppose: a record says "sea surface salinity". Then: it stays whole, and the words "sea surface" say which salinity is measured and state no fact about another entity, so they give no ground truth triple.
+- Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 (qualifiers) first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" becomes "channel"; "are" becomes "is"); an item's own words stay as written ("rivers").
+- Writing a classed triple, rule 22: Describing words joined by "and" or a comma. Ask whether one of the entities the words describe (one orbit, one balloon) can have all the describing words at once. 1. Yes: they stay whole, in one ground truth triple. 2. No: split them, one ground truth triple per describing word.
 - Writing a classed triple, rule 22: Suppose: a record says Aqua was launched "to study the global dynamics of the Earth atmosphere, land and oceans". Then: rule 19 first gives Aqua HAS_TARGET "Earth"; then three ground truth triples: Aqua HAS_PURPOSE "study the global dynamics of the atmosphere", "study the global dynamics of the land", and "study the global dynamics of the oceans".
 
 ### Consequences
@@ -2199,9 +2206,9 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 - entity class Method -> Algorithm: A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.
 - entity class Topic -> Discipline: A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.
 - predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject (a set of observations or data) belongs to the object, a scientific discipline or category.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 
 ### Consequences
 
@@ -2331,7 +2338,8 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - entity class SpatialCoverage -> SpatialExtent: The geographic or sky extent covered by a dataset or observation, such as global, a swath width, or a number of square degrees or areas.
 - predicate HAS_SPATIAL_COVERAGE -> HAS_SPATIAL_COVERAGE: The subject (a dataset or survey) covers the object, a geographic region, latitude range, area extent or coverage descriptor.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
+- Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
+- Writing a classed triple, rule 19: Suppose: a record says "sea surface salinity". Then: it stays whole, and the words "sea surface" say which salinity is measured and state no fact about another entity, so they give no ground truth triple.
 
 ### Consequences
 
@@ -2484,7 +2492,7 @@ Checked on 2026-10-31, for the expert's (b): DCAT's notion of a dataset "is broa
 ### Quoted for us
 
 - entity class Variable: a property narrowed by a method, a band, a threshold, another object or another constraint, e.g. SST4; NDSI; band 31 emissivity; dust fluences at each of twelve mass thresholds
-- entity class Identifier: a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1
+- entity class Identifier: a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1
 - predicate HAS_DOI: has this Identifier, a Digital Object Identifier
 - entity class Dataset -> Dataset: A named collection of data compiled from observations, measurements, experiments, or statistics and distributed as a unit, such as an index, data collection, or instrument time series.
 - entity class DataProduct -> Dataset: A specific processed output of data, such as calibrated images, retrieval products, files, or data segments, generated from instrument or model data.
@@ -2492,7 +2500,7 @@ Checked on 2026-10-31, for the expert's (b): DCAT's notion of a dataset "is broa
 - entity class Database -> Dataset: An organized collection or repository of data records, sources or proposals that can be stored, queried and accessed.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
 - Writing a classed triple, rule 24: A processing step: output = method(input).
 
 ### Consequences
@@ -2638,9 +2646,10 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 - predicate ACQUIRED_BY_INSTRUMENT: was collected by this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - entity class Frequency -> TemporalResolution: A rate of occurrence, such as daily or weekly, or a radio frequency band, such as S-, X-, or Ku-band.
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state).
+- Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
+- Writing a classed triple, rule 19: Suppose: a record says "sea surface salinity". Then: it stays whole, and the words "sea surface" say which salinity is measured and state no fact about another entity, so they give no ground truth triple.
 
 ### Consequences
 
@@ -2756,7 +2765,7 @@ Checked on 2026-10-31: the SWEET ontology files human-caused effects on the envi
 
 - predicate LIMITED_BY: its use is restricted by
 - predicate PRODUCTION_DISCONTINUED_DUE_TO: stopped being produced because of
-- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
+- Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so that every record uses the same entity class or predicate for the same meaning.
 
 ### Consequences
 
@@ -2856,12 +2865,12 @@ Checked on 2026-10-31: the standard agrees with our reading. OGC's Abstract Spec
 ### Quoted for us
 
 - predicate MAPPED_INTO: its values were laid onto a map drawn with this MapProjection
-- predicate ALSO_KNOWN_AS: is the same thing under another name
+- predicate ALSO_KNOWN_AS: is the same entity under another name
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - predicate HAS_COORDINATE_SYSTEM -> HAS_COORDINATE_SYSTEM: The subject (a dataset) is expressed in, projected to, or mapped onto the object, a coordinate system or grid projection.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written. Don't paraphrase them, and don't expand an abbreviation the record leaves unexpanded.
-- Writing a classed triple, rule 23: One thing, one wording, within a record.
-- Writing a classed triple, rule 23: the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20).
+- Writing a classed triple, rule 23: One entity, one wording, within a record.
+- Writing a classed triple, rule 23: the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses).
 
 ### Consequences
 
@@ -2961,7 +2970,8 @@ Checked on 2026-10-31, the rest of (a): NASA's own search uses the equator cross
 
 - Writing a classed triple, rule 15: One fact per ground truth triple. A sentence that states two facts gives two ground truth triples.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
-- Writing a classed triple, rule 19: A qualifier stays in the instance, as written, if it is any other kind ("sea surface salinity" stays whole), or by the test of rule 11 (taking it out would give a triple the record doesn't state). Suppose: a record says "an afternoon orbit". Then: taking "afternoon" out would give "orbit" OBSERVED_AT_TIME_OF_DAY "afternoon", which says the orbit comes from observations made in the afternoon. That isn't true, so "afternoon orbit" stays whole.
+- Writing a classed triple, rule 19: Any other qualifier stays in the instance ("glacier surface albedo" stays whole), and so does a qualifier of the seven above when taking it out would give a triple the record doesn't state (the test of rule 11).
+- Writing a classed triple, rule 19: Suppose: a record says "an afternoon orbit". Then: taking "afternoon" out would give "orbit" OBSERVED_AT_TIME_OF_DAY "afternoon", which says the orbit comes from observations made in the afternoon. That isn't true, so "afternoon orbit" stays whole.
 
 ### Consequences
 
@@ -3030,7 +3040,7 @@ We write only what a record states (rule 1 of *What counts as a fact*, quoted be
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 
 ### Options
 
@@ -3157,9 +3167,9 @@ Settled on 2026-10-31: SST4 is a skin SST, as the OBPG's SST4 document says ("Th
 ### Quoted for us
 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
+- Writing a classed triple, rule 23: One entity, one wording, within a record. When a record names the same entity more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
 ### Consequences
 
@@ -3215,7 +3225,7 @@ Is a MODIS "Collection" a version of this one dataset, or a reprocessing of all 
 
 - entity class Version: a label that marks one release of something
 - predicate HAS_VERSION: carries this Version
-- predicate ALSO_KNOWN_AS: is the same thing under another name
+- predicate ALSO_KNOWN_AS: is the same entity under another name
 
 ### Options
 
@@ -3274,11 +3284,14 @@ Changed on 2026-11-12 (found by both audits of the ground truth of that day): th
 ### Quoted for us
 
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
-- What counts as a fact, rule 10: Not words that are true only as of when the record was written. Take out "latest", "current", "now", "then available", and words like them. Keep the rest of the fact.
-- What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", because V1.0 stays the first version whatever is released later.
-- Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written. Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
-- Writing a classed triple, rule 20: Parentheses that hold the code of something else are taken out of the instance. Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3". Write ALSO_KNOWN_AS only when the record gives the other name in words of its own
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. When test 1 ties (one wording is more precise and the other spells out an abbreviation), the wording that says more is used. 2. Otherwise, the wording from a sentence that states a fact about the thing with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
+- What counts as a fact, rule 10: Not words that are true only as of when the record was written. Take out "latest", "current", "now", "then available", and words like them, and keep the rest of the fact.
+- What counts as a fact, rule 10: Suppose: a record says "V1.0 is the first version." Then: "V1.0" ALSO_KNOWN_AS "first version", since V1.0 stays the first version whatever is released later.
+- Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
+- Writing a classed triple, rule 20: Suppose: a record says "This Level-2 (L2) dataset". Then: the instance is "Level-2 (L2)", with no ALSO_KNOWN_AS triple.
+- Writing a classed triple, rule 20: Parentheses that hold the code of another entity are taken out of the instance.
+- Writing a classed triple, rule 20: Suppose: a record says "This data set contains Level 2/3 (EDR/RDR) data" and "The RDR data convert the EDR (raw) sensor data". Then: the record uses "EDR" and "RDR" as names of the data, not of the levels, so the levels are "Level 2" and "Level 3": "EDR (raw) sensor data" HAS_PROCESSING_LEVEL "Level 2", and "RDR data" HAS_PROCESSING_LEVEL "Level 3".
+- Writing a classed triple, rule 20: Write that one name is also known as another (ALSO_KNOWN_AS) only when the record gives the other name in words of its own
+- Writing a classed triple, rule 23: One entity, one wording, within a record. When a record names the same entity more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation. When test 1 ties (one wording is more precise and the other spells out an abbreviation), the wording that says more is used. 2. Otherwise, the wording from a sentence that states a fact about the entity with words for its predicate, rather than one that names it only by a title's or a name's words (rule 17, A title's facts, A name's facts). 3. Otherwise, the wording the record uses most often. 4. Otherwise, the wording the record gives first.
 
 ### Consequences
 
@@ -3323,7 +3336,7 @@ Changed on 2026-11-12 (found by both audits of the ground truth of that day): th
 
 The example below, a MODIS aerosol product, has two passages we are not sure how to write as facts. We would like to know:
 
-- (a) "(MCD19A2N)": we wrote it as an identifier of the dataset, an Identifier being "a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? Another record, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", uses one short name for two versions, "MOD11A1 Version 6" and "MOD11A1 Version 6.1": is a short name that two versions share an identifier of each of them, or of the product across its versions?
+- (a) "(MCD19A2N)": we wrote it as an identifier of the dataset, an Identifier being "a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? Another record, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", uses one short name for two versions, "MOD11A1 Version 6" and "MOD11A1 Version 6.1": is a short name that two versions share an identifier of each of them, or of the product across its versions?
 - (b) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) (the MCD19A1N product) another product, computed from this one, as we wrote?
 
 ### Example record
@@ -3343,7 +3356,7 @@ The example below, a MODIS aerosol product, has two passages we are not sure how
 
 ### Ground truth schema
 
-- entity class Identifier: a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1
+- entity class Identifier: a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1
 - predicate COMPUTED_FROM: was made by processing this input
 
 ### Options
@@ -3378,7 +3391,7 @@ Taken out of the expert's view on 2026-10-26, so that the question can be read i
 
 - The question, as it was: We are annotating a record of a MODIS aerosol product, and three passages of its [text](../docs/terminology.md#1-records-and-their-text) we are not sure how to write as classed triples; one of them raises a question about another record too:
 - (a) "Near Real Time (NRT)": is it a latency (how soon after the observation the data are made available), a separate processing stream (a different product from the standard one), or a version? Each would be a different predicate, and the ground truth schema has none for a latency. Until you answer, we write no classed triple for it.
-- (b) "(MCD19A2N)": we have written it as an identifier of the dataset, with a predicate we coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" names its product "MOD11A1 Version 6", and the one users are encouraged to use instead "MOD11A1 Version 6.1": one short name for two versions. We wrote "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier). Is a short name that two versions share an identifier of each of them, or of the product across its versions? The same record gives its input's DOI as a link address, which we wrote as written: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier).
+- (b) "(MCD19A2N)": we have written it as an identifier of the dataset, with a predicate we coined for it, HAS_IDENTIFIER, "has this Identifier": the dataset HAS_IDENTIFIER "MCD19A2N" (Identifier), an Identifier being "a code that names one entity, or one product line, permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? And should HAS_DOI ("has the Digital Object Identifier") and HAS_IDENTIFIER be one predicate, a DOI being one sort of identifier, or stay two? The record "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" names its product "MOD11A1 Version 6", and the one users are encouraged to use instead "MOD11A1 Version 6.1": one short name for two versions. We wrote "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006" (Dataset) HAS_IDENTIFIER "MOD11A1" (Identifier). Is a short name that two versions share an identifier of each of them, or of the product across its versions? The same record gives its input's DOI as a link address, which we wrote as written: "MOD11_L2" (Dataset) HAS_DOI "https://doi.org/10.5067/MODIS/MOD11_L2.006" (Identifier).
 - (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is "MCD19A1N" another dataset? If it is, is "MCD19A1N is computed from this dataset" a fact to write, as we now do (it says how the two datasets are connected), or a fact about the other dataset, to leave out? And are "the atmospheric properties and view geometry" what this dataset holds, to write as facts about it, or only the part of it the other product uses? (Whether each is specific enough, and what kind of thing each is, is asked in another question, about what is measured and what is computed.)
 - (d) The same question of what counts as an identifier, in another record: the record "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" says "Details of the map and data reduction are described in LAWRENCEETAL2013". We wrote LAWRENCEETAL2013 as a Document, "a written publication, or a set of them, named in words or by a reference key": "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (Dataset) DOCUMENTED_AT "LAWRENCEETAL2013" (Document). Is a Planetary Data System reference key such as LAWRENCEETAL2013 the publication itself (a Document named by its key, as now), or an identifier of the publication, an Identifier of its own?
 
@@ -3394,13 +3407,13 @@ The current reading, as it was: Undecided. For (a), we lean towards reading NRT 
 
 Decided on 2026-10-31, so the old (a) is no longer asked: "Near Real Time (NRT)" is a latency, how soon the data are released after observation. The ground truth schema has a new entity class Latency ("a measure of how soon data are released after observation, e.g. Near Real Time (NRT)") and a new predicate HAS_LATENCY ("is released this soon after observation"), and the record has "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset) HAS_LATENCY "Near Real Time (NRT)" (Latency), in the record's words; the pending fact 11 above is written so. Field practice: NASA's metadata standard UMM-C records it in a closed field, CollectionDataType (NEAR_REAL_TIME, LOW_LATENCY, EXPEDITED, SCIENCE_QUALITY), whose NEAR_REAL_TIME is "ready for end user consumption 1 to 3 hours after data acquisition" (UMM-C JSON schema v1.18.7, https://github.com/nasa/Common-Metadata-Repository/blob/master/umm-spec-lib/resources/json-schemas/collection/umm/v1.18.7/umm-c-json-schema.json); the record states no number of hours, so none is written. The pending fact's other readings, a processing stream or a version, are not written.
 
-Changed on 2026-10-31, for the old (c), now the expert's (b): the subject of fact 12 is now "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset), the wording the record gives first (rule 23), in place of "MCD19A1N": "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset). The ground truth schema's Identifier now reads "a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1"; the expert's (a) quotes it so.
+Changed on 2026-10-31, for the old (c), now the expert's (b): the subject of fact 12 is now "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset), the wording the record gives first (rule 23), in place of "MCD19A1N": "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset). The ground truth schema's Identifier now reads "a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1"; the expert's (a) quotes it so.
 
 Taken out of the expert's view on 2026-10-31, as questions we can settle from sources or have decided; kept here word for word. The title was "What is "Near Real Time (NRT)", what counts as an identifier ("MCD19A2N", "LAWRENCEETAL2013"), and is "MCD19A1N" another dataset?". The expert's (a) is the old (b), and their (b) the first half of the old (c); the options, my current reading and the consequences say "(a)" and "(b)" for them. The second half of the old (c) is settled from sources: the MAIAC user guide lists what MCD19A2 holds, aerosol optical depth, water vapour and the other atmospheric properties, and "View Geometry over land and water at 5km: Cosines of Solar and View zenith angles, relative azimuth, scattering angle and glint angle" (Lyapustin and Wang, LP DAAC, https://lpdaac.usgs.gov/documents/1500/MCD19_User_Guide_V61.pdf, section 3.2.1), so "the atmospheric properties and view geometry" are the whole of what this dataset holds, as the ground truth writes them.
 
 - The question's opening, as it was: The example below, a MODIS aerosol product, has three passages we are not sure how to write as facts. We would like to know:
 - (a) "Near Real Time (NRT)": what is it, for this dataset? Our reading of NASA's own pages (checked, below) is that NRT data are a separate product, made available within hours of the observation, apart from the standard product made later. Is NRT then a fact worth recording about a dataset (a kind of product, a version), or only how soon the data come? Until you answer, we write nothing for it.
-- (b) "(MCD19A2N)": we wrote it as an identifier of the dataset, an Identifier being "a code that names one thing permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? Another record, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", uses one short name for two versions, "MOD11A1 Version 6" and "MOD11A1 Version 6.1": is a short name that two versions share an identifier of each of them, or of the product across its versions?
+- (b) "(MCD19A2N)": we wrote it as an identifier of the dataset, an Identifier being "a code that names one entity, or one product line, permanently, e.g. a DOI". Is a NASA product short name such as MCD19A2N permanent in that sense, or a label that can change, or be given to another product later? Another record, "MODIS/Terra Land Surface Temperature/Emissivity Daily L3 Global 1km SIN Grid V006", uses one short name for two versions, "MOD11A1 Version 6" and "MOD11A1 Version 6.1": is a short name that two versions share an identifier of each of them, or of the product across its versions?
 - (c) "The MCD19A2N product provides the atmospheric properties and view geometry used to calculate the MAIAC Land Surface Bidirectional Reflectance Factor (BRF) or surface reflectance, MCD19A1N product": is MCD19A1N another product, computed from this one, as we wrote? And are "the atmospheric properties and view geometry" what this dataset holds, or only the part of it that the other product uses?
 - The question's context, as it was: What we checked about (a), on 2026-10-25. NASA's LANCE page (https://www.earthdata.nasa.gov/data/projects/lance) said then: "Near real-time (NRT) refers to data available 1 to 3 hours after an observation by an instrument aboard a space-based platform" (on 2026-10-30 the page read instead "makes NASA Earth observation data available within three hours of a satellite observation"; NASA's metadata standard UMM-C still defines NEAR_REAL_TIME as 1 to 3 hours after data acquisition), and that the standard products are made "within 8 to 40 hours of observation". NASA's MODAPS lists MCD19A2N as a product of its own, with its own DOI, apart from the standard product MCD19A2 (https://modaps.modaps.eosdis.nasa.gov/services/about/products/c61-nrt/MCD19A2N.html). The record itself states no number of hours, and we write only what a record states.
 - The example also showed the source text "Near Real Time (NRT)", and the classed triple "MCD19A1N" (Dataset) COMPUTED_FROM "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid" (Dataset).
@@ -3410,7 +3423,7 @@ Taken out of the expert's view on 2026-10-31, as questions we can settle from so
 - My current reading, as it was: Undecided. For (a), we lean towards reading NRT as a separate product of its own (the sources above), with no number of hours, since the record states none. For (b), we lean towards option 3, an identifier, since a product code names one product permanently, much as a DOI does. For (c), we write that MCD19A1N is made from this dataset, since our rules always write how two datasets are connected, and leave out what MCD19A1N holds, since it is another dataset.
 - The consequences, as they were: option 1, "The facts the three passages may state are missing from the ground truth: an extracted triple that states one of them counts as wrong when this record is evaluated."; option 2, "- (c) writes a fact whose subject instance is another dataset, which rule 21 may forbid (question (c))."; option 3, "Two new predicates in the ground truth schema, each with a definition and an example in the annotation guidelines; the [model](../docs/terminology.md#8-the-pipeline) follows the same rules, so its copy changes too." and "Other records with a product code or a latency are written the same way.". Under Affects: "pipeline method: annotations/ground_truth_schema.txt: a new predicate for a latency and one for an identifier (option 3)".
 
-Withdrawn on 2026-10-31: settled from sources, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it. (a): a NASA short name names a product line across its versions, the short name and the version together name one collection, and the DOI is per version (research G10 of 2026-10-30, above); MCD19A2N's version is "6.1NRT" and its DOI 10.5067/MODIS/MCD19A2N.NRT.061 (NASA CMR, https://cmr.earthdata.nasa.gov/search/collections.umm_json?short_name=MCD19A2N). Identifier's definition already reads "a code that names one thing, or one product line, permanently" (decided on 2026-10-31, research B6), so "MCD19A2N" and "MOD11A1" stay HAS_IDENTIFIER (option 3). (b): the record's words are true as worded. In one MAIAC run, "Following cloud detection and aerosol retrieval, the atmospheric correction derives surface spectral BRF and BRDF models", with a surface term "computed using the current RTLS parameters and retrieved aerosol data" (Lyapustin, Wang, Korkin and Huang, "MODIS Collection 6 MAIAC algorithm", *Atmospheric Measurement Techniques* 11, 5741–5765, 2018, https://doi.org/10.5194/amt-11-5741-2018, section 9), and the run writes both files (section 10). So the BRF is computed from the values the record's dataset holds, and "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" COMPUTED_FROM the record's dataset stays (rule 21); no source says that the BRF processing reads the MCD19A2 files themselves (my reading of the sources searched), and the processing chain is for 080's enrichment.
+Withdrawn on 2026-10-31: settled from sources, so it is no longer asked of the experts; kept whole, so that comments filed under its number still find it. (a): a NASA short name names a product line across its versions, the short name and the version together name one collection, and the DOI is per version (research G10 of 2026-10-30, above); MCD19A2N's version is "6.1NRT" and its DOI 10.5067/MODIS/MCD19A2N.NRT.061 (NASA CMR, https://cmr.earthdata.nasa.gov/search/collections.umm_json?short_name=MCD19A2N). Identifier's definition already reads "a code that names one entity, or one product line, permanently" (decided on 2026-10-31, research B6), so "MCD19A2N" and "MOD11A1" stay HAS_IDENTIFIER (option 3). (b): the record's words are true as worded. In one MAIAC run, "Following cloud detection and aerosol retrieval, the atmospheric correction derives surface spectral BRF and BRDF models", with a surface term "computed using the current RTLS parameters and retrieved aerosol data" (Lyapustin, Wang, Korkin and Huang, "MODIS Collection 6 MAIAC algorithm", *Atmospheric Measurement Techniques* 11, 5741–5765, 2018, https://doi.org/10.5194/amt-11-5741-2018, section 9), and the run writes both files (section 10). So the BRF is computed from the values the record's dataset holds, and "MAIAC Land Surface Bidirectional Reflectance Factor (BRF)" COMPUTED_FROM the record's dataset stays (rule 21); no source says that the BRF processing reads the MCD19A2 files themselves (my reading of the sources searched), and the processing chain is for 080's enrichment.
 
 Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" has "OPERA Dynamic Surface Water Extent from Sentinel-1 (Version 1)" (Dataset) ALSO_KNOWN_AS "DSWx-S1" (Dataset), by rule 20's exception for the thing the title names (decided on 2026-11-01, docs/improvements.md, *Five of the six rule gaps of 2026-11-01 closed*): a parenthesised short name that passes the abbreviation test is another name of the dataset, not an Identifier, as the field files it (schema.org's `alternateName`, "An alias for the item"; its `identifier` and W3C DCAT's `dcterms:identifier` are for codes such as NASA CMR's ShortName of this product, "OPERA_L3_DSWX-S1_V1"). HAS_IDENTIFIER "DSWx-S1", deleted on 2026-11-01, stays deleted. The definition of Document quoted below changed the same day (a web page or site named without its address is a Document).
 
@@ -3420,13 +3433,13 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 - entity class Document: a written publication, or a web page or site, or a set of them, named in words or by a reference key (a web address written as itself is a WebPage), e.g. NASA developed standards; LAWRENCEETAL2013; BARREL at Dartmouth
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Version: a label that marks one release of something
-- predicate ALSO_KNOWN_AS: is the same thing under another name
+- predicate ALSO_KNOWN_AS: is the same entity under another name
 - predicate HAS_LATENCY -> HAS_LATENCY: The subject (a data product or table) is made available or updated with the object, a latency or update delay.
 - predicate HAS_IDENTIFIER -> HAS_IDENTIFIER: The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere. An unexplained code or abbreviation gives no ground truth triple whose meaning depends on what it stands for, and what it stands for is never written, its entity class included, except as *A name the record does not explain* (below) allows.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
 - Writing a classed triple, rule 24: A processing step: output = method(input).
 
 ### Consequences
@@ -3901,7 +3914,7 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 
 ### The question
 
-The title of the example below says "4km", and its notes say the products "are available at both 4.63 and 9.26 km spatial resolution". Where a record names one thing in two wordings, we keep the more precise one, so we wrote that this dataset's spatial resolution is "4.63 km". We wrote nothing for 9.26 km, which we read as the same data at another resolution: another dataset, with a record of its own. Both readings rest on facts we can't check from the record. We would like to know:
+The title of the example below says "4km", and its notes say the products "are available at both 4.63 and 9.26 km spatial resolution". Where a record names one entity in two wordings, we keep the more precise one, so we wrote that this dataset's spatial resolution is "4.63 km". We wrote nothing for 9.26 km, which we read as the same data at another resolution: another dataset, with a record of its own. Both readings rest on facts we can't check from the record. We would like to know:
 
 - (a) Is "4km" in such a title the rounded name of the 4.63 km grid, so that the two name one resolution? Our reading, not checked against a source: 4.63 km is about 1/24 of a degree at the equator, and the products are named by the rounded value. More generally: in this catalog, is a title's rounded value always the notes' value, or can the two differ?
 - (b) Is the dataset of this record only the 4.63 km one, with the 9.26 km products in a record of their own?
@@ -3955,8 +3968,8 @@ Checked on 2026-10-26, for (b): the catalog (020's records.jsonl, 36,406 records
 
 ### Quoted for us
 
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
-- Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
+- Writing a classed triple, rule 23: One entity, one wording, within a record. When a record names the same entity more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in a ground truth triple that says one wording is also known as another (ALSO_KNOWN_AS), and only if the record states one (rule 20, parentheses). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
 ### Consequences
 
@@ -4144,7 +4157,7 @@ Checked on 2026-10-31, for the expert's (b), in NASA's metadata (it corrects the
 - entity class SpatialResolution: an amount of ground each value of the data covers, e.g. 500 m; 4.63 km
 - predicate HAS_SPATIAL_RESOLUTION: each of its values covers this much ground, e.g. 500 m
 - predicate SUPERSEDES: replaces this earlier one. A record states this when it says the older one is discontinued or decommissioned and directs users to the newer one
-- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
+- Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1, only what the record states).
 
 ### Consequences
 
@@ -4427,7 +4440,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - entity class Purpose: an aim something is meant to achieve
 - entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - predicate HAS_PURPOSE: is meant to achieve
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above, this rule's own part A fact inside a name, and rules 3 to 10 below, and rules 16, 20, 21, 22, 23 and 24 of Writing a classed triple (rule 22 for an item of a list that names no specific thing and for the abbreviation of a list of several things, rule 23 for a type word), or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 (only what the record states), this rule's part *A fact inside a name*, rules 3 to 10, and rules 16, 20, 21, 22, 23 and 24 (rule 22 for an item of a list that names no specific entity and for the abbreviation of a list of several entities, rule 23 for a type word), or it waits on an expert's answer (`annotations/questions_for_experts.md`). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 - What counts as a fact, rule 6: Not negated facts.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
 - Writing a classed triple, rule 12: The subject instance is what the sentence is about, which isn't always the title.
@@ -4518,7 +4531,7 @@ Corrected on 2026-10-31 (the research of that day): the table's second row said,
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above, this rule's own part A fact inside a name, and rules 3 to 10 below, and rules 16, 20, 21, 22, 23 and 24 of Writing a classed triple (rule 22 for an item of a list that names no specific thing and for the abbreviation of a list of several things, rule 23 for a type word), or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 (only what the record states), this rule's part *A fact inside a name*, rules 3 to 10, and rules 16, 20, 21, 22, 23 and 24 (rule 22 for an item of a list that names no specific entity and for the abbreviation of a list of several entities, rule 23 for a type word), or it waits on an expert's answer (`annotations/questions_for_experts.md`). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 
 ### Consequences
 
@@ -4608,7 +4621,7 @@ Withdrawn on 2026-10-31: settled by me, so it is no longer asked of the experts;
 - predicate DOCUMENTED_AT: more details about it are written at this WebPage or in this Document
 - entity class Task: a piece of work a Person or Organization does or is in charge of, e.g. quality flagging
 - predicate REVISED_AFTER: was corrected after this review
-- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 above, this rule's own part A fact inside a name, and rules 3 to 10 below, and rules 16, 20, 21, 22, 23 and 24 of Writing a classed triple (rule 22 for an item of a list that names no specific thing and for the abbreviation of a list of several things, rule 23 for a type word), or it waits on an expert's answer (annotations/questions_for_experts.md). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
+- What counts as a fact, rule 2: Every fact the record states, unless a rule leaves it out: rule 1 (only what the record states), this rule's part *A fact inside a name*, rules 3 to 10, and rules 16, 20, 21, 22, 23 and 24 (rule 22 for an item of a list that names no specific entity and for the abbreviation of a list of several entities, rule 23 for a type word), or it waits on an expert's answer (`annotations/questions_for_experts.md`). The rule holds whether or not the ground truth schema has an entity class or predicate for the fact.
 
 ### Affects
 

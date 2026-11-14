@@ -58,7 +58,7 @@ Unit              a unit that values are given in, e.g. instrument data numbers;
 Algorithm         a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
                   rule 19: standalone
                   source: ground truth tuning #2
-Identifier        a code that names one thing, or one product line, permanently, e.g. a DOI; MOD11A1
+Identifier        a code that names one entity, or one product line, permanently, e.g. a DOI; MOD11A1
                   rule 19: describing
                   source: ground truth tuning #2
 SpatialRepresentation  a form data are laid out in: over the ground, typically along a satellite's path, as observed (swath), or on a fixed map grid (gridded); or as images, image cubes, spectra or maps, e.g. swath; map; raw near-IR spectral image cubes
@@ -130,7 +130,7 @@ Latency           a measure of how soon data are released after observation, e.g
 CollectionStatus  a state of a dataset's data collection, e.g. complete
                   rule 19: describing
                   source: ground truth tuning #49
-DesignFeature     a property a built thing was designed to have, other than an amount (a Value), e.g. fore-and-aft tilt capability; low polarization sensitivity
+DesignFeature     a property a built entity was designed to have, other than an amount (a Value), e.g. fore-and-aft tilt capability; low polarization sensitivity
                   rule 19: describing
                   source: ground truth tuning #34, #40
 Project           a named effort to develop or build something, other than a Mission (a named effort to collect data), e.g. Drilling Automation for Mars Environment (DAME)
@@ -142,7 +142,7 @@ Device            a built machine or piece of equipment that is neither an Instr
 Place             a named place on a CelestialBody, such as a site, a crater, an island or a region, other than an area the data cover (a SpatialExtent), e.g. Haughton Crater; Devon Island
                   rule 19: standalone
                   source: ground truth tuning #40
-Taxon             a named group of living things in biological classification, at any rank, e.g. Tremellomycetes
+Taxon             a named group of organisms in biological classification, at any rank, e.g. Tremellomycetes
                   held-out only
                   rule 19: standalone
                   source: ground truth held-out #104
@@ -166,7 +166,7 @@ ABOARD               is carried on
 ACQUIRED_BY_INSTRUMENT  was collected by this Instrument
                      Dataset -> Instrument
                      only: any -> Instrument
-ALSO_KNOWN_AS        is the same thing under another name
+ALSO_KNOWN_AS        is the same entity under another name
                      WebTool -> WebTool
 FROM_MISSION         was collected during this Mission
                      Dataset -> Mission

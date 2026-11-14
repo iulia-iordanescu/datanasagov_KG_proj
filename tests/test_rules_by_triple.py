@@ -14,9 +14,30 @@ from pathlib import Path
 from support import ROOT  # noqa: F401  (imported first: it refuses any change to the real annotations/)
 from common.expert_questions import guideline_rules
 from common.ground_truth import FILE_COLUMNS, RULES
+from common.left_out import rule_quote_problems
 from common.rules_by_triple import (ALWAYS, COMMAND, DESCRIBES_SECTION, DOC_PATH, DRAFT_COLUMNS, GUIDELINES_PATH, doc_text,
                                     file_problems, format_rules, guideline_section, merge_drafts, parse_rules, rule_count,
                                     rule_texts, rules_problem, write_doc)
+
+class LeftOutQuotes(unittest.TestCase):
+    """Each Rule line of annotations/left_out.md quotes the rule it names as annotations/guidelines.md has it now."""
+
+    def test_the_real_file(self):
+        self.assertEqual(rule_quote_problems(), [])
+
+    def test_near_misses(self):
+        tmp = Path(tempfile.mkdtemp())
+        g, lo = tmp / "guidelines.md", tmp / "left_out.md"
+        g.write_text("## What counts as a fact" + chr(10) * 2 + "1. **Only what the record states.** Never add what you know." + chr(10),
+                     encoding="utf-8")
+        lines = ['  - **Rule:** What counts as a fact, rule 1: "Never add what you know." A note.',      # fine
+                 '  - **Rule:** What counts as a fact, rule 1: "Never add what you knew." A note.',      # a word changed
+                 '  - **Rule:** What counts as a fact, rule 2: "Never add what you know."',               # no rule 2
+                 '  - **Rule:** What counts as a fact, rule 1: "Never add" what you know.']               # too short
+        lo.write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
+        found = rule_quote_problems(lo, g)
+        self.assertEqual([p.split(":")[1] for p in found], ["2", "3", "4"])
+
 
 GUIDELINES = """# Annotation guidelines
 

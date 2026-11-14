@@ -206,13 +206,13 @@ class Vocabulary(unittest.TestCase):
 
 #: The research field's words for things docs/terminology.md names otherwise: (the word, what to write instead).
 #: The docs, the prompts, and the code's comments and strings use only terminology.md's words. Matched as whole
-#: words, case ignored; "entity-class", "HAS_TIME_SPAN", and `entity` (code) are other words. "relationship" is
+#: words, case ignored; "entity-class", "HAS_TIME_SPAN", and `entity` (code) are other words. "Entity" alone is
+#: terminology.md's term (what an instance's words refer to, decided 2026-11-14), not a field word. "relationship" is
 #: plain English and allowed, and so are "mentioned" and "mentioning" (only verbs; "mention" can be the field's noun).
 FIELD_WORDS = [
     (r"arguments?", "the subject instance and the object instance"),
     (r"entity\s+types?", "entity class(es)"),
     (r"named\s+entit(?:y|ies)", "subject instance or object instance"),
-    (r"entit(?:y|ies)(?!\s+class)", "subject instance or object instance (a thing), or entity class (a kind)"),
     (r"relation\s+types?", "predicate"),
     (r"relations?(?!\s+(?:classification|extraction))", "predicate (a schema entry), or, in plain English, relationship; "
                                                        "relation classification and relation extraction are terms"),
@@ -500,7 +500,6 @@ class NoLinkInCode(unittest.TestCase):
 
 
 RULES_PROMPT = ROOT / "common" / "common_prompts" / "extraction_rules.txt"
-ALLOWED_DIFFERENCES = ROOT / "tests" / "allowed_differences.txt"
 
 
 def rule_title(text: str) -> str:
@@ -529,55 +528,17 @@ def prompt_rules() -> dict:
             re.findall(r"^(\d+)\. (.+?)(?=^\s*\d+\. |^[A-Z][A-Z ]{2,}$|\Z)", text, re.M | re.S)}
 
 
-def rules_differences() -> list:
-    """[(rule, kind, difference, reason, decided)]: the rules family of tests/allowed_differences.txt."""
-    rows = []
-    for line in ALLOWED_DIFFERENCES.read_text(encoding="utf-8").splitlines():
-        if line.strip() and not line.startswith("#") and line.split("\t")[0] == "rules":
-            rows.append(tuple(line.split("\t")[1:]))
-    return rows
-
-
 class RulesInStep(unittest.TestCase):
-    """The rules the model follows (common/common_prompts/extraction_rules.txt) and the annotation guidelines a person
-    follows (annotations/guidelines.md) are the same rules, numbered and ordered alike, with the same titles, so a rule
-    added to one copy without the other, or renumbered in one, fails here. Every other difference is listed, with its
-    reason, in tests/allowed_differences.txt, family rules (prompt audit F8, 2026-10-30)."""
+    """The rules the model follows (common/common_prompts/extraction_rules.txt) are built from the annotation
+    guidelines a person follows (annotations/guidelines.md) by common/common_helpers/model_rules.py, so the two are
+    numbered and ordered alike; every way in which they differ is listed, with its reason, in
+    annotations/rules_model_differences.txt (tests/test_model_rules.py checks the build)."""
 
     def test_same_numbers_in_the_same_order(self):
         guidelines, prompt = list(guideline_rules()), list(prompt_rules())
         self.assertEqual(guidelines, list(range(1, len(guidelines) + 1)), "the guidelines' rules aren't numbered 1, 2, …")
-        self.assertEqual(prompt, guidelines, "a rule is in one copy and not the other, or in another place: give "
-                         "extraction_rules.txt the guidelines' numbering")
-
-    def test_same_titles(self):
-        allowed = {row[0] for row in rules_differences() if row[1] == "title"}
-        prompt = prompt_rules()
-        for number, title in guideline_rules().items():
-            with self.subTest(rule=number):
-                if str(number) not in allowed:
-                    self.assertTrue(prompt.get(number, "").startswith(title),
-                                    f"rule {number}: the guidelines' title is \"{title}\", the model's copy starts "
-                                    f"\"{prompt.get(number)}\"; make them say the same, or list the difference in "
-                                    f"tests/allowed_differences.txt (family rules) with its reason")
-
-    def test_every_model_only_item_is_listed(self):
-        text = RULES_PROMPT.read_text(encoding="utf-8")
-        also = text.split("\nALSO\n", 1)[1]
-        items = [" ".join(i.split()) for i in re.findall(r"^- (.+?)(?=^- |\Z)", also, re.M | re.S)]
-        listed = [row[2] for row in rules_differences() if row[1] == "model-only"]
-        self.assertEqual(len(items), len(listed), "an item was added to or removed from the ALSO section of "
-                         "extraction_rules.txt: list it in tests/allowed_differences.txt (family rules) with its reason")
-        for item, said in zip(items, listed):
-            self.assertTrue(item.startswith(said.rstrip(".")), f"ALSO item \"{item[:60]}\" vs listed \"{said}\"")
-
-    def test_every_difference_is_explained(self):
-        for row in rules_differences():
-            with self.subTest(row=row[:2]):
-                self.assertEqual(len(row), 5, "a rules line of tests/allowed_differences.txt needs 6 tab-separated parts")
-                self.assertIn(row[1], ("title", "content", "model-only"))
-                self.assertTrue(row[3].strip(), "a difference needs its reason")
-                self.assertRegex(row[4], r"^\d{4}-\d{2}-\d{2}$")
+        self.assertEqual(prompt, guidelines, "a rule is in one copy and not the other, or in another place: run "
+                         "`py helpers/build_rules.py`")
 
     def test_rule_numbers_cited_in_prompts_exist(self):
         """A prompt citing "rule N" cites one the two copies have."""

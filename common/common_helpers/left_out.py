@@ -18,6 +18,9 @@ before the first "## " heading is the introduction and isn't read. Each section 
       - <any other sentence>                                   (a note, any number)
 
 rule_ref(item) is the rule an item names, "What counts as a fact, rule 4", or NO_RULE when the Rule line quotes none.
+rule_quote_problems() names every Rule line whose quote isn't the words of the rule it names, as
+annotations/guidelines.md has them now (the quote: what follows "rule <n>: \"", up to the last \" that leaves words of
+the rule; at least three words), so a rule reworded in the guidelines can't leave a stale quote here.
 
 A section is a dict: title, position (int), id, line, intro (the prose), items. An item: line, words, rule,
 may_matter (the text, or ""), question (the text, or ""), questions (the ids in it, "Q6", in order), notes.
@@ -194,3 +197,24 @@ def read_pending(path: Path = PENDING_PATH, left_out_path: Path = LEFT_OUT_PATH)
                 raise ValueError(f"{lo_name}, line {it['line']}: the item {it['words']!r} waits on an expert but has "
                                  f"no row in {name} and no note \"{NO_TRIPLE} <why>\"; add one of the two")
     return rows
+
+
+def rule_quote_problems(path: Path = LEFT_OUT_PATH, guidelines_path: Path | None = None) -> list:
+    """["<file>:<line>: …"]: each Rule line that names a rule of the guidelines ("What counts as a fact, rule 4: \"…")
+    and whose quote isn't that rule's words as they are now (markup aside), or names a rule the guidelines lack."""
+    from common.expert_questions import GUIDELINES_PATH, _plain_md, guideline_rules
+    rules = guideline_rules(guidelines_path or GUIDELINES_PATH)
+    problems = []
+    for n, line in enumerate(read_text(path).split(chr(10)), 1):
+        m = re.match(r'^  - \*\*Rule:\*\* ([^:"]+?), rule (\d+): "(.*)$', line)
+        if not m:
+            continue
+        key, rest = (m.group(1), int(m.group(2))), m.group(3)
+        if key not in rules:
+            problems.append(f"{Path(path).name}:{n}: the guidelines have no rule {key[1]} in a section \"{key[0]}\"")
+            continue
+        ends = [i for i, ch in enumerate(rest) if ch == '"']
+        if not any(len(rest[:e].split()) >= 3 and _plain_md(rest[:e]) in rules[key] for e in ends):
+            problems.append(f"{Path(path).name}:{n}: the quote isn't the words of {key[0]}, rule {key[1]}, as "
+                            f"annotations/guidelines.md has them now: quote them exactly: {rest[:80]}")
+    return problems

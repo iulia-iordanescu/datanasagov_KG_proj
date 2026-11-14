@@ -10,7 +10,7 @@ TASK
 
 Extract the facts the record below states that the schema above can
 express, as subject / predicate / object triples, each with an entity class
-(the kind of thing it is) for the subject and for the object.
+(the type of entity it refers to) for the subject and for the object.
 
 Use only the schema's entity classes and predicates, spelled exactly as
 written, describes_class included, so that every triple can be evaluated

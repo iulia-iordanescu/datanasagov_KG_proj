@@ -140,9 +140,9 @@ In `040_induce_schema/040_induce_schema_prompts/`:
 
 | Prompt file | Sent in | Asks the model to |
 |---|---|---|
-| `extract.txt` | stage 2, one call per [text piece](../docs/terminology.md#1-records-and-their-text) | list every fact the text states as subject, predicate, object, the predicate a short verb phrase in the model's own words (no schema is given), each with its [source text](../docs/terminology.md#1-records-and-their-text); and name the type of thing the title names (`describes_class`) |
+| `extract.txt` | stage 2, one call per [text piece](../docs/terminology.md#1-records-and-their-text) | list every fact the text states as subject, predicate, object, the predicate a short verb phrase in the model's own words (no schema is given), each with its [source text](../docs/terminology.md#1-records-and-their-text); and name the [entity class](../docs/terminology.md#3-schemas) of [the title's instance](../docs/terminology.md#2-triples) (`describes_class`) |
 | `common/common_prompts/extraction_rules.txt` | inside `extract.txt` (`$rules`) | follow the rules shared with 050 and 060 (see `050_annotate/050_annotate.md`, *Prompts*) |
-| `common/common_prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 and 060, without [entity classes](../docs/terminology.md#3-schemas) |
+| `common/common_prompts/extraction_reply.txt` | inside `extract.txt` (`$reply`) | reply in the JSON form shared with 050 and 060, without entity classes |
 | `label_entity_instances.txt` | stage 3, 80 per call | give each [subject instance](../docs/terminology.md#2-triples) or [object instance](../docs/terminology.md#2-triples) a general [label](../docs/terminology.md#5-learning-the-schema-step-040) ("MODIS" → `Instrument`), reusing the labels chosen so far |
 | `label_predicate_instances.txt` | stage 3, 80 per call | give each [predicate instance](../docs/terminology.md#2-triples) a general label ("is aboard" → `ABOARD`), reusing the labels chosen so far |
 | `merge_entity_classes.txt` | stage 4, one call | list the entity class labels that mean the same thing |

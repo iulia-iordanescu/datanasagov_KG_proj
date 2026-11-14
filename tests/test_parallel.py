@@ -66,7 +66,7 @@ JSON_LINE = "Return only JSON, with no prose"
 
 class TheAllowList(unittest.TestCase):
     def test_every_line_is_complete(self):
-        families = {"rules", "prompts", "settings", "model-calls", "parsing"}
+        families = {"prompts", "settings", "model-calls", "parsing"}
         for n, line in enumerate(ALLOWED.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip() or line.startswith("#"):
                 continue
@@ -159,7 +159,7 @@ class FiftyAndSixty(unittest.TestCase):
 
     def test_same_gloss(self):
         for path in (self.T050, self.T060):
-            self.assertIn("each with an entity class (the kind of thing it is) for the subject and for the object",
+            self.assertIn("each with an entity class (the type of entity it refers to) for the subject and for the object",
                           " ".join(path.read_text(encoding="utf-8").split()), path.name)
 
     def test_task_paragraphs_differ_only_as_listed(self):

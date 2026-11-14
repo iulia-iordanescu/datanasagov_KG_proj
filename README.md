@@ -45,7 +45,7 @@ The method is meant to carry over to other catalogs, but these parts still assum
 - the catalog's address is fixed in `010_harvest/010_harvest_helpers/ckan_client.py`, and the harvest uses CKAN's `package_search`;
 - step 020 treats "undefined" as a maintainer (`020_clean/020_clean_helpers/maintainers.py`), and the split into strata needs a maintainer field other catalogs may not fill;
 - step 040's prompts say "a catalog of NASA datasets";
-- rule 1 of the [annotation guidelines](docs/terminology.md#4-ground-truth-and-samples), *Names in a public reference*, gives a name the record doesn't explain its [entity class](docs/terminology.md#3-schemas) from NASA's lists first (the Global Change Master Directory's keywords, or the Planetary Data System's context products), and from Wikidata only when no NASA list names it;
+- rule 1 of the [annotation guidelines](docs/terminology.md#4-ground-truth-and-samples), *A name the record does not explain*, gives a name the record doesn't explain its [entity class](docs/terminology.md#3-schemas) from NASA's lists first (the Global Change Master Directory's keywords, or the Planetary Data System's context products), and from Wikidata only when no NASA list names it;
 - the [ground truth](docs/terminology.md#4-ground-truth-and-samples), the [ground truth schema](docs/terminology.md#3-schemas), the [translation table](docs/terminology.md#7-evaluating-extraction-step-070) and the rules were written for this catalog's records, so another catalog needs a ground truth of its own before it can be evaluated.
 
 ## What's in this repository
