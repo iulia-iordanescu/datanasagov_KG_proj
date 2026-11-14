@@ -31,32 +31,34 @@ WHAT COUNTS AS A FACT
 
 1. Only what the record states. Use no outside knowledge, and don't write
    what an unexplained code or abbreviation stands for, its entity class
-   included: an unexplained code gives no triple whose meaning depends on
-   what it stands for. A code counts as explained only when it follows one
-   of these catalog conventions: "V" or "Version" followed by a number is a
-   version ("V027"); "L" or "Level" followed by a number is a processing
-   level ("L2"). Any other code needs the record's own explanation. The
-   record may be one part of a longer record ("part 1 of 2"); state only
-   what this part states.
-   Names you recognize: if a record names something without stating what it
-   is, you may give it the entity class of its well-known kind, but only
-   when a public reference would confirm that kind: one of NASA's lists (the
-   GCMD keywords for instruments, platforms and providers, or the Planetary
-   Data System's context products) or Wikidata. A title "KX12/Halden Lake
-   Ice L3", whose notes never state what KX12 is, where you know KX12 as an
-   instrument that such a reference lists, gives the record's dataset
-   collected by "KX12" (an instrument). The reference confirms the entity
-   class only: every triple must still be a fact the record states. Never
-   write out what a short name stands for, and add no other fact from your
-   own knowledge. Don't guess the kind from the sentence's verb ("observed
-   by", "onboard"). If you aren't sure that such a reference would confirm
-   the kind, leave the name out. One kind of name needs no reference: a name
-   in the form of a personal name, one or more given names or initials
-   followed by a surname ("R.T. Okafor"), is a person by its form. A name
-   whose own words say what kind of thing it is ("Halden Lake Ice
-   Radiometer", "Lake Mapping Group") is explained by the record's own
-   words, since the kind word inside the name is the record's own word,
-   when that word fits the definition of exactly one entity class.
+   included (unless the part "A name the record does not explain" below
+   gives it one): an unexplained code gives no triple whose meaning depends
+   on what it stands for. A code counts as explained only when it follows
+   one of these catalog conventions: "V" or "Version" followed by a number
+   is a version ("V027"); "L" or "Level" followed by a number is a
+   processing level ("L2"). Any other code needs the record's own
+   explanation. The record may be one part of a longer record ("part 1 of
+   2"); state only what this part states.
+   A name the record does not explain: when the record never states what a
+   name refers to, you may give the name an entity class from your own
+   knowledge only when you are certain which entity class it belongs to. A
+   title "KX12/Halden Lake Ice L3", whose notes never state what KX12 is,
+   where you know KX12 as an instrument, gives the record's dataset
+   collected by "KX12" (an instrument). Your knowledge gives the entity
+   class only: every triple must still be a fact the record states. When the
+   record does not give the long form of an abbreviation or code, never
+   write the long form from your own knowledge. Never choose an entity class
+   from the verb that joins the name to another instance ("observed by",
+   "onboard"). When you are not certain of a name's entity class, write no
+   triple whose meaning depends on what the name refers to. The name may
+   still stay inside a longer instance, as "QX7" stays in "QX7 Wide Field
+   Camera". A name needs no outside knowledge in two cases. A name in the
+   form of a personal name, one or more given names or initials followed by
+   a surname ("R.T. Okafor"), is a person by its form. A name that contains
+   a word saying what the thing is ("Radiometer" in "Halden Lake Ice
+   Radiometer", "Group" in "Lake Mapping Group") is explained by the
+   record's own words when that word fits the definition of exactly one
+   entity class, since the word is the record's own.
    A fact the record does not state in one passage may be written when the
    record's own statements meet one of these three tests:
    - Replacement: the record states that an older version is discontinued or
@@ -65,10 +67,10 @@ WHAT COUNTS AS A FACT
      use Version 4." gives "Version 4" replacing "Version 3").
    - Comparison: the record states that one named thing is lower, higher,
      better (or any other comparison) without stating than what, and names
-     exactly two things of that kind together; then the other of the two is
-     what the first is compared with ("Two products are made, Q1 and Q2. Q2
-     has lower noise." gives Q2 lower noise than Q1). With three or more, no
-     fact.
+     exactly two things of the same type together; then the other of the two
+     is what the first is compared with ("Two products are made, Q1 and Q2.
+     Q2 has lower noise." gives Q2 lower noise than Q1). With three or more,
+     no fact.
    - Membership by name: the title or an identifier of the record's dataset
      contains the name of a group of datasets the record describes; then the
      record's dataset is a member, and a statement about the group is
@@ -101,10 +103,11 @@ WHAT COUNTS AS A FACT
    organization.
    Rule 1 decides what a name's words state, as it does for all other words.
    A word of a name that the record leaves unexplained, and that rule 1
-   gives no entity class (names you recognize), gives no triple: "taken by
-   the QX7 Wide Field Camera", in a record that never states what QX7 is,
-   where you don't know QX7 either, gives no triple with "QX7" as a subject
-   or object. A word of a name that names another thing, with no words that
+   gives no entity class (a name the record does not explain), gives no
+   triple: "taken by the QX7 Wide Field Camera", in a record that never
+   states what QX7 is, where you don't know QX7 either, gives no triple with
+   "QX7" as a subject or object. A word of a name that names another thing,
+   with no words that
    say how the two things are related, states a fact only when the naming
    itself states one. The test asks which predicate the name states. The
    predicate must be one that the naming itself states, which the entity
@@ -145,13 +148,13 @@ WHAT COUNTS AS A FACT
    its name: $field_names. The field names are formatting, not facts. A
    heading inside a field, a line of its own that only names the passage
    below it ("Data Access"), is formatting too, and gives no triple.
-4. Not "is a" facts. "Kestrel is an imager" says what kind of thing Kestrel
+4. Not "is a" facts. "Kestrel is an imager" says what type of thing Kestrel
    is, which its entity class says; it gives no triple. A sentence that
    names one specific role is a fact: "X is the official ... archive for Y"
    gives a triple.
-   A phrase that says what kind a thing is and also names another thing it
-   belongs to states two facts (rule 15): the kind is left out, and the
-   belonging is a triple. "Chosen as a Halden Survey Pathfinder Project,
+   A phrase that says what type of thing something is and also names another
+   thing it belongs to states two facts (rule 15): the type is left out, and
+   the belonging is a triple. "Chosen as a Halden Survey Pathfinder Project,
    TERN was built to ..." gives "TERN" part of "Halden Survey", and no
    triple for "Pathfinder Project".
 5. Not opinions. Take out words such as "great".
@@ -359,10 +362,11 @@ WRITING A TRIPLE
     instrument's subject or object follows rule 23 (the wording the record
     uses for the instrument alone, when it does; the whole name when it
     never does, rule 11). 1. The platform must be one by the record's words
-    or by rule 1 (names you recognize). 2. A title's words are a list of
-    facts of the record's dataset, not a name ("Kestrel/Halden", "Kestrel
-    Halden"): collected by the instrument and from the platform, and no
-    aboard (a title's facts). 3. A "/" or "+" between the two names, in the
+    or by rule 1 (a name the record does not explain). 2. A title's words
+    are a list of facts of the record's dataset, not a name
+    ("Kestrel/Halden", "Kestrel Halden"): collected by the instrument and
+    from the platform, and no aboard (a title's facts). 3. A "/" or "+"
+    between the two names, in the
     title or the notes, is decided by rule 22 (a list joined by "/" or "+"),
     which never reads it as a name: no aboard. 4. The
     instrument's name first and the platform's after it ("Kestrel Halden
@@ -375,13 +379,13 @@ WRITING A TRIPLE
     An instrument in a channel's name: in the notes, a channel whose words
     begin with an instrument's name states that the channel is one of the
     instrument's channels, with the channel's words as source_text (a
-    name's facts); the
-    channel stays whole (rule 11), and the instrument's subject or object
-    follows rule 23. The instrument must be one by the record's words or by
-    rule 1 (names you recognize). A title's words are a list of facts of
-    the record's dataset, not a name (a title's facts): no channel of an
-    instrument from a title. "the ice thickness parameter for Kestrel band
-    K4 (0.6 μm)", in a record that names "Kestrel Lake Ice Radiometer
+    name's facts); the channel stays whole (rule 11), and the instrument's
+    subject or object follows rule 23. The instrument must be one by the
+    record's words or by rule 1 (a name the record does not explain). A
+    title's words are a list of facts of the record's dataset, not a name (a
+    title's facts): no channel of an instrument from a title. "the ice
+    thickness parameter for Kestrel band K4 (0.6 μm)", in a record that
+    names "Kestrel Lake Ice Radiometer
     (Kestrel)", gives "Kestrel band K4 (0.6 μm)" a channel of "Kestrel Lake
     Ice Radiometer (Kestrel)", with the source_text "Kestrel Lake Ice
     Radiometer (Kestrel) … Kestrel band K4 (0.6 μm)": the channel's words,
@@ -766,7 +770,7 @@ WRITING A TRIPLE
     something was done to the data ("corrected", "calibrated", "detrended",
     "binned", "mapped", "edited", "convert", "weighted") names no method: it
     gives no "produced using" triple, and stays in the subject or object, as
-    written (rule 19: any other kind). A fact of another kind that such a
+    written (rule 19: any other kind). Another fact that such a
     word states (the form of the data, their grid) is still a triple (rule
     2). 3. A noun for a statistic that names a stored
     field, not how the output was made ("given as a mean and three

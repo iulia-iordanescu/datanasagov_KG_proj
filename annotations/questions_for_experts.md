@@ -218,7 +218,7 @@ NASA's own lists call Aqua "a NASA Earth Science satellite mission", one entry f
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -1446,7 +1446,7 @@ Records write how far their data have been processed, the processing level, in m
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -1665,7 +1665,7 @@ Checked on 2026-10-31, the old (c): each of the four words refers to a named, do
 - predicate UNIQUE_TO_INSTRUMENT: is found only on this Instrument
 - entity class Wavelength -> Channel: A wavelength band or spectral range, such as an infrared filter band, in which observations are made.
 - predicate DERIVED_FROM -> COMPUTED_FROM: The subject (a data product, quantity, value or format) is computed from or based on the object, a source measurement, signal, input data or prior standard.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 22: A list: one ground truth triple per item. Apply rule 19 first. Then write one ground truth triple per item of the list, in which that item alone takes the list's place (the subject or the object), with the words the items share copied onto the item. Each such ground truth triple names one item, so shared words that agree with the number of items are put in the singular, to agree with one item ("channels" → "channel"; "are" → "is"); an item's own words stay as written ("oceans"). An item that names no specific thing ("his team") gives no ground truth triple (rule 9 of What counts as a fact: "Not a fact without a specific thing"). Suppose: a record says the SST is "derived from the long wave IR 11 and 12 micron wavelength channels". Then: two ground truth triples, with the objects "long wave IR 11 micron wavelength channel" and "long wave IR 12 micron wavelength channel".
 - Writing a classed triple, rule 24: A processing step: output = method(input). For each processing step the record describes, find what it made (the output), what it was made from (the input), and how (the method). Each step gives up to two ground truth triples, each written only if the record names both of its ends
 
@@ -1835,8 +1835,8 @@ Checked on 2026-10-31, the old (a), in NASA's metadata: CMR lists "NASA/JPL/PODA
 - entity class Facility -> Organization: A physical site, base, space center or installation, or the organization operating it, where research, launches or observations are carried out.
 - entity class Location -> (none): A named geographic, terrestrial, or celestial place or region, such as a research station, sky field, or facility, where observations or activities occur.
 - predicate LOCATED_IN -> BASED_IN: The subject (a facility, site, observation or item) is situated at or in the object, a geographic place, region or physical setting.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
-- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what kind of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a kind of thing.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 4: Not "is a" facts. "MODIS is a spectroradiometer" says what type of thing MODIS is: that belongs in its entity class, not in a classed triple of its own. A sentence that names one specific role is not an "is a" fact, though: Suppose: a record says "JPL is the official Physical Oceanography Data Archive (PO.DAAC) for SST". Then: a ground truth triple, because it names a role only JPL holds, not a type of thing.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 - Writing a classed triple, rule 19: A qualifier that is a temporal resolution, an area the data cover, a processing level, a spatial resolution, a country, a time of day, or a target body is a ground truth triple of its own, and is taken out of the instance.
 
@@ -2199,7 +2199,7 @@ Checked on 2026-10-31, against part of the reason for Technique (docs/improvemen
 - entity class Method -> Algorithm: A technique, procedure, operating mode, or analytical approach used to acquire, transmit, or analyze data.
 - entity class Topic -> Discipline: A subject area or theme, such as agriculture, AGN, or ecosystem interaction, that a dataset or study addresses.
 - predicate HAS_DISCIPLINE -> HAS_DISCIPLINE: The subject (a set of observations or data) belongs to the object, a scientific discipline or category.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 11: Subject instance and object instance: the record's own words, as written.
 - Writing a classed triple, rule 14: Entity classes and predicates: the ground truth schema's, when one fits, so records name the same things the same way.
 
@@ -3030,7 +3030,7 @@ We write only what a record states (rule 1 of *What counts as a fact*, quoted be
 
 ### Annotation guidelines
 
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 
 ### Options
 
@@ -3157,7 +3157,7 @@ Settled on 2026-10-31: SST4 is a skin SST, as the OBPG's SST4 document says ("Th
 ### Quoted for us
 
 - predicate MORE_ACCURATE_THAN -> HAS_LOWER_UNCERTAINTY_THAN: Links a measurement method or instrument to another method that it outperforms in accuracy.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - What counts as a fact, rule 7: Not facts the record doesn't assert as true: uncertain ones, and ones it requires, requests or recommends.
 - Writing a classed triple, rule 23: One thing, one wording, within a record. When a record names the same thing more than once, in different words, use the wording the first of the four tests below picks, in every ground truth triple; the other wordings appear only in an ALSO_KNOWN_AS triple, and only if the record states one (rule 20). 1. The wording that says more: it contains the other's words, each as a whole word, is more precise, or spells out the other's abbreviation.
 
@@ -3423,7 +3423,7 @@ Changed on 2026-11-01: the record "OPERA Dynamic Surface Water Extent from Senti
 - predicate ALSO_KNOWN_AS: is the same thing under another name
 - predicate HAS_LATENCY -> HAS_LATENCY: The subject (a data product or table) is made available or updated with the object, a latency or update delay.
 - predicate HAS_IDENTIFIER -> HAS_IDENTIFIER: The subject (a dataset, data series or document) is indexed by, or refers to items using, the object, which is a key, label or designator such as a prime key or detector name.
-- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included: an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
+- What counts as a fact, rule 1: Only what the record states. Never add what you know from elsewhere, and never write down what an unexplained code or abbreviation stands for, its entity class included (unless *Names in a public reference* below gives it one): an unexplained code gives no ground truth triple whose meaning depends on what it stands for.
 - Writing a classed triple, rule 20: A name with its own abbreviation, another name or code of its own, or a short note in parentheses is one instance, as written.
 - Writing a classed triple, rule 21: General facts: include them; about another dataset, only when the record links it to the record's dataset by "part of" or "made from".
 - Writing a classed triple, rule 21: Another dataset. Include facts about another dataset when the record states a chain of "part of" or "made from" links that connects it to the record's dataset: its parts, what it is part of, what it is made from, and so on through further datasets or variables the record names. Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it. In every case, include the connection the record states (rule 1 of What counts as a fact: only what the record states).
