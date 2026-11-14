@@ -37,6 +37,8 @@ import re
 import textwrap
 from pathlib import Path
 
+from common.files import read_text, write_text
+
 ROOT = Path(__file__).resolve().parents[2]
 GUIDELINES = ROOT / "annotations" / "guidelines.md"
 DIFFERENCES = ROOT / "annotations" / "rules_model_differences.txt"
@@ -166,9 +168,9 @@ def _wrap(text: str, first: str, rest: str) -> list:
 
 
 def build(guidelines_path: Path = GUIDELINES, differences_path: Path = DIFFERENCES, schema_path: Path = SCHEMA) -> str:
-    items = [dict(i, text=plain(i["text"]).replace("$", "$$")) for i in _items(guidelines_path.read_text(encoding="utf-8"))
+    items = [dict(i, text=plain(i["text"]).replace("$", "$$")) for i in _items(read_text(guidelines_path))
              if not i["example"]]
-    entries = read_differences(differences_path.read_text(encoding="utf-8"))
+    entries = read_differences(read_text(differences_path))
     where = lambda e: f"{DIFFERENCES.name}:{e['line']} ({e['kind']} | {e['where']})"
     for e in [e for e in entries if e["kind"] == "replace"]:
         if "=>" not in [l.strip() for l in e["body"]]:
@@ -251,7 +253,7 @@ def build(guidelines_path: Path = GUIDELINES, differences_path: Path = DIFFERENC
 
 def write_model_copy() -> bool:
     text = build()
-    if MODEL_COPY.exists() and MODEL_COPY.read_text(encoding="utf-8") == text:
+    if MODEL_COPY.exists() and read_text(MODEL_COPY) == text:
         return False
-    MODEL_COPY.write_text(text, encoding="utf-8", newline="\n")
+    write_text(MODEL_COPY, text)
     return True

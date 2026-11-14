@@ -606,7 +606,7 @@ Checked on 2026-10-31, the notes left for us above. The old (h): the emissivitie
 
 - entity class Algorithm: a method applied to data to compute a result, e.g. series of screens; modified nonlinear SST algorithm
 - entity class SpatialExtent: an area the data cover, of the CelestialBody they are about: all of it (global) or part of it (e.g. Arctic; south pole of Mars; a country, when the data cover it)
-- entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
+- entity class CelestialBody: a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
 - predicate COMPUTED_FROM: was made by processing this input
 - predicate PRODUCED_USING_ALGORITHM: was made or detected by applying this Algorithm
 - predicate HAS_SPATIAL_COVERAGE: covers this SpatialExtent
@@ -2015,7 +2015,7 @@ Withdrawn on 2026-10-31: settled, so it is no longer asked of the experts; kept 
 
 ### Quoted for us
 
-- entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
+- entity class CelestialBody: a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - entity class Mission: a named effort to collect data, from space, from the air, on water or on the ground, e.g. Rosetta; BARREL
 - entity class Platform: a craft or station that carries Instruments, in space, in the air, on water or on the ground: a spacecraft, an aircraft, a balloon, a ship or a ground station, e.g. Aqua; Voyager 1
@@ -2332,7 +2332,7 @@ Checked on 2026-10-31, for the expert's (b) (the research of 2026-10-31 on NASA'
 ### Quoted for us
 
 - entity class PhysicalQuantity: a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
-- entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
+- entity class CelestialBody: a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_MEASUREMENTS_OF: holds measurements of this PhysicalQuantity
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - entity class SpatialCoverage -> SpatialExtent: The geographic or sky extent covered by a dataset or observation, such as global, a swath width, or a number of square degrees or areas.
@@ -2483,7 +2483,7 @@ The question's context, as it was: The example below is the one whose input, "ra
 
 The options and current reading as they were worded before 2026-10-26: option 1, "Every input named in a record is a Dataset, in the record's words, with the facts the record states about it; the model's Catalog, Database and DataProduct all mean Dataset."; option 3, "Keep each input as a Dataset, but write nothing else about an input that is another dataset of the catalog (its instrument, its processing level). Rule 21 of *Writing a classed triple* now keeps such facts, so it would change."; option 4, "When a record names an archive, a database or a source catalog that holds many datasets, the ground truth schema gets an entity class for it, and the model's Database (and Catalog, if your answer to (d) is no) means it."; current reading, "Option 1, for now: it writes what each record states, as rule 21 of *Writing a classed triple* now does for an input, and every collection of data in the records we have read so far is one set of measurements. Your answers decide whether (a) needs option 2, whether (c) needs option 3, and whether (d) and (e) need option 4."
 
-Checked on 2026-10-31, the doubt left for us on "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets: the CDS, which keeps them, says "Each catalogue available at CDS is made of several files stored in a directory", and a J catalogue's "designation maps the reference of the published paper" (CDS, *Standard for Documentation of Astronomical Catalogues*, version 2.0, chapter 2, read through the NAO mirror, http://vizier.nao.ac.jp/doc/catstd-2.htx); the catalogue's ReadMe lists "table1.dat" as the "XMM-Newton sample" (412 rows) and "table2.dat" as the "Swift sample" (http://vizier.nao.ac.jp/ftp/cats/J/A+A/536/A84/ReadMe). So "table1.dat" PART_OF "CDS Catalog J/A+A/536/A84", both Datasets, stands, and the record's "Swift (the latter is not included in this table, notice)" is table2.dat. The doubt about "active galactic nuclei (AGN)" as a target is settled by CelestialBody's definition, "a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei".
+Checked on 2026-10-31, the doubt left for us on "table1.dat" and "CDS Catalog J/A+A/536/A84" as Datasets: the CDS, which keeps them, says "Each catalogue available at CDS is made of several files stored in a directory", and a J catalogue's "designation maps the reference of the published paper" (CDS, *Standard for Documentation of Astronomical Catalogues*, version 2.0, chapter 2, read through the NAO mirror, http://vizier.nao.ac.jp/doc/catstd-2.htx); the catalogue's ReadMe lists "table1.dat" as the "XMM-Newton sample" (412 rows) and "table2.dat" as the "Swift sample" (http://vizier.nao.ac.jp/ftp/cats/J/A+A/536/A84/ReadMe). So "table1.dat" PART_OF "CDS Catalog J/A+A/536/A84", both Datasets, stands, and the record's "Swift (the latter is not included in this table, notice)" is table2.dat. The doubt about "active galactic nuclei (AGN)" as a target is settled by CelestialBody's definition, "a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei".
 
 Checked on 2026-10-31, for the expert's (c), the astronomy half: a source catalog is data, rows of measured properties of objects in files, issued in releases by one agent: "A new incremental version (2XMMi-DR3) of the second XMM-Newton EPIC Serendipitous Source Catalogue, 2XMM, is being released … FITS and CSV versions of the full 2XMMi-DR3 catalogue" (XMM-Newton News #106, https://heasarc.gsfc.nasa.gov/mail_archive/xmmnews/msg00191.html). That fits W3C DCAT's dataset, "A collection of data, published or curated by a single agent, and available for access or download in one or more representations", not its catalog, "A curated collection of metadata about resources" (https://www.w3.org/TR/vocab-dcat-3/): the word "catalog" means different things in the two fields (my reading). So option 1 holds for source catalogs. For an archive of datasets the standards split: DCAT makes dcat:Catalog a kind of dcat:Dataset, while schema.org keeps DataCatalog, "A collection of datasets", apart from Dataset (https://schema.org/DataCatalog); both give it a class of its own, so option 4 has two standard models if a record names one. The expert's (c) stays for that half.
 
@@ -4526,7 +4526,7 @@ Corrected on 2026-10-31 (the research of that day): the table's second row said,
 
 ### Quoted for us
 
-- entity class CelestialBody: a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
+- entity class CelestialBody: a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
 - predicate HAS_TARGET: is about, or studies, this CelestialBody
 - predicate DEVELOPED_BY_PARTY: was built or created by this Person or Organization
 - predicate HAS_MISSION_PHASE: was collected during this MissionPhase

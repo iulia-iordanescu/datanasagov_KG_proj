@@ -42,7 +42,7 @@ Time              a point or period on the calendar, which happens once, e.g. Ma
                   rule 19: describing
 PhysicalQuantity  a bare property that can be measured, whatever method measures it, e.g. temperature; gravity; sea surface temperature; snow cover; not a form the data take, such as images, image cubes, spectra or maps (a SpatialRepresentation)
                   rule 19: describing
-CelestialBody     a natural object in space, or a kind of such objects, e.g. Vesta; active galactic nuclei
+CelestialBody     a natural object in space, or a type of such objects, e.g. Vesta; active galactic nuclei
                   rule 19: standalone
 Version           a label that marks one release of something
                   rule 19: describing
