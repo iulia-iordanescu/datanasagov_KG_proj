@@ -372,7 +372,6 @@ Every record has one [classed triple](../docs/terminology.md#2-triples) that no 
 - "Aqua" (Platform) LAUNCHED_ON "May 4, 2002" (Time): rules 12, 15, 21.
 - "Aqua" (Platform) HAS_ORBIT "sun synchronous, polar orbit with a daylight ascending node at 13:30" (Orbit): rules 12, 15, 21, 22, 23.
 - "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation): rules 12, 15, 21.
-- "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation): rules 12, 15, 20, 21.
 - "Earth Observation Satellites (EOS)" (SatelliteFormation) HAS_TARGET "Earth" (CelestialBody): rules 1, 12, 19, 20, 21.
 - "Aqua" (Platform) HAS_TARGET "Earth" (CelestialBody): rules 1, 12, 19, 21.
 - "Aqua" (Platform) HAS_PURPOSE "study the global dynamics of the atmosphere" (Purpose): rules 12, 19, 21, 22.

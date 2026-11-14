@@ -72,7 +72,7 @@ One section per record I have annotated, in [pool](../docs/terminology.md#4-grou
 
 ## "MODIS Aqua Level 3 SST MID-IR 8 Day 4km Nighttime V2019.0" (pool position 4, id 03a09af3-081e-4db6-9e3b-ea7c0e3138bd)
 
-The dense record: its notes describe a whole family of products (several temporal resolutions, two spatial resolutions, day and night, two kinds of temperature) and the title names the one this record is. 15 items, 9 that may matter. The product family as a whole is asked in Q24.
+The dense record: its notes describe a whole family of products (several temporal resolutions, two spatial resolutions, day and night, two kinds of temperature) and the title names the one this record is. 16 items, 9 that may matter. The product family as a whole is asked in Q24.
 
 - **Left out:** "Day" (notes, "Day and night spatially gridded (L3) global NASA skin sea surface temperature (SST) products")
   - **Rule:** Writing a classed triple, rule 21: "Leave out facts about other datasets, such as a variant of the record's dataset (the same data at another temporal resolution, spatial resolution, or version), or a product made from it." The title says "Nighttime", so the dataset is the night one; the day products are the family's.
@@ -126,6 +126,8 @@ The dense record: its notes describe a whole family of products (several tempora
 - **Left out:** what "Earth" is (notes, "Earth Observation Satellites (EOS)" and the purposes of Aqua)
   - **Rule:** What counts as a fact, rule 1: "never write down what an unexplained code or abbreviation stands for, its entity class included". The record never says what Earth is. Its entity class, CelestialBody, is written (HAS_TARGET "Earth"), by rule 1's *Names in a public reference*.
   - The reference: PDS4 context product urn:nasa:pds:context:target:planet.earth, "Earth", of type Planet (https://pds.nasa.gov/data/pds4/context-pds4/target/planet.earth_1.1.xml, checked on 2026-11-12).
+- **Left out:** that Aqua is one of the Earth Observation Satellites (EOS) (notes, "formation flying in the A-train with other Earth Observation Satellites (EOS)")
+  - **Rule:** What counts as a fact, rule 4: "says what kind of thing MODIS is: that belongs in its entity class". "other Earth Observation Satellites (EOS)" says that Aqua is one of them, which is what kind of thing Aqua is. The record does not say that the satellites fly as a formation named EOS, so "Aqua" FLIES_IN "Earth Observation Satellites (EOS)" was deleted on 2026-11-13, after the last audits found it. Whether such a membership gives a ground truth triple is an open case.
 
 ## "DAWN GRAND MAP VESTA FAST NEUTRON RESIDUAL V1.0" (pool position 5, id 99dff022-24ac-48cb-bc83-09fec8b90ad7)
 

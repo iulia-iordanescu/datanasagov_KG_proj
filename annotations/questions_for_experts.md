@@ -374,7 +374,6 @@ Checked again on 2026-10-31, the old (c) above, against GCMD and CMR: GCMD's Pla
 - classed triple of the record at pool position 12: "Ensemble X-Ray Variability of AGN in 2XMMi-DR3" (Dataset) FROM_PLATFORM "XMM-Newton" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
-- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - classed triple of the record at pool position 19: "BARREL 4G Rate Counter (RCNT) NaI Scintillator Diagnostics, Level 2, 4 s Data" (Dataset) FROM_MISSION "BARREL" (Mission)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_PURPOSE "study electron losses from Radiation Belts" (Purpose)
 - classed triple of the record at pool position 19: "BARREL" (Mission) HAS_TARGET "Earth" (CelestialBody)
@@ -1017,7 +1016,6 @@ Checked on 2026-10-31, the old (c): neither of NASA's vocabularies makes a field
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_MISSION_PHASE "COMET ESCORT 3" (MissionPhase)
 - classed triple of the record at pool position 13: "COMET ESCORT 3" (MissionPhase) HAS_TARGET "67P/Churyumov-Gerasimenko 1 (1969 R1)" (CelestialBody)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "OSIRIS Narrow Angle Camera" (Instrument)
-- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - classed triple of the record at pool position 16: "Plasma Wave Spectrometer (PWS)" (Instrument) ABOARD "Voyager 1" (Platform)
 - classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) FROM_PLATFORM "Voyager 1" (Platform)
 - classed triple of the record at pool position 18: "VIIRS/NPP BRDF/Albedo Parameter 3 Band M4 Daily L3 Global 30 ArcSec CMG V002" (Dataset) FROM_PLATFORM "NASA/NOAA Suomi National Polar-orbiting Partnership (Suomi NPP)" (Platform)
@@ -3679,7 +3677,6 @@ Checked on 2026-10-31, for (a) and (b): no one NASA list covers the catalog. GCM
 - classed triple of the record at pool position 13: "OSIRIS Narrow Angle Camera" (Instrument) ABOARD "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) FROM_PLATFORM "ROSETTA-ORBITER" (Platform)
 - classed triple of the record at pool position 13: "ROSETTA-ORBITER 67P OSINAC 4 ESC3-MTP020 RDR-INFLDSTR V1.0" (Dataset) HAS_SPATIAL_REPRESENTATION "solar stray-light corrected, in-field stray-light corrected, radiometric calibrated and geometric distortion corrected (resampled) image data" (SpatialRepresentation)
-- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - classed triple of the record at pool position 1: "ROSETTA-ORBITER 67P RSI 1/2/3 COMET ESCORT 4 1149 V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "RSI" (Instrument)
 - classed triple of the record at pool position 16: "VG1 J/S/SS PWS EDITED SPECTRUM ANALYZER FULL RES V1.0" (Dataset) ACQUIRED_BY_INSTRUMENT "PWS spectrum analyzer" (Instrument)
 - classed triple of the record at pool position 16: "PWS spectrum analyzer" (Instrument) PART_OF "Plasma Wave Spectrometer (PWS)" (Instrument)
@@ -4061,7 +4058,6 @@ Withdrawn on 2026-10-31: settled from the field's practice, so it is no longer a
 
 - record at pool position 4: 03a09af3-081e-4db6-9e3b-ea7c0e3138bd
 - classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "A-train" (SatelliteFormation)
-- classed triple of the record at pool position 4: "Aqua" (Platform) FLIES_IN "Earth Observation Satellites (EOS)" (SatelliteFormation)
 - classed triple of the record at pool position 4: "Earth Observation Satellites (EOS)" (SatelliteFormation) HAS_TARGET "Earth" (CelestialBody)
 - ground truth schema entry: entity class SatelliteFormation
 - ground truth schema entry: predicate FLIES_IN
