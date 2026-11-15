@@ -27,10 +27,11 @@ row in the pool file, so a dropped candidate changes no one's part.
 Both lists are ordered so that their first records are always a fair random
 sample: the pool was shuffled when it was drawn, and each maintainer's
 induction candidates are shuffled here. Later steps take from the top: 050
-annotates the pool in order; 040 learns the schema from the first
-texts_per_maintainer induction candidates of each of its largest maintainers.
-Taking more later (more texts, or more maintainers) keeps the records already
-taken, so model calls already paid for stay valid.
+annotates the pool in order; 040 learns the schema from texts_per_stratum
+induction candidates of each stratum of the pool, a maintainer's own stratum
+taken in this order (040_induce_schema/040_induce_schema_helpers/texts.py).
+Taking more later keeps the records already taken, so model calls already
+paid for stay valid.
 
 splits.json, shortened:
 
@@ -305,8 +306,8 @@ def results(pool: Candidates, induction: Induction, records: dict, inputs: dict,
     lines += ["",
               "### Induction candidates", "",
               "Every maintainer's records that the schema may be learned from, each maintainer's "
-              "in a fixed random order. 040 takes the first `texts_per_maintainer` of each of its "
-              "`induction_maintainers` largest maintainers.", "",
+              "in a fixed random order. 040 takes `texts_per_stratum` of them from each stratum of the ground truth "
+              "candidates pool, each maintainer's own stratum in this order.", "",
               "| | |", "|---|---:|",
               f"| Records | {total:,} |",
               f"| Left out: ground truth candidates | {induction.in_pool:,} |",

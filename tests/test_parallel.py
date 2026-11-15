@@ -196,6 +196,73 @@ SHARED_SETTINGS = ("max_chars", "workers", "service", "model", "thinking", "repe
 STEP_DIRS = {"040": "040_induce_schema", "050": "050_annotate", "060": "060_extract", "070": "070_evaluate"}
 
 
+class Forty(unittest.TestCase):
+    """040's stage 2 asks as 060 does, except where its task requires otherwise (no schema is given, so no SCHEMA
+    section and no worked examples: tests/allowed_differences.txt, family prompts, member 040, kind layout)."""
+    T040 = ROOT / "040_induce_schema" / "040_induce_schema_prompts" / "extract.txt"
+    REQUIRED = ("SCHEMA", "$schema", "$examples")          # what 040's task leaves out of 060's layout
+
+    def test_layout_is_060s_without_the_schema(self):
+        a = sections(self.T040.read_text(encoding="utf-8"))
+        b = [s for s in sections(FiftyAndSixty.T060.read_text(encoding="utf-8")) if s not in self.REQUIRED]
+        self.assertEqual(a, b)
+        self.assertTrue(is_allowed("prompts", "040", "layout"), "040's layout differs from 060's by the schema and "
+                        "the worked examples: list it in tests/allowed_differences.txt (family prompts, kind layout)")
+
+
+class Words(unittest.TestCase):
+    """The prompts of 040 (but stage 2, which carries the shared rules) and 070 define every term they use, from one
+    file (common/common_prompts/words.txt), worded as the extraction rules word it when the rules define it too; and
+    they use no plain-sense "thing" or "kind" (docs/terminology.md: kind is entity class or predicate)."""
+    RULES = COMMON_PROMPTS / "extraction_rules.txt"
+
+    def prompts(self):
+        return [p for p in step_prompts() if member_of(p) in ("040", "070") and p.name != "extract.txt"]
+
+    def test_every_prompt_has_the_words(self):
+        for path in self.prompts():
+            with self.subTest(prompt=path.name):
+                self.assertIn("$words", path.read_text(encoding="utf-8"))
+
+    def test_worded_as_the_rules(self):
+        rules = " ".join(self.RULES.read_text(encoding="utf-8").split())
+        # the rules' references to other rules, which a prompt without the rules can't follow, are left out
+        rules = re.sub(r"as rule \d+ \([^)]*\)(?: and rule \d+ \([^)]*\))? write them, ", "", rules)
+        shared = 0
+        for terms, entry in prompt_files._entries():
+            if f"- {entry[2:].split('. ', 1)[0]}." not in rules:
+                continue                                    # a term the rules don't define (record, label, ...)
+            shared += 1
+            body = " ".join(entry.split()).split(". ", 1)[1]
+            for sentence in re.split(r"(?<=\.) ", body):
+                with self.subTest(term=terms[0], sentence=sentence[:40]):
+                    self.assertIn(sentence, rules)
+        self.assertGreaterEqual(shared, 6)
+
+    def test_every_term_defined_and_no_more(self):
+        """A prompt gets the entry of each term it uses, and of each term those entries use; near miss: a term only
+        inside another word ("labeled" is not "label"; "kindly" is not "kind") brings nothing."""
+        words = prompt_files.words_for("Give each predicate instance a label. $words")
+        for term in ("Predicate instance.", "Label.", "Entity.", "Instance, subject instance", "Triple.", "Record."):
+            self.assertIn(f"- {term}", words)
+        self.assertNotIn("- Schema.", words)
+        self.assertNotIn("- Component class", prompt_files.words_for("relabeled, kindly"))
+        for path in self.prompts():
+            text = path.read_text(encoding="utf-8")
+            for terms, entry in prompt_files._entries():
+                if any(prompt_files._uses(text.replace("$words", ""), t) for t in terms):
+                    with self.subTest(prompt=path.name, term=terms[0]):
+                        self.assertIn(entry, prompt_files.words_for(text))
+
+    def test_no_plain_thing_or_kind(self):
+        for path in self.prompts() + [Forty.T040, prompt_files.WORDS]:
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(prompt=path.name):
+                self.assertNotRegex(text, r"\bthings?\b")                   # "Thing" quoted as a label is a name
+                if member_of(path) != "070" and path != prompt_files.WORDS:
+                    self.assertNotRegex(text, r"(?i)\bkinds?\b")
+
+
 class Settings(unittest.TestCase):
     """The settings the model-calling steps share have the same default and the same comment as 060's, unless the
     difference is listed (family settings)."""
@@ -286,9 +353,10 @@ class Parsing(unittest.TestCase):
 
     def test_duplicates_differ_as_listed(self):
         from common.triples_io import triple_key
+        extract040 = step_module("040_induce_schema", "extract")
         a = {"subject": "MODIS", "predicate": "IS ABOARD", "object": "Aqua"}
         b = {"subject": "modis", "predicate": "IS ABOARD", "object": "aqua"}
-        same_for_040 = tuple(a.values()) == tuple(b.values())
+        same_for_040 = extract040.same_fact(a) == extract040.same_fact(b)
         same_for_050_060 = triple_key({**a, "subject_class": "X", "object_class": "Y"}) == \
             triple_key({**b, "subject_class": "X", "object_class": "Y"})
         differs = same_for_040 != same_for_050_060

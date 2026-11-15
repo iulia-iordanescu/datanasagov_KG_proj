@@ -16,10 +16,20 @@ batches (`Instrument` in one, `Sensor` in another). The most common
 component instances (found in the most texts) go first, so the main labels
 are set early and later batches reuse them.
 
-Each component instance is judged by one usage example: the shortest
-triple instance it appears in. One the model leaves unlabeled is asked once
-more; if it is still unlabeled it is listed, and it counts toward no schema
-entry.
+Each component instance is judged by one usage example, the shortest
+triple instance it appears in, sent with that triple instance's source text
+(the passage of the record that states it, which stage 2 keeps). A triple
+instance alone may not say what a thing is: "Dawn" -- "carries" -- "GRaND"
+fits a mission and a spacecraft, while its source text, "the GRaND
+instrument aboard the Dawn spacecraft", says which. The idea is TRACE-KG's
+(Abolhasani, Ba, He & Pan, "Traceable Context-Enriched Knowledge Graph
+Generation with Induced Schemas", arXiv:2604.03496v3), whose prompt for
+entity classes gives the model context for each thing as its "PRIMARY
+evidence for meaning" (TKG_Prompts.py, line 419); there the context is the
+model's own words, here the record's. Predicate instances are sent the same
+way, so both kinds are judged alike. One the model leaves unlabeled is asked
+once more; if it is still unlabeled it is listed, and it counts toward no
+schema entry.
 
 A text's title is not sent: its label is the describes_class stage 2 got
 for it, judged from the whole text. Those labels also start the running
@@ -71,8 +81,11 @@ class Labels:
     refused: dict = field(default_factory=dict)     # {"entity": [{"component_instance", "why"}], ...}: the service
                                                     # wouldn't label them (e.g. its content filter); also unlabeled
     batches: list = field(default_factory=list)     # {"kind", "component_instances", "new_labels", "reused"}
-    merged_into: dict = field(default_factory=dict) # filled by stage 4: {"entity": {label: final label}, ...}
+    merged_into: dict = field(default_factory=dict) # filled by stage 4: {"entity": {label: label merged into}, ...}
     merges: list = field(default_factory=list)      # filled by stage 4
+    spelling_folds: list = field(default_factory=list)  # filled by stage 4: {"kind", "into", "folded"}
+    final: dict = field(default_factory=dict)       # filled by stage 4: {"entity": {component instance: its label,
+                                                    #  merged, then folded by spelling}, "predicate": {...}}
     merge_issues: dict = field(default_factory=dict)
     calls: int = 0                                  # model calls made by stage 3
     reused: int = 0                                 # stage 3's batches answered from the cache
@@ -81,19 +94,20 @@ class Labels:
 
 
 def component_instances(triples) -> dict:
-    """{kind: {component instance: (ids of the texts it appears in, its
-    shortest usage example)}}, from the verified triple instances."""
+    """{kind: {component instance: (ids of the texts it appears in, what the model is shown: {"example": its
+    shortest usage example, "source_text": that triple instance's source text})}}, from the verified triple
+    instances. Of usage examples of one length, the first in the order the texts are read is kept."""
     found = {kind: {} for kind in KINDS}
     for t in triples.texts:
         for ti in t["triple_instances"]:
             usage = f"{ti['subject']} -- {ti['predicate']} -- {ti['object']}"
             for kind, value in (("entity", ti["subject"]), ("entity", ti["object"]),
                                 ("predicate", ti["predicate"])):
-                ids, example = found[kind].get(value, (set(), None))
+                ids, shown = found[kind].get(value, (set(), None))
                 ids.add(t["id"])
-                if example is None or len(usage) < len(example):
-                    example = usage
-                found[kind][value] = (ids, example)
+                if shown is None or len(usage) < len(shown["example"]):
+                    shown = {"example": usage, "source_text": ti.get("source_text", "")}
+                found[kind][value] = (ids, shown)
     return found
 
 

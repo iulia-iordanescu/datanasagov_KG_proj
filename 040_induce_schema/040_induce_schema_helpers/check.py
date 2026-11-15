@@ -1,8 +1,8 @@
 """
-check.py -- stage 7: build the schema from the evidence, and check what the
+check.py -- stage 8: build the schema from the evidence, and check what the
 model wrote. Code only, no model.
 
-The schema is built from stage 5's counts, never from the model's replies:
+The schema is built from stage 6's counts, never from the model's replies:
 
   - an entity class or predicate is IN the schema if its support reaches
     min_support and the model didn't call it too vague;
@@ -17,7 +17,7 @@ What the model wrote is only the definitions. Checked here:
   - a schema entry in the schema with no definition gets MISSING_DEFINITION,
     and is listed (it stays in: its evidence doesn't depend on the words);
   - a schema entry named in a reply but not sent is ignored and listed
-    (stage 6).
+    (stage 7).
 
 Every schema entry keeps its evidence (support, the texts, the maintainers)
 and its origin: the records whose texts it was found in.

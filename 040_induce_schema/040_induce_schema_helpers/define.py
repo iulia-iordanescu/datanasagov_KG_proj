@@ -1,5 +1,5 @@
 """
-define.py -- stage 6: one sentence defining each entity class and each
+define.py -- stage 7: one sentence defining each entity class and each
 predicate.
 
 Every entity class and predicate whose support reaches min_support is sent
@@ -12,8 +12,8 @@ so with a reason.
 
 This stage only writes words. It merges nothing (merging is stage 4's job,
 done once, over all labels at a time) and chooses nothing: the examples are
-picked by code (stage 5): the component instances that most often got each
-entity class, the triple instances that most often state each predicate. Stage 7 checks what the model sent back.
+picked by code (stage 6): the component instances that most often got each
+entity class, the triple instances that most often state each predicate. Stage 8 checks what the model sent back.
 
 Adapted from assemble() in archive/to_be_reshaped/best_induce_schema.py, which also
 merged near-duplicates here, a second merge in batches of 40 where synonyms

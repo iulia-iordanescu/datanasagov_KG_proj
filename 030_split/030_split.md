@@ -13,7 +13,7 @@ Each ground truth candidate is also given its **part**, for evaluation in 070: *
 
 No record is ever in both lists. 070 measures how well extraction works on [text](../docs/terminology.md#1-records-and-their-text) the schema was *not* learned from; evaluation on records the schema was learned from would flatter it. Two different records can still share text (a series of datasets often repeats the same `notes` under different titles): a pool record with the same title, the same `notes`, or both as a record the schema was learned from is a twin, and 070 gives its numbers both with and without the twins (`070_evaluate/070_evaluate.md`, *Twins*).
 
-**Both lists are in a fixed random order, and later steps take from the top.** Taking more later keeps what was already taken: if 040 learns from 15 records per maintainer today and 30 tomorrow, the first 15 are the same records, so the [model calls](../docs/terminology.md#8-the-pipeline) already paid for them stay valid. The same holds for adding maintainers.
+**Both lists are in a fixed random order, and later steps take from the top.** Taking more later keeps what was already taken: if 040 learns from 8 records per stratum today and 16 tomorrow, the first 8 are the same records, so the [model calls](../docs/terminology.md#8-the-pipeline) already paid for them stay valid.
 
 **The pool is not drawn here.** It was drawn once, on 2026-09-21, by the earlier `ground_truth_sampler.py`, and annotation has started on it, so it must never change. It is kept in `annotations/ground_truth_candidates.csv`, in Git; 030 reads it. The induction candidates are ordered here.
 
@@ -75,7 +75,7 @@ Each run also leaves `outputs/reports/<run id>.md` (the [report](../docs/termino
 |---|---|---|---|
 | `induction_seed` | 7 | Fixes the random order of the [induction candidates](../docs/terminology.md#4-ground-truth-and-samples): the same [records](../docs/terminology.md#1-records-and-their-text) and seed always give the same order. | Only to draw a different order on purpose; everything learned from the old order is then out of date. |
 
-The [setting](../docs/terminology.md#8-the-pipeline) only takes effect when `splits.json` is written, i.e. when it doesn't exist yet. How many [maintainers](../docs/terminology.md#1-records-and-their-text) and how many records per maintainer the [schema](../docs/terminology.md#3-schemas) is learned from are 040's settings (`induction_maintainers`, `texts_per_maintainer`), not 030's.
+The [setting](../docs/terminology.md#8-the-pipeline) only takes effect when `splits.json` is written, i.e. when it doesn't exist yet. How many records per stratum the [schema](../docs/terminology.md#3-schemas) is learned from is 040's setting (`texts_per_stratum`), not 030's; 040 orders the stratum "(small [maintainers](../docs/terminology.md#1-records-and-their-text))" with this seed too.
 
 ## How to run
 
@@ -112,10 +112,10 @@ On 2026-10-12, from the harvest of 2026-10-01: 36,406 records; 999 left out as [
 
 ### Why "undefined" counts as a maintainer
 
-989 [records](../docs/terminology.md#1-records-and-their-text) have the [maintainer](../docs/terminology.md#1-records-and-their-text) `undefined`, written so by the catalog itself (none was missing or blank). It is ranked like any other maintainer (5th largest), so when 040 learns from the 10 largest maintainers, `undefined` is one of them. That was decided on purpose, although its records don't come from one author:
+989 [records](../docs/terminology.md#1-records-and-their-text) have the [maintainer](../docs/terminology.md#1-records-and-their-text) `undefined`, written so by the catalog itself (none was missing or blank). It is ranked like any other maintainer (5th largest), so the pool gave it a stratum of its own, and 040, which draws its texts by the pool's strata, draws from it as from every other stratum. That was decided on purpose, although its records don't come from one author:
 
-- Learning from each large maintainer separately is meant to show [schema](../docs/terminology.md#3-schemas) induction (040) the [entity classes](../docs/terminology.md#3-schemas) and predicates of as much of the catalog as possible, so that the largest maintainers don't drown the others. That purpose doesn't need each group to share one writing style. (That property matters for the [ground truth candidates pool](../docs/terminology.md#4-ground-truth-and-samples), which estimates catalog-wide metrics, not for schema induction.)
-- Replacing `undefined` with the next largest maintainer, Christopher Rumsey (178 records), would cover 0.5% of the catalog instead of 2.7%: the 10 maintainers would hold 89.4% of the catalog's records instead of 91.6%.
+- Drawing from each stratum separately is meant to show [schema](../docs/terminology.md#3-schemas) induction (040) the [entity classes](../docs/terminology.md#3-schemas) and predicates of as much of the catalog as possible, so that the largest maintainers don't drown the others. That purpose doesn't need each group to share one writing style. (That property matters for the [ground truth candidates pool](../docs/terminology.md#4-ground-truth-and-samples), which estimates catalog-wide metrics, not for schema induction.)
+- Collapsing `undefined` into "(small maintainers)" would change the pool's strata, which were fixed when the pool was drawn (2026-09-21); 040 draws by the same strata, so its report and the pool speak of the same groups.
 
 ## Prompts
 

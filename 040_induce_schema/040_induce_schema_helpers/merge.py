@@ -28,6 +28,14 @@ be visible.
 If a list is too long for one call (over MAX_LABELS_ONE_CALL), the step
 stops and says so, rather than splitting it into groups where synonyms could
 miss each other.
+
+Then, in code, labels that differ only in case, spacing, or punctuation
+("Space craft", "Spacecraft") are folded into one, the most frequent
+spelling (a spelling fold, the second kind of canonicalization). Digits are
+kept: "Level2" and "Level3" stay apart. Every fold is listed in
+induction_evidence.json (the report shows the first 20). Each component
+instance's final label (stage 3's label, merged, then folded) is what stage 5
+(splitting) and stage 6 (counting) read.
 """
 from __future__ import annotations
 
@@ -39,6 +47,7 @@ from common.cache import Cache, ask_cached, needs
 from common.audit import log
 from common.prompt_files import fill, load
 from common.stop import Stop
+from common.triples_io import component_class_key
 from label import BECOMES, KINDS
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
@@ -80,7 +89,7 @@ def merge_labels(labels, triples, calls):
                     if k2 == kind and value in labels.of[kind]:
                         instances_of[labels.of[kind][value]][value] += 1
                         texts_with[labels.of[kind][value]].add(t["id"])
-            # A text's title is labeled with its describes_class (stage 3): it counts, as in stage 5 (count.py),
+            # A text's title is labeled with its describes_class (stage 3): it counts, as in stage 6 (count.py),
             # so a label used only for titles reaches the model with its texts and its titles as examples.
             if kind == "entity" and t.get("describes_class") and t.get("title") in labels.of["entity"]:
                 instances_of[labels.of["entity"][t["title"]]][t["title"]] += 1
@@ -90,7 +99,7 @@ def merge_labels(labels, triples, calls):
             raise Stop(f"{len(sent)} {BECOMES[kind]} labels are more than one call takes "
                        f"({MAX_LABELS_ONE_CALL}), so 040 can't merge them: merging them in separate groups "
                        f"would let synonyms miss each other. Learn from fewer texts (lower "
-                       f"`--texts_per_maintainer` or `--induction_maintainers`), then run "
+                       f"`--texts_per_stratum`), then run "
                        f"`py 040_induce_schema/run.py` again; learning from this many would first need the labels "
                        f"grouped by meaning, which isn't built (040_induce_schema/040_induce_schema.md, Known limits).")
         issues = {"into_not_a_label": [], "not_sent": [], "merged_twice": [], "cycle": []}
@@ -130,4 +139,32 @@ def merge_labels(labels, triples, calls):
         merged = sum(1 for m in labels.merges if m["kind"] == BECOMES[kind])
         log.info(f"  {BECOMES[kind]} labels: {merged} of {len(sent)} merged into others")
     labels.merge_calls, labels.merge_reused = calls.paid.made - before, cache.reused
+    fold_spellings(labels)
     return labels
+
+
+def _folding(finals: collections.Counter, kind: str, folds: list) -> dict:
+    """{label: its spelling-folded label}: labels equal once case, spacing and
+    punctuation are ignored become the most frequent spelling (ties
+    alphabetically)."""
+    groups = collections.defaultdict(collections.Counter)
+    for label, n in finals.items():
+        groups[component_class_key(label)][label] += n
+    out = {}
+    for spellings in groups.values():
+        into = sorted(spellings.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+        for label in spellings:
+            out[label] = into
+        if len(spellings) > 1:
+            folds.append({"kind": kind, "into": into, "folded": sorted(spellings)})
+    return out
+
+
+def fold_spellings(labels) -> None:
+    """Each component instance's final label, labels.final: stage 3's label, then stage 4's merge, then the
+    spelling fold; every fold in labels.spelling_folds."""
+    labels.spelling_folds = []
+    for kind in KINDS:
+        merged = {value: labels.merged_into.get(kind, {}).get(lbl, lbl) for value, lbl in labels.of[kind].items()}
+        fold = _folding(collections.Counter(merged.values()), BECOMES[kind], labels.spelling_folds)
+        labels.final[kind] = {value: fold[lbl] for value, lbl in merged.items()}

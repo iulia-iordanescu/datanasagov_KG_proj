@@ -94,7 +94,7 @@ class Pipeline(unittest.TestCase):
         for label, c in counts.items():
             row = re.search(r"^\| " + re.escape(label) + r" \| (.*) \|$", report, re.M)
             self.assertTrue(row, f"{step}: no row {label!r} in its report")
-            texts, low, high, _, _, total, none = [x.replace(",", "") for x in row.group(1).split(" | ")]
+            texts, low, high, _, _, _, total, none = [x.replace(",", "") for x in row.group(1).split(" | ")]
             self.assertEqual((int(texts), int(low), int(high), int(total), int(none)),
                              (len(c), min(c), max(c), sum(c), c.count(0)), label)
 
@@ -135,6 +135,13 @@ class Pipeline(unittest.TestCase):
                   [{"id": r["id"], "maintainer": r["maintainer"], "stratum": r["maintainer"], "stratum_size": 1,
                     "drawn_from_stratum": 1} for r in pool],
                   ["id", "maintainer", "stratum", "stratum_size", "drawn_from_stratum"])
+        # the pool's design, as annotations/ground_truth_candidates.json gives it: two maintainers with strata of their
+        # own, two collapsed into "(small maintainers)", and "undefined" named nowhere (040 counts it as small, with a
+        # note)
+        design = {"strata": 3, "places_per_stratum": {"Earthdata Forum": 4, "Kristan Morgan": 4, "(small maintainers)": 4},
+                  "stratum_sizes": {"Earthdata Forum": 8, "Kristan Morgan": 9, "(small maintainers)": 7},
+                  "collapsed_maintainers": ["Ames Team", "Jane Roe"]}
+        (self.annotations / "ground_truth_candidates.json").write_text(json.dumps(design), encoding="utf-8")
         self.run_step("030_split")
         splits = json.loads(self.output("030_split", "splits.json").read_text(encoding="utf-8"))
         candidates = splits["ground_truth_candidates"]["records"]
@@ -159,8 +166,13 @@ class Pipeline(unittest.TestCase):
         self.assertIn("| Status | stopped |", report.read_text(encoding="utf-8"))
 
     def test_t04_induce_schema(self):
-        _, prompts = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
-                                   "--texts_per_maintainer", "4")
+        # the earlier design's settings are refused with what replaced them, before anything runs
+        out, refused = self.run_step("040_induce_schema", *NO_CONFIRM, "--texts_per_maintainer", "4", expect=2)
+        self.assertIn("--texts_per_maintainer was a setting of step 040's earlier sample design", out)
+        self.assertIn("--texts_per_stratum", out)
+        self.assertEqual(refused, 0)
+        out, prompts = self.run_step("040_induce_schema", *NO_CONFIRM, "--texts_per_stratum", "4")
+        self.assertIn("aren't named in annotations/ground_truth_candidates.json", out)      # "undefined"
         schema = json.loads(self.output("040_induce_schema", "the_schema.json").read_text(encoding="utf-8"))
         found = {e["component_class"] for e in schema["entity_classes"]}
         predicates = {e["component_class"] for e in schema["predicates"]}
@@ -179,6 +191,34 @@ class Pipeline(unittest.TestCase):
         pool = {r["id"] for r in read_csv(self.annotations / "ground_truth_candidates.csv")}
         self.assertFalse(texts & pool, "the schema was learned from ground truth candidates")
         evidence = json.loads(self.output("040_induce_schema", "induction_evidence.json").read_text(encoding="utf-8"))
+        # stage 1: 4 texts from each of the 3 strata, or all a stratum has (Earthdata Forum: 2 induction candidates,
+        # said in a note), every text in its stratum, none from the pool
+        by_stratum = collections.Counter(t["stratum"] for t in evidence["texts"])
+        drawn = {r["stratum"]: (r["candidates"], r["taken"]) for r in evidence["statistics"]["sampling"]["strata"]}
+        self.assertEqual(drawn, {"Earthdata Forum": (2, 2), "Kristan Morgan": (9, 4), "(small maintainers)": (15, 4)})
+        self.assertEqual(by_stratum, {s: taken for s, (_, taken) in drawn.items()})
+        self.assertIn("You asked for 4 texts from each stratum (texts_per_stratum), but 1 stratum(s) have fewer", out)
+        small = {t["maintainer"] for t in evidence["texts"] if t["stratum"] == "(small maintainers)"}
+        self.assertTrue(small <= {"Ames Team", "Jane Roe", "undefined"}, small)
+        # stage 5: every kept split passed the checks; the stand-in's faults were each rejected with why
+        splits = evidence["splits"]
+        self.assertTrue(splits["sent"] and splits["kept"], splits)
+        whys = {r["why"].split(":")[0] for r in splits["rejected"]}
+        self.assertEqual(whys, {"takes every object entity class of the predicate (a renaming, not a split)",
+                                "names an object entity class an earlier predicate split of the predicate took",
+                                "names an object entity class that isn't among the predicate's",
+                                "its new predicate is the name of a predicate found", "its predicate wasn't sent"})
+        for s in splits["kept"]:
+            self.assertIn(s["into"], predicates | {d["schema_entry"] for d in schema["deferred"]})
+        # the statistics: per text and per stratum, from the texts themselves
+        stats = evidence["statistics"]
+        self.assertEqual(stats["triple_instances_per_text"]["verified"]["total"],
+                         sum(len(t["triple_instances"]) for t in evidence["texts"]))
+        self.assertEqual(sum(v["texts"] for v in stats["verified_per_text_by_stratum"].values()), 10)
+        removed = {r["check"]: r["removed"] for r in stats["removed_by_checks"]}
+        self.assertEqual(removed["unverified"], sum(len(t["unverified"]) for t in evidence["texts"]))
+        self.assertEqual(removed["not a triple instance"], sum(t["malformed"] for t in evidence["texts"]))
+        self.assertEqual(stats["model_calls_failed"]["extract"]["failed"], 0)
         sat = evidence["saturation"]["curve"]
         self.assertEqual(sat["texts"][-1], len(evidence["texts"]))              # the curve ends at every text read
         self.assertGreaterEqual(round(sat["entity classes"][-1]), len(found))    # before the too-vague check
@@ -200,12 +240,14 @@ class Pipeline(unittest.TestCase):
         self.assertIn("IN THE SCHEMA", r.stdout)
         summary = r.stdout.split("Summary: matched triple instances per final predicate", 1)[1]
         self.assertEqual(sum(int(n) for n in re.findall(r"^ +(\d+)  ", summary, re.M)), sum(raw), r.stdout[-2000:])
-        _, again = self.run_step("040_induce_schema", *NO_CONFIRM, "--induction_maintainers", "3",
-                                 "--texts_per_maintainer", "4")
+        _, again = self.run_step("040_induce_schema", *NO_CONFIRM, "--texts_per_stratum", "4")
         self.assertEqual(again, 0, "a rerun paid again")
         self.prompts_recorded("040_induce_schema", {f"040_induce_schema/040_induce_schema_prompts/{p.name}" for p in
                                                     (self.repo / "040_induce_schema" / "040_induce_schema_prompts").glob("*.txt")}
-                              | {f"common/common_prompts/extraction_{n}.txt" for n in ("rules", "reply")})
+                              | {f"common/common_prompts/extraction_{n}.txt" for n in ("rules", "reply", "passes", "closing")}
+                              | {"common/common_prompts/words.txt"})
+        used = {p["file"] for p in self.manifest("040_induce_schema")["prompts"]}
+        self.assertNotIn("common/common_prompts/extraction_examples.txt", used)      # no worked examples in 040
         self.assertGreater(prompts, 0)
 
     # ---------------------------------------------------------------- 050
@@ -422,9 +464,10 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(read_csv(self.annotations / "held_out_looks.csv"), [])
         report = max((self.repo / "outputs" / "reports").glob("070_evaluate_*.md"), key=lambda p: p.stat().st_mtime).read_text(encoding="utf-8")
         self.assertIn("Drafted by a model (step 050) and corrected by a person", report)   # the guide says the report says so
-        # per text, worked out by hand: 8 records, one ground truth triple each and two for record 0; one occurrence each
-        self.assertRegex(report, r"\| ground truth triples \| 8 \| 1 \| 2 \| 1\.1 \| 1 \| 9 \| 0 \|")
-        self.assertRegex(report, r"\| occurrences \(translated extracted triples\) \| 8 \| 1 \| 1 \| 1\.0 \| 1 \| 8 \| 0 \|")
+        # per text, worked out by hand: 8 records, one ground truth triple each and two for record 0 (mean 1.125, sample
+        # SD sqrt((0.875^2 + 7 * 0.125^2) / 7) = 0.354); one occurrence each (SD 0)
+        self.assertRegex(report, r"\| ground truth triples \| 8 \| 1 \| 2 \| 1\.1 \| 1 \| 0\.4 \| 9 \| 0 \|")
+        self.assertRegex(report, r"\| occurrences \(translated extracted triples\) \| 8 \| 1 \| 1 \| 1\.0 \| 1 \| 0\.0 \| 8 \| 0 \|")
         # per predicate and per entity class, worked out by hand: all 8 occurrences pair exactly, with the right entity
         # classes; record 0's second ground truth triple is the only one left without a partner
         self.assertIn("#### Per predicate and per entity class", report)
@@ -600,7 +643,7 @@ class Pipeline(unittest.TestCase):
             self.assertNotIn("Traceback", text, r.name)
         written = sorted(p.relative_to(self.annotations).as_posix() for p in self.annotations.rglob("*") if p.is_file())
         self.assertEqual(written, ["README.md", "component_class_mapping.csv", "ground_truth/batch_001.csv",
-                                   "ground_truth_candidates.csv", "ground_truth_schema.txt", "guidelines.md", "held_out_looks.csv",
+                                   "ground_truth_candidates.csv", "ground_truth_candidates.json", "ground_truth_schema.txt", "guidelines.md", "held_out_looks.csv",
                                    "left_out.md", "partial_pair_reviews.csv", "pending_triples.csv", "schema_additions.txt",
                                "second_judge.csv", "second_opinion.csv", "second_opinion_candidates.csv"])
 

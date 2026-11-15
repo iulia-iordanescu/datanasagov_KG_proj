@@ -6,20 +6,26 @@ One model call per text piece (040_induce_schema_prompts/extract.txt): list
 every fact the text states as a triple instance, with the text's own words as
 its subject instance and object instance, a short verb phrase in the model's
 words as its predicate instance ("MODIS" – "is aboard" – "Aqua"), and its
-source text, the passage that states it. Nothing tells the model which types of things or
-relationships to look for; that is what the later stages learn. (The prompt says
+source text, the passage that states it. Nothing tells the model which entity classes or
+predicates to look for; that is what the later stages learn. (The prompt says
 "facts": it speaks plainly to the model.)
 
-Everything else is what 050 and 060 use too (common/common_helpers/extraction.py),
-so the schema is learned from the same type of facts extraction later has to
-produce: the shared extraction rules, the reply format (here without entity
-classes, which stage 3 learns), the record's text between BEGIN/END RECORD
-lines, and the model calls themselves (ask_model: cached, `workers` at a
-time, a text with a failed call left out whole and asked again on the next
-run).
+Everything else is what 060 uses too (common/common_helpers/extraction.py), so
+the schema is learned from the same type of facts extraction later has to
+produce: the shared extraction rules; the prompt's layout (the rules first,
+then the task, the shared two passes, the reply format, the record between
+BEGIN/END RECORD lines, and the shared closing line); the reply format (here
+without entity classes, which stage 3 learns); prompt caching of everything
+before the record (Anthropic's models); the duplicate count (same_fact,
+triple_key); and the model calls themselves (ask_model: cached, `workers` at
+a time, a text with a failed call left out whole and asked again on the next
+run). What the task requires to differ: no schema is given, and no worked
+examples, since those come with an example schema and answers written with
+its entity classes and predicates, which would steer a schema learned from
+the records (tests/allowed_differences.txt).
 
-The reply also names describes_class: the type of thing the text's title
-names ("Dataset", "WebTool", …), judged from the whole text. The first piece
+The reply also names describes_class: the entity class of the title's
+instance ("Dataset", "WebTool", …), judged from the whole text. The first piece
 of a text to name one decides it. Stage 3 uses it as the title's label, so
 the schema always has entity classes for what records describe, which the
 describes triple of 050 and 060 needs.
@@ -42,7 +48,7 @@ from common.audit import log
 from common.prompt_files import load
 from common.report import this_report
 from common.text_match import Text
-from common.triples_io import REQUIRED, _scalar
+from common.triples_io import REQUIRED, _scalar, triple_key
 from common.validate import check_triple_instance
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "040_induce_schema_prompts"   # 040_induce_schema/040_induce_schema_prompts/
@@ -50,10 +56,16 @@ PROMPT = load(PROMPTS_DIR / "extract.txt")
 SLOTS = REQUIRED                                  # subject, predicate, object
 
 
+def same_fact(instance: dict) -> tuple:
+    """The key two triple instances share when they state the same fact, as 050 and 060 count duplicates
+    (common/common_helpers/triples_io.triple_key; 040's triple instances have no entity classes)."""
+    return triple_key(instance)
+
+
 @dataclass
 class TripleInstances:
-    texts: list = field(default_factory=list)     # {"id", "maintainer", "title", "describes_class",
-                                                  #  "triple_instances", "unverified"}
+    texts: list = field(default_factory=list)     # {"id", "maintainer", "stratum", "title", "describes_class",
+                                                  #  "triple_instances", "unverified", "malformed", "duplicates"}
     failed: dict = field(default_factory=dict)    # {text id: why}: left out whole, asked again on the next run
     failed_note: str | None = None                # the report's warning about them
     left_out: list = field(default_factory=list)  # the same, with why and maintainer (common/common_helpers/dropped.py)
@@ -62,6 +74,7 @@ class TripleInstances:
     flags: dict = field(default_factory=dict)     # {check: verified triple instances that raised it}
     calls: int = 0                                # model calls made by this stage
     reused: int = 0                               # pieces answered from the cache
+    cut_reused: int = 0                           # pieces cut off in an earlier run, not asked again
 
 
 def _from_reply(reply: dict) -> tuple:
@@ -84,13 +97,14 @@ def _from_reply(reply: dict) -> tuple:
 
 def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
     def prompt_for(item, piece):
-        return extraction.prompt(PROMPT, "", item["record"], piece, with_classes=False)
+        return extraction.prompt(PROMPT, "", item["record"], piece, with_classes=False,
+                                 **extraction.task_parts(extraction.SCOPE_NO_SCHEMA, examples=False))
     replies = extraction.ask_model(texts.items, prompt_for, calls, settings["workers"], "extract",
                                    "040 will extract triple instances (then make a few more calls to label, merge "
                                    f"and define what it finds, all counted in {this_report()}, section *Results*, subsection "
-                                   f"*Model calls*)", "extracting")
+                                   f"*Model calls*)", "extracting", cache_until=extraction.BEGIN_LINE)
     result = TripleInstances(failed=dict(replies.failed), failed_note=extraction.failed_note(replies, "the evidence"),
-                             calls=replies.calls, reused=replies.reused,
+                             calls=replies.calls, reused=replies.reused, cut_reused=replies.cut_reused,
                              left_out=dropped.left_out(replies, texts.items))
 
     errors, flags = collections.Counter(), collections.Counter()
@@ -98,16 +112,17 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
         if t["id"] not in replies.of:              # a call failed: left out whole, asked again next run
             continue
         whole = Text(t["text"])                    # checked against the whole record, every piece
-        checked, describes = [], ""
+        checked, describes, malformed = [], "", 0
         for reply in replies.of[t["id"]]:
             instances, bad, named = _from_reply(reply)
-            result.malformed += bad
+            malformed += bad
             describes = describes or named
             for instance in instances:
                 errs, flgs = check_triple_instance(instance, whole, t["title"])
                 checked.append((instance, errs, flgs))
-        # stated by two pieces of one text: counts once, the first copy that passed the checks kept
-        kept, _ = extraction.best_copies(checked, lambda c: tuple(c[0][k] for k in SLOTS), lambda c: bool(c[1]))
+        # stated by two pieces of one text: counts once, the first copy that passed the checks kept; the same fact as
+        # 050 and 060 judge it (triple_key: instances and predicate compared as their keys, case and punctuation aside)
+        kept, copies = extraction.best_copies(checked, lambda c: same_fact(c[0]), lambda c: bool(c[1]))
         verified, unverified = [], []
         for instance, errs, flgs in kept:
             if errs:                               # unverified: its errors counted, its flags not
@@ -116,9 +131,10 @@ def extract_triple_instances(texts, calls, settings: dict) -> TripleInstances:
             else:                                  # verified: its flags counted
                 flags.update(flgs)
                 verified.append(instance)
-        result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "title": t["title"],
-                             "describes_class": describes, "triple_instances": verified,
-                             "unverified": unverified})
+        result.malformed += malformed
+        result.texts.append({"id": t["id"], "maintainer": t["maintainer"], "stratum": t.get("stratum", ""),
+                             "title": t["title"], "describes_class": describes, "triple_instances": verified,
+                             "unverified": unverified, "malformed": malformed, "duplicates": len(copies)})
     result.errors, result.flags = dict(errors), dict(flags)
     n = sum(len(t["triple_instances"]) for t in result.texts)
     left_out = sum(len(t["unverified"]) for t in result.texts)

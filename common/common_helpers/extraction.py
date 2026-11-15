@@ -73,11 +73,12 @@ PASSES = load(PROMPTS / "extraction_passes.txt")
 EXAMPLES = load(PROMPTS / "extraction_examples.txt")
 CLOSING = load(PROMPTS / "extraction_closing.txt")
 #: What each step asks to be complete about, for its prompt's $passes (passes): 050 every fact, whatever the schema
-#: can express; 060 only the facts its schema can express.
+#: can express; 060 only the facts its schema can express; 040, which is given no schema, every fact.
 SCOPE_ALL = " (whether or not the schema can express it)"
 SCOPE_SCHEMA = " that the schema can express"
+SCOPE_NO_SCHEMA = ""
 #: The lines around a record in the prompts. Everything before BEGIN_LINE is the same in every request of a run, so
-#: 060 sends it for prompt caching (llm._messages).
+#: 040 and 060 send it for prompt caching (llm._messages).
 BEGIN_LINE = "----- BEGIN RECORD -----"
 END_LINE = "----- END RECORD -----"
 ROW_KEYS = ("subject", "subject_class", "predicate", "object", "object_class", "source_text")
@@ -120,12 +121,17 @@ def passes(scope: str) -> str:
     return fill(PASSES, scope=scope)
 
 
-def task_parts(scope: str) -> dict:
-    """050's and 060's shared $passes, $examples and $closing (common/common_prompts/extraction_passes.txt,
-    extraction_examples.txt, extraction_closing.txt), for scope (SCOPE_ALL or SCOPE_SCHEMA). The layout they fill:
-    schema and rules first, then the worked examples, the task, the reply format, the record, and a closing line
-    after the record (prompt audit F5, F7, 2026-10-30)."""
-    return {"passes": passes(scope), "examples": prompt_text(EXAMPLES).strip(), "closing": fill(CLOSING, scope=scope).strip()}
+def task_parts(scope: str, examples: bool = True) -> dict:
+    """The shared $passes, $examples and $closing (common/common_prompts/extraction_passes.txt,
+    extraction_examples.txt, extraction_closing.txt), for scope (SCOPE_ALL, SCOPE_SCHEMA or SCOPE_NO_SCHEMA). The
+    layout they fill: schema and rules first, then the worked examples, the task, the reply format, the record, and a
+    closing line after the record (prompt audit F5, F7, 2026-10-30). examples False (040): no worked examples, since
+    they come with an example schema and answers written with its entity classes and predicates, which would steer a
+    schema learned from the records."""
+    parts = {"passes": passes(scope), "closing": fill(CLOSING, scope=scope).strip()}
+    if examples:
+        parts["examples"] = prompt_text(EXAMPLES).strip()
+    return parts
 
 
 def reply(with_classes: bool = True) -> str:

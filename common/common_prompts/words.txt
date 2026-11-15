@@ -1,0 +1,34 @@
+WORDS
+
+Each wording below has one meaning wherever it is used here.
+
+- Record. A record is the metadata of one entry of a catalog, such as
+  data.nasa.gov: its title, its notes field, and its other fields.
+- Entity. An entity is one individual that an instance's words refer to,
+  such as Kestrel. Many entities share one entity class: Kestrel, Osprey,
+  and Tern are three entities of the entity class instrument.
+- Instance, subject instance, object instance. An instance is the record's
+  words for one entity, in the subject slot of a triple (its subject
+  instance) or in its object slot (its object instance). An instance is
+  words; the entity is what they refer to.
+- Predicate instance. A predicate instance is the words for the relationship
+  that a triple states, such as "is mounted on".
+- Entity class. An entity class is a type of entity, such as an instrument
+  or a platform. Each subject instance and each object instance has the
+  entity class of the entity it refers to.
+- Predicate. A predicate is the relationship that a triple states between
+  its subject instance and its object instance, such as "collected by" or
+  "aboard".
+- Triple. A fact that the record states, written as a subject instance with
+  its entity class, a predicate, and an object instance with its entity
+  class.
+- Source text. The source text of a triple is the passage of the record that
+  states it, copied exactly.
+- Label. A label is a short general name given to an instance or a predicate
+  instance: for a subject instance or an object instance, a name for the
+  entity class of the entity it refers to; for a predicate instance, a name
+  for the predicate it expresses.
+- Schema. A schema is a set of entity classes and predicates, each with a
+  definition.
+- Component class, kind. A component class is an entity class or a predicate
+  of a schema. Its kind says which of the two it is.

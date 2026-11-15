@@ -1,18 +1,22 @@
-Extract the facts this record states, as subject / predicate / object
-triples.
-
-COMPLETENESS FIRST. Extract every fact the record states, unless a rule
-below leaves it out. Leaving out any other fact is the worst outcome.
-
-NAMING. No vocabulary is given: the predicate is a short verb phrase in
-your own words ("is aboard", "was collected by"), and describes_class is a
-short CamelCase noun ("Dataset", "WebTool", "Document").
-
 RULES
 $rules
+
+TASK
+
+Extract the facts the record below states, as subject / predicate / object
+triples.
+
+No list of entity classes or predicates is given: write each predicate as a
+short verb phrase in your own words ("is aboard", "was collected by"), and
+describes_class as a short CamelCase noun for the entity class of the
+title's instance ("Dataset", "WebTool", "Document").
+
+$passes
 
 $reply
 
 ----- BEGIN RECORD -----
 $text
 ----- END RECORD -----
+
+$closing

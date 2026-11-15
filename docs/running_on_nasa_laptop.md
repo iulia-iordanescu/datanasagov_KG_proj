@@ -123,7 +123,7 @@ The cheapest way to check that everything works, about 20 [paid calls](terminolo
 
    | [Step](terminology.md#8-the-pipeline) | Command | Paid calls, roughly |
    |---|---|---|
-   | 040 | `py 040_induce_schema/run.py --induction_maintainers 2 --texts_per_maintainer 2` | 10–15 (4 [texts](terminology.md#1-records-and-their-text), then labeling, merging, defining) |
+   | 040 | `py 040_induce_schema/run.py --texts_per_stratum 1 --max_new_predicates 0` | 25–30 (19 [texts](terminology.md#1-records-and-their-text), one per stratum, then labeling, merging, defining; no splitting) |
    | 050 | `py 050_annotate/run.py --records_per_batch 1` | 2 (one [record](terminology.md#1-records-and-their-text), and the [test call](terminology.md#8-the-pipeline)) |
    | 060 | `py 060_extract/run.py` | 3 (the finished [ground truth](terminology.md#4-ground-truth-and-samples) records, 2 as of 2026-10-01, and the test call) |
    | 070 | `py 070_evaluate/run.py` | 2 the first time ([component class](terminology.md#3-schemas) translations, and the test call); it then stops so you can check the rows it added to `annotations/component_class_mapping.csv`. Run it again: 0 calls, or 2 (the test call, and the suggestion call: a row says `(none)` while the [ground truth schema](terminology.md#3-schemas) has a component class of the same kind that nothing translates to). |

@@ -1,6 +1,8 @@
-"""Schema induction (040_induce_schema), the stages code decides: matching
-the model's labels, merging synonyms (chains, cycles, invalid merges),
-counting support, and building the schema from the evidence."""
+"""Schema induction (040_induce_schema), the stages code decides: drawing
+the texts by stratum (twins skipped), matching the model's labels (sent with
+their source text), merging synonyms (chains, cycles, invalid merges),
+checking and capping the splits, counting support, building the schema from
+the evidence, and the run's statistics."""
 import json
 import shutil
 import tempfile
@@ -16,14 +18,98 @@ import count                                      # noqa: E402
 import label                                      # noqa: E402
 import merge                                      # noqa: E402
 import saturation                                 # noqa: E402
+import split                                      # noqa: E402
+import tally                                      # noqa: E402
+import texts as texts_stage                       # noqa: E402
 from common import llm                            # noqa: E402
 
 
 def texts(*items):
     """Triples with texts [(id, maintainer, title, describes_class, [(s, p, o), ...])]."""
     return SimpleNamespace(texts=[{"id": i, "maintainer": m, "title": t, "describes_class": d,
-                                   "triple_instances": [{"subject": s, "predicate": p, "object": o} for s, p, o in tis]}
+                                   "triple_instances": [{"subject": s, "predicate": p, "object": o,
+                                                         "source_text": f"{s} {p} {o}"} for s, p, o in tis],
+                                   "unverified": []}
                                   for i, m, t, d, tis in items])
+
+
+class Drawing(unittest.TestCase):
+    """Stage 1: texts_per_stratum texts from each stratum, in rounds; whole-text and notes-only twins of a text
+    already drawn skipped, title-only twins kept."""
+
+    RECORDS = {"a": {"title": "Snow", "notes": "Daily snow."}, "b": {"title": "Ice", "notes": "daily  SNOW."},
+               "c": {"title": "Snow", "notes": "Weekly snow."}, "d": {"title": "Fire", "notes": "Burned area."},
+               "e": {"title": "snow", "notes": "Daily snow."}, "f": {"title": "Rain", "notes": "Daily rain."},
+               "g": {"title": "Wind", "notes": ""}, "h": {"title": "Wind", "notes": ""}}
+
+    def test_twins_skipped_title_only_kept(self):
+        taken, skipped, title_only = texts_stage.draw({"S1": ["a", "c", "f"], "S2": ["b", "e", "d"]}, ["S1", "S2"],
+                                                      self.RECORDS, 3)
+        self.assertEqual(taken, {"S1": ["a", "c", "f"], "S2": ["d"]})
+        # b: the same notes evened out (notes only); e: the same title and notes evened out (whole text)
+        self.assertEqual([(k["id"], k["twin_kind"], k["twin_of"]) for k in skipped],
+                         [("b", "notes only", "a"), ("e", "whole text", "a")])
+        self.assertEqual(title_only, {"S1": 1, "S2": 0})                 # c: the same title, other notes: kept
+
+    def test_empty_notes_are_never_the_same(self):
+        """Near miss: two texts with the same title and no notes share no notes, so they are title-only twins, kept."""
+        taken, skipped, title_only = texts_stage.draw({"S": ["g", "h"]}, ["S"], self.RECORDS, 2)
+        self.assertEqual((taken["S"], skipped, title_only["S"]), (["g", "h"], [], 1))
+
+    def test_taking_more_keeps_what_was_taken(self):
+        orders = {"S1": ["a", "c", "f"], "S2": ["b", "e", "d", "g"], "S3": ["h"]}
+        for per in range(1, 4):
+            fewer, _, _ = texts_stage.draw(orders, ["S1", "S2", "S3"], self.RECORDS, per)
+            more, _, _ = texts_stage.draw(orders, ["S1", "S2", "S3"], self.RECORDS, per + 1)
+            for s in orders:
+                self.assertEqual(more[s][:len(fewer[s])], fewer[s], (per, s))
+
+    def test_doctest(self):
+        import doctest
+        self.assertEqual(doctest.testmod(texts_stage).failed, 0)
+
+    def test_small_stratum_order_is_030s_construction(self):
+        """The stratum "(small maintainers)" is ordered as 030 orders a maintainer's candidates: the same seed, the
+        stratum's name in place of the maintainer's; its first k are a random sample for every k."""
+        import random
+        ids = [f"r{i}" for i in range(30)]
+        order = texts_stage._small_order(list(reversed(ids)), 7)            # the input order doesn't matter
+        self.assertEqual(order, random.Random("7/(small maintainers)").sample(sorted(ids), 30))
+        self.assertNotEqual(order, texts_stage._small_order(ids, 8))
+
+    def test_read_strata(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        good = {"strata": 3, "places_per_stratum": {"A": 5, "B": 2, "(small maintainers)": 3},
+                "stratum_sizes": {"A": 50, "B": 20, "(small maintainers)": 30}, "collapsed_maintainers": ["x", "y"]}
+        path = tmp / "design.json"
+        path.write_text(json.dumps(good), encoding="utf-8")
+        strata, of = texts_stage.read_strata(path)
+        self.assertEqual(strata, ["A", "(small maintainers)", "B"])        # largest first
+        self.assertEqual(of, {"A": "A", "B": "B", "x": "(small maintainers)", "y": "(small maintainers)"})
+        for broken in ({**good, "strata": 4}, {k: v for k, v in good.items() if k != "collapsed_maintainers"},
+                       {**good, "places_per_stratum": {"A": 5, "B": 2, "small": 3}}):
+            path.write_text(json.dumps(broken), encoding="utf-8")
+            with self.subTest(broken=broken), self.assertRaisesRegex(ValueError, "describe the pool's strata"):
+                texts_stage.read_strata(path)
+
+    def test_old_settings_refused(self):
+        """The earlier design's settings stop the run with what replaced them, not argparse's bare message."""
+        import contextlib
+        import io
+        from common.step import _parse_command_line
+        for argv in (["--texts_per_maintainer", "4"], ["--induction-maintainers=3"]):
+            err = io.StringIO()
+            with self.subTest(argv=argv), contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as e:
+                _parse_command_line("040_induce_schema", {}, {"texts_per_stratum": 8}, argv,
+                                    retired=texts_stage.RETIRED)
+            self.assertEqual(e.exception.code, 2)
+            self.assertIn("earlier sample design", err.getvalue())
+            self.assertIn("--texts_per_stratum", err.getvalue())
+        # near miss: a setting that merely starts the same way is argparse's to judge, not refused as retired
+        _, chosen, _ = _parse_command_line("040_induce_schema", {}, {"texts_per_stratum": 8},
+                                           ["--texts_per_stratum", "3"], retired=texts_stage.RETIRED)
+        self.assertEqual(chosen["texts_per_stratum"], 3)
 
 
 class Scripted:
@@ -108,6 +194,22 @@ class Labeling(unittest.TestCase):
         self.assertEqual(missing, ["Terra", "Aura"])
         self.assertEqual(label._match(["a"], "not a dict"), ({}, ["a"]))
 
+    def test_source_text_sent(self):
+        """Each component instance is sent with its shortest triple instance and that triple instance's source text."""
+        triples = texts(("t1", "m", "T1", "", [("Dawn", "carries", "GRaND"), ("Dawn", "is a spacecraft of", "NASA")]))
+        triples.texts[0]["triple_instances"][0]["source_text"] = "the GRaND instrument aboard the Dawn spacecraft"
+        found = label.component_instances(triples)
+        self.assertEqual(found["entity"]["Dawn"][1], {"example": "Dawn -- carries -- GRaND",
+                                                      "source_text": "the GRaND instrument aboard the Dawn spacecraft"})
+        model = Scripted({"\nINSTANCES (": {"labels": {"Dawn": "Spacecraft", "GRaND": "Instrument",
+                                                               "NASA": "Organization"}},
+                          "PREDICATE INSTANCES (": {"labels": {"carries": "CARRIES", "is a spacecraft of": "OF"}}})
+        with model as calls:
+            label.label_component_instances(triples, calls)
+        sent = model.prompts[0]
+        items = json.loads(sent[sent.rindex("and its source text):") + len("and its source text):"):])
+        self.assertEqual(items["Dawn"]["source_text"], "the GRaND instrument aboard the Dawn spacecraft")
+
     def test_left_out_asked_again(self):
         triples = texts(("t1", "m", "T1", "", [("MODIS", "is aboard", "Aqua"), ("AIRS", "is aboard", "Aqua")]))
         first = {"MODIS": "Instrument", "Aqua": "Spacecraft"}               # AIRS left out
@@ -187,8 +289,14 @@ class Merging(unittest.TestCase):
 
 
 def labels_for(entity, predicate, merged=None):
-    return SimpleNamespace(of={"entity": entity, "predicate": predicate},
-                           merged_into={"entity": merged or {}, "predicate": {}})
+    """Labels as stage 4 leaves them: merged, then folded by spelling (merge.fold_spellings)."""
+    labels = label.Labels(of={"entity": entity, "predicate": predicate},
+                          merged_into={"entity": merged or {}, "predicate": {}})
+    merge.fold_spellings(labels)
+    return labels
+
+
+NO_SPLITS = split.Splits()
 
 
 class Counting(unittest.TestCase):
@@ -202,7 +310,8 @@ class Counting(unittest.TestCase):
         entity = {"MODIS": "Instrument", "AIRS": "instrument", "CERES": "Sensor", "Aqua": "Spacecraft", "Aura": "Spacecraft", "OMI": "Instrument",
                   "Terra": "Space craft", "MODIS L2": "Dataset", "AIRS L1": "Dataset"}
         predicate = {"is aboard": "ABOARD", "flies on": "ABOARD"}
-        self.c = count.count_support(self.triples, labels_for(entity, predicate, merged={"Sensor": "Instrument"}))
+        self.labels = labels_for(entity, predicate, merged={"Sensor": "Instrument"})
+        self.c = count.count_support(self.triples, self.labels, NO_SPLITS)
 
     def entry(self, kind, name):
         return next(e for e in getattr(self.c, kind) if e.get("component_class", e.get("pattern")) == name)
@@ -216,7 +325,7 @@ class Counting(unittest.TestCase):
     def test_spellings_folded(self):
         names = {e["component_class"] for e in self.c.entity_classes}
         self.assertEqual(names, {"Instrument", "Spacecraft", "Dataset"})
-        folds = {f["into"]: f["folded"] for f in self.c.spelling_folds}
+        folds = {f["into"]: f["folded"] for f in self.labels.spelling_folds}           # stage 4 folds them
         self.assertEqual(folds["Instrument"], ["Instrument", "instrument"])
         self.assertEqual(folds["Spacecraft"], ["Space craft", "Spacecraft"])        # the most frequent spelling
 
@@ -229,11 +338,141 @@ class Counting(unittest.TestCase):
         self.assertEqual((ds["support"], ds["examples"]), (2, ["MODIS L2", "AIRS L1"]))
         self.assertEqual((self.c.texts_with_triple_instances, self.c.texts_with_describes_class), (2, 2))
 
+    def test_split_reassigns_by_object_class(self):
+        """Stage 5's kept split gives a triple instance the new predicate only when its object has an entity class the
+        split took; others keep the predicate; an unlabeled object never moves."""
+        splits = split.Splits(into={"ABOARD": {"Spacecraft": "ABOARD_SPACECRAFT"}})
+        c = count.count_support(self.triples, self.labels, splits)
+        patterns = {tuple(p["pattern"]): p["support"] for p in c.patterns}
+        self.assertEqual(patterns, {("Instrument", "ABOARD_SPACECRAFT", "Spacecraft"): 2})
+        predicates = {p["component_class"]: p["support"] for p in c.predicates}
+        self.assertEqual(predicates, {"ABOARD_SPACECRAFT": 2, "ABOARD": 1})          # t2: CERES -- Mystery
+        self.assertEqual(c.pattern_of["t2"], [("Instrument", "ABOARD_SPACECRAFT", "Spacecraft"), None])
+
     def test_predicate_examples_are_facts(self):
         """A predicate's examples are the triple instances that most often state it: they show its subject and
         object, which its definition must say."""
         self.assertEqual(self.entry("predicates", "ABOARD")["examples"][0], "MODIS -- is aboard -- Aqua")
         self.assertIn("AIRS -- flies on -- Aqua", self.entry("predicates", "ABOARD")["examples"])
+
+
+class Splitting(unittest.TestCase):
+    """Stage 5's code checks, each with a near miss that passes, and the cap."""
+
+    def setUp(self):
+        # SOURCED_FROM reaches Mission (2 texts), Spacecraft (1) and Instrument (1); ABOARD only Spacecraft
+        self.triples = texts(("t1", "m1", "T1", "", [("data", "came from", "Apollo 11"), ("MODIS", "is aboard", "Aqua")]),
+                             ("t2", "m1", "T2", "", [("images", "came from", "Cassini"), ("x", "came from", "Apollo 12")]),
+                             ("t3", "m2", "T3", "", [("y", "came from", "MODIS")]))
+        self.labels = labels_for({"data": "Data", "images": "Data", "x": "Data", "y": "Data", "MODIS": "Instrument",
+                                  "Aqua": "Spacecraft", "Apollo 11": "Mission", "Apollo 12": "Mission",
+                                  "Cassini": "Spacecraft"},
+                                 {"came from": "SOURCED_FROM", "is aboard": "ABOARD"})
+        self.found = split.object_classes(self.triples, self.labels)
+        self.predicates = set(self.labels.final["predicate"].values())
+
+    def check(self, *items):
+        passed, rejected = split.check([{"splits": list(items)}], self.found, self.predicates)
+        return passed, [r["why"].split(":")[0] for r in rejected]
+
+    def test_found_and_sent(self):
+        self.assertEqual({p: set(ocs) for p, ocs in self.found.items()},
+                         {"SOURCED_FROM": {"Mission", "Spacecraft", "Instrument"}, "ABOARD": {"Spacecraft"}})
+
+    def test_each_check_and_its_near_miss(self):
+        ok = {"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"]}
+        cases = [
+            ("not an object", ["SOURCED_FROM"], split.NOT_AN_OBJECT),
+            ("predicate not sent (ABOARD has one object entity class)", {**ok, "predicate": "ABOARD"}, split.NOT_SENT),
+            ("no name", {**ok, "into": "  "}, split.NO_NAME),
+            ("an existing name, spelled otherwise", {**ok, "into": "aboard"}, split.NAME_TAKEN),
+            ("its own name", {**ok, "into": "Sourced From"}, split.NAME_TAKEN),
+            ("no object entity class", {**ok, "object_classes": []}, split.NO_CLASSES),
+            ("not the predicate's", {**ok, "object_classes": ["Organization"]}, split.NOT_AN_OBJECT_CLASS),
+            ("every object entity class", {**ok, "object_classes": ["Mission", "Spacecraft", "Instrument"]},
+             split.EVERY_CLASS),
+        ]
+        for what, item, why in cases:
+            with self.subTest(what):
+                self.assertEqual(self.check(item)[1], [why])
+        # near misses that pass: the predicate and the entity class in another spelling, read as the ones sent
+        passed, rejected = self.check({"predicate": "sourced_from", "into": "FROM_MISSION", "object_classes": ["mission"]})
+        self.assertEqual((passed, rejected), ([{"predicate": "SOURCED_FROM", "into": "FROM_MISSION",
+                                               "object_classes": ["Mission"]}], []))
+
+    def test_first_split_stands(self):
+        passed, rejected = self.check(
+            {"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"]},
+            {"predicate": "SOURCED_FROM", "into": "FROM_CRAFT", "object_classes": ["Spacecraft", "Mission"]},  # Mission taken
+            {"predicate": "SOURCED_FROM", "into": "from_mission", "object_classes": ["Instrument"]},           # name taken
+            {"predicate": "SOURCED_FROM", "into": "FROM_SPACECRAFT", "object_classes": ["Spacecraft"]})
+        self.assertEqual([p["into"] for p in passed], ["FROM_MISSION", "FROM_SPACECRAFT"])
+        self.assertEqual(rejected, [split.CLASS_TWICE, split.NAME_TWICE])
+
+    def test_added_counts_a_predicate_split_away(self):
+        ocs = {"SOURCED_FROM": {"Mission", "Spacecraft", "Instrument"}}
+        one = {"predicate": "SOURCED_FROM", "object_classes": ["Mission"]}
+        rest = {"predicate": "SOURCED_FROM", "object_classes": ["Spacecraft", "Instrument"]}
+        self.assertEqual(split.added_by([one], ocs), 1)
+        self.assertEqual(split.added_by([one, rest], ocs), 1)       # every object entity class taken: SOURCED_FROM is gone
+
+    def test_cap_keeps_most_supported_first(self):
+        passed = [{"predicate": "SOURCED_FROM", "into": "FROM_SPACECRAFT", "object_classes": ["Spacecraft"], "texts": 1},
+                  {"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"], "texts": 2}]
+        kept, dropped = split.capped(passed, self.found, 1)
+        self.assertEqual(([s["into"] for s in kept], [s["into"] for s in dropped]), (["FROM_MISSION"], ["FROM_SPACECRAFT"]))
+        kept, dropped = split.capped(passed, self.found, 2)                         # near miss: room for both
+        self.assertEqual((len(kept), dropped), (2, []))
+        # splits that take every object entity class add one predicate less, so a cap of 1 keeps both halves of a full split
+        full = passed[1:] + [{"predicate": "SOURCED_FROM", "into": "FROM_OTHER", "object_classes": ["Spacecraft",
+                                                                                                   "Instrument"], "texts": 2}]
+        kept, dropped = split.capped(full, self.found, 1)
+        self.assertEqual((len(kept), dropped), (2, []))
+
+    def test_stage_end_to_end(self):
+        """The model's reply, checked and capped; max_new_predicates 0 asks nothing."""
+        reply = {"splits": [{"predicate": "SOURCED_FROM", "into": "FROM_MISSION", "object_classes": ["Mission"]},
+                            {"predicate": "SOURCED_FROM", "into": "FROM_SPACECRAFT", "object_classes": ["Spacecraft"]},
+                            {"predicate": "SOURCED_FROM", "into": "FROM_GADGET", "object_classes": ["Gadget"]}]}
+        model = Scripted({"splits": reply})
+        with model as calls:
+            s = split.split_predicates(self.triples, self.labels, {"max_new_predicates": 1}, calls)
+        self.assertEqual([e["predicate"] for e in s.sent], ["SOURCED_FROM"])
+        self.assertEqual(s.into, {"SOURCED_FROM": {"Mission": "FROM_MISSION"}})
+        self.assertEqual(([d["into"] for d in s.dropped], [r["into"] for r in s.rejected], s.added, s.calls),
+                         (["FROM_SPACECRAFT"], ["FROM_GADGET"], 1, 1))
+        self.assertEqual(s.kept[0]["texts"], 2)
+        with Scripted({}) as calls:
+            none = split.split_predicates(self.triples, self.labels, {"max_new_predicates": 0}, calls)
+        self.assertEqual((none.calls, none.into, none.sent), (0, {}, []))
+
+
+class Tallying(unittest.TestCase):
+    """The statistics: what each check removed, and the texts it removed wholly."""
+
+    def test_removed_by_checks(self):
+        t = lambda i, verified, unverified, malformed=0, duplicates=0: {                     # noqa: E731
+            "id": i, "stratum": "S", "malformed": malformed, "duplicates": duplicates,
+            "triple_instances": [{"n": n} for n in range(verified)], "unverified": [{}] * unverified}
+        triples = SimpleNamespace(texts=[t("all malformed", 0, 0, malformed=2), t("all unverified", 0, 3),
+                                         t("copies", 1, 0, duplicates=2), t("none listed", 0, 0),
+                                         t("no pattern", 1, 0), t("deferred", 2, 1), t("kept", 1, 0)])
+        counts = SimpleNamespace(pattern_of={"copies": [("A", "P", "B")], "no pattern": [None],
+                                             "deferred": [("A", "Q", "B"), None], "kept": [("A", "P", "B")]})
+        schema = SimpleNamespace(patterns=[{"pattern": ["A", "P", "B"]}])
+        rows = {r["check"]: (r["removed"], [x["id"] for x in r["texts_wholly"]])
+                for r in tally.removed_by_checks(triples, counts, schema)}
+        self.assertEqual(rows, {tally.NOT_A_TRIPLE: (2, ["all malformed"]), tally.STATED_TWICE: (2, []),
+                                tally.UNVERIFIED: (4, ["all unverified"]), tally.NO_PATTERN: (2, ["no pattern"]),
+                                tally.NOT_IN_SCHEMA: (1, ["deferred"])})
+        empty = tally.no_triple_instances(triples)
+        self.assertEqual([x["id"] for x in empty["listed"]], ["all malformed", "none listed"])
+        self.assertEqual(len(empty["verified"]), 3)
+
+    def test_per_stratum_keeps_empty_strata(self):
+        triples = SimpleNamespace(texts=[{"stratum": "A", "triple_instances": [1, 2]}, {"stratum": "A", "triple_instances": []}])
+        self.assertEqual(tally.per_stratum(triples, ["A", "B"]), {"A": [2, 0], "B": []})
+        self.assertEqual(tally.stats([2, 0])["sd"], round(2 ** 0.5, 2))
 
 
 class Checking(unittest.TestCase):
@@ -367,7 +606,7 @@ class TracingInduction(unittest.TestCase):
     def test_chain_and_status(self):
         n, out = self.trace("from|mission")
         self.assertEqual(n, 3)                              # 2 verified, 1 unverified; "is aboard" doesn't match
-        self.assertIn("label ORIGINATES_FROM -> merged into From (stage 4) -> spelling fold to FROM (stage 5) = "
+        self.assertIn("label ORIGINATES_FROM -> merged into From (stage 4) -> spelling fold to FROM (stage 4) = "
                       "FROM: DEFERRED (too vague: says nothing about what kind of origin); support 2, 2 maintainer(s)",
                       out)
         self.assertIn("label FROM = FROM: DEFERRED", out)    # an entity class merge of the same word isn't used
@@ -375,6 +614,21 @@ class TracingInduction(unittest.TestCase):
         self.assertNotIn("MODIS", out)
         self.assertIn("     2  FROM: DEFERRED", out)
         self.assertIn("     1  (unverified): left out", out)
+
+    def test_split_shown(self):
+        """A predicate split by its object's entity class (stage 5) shows the split in the chain; a triple instance
+        whose object has another entity class (near miss) doesn't."""
+        path = self.folder / "induction_evidence.json"
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+        evidence["labels"]["entity"] = {"Apollo 11": "Mission", "Cassini": "Craft"}
+        evidence["spelling_folds"].append({"kind": "entity class", "into": "MISSION", "folded": ["MISSION", "Mission"]})
+        evidence["splits"] = {"into": {"FROM": {"MISSION": "FROM_MISSION"}}}
+        path.write_text(json.dumps(evidence), encoding="utf-8")
+        _, out = self.trace("Apollo|Cassini")
+        self.assertIn("label FROM -> split to FROM_MISSION by its object's entity class, MISSION (stage 5) = "
+                      "FROM_MISSION", out)                       # Mission folded to MISSION before the split is read
+        cassini = out.split("Cassini", 1)[1].split("\n")[2]
+        self.assertNotIn("split", cassini)
 
     def test_matches_the_label_and_unlabeled(self):
         n, out = self.trace("^ABOARD$")                      # the label, not the words

@@ -202,7 +202,7 @@ def _parse_bool(text: str) -> bool:
     raise argparse.ArgumentTypeError(f"expected true or false, got {text!r}")
 
 
-def _parse_command_line(step_name, inputs, settings, argv, command=None, guide=None):
+def _parse_command_line(step_name, inputs, settings, argv, command=None, guide=None, retired=None):
     shared = sorted(set(inputs) & set(settings))
     if shared:
         raise ValueError(f"{step_name}: an input and a setting can't share a name, since both are given "
@@ -220,6 +220,11 @@ def _parse_command_line(step_name, inputs, settings, argv, command=None, guide=N
         ap.add_argument(f"--{key}", f"--{key.replace('_', '-')}", dest=f"set_{key}",
                         type=parse, metavar=kind.__name__.upper(),
                         help=f"setting (default: {default})")
+    for name, message in (retired or {}).items():
+        # A setting the step no longer has, refused with its own message (what replaced it), not argparse's bare
+        # "unrecognized arguments"
+        if any(a.split("=", 1)[0] in (f"--{name}", f"--{name.replace('_', '-')}") for a in argv):
+            ap.error(message)
     args = ap.parse_args(argv)
 
     chosen_inputs = {}
@@ -544,15 +549,17 @@ NOT_FINISHED = (FAILED, STOPPED, INTERRUPTED)
 
 
 def run_step(step_name: str, inputs: dict, settings: dict, main, argv=None, may_be_empty=(), specs=None,
-             command: str | None = None, guide: str | None = None) -> None:
+             command: str | None = None, guide: str | None = None, retired: dict | None = None) -> None:
     """Run a step: parse the command line, check the settings (specs: the step's own Spec table; the shared settings'
     rules come with it), describe the inputs, run main, write the manifest and the report. command and guide: how the
     messages name the command and its guide, for a helper that runs in this frame but isn't <step>/run.py
-    (py helpers/second_opinion.py); a step leaves them out."""
+    (py helpers/second_opinion.py); a step leaves them out. retired: {setting: message} for settings the step no
+    longer has, each refused with its message (exit code 2) instead of being taken for a typing mistake."""
     from common.report import write_step_report
 
     argv = sys.argv[1:] if argv is None else argv
-    chosen_inputs, chosen_settings, changed = _parse_command_line(step_name, inputs, settings, argv, command, guide)
+    chosen_inputs, chosen_settings, changed = _parse_command_line(step_name, inputs, settings, argv, command, guide,
+                                                                  retired)
 
     started = dt.datetime.now().astimezone()
     clock = time.monotonic()

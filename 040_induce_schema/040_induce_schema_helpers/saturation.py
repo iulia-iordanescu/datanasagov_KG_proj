@@ -1,5 +1,5 @@
 """
-saturation.py -- after stage 5: would more texts have added schema entries? Code only, no model.
+saturation.py -- after stage 6 (counting): would more texts have added schema entries? Code only, no model.
 
 THE CURVE. For k = 25, 50, ... texts, the number of schema entries (entity classes, predicates, patterns) that
 would have reached min_support had 040 read only k of its texts, averaged over every order the texts could
@@ -18,7 +18,8 @@ It is the sample-based rarefaction curve of ecology, the expected sample-based s
 over all orders of the samples (Gotelli & Colwell 2011, "Estimating species
 richness", in Magurran & McGill (eds), Biological Diversity, ch. 4): a text is a sample, an entry a species,
 counted by incidence; here an entry counts only once it reaches min_support texts. As there, it speaks only for
-what the sample was drawn from (here: 040's maintainers, 15 texts each by default), and it is descriptive: it
+what the sample was drawn from (here: the strata of the ground truth candidates pool, texts_per_stratum texts from
+each, so every stratum weighs the same), and it is descriptive: it
 gives no verdict. It uses the labels 040 assigned with every text in view, so it is slightly optimistic: a
 smaller sample might have labeled a few component instances differently. The same idea, saturation, decides how
 many interviews are enough in qualitative research (Guest, Bunce & Johnson 2006, "How Many Interviews Are Enough?
@@ -104,7 +105,8 @@ def report_lines(sat: dict, wide: dict, n_texts: int, min_support: int) -> list:
     lines += ["", f"*How to read a row, e.g. {first}:* had 040 read only {sat['texts'][0]} of its texts, about "
                   f"{sat[first][0]:.1f} {first} would have reached min_support, on average over every reading order; "
                   f"with all {n_texts}, {sat[first][-1]:.1f}. The last {CHECKPOINT} texts added "
-                  f"{sat['added_by_last'][first]:.1f}. It speaks only for the maintainers 040 read, and is slightly "
+                  f"{sat['added_by_last'][first]:.1f}. It speaks only for what 040 drew from (the same number of texts from each "
+                  f"stratum of the pool, so a small stratum weighs as much as a large one), and is slightly "
                   f"optimistic (the labels were chosen with every text in view).", "",
               "Schema entries that reached min_support, by how many maintainers' texts they were found in (an entry "
               "found in one maintainer's texts only is used by that maintainer only; many such suggest the "

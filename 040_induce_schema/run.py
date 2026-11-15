@@ -3,14 +3,17 @@
 
 Learns the schema from the catalog itself: its entity classes (e.g.
 Instrument), predicates (e.g. ABOARD) and patterns (e.g. Instrument ABOARD
-Spacecraft). A model reads a sample of texts and lists the triple instances
+Spacecraft). A model reads a sample of texts, the same number from each
+stratum of the ground truth candidates pool, and lists the triple instances
 they state, with no schema imposed; code keeps only those it can verify in
-the text; the model gives every component instance a label and merges labels
-that mean the same thing; code counts how many texts and maintainers back
-each schema entry, and keeps them all with that evidence. Terms:
-docs/terminology.md.
+the text; the model gives every component instance a label, merges labels
+that mean the same thing, and splits a predicate whose objects of different
+entity classes give it different meanings; code counts how many texts and
+maintainers back each schema entry, and keeps them all with that evidence.
+Terms: docs/terminology.md.
 
-Reads:   records.jsonl (020), splits.json (030), and, to compare with,
+Reads:   records.jsonl (020), splits.json (030), the pool's strata
+         (annotations/ground_truth_candidates.json), and, to compare with,
          annotations/ground_truth_schema.txt
 Writes:  the_schema.json, induction_evidence.json
 Details: 040_induce_schema/040_induce_schema.md
@@ -26,6 +29,7 @@ from common.step import load_moves, run_step
 INPUTS = {
     "records":     "020_clean/records.jsonl",
     "splits":      "030_split/splits.json",
+    "pool_design": "./annotations/ground_truth_candidates.json",
     "ground_truth_schema": "./annotations/ground_truth_schema.txt",
     "ground_truth": "./annotations/ground_truth/batch_*.csv",
 }
@@ -34,9 +38,9 @@ INPUTS = {
 MAY_BE_EMPTY = ("ground_truth",)
 
 SETTINGS = {
-    "induction_maintainers": 10,    # learn from this many of the largest maintainers
-    "texts_per_maintainer":  15,    # the first this-many induction candidates of each
+    "texts_per_stratum":     8,     # texts drawn from each stratum of the ground truth candidates pool (19 strata)
     "min_support":           1,     # a schema entry enters the schema if found in at least this many texts
+    "max_new_predicates":    50,    # splitting adds at most this many predicates (0: no splitting)
     "max_chars":             8000,  # a longer text is split into text pieces, one call each
     "workers":               4,     # model calls made at the same time
     "service":               SERVICE, # the service that reaches the model: asksage, litellm, anthropic, openai, google
@@ -50,18 +54,20 @@ induce = load_moves("040_induce_schema")
 
 
 def main(inputs, settings, output):
-    texts   = induce.pick_texts(inputs, settings)                      # code: the first induction candidates of the largest maintainers
+    texts   = induce.pick_texts(inputs, settings)                      # code: texts_per_stratum texts from each stratum of the pool
     calls   = induce.paid_calls(texts, settings, output)               # code: asks before paying; keeps every answer in cache/
     triples = induce.extract_triple_instances(texts, calls, settings)  # LLM: "MODIS" – "is aboard" – "Aqua", checked in the text
-    labels  = induce.label_component_instances(triples, calls)         # LLM: "MODIS" → Instrument, reusing labels chosen so far
+    labels  = induce.label_component_instances(triples, calls)         # LLM: "MODIS" → Instrument, read with its source text
     labels  = induce.merge_labels(labels, triples, calls)              # LLM: Sensor = Instrument, one call over all labels
-    counts  = induce.count_support(triples, labels)                    # code: the texts and maintainers behind each schema entry
+    splits  = induce.split_predicates(triples, labels, settings, calls)  # LLM: SOURCED_FROM → one per object entity class, checked
+    counts  = induce.count_support(triples, labels, splits)            # code: the texts and maintainers behind each schema entry
     words   = induce.write_definitions(counts, settings, calls)        # LLM: one sentence per entity class and predicate
     schema  = induce.check_schema(counts, words, settings)             # code: what enters the schema, what's deferred
     beside  = induce.compare_with_ground_truth_schema(inputs, schema)          # code: in both / only the ground truth schema / only induced
     # writes the_schema.json and induction_evidence.json; the report
-    return induce.results(texts, triples, labels, counts, words, schema, beside, calls, settings, output)
+    return induce.results(texts, triples, labels, splits, counts, words, schema, beside, calls, settings, output)
 
 
 if __name__ == "__main__":
-    run_step("040_induce_schema", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY, specs=induce.SPECS)
+    run_step("040_induce_schema", INPUTS, SETTINGS, main, may_be_empty=MAY_BE_EMPTY, specs=induce.SPECS,
+             retired=induce.RETIRED)

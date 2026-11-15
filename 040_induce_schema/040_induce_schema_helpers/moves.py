@@ -2,16 +2,18 @@
 moves.py -- the main moves of 040_induce_schema, as called by
 040_induce_schema/run.py.
 
-    stage 1  texts.py    pick_texts                 code: the texts to learn from (030's induction candidates)
+    stage 1  texts.py    pick_texts                 code: selection: the same number of texts from each stratum of the pool
     -        (here)      paid_calls                 code: asks before paying; keeps every answer in cache/
     stage 2  extract.py  extract_triple_instances   LLM: the triple instances each text states, checked
-    stage 3  label.py    label_component_instances  LLM: a label for each component instance, reusing labels
-    stage 4  merge.py    merge_labels               LLM: one call over all labels, merging synonyms
-    stage 5  count.py    count_support              code: the texts and maintainers behind every schema entry
-    stage 6  define.py   write_definitions          LLM: one sentence per entity class and predicate
-    stage 7  check.py    check_schema               code: builds the schema from the evidence
+    stage 3  label.py    label_component_instances  LLM: a label for each component instance, read with its source text
+    stage 4  merge.py    merge_labels               LLM: one call over all labels, merging synonyms; code: spelling folds
+    stage 5  split.py    split_predicates           LLM: splitting a predicate by its object's entity class; code checks
+    stage 6  count.py    count_support              code: the texts and maintainers behind every schema entry
+    stage 7  define.py   write_definitions          LLM: one sentence per entity class and predicate
+    stage 8  check.py    check_schema               code: builds the schema from the evidence
     -        compare.py  compare_with_ground_truth_schema   code: beside the ground truth schema, for the report
     -        saturation.py  (in results)            code: would more texts have added schema entries? for the report
+    -        tally.py    (in results)               code: the run's statistics, for the report
     -        (here)      results                    writes the_schema.json and induction_evidence.json; the report
 
 Every model answer is cached in cache/ inside the step's output folder
@@ -30,19 +32,27 @@ import extract
 import label
 import merge
 import saturation
+import split
+import tally
 import texts as texts_stage
-from texts import SPECS                                 # noqa: F401  (the control panel passes it to run_step)
+from texts import RETIRED, SPECS                        # noqa: F401  (the control panel passes them to run_step)
 from common import audit, dropped, llm
 from common.audit import check_origins, log, ref_path
 from common.files import write_json
 from common.ground_truth import ground_truth_schema_view, read_ground_truth, read_pool, twin_kinds, twin_table
-from common.schema_io import read_ground_truth_schema, without_held_out_only
+from common.schema_io import read_ground_truth_schema, schema_text, without_held_out_only
 from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
 from common.step import Results, repo_path
 
 SCHEMA_NAME = "the_schema.json"
 EVIDENCE_NAME = "induction_evidence.json"
 SHOW = 20                        # rows listed in the report before "…"
+#: The model calls that failed, and those cut off, in each stage that calls the model, counted around the stage
+#: (watch): {stage: {"failed": n, "cut_off": n}}. Emptied by paid_calls, at the start of each run.
+FAILED = {}
+#: The stages that call the model, as the report names them.
+STAGE_NAMES = {"extract": "stage 2: extraction of triple instances", "label": "stage 3: labeling",
+               "merge": "stage 4: merging", "split": "stage 5: splitting", "define": "stage 7: defining"}
 
 
 # --------------------------------------------------------------------------
@@ -52,27 +62,42 @@ def pick_texts(inputs, settings):
 
 
 def paid_calls(texts, settings, output) -> llm.Calls:
+    FAILED.clear()
     return llm.paid_calls(settings, output, notes=texts.notes)
 
 
+def watch(stage: str, work, *args):
+    """work(*args), counting the model calls of this stage that failed or were cut off (llm.OUTCOMES, counted for
+    the whole run) into FAILED[stage]."""
+    before = dict(llm.OUTCOMES)
+    try:
+        return work(*args)
+    finally:
+        FAILED[stage] = {k: llm.OUTCOMES[k] - before[k] for k in ("failed", "cut_off")}
+
+
 def extract_triple_instances(texts, calls, settings):
-    return extract.extract_triple_instances(texts, calls, settings)
+    return watch("extract", extract.extract_triple_instances, texts, calls, settings)
 
 
 def label_component_instances(triples, calls):
-    return label.label_component_instances(triples, calls)
+    return watch("label", label.label_component_instances, triples, calls)
 
 
 def merge_labels(labels, triples, calls):
-    return merge.merge_labels(labels, triples, calls)
+    return watch("merge", merge.merge_labels, labels, triples, calls)
 
 
-def count_support(triples, labels):
-    return count.count_support(triples, labels)
+def split_predicates(triples, labels, settings, calls):
+    return watch("split", split.split_predicates, triples, labels, settings, calls)
+
+
+def count_support(triples, labels, splits):
+    return count.count_support(triples, labels, splits)
 
 
 def write_definitions(counts, settings, calls):
-    return define.write_definitions(counts, settings, calls)
+    return watch("define", define.write_definitions, counts, settings, calls)
 
 
 def check_schema(counts, definitions, settings):
@@ -99,21 +124,68 @@ def compare_with_ground_truth_schema(inputs, schema) -> dict:
 
 # --------------------------------------------------------------------------
 
-def results(texts, triples, labels, counts, definitions, schema, comparison, calls, settings, output) -> Results:
+def _schema_shape(schema) -> dict:
+    """The schema in the shape common/common_helpers/schema_io.schema_text reads, to measure the text 060 sends."""
+    return {"entity_classes": {c["component_class"]: c["definition"] for c in schema.entity_classes},
+            "predicates": {p["component_class"]: p["definition"] for p in schema.predicates},
+            "patterns": [tuple(p["pattern"]) for p in schema.patterns]}
+
+
+def schema_length(schema, splits) -> dict:
+    """How long the schema's text is as step 060 sends it (common/common_helpers/schema_io.schema_text), and how much
+    of it the predicates splitting added take: {"characters", "predicates", "added", "added_characters",
+    "per_added"}. A predicate's own share is its name-and-definition line and the start of its patterns line (the
+    indent and the line break); its patterns' text is not counted, since splitting moves patterns between
+    predicates without adding any."""
+    shape = _schema_shape(schema)
+    text = schema_text(shape)
+    width = max((len(n) for kind in ("entity_classes", "predicates") for n in shape[kind]), default=0) + 2
+    new = {s["into"] for s in splits.kept} & set(shape["predicates"])
+    own = sum(len(f"{n.ljust(width)}{shape['predicates'][n]}".rstrip()) + 1 + width + 1 for n in new)
+    return {"characters": len(text), "predicates": len(shape["predicates"]), "added": splits.added,
+            "added_characters": own, "per_added": round(own / len(new)) if new else None}
+
+
+def _rows(items: list) -> str:
+    """Texts as "record id (stratum)"."""
+    return named([f"{t['id']} ({t['stratum']})" for t in items], SHOW, "; ")
+
+
+def results(texts, triples, labels, splits, counts, definitions, schema, comparison, calls, settings,
+            output) -> Results:
     ground_truth_problems = comparison.pop("ground_truth_problems", [])
+    strata = [r["stratum"] for r in texts.strata]
     made = {"run_id": audit.current_run_id(), **llm.describe(), "settings": settings,
-            "texts": len(texts.items), "maintainers": [m["maintainer"] for m in texts.maintainers]}
+            "texts": len(texts.items), "strata": strata, "maintainers": texts.maintainers}
     schema_path, evidence_path = output / SCHEMA_NAME, output / EVIDENCE_NAME
     write_json(schema_path, {"entity_classes": schema.entity_classes, "predicates": schema.predicates,
                               "patterns": schema.patterns,
                               "deferred": [{k: d[k] for k in check.DEFERRED_FIELDS} for d in schema.deferred],
                               "made": made})
     calls_made = {"extract": triples.calls, "label": labels.calls, "merge": labels.merge_calls,
-                  "define": definitions.calls, "test": calls.paid.test_calls}
+                  "split": splits.calls, "define": definitions.calls, "test": calls.paid.test_calls}
     pieces = {t["id"]: len(t["pieces"]) for t in texts.items}
     # Would more texts have added schema entries? (saturation.py: code only, from the counts)
     sat = saturation.curve(counts, len(triples.texts), settings["min_support"])
     wide = saturation.breadth(counts, settings["min_support"])
+    # The run's statistics (tally.py: code only)
+    per_text = tally.per_text(triples)
+    by_stratum = tally.per_stratum(triples, strata)
+    empty = tally.no_triple_instances(triples)
+    removed = tally.removed_by_checks(triples, counts, schema)
+    others = tally.other_checks(labels, splits, definitions, schema, check.DEFERRED_REASONS)
+    failed = {stage: {**FAILED.get(stage, {"failed": 0, "cut_off": 0}), "made": calls_made[stage]}
+              for stage in STAGE_NAMES}
+    failed["extract"]["cut_off_before"] = triples.cut_reused
+    length = schema_length(schema, splits)
+    statistics = {
+        "sampling": {"texts_per_stratum": settings["texts_per_stratum"], "strata": texts.strata,
+                     "skipped_twins": texts.skipped, "reading_order_seed": f"{texts.seed}/{texts_stage.READING_ORDER}"},
+        "triple_instances_per_text": {k: tally.stats(v) for k, v in per_text.items()},
+        "verified_per_text_by_stratum": {s: tally.stats(v) for s, v in by_stratum.items()},
+        "texts_with_no_triple_instance": empty,
+        "removed_by_checks": removed, "other_checks": others,
+        "model_calls_failed": failed, "schema_length": length}
     write_json(evidence_path, {
         "made": made,
         "texts": [{**t, "pieces": pieces[t["id"]]} for t in triples.texts],
@@ -121,15 +193,20 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         "left_out": dropped.details(triples.left_out),
         "labels": labels.of, "vocabulary": labels.vocabulary, "label_batches": labels.batches,
         "unlabeled": labels.unlabeled, "merges": labels.merges, "merge_issues": labels.merge_issues,
-        "spelling_folds": counts.spelling_folds, "unlabeled_slots": counts.unlabeled_slots,
+        "spelling_folds": labels.spelling_folds,
+        "splits": {"sent": splits.sent, "kept": splits.kept, "dropped": splits.dropped,
+                   "rejected": splits.rejected, "refused": splits.refused, "into": splits.into,
+                   "added": splits.added, "max_new_predicates": splits.cap},
+        "unlabeled_slots": counts.unlabeled_slots,
         "counts": {"entity_classes": counts.entity_classes, "predicates": counts.predicates,
                    "patterns": counts.patterns},
         "definitions": definitions.of, "too_vague": definitions.too_vague,
-        "refused": {"labels": labels.refused, "definitions": definitions.refused},
+        "refused": {"labels": labels.refused, "definitions": definitions.refused, "splits": splits.refused},
         "unknown_schema_entries": definitions.unknown, "missing_definitions": schema.missing_definitions,
         "calls": {**calls_made, "reused_extractions": triples.reused},
         "compared_with_ground_truth_schema": comparison,
         "saturation": {"curve": sat, "breadth": wide},
+        "statistics": statistics,
     })
     log.info(f"  wrote {SCHEMA_NAME} and {EVIDENCE_NAME}")
 
@@ -138,23 +215,25 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
     evidence_shown = repo_path(evidence_path)
     if triples.failed_note:
         warnings.append(triples.failed_note)
-    empty = [t["id"] for t in triples.texts if not t["triple_instances"]]
-    if empty:
-        warnings.append(f"{len(empty)} text(s) gave no verified triple instance: {named(empty, 3)}. They add "
-                        f"no support to any schema entry. Nothing to do if they are very short records; otherwise "
-                        f"look at each one's `unverified` list in {evidence_shown}.")
+    if empty["verified"]:
+        warnings.append(f"{len(empty['verified'])} text(s) gave no verified triple instance: "
+                        f"{named([t['id'] for t in empty['verified']], 3)}. They add no support to any schema entry. "
+                        f"Nothing to do if they are very short records; otherwise look at each one's `unverified` "
+                        f"list in {evidence_shown}.")
     refused = [f"{r['component_instance']} ({label.BECOMES[kind]})" for kind, rows in labels.refused.items() for r in rows]
+    refused += [f"{r['predicate']} (predicate, splitting)" for r in splits.refused]
     refused += [f"{r['component_class']} ({r['kind']}, definition)" for r in definitions.refused]
     if refused:
         why = next(iter([r["why"] for rows in labels.refused.values() for r in rows]
-                        + [r["why"] for r in definitions.refused]))
+                        + [r["why"] for r in splits.refused] + [r["why"] for r in definitions.refused]))
         warnings.append(f"The service refused to answer about {len(refused)} item(s), even asked alone ({why}): "
                         f"{named(refused, 10)}. A refused component instance stays unlabeled and counts toward no "
-                        f"schema entry; a refused schema entry gets no definition. Everything else in their batches "
-                        f"was answered (each refused batch was asked again in halves). Each one, with the reason, is "
-                        f"in {evidence_shown} under `refused`; what the model wrote before the stop is in this run's "
-                        f"log (outputs/logs/<run id>.log), on DEBUG lines starting \"answer stopped by the service\". "
-                        f"Nothing to do if few; if many, try another model (`--model`).")
+                        f"schema entry; a refused predicate isn't split; a refused schema entry gets no definition. "
+                        f"Everything else in their batches was answered (each refused batch was asked again in "
+                        f"halves). Each one, with the reason, is in {evidence_shown} under `refused`; what the model "
+                        f"wrote before the stop is in this run's log (outputs/logs/<run id>.log), on DEBUG lines "
+                        f"starting \"answer stopped by the service\". Nothing to do if few; if many, try another "
+                        f"model (`--model`).")
     unlabeled = sum(len(v) for v in labels.unlabeled.values())
     if unlabeled:
         left = [v for kind in label.KINDS for v in labels.unlabeled.get(kind, [])]
@@ -170,6 +249,19 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                         f"would close a cycle (the first merge kept each time). An ignored merge can leave two "
                         f"labels that mean the same thing as two schema entries. Nothing to do; all are listed in "
                         f"{evidence_shown} under `merge_issues`.")
+    if splits.rejected:
+        warnings.append(f"The splitting replies had {len(splits.rejected)} predicate split(s) code rejected: "
+                        + named([f"{r['predicate']} into {r['into']} ({r['why']})" for r in splits.rejected], 3, "; ")
+                        + f". A rejected predicate split leaves its predicate as it was. Nothing to do; each is listed, with "
+                          f"why, in this report's section *Splitting* and in {evidence_shown} under `splits`.")
+    if splits.dropped:
+        warnings.append(f"{len(splits.dropped)} predicate split(s) passed every check but were left out because the "
+                        f"predicate splits kept already add max_new_predicates ({splits.cap}) predicates: "
+                        + named([f"{s['predicate']} into {s['into']} ({s['texts']} texts)" for s in splits.dropped],
+                                3, "; ")
+                        + f". Their predicates keep those objects. To keep more, raise `--max_new_predicates` "
+                          f"(each added predicate makes every step 060 prompt longer: the report's section "
+                          f"*Splitting* gives by how much).")
     if schema.missing_definitions:
         n = len(schema.missing_definitions)
         warnings.append(f"{n} schema entr{'ies have' if n != 1 else 'y has'} no definition (the model "
@@ -190,19 +282,33 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
         if missing:
             warnings.append(missing)
 
-    per_text = [(listed_label("verified + unverified"),
-                 [len(t["triple_instances"]) + len(t["unverified"]) for t in triples.texts]),
-                ("verified (kept)", [len(t["triple_instances"]) for t in triples.texts])]
-    split = sum(n > 1 for n in pieces.values())
+    table = [(listed_label("verified + unverified"), per_text["listed"]), ("verified (kept)", per_text["verified"])]
+    split_pieces = sum(n > 1 for n in pieces.values())
+    skipped = {k: sum(r["skipped"][k] for r in texts.strata) for k in texts_stage.SKIPPED}
+    title_only = sum(r["title_only_kept"] for r in texts.strata)
     lines = [
         "### What this run worked on", "",
-        f"{len(texts.items)} texts: the first {settings['texts_per_maintainer']} induction candidates of "
-        f"each of the {len(texts.maintainers)} largest maintainers"
-        + (f"; {split} were split into text pieces" if split else "") + ".", "",
-        "| Maintainer | Records | Texts used |", "|---|---:|---:|"]
-    lines += [f"| {cell(m['maintainer'])} | {m['records']:,} | {m['taken']} |" for m in texts.maintainers]
-    lines += ["", *dropped.section(triples.left_out, texts.items, "the evidence the schema is induced from",
-                                   repo_path(evidence_path))]
+        f"{len(texts.items)} texts: up to {settings['texts_per_stratum']} induction candidates from each of the "
+        f"{len(strata)} strata of the ground truth candidates pool, taken in each stratum's fixed random order, "
+        f"read in a random order fixed by 030's seed"
+        + (f"; {split_pieces} were split into text pieces" if split_pieces else "") + ". While drawing, a text that "
+        f"is a whole-text twin (the same title and `notes`) or a notes-only twin (the same `notes`) of a text already "
+        f"drawn was skipped and the next in its stratum taken; a title-only twin (the same title, other `notes`) was "
+        f"kept, since its text differs (040_induce_schema/040_induce_schema.md, *How it works*, stage 1).", "",
+        "| Stratum | Maintainers | Induction candidates | Texts drawn | Skipped: whole-text twins | "
+        "Skipped: notes-only twins | Title-only twins kept |", "|---|---:|---:|---:|---:|---:|---:|"]
+    lines += [f"| {cell(r['stratum'])} | {r['maintainers']:,} | {r['candidates']:,} | {r['taken']} | "
+              f"{r['skipped']['whole text']} | {r['skipped']['notes only']} | {r['title_only_kept']} |"
+              for r in texts.strata]
+    lines += [f"| **all strata** | {sum(r['maintainers'] for r in texts.strata):,} | "
+              f"{sum(r['candidates'] for r in texts.strata):,} | **{len(texts.items)}** | {skipped['whole text']} | "
+              f"{skipped['notes only']} | {title_only} |", ""]
+    if texts.skipped:
+        lines += ["Twins skipped (record id, stratum, twin kind, the text drawn it is a twin of): "
+                  + named([f"{k['id']} ({k['stratum']}, {k['twin_kind']}, of {k['twin_of']})" for k in texts.skipped],
+                          SHOW, "; ") + ".", ""]
+    lines += [*dropped.section(triples.left_out, texts.items, "the evidence the schema is induced from",
+                               repo_path(evidence_path))]
     learned = {t["id"]: t["record"] for t in texts.items if t["id"] in {x["id"] for x in triples.texts}}
     lines += ["", "### Twins in the pool", "",
               f"A pool record with the same title, the same `notes`, or both as one of the {len(learned)} texts this run "
@@ -215,11 +321,16 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
                                       f"the {len(texts.candidates):,} induction candidates", texts.candidates)])
     twins = sum(1 for k in twin_kinds(texts.pool, learned).values() if k)
     lines += ["", "### Triple instances and labels", ""]
-    lines += per_text_table("Triple instances per text", per_text) + [
+    lines += per_text_table("Triple instances per text", table) + [
               "",
               "One text is one record's text. A triple instance two text pieces of a text both state counts once; "
               "items in the replies that weren't triple instances, and texts whose model call failed, aren't "
-              "counted.", "",
+              "counted. SD: the sample standard deviation.", ""]
+    lines += per_text_table("Verified triple instances per text, by stratum", list(by_stratum.items())) + [""]
+    lines += [f"Texts whose replies listed no triple instance: {len(empty['listed'])}"
+              + (f" ({_rows(empty['listed'])})" if empty["listed"] else "") + f". Texts with no verified triple "
+              f"instance: {len(empty['verified'])}" + (f" ({_rows(empty['verified'])})" if empty["verified"] else "")
+              + ".", "",
               "- Verified: each one's source text is in its record's text (checked in code, "
               "`common/common_helpers/validate.py`).",
               f"- Describes class (`describes_class`, the entity class of what the title names): named for "
@@ -231,18 +342,21 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               f"- Labeled: {len(labels.of.get('entity', {})):,} subject instances and object instances "
               f"with {len(labels.vocabulary.get('entity', [])):,} entity class labels; "
               f"{len(labels.of.get('predicate', {})):,} predicate instances with "
-              f"{len(labels.vocabulary.get('predicate', [])):,} predicate labels.",
+              f"{len(labels.vocabulary.get('predicate', [])):,} predicate labels (each judged by its shortest triple "
+              f"instance and that triple instance's source text).",
               f"- Merged in stage 4: {len(labels.merges)} label(s), all listed below.",
-              f"- Folded by spelling in stage 5: {len(counts.spelling_folds)} group(s).", ""]
+              f"- Folded by spelling in stage 4: {len(labels.spelling_folds)} group(s).", ""]
     if labels.merges:
         lines += ["Merges (check these: a wrong merge makes two ideas one):", "",
                   "| Kind | Label | Merged into | Component instances | Texts |", "|---|---|---|---:|---:|"]
         lines += [f"| {m['kind']} | {cell(m['label'])} | {cell(m['into'])} | {m['component_instances']} | "
                   f"{m['texts']} |" for m in labels.merges]
         lines.append("")
-    if counts.spelling_folds:
+    if labels.spelling_folds:
         lines += ["Spelling folds: " + named([f"{' · '.join(f['folded'])} --> {f['into']}"
-                                              for f in counts.spelling_folds], SHOW, "; ") + ".", ""]
+                                              for f in labels.spelling_folds], SHOW, "; ") + ".", ""]
+    lines += _splitting_lines(splits, length, settings)
+    lines += _check_lines(removed, others)
     by_reason = {}
     for d in schema.deferred:
         reason = check.DEFERRED_REASONS[d["reason_code"]]
@@ -269,19 +383,87 @@ def results(texts, triples, labels, counts, definitions, schema, comparison, cal
               f"{cell(', '.join(c['examples']))} |" for c in schema.entity_classes[:15]]
     lines += [""] + dropped.reasks_lines(llm.REASKS)
     lines += model_calls([("stage 2: extract triple instances (one call per text piece)", triples.calls, triples.reused),
-                                 (f"stage 3: label component instances ({label.LABEL_BATCH} per call)", labels.calls, labels.reused),
-                                 ("stage 4: merge labels (one call per kind)", labels.merge_calls, labels.merge_reused),
-                                 (f"stage 6: write definitions ({define.DEFINE_BATCH} per call)", definitions.calls,
-                                  definitions.reused)],
-                                calls.paid.test_calls, llm.model_label())
+                          (f"stage 3: label component instances ({label.LABEL_BATCH} per call)", labels.calls, labels.reused),
+                          ("stage 4: merge labels (one call per kind)", labels.merge_calls, labels.merge_reused),
+                          (f"stage 5: split predicates ({split.SPLIT_BATCH} per call)", splits.calls, splits.reused),
+                          (f"stage 7: write definitions ({define.DEFINE_BATCH} per call)", definitions.calls,
+                           definitions.reused)],
+                         calls.paid.test_calls, llm.model_label())
+    lines += ["Calls that failed or were cut off, by stage (after the model client's own retries; a cut-off is also "
+              "a failure):", "",
+              "| Stage | Calls made | Failed | Of which cut off | Cut off in an earlier run, not asked again |",
+              "|---|---:|---:|---:|---:|"]
+    lines += [f"| {STAGE_NAMES[stage]} | {f['made']:,} | {f['failed']:,} | {f['cut_off']:,} | "
+              f"{f.get('cut_off_before', 0) if stage == 'extract' else '–'} |" for stage, f in failed.items()]
+    lines.append("")
 
     return Results(
         files=[schema_path, evidence_path],
         headline={"entity classes": len(schema.entity_classes), "predicates": len(schema.predicates),
                   "patterns": len(schema.patterns), "twins in the pool": f"{twins} of {len(texts.pool):,}",
-                  **per_text_headline([("raw triple instances", per_text[0][1]),
-                                       ("verified triple instances", per_text[1][1])]),
+                  "twins skipped while drawing": len(texts.skipped),
+                  "predicates added by splitting": splits.added,
+                  **per_text_headline([("raw triple instances", per_text["listed"]),
+                                       ("verified triple instances", per_text["verified"])]),
+                  "texts with no verified triple instance": len(empty["verified"]),
+                  "model calls failed": sum(f["failed"] for f in failed.values()),
                   **dropped.reasks_headline(llm.REASKS)},
         details="\n".join(lines),
         warnings=warnings,
     )
+
+
+def _splitting_lines(splits, length: dict, settings: dict) -> list:
+    """The report's subsection *Splitting* (stage 5)."""
+    lines = ["### Splitting", "",
+             f"Stage 5 sent {len(splits.sent)} predicate(s) whose triple instances reach several object entity "
+             f"classes; the model proposed {len(splits.kept) + len(splits.dropped) + len(splits.rejected)} predicate "
+             f"split(s), each a new predicate with the object entity classes it takes. "
+             f"Kept: {len(splits.kept)}, adding {splits.added} predicate(s) (max_new_predicates = "
+             f"{settings['max_new_predicates']}); dropped by that cap: {len(splits.dropped)}; rejected by code: "
+             f"{len(splits.rejected)}.", ""]
+    if settings["max_new_predicates"] == 0:
+        lines += ["max_new_predicates is 0, so no predicate was sent and none was split.", ""]
+    for rows, title in ((splits.kept, "Predicate splits kept"),
+                        (splits.dropped, "Predicate splits dropped by max_new_predicates (fewest texts)")):
+        if rows:
+            lines += [f"{title}:", "", "| Predicate | New predicate | Object entity classes | Texts | Triple instances |",
+                      "|---|---|---|---:|---:|"]
+            lines += [f"| {cell(s['predicate'])} | {cell(s['into'])} | {cell(', '.join(s['object_classes']))} | "
+                      f"{s['texts']} | {s['triple_instances']} |" for s in rows]
+            lines.append("")
+    if splits.rejected:
+        lines += ["Predicate splits rejected by code:", "", "| Predicate | New predicate | Object entity classes | Why |",
+                  "|---|---|---|---|"]
+        lines += [f"| {cell(str(r['predicate']))} | {cell(str(r['into']))} | "
+                  f"{cell(', '.join(map(str, r['object_classes'])))} | {cell(r['why'])} |" for r in splits.rejected]
+        lines.append("")
+    per = (f"{length['per_added']:,} characters per added predicate" if length["per_added"] is not None
+           else "no predicate was added")
+    lines += [f"Schema text, as step 060 sends it in every prompt (`common/common_helpers/schema_io.py`, "
+              f"`schema_text`): {length['characters']:,} characters for {length['predicates']} predicates. The "
+              f"predicates splitting added take {length['added_characters']:,} of them ({per}: each one's name and "
+              f"definition line, and the start of its patterns line; the patterns themselves only move between "
+              f"predicates). A predicate split away entirely gives its own lines back. What share of a step 060 "
+              f"prompt that is: 040_induce_schema/040_induce_schema.md, *Settings*, `max_new_predicates`.", ""]
+    return lines
+
+
+def _check_lines(removed: list, others: list) -> list:
+    """The report's subsection *Code checks*: what each code check of stages 2 to 8 removed."""
+    lines = ["### Code checks", "",
+             "What each code check removed, in the order the checks run. A check removes a text wholly when the text "
+             "had at least one triple instance just before the check and none after it (a text whose model call "
+             "failed is in none of these: it is counted under *Model calls*).", "",
+             "| Stage | Check | What it removes | Triple instances removed | Texts removed wholly |",
+             "|---:|---|---|---:|---:|"]
+    lines += [f"| {r['stage']} | {r['check']} | {r['what']} | {r['removed']:,} | {len(r['texts_wholly']):,} |"
+              for r in removed]
+    lines.append("")
+    for r in removed:
+        if r["texts_wholly"]:
+            lines.append(f"- Removed wholly by *{r['check']}* (record id, stratum): {_rows(r['texts_wholly'])}.")
+    lines += ["", "The model's other answers that code ignored, or that had no effect:", "",
+              "| Stage | Check | Removed | Of |", "|---:|---|---:|---|"]
+    lines += [f"| {r['stage']} | {r['check']} | {r['removed']:,} | {r['unit']} |" for r in others]
+    return lines + [""]

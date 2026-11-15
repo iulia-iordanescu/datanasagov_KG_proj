@@ -213,10 +213,12 @@ PREDICATE_LABELS = ["ABOARD", "MOUNTED_ON", "MEASURES", "PART_OF"]
 
 def _labels(prompt: str) -> dict:
     """Step 040's labeling: reuse a label of the running vocabulary or coin one."""
-    entities = "\nSUBJECTS AND OBJECTS (each with one usage" in prompt
-    header = ("SUBJECTS AND OBJECTS" if entities else "PREDICATES") + \
-        " (each with one usage example, \"subject -- predicate -- object\"):"
+    entities = "\nINSTANCES (each with one usage" in prompt
+    header = ("\nINSTANCES" if entities else "\nPREDICATE INSTANCES") + \
+        " (each with one usage example, a triple written \"subject instance -- predicate instance -- object instance\" " \
+        "without its entity classes, and its source text):"
     items = _json_after(prompt, header)
+    assert all(set(v) == {"example", "source_text"} for v in items.values()), "labeling sends example and source text"
     coin = ENTITY_LABELS if entities else PREDICATE_LABELS
     return {"labels": {item: coin[_h(item) % len(coin)] for item in items}}
 
@@ -228,6 +230,24 @@ def _merges(prompt: str) -> dict:
     merges = [{"into": b, "labels": [a, b]} for a, b in pairs if a in labels and b in labels]
     merges.append({"into": "Gadget", "labels": ["Gadget", "Widget"]})       # not labels: ignored
     return {"merges": merges}
+
+
+def _splits(prompt: str) -> dict:
+    """Step 040's splitting: each predicate sent split into one new predicate per object entity class but the last,
+    plus faults code must reject: a renaming (every object entity class), an object entity class taken twice, an
+    object entity class not the predicate's, the predicate's own name, and a predicate not sent."""
+    sent = _json_after(prompt, "PREDICATES (each with the entity classes of its object instances):")
+    splits = []
+    for p in sent:
+        ocs = [oc["entity_class"] for oc in p["object_classes"]]
+        splits.append({"predicate": p["predicate"], "into": f"{p['predicate']}_ALL", "object_classes": ocs})
+        splits += [{"predicate": p["predicate"], "into": f"{p['predicate']}_{c.upper()}", "object_classes": [c]}
+                   for c in ocs[:-1]]
+        splits += [{"predicate": p["predicate"], "into": f"{p['predicate']}_AGAIN", "object_classes": ocs[:1]},
+                   {"predicate": p["predicate"], "into": f"{p['predicate']}_ODD", "object_classes": ["Gadget"]},
+                   {"predicate": p["predicate"], "into": p["predicate"], "object_classes": ocs[-1:]}]
+    splits.append({"predicate": "NOT_SENT", "into": "NEW", "object_classes": ["Instrument"]})
+    return {"splits": splits}
 
 
 def _definitions(prompt: str) -> dict:
@@ -292,6 +312,8 @@ def stand_in_model(prompt, attempts=4, read_timeout=180, model=None, cache_until
         return json.dumps(_labels(prompt))
     if '"merges"' in prompt:
         return json.dumps(_merges(prompt))
+    if '"splits"' in prompt:
+        return json.dumps(_splits(prompt))
     if "\nSCHEMA\n" in prompt:
         return json.dumps(_mapping(prompt))
     if "\nENTITY CLASSES:" in prompt or "\nPREDICATES:" in prompt:

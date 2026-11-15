@@ -48,9 +48,57 @@ def load(path) -> Prompt:
 def fill(template: Template, **values) -> str:
     """The prompt with every $name filled in. A $name with no value, or a
     stray "$", stops with an error instead of reaching the model half-filled.
-    The prompt's file and fingerprint are recorded for the run's report."""
+    A prompt with $words gets the definitions of the terms it uses (words_for),
+    unless the caller gives them. The prompt's file and fingerprint are
+    recorded for the run's report."""
     _record(template)
+    if "$words" in template.template and "words" not in values:
+        values["words"] = words_for(template.template)
     return template.substitute(**values)
+
+
+#: The definitions of the terms the prompts use (common/common_prompts/words.txt), one entry per term: those also in
+#: the extraction rules' words section are worded as there (tests/test_parallel.py checks it).
+WORDS = Path(__file__).resolve().parents[1] / "common_prompts" / "words.txt"
+
+
+def _entries() -> list:
+    """[(terms, entry text)] of words.txt, in its order: an entry is a line starting "- " and the lines indented under
+    it; its terms are the names before its first ". " ("Instance, subject instance, object instance")."""
+    out, head = [], []
+    lines = read_text(WORDS).split("\n")
+    for line in lines:
+        if line.startswith("- "):
+            out.append([line])
+        elif line.startswith("  ") and out:
+            out[-1].append(line)
+        elif not out:
+            head.append(line)
+    return [([t.strip().lower() for t in e[0][2:].split(". ", 1)[0].split(",")], "\n".join(e)) for e in out]
+
+
+def _uses(text: str, term: str) -> bool:
+    """Whether text uses term, in any case, singular or plural ("entity", "entities"; "kind", "kinds")."""
+    import re
+    plural = term[:-1] + "ies" if term.endswith("y") else term + "s"
+    return re.search(r"(?<![\w-])(?:%s|%s)(?![\w-])" % (re.escape(term), re.escape(plural)), text, re.I) is not None
+
+
+def words_for(text: str) -> str:
+    """The WORDS section for a prompt: the heading and introduction of words.txt, then every entry whose term the
+    prompt uses, and every entry a chosen entry's own definition uses, in the file's order. So every term a prompt
+    uses is defined in it, in the same words in every prompt."""
+    entries = _entries()
+    chosen, seen = set(), text.replace("$words", "")
+    while True:
+        more = {i for i, (terms, _) in enumerate(entries) if i not in chosen and any(_uses(seen, t) for t in terms)}
+        if not more:
+            break
+        chosen |= more
+        seen = "\n".join(entries[i][1] for i in chosen)
+    head = read_text(WORDS).split("\n- ", 1)[0].rstrip()
+    _used[_ref(WORDS)] = hashlib.sha256(read_text(WORDS).encode("utf-8")).hexdigest()
+    return "\n".join([head, ""] + [entries[i][1] for i in sorted(chosen)])
 
 
 def text(template: Template) -> str:
@@ -60,10 +108,14 @@ def text(template: Template) -> str:
     return template.template
 
 
+def _ref(path) -> str:
+    from common.audit import ref_path
+    return ref_path(path)
+
+
 def _record(template: Template) -> None:
     if isinstance(template, Prompt):
-        from common.audit import ref_path
-        _used[ref_path(template.path)] = hashlib.sha256(template.template.encode("utf-8")).hexdigest()
+        _used[_ref(template.path)] = hashlib.sha256(template.template.encode("utf-8")).hexdigest()
 
 
 def prompts_used() -> list:

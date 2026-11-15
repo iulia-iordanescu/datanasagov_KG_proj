@@ -7,8 +7,9 @@ a regular expression, read from its output files. Read-only, no model call.
 For each triple instance in induction_evidence.json whose predicate instance,
 source text, predicate label or final predicate matches (case ignored): its
 record, the triple instance, the label stage 3 gave its predicate instance,
-the label stage 4 merged that into and the spelling fold of stage 5 (so the
-final predicate), and whether that predicate is in the_schema.json or
+the label stage 4 merged that into and its spelling fold (also stage 4), the
+split of stage 5 its object's entity class put it in, if any (so the final
+predicate), and whether that predicate is in the_schema.json or
 deferred (with the reason), with its support. Unverified triple instances
 that match are shown too: they got no label and count toward nothing. Then a
 summary: the matched triple instances per final predicate.
@@ -89,7 +90,19 @@ def trace_induction(pattern: str, limit: int = 30, folder: Path | None = None, o
               for s in f.get("folded", []) if s != f["into"]}
     status = _status(schema, evidence)
 
-    def chain(words: str) -> tuple:
+    entity_labels = evidence.get("labels", {}).get("entity", {})
+    entity_merged = {m["label"]: m["into"] for m in evidence.get("merges", []) if m.get("kind") == "entity class"}
+    entity_folded = {s: f["into"] for f in evidence.get("spelling_folds", []) if f.get("kind") == "entity class"
+                     for s in f.get("folded", []) if s != f["into"]}
+    split_into = evidence.get("splits", {}).get("into", {})
+
+    def object_class(obj: str):
+        """An object instance's final entity class (stage 3's label, merged, folded), or None."""
+        c = entity_labels.get(obj)
+        c = entity_merged.get(c, c)
+        return entity_folded.get(c, c)
+
+    def chain(words: str, obj: str = "") -> tuple:
         """(final predicate, the chain as text)."""
         label = labels.get(words)
         if label is None:
@@ -100,7 +113,11 @@ def trace_induction(pattern: str, limit: int = 30, folder: Path | None = None, o
             steps.append(f"merged into {final} (stage 4)")
         if final in folded:
             final = folded[final]
-            steps.append(f"spelling fold to {final} (stage 5)")
+            steps.append(f"spelling fold to {final} (stage 4)")
+        new = split_into.get(final, {}).get(object_class(obj))
+        if new:
+            final = new
+            steps.append(f"split to {final} by its object's entity class, {object_class(obj)} (stage 5)")
         return final, " -> ".join(steps)
 
     hits = []                                   # (record id, triple instance, verified?, final, chain)
@@ -108,7 +125,7 @@ def trace_induction(pattern: str, limit: int = 30, folder: Path | None = None, o
         for verified, key in ((True, "triple_instances"), (False, "unverified")):
             for ti in t.get(key, []):
                 words = ti.get("predicate", "")
-                final, how = chain(words) if verified else (UNVERIFIED, "")
+                final, how = chain(words, ti.get("object", "")) if verified else (UNVERIFIED, "")
                 looked_in = [words, ti.get("source_text", "")] + ([labels.get(words) or "", final] if verified else [])
                 if any(rx.search(x or "") for x in looked_in):
                     hits.append((t.get("id", "?"), ti, verified, final, how))
