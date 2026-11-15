@@ -2,7 +2,6 @@
 doesn't finish, and the pipeline report. Steps are stood in for by tiny scripts that write a report and a manifest and
 exit with a chosen code; the ground truth and outputs are temporary folders. Nothing real is run or touched."""
 import csv
-import json
 import shutil
 import sys
 import tempfile

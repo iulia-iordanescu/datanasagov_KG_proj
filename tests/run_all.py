@@ -18,15 +18,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 from common.console import setup as console_setup      # noqa: E402  (the one set-up: a cp1252 console shows "?" for ✖, never crashes)
-sys.path.insert(0, str(HERE.parent))
-from common.console import setup as console_setup      # noqa: E402  (the one set-up: a cp1252 console shows "?" for ✖, never crashes)
 TIME_LIMIT = 300            # seconds per test file; the slowest takes about 20
 
 
 def repository_state() -> str:
     """What Git sees in the repository, outputs/ included: the tests must leave it as it was."""
     return subprocess.run(["git", "status", "--porcelain", "--ignored", "--untracked-files=all", "--", ".",
-                           ":(exclude)tests/__pycache__", ":(exclude)*/__pycache__/*", ":(exclude)DONOTTRACK"],
+                           ":(exclude)__pycache__", ":(exclude)tests/__pycache__", ":(exclude)*/__pycache__/*",
+                           ":(exclude)DONOTTRACK"],
                           cwd=HERE.parent, capture_output=True, text=True, check=True).stdout
 
 

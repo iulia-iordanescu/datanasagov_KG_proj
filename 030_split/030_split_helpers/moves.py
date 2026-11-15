@@ -56,8 +56,6 @@ pool file changed since.
 from __future__ import annotations
 
 import collections
-import csv
-import json
 import random
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -68,7 +66,7 @@ from common.files import read_csv, read_json, write_json
 from common.ground_truth import HELD_OUT, TUNING, twin_table
 from common.records_io import has_text, load_records as read_records
 from common.report import cell, named
-from common.step import Spec, check_settings, repo_path
+from common.step import Spec, repo_path
 from common.step import MANIFEST_NAME, Results, input_files
 from common.stop import Stop
 

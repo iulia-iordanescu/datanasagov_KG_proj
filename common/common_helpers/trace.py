@@ -16,8 +16,6 @@ its own name ({"<name>": {"records": [...]}}), is searched in all of them.
 """
 from __future__ import annotations
 
-import csv
-import json
 from pathlib import Path
 
 from common.files import read_csv, read_json, read_jsonl

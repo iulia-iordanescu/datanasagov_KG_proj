@@ -31,6 +31,7 @@ from __future__ import annotations
 import collections
 import math
 from functools import lru_cache
+from typing import Any
 
 from pairing import NO_DRAFTING_MODEL, GROUPINGS, LEVELS, MATCH_KINDS, PER_COMPONENT_CLASS, REACH_BUCKETS, SECOND_OPINION_GROUPS
 from common.ground_truth import HELD_OUT, PARTS, TUNING
@@ -92,7 +93,7 @@ def numbers(records: list) -> dict:
                         "accuracy": _ratio(sum(a(_describes_counts(r)) for r in records),
                                            sum(b(_describes_counts(r)) for r in records)),
                         "majority_baseline": _ratio(max(describes_classes.values(), default=0), len(known)),
-                        "per_entity_class_average": _ratio(sum(per_describes_class.values()), len(per_describes_class))}
+                        "per_entity_class_average": _ratio(sum(per_describes_class.values()), len(per_describes_class))}  # pyright: ignore[reportCallIssue]  (each count n is 1 or more, so no ratio is None)
     return out
 
 
@@ -225,7 +226,7 @@ RATIO_PARTS = {**{(level, key): parts for level in LEVELS for key, parts in _lev
 assert [p for p, _ in WITH_MARGIN] == list(RATIO_PARTS), "WITH_MARGIN and RATIO_PARTS name the same numbers"
 
 
-def _get(d: dict, path: tuple):
+def _get(d, path: tuple) -> Any:
     for p in path:
         d = d.get(p) if isinstance(d, dict) else None
     return d

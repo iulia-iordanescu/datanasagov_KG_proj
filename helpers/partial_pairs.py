@@ -242,8 +242,8 @@ def plan_apply(to_review: Path = TO_REVIEW_PATH, reviews_path: Path = REVIEWS_PA
         if other:
             problems.append(f"conflict: {_where(r, to_review)} ({verdict_of(r)!r}) and "
                             + " and ".join(f"{_where(e, reviews_path)} ({verdict_of(e)!r})" for e in other)
-                            + f" are about the same pair, and differ: keep one verdict (empty the cell here, or "
-                              f"delete the row there)")
+                            + " are about the same pair, and differ: keep one verdict (empty the cell here, or "
+                              "delete the row there)")
         elif there:
             already.append(r)
         else:
@@ -334,7 +334,7 @@ def main(argv=None) -> int:
             if not kept:
                 print(f"No 070 run's {COMPARED_NAME} is kept in {repo_path(OUTPUT)}/: run `py 070_evaluate/run.py` first.")
                 return 0
-            print(f"070 runs whose partial pairs can be collected, oldest first:\n  " + "\n  ".join(kept)
+            print("070 runs whose partial pairs can be collected, oldest first:\n  " + "\n  ".join(kept)
                   + f"\n\nCollect: `{COMMAND} --runs <run id> <run id> ...`")
             return 0
         rows = write_to_review(args.runs)

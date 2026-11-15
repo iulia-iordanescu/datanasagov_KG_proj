@@ -12,8 +12,6 @@ No model call (llm.forbid_model_calls first): it reads step 070's kept evaluatio
 truth files, annotations/partial_pair_reviews.csv, annotations/guidelines.md and docs/reported_numbers.json.
 """
 import collections
-import csv
-import json
 import re
 import statistics
 import sys

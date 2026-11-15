@@ -8,8 +8,8 @@ Each family: (a, b, same): whether the two must get the same key. Near misses (s
 the matches: they prove a key doesn't merge what differs.
 """
 
-SOFT_HYPHEN, ZWSP, ZWNJ, ZWJ, WORD_JOINER, BOM, NBSP, NARROW_NBSP = ("­", "​", "‌", "‍", "⁠",
-                                                                     "﻿", " ", " ")
+SOFT_HYPHEN, ZWSP, ZWNJ, ZWJ, WORD_JOINER, BOM, NBSP, NARROW_NBSP = ("\u00ad", "\u200b", "\u200c", "\u200d", "\u2060",
+                                                                     "\ufeff", "\u00a0", "\u202f")
 
 #: Component classes (entity classes and predicates): triples_io.component_class_key, and the page's looseKey.
 #: Case, spacing, punctuation, "_" and "-", invisible format characters, Unicode variants (full-width, ligatures,

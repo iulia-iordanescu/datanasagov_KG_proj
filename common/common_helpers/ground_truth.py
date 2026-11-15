@@ -90,8 +90,6 @@ files.
 from __future__ import annotations
 
 import collections
-import csv
-import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path

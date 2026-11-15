@@ -13,7 +13,7 @@ record's prompt with that commit's own functions (060_extract_helpers/extract.py
 call (llm.forbid_model_calls). Reads 020's records.jsonl, 030's splits.json, 040's the_schema.json, the ground truth
 files and the six runs' extracted_triples_details.json.
 """
-import importlib.util, io, json, statistics, shutil, subprocess, sys, tarfile, tempfile
+import importlib.util, io, statistics, shutil, subprocess, sys, tarfile, tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]

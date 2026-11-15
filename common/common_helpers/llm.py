@@ -8,38 +8,42 @@ moved from archive/to_be_reshaped/llm_client.py, with its retries and re-asks no
 logged through common.audit's log (so they reach the step's log file)
 instead of printed.
 
-It holds, in this order:
+This file holds the run's model and every setting a person may change. The code that calls the model is in its
+parts, each a file of its own beside this one, and every name of a part is imported from here, as every caller
+does (`from common import llm`, `from common.llm import confirm`):
 
-    THE RUN'S MODEL       MODEL, SERVICE, THINKING; describe and model_label
-                          for the run's record and report; cache_identity;
-                          the LiteLLM answer cache bypass (answer_cache_control)
-    THE ASK SAGE CLIENT, THE LITELLM CLIENT, and THE MAKERS' OWN APIS (Anthropic's, OpenAI's, Google's, each
-                          through its maker's official Python SDK): one request each
-    EVERY SERVICE
-        list_models       the model names the service lists (free; see py helpers/models.py)
-        call_llm          send a prompt, get the reply text; retries rate
-                          limits and server errors with backoff; a used-up
-                          budget (budget_exhausted) stops the whole run
-        forbid_model_calls  a free command's guarantee: from then on, no request is sent, in its processes too
-        try_model         one one-line test call to a model: is it usable? (py helpers/models.py --try)
-        classify_reply    what a reply is (complete, cut off, refused, empty, malformed), judged by
-                          the service's finish reason AND the answer's content, the same for both
-                          services: the one place that decides it
-        call_llm_json     the same, parsed as a JSON object; re-asks once if
-                          the reply is not one, or not of the shape the caller checks for
-    PROMPT SAFETY
-        fence_safe        keeps a record from ending its data block early
-    A PAID RUN
-        PaidCalls         asks once before a run's first paid call (showing
-                          any notes about the run first), makes a one-line
-                          test call and checks its token counts, counts the
-                          calls, shows their progress, records each failed
-                          call, and stops early when the first calls fail
-        Calls, paid_calls what a step's stages share: PaidCalls and the
-                          folder its answers are cached in (common/common_helpers/cache.py)
-        run_parallel      runs jobs a few at a time; Ctrl-C cancels those
-                          not yet started
-        confirm           the stop itself
+    llm.py            THE RUN'S MODEL: MODEL, SERVICE, THINKING, REPEAT and the other settings; describe and
+                      model_label for the run's record and report; cache_identity; the LiteLLM answer cache bypass
+                      (answer_cache_control); the settings a call is sent with (call_settings); this run's requests
+                      (REQUESTS) and what the latest one sent and got back (_last); the services (SERVICES,
+                      DIRECT_SERVICES); the early stop's numbers; who makes a model (maker, same_model_name)
+    llm_errors.py     the errors a call raises, and the two stops: a used-up budget (budget_exhausted) stops the
+                      whole run; forbid_model_calls, a free command's guarantee: from then on, no request is sent,
+                      in its processes too
+    llm_replies.py    classify_reply: what a reply is (complete, cut off, refused, empty, malformed), judged by
+                      the service's finish reason AND the answer's content, the same for every service: the one
+                      place that decides it; and what each request records of itself
+    llm_asksage.py, llm_litellm.py, llm_makers.py
+                      THE ASK SAGE CLIENT, THE LITELLM CLIENT, and THE MAKERS' OWN APIS (Anthropic's, OpenAI's,
+                      Google's, each through its maker's official Python SDK): one request each
+    llm_calls.py      EVERY SERVICE: list_models (the model names the service lists; free: py helpers/models.py);
+                      call_llm (send a prompt, get the reply text; retries rate limits and server errors with
+                      backoff); try_model (one one-line test call to a model: is it usable? py helpers/models.py
+                      --try); call_llm_json (the same, parsed as a JSON object; re-asks once if the reply is not
+                      one, or not of the shape the caller checks for); fence_safe (keeps a record from ending its
+                      data block early)
+    llm_paid.py       A PAID RUN: PaidCalls (asks once before a run's first paid call, showing any notes about the
+                      run first, makes a one-line test call and checks its token counts, counts the calls, shows
+                      their progress, records each failed call, and stops early when the first calls fail); Calls,
+                      paid_calls (what a step's stages share: PaidCalls and the folder its answers are cached in,
+                      common/common_helpers/cache.py); run_parallel (runs jobs a few at a time; Ctrl-C cancels
+                      those not yet started); confirm (the stop itself)
+
+The parts are loaded at the end of this file and need it loaded first, so they are imported only through it. A part
+reads the settings set at run time (MODEL, SERVICE, THINKING, REPEAT, SESSION_ID, MAX_ANSWER_TOKENS) and calls the
+functions a test may replace (load_dotenv, _post, _asksage_token, _litellm, each service's _ask_ function, call_llm,
+call_llm_json, confirm, list_models) as llm.NAME, looked up here when used: paid_calls sets a run's settings here,
+a test replaces a function here, and every part sees it (tests/test_model_calls.py checks that each part does so).
 
 What the steps that extract triple instances with entity classes share
 (the prompt's rules, the reply format, the BEGIN/END lines) is in
@@ -58,26 +62,20 @@ packages requests and python-dotenv; a maker's own API also needs its SDK
 service is used.
 """
 
-import datetime as dt
-import hashlib
 import json
 import os
-import random
 import re
 import sys
 import threading
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
-from pathlib import Path
+import time as time                                       # the tests replace llm.time.sleep
 
-import requests
+import requests as requests                               # the tests replace llm.requests.post
 from dotenv import load_dotenv
 
-from common.audit import log
-from common.files import append_text
-from common.files import append_text
-from common.stop import Stop
+from common.audit import log as log                       # common/common_helpers/cache.py logs through llm.log
+
+
+# ------------------------------ the run's model and its settings ----------------
 
 #: The model the calls use: the default of every step's `model` setting,
 #: which paid_calls() puts here for the run. `py helpers/models.py` lists the models
@@ -91,9 +89,11 @@ from common.stop import Stop
 #: cache key: answers saved under one spelling aren't reused under the other.
 MODEL = "claude-opus-5-5"
 
+
 #: The default model of step 050, which drafts the classed triples a person corrects into ground truth: from another maker than MODEL, so the facts one
 #: model misses aren't missing from both the ground truth and the extraction (060 warns when they're the same maker).
 DRAFTING_MODEL = "gemini-2.5-pro"
+
 
 #: The service that reaches the model: the default of every step's `service` setting, which paid_calls() puts here
 #: for the run. "asksage": NASA's Ask Sage (ASKSAGE_EMAIL and ASKSAGE_API_KEY in .env); "litellm": NASA's LiteLLM
@@ -102,8 +102,11 @@ DRAFTING_MODEL = "gemini-2.5-pro"
 #: .env), for the baseline of three makers' models (docs/improvements.md, 2026-11-14). A model's name is the
 #: service's own: Ask Sage's "google-claude-sonnet-5" is LiteLLM's "claude-sonnet-5".
 SERVICE = "litellm"
+
+
 SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM", "anthropic": "Anthropic's API", "openai": "OpenAI's API",
             "google": "Google's Gemini API"}
+
 
 #: Every call to a model that takes it asks for the model's most likely answer (temperature 0), the same each time
 #: as far as the model allows: only where temperature_sent says so. Anthropic's Claude Opus 5.5 takes no sampling
@@ -118,6 +121,7 @@ SERVICES = {"asksage": "Ask Sage", "litellm": "LiteLLM", "anthropic": "Anthropic
 #: (https://developers.openai.com/api/docs/guides/latest-model, read 2026-11-02), so they are sent none either.
 #: Not part of the cache key.
 TEMPERATURE = 0
+
 
 #: How much a model that thinks before answering may think: the default of every step's `thinking` setting, which
 #: paid_calls() puts here for the run. A model's thinking is hidden, billed as answer tokens, and counts against
@@ -135,7 +139,10 @@ TEMPERATURE = 0
 #: (https://docs.litellm.ai/blog/gpt_6_astra; all read 2026-11-02). "model_default" sends nothing, so the model
 #: thinks as it would by default.
 THINKING = "low"
+
+
 THINKING_LEVELS = ("low", "medium", "high", "model_default")
+
 
 #: Which repeat of the same recipe a run is (the setting `repeat` of every step that calls a model): 1, the default,
 #: reuses the answers saved so far; 2, 3, ... are asked again, each into cache entries of its own, so repeats of one
@@ -143,6 +150,7 @@ THINKING_LEVELS = ("low", "medium", "high", "model_default")
 #: helpers/compare_runs.py). Part of the cache key (cache_identity) only from 2 on, so repeat 1's key is the key
 #: answers were saved under before this setting existed, and they stay valid. Not sent to the model.
 REPEAT = 1
+
 
 #: The longest answer a call may get, in tokens, asked for explicitly so the service's own default doesn't apply: on
 #: 2026-10-12 LiteLLM's default cut 040's longer extraction answers off at 7,500-11,000 characters, mid-JSON. With
@@ -159,10 +167,12 @@ REPEAT = 1
 #: GPT-6 Astra's max output is 128,000 tokens (https://developers.openai.com/api/docs/models/gpt-6-astra).
 MAX_ANSWER_TOKENS = 32000
 
+
 #: How long a call waits for its answer, in seconds, every call alike: long enough for an answer of
 #: MAX_ANSWER_TOKENS, so a long answer isn't abandoned and asked again (each attempt may be billed). 1,200 s covers
 #: 32,000 tokens at about 27 tokens a second, thinking included.
 READ_TIMEOUT = 1200
+
 
 #: The effort level a model runs at when none is sent, where its maker documents one: on Claude Opus 5.5 adaptive
 #: thinking is always on (the model decides whether and how much to think, and effort is the main control of how
@@ -172,15 +182,21 @@ READ_TIMEOUT = 1200
 DEFAULT_EFFORT = {"claude-opus-5.5": "medium", "claude-opus-5-5": "medium",
                   "claude-haiku-5.5": "medium", "claude-haiku-5-5": "medium"}
 
+
 #: Every request sent to the service in this run, retries, re-asks, and failures included: what is billed, as far as
 #: the service bills requests (reset by paid_calls; shown in each report's Model calls).
 REQUESTS = {"sent": 0, "input_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "output_tokens": 0,
             "reasoning_tokens": 0}
+
+
 #: Replies asked once more by call_llm_json because they weren't usable, this run: not_json and wrong_shape count
 #: the first replies that weren't a JSON object or not of the shape asked for; fixed, those the second ask fixed;
 #: still_failed, those still unusable (their records are left out). Reported by common/common_helpers/dropped.py.
 REASKS = {"not_json": 0, "wrong_shape": 0, "fixed": 0, "still_failed": 0}
+
+
 _requests_lock = threading.Lock()
+
 
 #: The session id sent with each LiteLLM request of this run, as the header SESSION_HEADER, or None (no header):
 #: set by paid_calls, only for the steps that ask for it (060, whose requests share a cached schema start). LiteLLM
@@ -189,7 +205,10 @@ _requests_lock = threading.Lock()
 #: deployments behind a model group do not share state, for example provider-side prompt caching"), so they can read
 #: one prompt cache. It changes no word the model gets, nor the cache key (cache_identity), nor any setting sent.
 SESSION_ID = None
+
+
 SESSION_HEADER = "x-litellm-session-id"
+
 
 #: What each LiteLLM request carries in its body when the proxy's own answer cache is to be bypassed: LiteLLM's
 #: per-request cache controls (https://docs.litellm.ai/docs/proxy/caching_controls: `no-cache`, "Force a fresh
@@ -201,6 +220,8 @@ SESSION_HEADER = "x-litellm-session-id"
 #: are sent once py helpers/check_answer_cache.py shows that NASA's proxy accepts them and answers from its cache.
 #: It changes no word the model gets, nor the cache key (cache_identity), nor any fingerprint.
 ANSWER_CACHE_CONTROL = {"cache": {"no-cache": True, "no-store": True}}
+
+
 ANSWER_CACHE_SWITCH = "LITELLM_BYPASS_ANSWER_CACHE"
 
 
@@ -388,407 +409,7 @@ def _env(name: str, why: str) -> str:
     return value
 
 
-# ------------------------------ the Ask Sage client -------------------------
-
-USER_BASE = "https://api.asksage.ai.nasa.gov/user"
-SERVER_BASE = "https://api.asksage.ai.nasa.gov/server"
-_token_cache = {}
-
-
-def _asksage_token():
-    if "token" not in _token_cache:
-        load_dotenv()
-        email, key = os.getenv("ASKSAGE_EMAIL"), os.getenv("ASKSAGE_API_KEY")
-        if not (email and key):
-            unset = " and ".join(n for n, v in (("ASKSAGE_EMAIL", email), ("ASKSAGE_API_KEY", key)) if not v)
-            sys.exit(f"{unset} {'are' if ' and ' in unset else 'is'}n't set, so no model can be called. Put "
-                     f"ASKSAGE_EMAIL and ASKSAGE_API_KEY in the file .env in the repository folder "
-                     f"(docs/running_on_nasa_laptop.md), then run the command again.")
-        login = requests.post(f"{USER_BASE}/get-token-with-api-key",
-                              json={"email": email, "api_key": key},
-                              timeout=(5, 60))
-        login.raise_for_status()
-        payload = login.json()["response"]
-        _token_cache["token"] = (payload["access_token"]
-                                 if isinstance(payload, dict) else payload)
-    return _token_cache["token"]
-
-
-def _asksage_models() -> list:
-    resp = requests.post(f"{SERVER_BASE}/get-models", headers={"x-access-tokens": _asksage_token()},
-                         timeout=(5, 60))
-    resp.raise_for_status()
-    body = resp.json()
-    items = body.get("response", body.get("models", body)) if isinstance(body, dict) else body
-    if isinstance(items, dict):
-        items = items.get("data", list(items))
-    names = []
-    for item in items if isinstance(items, list) else []:
-        if isinstance(item, str):
-            names.append(item)
-        elif isinstance(item, dict):
-            name = item.get("name") or item.get("id") or item.get("model")
-            if name:
-                names.append(str(name))
-    if not names:
-        raise ValueError(f"Ask Sage's model list came in a shape this code doesn't read: {str(body)[:300]}")
-    return sorted(set(names))
-
-
-class BadReply(ValueError):
-    """A reply that arrived but is not usable as the JSON object we asked
-    for. Kept separate from a transport error so it retries the PROMPT
-    rather than the connection."""
-
-
-class WrongShape(BadReply):
-    """A reply that is a JSON object, but not of the shape the caller asked for (call_llm_json's check), e.g. with
-    no "triples" list. Its message says what is wrong."""
-
-
-class ApiError(Exception):
-    """The service refused the request in a way that will not fix itself:
-    a permission or validation failure (e.g. Ask Sage's "model_not_permitted",
-    or LiteLLM's HTTP 400, 401, 403, or 404).
-
-    Deliberately NOT in call_llm's retry tuple: it would fail identically on
-    every retry, burning four calls to report the same thing. A rate limit or
-    a server error is raised as RuntimeError instead, so the normal backoff
-    handles it."""
-
-
-class RetryLater(RuntimeError):
-    """A rate limit or a server error: worth asking again, after `wait` seconds when the service says how long."""
-
-    def __init__(self, message: str, wait: float | None = None):
-        super().__init__(message)
-        self.wait = wait
-
-
-#: HTTP statuses worth asking again: rate limited (429), server errors, overloaded (529).
-RETRY_STATUSES = (429, 500, 502, 503, 504, 529)
-
-
-def _retry_after(resp) -> float | None:
-    try:
-        return float(resp.headers.get("Retry-After"))
-    except (TypeError, ValueError):
-        return None
-
-
-#: How a service says the account's money is used up: the budget its administrators set, or the provider's quota or
-#: credit. Never retried, whatever the HTTP status (LiteLLM sends 400, 401 or 429 for it): asking again fails the same
-#: way until someone raises or resets the budget. The forms, compared lower-cased:
-#:   LiteLLM's BudgetExceededError, "Budget has been exceeded! … Current cost: …, Max budget: …" (NASA's proxy sends
-#:   it as HTTP 429: "Budget has been exceeded! User=… in Team=… Current cost: 25.0, Max budget: 25.0"); its error
-#:   type budget_exceeded; "ExceededBudget: User=… over budget. Spend=…, Budget=…", "ExceededTokenBudget: …",
-#:   "… exceeded budget for model=…" (https://docs.litellm.ai/docs/proxy/users);
-#:   OpenAI's insufficient_quota, "You exceeded your current quota, please check your plan and billing details"
-#:   (https://platform.openai.com/docs/guides/error-codes); Anthropic's "Your credit balance is too low to access the
-#:   Anthropic API" (https://docs.anthropic.com/en/api/errors).
-#: Ask Sage's API documentation gives no form for a used-up monthly token allowance, so its errors are read with the
-#: same words, and its answers with ANSWER_BUDGET_WORDS. "budget" alone is not enough: a rate limit's "token budget per
-#: minute" or Anthropic's thinking "budget_tokens" is something else.
-BUDGET_WORDS = re.compile(r"budget has been exceeded|budget_exceeded|exceeded[ _]?(?:token)?budget(?!_tokens)|"
-                          r"\bover budget\b|insufficient_quota|exceeded your current quota|credit balance is too low",
-                          re.I)
-#: How Ask Sage says the account's monthly token allowance is used up: not as an error but as an answer, HTTP 200 with
-#: status 200, in prose (seen on 2026-11-03, through gpt-5.6-sol-gov: "Sorry, if we executed this query (up to 4096
-#: tokens), you would be above your monthly token limit (1003014 out of 1000000), please contact your organization
-#: admin to get it increased." and "Sorry, you are above your monthly token limit (1011372 out of 1000000), please
-#: contact your organization admin to get it increased."). Read only in a short answer that isn't JSON
-#: (budget_answer), so a model's answer quoting such words, inside its JSON, is not taken for it.
-ANSWER_BUDGET_WORDS = re.compile(r"\babove\b[^.]{0,80}?\bmonthly token limit\b", re.I)
-#: The numbers Ask Sage's answer reports: "monthly token limit (1003014 out of 1000000)", tokens used and the limit.
-ANSWER_BUDGET_NUMBERS = re.compile(r"monthly token limit\s*\(\s*([0-9][0-9,]*)\s+out of\s+([0-9][0-9,]*)\s*\)", re.I)
-#: The longest answer read for ANSWER_BUDGET_WORDS: Ask Sage's two forms have 131 and 183 characters.
-ANSWER_BUDGET_CHARS = 600
-#: The numbers a budget answer reports: LiteLLM's "Current cost: 25.0, Max budget: 25.0" or "Spend=…, Budget=…".
-BUDGET_NUMBERS = re.compile(r"(?:current cost|spend)\s*[:=]\s*([0-9][0-9.eE+-]*?)[,;\s]+(?:max budget|budget)\s*[:=]\s*"
-                            r"([0-9][0-9.eE+-]*?)(?=[,;\s]|\.?$|\.\s)", re.I)
-
-
-def budget_answer(text) -> bool:
-    """Whether an answer's whole text is a service saying the account's token allowance is used up
-    (ANSWER_BUDGET_WORDS, Ask Sage's form): a short answer, not JSON, with those words."""
-    words = str(text or "").strip()
-    return (0 < len(words) <= ANSWER_BUDGET_CHARS and not words.startswith(("{", "[", "`"))
-            and bool(ANSWER_BUDGET_WORDS.search(words)))
-
-
-def budget_exhausted(status: int, text) -> bool:
-    """Whether a service's answer (HTTP status, its text) says the account's budget or quota is used up: an error
-    with BUDGET_WORDS, or, whatever the status, an answer that is only the service saying so (budget_answer). Never
-    retried, it stops the run (stop_if_budget_gone). The one place that decides it, beside RETRY_STATUSES."""
-    return status >= 400 and bool(BUDGET_WORDS.search(str(text or ""))) or budget_answer(text)
-
-
-class BudgetExhausted(SystemExit):
-    """The service answered that the account's budget or quota is used up. A SystemExit, like EarlyStop, so no
-    `except Exception` takes it for one failed call: the whole run stops at once with its message. Once one is
-    raised, every later request of this process is refused before it is sent (call_llm, litellm_post), so no worker
-    sends another; run_parallel keeps the answers of the calls already under way."""
-
-    def __init__(self, message: str, status: int | None = None, body: str = "", answered: bool = False):
-        super().__init__(message)
-        self.status, self.body = status, body
-        self.answered = answered            # True: this request got the budget answer; False: it was never sent
-
-
-#: The first BudgetExhausted of this process, or None: no request is sent after it (reset only by the tests).
-BUDGET_GONE = {"error": None}
-
-
-def budget_message(service: str, status: int, text) -> str:
-    """The one message for a used-up budget: the service, its words and the numbers they report, what to do."""
-    words = " ".join(str(text or "").split())[:400]
-    found, tokens = BUDGET_NUMBERS.search(words), ANSWER_BUDGET_NUMBERS.search(words)
-    numbers = f" It reports a cost of {found.group(1)} against a budget of {found.group(2)}." if found else ""
-    if tokens:
-        used, limit = (int(n.replace(",", "")) for n in tokens.groups())
-        numbers = f" It reports {used:,} tokens used against this account's monthly limit of {limit:,}."
-    where = SERVICES.get(service, service)
-    said = f"HTTP {status}: {words}" if status >= 400 else f"in its answer: {words}"
-    return (f"{where} answered that the budget for this account is used up ({said}).{numbers} The run "
-            f"stopped at once: no other model call was sent, and none will be until the budget changes. Answers "
-            f"already received are kept in the cache, so nothing is paid for twice. What to do: ask the {where} "
-            f"administrators to raise or reset the budget (docs/running_on_nasa_laptop.md, *The budget is used up*); "
-            f"there is nothing to retry before that. Then run the same command again: it pays only for the calls not "
-            f"yet answered.")
-
-
-def stop_if_budget_gone(service: str, status: int | None = None, text=None, said=None) -> None:
-    """Raise BudgetExhausted when an earlier answer of this process said the budget is used up, or when this one
-    (HTTP status, its whole text) says so (budget_exhausted); else nothing. said: the error's own words for the
-    message (e.g. LiteLLM's error message, out of its JSON body); text when None."""
-    answered = status is not None and budget_exhausted(status, text)
-    with _requests_lock:
-        gone = BUDGET_GONE["error"]
-        if gone is None and answered:
-            gone = BUDGET_GONE["error"] = BudgetExhausted(budget_message(service, status, said or text), status,
-                                                          str(text or "")[:ERROR_BODY_CHARS])
-    if gone is not None:
-        raise BudgetExhausted(gone.code, gone.status, gone.body, answered)
-
-
-class ModelCallForbidden(SystemExit):
-    """A model call in a run that promised to call none (forbid_model_calls). A SystemExit, like BudgetExhausted, so
-    no `except Exception` takes it for one failed call: the run stops at once, before the request is sent."""
-
-
-#: The environment variable that carries forbid_model_calls into the processes a free command starts (py
-#: helpers/reproduce_results.py runs the steps, each in its own process): JSON {"why", "advice"}.
-FORBID_ENV = "KG_NO_MODEL_CALLS"
-
-
-def _forbidden_from_env() -> dict:
-    """forbid_model_calls as a parent process set it (FORBID_ENV), or nothing forbidden."""
-    try:
-        got = json.loads(os.environ.get(FORBID_ENV) or "null")
-    except ValueError:
-        got = None
-    return {"why": got.get("why"), "advice": got.get("advice")} if isinstance(got, dict) else {"why": None, "advice": None}
-
-
-#: Why this process may send no model call (forbid_model_calls), or None: model calls are allowed; and advice, what
-#: to do when a step would need one (None: such a call is a mistake in the code).
-FORBIDDEN = _forbidden_from_env()
-
-
-def forbid_model_calls(why: str, advice: str | None = None) -> None:
-    """From now on, this process and every process it starts send no model call: PaidCalls.start, call_llm and
-    litellm_post stop the run (ModelCallForbidden) before a request leaves. Called first by every command whose docs
-    say it is free (py helpers/second_opinion.py --apply true, py helpers/partial_pairs.py, py helpers/compare_runs.py,
-    py helpers/review_page.py, py helpers/reproduce_results.py, the listing of py helpers/models.py), so "free" is
-    guaranteed by code, not only by how the command is written. why: the command and why it is free, for the message.
-    advice: what to do when a step it runs would need a model call (an answer missing from a cache); None when no call
-    can be meant, so one is a mistake in the code."""
-    FORBIDDEN.update(why=why, advice=advice)
-    os.environ[FORBID_ENV] = json.dumps({"why": why, "advice": advice})
-
-
-def allow_model_calls() -> None:
-    """Undo forbid_model_calls (only the tests, which run several commands in one process)."""
-    FORBIDDEN.update(why=None, advice=None)
-    os.environ.pop(FORBID_ENV, None)
-
-
-def _forbidden_message(what: str) -> str:
-    """Why the run stopped before a model call: what (the call, or the calls a stage was about to pay for), why the
-    command calls no model, and what to do."""
-    return (f"{what}, but this command calls no model ({FORBIDDEN['why']}), so the run stopped before any request "
-            f"left: nothing was sent and nothing was paid. "
-            + (FORBIDDEN["advice"] or "This is a mistake in the code, not in your files: report it with this message."))
-
-
-def stop_if_forbidden() -> None:
-    """Raise ModelCallForbidden when this process may send no model call (forbid_model_calls); else nothing."""
-    if FORBIDDEN["why"] is not None:
-        raise ModelCallForbidden(_forbidden_message("A model call was about to be sent"))
-
-
-class CutOff(ApiError):
-    """The answer was cut off: at the longest length allowed (MAX_ANSWER_TOKENS, which LiteLLM takes), or, where the
-    service takes no limit and reports no finish reason (Ask Sage), at the model's own limit, seen in the answer
-    stopping inside an unfinished JSON object (classify_reply). Not retried: asking again with the same settings
-    gets the same cut. Carries what the service sent (answer, usage, finish_reason), for the failed-call record."""
-
-
-class Refused(ApiError):
-    """The model, or its service, declined to answer: a filter's finish reason (REFUSAL_REASONS), or an answer in
-    prose declining the task (REFUSAL_WORDS) with no JSON object in it, sent as HTTP 200. Not retried: asking again
-    gets the same answer; never stored as an answer (common/common_helpers/cache.py). Carries what the service sent."""
-
-
-# ------------------------------ what a reply is -----------------------------
-
-#: finish_reason values (the service's, or the model maker's own, compared lower-cased) that say the answer is
-#: complete, was cut off at a length limit, or was withheld by a filter. A reason outside the three sets is judged by
-#: the answer's content (classify_reply). One home: common/common_helpers/dropped.py reads these too.
-COMPLETE_REASONS = {"stop", "end_turn", "eos", "stop_sequence", "completed"}
-CUT_OFF_REASONS = {"length", "max_tokens", "max_output_tokens", "max_completion_tokens"}
-REFUSAL_REASONS = {"content_filter", "refusal", "safety", "prohibited_content", "blocklist", "spii", "recitation"}
-#: How an answer in prose declines the task, at its start (after fences or blank space): "I'm sorry, but …",
-#: "I cannot …", "I can't help …", "As an AI …", "Unfortunately, I am unable …". Only an answer with NO JSON object in
-#: it is read this way, so a preamble before the JSON object never counts.
-REFUSAL_WORDS = re.compile(r"^\W*(?:(?:i['\u2019]?m|i am) (?:sorry|unable|not able|afraid i)|i apologi[sz]e|sorry[,.]|"
-                           r"as an ai\b|i (?:can(?:no|')t|cannot|won['\u2019]t|will not|must decline|"
-                           r"(?:do not|don['\u2019]t) feel comfortable)|unfortunately,? i (?:can|am))", re.I)
-#: What classify_reply can say a reply is.
-REPLY_KINDS = ("complete", "cut_off", "refused", "empty", "malformed")
-#: A fence around the whole answer: ```json … ``` (the tag in any case, or none), only at the answer's start and end,
-#: never inside a value.
-_FENCE = re.compile(r"\A\s*```[A-Za-z]*[ \t]*\r?\n(.*?)\r?\n?[ \t]*```\s*\Z", re.S)
-
-
-def find_json(text: str) -> tuple:
-    """(data, state): the JSON the answer holds. state is "object" (data is the parsed value: the whole answer, with
-    its fence removed, or the first {…} object in prose around it), "none" (no { at all), "unterminated" (an object
-    begins and the answer ends inside it: a cut), "several" (more than one object, so which one was meant can't be
-    told; data is None), or "invalid" (an object begins and ends but isn't JSON; data is None)."""
-    cleaned = text or ""
-    m = _FENCE.match(cleaned)
-    if m:
-        cleaned = m.group(1)
-    cleaned = cleaned.strip()
-    try:
-        return json.loads(cleaned), "object"
-    except json.JSONDecodeError:
-        pass
-    start = cleaned.find("{")
-    if start == -1:
-        return None, "none"
-    decoder = json.JSONDecoder()
-    try:
-        data, end = decoder.raw_decode(cleaned, start)
-    except json.JSONDecodeError:
-        return None, "unterminated" if _open_at_end(cleaned, start) else "invalid"
-    rest = cleaned[end:]
-    nxt = rest.find("{")
-    if nxt != -1:
-        try:
-            decoder.raw_decode(rest, nxt)
-            return None, "several"
-        except json.JSONDecodeError:
-            pass
-    return data, "object"
-
-
-def _open_at_end(text: str, start: int) -> bool:
-    """Whether the object beginning at start is still open (a brace, bracket or string not closed) when text ends."""
-    depth, in_string, escaped = 0, False, False
-    for ch in text[start:]:
-        if in_string:
-            if escaped:
-                escaped = False
-            elif ch == "\\":
-                escaped = True
-            elif ch == '"':
-                in_string = False
-        elif ch == '"':
-            in_string = True
-        elif ch in "{[":
-            depth += 1
-        elif ch in "}]":
-            depth -= 1
-            if depth <= 0:
-                return False
-    return True
-
-
-def classify_reply(text, finish_reason=None, native_finish_reason=None, service: str | None = None) -> tuple:
-    """(kind, detail): what a reply is, one of REPLY_KINDS, judged by the finish reason AND the content, the same
-    way for every service (every prompt of the pipeline asks for a JSON object):
-
-      cut_off    the service says so (CUT_OFF_REASONS), or the answer stops inside an unfinished JSON object and no
-                 finish reason says the model stopped on its own (Ask Sage sends none)
-      refused    a filter's finish reason (REFUSAL_REASONS), or prose declining the task (REFUSAL_WORDS) with no
-                 JSON object in it, whatever the finish reason
-      empty      nothing but blank space
-      complete   a JSON value (a reason outside the known sets doesn't fail an answer whose content is complete)
-      malformed  anything else: prose, a JSON object that isn't valid, several objects, or an unfinished object the
-                 model stopped on its own (finish reason in COMPLETE_REASONS); worth asking once more
-    """
-    reasons = {str(r).strip().lower() for r in (finish_reason, native_finish_reason) if r not in (None, "")}
-    text = text or ""
-    chars = f"{len(text):,} characters"
-    reason_words = f"finish_reason {finish_reason!r}" + (f", the model maker's {native_finish_reason!r}"
-                                                         if native_finish_reason else "")
-    if reasons & CUT_OFF_REASONS:
-        return "cut_off", f"the service reports the answer was cut off ({reason_words}), after {chars}"
-    if reasons & REFUSAL_REASONS:
-        return "refused", f"the service's content filter withheld the answer ({reason_words}), {chars}"
-    if not text.strip():
-        return "empty", f"the model gave no usable answer ({reason_words}, 0 characters)"
-    data, state = find_json(text)
-    if state == "none" and REFUSAL_WORDS.match(text.strip().strip("`").strip()):
-        first = " ".join(text.strip().split())[:160]
-        return "refused", f"the model declined to answer, in prose ({reason_words}, {chars}): {first!r}"
-    if state == "object":
-        return "complete", ("" if reasons <= COMPLETE_REASONS else
-                            f"complete answer under a finish reason the pipeline doesn't know ({reason_words})")
-    if state == "unterminated" and not (reasons & COMPLETE_REASONS):
-        where = ("Ask Sage takes no answer limit and reports no finish reason, so the model's own limit cut it"
-                 if (service or SERVICE) == "asksage" and not reasons else
-                 f"no finish reason says the model stopped on its own ({reason_words})")
-        return "cut_off", f"the answer stops inside an unfinished JSON object after {chars}; {where}"
-    what = {"none": "no JSON object in the answer", "unterminated": "a JSON object the model left unfinished",
-            "several": "several JSON objects in one answer", "invalid": "a JSON object that isn't valid JSON"}[state]
-    return "malformed", f"{what} ({reason_words}, {chars})"
-
-
-def _raise_unless_complete(text, body: dict, service: str, reason=None, native=None) -> str:
-    """text, when classify_reply finds it complete or malformed (call_llm_json then parses it, and asks once more
-    for a malformed one); else the error for the kind, carrying what the service sent: CutOff, Refused, or ApiError
-    (empty). Both service clients end here, so a reply is judged the same way whichever service sent it."""
-    kind, detail = classify_reply(text, reason, native, service)
-    _last.reply["reply_kind"] = kind
-    if kind in ("complete", "malformed"):
-        return text
-    # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see why it ran long, or
-    # what the model wrote instead of the answer.
-    log.debug(f"{kind.replace('_', '-')} answer ({detail}), usage {body.get('usage')}:\n{text}")
-    if kind == "cut_off":
-        thought = reasoning_tokens(body.get("usage"))
-        at_limit = max_tokens_sent(service) is not None and \
-            {str(reason).lower(), str(native).lower()} & CUT_OFF_REASONS
-        error = CutOff((f"the answer was cut off at the longest length allowed ({MAX_ANSWER_TOKENS:,} tokens, "
-                        f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py), after {len(text or ''):,} characters"
-                        if at_limit else f"the answer was cut off: {detail}")
-                       + (f"; the model spent {thought:,} of those tokens thinking" if thought else ""))
-    elif kind == "refused":
-        error = Refused(f"the model refused to answer: {detail}")
-    else:
-        error = ApiError(detail)
-    raise _with_reply(error, text, body, reason, native)
-
-
-def reasoning_tokens(usage) -> int:
-    """The thinking tokens a reply's usage reports (OpenAI's shape, which LiteLLM uses:
-    usage.completion_tokens_details.reasoning_tokens), 0 when it reports none."""
-    details = usage.get("completion_tokens_details") if isinstance(usage, dict) else None
-    return int(details.get("reasoning_tokens") or 0) if isinstance(details, dict) else 0
-
+# ------------------------------ what each request records (llm_replies.py) ------
 
 #: What the latest request in this thread sent and got back, for the test call's check (PaidCalls.start) and the
 #: failed-call record (PaidCalls._record): settings_sent (every setting of the request but its prompt), request_bytes,
@@ -796,246 +417,12 @@ def reasoning_tokens(usage) -> int:
 #: native_finish_reason (the model maker's own reason, when the service passes it on), served_as.
 _last = threading.local()
 
+
 #: How much of a service's error body the failed-call record keeps, in characters.
 ERROR_BODY_CHARS = 4000
 
 
-def _http_reply(resp) -> None:
-    """Note a reply's HTTP status, and its body when it is an error, in _last.reply."""
-    _last.reply["http_status"] = resp.status_code
-    if resp.status_code >= 400:
-        _last.reply["error_body"] = str(resp.text or "")[:ERROR_BODY_CHARS]
-
-
-def _ask_asksage(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
-    """One request to Ask Sage; the reply text.
-
-    dataset/limit_references are set deliberately. Per the Ask Sage API docs
-    dataset defaults to 'all' and limit_references defaults to None, meaning
-    every call retrieves from the tenant's datasets and prepends the results.
-    That is wrong here twice over: the extraction prompt orders the model to
-    use nothing but the text in front of it, and retrieved references are
-    billed input tokens on all N calls. There is no max-tokens parameter on
-    this endpoint, so output length cannot be capped from here."""
-    payload = {"message": prompt, "model": model, "dataset": "none", "limit_references": 0}
-    if temperature_sent(model, "asksage"):
-        payload["temperature"] = TEMPERATURE
-    _last.reply = {"settings_sent": {k: v for k, v in payload.items() if k != "message"},
-                   "request_bytes": len(json.dumps(payload).encode("utf-8"))}
-    # Fetched for each request, not once per run: a 401 clears the cache
-    # below, and the next attempt must log in again.
-    resp = requests.post(f"{SERVER_BASE}/query",
-                         headers={"x-access-tokens": _asksage_token()},
-                         json=payload,
-                         timeout=(5, read_timeout))
-    _http_reply(resp)
-    stop_if_budget_gone("asksage", resp.status_code, resp.text)
-    if resp.status_code == 401:
-        # The token is cached for the whole run, so one expiry would
-        # otherwise fail every remaining call - and each failure still
-        # costs a request. Drop it and log in again on the next try.
-        _token_cache.pop("token", None)
-        raise RuntimeError("HTTP 401 - token dropped, will re-login")
-    if resp.status_code in RETRY_STATUSES:
-        raise RetryLater(f"HTTP {resp.status_code}", _retry_after(resp))
-    resp.raise_for_status()
-    body = resp.json()
-    # Ask Sage answers HTTP 200 with status 200 even when the request
-    # was refused, putting the real outcome in an "error" object and
-    # an apology in "message". Observed shape:
-    #   {"status": 200,
-    #    "error": {"code": "model_not_permitted", "http_status": 400,
-    #              "requested_model": "..."},
-    #    "message": "Sorry, this model is not authorized ..."}
-    # Without this check the apology reaches the JSON parser and the
-    # call fails as "Expecting value: line 1 column 1" - once per
-    # text, with nothing naming the real cause.
-    body = body if isinstance(body, dict) else {}
-    err = body.get("error")
-    if err or str(body.get("status", "")).isdigit() and int(body["status"]) >= 400:
-        _last.reply["error_body"] = json.dumps(body, ensure_ascii=False)[:ERROR_BODY_CHARS]
-    if isinstance(err, dict) and (err.get("code")
-                                  or err.get("http_status")):
-        code = err.get("code") or "error"
-        inner = err.get("http_status")
-        detail = f"{code} (http_status {inner}): {body.get('message')}"
-        stop_if_budget_gone("asksage", inner if isinstance(inner, int) else 400, f"{code}: {body.get('message')}")
-        if inner in (429, 500, 502, 503, 504):
-            raise RuntimeError(detail)      # worth retrying
-        raise ApiError(detail)              # will not fix itself
-    # A numeric top-level status of 400 or more is also a refusal.
-    status = body.get("status")
-    if isinstance(status, (int, str)) and str(status).isdigit() \
-            and int(status) >= 400:
-        stop_if_budget_gone("asksage", int(status), body.get("message"))
-        raise RuntimeError(f"API status {status}: "
-                           f"{str(body.get('message'))[:200]}")
-    # .get("message") can be absent OR present-and-null; either way
-    # callers must never receive None and call .strip() on it. Ask Sage sends no finish reason and takes no answer
-    # limit, so the answer is judged by its content alone (classify_reply): one stopping inside an unfinished JSON
-    # object was cut off at the model's own limit; prose declining the task is a refusal. Before that: an answer that
-    # is Ask Sage saying the monthly token limit is reached stops the run (budget_answer), never a refusal.
-    message = (body or {}).get("message") or ""
-    stop_if_budget_gone("asksage", 200, message)
-    return _raise_unless_complete(message, body or {}, "asksage")
-
-
-# ------------------------------ the LiteLLM client --------------------------
-
-#: NASA's LiteLLM proxy, which speaks the OpenAI API; LITELLM_BASE_URL in .env overrides it.
-LITELLM_BASE = "https://proxy.fast.luna.nasa.gov"
-
-
-def _litellm(path: str) -> tuple:
-    """(address, headers) of a LiteLLM request."""
-    load_dotenv()
-    base = (os.getenv("LITELLM_BASE_URL") or LITELLM_BASE).rstrip("/")
-    key = _env("LITELLM_API_KEY", "no model can be called through LiteLLM")
-    return f"{base}{path}", {"Authorization": f"Bearer {key}"}
-
-
-def _litellm_said(resp) -> str:
-    """The error LiteLLM sent, in words: its message when the body has one, else the body."""
-    try:
-        err = resp.json().get("error")
-        text = err.get("message") if isinstance(err, dict) else err
-    except (ValueError, AttributeError):
-        text = None
-    return str(text or resp.text)
-
-
-def _litellm_error(resp) -> str:
-    """The error LiteLLM sent, in words, after its HTTP status: its message, or the start of the body."""
-    return f"HTTP {resp.status_code}: {_litellm_said(resp)[:300]}"
-
-
-def _litellm_models() -> list:
-    url, headers = _litellm("/v1/models")
-    resp = requests.get(url, headers=headers, timeout=(5, 60))
-    if resp.status_code >= 400:
-        raise ApiError(_litellm_error(resp))
-    names = [str(m.get("id")) for m in resp.json().get("data", []) if isinstance(m, dict) and m.get("id")]
-    if not names:
-        raise ValueError(f"LiteLLM's model list came in a shape this code doesn't read: {resp.text[:300]}")
-    return sorted(set(names))
-
-
-def _messages(prompt: str, model: str, cache_until: str | None) -> list:
-    """The request's messages. With cache_until (a line of the prompt, e.g. "----- BEGIN RECORD -----") and a model
-    by Anthropic, everything before that line is sent as a system block marked for Anthropic's prompt caching, and
-    the rest as the user message: the same words, so a later request that starts the same way reads that part from
-    the cache at a fraction of the price (060_extract/060_extract.md, *The schema in the prompt*)."""
-    at = prompt.find(cache_until) if cache_until else -1
-    if at <= 0 or maker(model) != "Anthropic":
-        return [{"role": "user", "content": prompt}]
-    return [{"role": "system", "content": [{"type": "text", "text": prompt[:at], "cache_control": {"type": "ephemeral"}}]},
-            {"role": "user", "content": prompt[at:]}]
-
-
-def _count_tokens(usage: dict) -> None:
-    """Add a reply's token counts to REQUESTS, for the report's Model calls."""
-    if not isinstance(usage, dict):
-        return
-    read = usage.get("cache_read_input_tokens") or (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
-    write = usage.get("cache_creation_input_tokens") or 0
-    with _requests_lock:
-        REQUESTS["input_tokens"] += (usage.get("prompt_tokens") or 0) - read - write
-        REQUESTS["cache_read_tokens"] += read
-        REQUESTS["cache_write_tokens"] += write
-        REQUESTS["output_tokens"] += usage.get("completion_tokens") or 0
-        REQUESTS["reasoning_tokens"] += reasoning_tokens(usage)
-
-
-def _post(*args, **kwargs):
-    """requests.post, looked up when called: the one place a LiteLLM request leaves (the tests' stand-in replaces it)."""
-    return requests.post(*args, **kwargs)
-
-
-def litellm_post(url, headers, json, timeout):
-    """One LiteLLM request, as every LiteLLM request is sent (the steps', and those of py helpers/check_effort.py and
-    py helpers/check_answer_cache.py): none after a used-up budget, and an answer saying the budget is used up stops
-    the run (stop_if_budget_gone)."""
-    stop_if_forbidden()                                     # a free command sends nothing
-    stop_if_budget_gone("litellm")
-    resp = _post(url, headers=headers, json=json, timeout=timeout)
-    if resp.status_code >= 400:
-        if isinstance(getattr(_last, "reply", None), dict):
-            _http_reply(resp)                               # for the failed-call record
-        stop_if_budget_gone("litellm", resp.status_code, resp.text, _litellm_said(resp))
-    return resp
-
-
-def _ask_litellm(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
-    """One request to LiteLLM (the OpenAI chat completions API); the reply text. The exact model that answered,
-    when the reply names it, goes into SERVED for the run's record."""
-    url, headers = _litellm("/v1/chat/completions")
-    if SESSION_ID:
-        headers[SESSION_HEADER] = SESSION_ID                # one deployment per run, where the proxy pins sessions
-    payload = _chat_payload(prompt, model, cache_until, "litellm")
-    payload.update(answer_cache_control())                  # a fresh answer, where the proxy caches answers
-    _note_request(payload, ("messages",))
-    resp = litellm_post(url, headers=headers, json=payload, timeout=(5, read_timeout))
-    _http_reply(resp)
-    if resp.status_code in RETRY_STATUSES:
-        raise RetryLater(_litellm_error(resp), _retry_after(resp))   # worth retrying
-    if resp.status_code >= 400:
-        raise ApiError(_litellm_error(resp))                # will not fix itself (key, model, request)
-    return _read_chat_reply(resp.json(), "litellm")
-
-
-def _chat_payload(prompt: str, model: str, cache_until: str | None, service: str) -> dict:
-    """The body of a chat completions request (the OpenAI API, which LiteLLM speaks too): the messages, the answer
-    limit under its name (answer_limit_name), the temperature and the thinking level only where they are sent
-    (temperature_sent, thinking_sent). The one builder of LiteLLM's requests and OpenAI's own."""
-    payload = {"model": model, "messages": _messages(prompt, model, cache_until),
-               answer_limit_name(model, service): max_tokens_sent(service)}
-    if temperature_sent(model, service):
-        payload["temperature"] = TEMPERATURE
-    if thinking_sent(model, service):
-        payload["reasoning_effort"] = thinking_sent(model, service)
-    return payload
-
-
-def _note_request(params: dict, words: tuple) -> None:
-    """Start this request's _last.reply: every setting sent but the words of the prompt (the keys in words), and the
-    request's size."""
-    _last.reply = {"settings_sent": {k: v for k, v in params.items() if k not in words},
-                   "request_bytes": len(json.dumps(params, default=str).encode("utf-8"))}
-
-
-def _read_chat_reply(body: dict, service: str) -> str:
-    """The answer of a chat completions reply (LiteLLM's, or OpenAI's own as its SDK returns it, model_dump'ed):
-    the text, judged by _finish_reply with the reply's finish reason, token counts and served model."""
-    try:
-        choice = body["choices"][0]
-        text = choice["message"]["content"]
-    except (KeyError, IndexError, TypeError):
-        usage = body.get("usage") if isinstance(body, dict) and isinstance(body.get("usage"), dict) else {}
-        _count_tokens(usage)                                # billed all the same
-        _last.reply["usage"] = usage
-        raise RuntimeError(f"{SERVICES.get(service, service)}'s reply has no answer in it: {str(body)[:300]}") from None
-    # The model maker's own reason (e.g. Gemini's "MAX_TOKENS" or "SAFETY"), when LiteLLM passes it on: at the choice's
-    # top level, or among its provider_specific_fields.
-    extra = choice.get("provider_specific_fields") if isinstance(choice.get("provider_specific_fields"), dict) else {}
-    return _finish_reply(service, text, body.get("usage"), choice.get("finish_reason"),
-                         choice.get("native_finish_reason") or extra.get("native_finish_reason"), body.get("model"))
-
-
-def _finish_reply(service: str, text, usage, reason, native, served) -> str:
-    """What every service client but Ask Sage's does with a reply: count its tokens (usage in OpenAI's shape, which
-    LiteLLM uses and the makers' own replies are put into: _count_tokens), note the served model (SERVED), the finish
-    reasons and the usage in _last.reply, and judge it (_raise_unless_complete)."""
-    usage = usage if isinstance(usage, dict) else {}
-    _count_tokens(usage)
-    _last.reply["usage"] = usage
-    if served:
-        SERVED.add(str(served))
-        _last.reply["served_as"] = str(served)
-    _last.reply["finish_reason"], _last.reply["native_finish_reason"] = reason, native
-    return _raise_unless_complete(text, {"usage": usage}, service, reason, native)
-
-
-# ------------------------------ the makers' own APIs -------------------------
+# ------------------------------ the makers' own APIs (llm_makers.py) -----------
 
 #: The services that reach a model maker's own API directly, through the maker's official Python SDK: the key each
 #: reads from .env, the SDK's package (requirements.txt; imported only when the service is used, _sdk), the maker
@@ -1070,476 +457,8 @@ DIRECT_SERVICES = {
                "answer_limit": "max_output_tokens", "thinking": "thinking_config.thinking_level"},
 }
 
-#: The SDK clients made so far in this process, by (service, read timeout): one client serves every thread.
-_clients = {}
 
-
-class NoAnswerInTime(Exception):
-    """A maker's SDK gave up waiting for the answer (its read timeout, READ_TIMEOUT): call_llm treats it as it treats
-    requests' ReadTimeout, never asking again, since the service may still be writing, and billing, the first answer."""
-
-
-def _sdk(service: str):
-    """The SDK module of a maker's own API, imported only here, when the service is used: every other service and
-    command runs without these packages installed. A missing package stops the run with what to install."""
-    try:
-        if service == "anthropic":
-            import anthropic
-            return anthropic
-        if service == "openai":
-            import openai
-            return openai
-        from google import genai
-        return genai
-    except ImportError:
-        package = DIRECT_SERVICES[service]["package"]
-        sys.exit(f"The package {package} isn't installed, so no model can be called through {SERVICES[service]} (the "
-                 f"setting service is {service}). Run `pip install -r requirements.txt` in the repository folder "
-                 f"(docs/running_on_nasa_laptop.md), then run the command again.")
-
-
-def _new_client(service: str, api_key: str, read_timeout: int):
-    """A client of the maker's SDK, with its own retries turned off (call_llm retries, and counts every request sent),
-    and a timeout of read_timeout seconds. Anthropic's and OpenAI's clients take `api_key`, `max_retries` (0 turns
-    retries off) and `timeout` in seconds (Anthropic: the claude-api reference, "Client Configuration"; OpenAI: its
-    SDK's README). Google's takes `api_key` and `http_options`, whose `timeout` is "in milliseconds" and whose
-    `retry_options` attempts are the "Maximum number of attempts, including the original request ... If 0 or 1, it
-    means no retries. If not specified, default to 5" (google-genai's google/genai/types.py, HttpOptions and
-    HttpRetryOptions, read 2026-11-14)."""
-    sdk = _sdk(service)
-    if service == "anthropic":
-        return sdk.Anthropic(api_key=api_key, max_retries=0, timeout=float(read_timeout))
-    if service == "openai":
-        return sdk.OpenAI(api_key=api_key, max_retries=0, timeout=float(read_timeout))
-    from google.genai import types
-    return sdk.Client(api_key=api_key, http_options=types.HttpOptions(
-        timeout=int(read_timeout * 1000), retry_options=types.HttpRetryOptions(attempts=1)))
-
-
-def _sdk_client(service: str, read_timeout: int = READ_TIMEOUT):
-    """The process's client of the maker's own API (made once, _new_client), with the key from .env: a missing key
-    stops the run, saying which key and where to put it (_env)."""
-    with _requests_lock:
-        client = _clients.get((service, read_timeout))
-    if client is None:
-        key = _env(DIRECT_SERVICES[service]["key"], f"no model can be called through {SERVICES[service]}")
-        client = _new_client(service, key, read_timeout)
-        with _requests_lock:
-            client = _clients.setdefault((service, read_timeout), client)
-    return client
-
-
-def _as_dict(obj) -> dict:
-    """An SDK's reply object as plain JSON data (the SDKs' objects are pydantic models: model_dump)."""
-    if isinstance(obj, dict):
-        return obj
-    dump = getattr(obj, "model_dump", None)
-    if callable(dump):
-        try:
-            return dump(mode="json")
-        except TypeError:
-            return dump()
-    return {}
-
-
-def _sdk_status(error) -> int | None:
-    """The HTTP status an SDK's error carries, or None when it carries none (a timeout, a lost connection, a fault in
-    the code). Anthropic's and OpenAI's APIStatusError have `status_code` (their SDKs' README); google-genai's
-    errors.APIError has `code` ("print(e.code)  # 404": https://googleapis.github.io/python-genai/)."""
-    for name in ("status_code", "code"):
-        status = getattr(error, name, None)
-        if isinstance(status, int) and not isinstance(status, bool) and 100 <= status < 600:
-            return status
-    return None
-
-
-def _sdk_said(error) -> str:
-    """An SDK's error in words: its message, and the error body the service sent when the SDK keeps it."""
-    message = str(getattr(error, "message", None) or error)
-    body = getattr(error, "body", None)
-    if body and str(body) not in message:
-        message += f" {json.dumps(body, ensure_ascii=False, default=str) if isinstance(body, (dict, list)) else body}"
-    return message
-
-
-def _sdk_error(service: str, error: Exception, paid: bool = True) -> Exception:
-    """The pipeline's own error for an SDK's error, judged as LiteLLM's are: a used-up budget stops the run (paid
-    calls only: stop_if_budget_gone); a rate limit or server error is worth asking again (RetryLater, after the
-    retry-after the service sent); any other HTTP status will not fix itself (ApiError); a timeout is NoAnswerInTime;
-    a lost connection is worth asking again (RuntimeError). Which of the last two an error without a status is, is
-    read from its Python type's name (anthropic.APITimeoutError and openai.APITimeoutError, each a subtype of
-    APIConnectionError; google-genai's transport errors come from httpx2, whose type names are not verified here).
-    Anything else is returned unchanged: a fault in the code, not the service's answer."""
-    status = _sdk_status(error)
-    name = type(error).__name__
-    if status is not None:
-        said = _sdk_said(error)
-        if paid and isinstance(getattr(_last, "reply", None), dict):
-            _last.reply["http_status"], _last.reply["error_body"] = status, said[:ERROR_BODY_CHARS]
-        if paid:
-            stop_if_budget_gone(service, status, said)
-        response = getattr(error, "response", None)
-        message = f"HTTP {status}: {' '.join(said.split())[:300]}"
-        if status in RETRY_STATUSES:
-            return RetryLater(message, _retry_after(response) if hasattr(response, "headers") else None)
-        return ApiError(message)
-    if isinstance(error, TimeoutError) or "Timeout" in name:
-        return NoAnswerInTime(f"{name}: {error}")
-    if any(w in name for w in ("Connection", "Connect", "Network", "Transport", "Protocol")):
-        return RuntimeError(f"no connection to {SERVICES[service]} ({name}: {error})")
-    return error
-
-
-def _sdk_send(service: str, send):
-    """send() (one request through a maker's SDK), as every such request is sent: none in a free command
-    (stop_if_forbidden) or after a used-up budget (stop_if_budget_gone), and its errors made the pipeline's own
-    (_sdk_error)."""
-    stop_if_forbidden()
-    stop_if_budget_gone(service)
-    try:
-        return send()
-    except Exception as e:                                  # noqa: BLE001
-        mine = _sdk_error(service, e)
-        if mine is e:
-            raise
-        raise mine from e
-
-
-def _anthropic_params(prompt: str, model: str, cache_until: str | None) -> dict:
-    """The request to Anthropic's Messages API: the model, `max_tokens` (MAX_ANSWER_TOKENS), the prompt split as
-    _messages splits it for Anthropic's models (the start before cache_until as a system block marked
-    `cache_control` ephemeral, for prompt caching: "system ... array of TextBlockParam ... cache_control: Create a cache
-    control breakpoint at this content block", https://platform.claude.com/docs/en/api/messages), and
-    `output_config.effort` where a thinking level is sent (thinking_sent). No `thinking` (adaptive thinking is always
-    on, on Claude Opus 5.5: DIRECT_SERVICES) and no `temperature`, `top_p` or `top_k` (TEMPERATURE). Not sent either:
-    the server-side refusal `fallbacks`, which would let another model answer a refused request and so mix models in
-    one run's answers; a refusal is recorded as one (Refused)."""
-    messages = _messages(prompt, model, cache_until)
-    params = {"model": model, "max_tokens": max_tokens_sent("anthropic")}
-    if messages[0]["role"] == "system":
-        params["system"] = messages[0]["content"]
-        messages = messages[1:]
-    params["messages"] = messages
-    if temperature_sent(model, "anthropic"):
-        params["temperature"] = TEMPERATURE
-    if thinking_sent(model, "anthropic"):
-        params["output_config"] = {"effort": thinking_sent(model, "anthropic")}
-    return params
-
-
-def _anthropic_usage(usage) -> dict:
-    """Anthropic's token counts in OpenAI's shape, the one _count_tokens and the test call's check read: prompt_tokens
-    = input_tokens (those not read from or written to the cache) + cache_read_input_tokens +
-    cache_creation_input_tokens; completion_tokens = output_tokens ("the inclusive, authoritative total used for
-    billing"); reasoning_tokens = output_tokens_details.thinking_tokens ("Number of output tokens the model generated
-    as internal reasoning"), only when the reply reports it (https://platform.claude.com/docs/en/api/messages, the
-    Usage object, read 2026-11-14). The reply's own counts are kept beside them (maker_usage)."""
-    usage = usage if isinstance(usage, dict) else {}
-    read, write = usage.get("cache_read_input_tokens") or 0, usage.get("cache_creation_input_tokens") or 0
-    out = {"prompt_tokens": (usage.get("input_tokens") or 0) + read + write,
-           "completion_tokens": usage.get("output_tokens") or 0,
-           "cache_read_input_tokens": read, "cache_creation_input_tokens": write, "maker_usage": usage}
-    details = usage.get("output_tokens_details")
-    if isinstance(details, dict) and details.get("thinking_tokens") is not None:
-        out["completion_tokens_details"] = {"reasoning_tokens": details["thinking_tokens"]}
-    return out
-
-
-def _ask_anthropic(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
-    """One request to Anthropic's own API (Messages, through the anthropic SDK); the reply text. Streamed, as the
-    claude-api reference advises ("Defaults": "default to streaming for any request that may involve long input, long
-    output, or high `max_tokens` - it prevents hitting request timeouts"), and read whole with
-    `get_final_message()`."""
-    params = _anthropic_params(prompt, model, cache_until)
-    _note_request(params, ("messages", "system"))
-    if "system" in params:
-        _last.reply["settings_sent"]["system"] = "the prompt's start, marked cache_control ephemeral"
-    client = _sdk_client("anthropic", read_timeout)
-
-    def send():
-        with client.messages.stream(**params) as stream:
-            return stream.get_final_message()
-    body = _as_dict(_sdk_send("anthropic", send))
-    _last.reply["http_status"] = 200
-    text = "".join(b.get("text") or "" for b in body.get("content") or [] if isinstance(b, dict)
-                   and b.get("type") == "text")
-    return _finish_reply("anthropic", text, _anthropic_usage(body.get("usage")), body.get("stop_reason"), None,
-                         body.get("model"))
-
-
-def _ask_openai(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
-    """One request to OpenAI's own API (Chat Completions, through the openai SDK); the reply text. The request is
-    LiteLLM's (_chat_payload), the reply read as LiteLLM's (_read_chat_reply): the same API."""
-    params = _chat_payload(prompt, model, cache_until, "openai")
-    _note_request(params, ("messages",))
-    client = _sdk_client("openai", read_timeout)
-    body = _as_dict(_sdk_send("openai", lambda: client.chat.completions.create(**params)))
-    _last.reply["http_status"] = 200
-    return _read_chat_reply(body, "openai")
-
-
-def _google_config(model: str) -> dict:
-    """The `config` of a request to Google's Gemini API, as plain data: `max_output_tokens` (MAX_ANSWER_TOKENS),
-    `thinking_config` {"thinking_level": the level in ThinkingLevel's spelling, e.g. "HIGH"} where a thinking level is
-    sent (thinking_sent), `temperature` only where temperature_sent says so (not to Gemini 3 and later: TEMPERATURE)."""
-    config = {"max_output_tokens": max_tokens_sent("google")}
-    if temperature_sent(model, "google"):
-        config["temperature"] = TEMPERATURE
-    if thinking_sent(model, "google"):
-        config["thinking_config"] = {"thinking_level": thinking_sent(model, "google").upper()}
-    return config
-
-
-def _google_usage(usage) -> dict:
-    """Google's token counts (usage_metadata) in OpenAI's shape: prompt_tokens = prompt_token_count, of which
-    cached_content_token_count were read from the cache (Gemini 4 Argon's caching is "Implicit only":
-    https://aistudio.google.com/docs/models/gemini-4-argon); completion_tokens = candidates_token_count +
-    thoughts_token_count, reasoning_tokens = thoughts_token_count, only when the reply reports it (Google's reference
-    lists thoughts apart from the candidates: totalTokenCount is "prompt + tool-use prompt + thoughts + response
-    candidates", https://aistudio.google.com/api-reference/generate-content, read 2026-11-14; that the prompt count
-    includes the cached part, as OpenAI's prompt_tokens includes cached_tokens, is not verified). The reply's own counts
-    are kept beside them (maker_usage)."""
-    usage = usage if isinstance(usage, dict) else {}
-    thoughts = usage.get("thoughts_token_count")
-    out = {"prompt_tokens": usage.get("prompt_token_count") or 0,
-           "completion_tokens": (usage.get("candidates_token_count") or 0) + (thoughts or 0),
-           "cache_read_input_tokens": usage.get("cached_content_token_count") or 0, "maker_usage": usage}
-    if thoughts is not None:
-        out["completion_tokens_details"] = {"reasoning_tokens": thoughts}
-    return out
-
-
-def _ask_google(prompt: str, model: str, read_timeout: int, cache_until: str | None = None) -> str:
-    """One request to Google's Gemini API (generate_content, through the google-genai SDK); the reply text
-    (`response.text`: "If there are multiple candidates, returns the text from only the first one"). The finish reason
-    is the first candidate's `finish_reason` (STOP, MAX_TOKENS, SAFETY, ...), or, when the prompt itself was blocked
-    and no candidate came, `prompt_feedback.block_reason`; the served model is `model_version` ("The model version
-    used to generate the response"; google-genai's types.py and the REST reference, read 2026-11-14)."""
-    config = _google_config(model)
-    _note_request({"model": model, **config}, ())
-    client = _sdk_client("google", read_timeout)             # first: a missing key or package stops here, said plainly
-    from google.genai import types
-    typed = {**config, **({"thinking_config": types.ThinkingConfig(**config["thinking_config"])}
-                          if "thinking_config" in config else {})}
-    reply = _sdk_send("google", lambda: client.models.generate_content(
-        model=model, contents=prompt, config=types.GenerateContentConfig(**typed)))
-    _last.reply["http_status"] = 200
-    body = _as_dict(reply)
-    candidates = body.get("candidates") or []
-    first = candidates[0] if candidates and isinstance(candidates[0], dict) else {}
-    reason = first.get("finish_reason") or ((body.get("prompt_feedback") or {}).get("block_reason")
-                                            if isinstance(body.get("prompt_feedback"), dict) else None)
-    try:
-        text = reply.text or ""
-    except (AttributeError, ValueError):
-        text = ""
-    return _finish_reply("google", text, _google_usage(body.get("usage_metadata")), reason, None,
-                         body.get("model_version"))
-
-
-def _direct_models(service: str) -> list:
-    """The model names a maker's own API lists for the key (free: listing is not a model call): Anthropic's and
-    OpenAI's `client.models.list()` (Anthropic's auto-paginates: the claude-api reference, "Models API"; OpenAI's: its
-    Models API, not read for this), each model's `id`; Google's `client.models.list()`
-    (https://googleapis.github.io/python-genai/), each model's `name` without a leading "models/"."""
-    client = _sdk_client(service, 60)
-    try:
-        models = list(client.models.list())
-    except Exception as e:                                  # noqa: BLE001
-        mine = _sdk_error(service, e, paid=False)
-        if mine is e:
-            raise
-        raise (mine if isinstance(mine, ApiError) else ApiError(str(mine))) from e
-    names = [str(getattr(m, "name", "") or "").removeprefix("models/") if service == "google"
-             else str(getattr(m, "id", "") or "") for m in models]
-    names = [n for n in names if n]
-    if not names:
-        raise ValueError(f"{SERVICES[service]}'s model list is empty or came in a shape this code doesn't read")
-    return sorted(set(names))
-
-
-def _with_reply(error: Exception, text, body: dict, reason, native=None) -> Exception:
-    """error, carrying what the service sent (the answer, usage, finish_reason, the maker's own reason), for the
-    failed-call record."""
-    error.answer, error.usage, error.finish_reason = text or "", body.get("usage") or {}, reason
-    error.native_finish_reason = native
-    return error
-
-
-def _with_call(error: Exception, attempts: int, began: float, cause: Exception | None = None) -> Exception:
-    """error, carrying what its last request sent and got back (_last.reply), how many attempts were made, and how
-    long they took, for the failed-call record. cause: the exception error replaces (e.g. requests' ReadTimeout)."""
-    try:
-        error.call = {**(getattr(_last, "reply", None) or {}), "attempts": attempts,
-                      "seconds": round(time.monotonic() - began, 1),
-                      **({"cause_type": type(cause).__name__} if cause is not None else {})}
-    except AttributeError:                                  # an exception that takes no attributes
-        pass
-    return error
-
-
-# ------------------------------ either service ------------------------------
-
-def list_models(service: str | None = None) -> list:
-    """The model names the service lists for your account. Free: listing is not a model call. Being listed doesn't
-    guarantee access."""
-    service = service or SERVICE
-    if service in DIRECT_SERVICES:
-        return _direct_models(service)
-    return _litellm_models() if service == "litellm" else _asksage_models()
-
-
-#: The client of each service: one request, the reply text (call_llm).
-_ASK = {"asksage": lambda *a: _ask_asksage(*a), "litellm": lambda *a: _ask_litellm(*a),
-        "anthropic": lambda *a: _ask_anthropic(*a), "openai": lambda *a: _ask_openai(*a),
-        "google": lambda *a: _ask_google(*a)}
-
-
-def call_llm(prompt, attempts=4, read_timeout=READ_TIMEOUT, model=None, service=None, cache_until=None):
-    """Send prompt to the model, through the service; the reply text. Retries with exponential backoff on rate
-    limits, server errors, and lost connections; a refusal that will not fix itself (ApiError) is raised at once; a
-    used-up budget (BudgetExhausted) stops the whole run.
-    model, service: MODEL and SERVICE (the run's) when None."""
-    model, service = model or MODEL, service or SERVICE
-    # cache_until: where the prompt's identical start ends, for prompt caching (_messages); Ask Sage doesn't use it
-    ask = _ASK[service]
-    began, _last.reply = time.monotonic(), {}
-    for attempt in range(attempts):
-        stop_if_forbidden()                                 # a free command sends nothing (forbid_model_calls)
-        stop_if_budget_gone(service)                        # none after a used-up budget, retries included
-        with _requests_lock:
-            REQUESTS["sent"] += 1
-        try:
-            text = ask(prompt, model, read_timeout, cache_until)
-            _last.timing = {"attempts": attempt + 1, "seconds": round(time.monotonic() - began, 1)}
-            return text
-        except (requests.ReadTimeout, NoAnswerInTime) as e:
-            # Not asked again: the service may still be writing, and billing, the first answer.
-            raise _with_call(ApiError(f"no answer within {read_timeout} s (READ_TIMEOUT in "
-                                      f"common/common_helpers/llm.py); not asked again, since the service may still be "
-                                      f"writing, and billing, the first answer"), attempt + 1, began, e) from e
-        except Exception as e:                              # noqa: BLE001
-            retry = isinstance(e, (RuntimeError, ValueError, requests.ConnectionError, requests.Timeout))
-            if not retry or attempt == attempts - 1:
-                _with_call(e, attempt + 1, began)
-                raise
-            # 5, 10, 20 s, or longer when the service says so, plus up to 2 s so parallel calls don't retry together
-            wait = max(2 ** attempt * 5, getattr(e, "wait", None) or 0) + random.uniform(0, 2)
-            log.warning(f"Model call to {model} failed ({e}); trying again in {wait:.0f} s (attempt {attempt + 2} of "
-                        f"{attempts}). Nothing to do: rate limits and server errors usually pass.")
-            time.sleep(wait)
-
-
-#: The one-line test request: a step's first paid call (PaidCalls.start), and each try of py helpers/models.py --try.
-TEST_PROMPT = 'Reply with ONLY this JSON: {"ok": true}'
-
-
-def try_model(name: str, service: str | None = None) -> tuple:
-    """(usable, why): one test call to the model name, through the service. usable is True when the model answered;
-    why is the reason when it didn't (e.g. Ask Sage's "model_not_permitted"). One tiny paid call."""
-    try:
-        call_llm(TEST_PROMPT, attempts=2, model=name, service=service)
-        return True, ""
-    except Exception as e:                                  # noqa: BLE001
-        return False, str(e)
-
-
-def call_llm_json(prompt, retries=1, read_timeout=READ_TIMEOUT, cache_until=None, check=None):
-    """Return the JSON OBJECT the prompt asked for, or raise.
-
-    Every caller immediately does .get() on the result, so a reply that
-    parses into a list, a string, or a number is as useless as one that does
-    not parse at all - and used to surface three frames away as an opaque
-    AttributeError. Both failures are treated the same way here: re-ask once
-    with a correction, then give up.
-
-    check: the caller's shape check, check(answer) -> what is wrong with the
-    answer's shape, or None when it is right (e.g. common/common_helpers/extraction.py,
-    shape_error). An object of the wrong shape is treated like one that isn't
-    JSON: asked once more, saying what was wrong, then BadReply."""
-    seconds = 0.0
-    for attempt in range(retries + 1):
-        try:
-            text = call_llm(prompt, read_timeout=read_timeout, cache_until=cache_until)
-        except Exception as e:                              # noqa: BLE001
-            if attempt and isinstance(getattr(e, "call", None), dict):
-                e.call["seconds"] = round(e.call["seconds"] + seconds, 1)       # the first ask's time too
-            raise
-        seconds += (getattr(_last, "timing", None) or {}).get("seconds", 0)
-        try:
-            data, state = find_json(text)
-            if state != "object":
-                # One rule for both services (classify_reply): an unfinished object with no finish reason saying
-                # the model stopped on its own is a cut-off (CutOff: kept in the cache as cut off, never asked again
-                # with the same settings); prose declining the task is a refusal (Refused: never asked again, never
-                # stored). The service clients raise these before the text gets here; this is the same rule, kept
-                # here for an answer that reaches the parser another way (a cached or edited one).
-                reply = getattr(_last, "reply", None) or {}
-                kind, detail = classify_reply(text, reply.get("finish_reason"), reply.get("native_finish_reason"))
-                if kind == "cut_off":
-                    raise _with_reply(CutOff(f"the answer was cut off: {detail}"), text, reply, reply.get("finish_reason"))
-                if kind == "refused":
-                    raise _with_reply(Refused(f"the model refused to answer: {detail}"), text, reply,
-                                      reply.get("finish_reason"))
-                raise BadReply(detail)
-            if not isinstance(data, dict):
-                raise BadReply(f"expected a JSON object, got "
-                               f"{type(data).__name__}")
-            wrong = check(data) if check else None
-            if wrong:
-                raise WrongShape(wrong)
-            if attempt:
-                with _requests_lock:
-                    REASKS["fixed"] += 1
-            return data
-        except (json.JSONDecodeError, BadReply) as e:
-            # The whole answer goes to the log file (DEBUG: not shown on screen), so a person can see what broke it.
-            log.debug(f"unusable answer from {MODEL} (attempt {attempt + 1} of {retries + 1}), "
-                      f"{len(text):,} characters, {e}:\n{text}")
-            shape = isinstance(e, WrongShape)
-            with _requests_lock:
-                if not attempt:
-                    REASKS["wrong_shape" if shape else "not_json"] += 1
-                if attempt == retries:
-                    REASKS["still_failed"] += 1
-            if attempt == retries:
-                error = BadReply(f"the model's answer isn't "
-                                 + ("a JSON object of the shape asked for" if shape else "a valid JSON object")
-                                 + f", {retries + 1} times ({e}); each "
-                                 f"answer is in this run's log (outputs/logs/<run id>.log), on a DEBUG line starting "
-                                 f"\"unusable answer\"")
-                reply = getattr(_last, "reply", None) or {}
-                error.answer, error.usage, error.finish_reason = text, reply.get("usage") or {}, reply.get("finish_reason")
-                error.call = {**reply, "attempts": (getattr(_last, "timing", None) or {}).get("attempts"),
-                              "asks": retries + 1, "seconds": round(seconds, 1)}
-                raise error from None
-            if shape:
-                log.warning(f"The model's reply is a JSON object of the wrong shape ({e}); asking once more, saying "
-                            f"what was wrong. Nothing to do.")
-                prompt += (f"\n\nYour last reply was not in the shape asked for: {e}. "
-                           "Return ONLY the JSON object, in the shape asked for, no fences, no prose.")
-                continue
-            log.warning(f"The model's reply isn't a JSON object ({e}); asking once more, reminding it to reply with "
-                        f"the JSON object only. Nothing to do.")
-            prompt += ("\n\nYour last reply was not a valid JSON object. "
-                       "Return ONLY the JSON object, no fences, no prose.")
-
-
-# ------------------------------ prompt safety ------------------------------
-
-def fence_safe(text: str, end_line: str) -> str:
-    """Defang end_line wherever it appears inside text.
-
-    A prompt wraps each record between a BEGIN and an END line, and tells
-    the model everything between them is data. A delimiter only delimits if
-    the data cannot contain it, so any copy of end_line inside the record
-    is spaced out ("-----" becomes "- - - - -"), and the record can never
-    end the block early and have the rest of its text read as
-    instructions."""
-    return text.replace(end_line, " ".join(end_line.replace("-", " - ").split()))
-
-
-# ------------------------------ a paid run ---------------------------------
+# ------------------------------ a paid run's settings (llm_paid.py) ------------
 
 #: The early stop: when EARLY_STOP_FAILURES of a run's first EARLY_STOP_WINDOW calls about records' text pieces
 #: (common/common_helpers/extraction.py, ask_model: 040's extraction, 050, 060; the test call not counted) fail,
@@ -1547,463 +466,25 @@ def fence_safe(text: str, end_line: str) -> str:
 #: too small for the model's thinking, a model that answers in the wrong shape) would most likely hit the rest too.
 #: Later failures don't stop the run: by then most calls have worked, and the failed ones are left out and listed.
 EARLY_STOP_WINDOW = 10
+
+
 EARLY_STOP_FAILURES = 3
+
 
 #: The test call's check (PaidCalls.start): a one-line answer whose thinking used this share of MAX_ANSWER_TOKENS or
 #: more leaves a record's answer too little room, so the run asks again before paying for more.
 THINKING_WARN_SHARE = 0.5
 
+
 #: The progress lines while calls are made: at most one every PROGRESS_SECONDS seconds (the first and the last call
 #: of a stage always shown), with the time left estimated once PROGRESS_ESTIMATE_AFTER calls have finished.
 PROGRESS_SECONDS = 10
+
+
 PROGRESS_ESTIMATE_AFTER = 3
 
-#: This run's failed model calls: how many failed, how many of them were cut off, how many weren't made because of the
-#: early stop, and the file that describes each (failed_calls_file), for the report and the run's last lines.
-#: Reset by paid_calls.
-OUTCOMES = {"failed": 0, "cut_off": 0, "not_sent": 0, "file": None}
 
-#: Warnings found while the run paid (the test call's check), for the report's Warnings (common/common_helpers/step.py).
-RUN_WARNINGS = []
-
-
-class EarlyStop(SystemExit):
-    """The early stop (EARLY_STOP_FAILURES of the first EARLY_STOP_WINDOW calls failed). A SystemExit, so the step
-    stops with its report and log; run_parallel first lets the calls already under way finish and keeps their
-    answers."""
-
-    def __init__(self, message: str, paid):
-        super().__init__(message)
-        self.paid = paid
-
-
-def _lower_thinking() -> str | None:
-    """How to leave the answer more of MAX_ANSWER_TOKENS by thinking less, with this run's settings; None when the
-    pipeline can't cap this model's thinking."""
-    sent = thinking_sent()
-    if sent and sent != "low":
-        lower = " or ".join(f"`--thinking {t}`" for t in reversed(THINKING_LEVELS[:THINKING_LEVELS.index(sent)]))
-        return f"set the step's thinking setting lower (it is {sent}; {lower})"
-    if THINKING == "model_default" and takes_thinking_cap():
-        return "give `--thinking low` (the thinking isn't capped: thinking is model_default)"
-    return None
-
-
-def cut_off_advice(usage=None) -> str:
-    """What to change after an answer was cut off at MAX_ANSWER_TOKENS (or a test call thought too much), from the
-    token counts the service reported, not from the settings: thinking took most of the tokens, the answer itself is
-    long, or the service didn't say how many were thinking."""
-    usage = usage if isinstance(usage, dict) else {}
-    if max_tokens_sent() is None:
-        return ("Ask Sage takes no answer limit (MAX_ANSWER_TOKENS isn't sent), so the model's own limit cut the "
-                "answer: lower the step's max_chars so each text piece asks for fewer facts, choose another model "
-                "(`--model`), or run through LiteLLM (`--service litellm`), which takes the limit")
-    details = usage.get("completion_tokens_details")
-    reported = isinstance(details, dict) and details.get("reasoning_tokens") is not None
-    thought, total = reasoning_tokens(usage), usage.get("completion_tokens")
-    limit = f"MAX_ANSWER_TOKENS in common/common_helpers/llm.py (now {MAX_ANSWER_TOKENS:,})"
-    shorter = f"raise {limit}, or, when the text piece is long, lower the step's max_chars so each answer is shorter"
-    if not reported:
-        lower = _lower_thinking()
-        got = f" (the answer got {total:,} tokens in all)" if isinstance(total, int) else ""
-        return (f"Thinking tokens not reported; can't tell which used the {MAX_ANSWER_TOKENS:,} tokens, the model's "
-                f"thinking or the answer itself{got}: "
-                + (f"if the model thinks, {lower}, so more of the tokens are left for the answer; if not, " if lower
-                   else "") + shorter)
-    if thought >= THINKING_WARN_SHARE * MAX_ANSWER_TOKENS:
-        sent = thinking_sent()
-        if sent == "low":
-            fix = (f"the thinking is already at its lowest cap (low): raise {limit} and give `--thinking "
-                   f"model_default`, or choose another model (`--model`)")
-        else:
-            fix = _lower_thinking()
-            fix = (f"{fix}, so more of the tokens are left for the answer" if fix else
-                   f"the pipeline can't cap this model's thinking: raise {limit}, or choose another model (`--model`)")
-        return (f"Thinking used most of the tokens: the model spent {thought:,} of the {MAX_ANSWER_TOKENS:,} tokens "
-                f"thinking, leaving {MAX_ANSWER_TOKENS - thought:,} for the answer; {fix}")
-    answer = f" and {total - thought:,} on the answer" if isinstance(total, int) else ""
-    return (f"The answer itself is long: the model spent {thought:,} of the {MAX_ANSWER_TOKENS:,} tokens thinking"
-            f"{answer}; {shorter}")
-
-
-def advice(error) -> str:
-    """What to do about one failed call, in words: the same advice the messages and the failed-call record give."""
-    if isinstance(error, BudgetExhausted):
-        return ("Ask the administrators of the service to raise or reset the budget; nothing to retry before that "
-                "(docs/running_on_nasa_laptop.md, *The budget is used up*)")
-    if isinstance(error, CutOff):
-        return cut_off_advice(getattr(error, "usage", None))
-    if isinstance(error, Refused):
-        return ("Asking again gets the same answer. Look at the record's text; if refusals (the service's filter, or "
-                "the model declining in prose) come often with this model, choose another (`--model`)")
-    if "no answer within" in str(error):
-        return "Run the step again later; if it keeps happening, lower the step's max_chars"
-    if isinstance(error, BadReply):
-        return ("Read the answer (in the failed-call record or the log) to see what the model wrote instead of the "
-                "JSON object; if this model keeps doing it, choose another (`--model`)")
-    return ("Read the error: rate limits and server errors usually pass, so run the step again; if it keeps failing, "
-            "check the connection and the key in .env")
-
-
-def failed_calls_file() -> Path | None:
-    """outputs/logs/<run id>_failed_calls.jsonl, beside the run's log; None outside a run."""
-    from common.audit import current_run_id
-    from common.step import LOGS_DIR
-    run_id = current_run_id()
-    return LOGS_DIR / f"{run_id}_failed_calls.jsonl" if run_id else None
-
-
-def _usage_counts(usage) -> dict:
-    usage = usage if isinstance(usage, dict) else {}
-    return {"prompt_tokens": usage.get("prompt_tokens"), "answer_tokens": usage.get("completion_tokens"),
-            "reasoning_tokens": reasoning_tokens(usage) if usage else None}
-
-
-def _duration(seconds: float) -> str:
-    return f"{seconds:.0f} s" if seconds < 90 else f"{seconds / 60:.0f} min" if seconds < 5400 else f"{seconds / 3600:.1f} h"
-
-
-class PaidCalls:
-    """Asks once, just before a run's first paid call; checks the test call; counts the calls, shows their progress,
-    records each failed one, and stops the run early when its first calls fail.
-
-    A stage calls start(plan) before it makes any call a cache couldn't answer, expect(n) before n calls, and, as each
-    call ends, made_call() (when it answered) and outcome(where, prompt, error). The first start() logs the plan,
-    asks the person to press Enter (unless confirm is False, for runs with nobody at the keyboard), and makes one tiny
-    test call, so a wrong model name or key fails once here instead of once per text; its token counts are checked
-    (an answer cut off, or thinking that leaves too little room, is said before paying for more). A run whose every
-    answer comes from the cache never asks and never pays. Declining exits the run having spent nothing.
-
-    outcome() prints the progress (at most every PROGRESS_SECONDS), writes a failed call to the run's failed-call
-    record (failed_calls_file), and raises EarlyStop when EARLY_STOP_FAILURES of the first EARLY_STOP_WINDOW calls
-    failed.
-
-    notes: what the step found, BEFORE any call, that differs from what the
-    person asked for (an id that isn't in the catalog, fewer texts than
-    asked, …), one sentence each. start() shows them above the question, so
-    the person can cancel and fix the request before paying; the step also
-    puts them in its report's warnings, where they're read on runs that
-    needed no call or had nobody at the keyboard."""
-
-    def __init__(self, confirm: bool, notes: list = (), step: str = "", command: str | None = None):
-        self.confirm = confirm
-        self.notes = list(notes)
-        self.step = step                    # the step's folder name, e.g. 070_evaluate
-        self.command = command or (f"py {step}/run.py" if step else "")   # how messages say to run it again
-        self.started = False
-        self.made = 0                       # calls made by the stages
-        self.test_calls = 0                 # 1 once the run has started paying
-        self._lock = threading.Lock()
-        self.clock = time.monotonic         # replaced by the tests
-        self.ended = 0                      # calls the early stop watches, ended this run, answered or failed
-        self.failures = []                  # (where, error) of each of those that failed
-        self.stopped = False
-        self._batch = {"total": None, "done": 0, "failed": 0, "cut": 0, "began": 0.0, "shown": None}
-
-    def start(self, plan: str, to_pay: int | None = None) -> None:
-        """plan: what the run will ask, in words; to_pay: how many model calls it will pay for (those the cache can't
-        answer), shown in the question itself, so the count is read before Enter. None only where a stage can't
-        count them before its first answer."""
-        if self.started:
-            return
-        if FORBIDDEN["why"] is not None:                    # a free command: stop before the question and the test call
-            raise ModelCallForbidden(_forbidden_message(
-                f"{self.step or 'This run'} would pay for "
-                + (f"{to_pay:,} model call(s) the cache can't answer" if to_pay is not None else "model calls")
-                + f" ({plan.strip().rstrip('.')})"))
-        log.info(plan)
-        log.info(f"model: {MODEL}, through {SERVICES.get(SERVICE, SERVICE)}"
-                 + (f", thinking {thinking_sent()}" if thinking_sent() else ""))
-        if self.notes:
-            show_warnings(self.step, self.notes)
-        count = (f"{to_pay:,} model call(s) to pay for, and 1 test call first" if to_pay is not None
-                 else "1 test call first")
-        if self.confirm:
-            confirm(f"Press Enter to start ({count}), or anything else to cancel."
-                    if not self.notes else
-                    f"Press Enter to go ahead anyway ({count}), or anything else to cancel.")
-        again = f"`{self.command}`" if self.command else "the step"
-        service = SERVICES.get(SERVICE, SERVICE)
-        try:
-            call_llm(TEST_PROMPT, attempts=2)
-        except Exception as e:                              # noqa: BLE001
-            OUTCOMES["failed"] += 1
-            OUTCOMES["cut_off"] += isinstance(e, CutOff)
-            self._record({"stage": "test call"}, TEST_PROMPT, e)
-            self._test_call_failed(e, again, service)
-        self.started = True
-        self.test_calls = 1
-        self._check_test_call()
-
-    def _test_call_failed(self, e: Exception, again: str, service: str) -> None:
-        """Stop the run: the test call failed (e), so no other call is made."""
-        file = f" The call is described in {OUTCOMES['file']}." if OUTCOMES["file"] else ""
-        if isinstance(e, CutOff):
-            sys.exit(f"Test call to {MODEL} through {service} was cut off at the longest length allowed "
-                     f"({MAX_ANSWER_TOKENS:,} tokens) on a one-line answer, so no other model call was made: every "
-                     f"answer of this run would be cut off too. {cut_off_advice(getattr(e, 'usage', None))}; then run "
-                     f"{again} again.{file}")
-        sys.exit(f"Test call to {MODEL} through {service} failed ({e}), so no other model "
-                 f"call was made. If {service} says the model "
-                 f"isn't allowed, give another with --model <name> (`py helpers/models.py --service {SERVICE} --try <name> ...` "
-                 f"tells which you may use)"
-                 + (f"; if it names {thinking_parameter()}, give `--thinking model_default`, which sends no thinking "
-                    f"cap" if thinking_sent() else "")
-                 + f"; otherwise check your key in .env and that you're on NASA's network. Then run {again} again.{file}")
-
-    def _check_test_call(self) -> None:
-        """One line on the test call's token counts, and a stop to think when its thinking leaves too little room."""
-        reply = getattr(_last, "reply", None) or {}
-        usage = reply.get("usage") or {}
-        if not usage:
-            log.info(f"  test call: ok ({SERVICES.get(SERVICE, SERVICE)} reports no token counts)")
-            return
-        thought = reasoning_tokens(usage)
-        answer = (usage.get("completion_tokens") or 0) - thought
-        log.info(f"  test call: ok (answer {answer:,} tokens, thinking "
-                 + (f"{thought:,} tokens)" if "completion_tokens_details" in usage else "not reported)"))
-        if thought < THINKING_WARN_SHARE * MAX_ANSWER_TOKENS:
-            return
-        note = (f"The test call's one-line answer used {thought:,} tokens thinking, {thought / MAX_ANSWER_TOKENS:.0%} "
-                f"of the {MAX_ANSWER_TOKENS:,} tokens each answer may use (MAX_ANSWER_TOKENS in "
-                f"common/common_helpers/llm.py), so a record's longer answer is likely to be cut off. "
-                f"{cut_off_advice(usage)}.")
-        RUN_WARNINGS.append(note)
-        show_warnings(self.step, [note])
-        if self.confirm:
-            confirm("Press Enter to go ahead anyway, or anything else to cancel (only the test call was paid for).",
-                    spent="Only the test call was paid for.")
-
-    def expect(self, total: int) -> None:
-        """The next total calls are one stage's: its progress lines count them."""
-        with self._lock:
-            self._batch = {"total": total, "done": 0, "failed": 0, "cut": 0, "began": self.clock(), "shown": None}
-
-    def made_call(self) -> None:
-        with self._lock:                    # stages may call from several threads
-            self.made += 1
-
-    def outcome(self, where: dict, prompt: str, error: Exception | None = None, watched: bool = True) -> None:
-        """One paid call ended: answered (error None) or failed. Shows the progress, records a failed call, and
-        raises EarlyStop when too many of the run's first calls failed. where: {"stage", "record", "text_piece"}, as
-        much as the stage knows. watched: whether the early stop counts the call; False for the stages that ask one
-        prompt at a time (common/common_helpers/cache.py, ask_cached), which are few, and where a failure is often
-        expected and handled (040's labeling asks a refused batch again in halves, to find the item refused)."""
-        with self._lock:
-            b = self._batch
-            if not b["began"]:
-                b["began"] = self.clock()
-            b["done"] += 1
-            self.ended += watched
-            if error is not None:
-                b["failed"] += 1
-                b["cut"] += isinstance(error, CutOff)
-                if watched:
-                    self.failures.append((where, error))
-                OUTCOMES["failed"] += 1
-                OUTCOMES["cut_off"] += isinstance(error, CutOff)
-                self._record(where, prompt, error)
-            self._progress()
-            early = (watched and not self.stopped and self.ended <= EARLY_STOP_WINDOW
-                     and len(self.failures) >= EARLY_STOP_FAILURES)
-            if early:
-                self.stopped = True
-        if early:
-            raise EarlyStop(self._early_stop_message(), self)
-
-    def _progress(self) -> None:
-        b, now = self._batch, self.clock()
-        last = b["total"] is not None and b["done"] >= b["total"]
-        if not (b["shown"] is None or last or now - b["shown"] >= PROGRESS_SECONDS):
-            return
-        b["shown"] = now
-        failed = f"{b['failed']:,} failed" + (f" ({b['cut']:,} cut off)" if b["cut"] else "")
-        if b["total"] is None:
-            log.info(f"  model calls: {b['done']:,} done, {failed}")
-            return
-        if last:
-            left = f"took {_duration(now - b['began'])}"
-        elif b["done"] < PROGRESS_ESTIMATE_AFTER:
-            left = "estimating the time left…"
-        else:
-            left = f"about {_duration((now - b['began']) / b['done'] * (b['total'] - b['done']))} left"
-        log.info(f"  model calls: {b['done']:,} of {b['total']:,} done, {failed}, {left}")
-
-    def _early_stop_message(self) -> str:
-        what = [f"{w.get('record', w.get('stage', '?'))}"
-                + (f" piece {w['text_piece']}" if w.get("text_piece") else "") + f": {e}" for w, e in self.failures]
-        cut = [e for _, e in self.failures if isinstance(e, CutOff)]
-        todo = cut_off_advice(max((getattr(e, "usage", None) or {} for e in cut), key=reasoning_tokens)) if cut \
-            else advice(self.failures[-1][1])
-        file = OUTCOMES["file"]
-        return (f"Step {self.step.split('_')[0]} stopped early: {len(self.failures)} of the first {self.ended} model "
-                f"calls of this run failed ({'; '.join(what)}), so it made no more: the rest would most likely fail "
-                f"the same way and be paid for nothing (the early stop: {EARLY_STOP_FAILURES} failed among the first "
-                f"{EARLY_STOP_WINDOW}, in common/common_helpers/llm.py). What to do: {todo}."
-                + (f" Each failed call is described in {file}." if file else "")
-                + f" Answers already received are kept in the cache, so the next run pays only for the rest: run "
-                  f"`{self.command}` again once that is changed.")
-
-    def not_sent(self, jobs: list) -> None:
-        """The calls the early stop prevented, [(where, prompt)]: one line each in the failed-call record."""
-        with self._lock:
-            for where, prompt in jobs:
-                OUTCOMES["not_sent"] += 1
-                self._record(where, prompt, None)
-
-    def _record(self, where: dict, prompt: str, error: Exception | None) -> None:
-        """One line of the failed-call record: everything needed to see why the call failed (never a key)."""
-        path = failed_calls_file()
-        if path is None:
-            return
-        usage = getattr(error, "usage", None)
-        entry = {"time": dt.datetime.now().astimezone().isoformat(timespec="seconds"), "step": self.step,
-                 "run_id": path.name.removesuffix("_failed_calls.jsonl"), **where,
-                 "outcome": "not_sent" if error is None else "cut_off" if isinstance(error, CutOff) else "failed",
-                 "service": SERVICE, "model": MODEL,
-                 "call_settings": {**call_settings(), "read_timeout_s": READ_TIMEOUT},
-                 "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
-                 "prompt_characters": len(prompt)}
-        if error is None:
-            entry["why"] = ("not made: the service answered that the budget is used up, so the run stopped before "
-                            "this call" if BUDGET_GONE["error"] is not None else
-                            "not made: the early stop stopped the run before this call")
-        else:
-            call = getattr(error, "call", None) or {}
-            usage = usage or call.get("usage")
-            entry.update({"finish_reason": getattr(error, "finish_reason", None) or call.get("finish_reason"),
-                          "native_finish_reason": call.get("native_finish_reason"), **_usage_counts(usage),
-                          "usage": usage or None, "http_status": call.get("http_status"),
-                          "error_body": call.get("error_body"), "error_type": type(error).__name__,
-                          "cause_type": call.get("cause_type"), "error": str(error),
-                          "settings_sent": call.get("settings_sent"), "request_bytes": call.get("request_bytes"),
-                          "served_as": call.get("served_as"), "attempts": call.get("attempts"),
-                          "asks": call.get("asks"), "seconds": call.get("seconds"),
-                          "answer": getattr(error, "answer", None), "what_to_do": advice(error)})
-        append_text(path, json.dumps(entry, ensure_ascii=False) + "\n")
-        OUTCOMES["file"] = path.relative_to(path.parents[2]).as_posix()
-
-
-@dataclass
-class Calls:
-    """What a step's model-calling stages share: the confirmation-and-count
-    (PaidCalls) and the folder that keeps every answer (common/common_helpers/cache.py)."""
-    paid: PaidCalls
-    cache_dir: Path
-
-
-def paid_calls(settings: dict, output, notes: list = (), session_id: str | None = None,
-               command: str | None = None) -> Calls:
-    """The Calls of one run: uses the model the setting `model` names, through the service the setting `service`
-    names, with the thinking cap the setting `thinking` gives; asks before paying (setting confirm_paid_calls),
-    showing notes first; answers kept in cache/ inside the step's output folder. A setting it can't use stops the
-    step (Stop: `stopped`, a problem the person can fix). session_id: sent with each LiteLLM request of the run
-    (SESSION_ID); None sends none. command: how messages say to run it again (a helper's, e.g. py helpers/second_opinion.py;
-    a step leaves it out: py <step>/run.py)."""
-    global MODEL, SERVICE, THINKING, REPEAT, SESSION_ID
-    from common.step import check_settings                  # the one check of every setting (common.step.shared_specs)
-    given = {"service": settings.get("service") if settings.get("service") is not None else SERVICE,
-             "model": settings.get("model"), "thinking": settings.get("thinking") if settings.get("thinking") is not None else THINKING,
-             "repeat": settings.get("repeat", 1)}
-    check_settings({k: v for k, v in given.items() if k != "model" or v is not None}, {})
-    service, thinking = str(given["service"]).strip().lower(), str(given["thinking"]).strip().lower()
-    name = str(given["model"] or "").strip()
-    if not name:
-        raise Stop(f"The setting model must be a text (not empty), but is {given['model']!r}, so the step can't run. "
-                   f"Give --model <name> (`py helpers/models.py` lists them), then run the step again.")
-    own = DIRECT_SERVICES.get(service, {}).get("maker")
-    if own and maker(name) and maker(name) != own:
-        raise Stop(f"The setting model is {name}, a model by {maker(name)}, but the setting service is {service}, "
-                   f"which reaches only {own}'s models ({SERVICES[service]}), so the step can't run. Give a model by "
-                   f"{own} (`py helpers/models.py --service {service}` lists them), or a service that reaches {name} "
-                   f"(e.g. --service litellm), then run the step again.")
-    repeat = given["repeat"]
-    MODEL, SERVICE, THINKING, REPEAT, SESSION_ID = name, service, thinking, repeat, session_id
-    SERVED.clear()
-    for k in REQUESTS:
-        REQUESTS[k] = 0
-    for k in REASKS:
-        REASKS[k] = 0
-    OUTCOMES.update(failed=0, cut_off=0, not_sent=0, file=None)
-    RUN_WARNINGS.clear()
-    return Calls(paid=PaidCalls(confirm=settings["confirm_paid_calls"], notes=notes, step=Path(output).name, command=command),
-                 cache_dir=Path(output) / "cache")
-
-
-def run_parallel(fn, jobs: dict, workers: int, handle, stop_note: str, not_sent=None) -> None:
-    """Run fn(*args) for every (key, args) in jobs, workers at a time, and
-    call handle(n, key, result, error) in this thread as each finishes (n
-    counts from 1; error is None on success, result None on failure).
-
-    Ctrl+C cancels every call not yet started, so a stopped run spends
-    nothing more than what is already in flight, then raises Interrupted with stop_note.
-    Calls already in flight cannot be recalled; their results are not
-    handled.
-
-    When handle raises EarlyStop (PaidCalls.outcome), every call not yet started is cancelled, the calls already under
-    way are waited for and handled (so their paid answers are kept), not_sent(keys of the cancelled jobs) is called,
-    and the EarlyStop goes on. A used-up budget (BudgetExhausted, raised by a call) is met the same way: the calls under
-    way are handled, not_sent gets every call never sent, and the BudgetExhausted goes on (also when it came while an
-    early stop was waiting for the calls under way: then no other call can be made at all)."""
-    pool = ThreadPoolExecutor(workers)
-    futures, handled = {}, set()
-    try:
-        futures = {pool.submit(fn, *args): key for key, args in jobs.items()}
-        for n, future in enumerate(as_completed(futures), 1):
-            try:
-                result, error = future.result(), None
-            except Exception as e:                      # noqa: BLE001
-                result, error = None, e
-            handled.add(future)
-            handle(n, futures[future], result, error)
-    except (EarlyStop, BudgetExhausted) as stop:
-        # Nothing more is started. The calls already under way are waited for and handled, so their paid answers are
-        # kept; a used-up budget (BudgetExhausted) met among them is the stop said, since nothing more can be sent.
-        cancelled = [f for f in futures if f.cancel()]
-        under_way = [f for f in futures if f not in handled and f not in cancelled]
-        unsent = list(cancelled)
-        for n, future in enumerate(under_way, len(handled) + 1):
-            try:
-                result, error = future.result(), None
-            except Exception as e:                      # noqa: BLE001
-                result, error = None, e
-            except BudgetExhausted as e:
-                stop = e if isinstance(stop, EarlyStop) else stop
-                if not e.answered:                      # stopped before it was sent
-                    unsent.append(future)
-                    continue
-                result, error = None, e                 # the call the service answered with the used-up budget
-            try:
-                handle(n, futures[future], result, error)
-            except EarlyStop:
-                pass                                    # the run is stopping already: one message
-        if not_sent is not None:
-            not_sent([futures[f] for f in unsent])
-        raise stop
-    except KeyboardInterrupt:
-        pool.shutdown(wait=False, cancel_futures=True)
-        raise Interrupted(f"Stopped with Ctrl+C. Model calls not yet started were cancelled, so they cost nothing. "
-                          f"{stop_note}") from None
-    finally:
-        pool.shutdown(wait=False, cancel_futures=True)
-
-
-def warning_list(step: str, notes: list) -> str:
-    """'Step 070 found 2 warnings:', then the notes numbered; a note's further
-    lines are indented under it."""
-    head = f"Step {step.split('_')[0]} found {len(notes)} warning{'s' if len(notes) != 1 else ''}:"
-    return head + "\n" + numbered(notes)
-
-
-def numbered(notes: list) -> str:
-    """'1. …', '2. …'; a note's further lines indented under it."""
-    return "\n".join(f"{i}. " + "\n".join(("   " + x) if x and j else x for j, x in enumerate(n.split("\n")))
-                     for i, n in enumerate(notes, 1))
-
-
-def show_warnings(step: str, notes: list) -> None:
-    log.warning(warning_list(step, notes), extra={"as_written": True})
-
+# ------------------------------ who makes a model --------------------------------
 
 #: Who makes a model, by a word of its family in the model's name. Ask Sage's names start with the host
 #: ("google-claude-sonnet-5" is Anthropic's Claude served through Google), so the family word decides.
@@ -2042,25 +523,44 @@ def _name_words(model: str) -> list:
     return [w for w in re.split(r"[-_./: ]+", (model or "").lower()) if w]
 
 
-class Interrupted(KeyboardInterrupt):
-    """Ctrl+C, with a message saying what it cost. A KeyboardInterrupt, so the step ends `interrupted` (exit code
-    130: common/common_helpers/step.py), like a Ctrl+C anywhere else; every answer already received is in the cache."""
 
-
-def confirm(question: str, spent: str = "Nothing was spent.") -> None:
-    """Stop until the person presses Enter (or types y or yes, in any case, spaces around it ignored); exit on
-    anything else (the answers, for a person: docs/running_on_nasa_laptop.md, section 5). spent: what was paid
-    for before the question.
-
-    The gate between reading a run's summary and paying for it. Any other
-    answer and a closed input (a run with nothing attached to the keyboard)
-    stop the step (`stopped`); Ctrl+C interrupts it (`interrupted`), so the
-    expensive path is never taken by default."""
-    try:
-        answer = input(f"\n{question} ")
-    except EOFError:
-        sys.exit(f"\nCancelled. {spent}")
-    except KeyboardInterrupt:
-        raise Interrupted(f"Cancelled with Ctrl+C. {spent}") from None
-    if answer.strip().lower() not in ("", "y", "yes"):
-        sys.exit(f"Cancelled. {spent}")
+# ------------------------------ the parts, loaded last: they import their settings from here --------
+from common.llm_errors import (
+    BadReply as BadReply, WrongShape as WrongShape, ApiError as ApiError, RetryLater as RetryLater, RETRY_STATUSES
+    as RETRY_STATUSES, _retry_after as _retry_after, BUDGET_WORDS as BUDGET_WORDS, ANSWER_BUDGET_WORDS as
+    ANSWER_BUDGET_WORDS, ANSWER_BUDGET_NUMBERS as ANSWER_BUDGET_NUMBERS, ANSWER_BUDGET_CHARS as ANSWER_BUDGET_CHARS,
+    BUDGET_NUMBERS as BUDGET_NUMBERS, budget_answer as budget_answer, budget_exhausted as budget_exhausted,
+    BudgetExhausted as BudgetExhausted, BUDGET_GONE as BUDGET_GONE, budget_message as budget_message,
+    stop_if_budget_gone as stop_if_budget_gone, ModelCallForbidden as ModelCallForbidden, FORBID_ENV as FORBID_ENV,
+    _forbidden_from_env as _forbidden_from_env, FORBIDDEN as FORBIDDEN, forbid_model_calls as forbid_model_calls,
+    allow_model_calls as allow_model_calls, _forbidden_message as _forbidden_message, stop_if_forbidden as
+    stop_if_forbidden, CutOff as CutOff, Refused as Refused, NoAnswerInTime as NoAnswerInTime)
+from common.llm_replies import (
+    COMPLETE_REASONS as COMPLETE_REASONS, CUT_OFF_REASONS as CUT_OFF_REASONS, REFUSAL_REASONS as REFUSAL_REASONS,
+    REFUSAL_WORDS as REFUSAL_WORDS, REPLY_KINDS as REPLY_KINDS, _FENCE as _FENCE, find_json as find_json,
+    _open_at_end as _open_at_end, classify_reply as classify_reply, _raise_unless_complete as
+    _raise_unless_complete, reasoning_tokens as reasoning_tokens, _http_reply as _http_reply, _count_tokens as
+    _count_tokens, _note_request as _note_request, _finish_reply as _finish_reply, _with_reply as _with_reply,
+    _with_call as _with_call)
+from common.llm_asksage import (
+    USER_BASE as USER_BASE, SERVER_BASE as SERVER_BASE, _token_cache as _token_cache, _asksage_token as
+    _asksage_token, _asksage_models as _asksage_models, _ask_asksage as _ask_asksage)
+from common.llm_litellm import (
+    LITELLM_BASE as LITELLM_BASE, _litellm as _litellm, _litellm_said as _litellm_said, _litellm_error as
+    _litellm_error, _litellm_models as _litellm_models, _messages as _messages, _post as _post, litellm_post as
+    litellm_post, _ask_litellm as _ask_litellm, _chat_payload as _chat_payload, _read_chat_reply as _read_chat_reply)
+from common.llm_makers import (
+    _clients as _clients, _sdk as _sdk, _new_client as _new_client, _sdk_client as _sdk_client, _as_dict as
+    _as_dict, _sdk_status as _sdk_status, _sdk_said as _sdk_said, _sdk_error as _sdk_error, _sdk_send as _sdk_send,
+    _anthropic_params as _anthropic_params, _anthropic_usage as _anthropic_usage, _ask_anthropic as _ask_anthropic,
+    _ask_openai as _ask_openai, _google_config as _google_config, _google_usage as _google_usage, _ask_google as
+    _ask_google, _direct_models as _direct_models)
+from common.llm_calls import (
+    list_models as list_models, _ASK as _ASK, call_llm as call_llm, TEST_PROMPT as TEST_PROMPT, try_model as
+    try_model, call_llm_json as call_llm_json, fence_safe as fence_safe)
+from common.llm_paid import (
+    OUTCOMES as OUTCOMES, RUN_WARNINGS as RUN_WARNINGS, EarlyStop as EarlyStop, _lower_thinking as _lower_thinking,
+    cut_off_advice as cut_off_advice, advice as advice, failed_calls_file as failed_calls_file, _usage_counts as
+    _usage_counts, _duration as _duration, PaidCalls as PaidCalls, Calls as Calls, paid_calls as paid_calls,
+    run_parallel as run_parallel, warning_list as warning_list, numbered as numbered, show_warnings as
+    show_warnings, Interrupted as Interrupted, confirm as confirm)

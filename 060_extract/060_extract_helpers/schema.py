@@ -52,7 +52,6 @@ twins (docs/terminology.md): evaluated records with the same title, the same
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -133,15 +132,15 @@ def learned_from(inputs: dict, base: dict, result: Schema, pool: list, evidence:
         how.append(f"the ground truth schema was shaped while annotating the {len(evidence)} finished tuning records "
                    f"of the ground truth")
     else:
-        evidence = path.with_name(EVIDENCE_NAME)
+        evidence_file = path.with_name(EVIDENCE_NAME)
         run = _made(path).get("run_id")
-        if not (run and evidence.is_file() and _made(evidence).get("run_id") == run):
+        if not (run and evidence_file.is_file() and _made(evidence_file).get("run_id") == run):
             return {"known": False, "ids": [],
                     "how": [f"{repo_path(path)} has no {EVIDENCE_NAME} beside it written by the same run, so which "
                             f"texts the schema was learned from isn't known"]}
-        texts = read_json(evidence).get("texts", [])
+        texts = read_json(evidence_file).get("texts", [])
         ids |= {t["id"] for t in texts}
-        how.append(f"040's run {run} learned it from {len(texts)} texts ({repo_path(evidence)}, key texts)")
+        how.append(f"040's run {run} learned it from {len(texts)} texts ({repo_path(evidence_file)}, key texts)")
     named_positions = set()
     for sources in (base.get("sources", {}), result.sources):
         for of_kind in sources.values():
@@ -267,10 +266,10 @@ def load_schema(inputs: dict) -> Schema:
         result.notes.append(f"Entries of {schema_file} whose source names ground truth records "
                             f"other than tuning ones ({len(from_held_out)}), e.g. component classes the annotation tool added "
                             f"from held-out records: " + named(from_held_out, 5, "; ") + ". They are kept (it's "
-                            f"the schema you chose), but then evaluation's held-out numbers no longer measure "
-                            f"records the pipeline was never adjusted to. Fine for tuning numbers; for held-out "
-                            f"numbers, extract with a schema that didn't learn from held-out records: run "
-                            f"`py 060_extract/run.py` without --schema (the induced schema).")
+                            "the schema you chose), but then evaluation's held-out numbers no longer measure "
+                            "records the pipeline was never adjusted to. Fine for tuning numbers; for held-out "
+                            "numbers, extract with a schema that didn't learn from held-out records: run "
+                            "`py 060_extract/run.py` without --schema (the induced schema).")
     if result.not_tuning:
         result.notes.append(f"{len(result.not_tuning)} schema entr(ies) of {additions_file} say they come "
                             f"from the ground truth but don't show they come from tuning records only, so they are "

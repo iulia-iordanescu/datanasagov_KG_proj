@@ -168,7 +168,7 @@ def _wrap(text: str, first: str, rest: str) -> list:
 
 
 def build(guidelines_path: Path = GUIDELINES, differences_path: Path = DIFFERENCES, schema_path: Path = SCHEMA) -> str:
-    items = [dict(i, text=plain(i["text"]).replace("$", "$$")) for i in _items(read_text(guidelines_path))
+    items: list[dict] = [dict(i, text=plain(i["text"]).replace("$", "$$")) for i in _items(read_text(guidelines_path))
              if not i["example"]]
     entries = read_differences(read_text(differences_path))
     where = lambda e: f"{DIFFERENCES.name}:{e['line']} ({e['kind']} | {e['where']})"
@@ -184,7 +184,7 @@ def build(guidelines_path: Path = GUIDELINES, differences_path: Path = DIFFERENC
             if old in i["text"]:
                 t = " ".join(i["text"].replace(old, new).split())
                 # words left out from the middle of a sentence leave no stray space or comma before its punctuation
-                i["text"] = re.sub(r",? +([.,;:)])", r"", t) if not new else t
+                i["text"] = re.sub(r",? +([.,;:)])", r"\1", t) if not new else t
     items = [i for i in items if i["text"]]
     names = _schema_names(schema_path)
     maps = [tuple(x.strip() for x in l.split("=>")) for e in entries if e["kind"] == "map" for l in e["body"] if l.strip()]

@@ -453,7 +453,7 @@ def _restore_manifest(output: Path, text: str | None) -> None:
 PREVIOUS_RUNS = "previous_runs"
 
 
-def _keep_previous(output: Path, manifest_text: str | None) -> list:
+def _keep_previous(output: Path, manifest_text: str | None) -> tuple:
     """Before a run: give every output file of the previous run (as its manifest lists them) a second name in
     previous_runs/<its run id>/, by a hard link where the disk allows (no extra space: both names are the same file;
     every write replaces a file with a new one, so the link keeps the old content), else by a copy. Returns
@@ -515,14 +515,14 @@ def _stamp(t: dt.datetime) -> str:
 
 
 def _model_call_warnings() -> list:
-    """What the run found while paying for model calls (common/common_helpers/llm.py, RUN_WARNINGS: the test call's
+    """What the run found while paying for model calls (common/common_helpers/llm_paid.py, RUN_WARNINGS: the test call's
     check), for the report's Warnings. Empty for a step that calls no model."""
     llm = sys.modules.get("common.llm")
     return list(llm.RUN_WARNINGS) if llm else []
 
 
 def _failed_calls() -> dict | None:
-    """{"file", "entries"} of the run's failed-call record (common/common_helpers/llm.py, failed_calls_file), when the
+    """{"file", "entries"} of the run's failed-call record (common/common_helpers/llm_paid.py, failed_calls_file), when the
     run wrote one; else None."""
     llm = sys.modules.get("common.llm")
     if not llm or not llm.OUTCOMES["file"]:

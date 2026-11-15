@@ -1084,7 +1084,6 @@ class TranslationBatches(unittest.TestCase):
     """070 asks for translations TRANSLATE_BATCH component classes per call, so no answer grows past the length limit."""
 
     def test_batches(self):
-        import json
         import re
         import tempfile
         from pathlib import Path

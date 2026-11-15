@@ -66,7 +66,7 @@ def kind(error) -> str:
 
 def kind_from_text(why: str) -> str:
     """The kind of a failure known only by its message (an older run's details file): refused when the message names a
-    filter's finish_reason (llm.py words it "finish_reason 'content_filter'") or says the model refused (llm.Refused's
+    filter's finish_reason (llm_replies.py words it "finish_reason 'content_filter'") or says the model refused (llm.Refused's
     words), else other."""
     why = why or ""
     if "the model refused to answer" in why or any(f"finish_reason {r!r}" in why for r in REFUSAL_REASONS):

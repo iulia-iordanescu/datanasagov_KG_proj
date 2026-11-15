@@ -1,0 +1,94 @@
+# The project's metadata and the settings of its checking tools (ruff, pyright). The pipeline is not installed as a
+# package: each step runs from the repository folder (py <step>/run.py, py run_pipeline.py). The packages it needs
+# are listed once, in requirements.txt, which `pip install -r requirements.txt` installs and the metadata below reads.
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datanasagov-kg"
+version = "0.1.0"
+description = "A knowledge graph from the metadata records of data.nasa.gov: a model learns a schema, extracts classed triples, and is evaluated against a ground truth made by a person."
+readme = "README.md"
+requires-python = ">=3.14"
+dynamic = ["dependencies"]
+
+[project.urls]
+Repository = "https://github.com/iulia-iordanescu/datanasagov_KG_proj"
+
+[tool.setuptools]
+packages = []                                   # nothing to install: the code runs from the repository folder
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }  # the one list of the packages the pipeline needs
+
+# ------------------------------------------------------------------------------------------------------------------
+# ruff: the linter. `ruff check .` (the dev tools: requirements-dev.txt). Only rules that find defects, not style:
+#   F     pyflakes: unused imports and variables, undefined names, names defined twice, f-strings with nothing to fill
+#   E9    a file Python can't parse or read
+#   PLE   pylint's errors, e.g. an invisible character (a backspace, a zero-width space) typed into the code itself
+#   B...  flake8-bugbear's checks for code that runs but does something other than it seems: a mutable default
+#         argument (B006), `assert False` (B011), a return inside `finally` (B012), a comparison or expression whose
+#         value is thrown away (B015, B018), `assertRaises(Exception)` (B017), a loop variable that overwrites what it
+#         loops over (B020), an except clause that catches nothing or the same thing twice (B014, B025, B029, B030),
+#         a duplicate item in a set (B033), and the rest listed. Bugbear's checks of style (B007 unused loop
+#         variable, B008 call in a default, B009 and B010 getattr and setattr with a fixed name, B013 a one-item tuple
+#         in except, B024 and B027 abstract classes, B904 raise without from, B905 zip without strict) are not used,
+#         nor B023 (a closure that reads a loop variable): each of its 29 findings here is a closure called within its
+#         own iteration, or one that reads a value the same in every iteration, so none is a defect.
+# ------------------------------------------------------------------------------------------------------------------
+[tool.ruff]
+extend-exclude = ["archive", "DONOTTRACK", "outputs"]   # old code kept as it was written; files no one commits
+
+[tool.ruff.lint]
+select = ["F", "E9", "PLE",
+          "B002", "B003", "B004", "B005", "B006", "B011", "B012", "B014", "B015", "B016", "B017", "B018", "B019",
+          "B020", "B021", "B022", "B025", "B026", "B029", "B030", "B031", "B032", "B033", "B034", "B035"]
+
+# ------------------------------------------------------------------------------------------------------------------
+# pyright: the type checker. `pyright` (the dev tools: requirements-dev.txt). Chosen over mypy because it checks
+# each file on its own: the steps' helper folders hold files of the same name (moves.py, records.py, extract.py) and
+# the steps' folders start with a digit, which mypy can't check in one run ("Duplicate module named moves"); here each
+# step gets its own import roots, as its run.py and load_moves set them.
+# The level is pyright's "basic", a lenient baseline the code passes, with these checks off:
+#   reportMissingImports, reportMissingModuleSource, reportAttributeAccessIssue: neither tool follows
+#     common/__init__.py, which adds common/common_helpers/ to the package's search path at run time, so
+#     `from common.files import ...` isn't resolved (its names are taken as "any type") and `from common import audit`
+#     reads as a missing name, 145 times; the same check flags the attributes the code sets on its exceptions
+#     (error.answer, error.call). The tests import every module, so a missing one still fails there.
+#   reportOptional...: a value that may be None used without a check, 138 times, where the code knows it isn't (a
+#     regular expression that matches by construction); turning it on means a check or an assert at each.
+#   reportArgumentType: 107 findings, nearly all the two above seen through a call, or a container whose type pyright
+#     guesses too narrowly from its first value.
+# What it checks: calls that match no signature, return values of the wrong type, operators on types that don't take
+# them, undefined and redefined names, and the rest of "basic". A line it can't judge carries
+# `# pyright: ignore[<check>]` with the reason.
+# ------------------------------------------------------------------------------------------------------------------
+[tool.pyright]
+include = ["."]
+exclude = ["archive", "DONOTTRACK", "outputs", ".myvenv", "**/__pycache__", "**/.*"]
+pythonVersion = "3.14"
+typeCheckingMode = "basic"
+reportMissingImports = "none"
+reportMissingModuleSource = "none"
+reportAttributeAccessIssue = "none"
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
+reportOptionalIterable = "none"
+reportOptionalCall = "none"
+reportOptionalOperand = "none"
+reportOptionalContextManager = "none"
+reportArgumentType = "none"
+executionEnvironments = [
+    { root = "010_harvest", extraPaths = [".", "010_harvest/010_harvest_helpers"] },
+    { root = "020_clean", extraPaths = [".", "020_clean/020_clean_helpers"] },
+    { root = "030_split", extraPaths = [".", "030_split/030_split_helpers"] },
+    { root = "040_induce_schema", extraPaths = [".", "040_induce_schema/040_induce_schema_helpers"] },
+    { root = "050_annotate", extraPaths = [".", "050_annotate/050_annotate_helpers"] },
+    { root = "060_extract", extraPaths = [".", "060_extract/060_extract_helpers"] },
+    { root = "070_evaluate", extraPaths = [".", "070_evaluate/070_evaluate_helpers"] },
+    { root = "helpers", extraPaths = [".", "helpers", "070_evaluate/070_evaluate_helpers"] },
+    { root = "tests", extraPaths = [".", "tests"] },
+    { root = "." },
+]

@@ -23,7 +23,8 @@ import time
 from urllib.parse import parse_qs, urlsplit
 
 import requests
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from common.audit import log
 

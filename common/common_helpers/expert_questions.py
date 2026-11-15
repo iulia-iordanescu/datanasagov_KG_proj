@@ -25,6 +25,7 @@ from common.ground_truth import EVALUABLE, FINISHED, GROUND_TRUTH_DIR, TUNING, r
 from common.records_io import load_records
 from common.schema_io import read_ground_truth_schema
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR
+from common.stop import Stop
 from common.triples_io import classed_key, component_class_key, passages
 
 QUESTIONS_PATH = ANNOTATIONS_DIR / "questions_for_experts.md"
@@ -528,14 +529,6 @@ def _text_or_empty(path) -> str:
         return ""
 
 
-def _text_or_empty(path) -> str:
-    """A repository file's text, or "" when it isn't UTF-8 text (a quote can then never be found in it)."""
-    try:
-        return read_text(path)
-    except Stop:
-        return ""
-
-
 def _plain_md(text: str) -> str:
     text = re.sub(r"\[([^\[\]]*)\]\([^)]*\)", r"\1", text)
     return squeeze(text.replace("**", "").replace("`", "").replace("*", ""))
@@ -634,8 +627,8 @@ def check_questions(questions: list, records_path: Path = RECORDS_PATH, splits_p
             if rec["in_ground_truth"] and not finished:
                 problems.append(f"{at}: record {rid} isn't finished in the ground truth (annotations/ground_truth/"
                                 + (f"{gt.records[rid]['file']}: {gt.state(rid)}" if rid in gt.records else ": not there")
-                                + f"), so its classed triples are drafts: write \"- in the ground truth: not yet (…)\" "
-                                f"in its part, or finish it first.")
+                                + "), so its classed triples are drafts: write \"- in the ground truth: not yet (…)\" "
+                                "in its part, or finish it first.")
             elif not rec["in_ground_truth"] and finished:
                 problems.append(f"{at}: record {rid} is finished in the ground truth now ({gt.records[rid]['file']}): "
                                 f"take out the line \"in the ground truth: not yet\", so its classed triples are "

@@ -45,7 +45,7 @@ sys.path.insert(0, str(ROOT))                                                  #
 sys.path.insert(0, str(ROOT / "070_evaluate" / "070_evaluate_helpers"))       # 070's numbers, computed as 070 does
 
 import pairing                                                                 # noqa: E402
-from component_classes import IDENTITY, TABLE_TRANSLATION                      # noqa: E402
+from component_classes import IDENTITY as IDENTITY, TABLE_TRANSLATION       # noqa: E402  (IDENTITY: the tests name both translations through this module)
 import stats                                                                   # noqa: E402
 from moves import EVALUATIONS_DIR, UNTRANSLATABLE_FIELD, UNTRANSLATABLE_FIELD_OLD   # noqa: E402
 from common import console, llm  # noqa: E402

@@ -1,0 +1,7 @@
+# The tools that check the code, for whoever changes it (not needed to run the pipeline):
+#   pip install -r requirements-dev.txt     (the pipeline's packages too, from requirements.txt)
+# Commands: README.md, *Checks*. Pinned, so every computer and the CI checks with the same versions.
+-r requirements.txt
+ruff==0.17.5
+pyright[nodejs]==1.1.414
+nodejs-wheel-binaries==24.19.0

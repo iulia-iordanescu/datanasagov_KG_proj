@@ -313,8 +313,8 @@ class Multiplicity(unittest.TestCase):
 
     def test_counted(self):
         c = self.r["compared"]
-        self.assertEqual(c["multiplicity"], [2, 2, 1])
-        self.assertEqual(c["counts"]["occurrences_multiplicity_above_1"], 2)
+        self.assertEqual(c["multiplicity"], [2, 2, 1])  # pyright: ignore[reportIndexIssue]  (compared() returns a dict)
+        self.assertEqual(c["counts"]["occurrences_multiplicity_above_1"], 2)  # pyright: ignore[reportIndexIssue]  (as above)
         (row,) = stats.per_record([self.r])
         self.assertEqual((row["occurrences"], row["occurrences_multiplicity_above_1"]), (3, 2))
         tables = stats.per_component_class([self.r])

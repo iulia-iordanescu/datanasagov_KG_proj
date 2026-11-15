@@ -112,7 +112,6 @@ a person's changes. Both use the definitions here.
 """
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 from common.files import read_csv_table

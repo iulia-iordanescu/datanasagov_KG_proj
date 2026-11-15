@@ -324,7 +324,8 @@ class ModelCalls(unittest.TestCase):
         cache, the shape check or the paid-call guards."""
         for path in sorted(ROOT.glob("*/*_helpers/*.py")) + sorted((ROOT / "common" / "common_helpers").glob("*.py")):
             rel = path.relative_to(ROOT).as_posix()
-            if rel.startswith(EXCLUDED_DIRS) or rel.endswith(("llm.py", "cache.py", "extraction.py")):
+            if rel.startswith(EXCLUDED_DIRS) or rel.endswith(("cache.py", "extraction.py")) \
+                    or (path.parent.name == "common_helpers" and re.fullmatch(r"llm(_\w+)?\.py", path.name)):  # the client: llm.py and its parts
                 continue
             with self.subTest(file=rel):
                 self.assertNotRegex(path.read_text(encoding="utf-8"), r"\bcall_llm(?:_json)?\(")

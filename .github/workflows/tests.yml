@@ -1,0 +1,54 @@
+# The checks of every push and pull request: the linter (ruff), the type checker (pyright) and the tests, with the
+# commands README.md (*Checks*) gives for a person's computer. Nothing here calls a model or data.nasa.gov, and no
+# key or secret is needed. Windows only: it is the platform the pipeline runs on (the NASA laptop), and the suite
+# hasn't been run on Linux yet; adding ubuntu-latest to `os` below is how to try it.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:                                  # a newer push to the same branch replaces a run still going
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+        python-version: ["3.14"]              # the version the pipeline is run and tested with (requires-python)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60                       # the tests take about 10 minutes on the laptop
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0                      # the whole history: a test checks that no reviewer's file was ever tracked
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install the packages and the checking tools
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type check (pyright)
+        if: ${{ !cancelled() }}               # every check runs, whichever failed before it
+        run: pyright
+
+      - name: Tests
+        if: ${{ !cancelled() }}
+        run: python tests/run_all.py

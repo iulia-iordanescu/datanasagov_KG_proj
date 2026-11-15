@@ -15,7 +15,6 @@ manifest. Free by code: llm.forbid_model_calls first, which reaches the processe
 without one, which stops the run).
 """
 import hashlib
-import json
 import shutil
 import subprocess
 import sys

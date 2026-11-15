@@ -112,7 +112,7 @@ def _link(target: str, report: Path) -> str:
     return f"[`{target}`]({relative})"
 
 
-def _size(n: int) -> str:
+def _size(n: float) -> str:  # pyright: ignore[reportReturnType]  (the loop returns at its last unit, GB)
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1024 or unit == "GB":
             return f"{n:,.0f} {unit}" if unit == "B" else f"{n:,.1f} {unit}"

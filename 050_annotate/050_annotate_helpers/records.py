@@ -18,7 +18,7 @@ Always skipped, whatever was asked:
 For the default choice the first two are expected and just counted. Anything
 that makes the drafted batch differ from what was asked (an id listed that is
 skipped, fewer records than asked, …) becomes a NOTE: shown before the
-paid-call question (common/common_helpers/llm.py PaidCalls) and in the report.
+paid-call question (common/common_helpers/llm_paid.py PaidCalls) and in the report.
 
 Fair sample: the pool is shuffled, so its first N records are a fair sample
 of the catalog, and so are the first N of each part (tuning, held-out) taken
@@ -40,7 +40,6 @@ in two files, a bad mark: ANNOTATED) is never drafted again.
 """
 from __future__ import annotations
 
-import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 

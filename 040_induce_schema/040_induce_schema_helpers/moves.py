@@ -259,9 +259,9 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
                         f"predicate splits kept already add max_new_predicates ({splits.cap}) predicates: "
                         + named([f"{s['predicate']} into {s['into']} ({s['texts']} texts)" for s in splits.dropped],
                                 3, "; ")
-                        + f". Their predicates keep those objects. To keep more, raise `--max_new_predicates` "
-                          f"(each added predicate makes every step 060 prompt longer: the report's section "
-                          f"*Splitting* gives by how much).")
+                        + ". Their predicates keep those objects. To keep more, raise `--max_new_predicates` "
+                          "(each added predicate makes every step 060 prompt longer: the report's section "
+                          "*Splitting* gives by how much).")
     if schema.missing_definitions:
         n = len(schema.missing_definitions)
         warnings.append(f"{n} schema entr{'ies have' if n != 1 else 'y has'} no definition (the model "
@@ -292,9 +292,9 @@ def results(texts, triples, labels, splits, counts, definitions, schema, compari
         f"{len(strata)} strata of the ground truth candidates pool, taken in each stratum's fixed random order, "
         f"read in a random order fixed by 030's seed"
         + (f"; {split_pieces} were split into text pieces" if split_pieces else "") + ". While drawing, a text that "
-        f"is a whole-text twin (the same title and `notes`) or a notes-only twin (the same `notes`) of a text already "
-        f"drawn was skipped and the next in its stratum taken; a title-only twin (the same title, other `notes`) was "
-        f"kept, since its text differs (040_induce_schema/040_induce_schema.md, *How it works*, stage 1).", "",
+        "is a whole-text twin (the same title and `notes`) or a notes-only twin (the same `notes`) of a text already "
+        "drawn was skipped and the next in its stratum taken; a title-only twin (the same title, other `notes`) was "
+        "kept, since its text differs (040_induce_schema/040_induce_schema.md, *How it works*, stage 1).", "",
         "| Stratum | Maintainers | Induction candidates | Texts drawn | Skipped: whole-text twins | "
         "Skipped: notes-only twins | Title-only twins kept |", "|---|---:|---:|---:|---:|---:|---:|"]
     lines += [f"| {cell(r['stratum'])} | {r['maintainers']:,} | {r['candidates']:,} | {r['taken']} | "

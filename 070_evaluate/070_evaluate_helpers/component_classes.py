@@ -514,9 +514,9 @@ def _row_notes(rows: list, path) -> list:
                    f"count against precision: "
                    + named([f"line {r['_line']}: {_row(r['component_class_from_past_or_crt_schema'], r)} "
                             f"({r['match']})" for r in alone], 5, "; ")
-                   + f". If an entity class of the subject or object tells the meanings apart, add a conditional row "
-                     f"for each (docs/terminology.md, *conditional row*) and set this row to (none); else keep it: the "
-                     f"report counts its occurrences (section *Through which kind of row*). Nothing stops.")
+                   + ". If an entity class of the subject or object tells the meanings apart, add a conditional row "
+                     "for each (docs/terminology.md, *conditional row*) and set this row to (none); else keep it: the "
+                     "report counts its occurrences (section *Through which kind of row*). Nothing stops.")
     swaps = symmetric_swaps(rows)
     if swaps:
         out.append(f"{len(swaps)} row(s) of {ref_path(path)} say swap_subject_and_object yes for a symmetric predicate "

@@ -9,7 +9,7 @@ length of text and per record, as Markdown, which write_docs.py places in the do
 
 No model call: it reads outputs/analysis/results.json and prompt_sizes.json only.
 """
-import json, statistics, sys
+import statistics, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))

@@ -38,9 +38,7 @@ settings and the model are never inputs here: a change to them isn't detected.
 """
 from __future__ import annotations
 
-import csv
 import datetime as dt
-import json
 import os
 import subprocess
 from pathlib import Path
@@ -49,7 +47,7 @@ from common.files import read_csv, read_json
 from common import audit
 from common.component_class_mapping import MAPPING_PATH, MISSING_TARGET, NO_MATCH, NOW_EXISTS, STALE, crt_definitions, gtt_definitions, \
     is_checked, read_mapping, repeats, row_states
-from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALUABLE, GROUND_TRUTH_DIR, HELD_OUT, KIND_KEYS,
+from common.ground_truth import (ANNOTATED, DRAFT_NUMBERED, DRAFT_PATTERN, EVALUABLE, GROUND_TRUTH_DIR, KIND_KEYS,
                                  NUMBERED, PATTERN, TO_FIX, TUNING, check_rows, ground_truth_schema_gaps,
                                  held_out_only_problems, read_ground_truth,
                                  read_pool)

@@ -125,7 +125,7 @@ class PageKeys(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             harness = Path(tmp) / "keys.html"
             harness.write_text(f"<!DOCTYPE html><html><body><script>{script}</script></body></html>", encoding="utf-8")
-            dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-first-run",
+            dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-first-run",  # pyright: ignore[reportCallIssue]  (skipUnless(CHROME))
                                   f"--user-data-dir={Path(tmp) / 'profile'}", "--dump-dom", harness.as_uri()],
                                  capture_output=True, text=True, encoding="utf-8", timeout=120).stdout
         out = json.loads(html.unescape(re.search(r'data-out="([^"]*)"', dom).group(1)))

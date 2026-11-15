@@ -28,7 +28,6 @@ results. Triples are compared as common/common_helpers/text_match.norm_text even
 """
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 from common.files import read_csv_table

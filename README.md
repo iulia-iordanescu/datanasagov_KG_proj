@@ -20,6 +20,18 @@ This section is for whoever continues the project after my internship ends on 20
 - **Checking the TM's numbers:** `py helpers/reproduce_results.py` makes the six runs the NASA TM quotes again, for free, and says for each number whether it is still the same ([`helpers/reproduce_results.md`](helpers/reproduce_results.md)). It needs the laptop's `outputs/` folder, which isn't in Git.
 - **What is waiting for a person:** `py run_pipeline.py --status` ([`upkeep.md`](docs/upkeep.md)).
 
+### Checks
+
+GitHub runs three checks on every push and pull request, on Windows with Python 3.14 (`.github/workflows/tests.yml`). None of them calls the model or data.nasa.gov, and none needs a key. To run them on your computer, from the repository folder, first install the checking tools at the versions GitHub uses: `pip install -r requirements-dev.txt` (it installs the pipeline's packages too). Then:
+
+```
+ruff check .           the linter: an import never used, a variable used but never defined, a function defined twice, ...
+pyright                the type checker, at a lenient level
+py tests/run_all.py    the tests (tests/README.md)
+```
+
+`pyproject.toml` holds the settings of both tools, each with its reason: ruff runs only the rules that find defects, not those about style, and pyright runs its "basic" level with the checks listed there turned off.
+
 ### Where things are written down
 
 - **Results and what they mean:** [`findings.md`](docs/findings.md), its *Current picture* first.
@@ -75,7 +87,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `helpers/review_page.py` | Writes one self-contained HTML page of the ground truth schema, the translation table and my questions for experts (`annotations/questions_for_experts.md`), read-only, for subject-matter experts to comment on and answer (`py helpers/review_page.py`), publishes it at one link with GitHub Pages (`--publish`), and reads the comment files and emails they send back into a summary (`--read`). Free | [`helpers/review_page.md`](helpers/review_page.md) |
 | `helpers/audit.md` | Reading a [run](docs/terminology.md#8-the-pipeline)'s [report](docs/terminology.md#8-the-pipeline) and log, and tracing a [record](docs/terminology.md#1-records-and-their-text) back to its download | — |
 | `helpers/audit.py` | Answers "where did this come from?": `py helpers/audit.py <record id>` prints the record's history, step by step, back to the download from data.nasa.gov, naming the run that made each file (with its report and log). Useful when something looks wrong. It only reads, never changes anything | [`helpers/audit.md`](helpers/audit.md) |
-| `tests/` | The tests: `py tests/run_all.py` checks, in about 40 seconds and without calling the model or data.nasa.gov, that every step does what its guide says. Run it before every commit | [`tests/README.md`](tests/README.md) |
+| `tests/` | The tests: `py tests/run_all.py` checks, in about 10 minutes and without calling the model or data.nasa.gov, that every step does what its guide says. Run it before every commit | [`tests/README.md`](tests/README.md) |
 | `common/` | Code shared by several steps (reading records and [schemas](docs/terminology.md#3-schemas), the model client, the checks, the reports, …), in `common/common_helpers/`, and the prompts shared by 040, 050, and 060, in `common/common_prompts/` | the opening comment of each file, for people reading the code |
 
 **What you read or edit**
@@ -92,6 +104,7 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `docs/running_on_nasa_laptop.md` | The checklist for running the pipeline on the NASA laptop, the one that can reach the AI model: getting the code, the order of the steps, what costs money, what to do when something goes wrong | — |
 | `annotations/` | Work made by a person, kept in Git: the ground truth (`ground_truth/`), the [ground truth candidates pool](docs/terminology.md#4-ground-truth-and-samples) (`ground_truth_candidates.csv`, `.json`), the ground truth schema, the schema additions, the translation table (`component_class_mapping.csv`) and the log of [held-out looks](docs/terminology.md#7-evaluating-extraction-step-070) (both added to by 070), your [verdicts](docs/terminology.md#7-evaluating-extraction-step-070) on 070's [partial pairs](070_evaluate/metrics/pairs.md) | [`annotations/README.md`](annotations/README.md), which lists every file there |
 | `requirements.txt` | The Python packages the pipeline needs, installed with `pip install -r requirements.txt` | [`docs/virtual_environment_setup.md`](docs/virtual_environment_setup.md) |
+| `requirements-dev.txt` | The checking tools (ruff, pyright) at fixed versions, for whoever changes the code: `pip install -r requirements-dev.txt` | [*Checks*](#checks) |
 
 **What runs make (only on your computer, never in Git)**
 
@@ -112,7 +125,9 @@ Every file and folder, what it is, and where it's explained. Each fact is writte
 | `docs/pipeline_in_pictures.md` | The pipeline at a glance, in six diagrams: the steps, what each reads, the annotation loop, inside evaluation, tracing an output, the folders. Kept current with the code; the details are in the steps' guides (`<step>/<step>.md`). |
 | `docs/v0_schema.txt` | An early version of the schema. Nothing reads it. |
 | `.vscode/settings.json` | A VS Code setting: its file list hides Python's `__pycache__/` folders (compiled copies Python makes by itself). Nothing is deleted. |
-| `.gitattributes`, `.gitignore` | Git settings: plain line endings on every computer, and the files Git leaves out (`outputs/`, `.env`, `.myvenv/`, …). |
+| `.gitattributes`, `.gitignore` | Git settings: plain line endings on every computer (fonts, images and documents marked binary, never rewritten), and the files Git leaves out (`outputs/`, `.env`, `.myvenv/`, …). |
+| `pyproject.toml` | The project's description (its name, the Python version it needs, its packages read from `requirements.txt`) and the settings of the checking tools, each with its reason (*Checks* above). |
+| `.github/workflows/tests.yml` | What GitHub runs on every push and pull request: the three checks of *Checks* above, on Windows. |
 
 ## Pipeline overview
 

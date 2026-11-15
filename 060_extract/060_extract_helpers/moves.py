@@ -21,7 +21,7 @@ import schema as schema_stage
 from common import audit, dropped, extraction, llm
 from common.audit import ORIGIN_COLUMN, check_origins, log
 from common.files import write_csv, write_json
-from common.report import cell, counted, listed_label, model_calls, named, per_text_headline, per_text_table
+from common.report import cell, counted, listed_label, model_calls, per_text_headline, per_text_table
 from common.step import Results
 from common.triples_io import COLUMNS as TRIPLE_COLUMNS, is_describes
 from common.ground_truth import HELD_OUT

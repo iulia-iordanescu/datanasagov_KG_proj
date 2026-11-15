@@ -153,7 +153,6 @@ def read_pending(path: Path = PENDING_PATH, left_out_path: Path = LEFT_OUT_PATH)
     against left_out.md (read_left_out), and every item there that waits must have a row or a NO_TRIPLE note."""
     import csv
     import io
-    import io
     name = f"annotations/{path.name}" if path == PENDING_PATH else str(path)
     lo_name = f"annotations/{left_out_path.name}" if left_out_path == LEFT_OUT_PATH else str(left_out_path)
     if True:                                  # (the block's shape kept: the text through common.files.read_text)

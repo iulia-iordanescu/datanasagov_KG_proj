@@ -706,9 +706,9 @@ def results(chosen, repeats: list, combined: Combined, applied, calls, settings,
                f"repeat(s), each with answers of its own (repeats 1 to {n}), with step 050's prompt, schema view, "
                f"parsing and checks; each repeat's draft matched against the record's ground truth triples")
     lines = ["### What this run worked on", "",
-             how + f" with step 070's pairing (exact, then partial; no translation: both use the ground truth schema; "
-             f"no partial pair review applies). A ground truth triple is *found* when at least one repeat paired it, "
-             f"*found in none* otherwise. The ground truth is unchanged.", "",
+             how + " with step 070's pairing (exact, then partial; no translation: both use the ground truth schema; "
+             "no partial pair review applies). A ground truth triple is *found* when at least one repeat paired it, "
+             "*found in none* otherwise. The ground truth is unchanged.", "",
              "| Pool position | Part | Record | Repeats that drafted it | Ground truth triples | Found in at least one repeat "
              "| Found in every repeat | Found in none | Draft only (over the repeats) |",
              "|---:|---|---|---:|---:|---:|---:|---:|---:|"]

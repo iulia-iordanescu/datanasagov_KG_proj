@@ -89,7 +89,7 @@ from common.partial_reviews import NOT_SAME, pair_key
 from common.text_match import instance_key, norm_text, quantity_words
 from common.ground_truth import DRAFTED_BY
 from common.llm import model_name_key
-from common.triples_io import SYMMETRIC_PREDICATES, component_class_key, is_symmetric as _symmetric, is_undecided
+from common.triples_io import component_class_key, is_symmetric as _symmetric, is_undecided
 
 LEVELS = ("exact", "partial")
 # SYMMETRIC_PREDICATES (the ground truth schema's predicates that say the same fact either way round, so subject and
@@ -182,7 +182,7 @@ def _kind(match) -> str:
     return match if match in _MATCH_KEY and match != NO_MATCH_VALUE else NO_MATCH_VALUE
 
 
-def match_of(triple: dict, translation) -> str:
+def match_of(triple: dict, translation) -> str | None:
     """The match (MATCH_KINDS) of the predicate's row that translates an extracted triple (as predicate_rule picks
     it); None when that row says (none)."""
     key = component_class_key(triple["predicate"])
@@ -197,7 +197,7 @@ def match_of(triple: dict, translation) -> str:
     return _kind(m) if mine else None
 
 
-def entity_match_of(entity_class, translation) -> str:
+def entity_match_of(entity_class, translation) -> str | None:
     """The match (MATCH_KINDS) of an entity class's row (current schema); None when it says (none)."""
     key = component_class_key(entity_class)
     if not translation.entity.get(key):

@@ -147,9 +147,9 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, urlsplit
 
 from common.chunking import full_text
-from common.files import fingerprint, locked, read_csv, read_csv_table, read_json, read_snapshot, read_text, write_csv, write_if_unchanged, write_text
+from common.files import fingerprint, locked, read_csv, read_csv_table, read_json, read_snapshot, read_text, write_csv, write_if_unchanged
 from common.ground_truth import (ANNOTATED, COLUMNS, DRAFT_NUMBERED, DRAFT_PATTERN, FILE_COLUMNS, FINISHED, GROUND_TRUTH_DIR,
-                                 NUMBERED, PATTERN, RULES, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
+                                 NUMBERED, PATTERN, SCHEMA_EVIDENCE, HELD_OUT, KIND_KEYS, TUNING, draft_name, file_name,
                                  ground_truth_schema_gaps as schema_gaps, ground_truth_schema_view, marks_state,
                                  pattern_of, pattern_uses, read_ground_truth, read_pool, uses_of, with_coined)
 from common.component_class_mapping import (CHECKED, COLUMNS as MAPPING_COLUMNS, IN_CRT, IN_GTT, MAPPING_PATH, MATCHES,
@@ -168,8 +168,7 @@ from common.left_out import LEFT_OUT_PATH, NO_RULE, read_left_out, rule_ref
 from common.rules_by_triple import (ALWAYS, COMMAND as RULES_COMMAND, DESCRIBES_SECTION, DOC_PATH as RULES_DOC, guideline_section,
                                     rule_count, rule_texts, rules_problem, write_doc as write_rules_doc)
 from common.schema_io import ONE_WORD, addition_problem, additions_entries, add_to_ground_truth_schema, additions_header, additions_text, \
-    is_held_out_only, parse_source, pattern_key, qualifier_predicates, read_ground_truth_schema, read_schema, \
-    redefine_in_ground_truth_schema, rename_in_ground_truth_schema, source_line, unmark_held_out_only, \
+    is_held_out_only, parse_source, pattern_key, qualifier_predicates, read_ground_truth_schema, redefine_in_ground_truth_schema, rename_in_ground_truth_schema, source_line, unmark_held_out_only, \
     without_held_out_only
 from common.status import LOOK, TO_DO, project_status
 from common.step import ANNOTATIONS_DIR, RESULTS_DIR, ROOT
@@ -765,9 +764,9 @@ def add_to_hand(data: Data, item: dict) -> str:
                     f"check sees it)" + (f" (source: {source})" if source else ""))
         if held:
             raise ValueError(f"{name} is used by {len(held)} held-out record(s) (pool position(s) "
-                             + ", ".join(f"#{p}" for p in held) + f"): coined in a held-out record, so it is added "
-                             f"marked held-out only: open that record to add it there. If a tuning record needs it too, "
-                             f"press Unmark under its ✖ in that tuning record afterwards.")
+                             + ", ".join(f"#{p}" for p in held) + "): coined in a held-out record, so it is added "
+                             "marked held-out only: open that record to add it there. If a tuning record needs it too, "
+                             "press Unmark under its ✖ in that tuning record afterwards.")
         source = _learned_from(data, gt, kind, name, shown)
         add_to_ground_truth_schema(GROUND_TRUTH_SCHEMA, kind, name, item.get("definition") or "", source=source)
         data.read_hand()

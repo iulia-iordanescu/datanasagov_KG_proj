@@ -399,7 +399,7 @@ WRITING A TRIPLE
       the passage that states the fact about its subject. 1. When a passage
       of the notes states the fact about the record's dataset itself, that
       passage is the source text; the title's words are joined before it
-      only when rule 23 writes the instance in the title's wording 2. A
+      only when rule 23 writes the instance in the title's wording. 2. A
       noun phrase of the notes that only names the instance, inside a
       statement about another entity, does not state the title's fact: the
       source text is then the title's words, joined with the notes' words
@@ -485,7 +485,7 @@ WRITING A TRIPLE
     - Words in different places. When the words for the subject, the
       predicate and the object are in different places, the source text is
       those passages, each copied exactly, joined by " … " in the record's
-      order in one of these three cases: 1. the title and the notes; 2. the
+      order, in one of these three cases: 1. the title and the notes; 2. the
       passages that meet a test of rule 1 (only what the record states, A
       fact the record does not state); 3. two passages of the notes with a
       whole sentence between them (case 3 above). Each passage is the
@@ -584,7 +584,7 @@ WRITING A TRIPLE
     Parentheses that state a fact of their own (a period, a duration, an
     amount, a place) are taken out of the instance, as rule 19 takes out a
     qualifier. The fact they state is a triple of its own unless a rule
-    leaves it out Parentheses that hold the code of another entity are
+    leaves it out. Parentheses that hold the code of another entity are
     taken out of the instance. Write that one name is also known as another
     only when the record gives the other name in words of its own; the other
     triples then use one of the two wordings (rule 23, one wording). One

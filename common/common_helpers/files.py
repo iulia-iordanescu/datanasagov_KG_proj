@@ -156,7 +156,7 @@ def write_if_unchanged(path, text: str, expected: str | None) -> str:
                           f"it), so saving now would overwrite that change. Nothing was saved: reload, then make your "
                           f"last change again.")
         write_text(path, text)
-        return fingerprint(path)
+        return fingerprint(path)  # pyright: ignore[reportReturnType]  (just written, so the file is there)
 
 #: How long locked() waits for another process to let go of a file before giving up.
 LOCK_WAIT_SECONDS = 30

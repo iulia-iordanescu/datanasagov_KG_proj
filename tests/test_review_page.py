@@ -130,7 +130,10 @@ class Page(unittest.TestCase):
             R.glossary(terms=["no such term"])
 
     def test_the_real_files(self):
-        """The real ground truth schema and translation table make a page with every entry."""
+        """The real ground truth schema and translation table make a page with every entry (when 020 and 030 have run
+        here: the page checks the questions' quotes against their records)."""
+        if not (R.RECORDS_PATH.exists() and R.SPLITS_PATH.exists()):
+            self.skipTest("020's records.jsonl or 030's splits.json isn't on this computer")
         with tempfile.TemporaryDirectory() as out:
             data = page_json(R.generate(out_dir=Path(out)).read_text(encoding="utf-8"))
         from common.schema_io import read_ground_truth_schema
@@ -144,6 +147,18 @@ class Page(unittest.TestCase):
 
 class Comments(unittest.TestCase):
     """A comment file as the page saves it, read back with --read."""
+
+    def test_a_quoted_file_that_isnt_utf8(self):
+        """A method quote whose file isn't UTF-8 text is a quote not found (its text is ""), not a crash: the check
+        named Stop without importing it, so such a file raised NameError (found by ruff's F821)."""
+        from common import expert_questions
+        with tempfile.TemporaryDirectory() as t:
+            other = Path(t) / "cp1252.md"
+            other.write_bytes("café".encode("cp1252"))
+            self.assertEqual(expert_questions._text_or_empty(other), "")
+            plain = Path(t) / "utf8.md"
+            plain.write_bytes("café".encode("utf-8"))                                      # near miss: read
+            self.assertEqual(expert_questions._text_or_empty(plain), "café")
 
     def test_question_statuses_as_the_guide_lists_them(self):
         """helpers/review_page.md, *The questions file*, the home of a question's statuses: its **status** paragraph
@@ -270,7 +285,7 @@ def run_page(page: str, script: str, folder: Path) -> str:
     data-out attribute."""
     path = folder / "harness.html"
     path.write_text(page.replace("</body>", f"<script>{script}</script></body>"), encoding="utf-8")
-    dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-first-run", f"--user-data-dir={folder / 'profile'}",
+    dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-first-run", f"--user-data-dir={folder / 'profile'}",  # pyright: ignore[reportCallIssue]  (skipUnless(CHROME))
                           "--dump-dom", path.as_uri()], capture_output=True, text=True, encoding="utf-8",
                          timeout=120).stdout
     return html.unescape(re.search(r'data-out="([^"]*)"', dom).group(1))

@@ -170,7 +170,7 @@ def ask_cached(cache: Cache, calls, prompt: str, plan: str, read_timeout: int = 
                check=None) -> dict:
     """The model's answer to one filled prompt, from this stage's cache if it
     holds it, else from one model call (the run's first paid call shows plan
-    and asks first: common/common_helpers/llm.py, PaidCalls), stored at once.
+    and asks first: common/common_helpers/llm_paid.py, PaidCalls), stored at once.
     The key is the prompt exactly as sent, so every value filled into it
     counts. Shared by every stage that asks one prompt at a time: 040's
     labeling, merging, and defining, and 070's translation table. (Extraction

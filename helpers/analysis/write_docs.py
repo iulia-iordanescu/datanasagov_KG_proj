@@ -10,7 +10,7 @@ No model call: it reads outputs/analysis/results.json, tables.json, scalability.
 the pages is in this file; the numbers and tables are filled in from those files.
 """
 import re
-import json, sys
+import sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "outputs" / "analysis"                                         # the working folder (not in Git)

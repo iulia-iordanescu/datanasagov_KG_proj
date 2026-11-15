@@ -294,7 +294,7 @@ def field_word_texts(rel: str, text: str) -> list:
     for node in ast.walk(tree):
         if isinstance(node, ast.JoinedStr):
             inner |= {id(v) for v in node.values}
-            parts.append((node.lineno, "".join(v.value if isinstance(v, ast.Constant) else "{}" for v in node.values)))
+            parts.append((node.lineno, "".join(v.value if isinstance(v, ast.Constant) else "{}" for v in node.values)))  # pyright: ignore[reportCallIssue]  (an f-string's constants are text)
     parts += [(n.lineno, n.value) for n in ast.walk(tree)
               if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in inner]
     run, last = None, -1
@@ -696,25 +696,56 @@ class DocsNameTheCodesNumbers(unittest.TestCase):
                 continue
             yield rel, path.read_text(encoding="utf-8")
 
-    def test_the_numbers(self):
+    #: Words naming the answer limit: a number of tokens restates MAX_ANSWER_TOKENS only when they come in the 60
+    #: characters before it with no other number of tokens between, since a paragraph may name other numbers of
+    #: tokens too (a thinking budget, a prompt's length, a model's longest output).
+    LIMIT_NAMED = re.compile(r"MAX_ANSWER_TOKENS|answer limit|max_completion_tokens|max_tokens|longest answer", re.I)
+
+    def names_the_limit(self, before: str) -> bool:
+        named = list(self.LIMIT_NAMED.finditer(before[-60:]))
+        return bool(named) and not re.search(r"\d[\d,]*[ -]tokens?\b", before[-60:][named[-1].end():])
+
+    def stale(self, line: str) -> list:
+        """[(what the line says, the constant, the code's value)] for each number on the line restated from the code
+        that isn't the code's now; a number after "was", "earlier", "before", ... is a past value, not checked."""
         import inspect
         from common import llm
         attempts = inspect.signature(llm.call_llm).parameters["attempts"].default
         checks = [
-            (r"(\d{1,3}(?:,\d{3})+)[ -]tokens?", lambda line: "answer" in line.lower(), f"{llm.MAX_ANSWER_TOKENS:,}",
-             "MAX_ANSWER_TOKENS"),
-            (r"within (\d[\d,]*) s", lambda line: True, f"{llm.READ_TIMEOUT}", "READ_TIMEOUT"),
-            (r"tried up to (\d+) times", lambda line: "call" in line.lower() and "page" not in line.lower(), f"{attempts}", "call_llm's attempts"),
+            (r"(\d{1,3}(?:,\d{3})+)[ -]tokens?\b", self.names_the_limit,
+             f"{llm.MAX_ANSWER_TOKENS:,}", "MAX_ANSWER_TOKENS"),
+            (r"within (\d[\d,]*) s\b", lambda before: True, f"{llm.READ_TIMEOUT}", "READ_TIMEOUT"),
+            (r"tried up to (\d+) times", lambda before: "call" in line.lower() and "page" not in line.lower(),
+             f"{attempts}", "call_llm's attempts"),
         ]
+        found = []
+        for pattern, applies, value, name in checks:
+            for m in re.finditer(pattern, line):
+                if applies(line[:m.start()]) and not re.search(r"\b(?:was|earlier|before|until 2026|from \d)",
+                                                               line[:m.start()][-60:]) \
+                        and m.group(1).replace(",", "") != value.replace(",", ""):
+                    found.append((m.group(0), name, value))
+        return found
+
+    def test_the_numbers(self):
         for rel, text in self.docs():
             for n, line in enumerate(text.splitlines(), 1):
-                for pattern, applies, value, name in checks:
-                    for m in re.finditer(pattern, line):
-                        if applies(line) and not re.search(r"(?:was|earlier|before|until 2026|from \d)", line[:m.start()][-60:]):
-                            with self.subTest(doc=rel, line=n, constant=name):
-                                self.assertEqual(m.group(1).replace(",", "") if name != "MAX_ANSWER_TOKENS"
-                                                 else m.group(1), value.replace(",", "") if name != "MAX_ANSWER_TOKENS"
-                                                 else value, f"{rel}:{n} says {m.group(0)}; {name} in the code is {value}")
+                for said, name, value in self.stale(line):
+                    with self.subTest(doc=rel, line=n, constant=name):
+                        self.fail(f"{rel}:{n} says {said}; {name} in the code is {value}")
+
+    def test_the_check_sees_a_stale_number(self):
+        """The patterns' near misses: a stale answer limit, read timeout or attempt count is caught; another number of
+        tokens on the same line (a thinking budget), and a past value, are not. Its regular expressions once held a
+        backspace character where `\\b` was meant (found by ruff's PLE2510), so the check matched nothing."""
+        from common import llm
+        limit = f"{llm.MAX_ANSWER_TOKENS:,}"
+        self.assertEqual([n for _, n, _ in self.stale("the answer limit (`MAX_ANSWER_TOKENS`, 16,000 tokens)")],
+                         ["MAX_ANSWER_TOKENS"])
+        self.assertEqual(self.stale(f"the answer limit ({limit} tokens; a thinking budget of 1,024 tokens)"), [])
+        self.assertEqual(self.stale(f"`MAX_ANSWER_TOKENS`, {limit} tokens since 2026-10-30, 16,000 tokens before"), [])
+        self.assertEqual([n for _, n, _ in self.stale("no answer within 600 s")], ["READ_TIMEOUT"])
+        self.assertEqual([n for _, n, _ in self.stale("a model call is tried up to 9 times")], ["call_llm's attempts"])
 
     def test_tests_readme_lists_every_test_file(self):
         readme = (ROOT / "tests" / "README.md").read_text(encoding="utf-8")

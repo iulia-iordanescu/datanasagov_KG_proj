@@ -1,5 +1,22 @@
 # Plain "\n" line endings for every text file, on every computer. The pipeline
 # writes its own files this way, and a file's hash (recorded in manifests and
 # checked by helpers/audit.py) must not change just because Git rewrote its line
-# endings on checkout. Git still detects binary files and leaves them alone.
+# endings on checkout. Git detects most binary files on its own; the kinds below
+# are named so that Git never takes one for text (which would rewrite bytes that
+# look like line endings, and corrupt the file).
 * text=auto eol=lf
+
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.zip binary
+*.gz binary

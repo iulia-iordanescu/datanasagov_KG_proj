@@ -377,7 +377,7 @@ class _PlainTextRenderer(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.out: list[str] = []
         self.list_stack: list[object] = []
-        self.link_stack: list[str] = []
+        self.link_stack: list[tuple[str, int]] = []
         self.drop_depth = 0
         # Set after emitting something that must not weld onto the next
         # word. Inline styling never sets it.

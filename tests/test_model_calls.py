@@ -213,7 +213,7 @@ class Guards(unittest.TestCase):
         os.environ["KG_STAND_IN_CUT_OFF"] = "#r01#"
         os.environ["KG_STAND_IN_REASONING"] = reasoning
         self.ask(self.calls(**settings), ["r00", "r01"])
-        (cut,) = self.entries()
+        (cut,) = self.entries()  # pyright: ignore[reportGeneralTypeIssues]  (calls failed here, so the failed-call record exists)
         return cut["what_to_do"]
 
     def test_cut_off_advice_thinking(self):
@@ -344,7 +344,7 @@ class Guards(unittest.TestCase):
         first = ask(self.calls())
         self.assertEqual((sorted(first.of), list(first.failed)), (["r01"], ["r00"]))
         self.assertIn('"triples" should be a JSON list, but is missing', first.failed["r00"])
-        [entry] = self.entries()
+        [entry] = self.entries()  # pyright: ignore[reportGeneralTypeIssues]  (calls failed here, so the failed-call record exists)
         self.assertEqual((entry["step"], entry["stage"], entry["record"], entry["text_piece"], entry["error_type"],
                           entry["asks"]), ("050_annotate", "draft", "r00", 1, "BadReply", 2))
         self.assertIn("isn't a JSON object of the shape asked for", entry["error"])
@@ -365,7 +365,7 @@ class Guards(unittest.TestCase):
         os.environ["KG_STAND_IN_FAIL"] = "#r02#"
         os.environ["KG_STAND_IN_REASONING"] = "300"
         self.ask(calls, ["r00", "r01", "r02"])
-        cut, failed = self.entries()
+        cut, failed = self.entries()  # pyright: ignore[reportGeneralTypeIssues]  (calls failed here, so the failed-call record exists)
         self.assertEqual((cut["outcome"], cut["record"], cut["text_piece"], cut["stage"]), ("cut_off", "r01", 1, "draft"))
         self.assertEqual(cut["finish_reason"], "length")
         self.assertEqual((cut["reasoning_tokens"], cut["answer_tokens"]), (300, 16000))
@@ -401,7 +401,7 @@ class Guards(unittest.TestCase):
 
         with mock.patch.object(llm, "_post", post), self.assertRaises(llm.EarlyStop):   # 3 of the first 4 failed
             self.ask(calls, ["r00", "r01", "r02", "r03"])
-        cut, refused, limited = sorted(self.entries(), key=lambda e: e["record"])
+        cut, refused, limited = sorted(self.entries(), key=lambda e: e["record"])  # pyright: ignore[reportCallIssue]  (calls failed here, so the failed-call record exists)
         self.assertEqual((cut["finish_reason"], cut["native_finish_reason"], cut["http_status"]),
                          ("length", "MAX_TOKENS", 200))
         self.assertEqual(cut["usage"]["completion_tokens_details"]["reasoning_tokens"], cut["reasoning_tokens"])
@@ -427,7 +427,7 @@ class Guards(unittest.TestCase):
 
         with mock.patch.object(llm, "_post", post):
             self.ask(calls, ["r00", "r01"])
-        [entry] = self.entries()
+        [entry] = self.entries()  # pyright: ignore[reportGeneralTypeIssues]  (calls failed here, so the failed-call record exists)
         self.assertEqual((entry["error_type"], entry["cause_type"], entry["attempts"], entry["http_status"]),
                          ("ApiError", "ReadTimeout", 1, None))
         self.assertIn("no answer within", entry["error"])
@@ -730,7 +730,7 @@ class ReplyKinds(Guards):
         self.assertEqual(llm.REASKS["not_json"], 0)
         cache = cache_module.Cache(self.tmp / "050_annotate" / "cache", "draft")
         self.assertEqual(len(cache.answers), 1)                                           # r00's answer only
-        (entry,) = self.entries()
+        (entry,) = self.entries()  # pyright: ignore[reportGeneralTypeIssues]  (calls failed here, so the failed-call record exists)
         self.assertEqual((entry["outcome"], entry["error_type"], entry["finish_reason"]), ("failed", "Refused", "stop"))
         self.assertIn("Asking again gets the same answer", entry["what_to_do"])
         again = self.ask(self.calls(), ["r00", "r01"])                                    # a rerun asks it again (not a cut-off)
@@ -1134,7 +1134,7 @@ class Budget(unittest.TestCase):
 
 class FakeSDK:
     """Stand-ins for the three makers' SDKs (anthropic, openai, google-genai), put in sys.modules so that
-    common/common_helpers/llm.py imports them as it imports the real ones: each records the client's settings and
+    common/common_helpers/llm_makers.py imports them as it imports the real ones: each records the client's settings and
     every request's parameters, and answers with the reply the test set (a dict, model_dump'ed as the SDKs' pydantic
     objects are), or raises the error the test set. No SDK needs to be installed and nothing leaves the computer."""
 
@@ -1607,6 +1607,60 @@ class FreeCommands(unittest.TestCase):
             calls = self.calls(confirm_paid_calls=True)
             self.ask(calls, ["a", "b", "c"])
             self.assertIn("1 model call(s) to pay for, and 1 test call first", questions[1])
+
+
+class TheClientsParts(unittest.TestCase):
+    """common/common_helpers/llm.py's parts (llm_*.py, each loaded by llm.py) read the settings set at run time and
+    call the functions a test may replace only through common.llm (llm.NAME), so that paid_calls' settings and a
+    test's stand-in reach every part. A part that read MODEL or called _post by its bare name would keep the value it
+    was loaded with, and a test's stand-in would not reach it: the request would leave for the real service."""
+
+    RUNTIME = {"MODEL", "SERVICE", "THINKING", "REPEAT", "SESSION_ID", "MAX_ANSWER_TOKENS"}
+    SEAMS = {"_post", "load_dotenv", "_asksage_token", "_litellm", "_ask_asksage", "_ask_litellm", "_ask_anthropic",
+             "_ask_openai", "_ask_google", "call_llm", "call_llm_json", "confirm", "list_models"}
+
+    def bare(self, source: str) -> list:
+        """Each use of a runtime setting, or call of a replaceable function, by its bare name; and each import of one
+        from common.llm by name."""
+        import ast
+        found = []
+        for n in ast.walk(ast.parse(source)):
+            if isinstance(n, ast.Name) and n.id in self.RUNTIME:
+                found.append(f"{n.lineno}: {n.id}")
+            elif isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in self.SEAMS:
+                found.append(f"{n.lineno}: {n.func.id}()")
+            elif isinstance(n, ast.ImportFrom) and n.module == "common.llm":
+                found += [f"{n.lineno}: import {a.name}" for a in n.names if a.name in self.RUNTIME | self.SEAMS]
+        return sorted(found, key=lambda f: int(f.split(":")[0]))
+
+    def test_every_part_goes_through_llm(self):
+        parts = sorted((support.ROOT / "common" / "common_helpers").glob("llm_*.py"))
+        self.assertTrue(parts)
+        for path in parts:
+            with self.subTest(part=path.name):
+                self.assertEqual(self.bare(path.read_text(encoding="utf-8")), [])
+                self.assertIn(f"from common.{path.stem} import (", (path.parent / "llm.py").read_text(encoding="utf-8"))
+
+    def test_the_check_sees_a_bare_name(self):
+        """Near misses: llm.MODEL, a parameter or attribute named confirm, and a function's own definition pass."""
+        self.assertEqual(self.bare("x = MODEL\n_post(1)\nfrom common.llm import SERVICE, TEMPERATURE\n"),
+                         ["1: MODEL", "2: _post()", "3: import SERVICE"])
+        self.assertEqual(self.bare("x = llm.MODEL\nllm._post(1)\ndef _post(): pass\n"
+                                   "def f(confirm):\n    if confirm: self.confirm = 1\n"), [])
+
+    def test_a_stand_in_reaches_the_parts(self):
+        """Replacing llm.call_llm reaches call_llm_json (llm_calls.py), and llm.MODEL set here is the model that
+        call_settings and the failed-call record name (llm.py, llm_paid.py)."""
+        with mock.patch.object(llm, "call_llm", lambda prompt, **kw: '{"ok": true}'):
+            self.assertEqual(llm.call_llm_json("p"), {"ok": True})
+        saved = llm.MODEL
+        try:
+            llm.MODEL = "gpt-6-astra"
+            self.assertEqual(llm.describe()["model"], "gpt-6-astra")
+            self.assertFalse(llm.temperature_sent())
+        finally:
+            llm.MODEL = saved
+
 
 if __name__ == "__main__":
     unittest.main()

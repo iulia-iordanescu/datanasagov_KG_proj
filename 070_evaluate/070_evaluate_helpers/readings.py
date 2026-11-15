@@ -44,7 +44,7 @@ FEW_CAVEAT = ("From {n} records only: the design effect (how much the records' o
 def _sure(n: dict, metric: dict, what: str, items: str = "triples") -> str:
     """How sure a metric is: its margin of error (stats.clustered_wilson), or why there is none."""
     if metric is None or metric.get("value") is None:
-        return f"- Not computed: nothing to count it over."
+        return "- Not computed: nothing to count it over."
     if metric.get("low") is None:
         return "- Computed over 1 record: no range (nothing to measure spread from)."
     out = (f"- For the whole catalog, {what} is likely between {pct(metric['low'])} and {pct(metric['high'])} "
@@ -291,7 +291,7 @@ def readings(part: str, n: dict, recs: list, evaluated, translation, looks, conf
             f"triple(s) have a predicate with no counterpart in the schema.",
             f"- {_of(SW, G)} are within strict reach: their two entity classes have a counterpart too. That's "
             f"the most strict recall could be.",
-            *([f"- Split by the best match among the rows that reach them (`docs/terminology.md`, *match*): "
+            *(["- Split by the best match among the rows that reach them (`docs/terminology.md`, *match*): "
                + "; ".join(f"{k}: {_of(v, G)}" for k, v in n["by_match"]["within_reach"].items())
                + ". Through same or narrower rows, the current schema can say the fact; only through broader or "
                  "overlap rows, it says something wider that the table files under that predicate. An upper bound "
@@ -430,14 +430,14 @@ def component_class_reading(r: dict, table: str) -> str:
     if r["within_reach"] is None:
         if table == "predicate":
             return _end(f"{name}: its row of {TABLE} says (none), so "
-                        + (f"its 1 occurrence is" if O == 1 else f"its {O} occurrences are")
+                        + ("its 1 occurrence is" if O == 1 else f"its {O} occurrences are")
                         + f" untranslatable: left out of precision (which has no value here) and counted in schema "
                           f"fit: either {SCHEMA} has {_a(table)} the ground truth schema lacks, "
                           f"or that row should name one of the ground truth schema's." + many)
         return _end(f"{name}: its row of {TABLE} says (none), so "
-                    + (f"its 1 occurrence can't" if O == 1 else f"none of its {O} occurrences can")
+                    + ("its 1 occurrence can't" if O == 1 else f"none of its {O} occurrences can")
                     + " be in a pair"
-                    + (f" (precision 0%)" if not r.get("untranslatable") else
+                    + (" (precision 0%)" if not r.get("untranslatable") else
                        f" ({r['untranslatable']} of them untranslatable, left out of its precision: precision "
                        + ("has no value" if r["untranslatable"] == O else "0%") + ")")
                     + f": either {SCHEMA} has {_a(table)} the ground truth schema lacks, "

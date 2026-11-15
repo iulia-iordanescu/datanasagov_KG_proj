@@ -111,7 +111,6 @@ read_ground_truth_schema(path) is read_schema for the ground truth schema's text
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 from pathlib import Path
@@ -667,7 +666,7 @@ def rename_in_ground_truth_schema(path, kind: str, old: str, new: str) -> tuple:
             m = PATTERN_LINE.match(lines[j].strip()) if not lines[j][:1].isspace() else None
             if m:
                 s, p, o = m.groups()
-                lines[j] = " ".join((swap(s), p, swap(o)) if key == "entity_classes" else (s, swap(p), o))
+                lines[j] = " ".join((swap(s), p, swap(o)) if key == "entity_classes" else (s, swap(p), o))  # pyright: ignore[reportCallIssue]  (PATTERN_LINE's three groups always match)
 
     def trio(t):
         s, p, o = t

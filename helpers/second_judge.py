@@ -62,7 +62,7 @@ from common.partial_reviews import (NOT_SAME, SAME, pair_text, read_reviews, rev
 from common.prompt_files import fill, load                                     # noqa: E402
 from common.records_io import full_text                                        # noqa: E402
 from common.report import cell, model_calls, named                             # noqa: E402
-from common.second_opinion import ADDED, IN_OTHER_WORDS, TRIPLE, candidate_key, read_candidates  # noqa: E402
+from common.second_opinion import ADDED, IN_OTHER_WORDS, candidate_key, read_candidates  # noqa: E402
 from common.step import ANNOTATIONS_DIR, Results, Spec, check_settings, load_moves, repo_path, run_step  # noqa: E402
 from common.stop import Stop                                                   # noqa: E402
 

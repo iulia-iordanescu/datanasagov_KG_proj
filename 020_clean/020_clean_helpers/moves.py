@@ -26,18 +26,17 @@ catalog entry, and its other metadata fields still give the knowledge graph edge
 from __future__ import annotations
 
 import collections
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import maintainers
 import note_cleaning
 from ftfy import fix_encoding
-from common.audit import ORIGIN_FIELD, check_origins, log, origin, ref_path
+from common.audit import ORIGIN_FIELD, check_origins, log, origin
 from common.files import read_json, write_jsonl
 from common.records_io import CLEANING_FIELD, TEXT_FIELDS, has_text
 from common.report import cell, named, this_report
-from common.step import Results, Spec, check_settings, input_files, repo_path
+from common.step import Results, Spec, input_files, repo_path
 from common.stop import Stop
 
 OUTPUT_NAME = "records.jsonl"
